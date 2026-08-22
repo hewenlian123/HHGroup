@@ -58,13 +58,13 @@ type PayrollSummaryResponse =
     };
 
 const psShell =
-  "rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)] md:rounded-2xl";
+  "rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-operational md:rounded-hh-task";
 
 const psKpiTile =
-  "rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)] md:rounded-xl";
+  "rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-operational md:rounded-hh-task";
 
 const psKpiIcon =
-  "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] text-[var(--neo-text-secondary)] md:h-8 md:w-8";
+  "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[var(--hh-border)] bg-[var(--hh-l3-hover)] text-[var(--hh-text-secondary)] md:h-8 md:w-8";
 
 const AVATAR_RING = [
   "bg-zinc-200/80 text-zinc-800 dark:bg-zinc-700/50 dark:text-zinc-100",
@@ -97,16 +97,19 @@ function isCompleteDateInput(value: string): boolean {
 
 function BalanceChip({ balance }: { balance: number }) {
   const base =
-    "inline-flex w-fit min-h-[22px] shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium tabular-nums tracking-tight shadow-none";
+    "inline-flex w-fit min-h-[22px] shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-hh-status font-medium tabular-nums tracking-normal shadow-none";
   if (balance > 0) {
     return (
       <span
         className={cn(
           base,
-          "border-rose-500/10 bg-rose-500/[0.03] text-rose-900/78 dark:border-rose-500/12 dark:bg-rose-500/[0.05] dark:text-rose-100/78"
+          "border-[var(--hh-danger-border)] bg-[var(--hh-danger-soft-fill)] text-[var(--hh-danger)] border-[var(--hh-danger-border)] bg-[var(--hh-danger-soft-fill)] text-[var(--hh-danger)]"
         )}
       >
-        <span className="h-1 w-1 shrink-0 rounded-full bg-rose-500/40" aria-hidden />
+        <span
+          className="h-1 w-1 shrink-0 rounded-full bg-[var(--hh-danger-soft-fill)]"
+          aria-hidden
+        />
         Unpaid
       </span>
     );
@@ -116,10 +119,13 @@ function BalanceChip({ balance }: { balance: number }) {
       <span
         className={cn(
           base,
-          "border-amber-500/12 bg-amber-500/[0.04] text-amber-950/75 dark:border-amber-500/14 dark:bg-amber-500/[0.06] dark:text-amber-100/78"
+          "border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] text-[var(--hh-warning)] border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] text-[var(--hh-warning)]"
         )}
       >
-        <span className="h-1 w-1 shrink-0 rounded-full bg-amber-500/45" aria-hidden />
+        <span
+          className="h-1 w-1 shrink-0 rounded-full bg-[var(--hh-warning-soft-fill)]"
+          aria-hidden
+        />
         Overpaid
       </span>
     );
@@ -128,10 +134,13 @@ function BalanceChip({ balance }: { balance: number }) {
     <span
       className={cn(
         base,
-        "border-emerald-500/10 bg-emerald-500/[0.03] text-emerald-900/75 dark:border-emerald-500/12 dark:bg-emerald-500/[0.05] dark:text-emerald-100/78"
+        "border-[var(--hh-success-border)] bg-[var(--hh-success-soft-fill)] text-[var(--hh-success)] border-[var(--hh-success-border)] bg-[var(--hh-success-soft-fill)] text-[var(--hh-success)]"
       )}
     >
-      <span className="h-1 w-1 shrink-0 rounded-full bg-emerald-500/40" aria-hidden />
+      <span
+        className="h-1 w-1 shrink-0 rounded-full bg-[var(--hh-success-soft-fill)]"
+        aria-hidden
+      />
       Paid
     </span>
   );
@@ -269,24 +278,24 @@ export default function PayrollSummaryPage() {
   const refreshing = loading && rows.length > 0;
 
   const selectFieldClass =
-    "h-10 w-full min-w-0 rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-3 text-sm text-[var(--neo-text-primary)] shadow-none transition-colors hover:bg-[var(--neo-surface-muted)] focus-visible:border-[var(--neo-gold)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]";
+    "h-10 w-full min-w-0 rounded-hh-compact border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 text-sm text-[var(--hh-text-primary)] shadow-none transition-colors hover:bg-[var(--hh-l3-hover)] focus-visible:border-[var(--hh-action-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)]";
 
   const dateInputClass = cn(
     selectFieldClass,
-    "font-mono text-[13px] tabular-nums text-[var(--neo-text-secondary)] [color-scheme:dark]",
-    "bg-[var(--neo-surface-muted)] hover:bg-[var(--neo-surface-muted)]"
+    "hh-fin text-hh-table-cell tabular-nums text-[var(--hh-text-secondary)] ",
+    "bg-[var(--hh-l3-hover)] hover:bg-[var(--hh-l3-hover)]"
   );
 
   return (
     <div
       className={cn(
-        "dark neo-page-on-graphite min-w-0 overflow-x-hidden pb-[max(1rem,env(safe-area-inset-bottom,0px))] pt-[max(0.35rem,env(safe-area-inset-top,0px))] text-[var(--neo-canvas-text-secondary)]",
+        " min-w-0 overflow-x-hidden pb-[max(1rem,env(safe-area-inset-bottom,0px))] pt-[max(0.35rem,env(safe-area-inset-top,0px))] text-[var(--hh-text-secondary)]",
         "flex flex-col"
       )}
     >
       <div
         className={cn(
-          "neo-page-on-graphite page-shell-wide mx-auto flex w-full max-w-[430px] flex-1 flex-col gap-2 px-4 py-2 pb-4 sm:max-w-[460px] md:gap-2 md:px-6 md:pb-6 md:pt-3",
+          " page-shell-wide mx-auto flex w-full max-w-[430px] flex-1 flex-col gap-2 px-4 py-2 pb-4 sm:max-w-[460px] md:gap-2 md:px-6 md:pb-6 md:pt-3",
           mobileListPagePaddingClass,
           "max-md:!gap-2"
         )}
@@ -297,7 +306,7 @@ export default function PayrollSummaryPage() {
             title="Payroll Summary"
             subtitle="Labor cost, reimbursements, payments, and worker balance overview."
             actions={
-              <span className="inline-flex items-center gap-1.5 rounded-md border border-zinc-200/80 bg-white px-2.5 py-1.5 text-[11px] text-muted-foreground shadow-[0_1px_0_rgba(0,0,0,0.03)] dark:border-border/55 dark:bg-card">
+              <span className="inline-flex items-center gap-1.5 rounded-hh-compact border border-zinc-200/80 bg-white px-2.5 py-1.5 text-hh-status text-muted-foreground shadow-operational dark:border-border/55 dark:bg-card">
                 <Users className="h-3.5 w-3.5" aria-hidden />
                 Labor
               </span>
@@ -337,13 +346,15 @@ export default function PayrollSummaryPage() {
                 <DollarSign className="h-3 w-3 md:h-3.5 md:w-3.5" strokeWidth={1.75} aria-hidden />
               </span>
               <div className="min-w-0 flex-1">
-                <p className="text-[8px] font-medium uppercase leading-none tracking-wide text-muted-foreground md:text-[9px] md:normal-case md:tracking-normal">
+                <p className="text-hh-status font-medium uppercase leading-none tracking-normal text-muted-foreground md:text-hh-status md:normal-case md:tracking-normal">
                   Total Earned
                 </p>
                 <p className="mt-0.5 truncate text-base font-medium tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
                   {formatCurrency(summary.earned)}
                 </p>
-                <p className="mt-0.5 text-[9px] leading-none text-muted-foreground">This period</p>
+                <p className="mt-0.5 text-hh-status leading-none text-muted-foreground">
+                  This period
+                </p>
               </div>
             </div>
             <div
@@ -356,13 +367,15 @@ export default function PayrollSummaryPage() {
                 <HandCoins className="h-3 w-3 md:h-3.5 md:w-3.5" strokeWidth={1.75} aria-hidden />
               </span>
               <div className="min-w-0 flex-1">
-                <p className="text-[8px] font-medium uppercase leading-none tracking-wide text-muted-foreground md:text-[9px] md:normal-case md:tracking-normal">
+                <p className="text-hh-status font-medium uppercase leading-none tracking-normal text-muted-foreground md:text-hh-status md:normal-case md:tracking-normal">
                   Reimbursements
                 </p>
                 <p className="mt-0.5 truncate text-base font-medium tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
                   {formatCurrency(summary.reimbursements)}
                 </p>
-                <p className="mt-0.5 text-[9px] leading-none text-muted-foreground">This period</p>
+                <p className="mt-0.5 text-hh-status leading-none text-muted-foreground">
+                  This period
+                </p>
               </div>
             </div>
             <div
@@ -379,13 +392,15 @@ export default function PayrollSummaryPage() {
                 />
               </span>
               <div className="min-w-0 flex-1">
-                <p className="text-[8px] font-medium uppercase leading-none tracking-wide text-muted-foreground md:text-[9px] md:normal-case md:tracking-normal">
+                <p className="text-hh-status font-medium uppercase leading-none tracking-normal text-muted-foreground md:text-hh-status md:normal-case md:tracking-normal">
                   Should Pay
                 </p>
                 <p className="mt-0.5 truncate text-base font-medium tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
                   {formatCurrency(summary.shouldPay)}
                 </p>
-                <p className="mt-0.5 text-[9px] leading-none text-muted-foreground">This period</p>
+                <p className="mt-0.5 text-hh-status leading-none text-muted-foreground">
+                  This period
+                </p>
               </div>
             </div>
             <div
@@ -402,13 +417,15 @@ export default function PayrollSummaryPage() {
                 />
               </span>
               <div className="min-w-0 flex-1">
-                <p className="text-[8px] font-medium uppercase leading-none tracking-wide text-muted-foreground md:text-[9px] md:normal-case md:tracking-normal">
+                <p className="text-hh-status font-medium uppercase leading-none tracking-normal text-muted-foreground md:text-hh-status md:normal-case md:tracking-normal">
                   Paid
                 </p>
                 <p className="mt-0.5 truncate text-base font-medium tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
                   {formatCurrency(summary.paid)}
                 </p>
-                <p className="mt-0.5 text-[9px] leading-none text-muted-foreground">This period</p>
+                <p className="mt-0.5 text-hh-status leading-none text-muted-foreground">
+                  This period
+                </p>
               </div>
             </div>
             <div
@@ -421,20 +438,22 @@ export default function PayrollSummaryPage() {
                 <DollarSign className="h-3 w-3 md:h-3.5 md:w-3.5" strokeWidth={1.75} aria-hidden />
               </span>
               <div className="min-w-0 flex-1">
-                <p className="text-[8px] font-medium uppercase leading-none tracking-wide text-muted-foreground md:text-[9px] md:normal-case md:tracking-normal">
+                <p className="text-hh-status font-medium uppercase leading-none tracking-normal text-muted-foreground md:text-hh-status md:normal-case md:tracking-normal">
                   Outstanding
                 </p>
                 <p
                   className={cn(
                     "mt-0.5 truncate text-base font-medium tabular-nums leading-none md:text-xl",
                     summary.outstanding < 0
-                      ? "text-rose-700 dark:text-rose-300"
+                      ? "text-[var(--hh-danger)] text-[var(--hh-danger)]"
                       : "text-zinc-900 dark:text-foreground"
                   )}
                 >
                   {formatCurrency(summary.outstanding)}
                 </p>
-                <p className="mt-0.5 text-[9px] leading-none text-muted-foreground">This period</p>
+                <p className="mt-0.5 text-hh-status leading-none text-muted-foreground">
+                  This period
+                </p>
               </div>
             </div>
             <div
@@ -447,13 +466,13 @@ export default function PayrollSummaryPage() {
                 <Users className="h-3 w-3 md:h-3.5 md:w-3.5" strokeWidth={1.75} aria-hidden />
               </span>
               <div className="min-w-0 flex-1">
-                <p className="text-[8px] font-medium uppercase leading-none tracking-wide text-muted-foreground md:text-[9px] md:normal-case md:tracking-normal">
+                <p className="text-hh-status font-medium uppercase leading-none tracking-normal text-muted-foreground md:text-hh-status md:normal-case md:tracking-normal">
                   Workers
                 </p>
                 <p className="mt-0.5 text-base font-medium tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
                   {summary.workers}
                 </p>
-                <p className="mt-0.5 text-[9px] leading-none text-muted-foreground">Active</p>
+                <p className="mt-0.5 text-hh-status leading-none text-muted-foreground">Active</p>
               </div>
             </div>
           </div>
@@ -501,14 +520,14 @@ export default function PayrollSummaryPage() {
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Search worker…"
-                  className="h-11 min-h-[44px] border-[var(--neo-border)] bg-[var(--neo-surface-raised)] pl-8 text-sm text-[var(--neo-text-primary)] shadow-none hover:bg-[var(--neo-surface-muted)] focus-visible:border-[var(--neo-gold)] focus-visible:ring-[var(--neo-gold-ring)] md:h-10 md:min-h-10"
+                  className="h-11 min-h-[44px] border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] pl-8 text-sm text-[var(--hh-text-primary)] shadow-none hover:bg-[var(--hh-l3-hover)] focus-visible:border-[var(--hh-action-primary)] focus-visible:ring-[var(--hh-focus-ring)] md:h-10 md:min-h-10"
                 />
               </div>
             </div>
             <Button
               size="sm"
               variant="outline"
-              className="h-10 w-full shrink-0 gap-1.5 rounded-sm border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-none hover:bg-[var(--neo-surface-muted)] lg:ml-auto lg:w-auto"
+              className="h-10 w-full shrink-0 gap-1.5 rounded-hh-compact border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-none hover:bg-[var(--hh-l3-hover)] lg:ml-auto lg:w-auto"
               onClick={load}
               disabled={loading}
             >
@@ -565,7 +584,7 @@ export default function PayrollSummaryPage() {
                   >
                     <span
                       className={cn(
-                        "flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[12px] font-semibold leading-none tabular-nums antialiased",
+                        "flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-hh-metadata font-semibold leading-none tabular-nums antialiased",
                         workerAvatarRing,
                         avatarRingClass(r.workerId)
                       )}
@@ -574,7 +593,7 @@ export default function PayrollSummaryPage() {
                       {workerInitials(r.workerName)}
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block line-clamp-2 text-[13px] font-medium leading-snug tracking-tight text-zinc-900 dark:text-foreground">
+                      <span className="block line-clamp-2 text-hh-table-cell font-medium leading-snug tracking-normal text-zinc-900 dark:text-foreground">
                         {r.workerName}
                       </span>
                     </span>
@@ -623,46 +642,46 @@ export default function PayrollSummaryPage() {
                 </div>
                 <dl className="grid min-w-0 grid-cols-2 gap-x-3 gap-y-2 text-xs tabular-nums">
                   <div className="min-w-0">
-                    <dt className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                    <dt className="text-hh-status uppercase tracking-normal text-muted-foreground">
                       Earned
                     </dt>
-                    <dd className="min-w-0 break-words text-[12px] text-zinc-700 dark:text-zinc-200">
+                    <dd className="min-w-0 break-words text-hh-metadata text-zinc-700 dark:text-zinc-200">
                       {formatCurrency(r.earned)}
                     </dd>
                   </div>
                   <div className="min-w-0">
-                    <dt className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                    <dt className="text-hh-status uppercase tracking-normal text-muted-foreground">
                       Reimb.
                     </dt>
-                    <dd className="min-w-0 break-words text-[12px] text-zinc-700 dark:text-zinc-200">
+                    <dd className="min-w-0 break-words text-hh-metadata text-zinc-700 dark:text-zinc-200">
                       {formatCurrency(r.reimbursements)}
                     </dd>
                   </div>
                   <div className="min-w-0">
-                    <dt className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                    <dt className="text-hh-status uppercase tracking-normal text-muted-foreground">
                       Should pay
                     </dt>
-                    <dd className="min-w-0 break-words text-[12px] text-zinc-700 dark:text-zinc-200">
+                    <dd className="min-w-0 break-words text-hh-metadata text-zinc-700 dark:text-zinc-200">
                       {formatCurrency(r.shouldPay)}
                     </dd>
                   </div>
                   <div className="min-w-0">
-                    <dt className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                    <dt className="text-hh-status uppercase tracking-normal text-muted-foreground">
                       Paid
                     </dt>
-                    <dd className="min-w-0 break-words text-[12px] text-zinc-700 dark:text-zinc-200">
+                    <dd className="min-w-0 break-words text-hh-metadata text-zinc-700 dark:text-zinc-200">
                       {formatCurrency(r.paid)}
                     </dd>
                   </div>
                   <div className="col-span-2 min-w-0">
-                    <dt className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                    <dt className="text-hh-status uppercase tracking-normal text-muted-foreground">
                       Balance
                     </dt>
                     <dd className="min-w-0 font-medium leading-snug text-zinc-900 dark:text-foreground">
-                      <span className="block text-[16px] tabular-nums tracking-tight">
+                      <span className="block text-hh-section-title tabular-nums tracking-normal">
                         {formatCurrency(r.balance)}
                       </span>
-                      <span className="mt-0.5 block text-[11px] font-normal text-muted-foreground">
+                      <span className="mt-0.5 block text-hh-status font-normal text-muted-foreground">
                         {balanceStatusLabel(r.balance)}
                       </span>
                     </dd>
@@ -673,7 +692,7 @@ export default function PayrollSummaryPage() {
                     <Button
                       size="sm"
                       variant="outline"
-                      className="h-11 min-h-[44px] rounded-sm shadow-none md:h-8 md:min-h-0"
+                      className="h-11 min-h-[44px] rounded-hh-compact shadow-none md:h-8 md:min-h-0"
                       onClick={() => {
                         setPayTarget(r);
                         setPayOpen(true);
@@ -684,7 +703,7 @@ export default function PayrollSummaryPage() {
                     <Button
                       size="sm"
                       variant="outline"
-                      className="h-11 min-h-[44px] rounded-sm shadow-none md:h-8 md:min-h-0"
+                      className="h-11 min-h-[44px] rounded-hh-compact shadow-none md:h-8 md:min-h-0"
                       asChild
                     >
                       <Link
@@ -796,10 +815,10 @@ export default function PayrollSummaryPage() {
                         </td>
                       ))}
                       <td className="px-3 py-2.5 text-right">
-                        <Skeleton className="ml-auto h-8 w-24 rounded-sm" />
+                        <Skeleton className="ml-auto h-8 w-24 rounded-hh-compact" />
                       </td>
                       <td className="px-3 py-2.5 text-right">
-                        <Skeleton className="ml-auto h-8 w-28 rounded-sm" />
+                        <Skeleton className="ml-auto h-8 w-28 rounded-hh-compact" />
                       </td>
                     </tr>
                   ))
@@ -840,7 +859,7 @@ export default function PayrollSummaryPage() {
                         <div className="flex min-w-0 items-center gap-2.5">
                           <span
                             className={cn(
-                              "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold leading-none tabular-nums antialiased",
+                              "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-hh-status font-semibold leading-none tabular-nums antialiased",
                               workerAvatarRing,
                               avatarRingClass(r.workerId)
                             )}
@@ -849,7 +868,7 @@ export default function PayrollSummaryPage() {
                             {workerInitials(r.workerName)}
                           </span>
                           <div className="min-w-0">
-                            <p className="line-clamp-2 text-[13px] font-medium leading-snug tracking-tight text-zinc-900 dark:text-foreground">
+                            <p className="line-clamp-2 text-hh-table-cell font-medium leading-snug tracking-normal text-zinc-900 dark:text-foreground">
                               {r.workerName}
                             </p>
                           </div>
@@ -893,7 +912,7 @@ export default function PayrollSummaryPage() {
                           listTableAmountCellClassName
                         )}
                       >
-                        <div className="text-base font-semibold tabular-nums tracking-tight text-zinc-800 dark:text-zinc-100">
+                        <div className="text-base font-semibold tabular-nums tracking-normal text-zinc-800 dark:text-zinc-100">
                           {formatCurrency(r.balance)}
                         </div>
                         <div className="mt-0.5 flex justify-end">
@@ -907,7 +926,7 @@ export default function PayrollSummaryPage() {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="h-8 rounded-sm border-zinc-200/80 bg-transparent text-muted-foreground shadow-none hover:bg-zinc-50 hover:text-foreground dark:border-border dark:hover:bg-muted/30"
+                          className="h-8 rounded-hh-compact border-zinc-200/80 bg-transparent text-muted-foreground shadow-none hover:bg-zinc-50 hover:text-foreground dark:border-border dark:hover:bg-muted/30"
                           onClick={() => {
                             setPayTarget(r);
                             setPayOpen(true);
@@ -987,7 +1006,7 @@ export default function PayrollSummaryPage() {
                 <Button
                   size="sm"
                   variant="outline"
-                  className="h-8 flex-1 rounded-sm shadow-none sm:flex-none"
+                  className="h-8 flex-1 rounded-hh-compact shadow-none sm:flex-none"
                   disabled={page <= 1}
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                 >
@@ -996,7 +1015,7 @@ export default function PayrollSummaryPage() {
                 <Button
                   size="sm"
                   variant="outline"
-                  className="h-8 flex-1 rounded-sm shadow-none sm:flex-none"
+                  className="h-8 flex-1 rounded-hh-compact shadow-none sm:flex-none"
                   disabled={page >= totalPages}
                   onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 >
@@ -1018,7 +1037,7 @@ export default function PayrollSummaryPage() {
             <Button
               size="sm"
               variant="outline"
-              className="h-8 flex-1 rounded-sm shadow-none sm:flex-none"
+              className="h-8 flex-1 rounded-hh-compact shadow-none sm:flex-none"
               disabled={page <= 1}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
             >
@@ -1027,7 +1046,7 @@ export default function PayrollSummaryPage() {
             <Button
               size="sm"
               variant="outline"
-              className="h-8 flex-1 rounded-sm shadow-none sm:flex-none"
+              className="h-8 flex-1 rounded-hh-compact shadow-none sm:flex-none"
               disabled={page >= totalPages}
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
             >

@@ -129,7 +129,7 @@ export default function LaborInvoicesPage() {
         subtitle="Worker invoices/receipts with attachment and project split review."
         actions={
           <Link href="/labor/invoices/new">
-            <Button size="sm" className="rounded-sm">
+            <Button size="sm" className="rounded-hh-compact">
               + New Invoice
             </Button>
           </Link>
@@ -140,7 +140,7 @@ export default function LaborInvoicesPage() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search invoice # or worker"
-          className="h-10 rounded-sm"
+          className="h-10 rounded-hh-compact"
         />
         <Select
           value={status}
@@ -156,13 +156,13 @@ export default function LaborInvoicesPage() {
           type="date"
           value={fromDate}
           onChange={(e) => setFromDate(e.target.value)}
-          className="h-10 rounded-sm"
+          className="h-10 rounded-hh-compact"
         />
         <Input
           type="date"
           value={toDate}
           onChange={(e) => setToDate(e.target.value)}
-          className="h-10 rounded-sm"
+          className="h-10 rounded-hh-compact"
         />
       </FilterBar>
       {message ? (
@@ -170,30 +170,30 @@ export default function LaborInvoicesPage() {
           {message}
         </p>
       ) : null}
-      <div className="overflow-hidden rounded-sm border border-gray-100 dark:border-border">
+      <div className="overflow-hidden rounded-hh-compact border border-gray-100 dark:border-border">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100 bg-white dark:border-border/60 dark:bg-muted/30">
-                <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                <th className="text-left py-3 px-4 text-xs uppercase tracking-normalr text-muted-foreground font-medium">
                   Invoice #
                 </th>
-                <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                <th className="text-left py-3 px-4 text-xs uppercase tracking-normalr text-muted-foreground font-medium">
                   Worker
                 </th>
-                <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                <th className="text-left py-3 px-4 text-xs uppercase tracking-normalr text-muted-foreground font-medium">
                   Date
                 </th>
-                <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                <th className="text-right py-3 px-4 text-xs uppercase tracking-normalr text-muted-foreground font-medium">
                   Amount
                 </th>
-                <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                <th className="text-right py-3 px-4 text-xs uppercase tracking-normalr text-muted-foreground font-medium">
                   Split Projects
                 </th>
-                <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                <th className="text-left py-3 px-4 text-xs uppercase tracking-normalr text-muted-foreground font-medium">
                   Status
                 </th>
-                <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                <th className="text-right py-3 px-4 text-xs uppercase tracking-normalr text-muted-foreground font-medium">
                   Actions
                 </th>
               </tr>
@@ -202,11 +202,11 @@ export default function LaborInvoicesPage() {
               {filtered.map((row) => (
                 <tr
                   key={row.id}
-                  className="group border-b border-gray-100/80 transition-colors hover:bg-[#F9FAFB] dark:border-border/40 dark:hover:bg-muted/20"
+                  className="group border-b border-gray-100/80 transition-colors bg-[var(--hh-l3-hover)] dark:border-border/40 dark:hover:bg-muted/20"
                 >
                   <td className="py-3 px-4 font-medium text-foreground">{row.invoiceNo}</td>
                   <td className="py-3 px-4">{workersMap.get(row.workerId) ?? "Unknown worker"}</td>
-                  <td className="py-3 px-4 font-mono tabular-nums tracking-tight text-zinc-500">
+                  <td className="py-3 px-4 hh-fin tracking-normal text-zinc-500">
                     {formatDate(row.invoiceDate)}
                   </td>
                   <td className="py-3 px-4 text-right tabular-nums">
@@ -219,14 +219,14 @@ export default function LaborInvoicesPage() {
                   <td className="py-3 px-4">
                     <div className="flex justify-end gap-2">
                       <Link href={`/labor/invoices/${row.id}`}>
-                        <Button size="sm" variant="outline" className="h-8 rounded-sm">
+                        <Button size="sm" variant="outline" className="h-8 rounded-hh-compact">
                           View/Edit
                         </Button>
                       </Link>
                       <Button
                         size="sm"
                         variant="outline"
-                        className="h-8 rounded-sm"
+                        className="h-8 rounded-hh-compact"
                         onClick={() => handleVoid(row.id)}
                         disabled={row.status === "void" || busyId === row.id}
                       >
@@ -235,7 +235,7 @@ export default function LaborInvoicesPage() {
                       <Button
                         size="sm"
                         variant="outline"
-                        className="h-8 rounded-sm"
+                        className="h-8 rounded-hh-compact"
                         onClick={() => handleDelete(row.id)}
                         disabled={busyId === row.id}
                       >

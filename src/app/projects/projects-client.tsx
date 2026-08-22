@@ -185,10 +185,12 @@ export function ProjectsClient() {
       className: "min-w-[220px]",
       render: (row) => (
         <div className="flex flex-col">
-          <span className="font-medium text-foreground hover:underline">
+          <span className="font-medium text-[var(--hh-text-primary)] hover:underline">
             {row.name?.trim() || "Untitled Project"}
           </span>
-          <span className="text-xs text-muted-foreground tabular-nums">{row.id}</span>
+          <span className="text-hh-metadata text-[var(--hh-text-secondary)] tabular-nums">
+            {row.id}
+          </span>
         </div>
       ),
     },
@@ -203,7 +205,9 @@ export function ProjectsClient() {
       align: "right",
       className: "tabular-nums",
       render: (row) => (
-        <span className="tabular-nums text-muted-foreground">{money(safeNumber(row.budget))}</span>
+        <span className="tabular-nums text-[var(--hh-text-secondary)]">
+          {money(safeNumber(row.budget))}
+        </span>
       ),
     },
     {
@@ -212,7 +216,9 @@ export function ProjectsClient() {
       align: "right",
       className: "tabular-nums",
       render: (row) => (
-        <span className="tabular-nums text-muted-foreground">{money(row.actualCost)}</span>
+        <span className="tabular-nums text-[var(--hh-text-secondary)]">
+          {money(row.actualCost)}
+        </span>
       ),
     },
     {
@@ -224,7 +230,7 @@ export function ProjectsClient() {
         <span
           className={cn(
             "tabular-nums font-semibold",
-            row.profit < 0 ? "text-red-600" : "text-[#166534]"
+            row.profit < 0 ? "text-[var(--hh-danger)]" : "text-[var(--hh-success)]"
           )}
         >
           {row.profit < 0 ? "−" : ""}
@@ -242,10 +248,10 @@ export function ProjectsClient() {
           className={cn(
             "tabular-nums",
             row.marginPct < 0
-              ? "text-red-600"
+              ? "text-[var(--hh-danger)]"
               : row.marginPct < 20
-                ? "text-amber-600"
-                : "text-muted-foreground"
+                ? "text-[var(--hh-warning)]"
+                : "text-[var(--hh-text-secondary)]"
           )}
         >
           {row.marginPct.toFixed(0)}%
@@ -256,7 +262,7 @@ export function ProjectsClient() {
       key: "updated_at",
       header: "Updated",
       render: (row) => (
-        <span className="tabular-nums text-muted-foreground">
+        <span className="tabular-nums text-[var(--hh-text-secondary)]">
           {(row.updated_at ?? row.created_at ?? "").slice(0, 10) || "—"}
         </span>
       ),
@@ -267,17 +273,19 @@ export function ProjectsClient() {
     <div className="page-container page-stack">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-text-primary dark:text-foreground sm:text-3xl">
+          <h1 className="text-hh-page-title font-semibold tracking-normal text-[var(--hh-text-primary)] dark:text-[var(--hh-text-primary)] text-hh-page-title">
             Projects
           </h1>
-          <p className="mt-1 text-sm text-muted-foreground">Manage all construction projects.</p>
+          <p className="mt-1 text-hh-body text-[var(--hh-text-secondary)]">
+            Manage all construction projects.
+          </p>
         </div>
         <div className="flex w-full flex-col gap-2 max-md:[&_button]:min-h-11 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:flex-shrink-0">
           <Button
             asChild
             variant="outline"
             size="sm"
-            className="w-full rounded-md border-[0.5px] border-gray-100 bg-white text-text-primary shadow-none transition-all duration-150 ease-out hover:-translate-y-px hover:bg-gray-50 active:scale-[0.97] active:duration-100 dark:border-border dark:bg-card dark:hover:bg-muted/40 sm:w-auto"
+            className="w-full rounded-hh-standard border-[0.5px] border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-none transition-all duration-150 ease-out hover:-translate-y-px hover:bg-[var(--hh-l3-hover)] active:scale-[0.97] active:duration-100    sm:w-auto"
           >
             <Link href="/projects/new" className="inline-flex items-center justify-center gap-1">
               <Plus className="h-4 w-4" />
@@ -297,53 +305,53 @@ export function ProjectsClient() {
       </header>
 
       {error ? (
-        <div className="rounded-lg border border-gray-100 bg-background px-4 py-3 text-sm text-muted-foreground dark:border-border">
+        <div className="rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l1-workspace)] px-4 py-3 text-hh-body text-[var(--hh-text-secondary)] ">
           {error}
         </div>
       ) : null}
 
       <div className="grid grid-cols-1 gap-[10px] sm:grid-cols-2 lg:grid-cols-5">
-        <div className="rounded-[10px] border-[0.5px] border-solid border-gray-100 bg-white px-4 py-[14px] dark:border-border">
+        <div className="rounded-hh-standard border-[0.5px] border-solid border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-4 py-[14px] ">
           <p className="kpi-metric-label">Total Projects</p>
           {loading ? (
             <Skeleton className="mt-2 h-7 w-16" />
           ) : (
-            <p className="kpi-metric-value mt-0.5 tabular-nums text-text-primary dark:text-foreground">
+            <p className="kpi-metric-value mt-0.5 tabular-nums text-[var(--hh-text-primary)] dark:text-[var(--hh-text-primary)]">
               {summary.total}
             </p>
           )}
         </div>
-        <div className="rounded-[10px] border-[0.5px] border-solid border-gray-100 bg-white px-4 py-[14px] dark:border-border">
+        <div className="rounded-hh-standard border-[0.5px] border-solid border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-4 py-[14px] ">
           <p className="kpi-metric-label">Active</p>
           {loading ? (
             <Skeleton className="mt-2 h-7 w-16" />
           ) : (
-            <p className="kpi-metric-value mt-0.5 tabular-nums text-text-primary dark:text-foreground">
+            <p className="kpi-metric-value mt-0.5 tabular-nums text-[var(--hh-text-primary)] dark:text-[var(--hh-text-primary)]">
               {summary.active}
             </p>
           )}
         </div>
-        <div className="rounded-[10px] border-[0.5px] border-solid border-gray-100 bg-white px-4 py-[14px] dark:border-border">
+        <div className="rounded-hh-standard border-[0.5px] border-solid border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-4 py-[14px] ">
           <p className="kpi-metric-label">Completed</p>
           {loading ? (
             <Skeleton className="mt-2 h-7 w-16" />
           ) : (
-            <p className="kpi-metric-value mt-0.5 tabular-nums text-text-primary dark:text-foreground">
+            <p className="kpi-metric-value mt-0.5 tabular-nums text-[var(--hh-text-primary)] dark:text-[var(--hh-text-primary)]">
               {summary.completed}
             </p>
           )}
         </div>
-        <div className="rounded-[10px] border-[0.5px] border-solid border-gray-100 bg-white px-4 py-[14px] dark:border-border">
+        <div className="rounded-hh-standard border-[0.5px] border-solid border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-4 py-[14px] ">
           <p className="kpi-metric-label">Total Budget</p>
           {loading ? (
             <Skeleton className="mt-2 h-7 w-28" />
           ) : (
-            <p className="kpi-metric-value mt-0.5 tabular-nums text-text-primary dark:text-foreground">
+            <p className="kpi-metric-value mt-0.5 tabular-nums text-[var(--hh-text-primary)] dark:text-[var(--hh-text-primary)]">
               {money(summary.totalBudget)}
             </p>
           )}
         </div>
-        <div className="rounded-[10px] border-[0.5px] border-solid border-gray-100 bg-white px-4 py-[14px] sm:col-span-2 lg:col-span-1 dark:border-border">
+        <div className="rounded-hh-standard border-[0.5px] border-solid border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-4 py-[14px] sm:col-span-2 lg:col-span-1 ">
           <p className="kpi-metric-label">Total Profit</p>
           {loading ? (
             <Skeleton className="mt-2 h-7 w-28" />
@@ -352,8 +360,8 @@ export function ProjectsClient() {
               className={cn(
                 "kpi-metric-value mt-0.5 tabular-nums",
                 summary.totalProfit < 0
-                  ? "text-red-600 dark:text-red-400"
-                  : "text-[#166534] dark:text-[#166534]"
+                  ? "text-[var(--hh-danger)]"
+                  : "text-[var(--hh-success)] dark:text-[var(--hh-success)]"
               )}
             >
               {summary.totalProfit < 0 ? "−" : ""}
@@ -366,11 +374,11 @@ export function ProjectsClient() {
       <FilterBar className="flex-col items-stretch sm:items-stretch">
         <div className="grid w-full grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
           <div className="space-y-1 sm:col-span-2 lg:col-span-3">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
+            <p className="text-hh-status font-medium uppercase tracking-normal text-[var(--hh-text-secondary)]/75 dark:text-[var(--hh-text-secondary)]">
               Search
             </p>
             <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-secondary/75 dark:text-muted-foreground" />
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--hh-text-secondary)]/75 dark:text-[var(--hh-text-secondary)]" />
               <Input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
@@ -380,7 +388,7 @@ export function ProjectsClient() {
             </div>
           </div>
           <div className="space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
+            <p className="text-hh-status font-medium uppercase tracking-normal text-[var(--hh-text-secondary)]/75 dark:text-[var(--hh-text-secondary)]">
               Status
             </p>
             <Select
@@ -408,8 +416,12 @@ export function ProjectsClient() {
           </div>
         ) : dataWithDerived.length === 0 ? (
           <div className="flex min-h-[200px] flex-col items-center justify-center gap-2 py-14 text-center">
-            <p className="text-sm font-medium text-foreground">No projects yet</p>
-            <p className="text-xs text-muted-foreground">Create a project to get started.</p>
+            <p className="text-hh-body font-medium text-[var(--hh-text-primary)]">
+              No projects yet
+            </p>
+            <p className="text-hh-metadata text-[var(--hh-text-secondary)]">
+              Create a project to get started.
+            </p>
           </div>
         ) : (
           <DataTable<RowWithDerived>

@@ -90,7 +90,7 @@ export default async function ChangeOrderDetailPage({
       <SetBreadcrumbEntityTitle label={coBreadcrumbLabel} />
       {dataLoadWarning ? (
         <p
-          className="mb-3 border-b border-border/60 pb-3 text-sm text-muted-foreground"
+          className="mb-3 border-b border-border/60 pb-3 text-hh-body text-[var(--hh-text-secondary)]"
           role="status"
         >
           {dataLoadWarning}
@@ -99,7 +99,7 @@ export default async function ChangeOrderDetailPage({
       <div className="mb-3">
         <Link
           href={`/projects/${projectId}?tab=change-orders`}
-          className="text-xs text-muted-foreground hover:text-foreground"
+          className="text-hh-metadata text-[var(--hh-text-secondary)] hover:text-[var(--hh-text-primary)]"
         >
           ← Change orders
         </Link>
@@ -122,7 +122,7 @@ export default async function ChangeOrderDetailPage({
               />
               {!isLocked && (
                 <Link href={`/projects/${projectId}/change-orders/${coId}/edit`}>
-                  <Button variant="outline" size="sm" className="gap-1.5 text-xs">
+                  <Button variant="outline" size="sm" className="gap-1.5 text-hh-metadata">
                     <Pencil className="h-3.5 w-3.5" />
                     Edit
                   </Button>
@@ -133,36 +133,36 @@ export default async function ChangeOrderDetailPage({
         }
       >
         <SectionHeader label="Summary" />
-        <div className="grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 text-hh-body sm:grid-cols-2 lg:grid-cols-4">
           {(co.title || co.description) && (
             <>
               {co.title && (
                 <div>
-                  <span className="text-muted-foreground">Title</span>
+                  <span className="text-[var(--hh-text-secondary)]">Title</span>
                   <p className="font-medium">{co.title}</p>
                 </div>
               )}
               {co.description && (
                 <div className="sm:col-span-2">
-                  <span className="text-muted-foreground">Description</span>
+                  <span className="text-[var(--hh-text-secondary)]">Description</span>
                   <p className="font-medium">{co.description}</p>
                 </div>
               )}
             </>
           )}
           <div>
-            <span className="text-muted-foreground">Revenue impact (amount)</span>
+            <span className="text-[var(--hh-text-secondary)]">Revenue impact (amount)</span>
             <p className="font-medium tabular-nums">${fmtUsd(revenueAmount)}</p>
           </div>
           {co.costImpact != null && (
             <div>
-              <span className="text-muted-foreground">Cost impact</span>
+              <span className="text-[var(--hh-text-secondary)]">Cost impact</span>
               <p className="font-medium tabular-nums">${fmtUsd(co.costImpact)}</p>
             </div>
           )}
           {co.scheduleImpactDays != null && (
             <div>
-              <span className="text-muted-foreground">Schedule impact</span>
+              <span className="text-[var(--hh-text-secondary)]">Schedule impact</span>
               <p className="font-medium tabular-nums">{co.scheduleImpactDays} days</p>
             </div>
           )}
@@ -171,17 +171,17 @@ export default async function ChangeOrderDetailPage({
         <SectionHeader label="Line items" />
         <Divider />
         {items.length === 0 ? (
-          <p className="py-6 text-sm text-muted-foreground">No line items.</p>
+          <p className="py-6 text-hh-body text-[var(--hh-text-secondary)]">No line items.</p>
         ) : (
           <ChangeOrderLineItemsTable items={items} />
         )}
-        <div className="mt-6 flex flex-col items-end gap-1 text-sm">
+        <div className="mt-6 flex flex-col items-end gap-1 text-hh-body">
           <div className="flex gap-8">
-            <span className="text-muted-foreground">Subtotal</span>
+            <span className="text-[var(--hh-text-secondary)]">Subtotal</span>
             <span className="num">${fmtUsd(subtotal)}</span>
           </div>
           <div className="flex gap-8 font-medium">
-            <span className="text-muted-foreground">Total</span>
+            <span className="text-[var(--hh-text-secondary)]">Total</span>
             <span className="num">${fmtUsd(co.total)}</span>
           </div>
         </div>

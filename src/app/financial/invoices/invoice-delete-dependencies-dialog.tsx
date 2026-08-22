@@ -55,7 +55,7 @@ export function InvoiceDeleteDependenciesDialog({
 
         <div className="max-h-[50vh] space-y-2 overflow-y-auto pr-1">
           {blockers.length === 0 ? (
-            <p className="rounded-md border border-dashed border-border px-3 py-4 text-sm text-muted-foreground">
+            <p className="rounded-hh-standard border border-dashed border-border px-3 py-4 text-hh-body text-[var(--hh-text-secondary)]">
               No blocking dependencies were found. Refresh the check and try deleting again.
             </p>
           ) : (
@@ -68,16 +68,26 @@ export function InvoiceDeleteDependenciesDialog({
               return (
                 <div
                   key={`${dep.type}-${dep.id}`}
-                  className="rounded-md border border-border bg-card px-3 py-3"
+                  className="rounded-hh-standard border border-border bg-card px-3 py-3"
                 >
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-foreground">{dep.label}</p>
+                      <p className="text-hh-body font-medium text-[var(--hh-text-primary)]">
+                        {dep.label}
+                      </p>
                       {dep.description ? (
-                        <p className="mt-1 text-sm text-muted-foreground">{dep.description}</p>
+                        <p className="mt-1 text-hh-body text-[var(--hh-text-secondary)]">
+                          {dep.description}
+                        </p>
                       ) : null}
-                      {meta ? <p className="mt-1 text-xs text-muted-foreground">{meta}</p> : null}
-                      <p className="mt-1 break-all text-xs text-muted-foreground">ID: {dep.id}</p>
+                      {meta ? (
+                        <p className="mt-1 text-hh-metadata text-[var(--hh-text-secondary)]">
+                          {meta}
+                        </p>
+                      ) : null}
+                      <p className="mt-1 break-all text-hh-metadata text-[var(--hh-text-secondary)]">
+                        ID: {dep.id}
+                      </p>
                     </div>
                     <div className="flex shrink-0 gap-2">
                       {dep.href ? (

@@ -64,7 +64,7 @@ export function RecordPaymentModal({ open, onOpenChange, workerId, onSuccess }: 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm border-border/60 p-5 rounded-md gap-4">
+      <DialogContent className="max-w-sm border-border/60 p-5 rounded-hh-compact gap-4">
         <DialogHeader>
           <DialogTitle className="text-base font-semibold">Record Payment</DialogTitle>
         </DialogHeader>
@@ -96,7 +96,7 @@ export function RecordPaymentModal({ open, onOpenChange, workerId, onSuccess }: 
             <select
               value={method}
               onChange={(e) => setMethod(e.target.value)}
-              className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+              className="h-9 w-full rounded-hh-compact border border-input bg-transparent px-3 text-sm"
             >
               {METHODS.map((m) => (
                 <option key={m} value={m}>
@@ -115,19 +115,21 @@ export function RecordPaymentModal({ open, onOpenChange, workerId, onSuccess }: 
               className="h-9 text-sm"
             />
           </div>
-          {error ? <p className="text-sm text-red-600 dark:text-red-400">{error}</p> : null}
+          {error ? (
+            <p className="text-sm text-[var(--hh-danger)] text-[var(--hh-danger)]">{error}</p>
+          ) : null}
           <div className="flex justify-end gap-2 pt-2 border-t border-border/40">
             <button
               type="button"
               onClick={() => onOpenChange(false)}
-              className="h-9 rounded-md border border-input bg-transparent px-3 text-sm hover:bg-accent hover:text-accent-foreground"
+              className="h-9 rounded-hh-compact border border-input bg-transparent px-3 text-sm hover:bg-accent hover:text-accent-foreground"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={busy}
-              className="inline-flex h-9 items-center rounded-md border border-input bg-foreground px-3 text-sm text-background hover:bg-foreground/90 disabled:opacity-50"
+              className="inline-flex h-9 items-center rounded-hh-compact border border-input bg-foreground px-3 text-sm text-background hover:bg-foreground/90 disabled:opacity-50"
             >
               <SubmitSpinner loading={busy} className="mr-2" />
               {busy ? "Saving…" : "Record Payment"}

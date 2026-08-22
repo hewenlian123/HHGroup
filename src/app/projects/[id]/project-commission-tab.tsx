@@ -20,10 +20,11 @@ const ROLES = ["Designer", "Sales", "Referral", "Agent", "Other"] as const;
 const CALC_MODES = ["Auto", "Manual"] as const;
 
 const COMMISSION_MODAL =
-  "max-w-[480px] w-full gap-0 border-0 p-8 shadow-[0_8px_30px_rgba(0_0_0_0.08)] rounded-xl sm:rounded-xl sm:max-w-[480px]";
-const COMMISSION_LABEL = "mb-1.5 block text-[12px] font-medium text-text-secondary";
+  "max-w-[480px] w-full gap-0 border-0 p-8 shadow-task rounded-hh-task sm:rounded-hh-task sm:max-w-[480px]";
+const COMMISSION_LABEL =
+  "mb-1.5 block text-hh-metadata font-medium text-[var(--hh-text-secondary)]";
 const COMMISSION_FIELD =
-  "h-10 rounded-lg border border-gray-100 bg-white text-[14px] focus-visible:border-black focus-visible:ring-1 focus-visible:ring-black";
+  "h-10 rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-hh-body focus-visible:border-[var(--hh-action-primary)] focus-visible:ring-1 focus-visible:ring-[var(--hh-focus-ring)]";
 
 const fmtUsd = (n: number) =>
   n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -31,12 +32,16 @@ const fmtUsd = (n: number) =>
 function ProjectPaymentStatus({ status }: { status: CommissionPaymentStatus }) {
   const cfg =
     status === "paid"
-      ? { dot: "bg-[#22C55E]", label: "Paid", text: "text-[#166534]" }
+      ? { dot: "bg-[var(--hh-success)]", label: "Paid", text: "text-[var(--hh-success)]" }
       : status === "partial"
-        ? { dot: "bg-[#EAB308]", label: "Partial", text: "text-[#854D0E]" }
-        : { dot: "bg-[#9CA3AF]", label: "Unpaid", text: "text-text-secondary" };
+        ? { dot: "bg-[var(--hh-warning)]", label: "Partial", text: "text-[var(--hh-warning)]" }
+        : {
+            dot: "bg-[var(--hh-text-tertiary)]",
+            label: "Unpaid",
+            text: "text-[var(--hh-text-secondary)]",
+          };
   return (
-    <span className="inline-flex items-center gap-2 text-[14px]">
+    <span className="inline-flex items-center gap-2 text-hh-body">
       <span className={cn("h-2 w-2 shrink-0 rounded-full", cfg.dot)} aria-hidden />
       <span className={cn("font-medium", cfg.text)}>{cfg.label}</span>
     </span>
@@ -190,14 +195,14 @@ export function ProjectCommissionTab({
 
   return (
     <>
-      <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-        <h3 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#9CA3AF]">
+      <div className="flex items-center justify-between border-b border-[var(--hh-border)] pb-3">
+        <h3 className="text-hh-status font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]">
           Commissions
         </h3>
         <Button
           type="button"
           size="sm"
-          className="h-9 rounded-lg bg-[#111827] px-4 text-[14px] font-medium text-white hover:bg-black/90"
+          className="h-9 rounded-hh-standard bg-[var(--hh-action-primary)] px-4 text-hh-body font-medium text-[var(--hh-action-primary-foreground)] hover:bg-[var(--hh-l3-pressed)]"
           onClick={handleOpen}
           data-testid="project-commission-add"
         >
@@ -205,36 +210,36 @@ export function ProjectCommissionTab({
         </Button>
       </div>
 
-      <div className="airtable-table-wrap airtable-table-wrap--ruled bg-white/60">
+      <div className="airtable-table-wrap airtable-table-wrap--ruled bg-[var(--hh-l2-operational-surface)]">
         <div className="airtable-table-scroll">
-          <table className="w-full text-[14px]">
+          <table className="w-full text-hh-body">
             <thead>
               <tr>
-                <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                   Person
                 </th>
-                <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                   Role
                 </th>
-                <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                   Mode
                 </th>
-                <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
                   Rate
                 </th>
-                <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
                   Base
                 </th>
-                <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
                   Commission
                 </th>
-                <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
                   Paid
                 </th>
-                <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
                   Outstd.
                 </th>
-                <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                   Status
                 </th>
                 <th className="h-8 w-12 px-2 align-middle" aria-label="Actions" />
@@ -243,7 +248,10 @@ export function ProjectCommissionTab({
             <tbody>
               {rows.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="py-10 text-center text-[14px] text-text-secondary">
+                  <td
+                    colSpan={10}
+                    className="py-10 text-center text-hh-body text-[var(--hh-text-secondary)]"
+                  >
                     No commissions. Click &quot;+ Add Commission&quot; to add one.
                   </td>
                 </tr>
@@ -251,27 +259,29 @@ export function ProjectCommissionTab({
                 rows.map((c) => (
                   <tr
                     key={c.id}
-                    className="border-b border-[#E8E4DD] last:border-b-0 transition-colors hover:bg-white/90"
+                    className="border-b border-[var(--hh-border)] last:border-b-0 transition-colors hover:bg-[var(--hh-l2-operational-surface)]"
                     data-testid={`project-commission-row-${c.id}`}
                   >
-                    <td className="px-3 py-3.5 font-medium text-text-primary">
+                    <td className="px-3 py-3.5 font-medium text-[var(--hh-text-primary)]">
                       {c.person_name || "—"}
                     </td>
-                    <td className="px-3 py-3.5 text-[#374151]">{c.role}</td>
-                    <td className="px-3 py-3.5 text-text-secondary">{c.calculation_mode}</td>
-                    <td className="px-3 py-3.5 text-right font-mono tabular-nums text-text-secondary">
+                    <td className="px-3 py-3.5 text-[var(--hh-text-secondary)]">{c.role}</td>
+                    <td className="px-3 py-3.5 text-[var(--hh-text-secondary)]">
+                      {c.calculation_mode}
+                    </td>
+                    <td className="px-3 py-3.5 text-right hh-fin tabular-nums text-[var(--hh-text-secondary)]">
                       {c.rate > 0 ? `${(c.rate * 100).toFixed(1)}%` : "—"}
                     </td>
-                    <td className="px-3 py-3.5 text-right font-mono tabular-nums text-[#374151]">
+                    <td className="px-3 py-3.5 text-right hh-fin tabular-nums text-[var(--hh-text-secondary)]">
                       ${fmtUsd(c.base_amount)}
                     </td>
-                    <td className="px-3 py-3.5 text-right font-mono tabular-nums font-medium text-text-primary">
+                    <td className="px-3 py-3.5 text-right hh-fin tabular-nums font-medium text-[var(--hh-text-primary)]">
                       ${fmtUsd(c.commission_amount)}
                     </td>
-                    <td className="px-3 py-3.5 text-right font-mono tabular-nums text-text-secondary">
+                    <td className="px-3 py-3.5 text-right hh-fin tabular-nums text-[var(--hh-text-secondary)]">
                       ${fmtUsd(c.paid_amount)}
                     </td>
-                    <td className="px-3 py-3.5 text-right font-mono tabular-nums font-medium text-text-primary">
+                    <td className="px-3 py-3.5 text-right hh-fin tabular-nums font-medium text-[var(--hh-text-primary)]">
                       ${fmtUsd(c.outstanding_amount)}
                     </td>
                     <td className="px-3 py-3.5">
@@ -280,7 +290,7 @@ export function ProjectCommissionTab({
                     <td className="px-2 py-3.5">
                       <button
                         type="button"
-                        className="flex h-8 w-8 items-center justify-center rounded-lg text-[#9CA3AF] hover:bg-[#FEF2F2] hover:text-red-600"
+                        className="flex h-8 w-8 items-center justify-center rounded-hh-standard text-[var(--hh-text-tertiary)] hover:bg-[var(--hh-danger-soft-fill)] hover:text-[var(--hh-danger)]"
                         data-testid={`project-commission-delete-${c.id}`}
                         aria-label={deletingId === c.id ? "Deleting" : "Delete commission"}
                         disabled={deletingId === c.id}
@@ -309,22 +319,22 @@ export function ProjectCommissionTab({
       >
         <DialogContent className={COMMISSION_MODAL}>
           <DialogHeader className="text-left">
-            <DialogTitle className="text-xl font-bold text-text-primary">
+            <DialogTitle className="text-hh-section-title font-bold text-[var(--hh-text-primary)]">
               Delete commission
             </DialogTitle>
           </DialogHeader>
-          <p className="text-[13px] leading-relaxed text-text-secondary">
+          <p className="text-hh-table-cell leading-relaxed text-[var(--hh-text-secondary)]">
             Remove this commission for{" "}
-            <span className="font-medium text-text-primary">
+            <span className="font-medium text-[var(--hh-text-primary)]">
               {pendingDelete?.person_name?.trim() || "this person"}
             </span>
             ? This cannot be undone.
           </p>
-          <DialogFooter className="mt-6 border-t border-[#F0EDE8] bg-transparent pt-4">
+          <DialogFooter className="mt-6 border-t border-[var(--hh-border)] bg-transparent pt-4">
             <Button
               type="button"
               variant="outline"
-              className="h-10 rounded-lg border-gray-100 bg-white text-[14px] font-medium text-text-secondary hover:bg-[#F9FAFB]"
+              className="h-10 rounded-hh-standard border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-hh-body font-medium text-[var(--hh-text-secondary)] hover:bg-[var(--hh-l3-hover)]"
               data-testid="project-commission-delete-cancel"
               onClick={() => setPendingDelete(null)}
               disabled={deletingId != null}
@@ -333,7 +343,7 @@ export function ProjectCommissionTab({
             </Button>
             <Button
               type="button"
-              className="h-10 rounded-lg bg-red-600 text-[14px] font-medium text-white hover:bg-red-700"
+              className="h-10 rounded-hh-standard bg-[var(--hh-danger)] text-hh-body font-medium text-white hover:opacity-90"
               data-testid="project-commission-delete-confirm"
               disabled={deletingId != null}
               onClick={() => void confirmDelete()}
@@ -347,7 +357,7 @@ export function ProjectCommissionTab({
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
         <DialogContent className={COMMISSION_MODAL}>
           <DialogHeader className="text-left">
-            <DialogTitle className="text-xl font-bold text-text-primary">
+            <DialogTitle className="text-hh-section-title font-bold text-[var(--hh-text-primary)]">
               Add Commission
             </DialogTitle>
           </DialogHeader>
@@ -367,7 +377,7 @@ export function ProjectCommissionTab({
               <select
                 value={form.role}
                 onChange={(e) => setForm((p) => ({ ...p, role: e.target.value }))}
-                className={cn("w-full rounded-lg px-3", COMMISSION_FIELD)}
+                className={cn("w-full rounded-hh-standard px-3", COMMISSION_FIELD)}
                 data-testid="project-commission-role"
               >
                 {ROLES.map((r) => (
@@ -382,7 +392,7 @@ export function ProjectCommissionTab({
               <select
                 value={form.calculation_mode}
                 onChange={(e) => setForm((p) => ({ ...p, calculation_mode: e.target.value }))}
-                className={cn("w-full rounded-lg px-3", COMMISSION_FIELD)}
+                className={cn("w-full rounded-hh-standard px-3", COMMISSION_FIELD)}
                 data-testid="project-commission-calculation-mode"
               >
                 {CALC_MODES.map((m) => (
@@ -451,13 +461,13 @@ export function ProjectCommissionTab({
                 data-testid="project-commission-notes"
               />
             </div>
-            {error && <p className="text-sm text-destructive">{error}</p>}
+            {error && <p className="text-hh-body text-destructive">{error}</p>}
           </form>
-          <DialogFooter className="mt-6 border-t border-[#F0EDE8] bg-transparent pt-4">
+          <DialogFooter className="mt-6 border-t border-[var(--hh-border)] bg-transparent pt-4">
             <Button
               type="button"
               variant="outline"
-              className="h-10 rounded-lg border-gray-100 bg-white text-[14px] font-medium text-text-secondary hover:bg-[#F9FAFB]"
+              className="h-10 rounded-hh-standard border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-hh-body font-medium text-[var(--hh-text-secondary)] hover:bg-[var(--hh-l3-hover)]"
               data-testid="project-commission-cancel"
               onClick={() => setModalOpen(false)}
             >
@@ -466,7 +476,7 @@ export function ProjectCommissionTab({
             <Button
               type="submit"
               form="commission-form"
-              className="h-10 rounded-lg bg-[#111827] text-[14px] font-medium text-white hover:bg-black/90"
+              className="h-10 rounded-hh-standard bg-[var(--hh-action-primary)] text-hh-body font-medium text-[var(--hh-action-primary-foreground)] hover:bg-[var(--hh-l3-pressed)]"
               disabled={submitting}
               data-testid="project-commission-save"
             >

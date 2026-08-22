@@ -49,10 +49,8 @@ export function DashboardQuickActions({ className }: { className?: string }) {
             asChild
             variant={action.primary ? "default" : "outline"}
             className={cn(
-              "dashboard-action-button h-11 min-h-[44px] rounded-lg px-3 text-[12px] font-semibold tracking-normal",
-              action.primary
-                ? "border border-transparent bg-[var(--hh-action-primary)] text-[var(--hh-action-primary-foreground)] shadow-none hover:opacity-90"
-                : "border-[var(--hud-line)] bg-[var(--hud-surface)] text-[var(--hud-text)] hover:border-[var(--hh-border-strong)] hover:bg-[var(--hud-surface-muted)]"
+              "dashboard-action-button w-full px-3 sm:w-auto",
+              action.primary && "shadow-none"
             )}
           >
             <Link href={action.href}>

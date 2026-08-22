@@ -113,14 +113,14 @@ async function saveQuickExpenseViaApi(payload: QuickExpenseSavePayload): Promise
 }
 
 const FIELD_LABEL =
-  "block text-[10px] font-semibold uppercase tracking-[0.04em] text-muted-foreground";
+  "block text-hh-status font-semibold uppercase tracking-normal text-muted-foreground";
 /** iOS Safari avoids input zoom at 16px+; 48px controls; 12px radius on mobile (Stripe / Settings feel). */
 const FIELD_INPUT_CLASS =
-  "border-[var(--eo-border)] bg-background shadow-none hover:border-[var(--eo-border-strong)] focus-visible:border-[var(--eo-border-strong)] focus-visible:ring-2 focus-visible:ring-[var(--eo-focus-ring)] max-md:!h-12 max-md:!min-h-[48px] max-md:rounded-xl max-md:text-base md:min-h-10 md:rounded-sm md:text-sm";
+  "border-[var(--hh-border)] bg-background shadow-none hover:border-[var(--hh-border-strong)] focus-visible:border-[var(--hh-border-strong)] focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)] max-md:!h-12 max-md:!min-h-[48px] max-md:rounded-xl max-md:text-base md:min-h-10 md:rounded-sm md:text-sm";
 const CONTROL_H = "h-10 max-md:h-12 max-md:min-h-[48px] max-md:rounded-xl md:rounded-sm";
 const SELECT_TRIGGER = cn(
   CONTROL_H,
-  "w-full border-[var(--eo-border)] text-sm shadow-none hover:border-[var(--eo-border-strong)] focus:border-[var(--eo-border-strong)] focus:ring-2 focus:ring-[var(--eo-focus-ring)] [&>span]:line-clamp-1 max-md:text-base"
+  "w-full border-[var(--hh-border)] text-sm shadow-none hover:border-[var(--hh-border-strong)] focus:border-[var(--hh-border-strong)] focus:ring-2 focus:ring-[var(--hh-focus-ring)] [&>span]:line-clamp-1 max-md:text-base"
 );
 const FIELD_GROUP = "flex flex-col gap-1.5";
 const NEW_EXPENSE_COMPONENT_SURFACE = "expense-new-component-surface";
@@ -1273,9 +1273,9 @@ export function QuickExpenseModal({
   const primarySaveDisabledStyle: React.CSSProperties | undefined =
     submitDisabled || saveVisualReadiness === "incomplete"
       ? {
-          backgroundColor: "var(--eo-action-disabled)",
-          borderColor: "var(--eo-border)",
-          color: "var(--eo-text-tertiary)",
+          backgroundColor: "var(--hh-l3-hover)",
+          borderColor: "var(--hh-border)",
+          color: "var(--hh-text-tertiary)",
           opacity: 1,
         }
       : undefined;
@@ -1289,8 +1289,8 @@ export function QuickExpenseModal({
           data-expense-component-surface="quick-expense"
           draggable={false}
           className={cn(
-            "expenses-ui-dialog expense-new-dialog flex flex-col gap-0 overflow-hidden border-[var(--eo-border)] p-0",
-            "md:!fixed md:left-1/2 md:top-1/2 md:h-[min(78dvh,720px)] md:max-h-[min(92dvh,820px)] md:w-full md:max-w-[560px] md:!rounded-[14px] md:!translate-x-[-50%] md:!translate-y-[-50%]",
+            "expenses-ui-dialog expense-new-dialog flex flex-col gap-0 overflow-hidden border-[var(--hh-border)] p-0",
+            "md:!fixed md:left-1/2 md:top-1/2 md:h-[min(78dvh,720px)] md:max-h-[min(92dvh,820px)] md:w-full md:max-w-[560px] md:!rounded-hh-task md:!translate-x-[-50%] md:!translate-y-[-50%]",
             "max-md:!fixed max-md:inset-x-0 max-md:bottom-0 max-md:top-auto max-md:left-0 max-md:right-0 max-md:flex max-md:max-h-[94dvh] max-md:min-h-[82dvh] max-md:w-full max-md:max-w-none max-md:!translate-x-0 max-md:!translate-y-0 max-md:!rounded-t-[14px] max-md:!rounded-b-none max-md:border-x-0 max-md:border-b-0 max-md:border-t max-md:p-0",
             "max-md:pointer-events-auto max-md:!transform-none"
           )}
@@ -1314,12 +1314,10 @@ export function QuickExpenseModal({
           }}
         >
           <DialogHeader className="shrink-0 space-y-0 bg-background px-5 pb-2 pt-4 pr-14">
-            <DialogTitle className="text-[17px] font-semibold leading-tight tracking-tight md:text-base">
-              New Expense
-            </DialogTitle>
+            <DialogTitle className="text-hh-section-title tracking-normal">New Expense</DialogTitle>
             <p
               data-new-expense-shortcuts="true"
-              className="hidden text-[10px] font-normal leading-4 text-muted-foreground opacity-65 md:block"
+              className="hidden text-hh-status font-normal leading-4 text-muted-foreground opacity-65 md:block"
             >
               Save · Cmd/Ctrl+Enter = save &amp; new · Esc
             </p>
@@ -1346,7 +1344,7 @@ export function QuickExpenseModal({
               }}
             />
             {!supabase ? (
-              <p className="shrink-0 px-4 pt-2 text-xs text-amber-600 dark:text-amber-400">
+              <p className="shrink-0 px-4 pt-2 text-xs text-[var(--hh-warning)] dark:text-[var(--hh-warning)]">
                 Supabase not configured — cannot save or scan receipts.
               </p>
             ) : null}
@@ -1366,9 +1364,11 @@ export function QuickExpenseModal({
               (fieldConfidence.vendor !== "high" ||
                 fieldConfidence.amount !== "high" ||
                 fieldConfidence.date !== "high") ? (
-                <div className="rounded-xl border border-amber-500/40 bg-amber-500/[0.06] px-2.5 py-1.5 text-[11px] text-amber-950 dark:text-amber-100">
-                  <p className="font-medium text-amber-900 dark:text-amber-50">Verify OCR</p>
-                  <ul className="mt-1 list-disc space-y-0.5 pl-3.5 text-amber-900/90 dark:text-amber-100/90">
+                <div className="rounded-xl border border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] px-2.5 py-1.5 text-hh-status text-[var(--hh-warning)] dark:text-[var(--hh-warning)]">
+                  <p className="font-medium text-[var(--hh-warning)] dark:text-[var(--hh-warning)]">
+                    Verify OCR
+                  </p>
+                  <ul className="mt-1 list-disc space-y-0.5 pl-3.5 text-[var(--hh-warning)] dark:text-[var(--hh-warning)]">
                     {fieldConfidence.vendor !== "high" && ocrSuggestions.vendor ? (
                       <li>Vendor: {ocrSuggestions.vendor}</li>
                     ) : null}
@@ -1401,7 +1401,7 @@ export function QuickExpenseModal({
                     className={cn(
                       "tabular-nums text-lg font-semibold leading-none md:text-lg",
                       FIELD_INPUT_CLASS,
-                      fieldConfidence.amount !== "high" && "border-amber-500/50"
+                      fieldConfidence.amount !== "high" && "border-[var(--hh-warning-border)]"
                     )}
                     disabled={saving || !supabase}
                   />
@@ -1503,7 +1503,7 @@ export function QuickExpenseModal({
                   {projectId && projectId === suggestedProjectId ? (
                     <div className="flex flex-wrap items-center gap-2">
                       <MatchStatusBadge kind="suggested" />
-                      <span className="text-[10px] text-muted-foreground">
+                      <span className="text-hh-status text-muted-foreground">
                         From recent activity.
                       </span>
                     </div>
@@ -1536,7 +1536,7 @@ export function QuickExpenseModal({
                     className={cn(
                       "min-h-[48px] w-full min-w-0 max-md:h-12",
                       FIELD_INPUT_CLASS,
-                      fieldConfidence.date !== "high" && "border-amber-500/50"
+                      fieldConfidence.date !== "high" && "border-[var(--hh-warning-border)]"
                     )}
                     contentClassName={NEW_EXPENSE_COMPONENT_SURFACE}
                     disabled={saving || !supabase}
@@ -1561,7 +1561,7 @@ export function QuickExpenseModal({
                   return (
                     <div
                       key={cid}
-                      className="flex min-w-0 gap-2 border-b border-[var(--eo-border)] pb-2 last:border-b-0"
+                      className="flex min-w-0 gap-2 border-b border-[var(--hh-border)] pb-2 last:border-b-0"
                     >
                       <button
                         type="button"
@@ -1571,7 +1571,7 @@ export function QuickExpenseModal({
                         aria-label="Preview receipt"
                       >
                         {slot.isPdf ? (
-                          <div className="flex h-full w-full flex-col items-center justify-center gap-0.5 px-1 text-[10px] text-muted-foreground">
+                          <div className="flex h-full w-full flex-col items-center justify-center gap-0.5 px-1 text-hh-status text-muted-foreground">
                             <FileText className="h-5 w-5 shrink-0" strokeWidth={1.5} aria-hidden />
                             <span className="truncate">PDF</span>
                           </div>
@@ -1588,13 +1588,13 @@ export function QuickExpenseModal({
                         <p className="truncate text-xs font-medium leading-snug text-foreground">
                           {slot.displayName ?? slot.pendingFile?.name ?? "Receipt"}
                         </p>
-                        <p className="text-[11px] text-muted-foreground">{statusLabel}</p>
+                        <p className="text-hh-status text-muted-foreground">{statusLabel}</p>
                         <div className="mt-1 flex flex-wrap gap-1">
                           <Button
                             type="button"
                             variant="ghost"
                             size="sm"
-                            className="h-8 px-2 text-[11px]"
+                            className="h-8 px-2 text-hh-status"
                             disabled={saving || receiptPipelineBusy}
                             onClick={() => {
                               if (slot.clientId) {
@@ -1609,7 +1609,7 @@ export function QuickExpenseModal({
                             type="button"
                             variant="ghost"
                             size="sm"
-                            className="h-8 px-2 text-[11px]"
+                            className="h-8 px-2 text-hh-status"
                             disabled={saving || receiptPipelineBusy}
                             onClick={() => slot.clientId && removeReceiptSlot(slot.clientId)}
                           >
@@ -1620,7 +1620,7 @@ export function QuickExpenseModal({
                               type="button"
                               variant="outline"
                               size="sm"
-                              className="h-8 px-2 text-[11px]"
+                              className="h-8 px-2 text-hh-status"
                               disabled={saving}
                               data-testid={idx === 0 ? "quick-expense-receipt-retry" : undefined}
                               onClick={() => void retryReceiptUpload(slot.clientId!)}
@@ -1638,8 +1638,8 @@ export function QuickExpenseModal({
                     type="button"
                     data-new-expense-receipt-dropzone="true"
                     className={cn(
-                      "flex min-h-[68px] w-full min-w-0 touch-manipulation items-center justify-center gap-3 rounded-md border border-solid border-[var(--eo-border)] bg-[var(--eo-surface-secondary)] px-4 py-3 text-left shadow-none transition-colors",
-                      "hover:border-[var(--eo-border-strong)] hover:bg-muted/20 active:bg-muted/30 focus-visible:border-[var(--eo-border-strong)] focus-visible:ring-2 focus-visible:ring-[var(--eo-focus-ring)]",
+                      "flex min-h-[68px] w-full min-w-0 touch-manipulation items-center justify-center gap-3 rounded-md border border-solid border-[var(--hh-border)] bg-[var(--hh-l3-hover)] px-4 py-3 text-left shadow-none transition-colors",
+                      "hover:border-[var(--hh-border-strong)] hover:bg-muted/20 active:bg-muted/30 focus-visible:border-[var(--hh-border-strong)] focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)]",
                       "disabled:pointer-events-none disabled:opacity-50"
                     )}
                     onClick={() => {
@@ -1656,17 +1656,17 @@ export function QuickExpenseModal({
                       aria-hidden
                     />
                     <span className="min-w-0">
-                      <span className="block text-[13px] font-medium leading-5 text-foreground">
+                      <span className="block text-hh-table-cell font-medium leading-5 text-foreground">
                         Take photo / Upload receipt
                       </span>
-                      <span className="block text-[10px] leading-4 text-muted-foreground">
+                      <span className="block text-hh-status leading-4 text-muted-foreground">
                         Camera, photo library, or PDF
                       </span>
                     </span>
                   </button>
                 ) : null}
                 {receiptPreparing ? (
-                  <p className="text-[11px] text-muted-foreground" role="status">
+                  <p className="text-hh-status text-muted-foreground" role="status">
                     <span className="inline-flex items-center gap-1.5">
                       <InlineLoading aria-hidden />
                       Preparing image…
@@ -1674,28 +1674,34 @@ export function QuickExpenseModal({
                   </p>
                 ) : null}
                 {!receiptPreparing && receiptUploading ? (
-                  <p className="text-[11px] text-muted-foreground" role="status">
+                  <p className="text-hh-status text-muted-foreground" role="status">
                     Uploading receipt…
                   </p>
                 ) : null}
                 {!receiptPipelineBusy && processing ? (
-                  <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+                  <span className="inline-flex items-center gap-1 text-hh-status text-muted-foreground">
                     <InlineLoading aria-hidden />
                     Processing receipt…
                   </span>
                 ) : null}
                 {!receiptPipelineBusy && !processing && ocrBannerKind === "success" ? (
-                  <p className="text-[11px] text-emerald-700 dark:text-emerald-400" role="status">
+                  <p
+                    className="text-hh-status text-[var(--hh-success)] dark:text-[var(--hh-success)]"
+                    role="status"
+                  >
                     Receipt scanned. Fields autofilled.
                   </p>
                 ) : null}
                 {!receiptPipelineBusy && !processing && ocrBannerKind === "partial" ? (
-                  <p className="text-[11px] text-amber-800 dark:text-amber-200" role="status">
+                  <p
+                    className="text-hh-status text-[var(--hh-warning)] dark:text-[var(--hh-warning)]"
+                    role="status"
+                  >
                     Could not fully read receipt. Please review.
                   </p>
                 ) : null}
                 {!receiptPipelineBusy && !processing && ocrBannerKind === "error" ? (
-                  <p className="text-[11px] text-destructive" role="status">
+                  <p className="text-hh-status text-destructive" role="status">
                     OCR could not run. You can still save or retry.
                   </p>
                 ) : null}
@@ -1704,7 +1710,7 @@ export function QuickExpenseModal({
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="h-8 w-fit px-2 text-[11px]"
+                    className="h-8 w-fit px-2 text-hh-status"
                     disabled={processing || receiptPipelineBusy || saving}
                     data-testid="quick-expense-retry-ocr"
                     onClick={() => void retryOcr()}
@@ -1715,7 +1721,7 @@ export function QuickExpenseModal({
               </div>
 
               {duplicateCandidate ? (
-                <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-amber-500/35 px-2 py-1.5 text-[11px] text-amber-800 dark:text-amber-200">
+                <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-[var(--hh-warning-border)] px-2 py-1.5 text-hh-status text-[var(--hh-warning)] dark:text-[var(--hh-warning)]">
                   <span className="min-w-0">
                     Possible duplicate · {duplicateCandidate.vendor} ·{" "}
                     {formatDate(duplicateCandidate.date)} ·{" "}
@@ -1725,7 +1731,7 @@ export function QuickExpenseModal({
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="btn-outline-ghost h-8 min-h-11 shrink-0 px-2 text-[11px] md:min-h-8"
+                    className="btn-outline-ghost h-8 min-h-11 shrink-0 px-2 text-hh-status md:min-h-8"
                     asChild
                   >
                     <a
@@ -1743,7 +1749,7 @@ export function QuickExpenseModal({
                 <button
                   type="button"
                   data-quick-expense-more-trigger="true"
-                  className="flex min-h-11 w-full touch-manipulation items-center justify-between gap-2 rounded-sm py-2 text-left text-[11px] text-muted-foreground hover:text-foreground md:min-h-0 md:py-1"
+                  className="flex min-h-11 w-full touch-manipulation items-center justify-between gap-2 rounded-sm py-2 text-left text-hh-status text-muted-foreground hover:text-foreground md:min-h-0 md:py-1"
                   onClick={() => setMoreOpen((v) => !v)}
                   aria-expanded={moreOpen}
                   aria-controls="quick-expense-more-content"
@@ -1824,7 +1830,7 @@ export function QuickExpenseModal({
                     </div>
                     <div>
                       <label className={FIELD_LABEL}>{EXPENSE_FORM_FIELDS.attachments.label}</label>
-                      <p className="mt-0.5 text-[11px] text-muted-foreground">
+                      <p className="mt-0.5 text-hh-status text-muted-foreground">
                         {attachmentSlots.length} file(s)
                         {receiptPreparing
                           ? " · preparing image"
@@ -1839,7 +1845,7 @@ export function QuickExpenseModal({
                           : ""}
                       </p>
                       {attachmentSlots.some((s) => s.uploadError) ? (
-                        <p className="mt-1 text-[11px] text-amber-700 dark:text-amber-300">
+                        <p className="mt-1 text-hh-status text-[var(--hh-warning)] dark:text-[var(--hh-warning)]">
                           {attachmentSlots.find((s) => s.uploadError)?.uploadError}
                         </p>
                       ) : null}
@@ -1871,7 +1877,7 @@ export function QuickExpenseModal({
                       ) : null}
                     </div>
                     {debugToolsEnabled && ocrSource !== "none" ? (
-                      <div className="flex flex-wrap items-center justify-between gap-2 pt-2 text-[11px] text-muted-foreground">
+                      <div className="flex flex-wrap items-center justify-between gap-2 pt-2 text-hh-status text-muted-foreground">
                         <span>
                           OCR:{" "}
                           {ocrSource === "cloud"
@@ -1885,7 +1891,7 @@ export function QuickExpenseModal({
                             type="button"
                             variant="outline"
                             size="sm"
-                            className="btn-outline-ghost h-7 px-2 text-[11px]"
+                            className="btn-outline-ghost h-7 px-2 text-hh-status"
                             onClick={() => setDebugOpen(true)}
                           >
                             Diagnostics
@@ -2035,7 +2041,7 @@ export function QuickExpenseModal({
                   .join(" | ")}
               </div>
               <div>
-                <div className="mb-1 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                <div className="mb-1 text-xs font-medium text-muted-foreground uppercase tracking-normal">
                   Parsed JSON
                 </div>
                 <pre className="max-h-40 overflow-auto rounded-sm border border-border/60 p-2 text-xs">
@@ -2043,7 +2049,7 @@ export function QuickExpenseModal({
                 </pre>
               </div>
               <div>
-                <div className="mb-1 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                <div className="mb-1 text-xs font-medium text-muted-foreground uppercase tracking-normal">
                   Parsed Items
                 </div>
                 <pre className="max-h-28 overflow-auto rounded-sm border border-border/60 p-2 text-xs">
@@ -2051,7 +2057,7 @@ export function QuickExpenseModal({
                 </pre>
               </div>
               <div>
-                <div className="mb-1 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                <div className="mb-1 text-xs font-medium text-muted-foreground uppercase tracking-normal">
                   Matched Rules
                 </div>
                 <pre className="max-h-28 overflow-auto rounded-sm border border-border/60 p-2 text-xs">
@@ -2059,7 +2065,7 @@ export function QuickExpenseModal({
                 </pre>
               </div>
               <div>
-                <div className="mb-1 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                <div className="mb-1 text-xs font-medium text-muted-foreground uppercase tracking-normal">
                   Amount Diagnostics
                 </div>
                 <AmountDiagnosticsPanel
@@ -2068,7 +2074,7 @@ export function QuickExpenseModal({
                 />
               </div>
               <div>
-                <div className="mb-1 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                <div className="mb-1 text-xs font-medium text-muted-foreground uppercase tracking-normal">
                   Confidence
                 </div>
                 <pre className="max-h-28 overflow-auto rounded-sm border border-border/60 p-2 text-xs">
@@ -2076,7 +2082,7 @@ export function QuickExpenseModal({
                 </pre>
               </div>
               <div>
-                <div className="mb-1 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                <div className="mb-1 text-xs font-medium text-muted-foreground uppercase tracking-normal">
                   Raw OCR Text
                 </div>
                 <pre className="max-h-48 overflow-auto rounded-sm border border-border/60 p-2 text-xs whitespace-pre-wrap">

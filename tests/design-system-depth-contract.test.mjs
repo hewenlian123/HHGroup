@@ -91,26 +91,28 @@ test("maps Phase 2 tokens through global compatibility aliases and Tailwind", ()
   }
 });
 
-test("maps Expense Operations aliases to global Phase 2 tokens", () => {
+test("Expense Operations consumes global Phase 2 tokens directly", () => {
   const css = source("src/app/financial/expenses/expenses-ui-theme.css");
 
-  const aliases = [
-    ["--eo-depth-l3-hover", "--hh-l3-hover"],
-    ["--eo-depth-l3-selected", "--hh-l3-selected"],
-    ["--eo-depth-l3-pressed", "--hh-l3-pressed"],
-    ["--eo-depth-l4", "--hh-l4-floating-surface"],
-    ["--eo-depth-l5", "--hh-l5-task-surface"],
-    ["--eo-border", "--hh-border"],
-    ["--eo-border-floating", "--hh-border-floating"],
-    ["--eo-border-strong", "--hh-border-strong"],
-    ["--eo-shadow-operational", "--hh-shadow-operational"],
-    ["--eo-shadow-floating", "--hh-shadow-floating"],
-    ["--eo-shadow-task", "--hh-shadow-task"],
+  const canonicalTokens = [
+    "--hh-l3-hover",
+    "--hh-l3-selected",
+    "--hh-l3-pressed",
+    "--hh-l4-floating-surface",
+    "--hh-l5-task-surface",
+    "--hh-border",
+    "--hh-border-floating",
+    "--hh-border-strong",
+    "--hh-shadow-operational",
+    "--hh-shadow-floating",
+    "--hh-shadow-task",
   ];
 
-  for (const [alias, canonical] of aliases) {
-    assert.match(css, new RegExp(`${alias}:\\s*var\\(${canonical}\\);`));
+  for (const token of canonicalTokens) {
+    assert.match(css, new RegExp(`var\\(${token}\\)`), `Expense Operations is missing ${token}`);
   }
+
+  assert.doesNotMatch(css, /--eo-(?:depth|border|shadow)/);
 });
 
 test("shared primitives consume semantic state and depth roles", () => {

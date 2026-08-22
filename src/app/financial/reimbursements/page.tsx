@@ -165,19 +165,19 @@ function WorkerReimbursementsPageInner() {
             <Table>
               <TableHeader>
                 <TableRow className="border-b border-border/60 hover:bg-transparent">
-                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">
+                  <TableHead className="text-xs uppercase tracking-normal text-muted-foreground">
                     Worker
                   </TableHead>
-                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground text-right tabular-nums">
+                  <TableHead className="text-xs uppercase tracking-normal text-muted-foreground text-right tabular-nums">
                     Needs Review
                   </TableHead>
-                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground text-right tabular-nums">
+                  <TableHead className="text-xs uppercase tracking-normal text-muted-foreground text-right tabular-nums">
                     Approved
                   </TableHead>
-                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground text-right tabular-nums">
+                  <TableHead className="text-xs uppercase tracking-normal text-muted-foreground text-right tabular-nums">
                     Total Owed
                   </TableHead>
-                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground text-right w-[140px]">
+                  <TableHead className="text-xs uppercase tracking-normal text-muted-foreground text-right w-[140px]">
                     Actions
                   </TableHead>
                 </TableRow>
@@ -237,25 +237,25 @@ function WorkerReimbursementsPageInner() {
                   <Table>
                     <TableHeader>
                       <TableRow className="border-b border-border/60 hover:bg-transparent">
-                        <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">
+                        <TableHead className="text-xs uppercase tracking-normal text-muted-foreground">
                           Date
                         </TableHead>
-                        <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">
+                        <TableHead className="text-xs uppercase tracking-normal text-muted-foreground">
                           Vendor
                         </TableHead>
-                        <TableHead className="text-xs uppercase tracking-wider text-muted-foreground text-right tabular-nums">
+                        <TableHead className="text-xs uppercase tracking-normal text-muted-foreground text-right tabular-nums">
                           Amount
                         </TableHead>
-                        <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">
+                        <TableHead className="text-xs uppercase tracking-normal text-muted-foreground">
                           Status
                         </TableHead>
-                        <TableHead className="text-xs uppercase tracking-wider text-muted-foreground text-right w-16" />
+                        <TableHead className="text-xs uppercase tracking-normal text-muted-foreground text-right w-16" />
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {detailWorker.expenses.map((exp) => (
                         <TableRow key={exp.id} className="border-b border-border/30">
-                          <TableCell className="font-mono tabular-nums tracking-tight text-zinc-500">
+                          <TableCell className="hh-fin tabular-nums tracking-normal text-zinc-500">
                             {formatDate(exp.date)}
                           </TableCell>
                           <TableCell className="text-foreground">{exp.vendorName}</TableCell>

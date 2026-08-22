@@ -113,7 +113,7 @@ export function WorkerAdvanceFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-md border-border/60 rounded-md p-5">
+      <DialogContent className="max-w-md border-border/60 rounded-hh-compact p-5">
         <DialogHeader>
           <DialogTitle className="text-base font-semibold">
             {mode === "create" ? "Create Advance" : "Edit Advance"}
@@ -122,12 +122,12 @@ export function WorkerAdvanceFormDialog({
         <form onSubmit={handleSubmit} className="grid gap-3">
           <div className="space-y-1">
             <p className="text-xs font-medium text-muted-foreground">
-              Worker<span className="text-red-500">*</span>
+              Worker<span className="text-[var(--hh-danger)]">*</span>
             </p>
             <select
               value={form.workerId}
               onChange={(e) => setForm((f) => ({ ...f, workerId: e.target.value }))}
-              className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+              className="h-9 w-full rounded-hh-compact border border-input bg-background px-3 text-sm"
               disabled={mode === "edit"}
             >
               <option value="">Select worker</option>
@@ -148,7 +148,7 @@ export function WorkerAdvanceFormDialog({
                   projectId: e.target.value || null,
                 }))
               }
-              className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+              className="h-9 w-full rounded-hh-compact border border-input bg-background px-3 text-sm"
             >
               <option value="">No project</option>
               {projects.map((p) => (
@@ -188,14 +188,14 @@ export function WorkerAdvanceFormDialog({
             />
           </div>
 
-          {error ? <p className="text-xs text-red-600">{error}</p> : null}
+          {error ? <p className="text-xs text-[var(--hh-danger)]">{error}</p> : null}
 
           <DialogFooter className="mt-2 gap-2 border-t border-border/60 pt-3">
             <Button
               type="button"
               variant="outline"
               size="sm"
-              className="h-11 min-h-[44px] rounded-sm md:h-9 md:min-h-9"
+              className="h-11 min-h-[44px] rounded-hh-compact md:h-9 md:min-h-9"
               onClick={onClose}
               disabled={submitting}
             >
@@ -204,7 +204,7 @@ export function WorkerAdvanceFormDialog({
             <Button
               type="submit"
               size="sm"
-              className="h-11 min-h-[44px] rounded-sm md:h-9 md:min-h-9"
+              className="h-11 min-h-[44px] rounded-hh-compact md:h-9 md:min-h-9"
               disabled={submitting}
             >
               <SubmitSpinner loading={submitting} className="mr-2" />

@@ -31,7 +31,7 @@ import { cn } from "@/lib/utils";
 import { Pencil } from "lucide-react";
 
 const metaLabel =
-  "eb-estimate-context-label mb-0.5 block text-[12px] font-medium leading-tight text-muted-foreground";
+  "eb-estimate-context-label mb-0.5 block text-hh-metadata font-medium leading-tight text-muted-foreground";
 const metaPanel = cn(EB.draftPanel, "eb-estimate-context-panel px-3 py-2.5 sm:px-4 sm:py-3");
 
 type DetailsSnapshot = {
@@ -208,12 +208,12 @@ export function EstimateNewCustomerSection({
                   <span
                     className={cn(
                       EB.draftBadge,
-                      "text-base font-semibold tracking-tight sm:text-lg"
+                      "text-base font-semibold tracking-normal sm:text-lg"
                     )}
                   >
                     <span className={EB.draftBadgePill}>Draft</span>
                   </span>
-                  <span className="text-[13px] tabular-nums leading-snug text-muted-foreground [font-feature-settings:'tnum']">
+                  <span className="text-hh-table-cell tabular-nums leading-snug text-muted-foreground hh-fin">
                     {estimateDate}
                   </span>
                 </div>
@@ -235,7 +235,7 @@ export function EstimateNewCustomerSection({
                 <dt className={metaLabel}>Customer</dt>
                 <dd
                   className={cn(
-                    "truncate text-[14px] font-medium leading-snug",
+                    "truncate text-hh-body font-medium leading-snug",
                     clientName.trim() ? "text-foreground" : EB.readDash
                   )}
                 >
@@ -246,7 +246,7 @@ export function EstimateNewCustomerSection({
                 <dt className={metaLabel}>Project</dt>
                 <dd
                   className={cn(
-                    "truncate text-[14px] font-medium leading-snug",
+                    "truncate text-hh-body font-medium leading-snug",
                     projectName.trim() ? "text-foreground" : EB.readDash
                   )}
                 >
@@ -257,7 +257,7 @@ export function EstimateNewCustomerSection({
                 <dt className={metaLabel}>Address</dt>
                 <dd
                   className={cn(
-                    "text-[14px] leading-[1.4]",
+                    "text-hh-body leading-[1.4]",
                     address.trim() ? "text-muted-foreground" : EB.readDash
                   )}
                 >
@@ -266,7 +266,7 @@ export function EstimateNewCustomerSection({
               </div>
               <div className="eb-estimate-context-secondary min-w-0 lg:hidden">
                 <dt className={metaLabel}>Estimate date</dt>
-                <dd className="text-[14px] tabular-nums leading-snug text-muted-foreground [font-feature-settings:'tnum']">
+                <dd className="text-hh-body tabular-nums leading-snug text-muted-foreground hh-fin">
                   {estimateDate}
                 </dd>
               </div>
@@ -332,7 +332,9 @@ export function EstimateNewCustomerSection({
                       required
                     />
                     {submitAttempted && !clientName.trim() ? (
-                      <p className="text-xs text-rose-600">Client name is required.</p>
+                      <p className="text-hh-error text-[var(--hh-danger)]">
+                        Client name is required.
+                      </p>
                     ) : null}
                   </div>
                   <div className={cn(EB.sheetField, "min-w-0")}>
@@ -353,7 +355,9 @@ export function EstimateNewCustomerSection({
                       converted to a project after approval.
                     </p>
                     {submitAttempted && !projectName.trim() ? (
-                      <p className="text-xs text-rose-600">Project name is required.</p>
+                      <p className="text-hh-error text-[var(--hh-danger)]">
+                        Project name is required.
+                      </p>
                     ) : null}
                   </div>
                 </div>

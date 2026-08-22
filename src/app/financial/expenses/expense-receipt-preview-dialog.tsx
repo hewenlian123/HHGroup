@@ -131,7 +131,7 @@ export function ExpenseReceiptPreviewDialog({
         <DialogPrimitive.Content asChild>
           <motion.div
             className={cn(
-              "expenses-ui-dialog fixed left-1/2 top-1/2 z-[51] flex max-h-[90vh] w-[calc(100%-1.5rem)] max-w-5xl -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] shadow-[var(--eo-shadow-overlay)]",
+              "expenses-ui-dialog fixed left-1/2 top-1/2 z-[51] flex max-h-[90vh] w-[calc(100%-1.5rem)] max-w-5xl -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] shadow-floating",
               "focus:outline-none dark:bg-card"
             )}
             initial={{ opacity: 0, scale: 0.95 }}

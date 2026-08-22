@@ -63,32 +63,38 @@ export function AddBillModal({ open, onOpenChange, onSuccess, projectId, subcont
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm border-border/60 p-5 rounded-md gap-4">
+      <DialogContent className="max-w-sm border-border/60 p-5 rounded-hh-standard gap-4">
         <DialogHeader>
-          <DialogTitle className="text-base font-semibold">Add Bill</DialogTitle>
+          <DialogTitle className="text-hh-body font-semibold">Add Bill</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <label className="text-xs font-medium text-muted-foreground">Bill Date</label>
+            <label className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]">
+              Bill Date
+            </label>
             <Input
               type="date"
               value={billDate}
               onChange={(e) => setBillDate(e.target.value)}
-              className="h-9 text-sm"
+              className="h-9 text-hh-body"
               required
             />
           </div>
           <div className="space-y-2">
-            <label className="text-xs font-medium text-muted-foreground">Due Date</label>
+            <label className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]">
+              Due Date
+            </label>
             <Input
               type="date"
               value={dueDate}
               onChange={(e) => setDueDate(e.target.value)}
-              className="h-9 text-sm"
+              className="h-9 text-hh-body"
             />
           </div>
           <div className="space-y-2">
-            <label className="text-xs font-medium text-muted-foreground">Amount (required)</label>
+            <label className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]">
+              Amount (required)
+            </label>
             <Input
               type="number"
               step="0.01"
@@ -96,32 +102,34 @@ export function AddBillModal({ open, onOpenChange, onSuccess, projectId, subcont
               placeholder="0.00"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              className="h-9 text-sm tabular-nums"
+              className="h-9 text-hh-body tabular-nums"
               required
             />
           </div>
           <div className="space-y-2">
-            <label className="text-xs font-medium text-muted-foreground">Description</label>
+            <label className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]">
+              Description
+            </label>
             <Input
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Description"
-              className="h-9 text-sm"
+              className="h-9 text-hh-body"
             />
           </div>
-          {error ? <p className="text-sm text-red-600 dark:text-red-400">{error}</p> : null}
+          {error ? <p className="text-hh-body text-[var(--hh-danger)]">{error}</p> : null}
           <div className="flex justify-end gap-2 pt-2 border-t border-border/40">
             <button
               type="button"
               onClick={() => onOpenChange(false)}
-              className="h-9 rounded-md border border-input bg-transparent px-3 text-sm hover:bg-accent hover:text-accent-foreground"
+              className="h-9 rounded-hh-standard border border-input bg-transparent px-3 text-hh-body hover:bg-accent hover:text-accent-foreground"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={busy}
-              className="inline-flex h-9 items-center rounded-md border border-input bg-foreground px-3 text-sm text-background hover:bg-foreground/90 disabled:opacity-50"
+              className="inline-flex h-9 items-center rounded-hh-standard border border-input bg-foreground px-3 text-hh-body text-background hover:bg-foreground/90 disabled:opacity-50"
             >
               <SubmitSpinner loading={busy} className="mr-2" />
               {busy ? "Saving…" : "Add Bill"}

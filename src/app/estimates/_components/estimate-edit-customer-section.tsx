@@ -28,7 +28,7 @@ import { cn } from "@/lib/utils";
 import { ChevronDown } from "lucide-react";
 
 const metaLabel =
-  "eb-estimate-context-label mb-0.5 block text-[12px] font-medium leading-tight text-muted-foreground";
+  "eb-estimate-context-label mb-0.5 block text-hh-metadata font-medium leading-tight text-muted-foreground";
 const metaPanel = cn(EB.draftPanel, "eb-estimate-context-panel px-3 py-3 sm:px-4");
 const metaInput = ebSheetInput("text-sm");
 
@@ -60,25 +60,25 @@ function ReadOnlyMetaRows({
       <dl className="hidden grid-cols-2 gap-x-5 gap-y-3 md:grid lg:grid-cols-5 lg:gap-x-6">
         <div className="eb-estimate-context-primary col-span-2 min-w-0 sm:col-span-1">
           <dt className={metaLabel}>Customer</dt>
-          <dd className="truncate text-[14px] font-medium leading-snug text-foreground">
+          <dd className="truncate text-hh-body font-medium leading-snug text-foreground">
             {customer.trim() || "—"}
           </dd>
         </div>
         <div className="eb-estimate-context-primary col-span-2 min-w-0 sm:col-span-1">
           <dt className={metaLabel}>Project</dt>
-          <dd className="break-words text-[14px] font-medium leading-snug text-foreground">
+          <dd className="break-words text-hh-body font-medium leading-snug text-foreground">
             {project.trim() || "—"}
           </dd>
         </div>
         <div className="eb-estimate-context-secondary col-span-2 min-w-0 lg:col-span-1">
           <dt className={metaLabel}>Address</dt>
-          <dd className="text-[14px] leading-[1.4] text-muted-foreground">
+          <dd className="text-hh-body leading-[1.4] text-muted-foreground">
             {address.trim() || "—"}
           </dd>
         </div>
         <div className="eb-estimate-context-secondary min-w-0">
           <dt className={metaLabel}>Estimate date</dt>
-          <dd className="text-[14px] tabular-nums leading-snug text-muted-foreground [font-feature-settings:'tnum']">
+          <dd className="text-hh-body tabular-nums leading-snug text-muted-foreground hh-fin">
             {estimateDate}
           </dd>
         </div>
@@ -89,13 +89,13 @@ function ReadOnlyMetaRows({
         <dl className="grid gap-2.5">
           <div className="eb-estimate-context-primary min-w-0">
             <dt className={metaLabel}>Customer</dt>
-            <dd className="text-[14px] font-medium leading-snug text-foreground">
+            <dd className="text-hh-body font-medium leading-snug text-foreground">
               {customer.trim() || "—"}
             </dd>
           </div>
           <div className="eb-estimate-context-primary min-w-0">
             <dt className={metaLabel}>Project</dt>
-            <dd className="break-words text-[14px] font-medium leading-snug text-foreground">
+            <dd className="break-words text-hh-body font-medium leading-snug text-foreground">
               {project.trim() || "—"}
             </dd>
           </div>
@@ -104,9 +104,9 @@ function ReadOnlyMetaRows({
           className="eb-estimate-mobile-supporting-context"
           data-testid="estimate-mobile-supporting-context"
         >
-          <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 text-[13px] font-medium text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
+          <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 text-hh-table-cell font-medium text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
             <span>More details</span>
-            <span className="ml-auto truncate text-[12px] font-normal tabular-nums">
+            <span className="ml-auto truncate text-hh-metadata font-normal tabular-nums">
               {estimateDate} · {documentStyle === "itemized" ? "Itemized" : "Proposal"}
             </span>
             <ChevronDown
@@ -117,13 +117,13 @@ function ReadOnlyMetaRows({
           <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5 pb-1 pt-2">
             <div className="eb-estimate-context-secondary col-span-2 min-w-0">
               <dt className={metaLabel}>Address</dt>
-              <dd className="text-[14px] leading-[1.4] text-muted-foreground">
+              <dd className="text-hh-body leading-[1.4] text-muted-foreground">
                 {address.trim() || "—"}
               </dd>
             </div>
             <div className="eb-estimate-context-secondary min-w-0">
               <dt className={metaLabel}>Estimate date</dt>
-              <dd className="text-[14px] tabular-nums leading-snug text-muted-foreground [font-feature-settings:'tnum']">
+              <dd className="text-hh-body tabular-nums leading-snug text-muted-foreground hh-fin">
                 {estimateDate}
               </dd>
             </div>

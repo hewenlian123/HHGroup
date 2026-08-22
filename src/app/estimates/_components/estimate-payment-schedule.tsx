@@ -258,7 +258,7 @@ export function EstimatePaymentSchedule(props: {
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-xs font-semibold text-foreground">Draft invoice readiness</p>
               {invoiceContext.estimateNumber ? (
-                <span className="text-[11px] tabular-nums text-muted-foreground">
+                <span className="text-hh-status tabular-nums text-muted-foreground">
                   {invoiceContext.estimateNumber}
                 </span>
               ) : null}
@@ -292,7 +292,7 @@ export function EstimatePaymentSchedule(props: {
                 const estimateReturnHref = buildEstimateMilestoneReturnHref(estimateId, item.id);
                 return (
                   <div className="flex min-w-[9rem] flex-col items-end gap-1 text-right">
-                    <span className="text-[11.5px] font-medium leading-none text-muted-foreground">
+                    <span className="text-hh-status font-medium leading-none text-muted-foreground">
                       {invoiceNo}
                       {invoice?.status ? ` · ${invoice.status}` : ""}
                     </span>
@@ -301,7 +301,7 @@ export function EstimatePaymentSchedule(props: {
                       variant="outline"
                       size="sm"
                       asChild
-                      className={cn("min-h-11 px-3 text-[12.5px]", EB.actionSecondary)}
+                      className={cn("min-h-11 px-3 text-hh-metadata", EB.actionSecondary)}
                     >
                       <Link
                         href={appendEstimateReturnPath(
@@ -326,7 +326,7 @@ export function EstimatePaymentSchedule(props: {
                   asChild={canCreate}
                   disabled={!canCreate}
                   title={!canCreate ? invoiceProjectLink?.message : undefined}
-                  className={cn("min-h-11 px-3 text-[12.5px]", EB.actionSecondary)}
+                  className={cn("min-h-11 px-3 text-hh-metadata", EB.actionSecondary)}
                 >
                   {canCreate ? (
                     <Link
@@ -361,7 +361,7 @@ export function EstimatePaymentSchedule(props: {
                     variant="outline"
                     size="icon"
                     className={cn(
-                      "min-h-11 min-w-11 text-red-700 hover:bg-red-50 hover:text-red-800 md:h-8 md:min-h-8 md:w-8 md:min-w-8",
+                      "min-h-11 min-w-11 text-[var(--hh-danger)] hover:bg-[var(--hh-danger-soft-fill)] md:h-8 md:min-h-8 md:w-8 md:min-w-8",
                       EB.btnGhost
                     )}
                     aria-label={`Delete ${item.title}`}
@@ -378,7 +378,7 @@ export function EstimatePaymentSchedule(props: {
         invoiceProjectLink &&
         !invoiceProjectLink.canCreateInvoice ? (
           <div
-            className="estimate-payment-link-warning mt-3 rounded-md border border-[#e8d8b7] bg-[#faf4e8] px-3 py-2 text-[13px] leading-snug text-[#835d18]"
+            className="estimate-payment-link-warning mt-3 rounded-hh-compact border border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] px-3 py-2 text-hh-table-cell text-[var(--hh-warning)]"
             role="note"
           >
             {invoiceProjectLink.message ??

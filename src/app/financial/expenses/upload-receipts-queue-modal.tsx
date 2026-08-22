@@ -117,8 +117,8 @@ function PendingReceiptRow({
         )}
       </div>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-[13px] font-medium text-foreground">{item.file.name}</p>
-        <p className="text-[11px] tabular-nums text-muted-foreground">
+        <p className="truncate text-hh-table-cell font-medium text-foreground">{item.file.name}</p>
+        <p className="text-hh-status tabular-nums text-muted-foreground">
           {formatBytes(item.file.size)}
         </p>
       </div>
@@ -127,7 +127,7 @@ function PendingReceiptRow({
         disabled={disabled}
         onClick={onRemove}
         className={cn(
-          "shrink-0 rounded-md px-2 py-1.5 text-[12px] font-medium text-muted-foreground transition-colors hover:bg-muted/80 hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+          "shrink-0 rounded-md px-2 py-1.5 text-hh-metadata font-medium text-muted-foreground transition-colors hover:bg-muted/80 hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
         )}
       >
         Remove
@@ -399,8 +399,8 @@ export function UploadReceiptsQueueModal({ open, onOpenChange, onSuccess }: Prop
             if (Date.now() < suppressOutsideUntilRef.current) e.preventDefault();
           }}
           className={cn(
-            "expenses-ui-dialog upload-receipt-mobile-dialog fixed !z-[101] flex min-h-0 w-full flex-col overflow-hidden overflow-x-hidden border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-[var(--eo-shadow-overlay)] outline-none",
-            "p-0 md:rounded-[14px] md:p-6",
+            "expenses-ui-dialog upload-receipt-mobile-dialog fixed !z-[101] flex min-h-0 w-full flex-col overflow-hidden overflow-x-hidden border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-floating outline-none",
+            "p-0 md:rounded-hh-task md:p-6",
             "max-md:fixed max-md:inset-x-2 max-md:bottom-0 max-md:top-auto max-md:!z-[9999] max-md:max-h-[calc(100dvh-0.75rem)] max-md:w-auto max-md:max-w-none max-md:rounded-b-none max-md:rounded-t-[14px] max-md:border-b-0",
             "max-md:pt-[max(1rem,env(safe-area-inset-top))] max-md:pb-[max(1rem,env(safe-area-inset-bottom))] max-md:pl-[max(1rem,env(safe-area-inset-left))] max-md:pr-[max(1rem,env(safe-area-inset-right))]",
             "md:max-h-[min(92vh,900px)]",
@@ -413,10 +413,10 @@ export function UploadReceiptsQueueModal({ open, onOpenChange, onSuccess }: Prop
           <div className="flex min-h-0 min-w-0 flex-1 flex-col">
             <div className="relative z-10 flex shrink-0 items-start justify-between gap-3 border-b border-border/60 bg-background pb-4 max-md:gap-2 max-md:pb-3">
               <div className="min-w-0 flex-1 space-y-2 text-left">
-                <DialogTitle className="text-[22px] font-semibold tracking-[-0.02em] text-foreground">
+                <DialogTitle className="text-hh-section-title font-semibold tracking-normal text-foreground">
                   Upload receipt
                 </DialogTitle>
-                <DialogDescription className="text-[13px] leading-relaxed text-muted-foreground sm:text-sm">
+                <DialogDescription className="text-hh-table-cell leading-relaxed text-muted-foreground sm:text-sm">
                   Photos and PDFs are saved to Inbox as drafts. Review and approve before they count
                   as expenses.
                 </DialogDescription>
@@ -466,7 +466,7 @@ export function UploadReceiptsQueueModal({ open, onOpenChange, onSuccess }: Prop
               />
 
               {!supabase ? (
-                <p className="text-sm text-amber-600 dark:text-amber-400">
+                <p className="text-sm text-[var(--hh-warning)] dark:text-[var(--hh-warning)]">
                   Configure Supabase to upload.
                 </p>
               ) : (
@@ -478,7 +478,7 @@ export function UploadReceiptsQueueModal({ open, onOpenChange, onSuccess }: Prop
                       data-testid="upload-receipt-take-photo"
                       onClick={handleTakePhotoClick}
                       className={cn(
-                        "group flex min-h-[76px] w-full items-center gap-4 rounded-[20px] border border-black/[0.07] bg-background px-4 py-4 text-left transition-[background-color,border-color,opacity] duration-120 disabled:pointer-events-none disabled:opacity-45 dark:border-white/[0.09]",
+                        "group flex min-h-[76px] w-full items-center gap-4 rounded-hh-standard border border-black/[0.07] bg-background px-4 py-4 text-left transition-[background-color,border-color,opacity] duration-120 disabled:pointer-events-none disabled:opacity-45 dark:border-white/[0.09]",
                         "hover:bg-muted/35 hover:border-black/[0.1] dark:hover:border-white/[0.12]",
                         "touch-manipulation"
                       )}
@@ -487,10 +487,10 @@ export function UploadReceiptsQueueModal({ open, onOpenChange, onSuccess }: Prop
                         <Camera className="h-5 w-5 text-foreground/80" strokeWidth={1.5} />
                       </span>
                       <span className="min-w-0 flex-1">
-                        <span className="block text-[15px] font-medium tracking-[-0.01em] text-foreground">
+                        <span className="block text-hh-body font-medium tracking-normal text-foreground">
                           Take Photo
                         </span>
-                        <span className="mt-0.5 block text-[13px] text-muted-foreground">
+                        <span className="mt-0.5 block text-hh-table-cell text-muted-foreground">
                           Scan one receipt
                         </span>
                       </span>
@@ -506,7 +506,7 @@ export function UploadReceiptsQueueModal({ open, onOpenChange, onSuccess }: Prop
                       data-testid="upload-receipt-upload-files"
                       onClick={handleUploadFilesClick}
                       className={cn(
-                        "group flex min-h-[76px] w-full items-center gap-4 rounded-[20px] border border-black/[0.07] bg-background px-4 py-4 text-left transition-[background-color,border-color,opacity] duration-120 disabled:pointer-events-none disabled:opacity-45 dark:border-white/[0.09]",
+                        "group flex min-h-[76px] w-full items-center gap-4 rounded-hh-standard border border-black/[0.07] bg-background px-4 py-4 text-left transition-[background-color,border-color,opacity] duration-120 disabled:pointer-events-none disabled:opacity-45 dark:border-white/[0.09]",
                         "hover:bg-muted/35 hover:border-black/[0.1] dark:hover:border-white/[0.12]",
                         "touch-manipulation"
                       )}
@@ -515,10 +515,10 @@ export function UploadReceiptsQueueModal({ open, onOpenChange, onSuccess }: Prop
                         <Upload className="h-5 w-5 text-foreground/80" strokeWidth={1.5} />
                       </span>
                       <span className="min-w-0 flex-1">
-                        <span className="block text-[15px] font-medium tracking-[-0.01em] text-foreground">
+                        <span className="block text-hh-body font-medium tracking-normal text-foreground">
                           Upload Files
                         </span>
-                        <span className="mt-0.5 block text-[13px] text-muted-foreground">
+                        <span className="mt-0.5 block text-hh-table-cell text-muted-foreground">
                           Photos or PDFs · Multiple files
                         </span>
                       </span>
@@ -553,7 +553,7 @@ export function UploadReceiptsQueueModal({ open, onOpenChange, onSuccess }: Prop
                       addPendingFiles(e.dataTransfer.files);
                     }}
                     className={cn(
-                      "flex w-full flex-col items-center justify-center overflow-hidden rounded-[18px] border border-dashed px-4 transition-[border-color,background-color] duration-200",
+                      "flex w-full flex-col items-center justify-center overflow-hidden rounded-hh-standard border border-dashed px-4 transition-[border-color,background-color] duration-200",
                       "min-h-[72px] md:min-h-[96px]",
                       "border-black/[0.14] bg-muted/[0.35] dark:border-white/[0.12] dark:bg-muted/25",
                       !busy &&
@@ -565,21 +565,21 @@ export function UploadReceiptsQueueModal({ open, onOpenChange, onSuccess }: Prop
                     )}
                   >
                     <div className="hidden w-full flex-col items-center justify-center gap-0.5 py-3 text-center md:flex">
-                      <span className="text-[14px] font-medium tracking-[-0.01em] text-foreground/90">
+                      <span className="text-hh-body font-medium tracking-normal text-foreground/90">
                         Drop receipts here
                       </span>
-                      <span className="text-[12px] text-muted-foreground">
+                      <span className="text-hh-metadata text-muted-foreground">
                         Photos or PDFs · Multiple files supported
                       </span>
                     </div>
-                    <p className="w-full px-1 py-2 text-center text-[13px] leading-snug text-foreground/85 md:hidden">
+                    <p className="w-full px-1 py-2 text-center text-hh-table-cell leading-snug text-foreground/85 md:hidden">
                       Drop or upload multiple receipts
                     </p>
                   </div>
 
                   {pendingItems.length > 0 ? (
                     <div className="flex flex-col gap-2">
-                      <p className="text-[11px] font-medium uppercase tracking-[0.06em] text-muted-foreground">
+                      <p className="text-hh-status font-medium uppercase tracking-normal text-muted-foreground">
                         Selected receipts
                       </p>
                       <div className="flex max-h-[min(40vh,280px)] flex-col gap-2 overflow-y-auto pr-0.5">
@@ -627,17 +627,17 @@ export function UploadReceiptsQueueModal({ open, onOpenChange, onSuccess }: Prop
                         className={cn(
                           "rounded-xl border px-3 py-2.5 text-left",
                           uploadFeedback.tone === "error"
-                            ? "border-rose-500/25 bg-rose-500/[0.07] text-rose-700 dark:text-rose-200"
+                            ? "border-[var(--hh-danger-border)] bg-[var(--hh-danger-soft-fill)] text-[var(--hh-danger)] dark:text-[var(--hh-danger)]"
                             : uploadFeedback.tone === "success"
-                              ? "border-emerald-500/25 bg-emerald-500/[0.07] text-emerald-700 dark:text-emerald-200"
-                              : "border-[var(--neo-border)] bg-[var(--neo-surface-muted)] text-[var(--neo-text-secondary)]"
+                              ? "border-[var(--hh-success-border)] bg-[var(--hh-success-soft-fill)] text-[var(--hh-success)] dark:text-[var(--hh-success)]"
+                              : "border-[var(--hh-border)] bg-[var(--hh-l3-hover)] text-[var(--hh-text-secondary)]"
                         )}
                       >
-                        <p className="text-[13px] font-semibold text-current">
+                        <p className="text-hh-table-cell font-semibold text-current">
                           {uploadFeedback.title}
                         </p>
                         {uploadFeedback.detail ? (
-                          <p className="mt-0.5 text-[12px] leading-snug opacity-85">
+                          <p className="mt-0.5 text-hh-metadata leading-snug opacity-85">
                             {uploadFeedback.detail}
                           </p>
                         ) : null}
@@ -647,12 +647,12 @@ export function UploadReceiptsQueueModal({ open, onOpenChange, onSuccess }: Prop
                       role="status"
                       aria-live="polite"
                       className={cn(
-                        "inline-flex w-fit max-w-full items-center rounded-full border border-black/[0.06] bg-muted/25 px-3 py-1.5 text-[12px] font-medium tracking-wide text-muted-foreground dark:border-white/[0.08] dark:bg-muted/20"
+                        "inline-flex w-fit max-w-full items-center rounded-full border border-black/[0.06] bg-muted/25 px-3 py-1.5 text-hh-metadata font-medium tracking-normal text-muted-foreground dark:border-white/[0.08] dark:bg-muted/20"
                       )}
                     >
                       {STATUS_COPY[statusPhase]}
                     </div>
-                    <p className="text-[12px] leading-snug text-muted-foreground/90">
+                    <p className="text-hh-metadata leading-snug text-muted-foreground/90">
                       Drafts stay in Inbox until approved.
                     </p>
                   </div>

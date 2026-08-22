@@ -129,7 +129,7 @@ export function EstimateSectionOutline({
                     <span className="block truncate font-medium text-foreground">
                       {section.name}
                     </span>
-                    <span className="mt-0.5 flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
+                    <span className="mt-0.5 flex items-center justify-between gap-2 text-hh-status text-muted-foreground">
                       <span className="tabular-nums">
                         {section.itemCount} {section.itemCount === 1 ? "item" : "items"}
                       </span>

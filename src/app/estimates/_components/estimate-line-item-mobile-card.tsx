@@ -93,13 +93,13 @@ export function EstimateLineItemMobileCard({
       >
         <div className="min-w-0 flex-1 space-y-1">
           <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <p className="min-w-0 text-[15px] font-semibold leading-snug tracking-tight text-foreground line-clamp-2">
+            <p className="min-w-0 text-hh-section-title font-semibold leading-snug tracking-normal text-foreground line-clamp-2">
               {item.title.trim() || "Untitled"}
             </p>
             <EstimateLineItemStatusPill status={item.status ?? DEFAULT_LINE_ITEM_STATUS} />
             {item.hideAmountOnPdf ? (
               <span
-                className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/55 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
+                className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/55 px-1.5 py-0.5 text-hh-status font-medium text-muted-foreground"
                 aria-label="PDF amount hidden"
               >
                 <EyeOff className="h-3 w-3" aria-hidden />
@@ -107,14 +107,14 @@ export function EstimateLineItemMobileCard({
               </span>
             ) : null}
           </div>
-          <p className="text-[11px] text-muted-foreground tabular-nums">
+          <p className="text-hh-status text-muted-foreground tabular-nums">
             {item.qty} × {formatEstimateCurrency(item.unitPrice)}
             {showUnitInline ? ` · ${item.unit}` : null}
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {!open ? (
-            <span className="text-sm font-semibold tabular-nums tracking-tight text-foreground">
+            <span className="text-sm font-semibold tabular-nums tracking-normal text-foreground">
               {formatEstimateCurrency(total)}
             </span>
           ) : null}
@@ -147,7 +147,7 @@ export function EstimateLineItemMobileCard({
                 <EstimateLineItemStatusPill status={item.status ?? DEFAULT_LINE_ITEM_STATUS} />
                 {item.hideAmountOnPdf ? (
                   <span
-                    className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/55 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
+                    className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/55 px-1.5 py-0.5 text-hh-status font-medium text-muted-foreground"
                     aria-label="PDF amount hidden"
                   >
                     <EyeOff className="h-3 w-3" aria-hidden />
@@ -225,7 +225,7 @@ export function EstimateLineItemMobileCard({
                     disabled={disabled}
                   />
                   {showUnitInline ? (
-                    <span className="text-[11px] text-muted-foreground">
+                    <span className="text-hh-status text-muted-foreground">
                       Unit: <span className="tabular-nums text-foreground">{item.unit}</span>
                     </span>
                   ) : null}

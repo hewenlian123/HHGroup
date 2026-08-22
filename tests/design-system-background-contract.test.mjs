@@ -52,9 +52,12 @@ test("reuses global depth tokens in Expense Operations and removes forced-dark r
   const estimateList = source("src/app/estimates/estimate-list-operational.css");
   const estimateListClient = source("src/app/estimates/estimates-list-client.tsx");
 
-  assert.match(expenses, /--eo-depth-l0:\s*var\(--hh-l0-canvas\);/);
-  assert.match(expenses, /--eo-depth-l1:\s*var\(--hh-l1-workspace\);/);
-  assert.match(expenses, /--eo-depth-l2:\s*var\(--hh-l2-operational-surface\);/);
+  assert.match(expenses, /\.expenses-ui\s*\{[\s\S]*?background-color:\s*var\(--hh-l1-workspace\);/);
+  assert.match(
+    expenses,
+    /\.expense-detail-panel\s*\{[\s\S]*?background-color:\s*var\(--hh-l2-operational-surface\)/
+  );
+  assert.doesNotMatch(expenses, /--eo-depth-l[012]:/);
   assert.doesNotMatch(expensesClient, /bg-\[var\(--eo-canvas\)\]/);
   assert.doesNotMatch(dashboard, /className="[^"]*\bdark\b/);
   assert.doesNotMatch(dashboardLoading, /className="[^"]*\bdark\b/);
@@ -62,7 +65,7 @@ test("reuses global depth tokens in Expense Operations and removes forced-dark r
   assert.doesNotMatch(bills, /"dark\s/);
   assert.doesNotMatch(health, /color-scheme:\s*dark/);
   assert.match(estimateOriginInvoice, /background:\s*var\(--hh-l1-workspace\);/);
-  assert.match(estimateOriginInvoice, /background:\s*var\(--hh-l2-operational-surface\);/);
+  assert.match(estimateOriginInvoice, /background:\s*var\(--hh-l4-floating-surface\);/);
   assert.doesNotMatch(estimateOriginInvoice, /--neo-surface-(?:base|raised|muted):\s*#/);
   assert.match(estimateList, /background:\s*var\(--hh-l1-workspace\);/);
   assert.match(estimateList, /background:\s*var\(--hh-l2-operational-surface\);/);

@@ -90,7 +90,7 @@ export function DashboardView(props: DashboardViewProps): ReactNode {
     <>
       {dataLoadWarning ? (
         <p
-          className="rounded-xl border border-[rgb(198_165_106_/_0.24)] bg-[rgb(198_165_106_/_0.10)] px-3 py-2 text-sm text-[var(--neo-text-primary)]"
+          className="rounded-hh-standard border border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] px-3 py-2 text-hh-body text-[var(--hh-text-primary)]"
           role="status"
         >
           {dataLoadWarning}

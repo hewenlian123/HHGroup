@@ -151,7 +151,7 @@ export default function LaborCostAllocationPage() {
           </div>
         </FilterBar>
         {error ? (
-          <div className="rounded-lg border border-border/60 bg-background px-4 py-3 text-sm text-destructive">
+          <div className="rounded-hh-standard border border-border/60 bg-background px-4 py-3 text-sm text-destructive">
             {error}
           </div>
         ) : null}
@@ -213,8 +213,8 @@ export default function LaborCostAllocationPage() {
                     className={cn(
                       "py-1.5 px-3 text-right tabular-nums font-medium",
                       listTableAmountCellClassName,
-                      r.actual > r.budget && "text-rose-600 dark:text-rose-400",
-                      r.actual <= r.budget && "text-emerald-700 dark:text-emerald-400"
+                      r.actual > r.budget && "text-[var(--hh-danger)] text-[var(--hh-danger)]",
+                      r.actual <= r.budget && "text-[var(--hh-success)] text-[var(--hh-success)]"
                     )}
                   >
                     {formatCurrency(r.variance)}
@@ -242,8 +242,8 @@ export default function LaborCostAllocationPage() {
                 <td
                   className={cn(
                     "py-2 px-3 text-right tabular-nums",
-                    overBudget && "text-rose-600 dark:text-rose-400",
-                    !overBudget && "text-emerald-700 dark:text-emerald-400"
+                    overBudget && "text-[var(--hh-danger)] text-[var(--hh-danger)]",
+                    !overBudget && "text-[var(--hh-success)] text-[var(--hh-success)]"
                   )}
                 >
                   {formatCurrency(totalVariance)}

@@ -56,7 +56,7 @@ export function ExpenseBulkActionBar({
       count={selectedCount}
       className={cn(
         "sticky top-0 z-30 rounded-none border-x-0 border-t-0 px-3 py-2 text-sm backdrop-blur-md",
-        inbox ? "shadow-[var(--neo-shadow-panel)]" : "shadow-none"
+        inbox ? "shadow-operational" : "shadow-none"
       )}
       aria-label="Bulk actions"
     >
@@ -65,7 +65,7 @@ export function ExpenseBulkActionBar({
         variant="ghost"
         size="sm"
         className={cn(
-          "shrink-0 text-xs text-[var(--neo-text-secondary)] hover:bg-[var(--neo-surface-muted)] hover:text-[var(--neo-text-primary)]",
+          "shrink-0 text-xs text-[var(--hh-text-secondary)] hover:bg-[var(--hh-l3-hover)] hover:text-[var(--hh-text-primary)]",
           inbox ? "h-10 min-h-10 min-w-10 sm:h-8 sm:min-h-0 sm:min-w-0" : "h-7"
         )}
         disabled={busy}
@@ -73,9 +73,9 @@ export function ExpenseBulkActionBar({
       >
         Clear
       </Button>
-      <div className="mx-1 hidden h-4 w-px bg-[var(--neo-border)] sm:block" aria-hidden />
+      <div className="mx-1 hidden h-4 w-px bg-[var(--hh-border)] sm:block" aria-hidden />
       {busy ? (
-        <SubmitSpinner loading className="h-4 w-4 shrink-0 text-[var(--neo-text-secondary)]" />
+        <SubmitSpinner loading className="h-4 w-4 shrink-0 text-[var(--hh-text-secondary)]" />
       ) : null}
 
       {inbox ? (
@@ -85,7 +85,7 @@ export function ExpenseBulkActionBar({
             variant="outline"
             size="sm"
             className={cn(
-              "shrink-0 border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-none hover:bg-[var(--neo-surface-muted)]",
+              "shrink-0 border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-none hover:bg-[var(--hh-l3-hover)]",
               controlSm
             )}
             disabled={busy || selectedCount === 0}
@@ -100,7 +100,7 @@ export function ExpenseBulkActionBar({
                 variant="outline"
                 size="sm"
                 className={cn(
-                  "gap-1 border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-none hover:bg-[var(--neo-surface-muted)]",
+                  "gap-1 border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-none hover:bg-[var(--hh-l3-hover)]",
                   controlSm
                 )}
                 disabled={busy || selectedCount === 0}
@@ -137,7 +137,7 @@ export function ExpenseBulkActionBar({
                 variant="outline"
                 size="sm"
                 className={cn(
-                  "gap-1 border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-none hover:bg-[var(--neo-surface-muted)]",
+                  "gap-1 border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-none hover:bg-[var(--hh-l3-hover)]",
                   controlSm
                 )}
                 disabled={busy || selectedCount === 0 || categories.length === 0}
@@ -168,7 +168,7 @@ export function ExpenseBulkActionBar({
                 variant="outline"
                 size="sm"
                 className={cn(
-                  "gap-1 border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-none hover:bg-[var(--neo-surface-muted)]",
+                  "gap-1 border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-none hover:bg-[var(--hh-l3-hover)]",
                   controlSm
                 )}
                 disabled={busy || selectedCount === 0 || paymentAccounts.length === 0}
@@ -207,7 +207,7 @@ export function ExpenseBulkActionBar({
                 type="button"
                 variant="outline"
                 size="sm"
-                className="h-7 gap-1 rounded-md border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-xs text-[var(--neo-text-primary)] shadow-none hover:bg-[var(--neo-surface-muted)]"
+                className="h-7 gap-1 rounded-md border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-xs text-[var(--hh-text-primary)] shadow-none hover:bg-[var(--hh-l3-hover)]"
                 disabled={busy || selectedCount === 0}
               >
                 Edit Project
@@ -241,7 +241,7 @@ export function ExpenseBulkActionBar({
                 type="button"
                 variant="outline"
                 size="sm"
-                className="h-7 gap-1 rounded-md border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-xs text-[var(--neo-text-primary)] shadow-none hover:bg-[var(--neo-surface-muted)]"
+                className="h-7 gap-1 rounded-md border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-xs text-[var(--hh-text-primary)] shadow-none hover:bg-[var(--hh-l3-hover)]"
                 disabled={busy || selectedCount === 0 || categories.length === 0}
               >
                 Edit Category
@@ -267,7 +267,7 @@ export function ExpenseBulkActionBar({
             type="button"
             variant="outline"
             size="sm"
-            className="h-7 shrink-0 rounded-md border-rose-500/25 bg-[var(--neo-surface-raised)] text-xs text-rose-300 shadow-none hover:bg-rose-500/10 hover:text-rose-200"
+            className="h-7 shrink-0 rounded-md border-[var(--hh-danger-border)] bg-[var(--hh-l2-operational-surface)] text-xs text-[var(--hh-danger)] shadow-none hover:bg-[var(--hh-danger-soft-fill)] hover:text-[var(--hh-danger)]"
             disabled={busy || selectedCount === 0}
             onClick={onDeleteMany}
           >

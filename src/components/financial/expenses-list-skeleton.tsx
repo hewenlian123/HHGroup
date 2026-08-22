@@ -14,7 +14,7 @@ function SkeletonRow({ ledger }: { ledger: boolean }) {
         !ledger && skeletonShell,
         "flex flex-col gap-3 p-3.5 md:flex-row md:items-start md:gap-5",
         ledger
-          ? "border-b border-[var(--neo-border)] bg-[var(--neo-surface-raised)] md:px-4 md:py-3 last:border-b-0"
+          ? "border-b border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] md:px-4 md:py-3 last:border-b-0"
           : "md:p-4"
       )}
     >
@@ -56,11 +56,11 @@ export function ExpensesListSkeleton({
     >
       {showStatCards ? (
         ledger ? (
-          <div className="flex overflow-hidden rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-raised)]">
+          <div className="flex overflow-hidden rounded-lg border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)]">
             {Array.from({ length: 4 }, (_, i) => (
               <div
                 key={i}
-                className="flex min-w-40 flex-1 items-center justify-between gap-3 border-r border-[var(--neo-border)] px-3 py-2.5 last:border-r-0"
+                className="flex min-w-40 flex-1 items-center justify-between gap-3 border-r border-[var(--hh-border)] px-3 py-2.5 last:border-r-0"
               >
                 <Skeleton className="h-3 w-16 rounded-sm" />
                 <Skeleton className="h-4 w-14 rounded-sm" />
@@ -81,14 +81,14 @@ export function ExpensesListSkeleton({
       <ul
         className={cn(
           "flex flex-col",
-          ledger ? "overflow-hidden border-y border-[var(--neo-border)]" : "gap-2.5"
+          ledger ? "overflow-hidden border-y border-[var(--hh-border)]" : "gap-2.5"
         )}
       >
         {Array.from({ length: rows }, (_, i) => (
           <SkeletonRow key={i} ledger={ledger} />
         ))}
       </ul>
-      <div className={cn("border-t border-[var(--neo-border)] py-2", ledger ? "px-4" : "px-1")}>
+      <div className={cn("border-t border-[var(--hh-border)] py-2", ledger ? "px-4" : "px-1")}>
         <Skeleton className="h-11 max-w-xs rounded-lg md:h-7" />
       </div>
     </div>

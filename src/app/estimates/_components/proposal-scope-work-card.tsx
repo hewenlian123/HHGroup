@@ -283,7 +283,7 @@ export function ProposalScopeWorkCard({
   const useLineItemGrid = lineItemGridLayout && Boolean(inlinePricing);
 
   const titleField = readOnly ? (
-    <p className="text-[14px] font-semibold leading-snug tracking-[-0.01em] text-foreground">
+    <p className="text-hh-body font-semibold leading-snug tracking-normal text-foreground">
       {title.trim() || "—"}
     </p>
   ) : (
@@ -296,7 +296,7 @@ export function ProposalScopeWorkCard({
       aria-label={titleInputAriaLabel}
       aria-invalid={titleInvalid}
       className={ebInput(
-        "h-8 text-[14px] font-medium leading-[1.4] tracking-[-0.01em] text-foreground placeholder:text-muted-foreground"
+        "h-8 text-hh-body font-medium leading-[1.4] tracking-normal text-foreground placeholder:text-muted-foreground"
       )}
     />
   );
@@ -316,10 +316,10 @@ export function ProposalScopeWorkCard({
               <LineItemOrScopeBodyPreview
                 body={description}
                 variant="default"
-                className="text-[14px] leading-[1.4] text-foreground"
+                className="text-hh-body leading-[1.4] text-foreground"
               />
             ) : (
-              <p className="text-[14px] leading-snug text-muted-foreground">—</p>
+              <p className="text-hh-body leading-snug text-muted-foreground">—</p>
             )}
           </div>
         </div>
@@ -342,7 +342,7 @@ export function ProposalScopeWorkCard({
             onInput={handleDescriptionInput}
             onKeyDown={handleDescriptionKeyDown}
             className={cn(
-              "proposal-scope-inline-editor w-full px-2 py-1.5 text-[14px] leading-[1.4] text-foreground outline-none break-words",
+              "proposal-scope-inline-editor w-full px-2 py-1.5 text-hh-body leading-[1.4] text-foreground outline-none break-words",
               "[&_ul]:my-0 [&_ul]:list-disc [&_ul]:pl-3 [&_ol]:my-0 [&_ol]:list-decimal [&_ol]:pl-3",
               "[&_p]:my-0 [&_p]:min-h-[1.05em]",
               "[&_strong]:font-semibold [&_b]:font-semibold",
@@ -444,7 +444,7 @@ export function ProposalScopeWorkCard({
                 ) : null}
               </div>
               {titleInvalid ? (
-                <p className="text-xs text-amber-700">Add a name for this line.</p>
+                <p className="text-hh-error text-[var(--hh-warning)]">Add a name for this line.</p>
               ) : null}
             </div>
           </div>
@@ -474,7 +474,7 @@ export function ProposalScopeWorkCard({
                 ) : null}
               </div>
               {titleInvalid ? (
-                <p className="text-xs text-amber-700">Add a name for this line.</p>
+                <p className="text-hh-error text-[var(--hh-warning)]">Add a name for this line.</p>
               ) : null}
             </div>
             {inlinePricing ? <div className={EB.lineItemPricingWrap}>{inlinePricing}</div> : null}

@@ -297,11 +297,11 @@ export default function TimesheetClient() {
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
                 max={new Date().toISOString().slice(0, 10)}
-                className="h-10 w-[160px] rounded-xl border-slate-900/[0.06] bg-white/[0.92]"
+                className="h-10 w-[160px] rounded-hh-task border-slate-900/[0.06] bg-[var(--hh-l3-hover)]"
               />
               <Button
                 variant="outline"
-                className="h-10 rounded-xl"
+                className="h-10 rounded-hh-task"
                 onClick={addWorkerRow}
                 disabled={busy}
               >
@@ -309,7 +309,7 @@ export default function TimesheetClient() {
               </Button>
               <Button
                 variant="outline"
-                className="h-10 rounded-xl"
+                className="h-10 rounded-hh-task"
                 onClick={saveAll}
                 disabled={busy}
               >
@@ -321,23 +321,23 @@ export default function TimesheetClient() {
 
         {error ? (
           <Card className="p-4">
-            <p className="text-sm text-rose-600 dark:text-rose-400">{error}</p>
+            <p className="text-sm text-[var(--hh-danger)] text-[var(--hh-danger)]">{error}</p>
           </Card>
         ) : null}
 
         {missingLaborTable ? (
-          <Card className="rounded-xl border-2 border-amber-200 border-gray-100 bg-amber-50/50 p-6">
-            <h3 className="text-base font-semibold text-amber-900">
+          <Card className="rounded-hh-task border-2 border-[var(--hh-warning-border)] border-gray-100 bg-[var(--hh-warning-soft-fill)] p-6">
+            <h3 className="text-base font-semibold text-[var(--hh-warning)]">
               Table{" "}
-              <code className="rounded bg-amber-100 px-1.5 py-0.5 font-mono text-sm">
+              <code className="rounded bg-[var(--hh-warning-soft-fill)] px-1.5 py-0.5 hh-fin text-sm">
                 public.labor_entries
               </code>{" "}
               not found
             </h3>
-            <p className="mt-2 text-sm text-amber-800">
+            <p className="mt-2 text-sm text-[var(--hh-warning)]">
               Create the labor tables in your Supabase project, then refresh this page.
             </p>
-            <ol className="mt-4 list-decimal space-y-1 pl-5 text-sm text-amber-900">
+            <ol className="mt-4 list-decimal space-y-1 pl-5 text-sm text-[var(--hh-warning)]">
               <li>
                 Open <strong>Supabase Dashboard</strong> → your project
               </li>
@@ -354,7 +354,7 @@ export default function TimesheetClient() {
               <Button
                 type="button"
                 variant="outline"
-                className="h-9 rounded-lg border-amber-300 bg-white text-amber-900 hover:bg-amber-100"
+                className="h-9 rounded-hh-standard border-[var(--hh-warning-border)] bg-white text-[var(--hh-warning)] hover:bg-[var(--hh-warning-soft-fill)]"
                 onClick={() => {
                   void navigator.clipboard.writeText(ENSURE_LABOR_TABLES_SQL).then(() => {
                     setCopySqlFeedback(true);
@@ -370,17 +370,19 @@ export default function TimesheetClient() {
                 {copySqlFeedback ? "Copied!" : "Copy SQL"}
               </Button>
             </div>
-            <p className="mt-4 text-xs text-amber-700">
-              The script creates <code className="rounded bg-amber-100 px-1">workers</code>,{" "}
-              <code className="rounded bg-amber-100 px-1">labor_entries</code>, and{" "}
-              <code className="rounded bg-amber-100 px-1">labor_payments</code> with RLS. Safe to
-              run more than once.
+            <p className="mt-4 text-xs text-[var(--hh-warning)]">
+              The script creates{" "}
+              <code className="rounded bg-[var(--hh-warning-soft-fill)] px-1">workers</code>,{" "}
+              <code className="rounded bg-[var(--hh-warning-soft-fill)] px-1">labor_entries</code>,
+              and{" "}
+              <code className="rounded bg-[var(--hh-warning-soft-fill)] px-1">labor_payments</code>{" "}
+              with RLS. Safe to run more than once.
             </p>
           </Card>
         ) : null}
 
         {message ? (
-          <div className="rounded-xl border border-gray-100 bg-white px-4 py-2 text-sm text-muted-foreground">
+          <div className="rounded-hh-task border border-gray-100 bg-white px-4 py-2 text-sm text-muted-foreground">
             {message}
           </div>
         ) : null}
@@ -400,7 +402,7 @@ export default function TimesheetClient() {
           {loading ? (
             <div className="p-6 space-y-4">
               {Array.from({ length: 5 }).map((_, i) => (
-                <Skeleton key={i} className="h-12 w-full rounded-lg" />
+                <Skeleton key={i} className="h-12 w-full rounded-hh-standard" />
               ))}
             </div>
           ) : rows.length === 0 ? (
@@ -412,7 +414,7 @@ export default function TimesheetClient() {
             <>
               <div className="hidden md:block overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead className="sticky top-0 z-10 bg-slate-50/90 shadow-[0_1px_0_0_rgba(15,23,42,0.06)]">
+                  <thead className="sticky top-0 z-10 bg-slate-50/90 shadow-operational">
                     <tr>
                       <th className={cn("px-4 py-3 text-left", TYPO.tableHeader)}>Worker</th>
                       <th className={cn("px-4 py-3 text-left", TYPO.tableHeader)}>Project</th>
@@ -462,7 +464,7 @@ export default function TimesheetClient() {
                               onChange={(e) =>
                                 updateRow(row.localId, { hours: Number(e.target.value) || 0 })
                               }
-                              className="h-9 w-24 rounded-lg text-right tabular-nums"
+                              className="h-9 w-24 rounded-hh-standard text-right tabular-nums"
                             />
                           </td>
                           <td className="py-3 px-4 align-top">
@@ -471,7 +473,7 @@ export default function TimesheetClient() {
                               value={row.costCode || ""}
                               onChange={(e) => updateRow(row.localId, { costCode: e.target.value })}
                               placeholder="Cost code"
-                              className="h-9 max-w-[100px] rounded-lg"
+                              className="h-9 max-w-[100px] rounded-hh-standard"
                             />
                           </td>
                           <td className="py-3 px-4 align-top">
@@ -480,7 +482,7 @@ export default function TimesheetClient() {
                               value={row.notes || ""}
                               onChange={(e) => updateRow(row.localId, { notes: e.target.value })}
                               placeholder="Notes"
-                              className="h-9 min-w-[120px] rounded-lg"
+                              className="h-9 min-w-[120px] rounded-hh-standard"
                             />
                           </td>
                           <td className={cn("px-4 py-3 text-right align-top", TYPO.amount)}>
@@ -494,7 +496,7 @@ export default function TimesheetClient() {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                className="h-8 rounded-lg"
+                                className="h-8 rounded-hh-standard"
                                 onClick={() => saveRow(row)}
                                 disabled={busy}
                               >
@@ -503,7 +505,7 @@ export default function TimesheetClient() {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                className="h-8 rounded-lg text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/30"
+                                className="h-8 rounded-hh-standard text-[var(--hh-danger)] hover:bg-[var(--hh-danger-soft-fill)] text-[var(--hh-danger)] dark:hover:bg-[var(--hh-danger-soft-fill)]"
                                 onClick={() => deleteRow(row)}
                                 disabled={busy}
                               >
@@ -551,7 +553,7 @@ export default function TimesheetClient() {
                   <Button
                     size="sm"
                     variant="outline"
-                    className="flex-1 rounded-lg"
+                    className="flex-1 rounded-hh-standard"
                     onClick={() => saveRow(row)}
                     disabled={busy}
                   >
@@ -560,7 +562,7 @@ export default function TimesheetClient() {
                   <Button
                     size="sm"
                     variant="outline"
-                    className="flex-1 rounded-lg text-rose-600 dark:text-rose-400"
+                    className="flex-1 rounded-hh-standard text-[var(--hh-danger)] text-[var(--hh-danger)]"
                     onClick={() => deleteRow(row)}
                     disabled={busy}
                   >

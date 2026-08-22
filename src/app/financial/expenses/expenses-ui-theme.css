@@ -1,140 +1,18 @@
-/* Expense Operations — owner-approved premium monochrome Light/Dark system. */
+/* Expense Operations composes the canonical HH Design System directly. */
 .expenses-ui {
-  --eo-depth-l0: var(--hh-l0-canvas);
-  --eo-depth-l1: var(--hh-l1-workspace);
-  --eo-depth-l2: var(--hh-l2-operational-surface);
-  --eo-depth-structural: #fafafa;
-  --eo-depth-l3-hover: var(--hh-l3-hover);
-  --eo-depth-l3-selected: var(--hh-l3-selected);
-  --eo-depth-l3-pressed: var(--hh-l3-pressed);
-  --eo-depth-l4: var(--hh-l4-floating-surface);
-  --eo-depth-l5: var(--hh-l5-task-surface);
-  --eo-canvas: var(--eo-depth-l0);
-  --eo-surface-primary: var(--eo-depth-l1);
-  --eo-surface-secondary: var(--eo-depth-l3-hover);
-  --eo-surface-elevated: var(--eo-depth-l2);
-  --eo-surface-selected: var(--eo-depth-l3-selected);
-  --eo-text-strong: #090909;
-  --eo-text-primary: #161616;
-  --eo-text-secondary: #4d4d4b;
-  --eo-text-tertiary: #686866;
-  --eo-border: var(--hh-border);
-  --eo-border-floating: var(--hh-border-floating);
-  --eo-border-strong: var(--hh-border-strong);
-  --eo-focus: #333333;
-  --eo-focus-ring: rgb(23 23 23 / 0.22);
-  --eo-action-primary: #171717;
-  --eo-action-primary-hover: #2b2b2b;
-  --eo-action-primary-text: #ffffff;
-  --eo-action-disabled: #f2f2f0;
-  --eo-success: #16815b;
-  --eo-success-soft: rgb(22 129 91 / 0.1);
-  --eo-success-border: rgb(22 129 91 / 0.22);
-  --eo-warning: #a16207;
-  --eo-warning-soft: rgb(245 158 11 / 0.1);
-  --eo-warning-border: rgb(180 83 9 / 0.22);
-  --eo-info: #2563a8;
-  --eo-info-soft: rgb(37 99 168 / 0.09);
-  --eo-info-border: rgb(37 99 168 / 0.2);
-  --eo-danger: #b4232f;
-  --eo-danger-soft: rgb(180 35 47 / 0.09);
-  --eo-danger-border: rgb(180 35 47 / 0.2);
-  --eo-shadow-operational: var(--hh-shadow-operational);
-  --eo-shadow-focused: var(--hh-shadow-floating);
-  --eo-shadow-floating: var(--hh-shadow-floating);
-  --eo-shadow-task: var(--hh-shadow-task);
-  --eo-shadow-overlay: var(--eo-shadow-floating);
-
-  /* Compatibility aliases for existing canonical controls on this route. */
-  --neo-surface-base: var(--eo-depth-l1);
-  --neo-surface-raised: var(--eo-surface-primary);
-  --neo-surface-muted: var(--eo-surface-secondary);
-  --neo-surface-hover: var(--eo-surface-secondary);
-  --eo-hover: var(--eo-depth-l3-hover);
-  --eo-selected: var(--eo-depth-l3-selected);
-  --neo-text-primary: var(--eo-text-primary);
-  --neo-text-secondary: var(--eo-text-secondary);
-  --neo-text-tertiary: var(--eo-text-tertiary);
-  --neo-border: var(--eo-border);
-  --neo-border-strong: var(--eo-border-strong);
-  --neo-gold: var(--eo-action-primary);
-  --neo-gold-soft: var(--eo-action-primary-hover);
-  --neo-gold-ring: var(--eo-focus-ring);
-  --neo-emerald: var(--eo-success);
-  --neo-emerald-soft: var(--eo-success-soft);
-  --neo-shadow-panel: none;
-  --neo-graphite-950: var(--eo-action-primary);
-  --fieldbook-ink: var(--eo-text-primary);
-  --fieldbook-muted: var(--eo-text-secondary);
-  --fieldbook-line: var(--eo-border);
-  --fieldbook-line-strong: var(--eo-border-strong);
-  --fieldbook-paper: var(--eo-surface-primary);
-  --fieldbook-paper-soft: var(--eo-surface-secondary);
-  --fieldbook-accent: var(--eo-text-primary);
-  --fieldbook-accent-strong: var(--eo-text-primary);
-  --fieldbook-focus: var(--eo-focus-ring);
-  --exp-page-bg: var(--eo-depth-l1);
-  --exp-content-bg: transparent;
-  --exp-primary: var(--eo-text-primary);
-  --exp-secondary: var(--eo-text-secondary);
-  --exp-negative: var(--eo-danger);
-  --exp-positive: var(--eo-success);
-  --exp-row-hover: var(--eo-surface-secondary);
-  --exp-border: var(--eo-border);
-  --exp-icon: var(--eo-text-tertiary);
-  --exp-icon-hover: var(--eo-text-secondary);
   min-height: 100%;
-  background-color: var(--eo-depth-l1);
-  color: var(--eo-text-primary);
+  background-color: var(--hh-l1-workspace);
+  color: var(--hh-text-primary);
   color-scheme: light;
 }
 
 html.dark .expenses-ui {
-  --eo-depth-l0: var(--hh-l0-canvas);
-  --eo-depth-l1: var(--hh-l1-workspace);
-  --eo-depth-l2: var(--hh-l2-operational-surface);
-  --eo-depth-structural: #1c1c1c;
-  --eo-depth-l3-hover: var(--hh-l3-hover);
-  --eo-depth-l3-selected: var(--hh-l3-selected);
-  --eo-depth-l3-pressed: var(--hh-l3-pressed);
-  --eo-depth-l4: var(--hh-l4-floating-surface);
-  --eo-depth-l5: var(--hh-l5-task-surface);
-  --eo-canvas: var(--eo-depth-l0);
-  --eo-surface-primary: var(--eo-depth-l1);
-  --eo-surface-secondary: var(--eo-depth-l3-hover);
-  --eo-surface-elevated: var(--eo-depth-l2);
-  --eo-surface-selected: var(--eo-depth-l3-selected);
-  --eo-text-strong: #ffffff;
-  --eo-text-primary: #f4f4f2;
-  --eo-text-secondary: #b8b8b4;
-  --eo-text-tertiary: #91918e;
-  --eo-border: var(--hh-border);
-  --eo-border-floating: var(--hh-border-floating);
-  --eo-border-strong: var(--hh-border-strong);
-  --eo-focus: #d7d7d2;
-  --eo-focus-ring: rgb(244 244 242 / 0.22);
-  --eo-action-primary: #f2f2ef;
-  --eo-action-primary-hover: #ffffff;
-  --eo-action-primary-text: #161616;
-  --eo-action-disabled: #222222;
-  --eo-success: #4caf7c;
-  --eo-success-soft: rgb(76 175 124 / 0.12);
-  --eo-warning: #d8a34a;
-  --eo-warning-soft: rgb(216 163 74 / 0.11);
-  --eo-warning-border: rgb(216 163 74 / 0.25);
-  --eo-info: #6e9fd1;
-  --eo-danger: #e36b72;
-  --eo-shadow-operational: var(--hh-shadow-operational);
-  --eo-shadow-focused: var(--hh-shadow-floating);
-  --eo-shadow-floating: var(--hh-shadow-floating);
-  --eo-shadow-task: var(--hh-shadow-task);
-  --eo-shadow-overlay: var(--eo-shadow-floating);
   color-scheme: dark;
 }
 
 .expenses-ui-content {
-  background-color: var(--exp-content-bg);
-  color: var(--exp-primary);
+  background-color: transparent;
+  color: var(--hh-text-primary);
 }
 
 .expenses-ui
@@ -185,7 +63,7 @@ html.dark .expenses-ui {
 }
 
 .expenses-ui [data-expense-id]:active {
-  background-color: var(--eo-depth-l3-pressed);
+  background-color: var(--hh-l3-pressed);
   opacity: 1;
 }
 
@@ -240,21 +118,21 @@ html.dark .expenses-ui {
 }
 
 .expenses-ui .expense-row-continuity:has(:focus-visible) {
-  box-shadow: inset 2px 0 0 var(--eo-text-secondary);
+  box-shadow: inset 2px 0 0 var(--hh-text-secondary);
 }
 
 /* Completed-expense ledger only: keep normal rows quiet and anchor attention to exceptions/focus. */
 .expenses-ui[data-expenses-list-page="expenses"] .expense-ledger-date-group {
-  background: var(--eo-depth-structural);
+  background: var(--hh-l3-hover);
 }
 
 .expenses-ui[data-expenses-list-page="expenses"] .expense-ledger-date-group button:focus-visible {
-  outline: 2px solid var(--eo-focus-ring);
+  outline: 2px solid var(--hh-focus-ring);
   outline-offset: -2px;
 }
 
 .expenses-ui[data-expenses-list-page="expenses"] .exp-row {
-  background-color: var(--eo-depth-l1);
+  background-color: var(--hh-l1-workspace);
   transition-duration: 120ms;
 }
 
@@ -264,48 +142,48 @@ html.dark .expenses-ui {
 }
 
 .expenses-ui[data-expenses-list-page="expenses"] .exp-row:hover {
-  background-color: var(--eo-depth-l3-hover);
+  background-color: var(--hh-l3-hover);
 }
 
 .expenses-ui[data-expenses-list-page="expenses"] .exp-row.expense-ledger-row-high-attention {
-  background-color: var(--neo-surface-raised);
-  box-shadow: inset 2px 0 0 var(--eo-warning);
+  background-color: var(--hh-l2-operational-surface);
+  box-shadow: inset 2px 0 0 var(--hh-warning);
 }
 
 .expenses-ui[data-expenses-list-page="expenses"] .exp-row[aria-selected="true"],
 .expenses-ui[data-expenses-list-page="expenses"] .exp-row[data-expense-selected="true"] {
-  background-color: var(--eo-depth-l3-selected);
-  box-shadow: inset 2px 0 0 var(--eo-text-secondary);
+  background-color: var(--hh-l3-selected);
+  box-shadow: inset 2px 0 0 var(--hh-text-secondary);
 }
 
 .expenses-ui[data-expenses-list-page="expenses"] .exp-row.expense-ledger-row-active {
-  background-color: var(--eo-depth-l3-selected);
-  box-shadow: inset 2px 0 0 var(--eo-text-secondary);
+  background-color: var(--hh-l3-selected);
+  box-shadow: inset 2px 0 0 var(--hh-text-secondary);
 }
 
 .expenses-ui[data-expenses-list-page="expenses"] .exp-row:focus-within {
-  background-color: var(--eo-depth-l3-hover);
+  background-color: var(--hh-l3-hover);
   box-shadow: none;
 }
 
 .expenses-ui[data-expenses-list-page="expenses"] .exp-row:has(:focus-visible) {
-  box-shadow: inset 2px 0 0 var(--eo-text-secondary);
+  box-shadow: inset 2px 0 0 var(--hh-text-secondary);
 }
 
 .expenses-ui[data-expenses-list-page="expenses"]
   .exp-row:is([aria-selected="true"], [data-expense-selected="true"]):focus-within {
-  background-color: var(--eo-depth-l3-selected);
+  background-color: var(--hh-l3-selected);
 }
 
 .expenses-ui[data-expenses-list-page="expenses"]
   .exp-row.expense-ledger-row-active:not([aria-selected="true"]):not(
     [data-expense-selected="true"]
   ) {
-  box-shadow: inset 2px 0 0 var(--eo-text-secondary);
+  box-shadow: inset 2px 0 0 var(--hh-text-secondary);
 }
 
 .expenses-ui[data-expenses-list-page="expenses"] .exp-row:active {
-  background-color: var(--eo-depth-l3-pressed);
+  background-color: var(--hh-l3-pressed);
 }
 
 .expenses-ui[data-expenses-list-page="expenses"]
@@ -316,7 +194,7 @@ html.dark .expenses-ui {
     .expense-ledger-row-active
   )
   :is([data-expense-merchant] > p:first-child, [data-expense-amount], [data-expense-amount] *) {
-  color: var(--eo-text-strong) !important;
+  color: var(--hh-text-strong) !important;
 }
 
 @media (hover: hover) and (min-width: 1024px) {
@@ -334,14 +212,14 @@ html.dark .expenses-ui {
 
 /* Structural lines, not grid lines: retain section boundaries and remove repeated cell framing. */
 .expenses-ui[data-expenses-list-page="expenses"] [data-expenses-kpi-strip] {
-  border-color: var(--eo-border);
-  background-color: var(--eo-depth-l2);
-  box-shadow: var(--eo-shadow-operational);
+  border-color: var(--hh-border);
+  background-color: var(--hh-l2-operational-surface);
+  box-shadow: var(--hh-shadow-operational);
 }
 
 /* Receipt Inbox keeps its review workflow while inheriting Design System v1 surfaces. */
 .expenses-ui[data-expenses-list-page="inbox"] [data-inbox-queue-summary] {
-  border-color: var(--eo-border);
+  border-color: var(--hh-border);
 }
 
 .expenses-ui[data-expenses-list-page="inbox"]
@@ -354,94 +232,94 @@ html.dark .expenses-ui {
 
 .expenses-ui[data-expenses-list-page="inbox"] [data-inbox-queue-state="missing-receipt"] {
   min-height: 32px;
-  border-color: var(--eo-warning-border);
-  background-color: var(--eo-warning-soft);
+  border-color: var(--hh-warning-border);
+  background-color: var(--hh-warning-soft-fill);
 }
 
 .expenses-ui[data-expenses-list-page="inbox"] [data-inbox-decision-brief] {
-  border-color: var(--eo-border);
+  border-color: var(--hh-border);
   border-radius: 0;
   background-color: transparent;
   box-shadow: none;
 }
 
 .expenses-ui[data-expenses-list-page="inbox"] [data-inbox-decision-brief] dt {
-  color: var(--eo-text-tertiary);
+  color: var(--hh-text-tertiary);
   opacity: 0.88;
 }
 
 .expenses-ui[data-expenses-list-page="inbox"] [data-inbox-decision-brief] dd {
-  color: var(--eo-text-strong);
-  font-weight: 650;
+  color: var(--hh-text-strong);
+  font-weight: var(--hh-type-body-strong-font-weight);
 }
 
 .expenses-ui[data-expenses-list-page="inbox"] [data-inbox-queue-surface] {
-  border-color: var(--eo-border);
-  border-radius: 10px;
-  background-color: var(--eo-depth-l2);
-  box-shadow: var(--eo-shadow-operational);
+  border-color: var(--hh-border);
+  border-radius: var(--hh-radius-standard);
+  background-color: var(--hh-l2-operational-surface);
+  box-shadow: var(--hh-shadow-operational);
 }
 
 .expenses-ui[data-expenses-list-page="inbox"] [data-inbox-toolbar],
 .expenses-ui[data-expenses-list-page="inbox"] [data-expenses-ledger-body],
 .expenses-ui[data-expenses-list-page="inbox"] [data-inbox-pagination] {
-  border-color: var(--eo-border);
-  background-color: var(--eo-depth-l2) !important;
+  border-color: var(--hh-border);
+  background-color: var(--hh-l2-operational-surface) !important;
 }
 
 .expenses-ui[data-expenses-list-page="inbox"] [data-inbox-shortcuts] {
-  border-color: var(--eo-border);
-  color: var(--eo-text-tertiary);
+  border-color: var(--hh-border);
+  color: var(--hh-text-tertiary);
 }
 
 .expenses-ui[data-expenses-list-page="inbox"] .expense-compact-table-scroll {
-  background-color: var(--eo-depth-l2) !important;
+  background-color: var(--hh-l2-operational-surface) !important;
 }
 
 .expenses-ui[data-expenses-list-page="inbox"] .expense-compact-table-scroll thead {
-  background-color: var(--eo-depth-structural);
+  background-color: var(--hh-l3-hover);
 }
 
 .expenses-ui[data-expenses-list-page="inbox"] .expense-compact-table-scroll thead th {
-  border-color: var(--eo-border);
+  border-color: var(--hh-border);
   background-color: transparent;
-  color: var(--eo-text-tertiary);
+  color: var(--hh-text-tertiary);
 }
 
 .expenses-ui[data-expenses-list-page="inbox"] [data-expense-date-group] {
-  border-color: var(--eo-border);
-  background-color: var(--eo-depth-structural);
+  border-color: var(--hh-border);
+  background-color: var(--hh-l3-hover);
 }
 
 .expenses-ui[data-expenses-list-page="inbox"] .exp-row {
   border-bottom-color: transparent !important;
-  background-color: var(--eo-depth-l2);
+  background-color: var(--hh-l2-operational-surface);
   box-shadow: none !important;
   transition-duration: 120ms;
 }
 
 .expenses-ui[data-expenses-list-page="inbox"] .exp-row:hover,
 .expenses-ui[data-expenses-list-page="inbox"] .exp-row:focus-within {
-  background-color: var(--eo-depth-l3-hover);
+  background-color: var(--hh-l3-hover);
 }
 
 .expenses-ui[data-expenses-list-page="inbox"] .exp-row[data-expense-active="true"] {
-  background-color: var(--eo-depth-l3-selected);
-  box-shadow: inset 2px 0 0 var(--eo-text-secondary) !important;
+  background-color: var(--hh-l3-selected);
+  box-shadow: inset 2px 0 0 var(--hh-text-secondary) !important;
 }
 
 .expenses-ui[data-expenses-list-page="inbox"] .exp-row:has(:focus-visible) {
-  box-shadow: inset 2px 0 0 var(--eo-text-secondary) !important;
+  box-shadow: inset 2px 0 0 var(--hh-text-secondary) !important;
 }
 
 .expenses-ui[data-expenses-list-page="inbox"] .exp-row:active {
-  background-color: var(--eo-depth-l3-pressed);
+  background-color: var(--hh-l3-pressed);
 }
 
 .expenses-ui[data-expenses-list-page="inbox"]
   .exp-row:is(:hover, [data-expense-active="true"])
   :is([data-expense-amount], [data-expense-amount] *) {
-  color: var(--eo-text-strong) !important;
+  color: var(--hh-text-strong) !important;
 }
 
 .expenses-ui[data-expenses-list-page="inbox"] .exp-divide > .exp-row {
@@ -468,10 +346,10 @@ html.dark .expenses-ui {
 }
 
 .expenses-ui-dialog[data-expense-component-surface="receipt-review"] {
-  background-color: var(--eo-depth-l5) !important;
-  border-color: var(--eo-border-floating) !important;
-  border-radius: 12px !important;
-  box-shadow: var(--eo-shadow-task) !important;
+  background-color: var(--hh-l5-task-surface) !important;
+  border-color: var(--hh-border-floating) !important;
+  border-radius: var(--hh-radius-task) !important;
+  box-shadow: var(--hh-shadow-task) !important;
 }
 
 .expenses-ui-dialog[data-expense-component-surface="receipt-review"] [data-expense-detail-body] {
@@ -482,9 +360,9 @@ html.dark .expenses-ui {
 
 .expenses-ui-dialog[data-expense-component-surface="receipt-review"]
   [data-expense-receipt-evidence] {
-  border-color: var(--eo-border-floating);
-  background-color: var(--eo-depth-l4) !important;
-  box-shadow: var(--eo-shadow-operational);
+  border-color: var(--hh-border-floating);
+  background-color: var(--hh-l4-floating-surface) !important;
+  box-shadow: var(--hh-shadow-operational);
 }
 
 .expenses-ui-dialog[data-expense-component-surface="receipt-review"]
@@ -495,23 +373,23 @@ html.dark .expenses-ui {
 .expenses-ui-dialog[data-expense-component-surface="receipt-review"]
   [data-expense-preview-field="amount"]
   > div:last-child {
-  color: var(--eo-text-strong);
-  font-size: 26px;
-  line-height: 1.1;
+  color: var(--hh-text-strong);
+  font-size: var(--hh-type-financial-total-font-size);
+  line-height: var(--hh-type-financial-total-line-height);
 }
 
 .expenses-ui-dialog[data-expense-component-surface="receipt-review"]
   [data-expense-preview-field="vendor"]
   > div:last-child {
-  color: var(--eo-text-strong);
-  font-size: 15px;
-  font-weight: 600;
+  color: var(--hh-text-strong);
+  font-size: var(--hh-type-body-strong-font-size);
+  font-weight: var(--hh-type-body-strong-font-weight);
 }
 
 .expenses-ui-dialog[data-expense-component-surface="receipt-review"] [data-inbox-review-evidence] {
-  border-color: var(--eo-border-floating);
-  background-color: var(--eo-depth-l4) !important;
-  box-shadow: var(--eo-shadow-operational);
+  border-color: var(--hh-border-floating);
+  background-color: var(--hh-l4-floating-surface) !important;
+  box-shadow: var(--hh-shadow-operational);
 }
 
 .expenses-ui-dialog [data-expense-approval-action]:disabled {
@@ -524,7 +402,7 @@ html.dark .expenses-ui {
   }
 
   .expenses-ui[data-expenses-list-page="inbox"] [data-inbox-queue-surface] {
-    border-radius: 8px;
+    border-radius: var(--hh-radius-standard);
     box-shadow: none;
   }
 
@@ -536,70 +414,70 @@ html.dark .expenses-ui {
   .expenses-ui-dialog[data-expense-component-surface="receipt-review"] {
     width: calc(100vw - 16px) !important;
     max-height: calc(100dvh - 16px) !important;
-    border-radius: 12px !important;
+    border-radius: var(--hh-radius-task) !important;
   }
 }
 
 .expenses-ui[data-expenses-list-page="expenses"] [data-expenses-kpi-strip] dt {
-  color: var(--eo-text-tertiary);
+  color: var(--hh-text-tertiary);
   opacity: 0.86;
 }
 
 .expenses-ui[data-expenses-list-page="expenses"] [data-expenses-kpi-strip] dd {
-  color: var(--eo-text-strong);
-  font-weight: 650;
+  color: var(--hh-text-strong);
+  font-weight: var(--hh-type-body-strong-font-weight);
 }
 
 html.dark .expenses-ui[data-expenses-list-page="expenses"] [data-expenses-kpi-strip] {
-  border-color: var(--eo-border);
+  border-color: var(--hh-border);
 }
 
 .expenses-ui .exp-btn-primary {
-  background-color: var(--eo-action-primary) !important;
-  color: var(--eo-action-primary-text) !important;
+  background-color: var(--hh-action-primary) !important;
+  color: var(--hh-action-primary-foreground) !important;
   border-color: transparent !important;
 }
 
 .expenses-ui .exp-btn-primary:hover {
-  background-color: var(--eo-action-primary-hover) !important;
+  background-color: var(--hh-action-primary) !important;
   opacity: 1;
 }
 
 .expenses-ui .exp-btn-secondary {
-  background-color: var(--neo-surface-raised) !important;
-  color: var(--exp-primary) !important;
-  border-color: var(--neo-border) !important;
+  background-color: var(--hh-l2-operational-surface) !important;
+  color: var(--hh-text-primary) !important;
+  border-color: var(--hh-border) !important;
   box-shadow: none !important;
   backdrop-filter: none;
 }
 
 .expenses-ui .exp-btn-secondary:hover {
-  background-color: var(--neo-surface-muted) !important;
+  background-color: var(--hh-l3-hover) !important;
 }
 
 .expenses-ui .exp-btn-secondary svg {
-  color: var(--exp-icon);
+  color: var(--hh-text-tertiary);
 }
 
 .expenses-ui .exp-btn-secondary:hover svg {
-  color: var(--exp-icon-hover);
+  color: var(--hh-text-secondary);
 }
 
 .expenses-ui .exp-icon-btn {
-  color: var(--exp-icon) !important;
+  color: var(--hh-text-tertiary) !important;
 }
 
 .expenses-ui .exp-icon-btn:hover {
-  color: var(--exp-icon-hover) !important;
-  background-color: var(--neo-surface-muted) !important;
+  color: var(--hh-text-secondary) !important;
+  background-color: var(--hh-l3-hover) !important;
 }
 
 .expenses-ui .exp-icon-danger {
-  color: var(--exp-icon) !important;
+  color: var(--hh-text-tertiary) !important;
 }
 
 .expenses-ui .exp-icon-danger:hover {
-  color: var(--exp-negative) !important;
+  color: var(--hh-danger) !important;
   background-color: rgb(225 29 72 / 0.12) !important;
 }
 
@@ -607,160 +485,54 @@ html.dark .expenses-ui[data-expenses-list-page="expenses"] [data-expenses-kpi-st
 
 /* Dialog when using expenses palette */
 .expenses-ui-dialog {
-  --eo-depth-l0: var(--hh-l0-canvas);
-  --eo-depth-l1: var(--hh-l1-workspace);
-  --eo-depth-l2: var(--hh-l2-operational-surface);
-  --eo-depth-structural: #fafafa;
-  --eo-depth-l3-hover: var(--hh-l3-hover);
-  --eo-depth-l3-selected: var(--hh-l3-selected);
-  --eo-depth-l3-pressed: var(--hh-l3-pressed);
-  --eo-depth-l4: var(--hh-l4-floating-surface);
-  --eo-depth-l5: var(--hh-l5-task-surface);
-  --eo-canvas: var(--eo-depth-l0);
-  --eo-surface-primary: var(--eo-depth-l1);
-  --eo-surface-secondary: var(--eo-depth-l3-hover);
-  --eo-surface-elevated: var(--eo-depth-l2);
-  --eo-surface-selected: var(--eo-depth-l3-selected);
-  --eo-text-strong: #090909;
-  --eo-text-primary: #161616;
-  --eo-text-secondary: #4d4d4b;
-  --eo-text-tertiary: #686866;
-  --eo-border: var(--hh-border);
-  --eo-border-floating: var(--hh-border-floating);
-  --eo-border-strong: var(--hh-border-strong);
-  --eo-focus-ring: rgb(23 23 23 / 0.22);
-  --eo-action-primary: #171717;
-  --eo-action-primary-hover: #2b2b2b;
-  --eo-action-primary-text: #ffffff;
-  --eo-action-disabled: #f2f2f0;
-  --eo-success: #16815b;
-  --eo-success-soft: rgb(22 129 91 / 0.1);
-  --eo-success-border: rgb(22 129 91 / 0.22);
-  --eo-warning: #a16207;
-  --eo-warning-soft: rgb(245 158 11 / 0.1);
-  --eo-warning-border: rgb(180 83 9 / 0.22);
-  --eo-info: #2563a8;
-  --eo-info-soft: rgb(37 99 168 / 0.09);
-  --eo-info-border: rgb(37 99 168 / 0.2);
-  --eo-danger: #b4232f;
-  --eo-danger-soft: rgb(180 35 47 / 0.09);
-  --eo-danger-border: rgb(180 35 47 / 0.2);
-  --eo-shadow-operational: var(--hh-shadow-operational);
-  --eo-shadow-focused: var(--hh-shadow-floating);
-  --eo-shadow-floating: var(--hh-shadow-floating);
-  --eo-shadow-task: var(--hh-shadow-task);
-  --eo-shadow-overlay: var(--eo-shadow-floating);
-  --neo-surface-base: var(--eo-depth-l1);
-  --neo-surface-raised: var(--eo-surface-primary);
-  --neo-surface-muted: var(--eo-surface-secondary);
-  --neo-surface-hover: var(--eo-surface-secondary);
-  --eo-hover: var(--eo-depth-l3-hover);
-  --eo-selected: var(--eo-depth-l3-selected);
-  --neo-text-primary: var(--eo-text-primary);
-  --neo-text-secondary: var(--eo-text-secondary);
-  --neo-text-tertiary: var(--eo-text-tertiary);
-  --neo-border: var(--eo-border);
-  --neo-border-strong: var(--eo-border-strong);
-  --neo-gold: var(--eo-action-primary);
-  --neo-gold-soft: var(--eo-action-primary-hover);
-  --neo-gold-ring: var(--eo-focus-ring);
-  --neo-shadow-panel: var(--eo-shadow-overlay, 0 24px 64px rgb(0 0 0 / 0.16));
-  --neo-graphite-950: var(--eo-action-primary);
-  --exp-primary: var(--neo-text-primary);
-  --exp-secondary: var(--neo-text-secondary);
-  --exp-border: var(--neo-border);
-  --exp-row-hover: var(--neo-surface-muted);
-  background-color: var(--neo-surface-raised) !important;
-  color: var(--exp-primary) !important;
-  border-color: var(--exp-border) !important;
+  background-color: var(--hh-l2-operational-surface) !important;
+  color: var(--hh-text-primary) !important;
+  border-color: var(--hh-border) !important;
   color-scheme: light;
 }
 
 html.dark .expenses-ui-dialog {
-  --eo-depth-l0: var(--hh-l0-canvas);
-  --eo-depth-l1: var(--hh-l1-workspace);
-  --eo-depth-l2: var(--hh-l2-operational-surface);
-  --eo-depth-structural: #1c1c1c;
-  --eo-depth-l3-hover: var(--hh-l3-hover);
-  --eo-depth-l3-selected: var(--hh-l3-selected);
-  --eo-depth-l3-pressed: var(--hh-l3-pressed);
-  --eo-depth-l4: var(--hh-l4-floating-surface);
-  --eo-depth-l5: var(--hh-l5-task-surface);
-  --eo-canvas: var(--eo-depth-l0);
-  --eo-surface-primary: var(--eo-depth-l1);
-  --eo-surface-secondary: var(--eo-depth-l3-hover);
-  --eo-surface-elevated: var(--eo-depth-l2);
-  --eo-surface-selected: var(--eo-depth-l3-selected);
-  --eo-text-strong: #ffffff;
-  --eo-text-primary: #f4f4f2;
-  --eo-text-secondary: #b8b8b4;
-  --eo-text-tertiary: #91918e;
-  --eo-border: var(--hh-border);
-  --eo-border-floating: var(--hh-border-floating);
-  --eo-border-strong: var(--hh-border-strong);
-  --eo-focus-ring: rgb(244 244 242 / 0.22);
-  --eo-action-primary: #f2f2ef;
-  --eo-action-primary-hover: #ffffff;
-  --eo-action-primary-text: #161616;
-  --eo-action-disabled: #222222;
-  --eo-warning: #d8a34a;
-  --eo-warning-soft: rgb(216 163 74 / 0.11);
-  --eo-warning-border: rgb(216 163 74 / 0.25);
-  --eo-success: #4caf7c;
-  --eo-success-soft: rgb(76 175 124 / 0.12);
-  --eo-success-border: rgb(76 175 124 / 0.25);
-  --eo-info: #6e9fd1;
-  --eo-info-soft: rgb(110 159 209 / 0.12);
-  --eo-info-border: rgb(110 159 209 / 0.24);
-  --eo-danger: #e36b72;
-  --eo-danger-soft: rgb(227 107 114 / 0.12);
-  --eo-danger-border: rgb(227 107 114 / 0.24);
-  --eo-shadow-operational: var(--hh-shadow-operational);
-  --eo-shadow-focused: var(--hh-shadow-floating);
-  --eo-shadow-floating: var(--hh-shadow-floating);
-  --eo-shadow-task: var(--hh-shadow-task);
-  --eo-shadow-overlay: var(--eo-shadow-floating);
   color-scheme: dark;
 }
 
 .expenses-ui-dialog .exp-dlg-muted {
-  color: var(--exp-secondary);
+  color: var(--hh-text-secondary);
 }
 
 .expenses-ui-dialog .exp-btn-primary {
-  background-color: var(--eo-action-primary) !important;
-  color: var(--eo-action-primary-text) !important;
+  background-color: var(--hh-action-primary) !important;
+  color: var(--hh-action-primary-foreground) !important;
   border-color: transparent !important;
 }
 
 .expenses-ui-dialog .exp-btn-secondary {
-  background-color: var(--neo-surface-raised) !important;
-  color: var(--neo-text-primary) !important;
-  border-color: var(--neo-border) !important;
+  background-color: var(--hh-l2-operational-surface) !important;
+  color: var(--hh-text-primary) !important;
+  border-color: var(--hh-border) !important;
 }
 
 .expenses-ui-dialog .exp-btn-secondary:hover {
-  background-color: var(--neo-surface-muted) !important;
+  background-color: var(--hh-l3-hover) !important;
 }
 
 .expenses-ui-dialog :where(.text-foreground) {
-  color: var(--neo-text-primary) !important;
+  color: var(--hh-text-primary) !important;
 }
 
 .expenses-ui-dialog :where(.text-muted-foreground) {
-  color: var(--neo-text-secondary) !important;
+  color: var(--hh-text-secondary) !important;
 }
 
 .expenses-ui-dialog :where(.bg-background) {
-  background-color: var(--neo-surface-raised) !important;
+  background-color: var(--hh-l2-operational-surface) !important;
 }
 
 .expenses-ui-dialog :where(.bg-muted, .bg-muted\/25, .bg-muted\/30, .bg-muted\/40) {
-  background-color: var(--neo-surface-muted) !important;
+  background-color: var(--hh-l3-hover) !important;
 }
 
 .expenses-ui-dialog :where(.text-zinc-950) {
-  color: var(--eo-action-primary-text) !important;
+  color: var(--hh-action-primary-foreground) !important;
 }
 
 /* Expense Operations component contract — consistent portaled surfaces and feedback. */
@@ -825,10 +597,10 @@ html.dark .expenses-ui-dialog {
 .expenses-ui-dialog[data-expense-component-surface="combobox"],
 .expenses-ui-dialog[data-expense-component-surface="select"],
 .expenses-ui-dialog[data-expense-component-surface="issue"] {
-  background-color: var(--eo-depth-l4) !important;
-  border-color: var(--eo-border-floating) !important;
-  border-radius: 10px !important;
-  box-shadow: var(--eo-shadow-floating) !important;
+  background-color: var(--hh-l4-floating-surface) !important;
+  border-color: var(--hh-border-floating) !important;
+  border-radius: var(--hh-radius-standard) !important;
+  box-shadow: var(--hh-shadow-floating) !important;
 }
 
 .expenses-ui-dialog[data-expense-component-surface][data-state="open"] {
@@ -843,8 +615,8 @@ html.dark .expenses-ui-dialog {
 .expenses-ui-dialog[data-expense-component-surface="quick-expense"] [data-quick-expense-amount] {
   appearance: textfield;
   -moz-appearance: textfield;
-  font-size: 18px !important;
-  font-weight: 600 !important;
+  font-size: var(--hh-type-financial-total-font-size) !important;
+  font-weight: var(--hh-type-financial-total-font-weight) !important;
 }
 
 .expenses-ui-dialog[data-expense-component-surface="quick-expense"]
@@ -866,13 +638,13 @@ html.dark .expenses-ui-dialog {
 }
 
 .expense-evidence-action {
-  background-color: var(--eo-depth-l4) !important;
-  box-shadow: var(--eo-shadow-operational);
+  background-color: var(--hh-l4-floating-surface) !important;
+  box-shadow: var(--hh-shadow-operational);
 }
 
 .expense-evidence-action:hover {
-  background-color: var(--eo-depth-l3-hover) !important;
-  box-shadow: var(--eo-shadow-focused);
+  background-color: var(--hh-l3-hover) !important;
+  box-shadow: var(--hh-shadow-floating);
 }
 
 /* New Expense shares the workspace surface language while keeping one scroll owner. */
@@ -889,17 +661,17 @@ html.dark
 }
 
 .expense-new-dialog {
-  background-color: var(--eo-depth-l5) !important;
-  border-color: var(--eo-border-floating) !important;
-  box-shadow: var(--eo-shadow-task) !important;
+  background-color: var(--hh-l5-task-surface) !important;
+  border-color: var(--hh-border-floating) !important;
+  box-shadow: var(--hh-shadow-task) !important;
 }
 
 html.dark .expense-new-dialog {
-  box-shadow: var(--eo-shadow-task) !important;
+  box-shadow: var(--hh-shadow-task) !important;
 }
 
 .expense-new-dialog :where(.bg-background) {
-  background-color: var(--eo-depth-l5) !important;
+  background-color: var(--hh-l5-task-surface) !important;
 }
 
 .expense-new-dialog[data-state="open"] {
@@ -911,13 +683,13 @@ html.dark .expense-new-dialog {
 }
 
 .expense-new-component-surface {
-  background-color: var(--eo-depth-l4) !important;
-  border-color: var(--eo-border-floating) !important;
-  box-shadow: var(--eo-shadow-floating) !important;
+  background-color: var(--hh-l4-floating-surface) !important;
+  border-color: var(--hh-border-floating) !important;
+  box-shadow: var(--hh-shadow-floating) !important;
 }
 
 html.dark .expense-new-component-surface {
-  box-shadow: var(--eo-shadow-floating) !important;
+  box-shadow: var(--hh-shadow-floating) !important;
 }
 
 .expense-new-component-surface[data-state="open"] {
@@ -929,13 +701,13 @@ html.dark .expense-new-component-surface {
 }
 
 .expenses-ui-dialog[data-expense-component-surface="create-option"] {
-  background-color: var(--eo-depth-l5) !important;
-  border-color: var(--eo-border-floating) !important;
-  box-shadow: var(--eo-shadow-task) !important;
+  background-color: var(--hh-l5-task-surface) !important;
+  border-color: var(--hh-border-floating) !important;
+  box-shadow: var(--hh-shadow-task) !important;
 }
 
 html.dark .expenses-ui-dialog[data-expense-component-surface="create-option"] {
-  box-shadow: var(--eo-shadow-task) !important;
+  box-shadow: var(--hh-shadow-task) !important;
 }
 
 .expenses-ui-dialog[data-expense-component-surface="create-option"][data-state="open"] {
@@ -947,14 +719,14 @@ html.dark .expenses-ui-dialog[data-expense-component-surface="create-option"] {
 }
 
 .expense-new-dialog-footer {
-  box-shadow: inset 0 1px 0 var(--eo-border);
+  box-shadow: inset 0 1px 0 var(--hh-border);
 }
 
 .expense-new-dialog [data-new-expense-save="true"]:disabled,
 .expense-new-dialog [data-new-expense-save="true"][data-new-expense-save-readiness="incomplete"] {
-  border-color: var(--eo-border) !important;
-  background-color: var(--eo-action-disabled) !important;
-  color: var(--eo-text-tertiary) !important;
+  border-color: var(--hh-border) !important;
+  background-color: var(--hh-l3-hover) !important;
+  color: var(--hh-text-tertiary) !important;
   box-shadow: none !important;
   opacity: 1 !important;
 }
@@ -962,8 +734,8 @@ html.dark .expenses-ui-dialog[data-expense-component-surface="create-option"] {
 .expense-new-dialog
   [data-new-expense-save="true"][data-new-expense-save-readiness="ready"]:not(:disabled) {
   border-color: transparent !important;
-  background-color: var(--eo-action-primary) !important;
-  color: var(--eo-action-primary-text) !important;
+  background-color: var(--hh-action-primary) !important;
+  color: var(--hh-action-primary-foreground) !important;
 }
 
 .expense-new-dialog [data-new-expense-save="true"]:disabled {
@@ -1019,7 +791,7 @@ html.dark .expenses-ui-dialog[data-expense-component-surface="create-option"] {
     border-right: 0 !important;
     border-bottom: 0 !important;
     border-left: 0 !important;
-    border-radius: 14px 14px 0 0 !important;
+    border-radius: var(--hh-radius-task) var(--hh-radius-task) 0 0 !important;
   }
 
   .expense-new-dialog-footer {
@@ -1090,34 +862,34 @@ html.dark .expenses-ui-dialog[data-expense-component-surface="create-option"] {
 
 .expense-operations-workspace .expense-operations-ledger-panel,
 .expense-detail-panel {
-  border-radius: 10px;
+  border-radius: var(--hh-radius-standard);
 }
 
 .expense-operations-workspace .expense-operations-ledger-panel {
-  background-color: var(--eo-depth-l2);
-  border-color: var(--eo-border);
-  box-shadow: var(--eo-shadow-operational);
+  background-color: var(--hh-l2-operational-surface);
+  border-color: var(--hh-border);
+  box-shadow: var(--hh-shadow-operational);
 }
 
 .expenses-ui[data-expenses-list-page="expenses"] [data-neo-toolbar="true"] {
-  background-color: var(--eo-depth-l1) !important;
+  background-color: var(--hh-l1-workspace) !important;
 }
 
 .expenses-ui[data-expenses-list-page="expenses"] .expense-compact-table-scroll thead {
-  background-color: var(--eo-depth-structural);
+  background-color: var(--hh-l3-hover);
 }
 
 .expenses-ui[data-expenses-list-page="expenses"] .expense-compact-table-scroll thead th {
   background-color: transparent;
-  border-color: var(--eo-border);
+  border-color: var(--hh-border);
 }
 
 .expense-detail-panel {
   min-height: 0;
   isolation: isolate;
-  background-color: var(--eo-depth-l2) !important;
-  border-color: var(--eo-border-floating) !important;
-  box-shadow: var(--eo-shadow-focused);
+  background-color: var(--hh-l2-operational-surface) !important;
+  border-color: var(--hh-border-floating) !important;
+  box-shadow: var(--hh-shadow-floating);
   transition:
     opacity 180ms cubic-bezier(0.2, 0, 0, 1),
     background-color 180ms cubic-bezier(0.2, 0, 0, 1),
@@ -1126,11 +898,11 @@ html.dark .expenses-ui-dialog[data-expense-component-surface="create-option"] {
 
 .expense-detail-panel-header,
 .expense-detail-actions {
-  background-color: var(--eo-depth-l1) !important;
+  background-color: var(--hh-l1-workspace) !important;
 }
 
 .expense-detail-panel-body {
-  background-color: var(--eo-depth-l1);
+  background-color: var(--hh-l1-workspace);
 }
 
 .expense-detail-panel-body {
@@ -1157,7 +929,7 @@ html.dark .expenses-ui-dialog[data-expense-component-surface="create-option"] {
 }
 
 [data-expense-keyboard-row]:focus-visible {
-  box-shadow: inset 0 0 0 1px var(--eo-border-strong);
+  box-shadow: inset 0 0 0 1px var(--hh-border-strong);
 }
 
 .expense-review-fields {
@@ -1204,13 +976,13 @@ html.dark .expenses-ui-dialog[data-expense-component-surface="create-option"] {
 }
 
 .expenses-ui-dialog[data-expense-component-surface="receipt-upload"] {
-  background-color: var(--eo-depth-l5) !important;
-  border-color: var(--eo-border-floating) !important;
-  box-shadow: var(--eo-shadow-task) !important;
+  background-color: var(--hh-l5-task-surface) !important;
+  border-color: var(--hh-border-floating) !important;
+  box-shadow: var(--hh-shadow-task) !important;
 }
 
 .expenses-ui-dialog[data-expense-component-surface="receipt-upload"] :where(.bg-background) {
-  background-color: var(--eo-depth-l5) !important;
+  background-color: var(--hh-l5-task-surface) !important;
 }
 
 .expense-more-details > summary::-webkit-details-marker {
@@ -1226,22 +998,22 @@ html.dark .expenses-ui-dialog[data-expense-component-surface="create-option"] {
 }
 
 .expenses-ui[data-expenses-list-page="expenses"] [data-expense-merchant] > p:first-child {
-  color: var(--eo-text-primary);
-  font-weight: 600;
+  color: var(--hh-text-primary);
+  font-weight: var(--hh-type-body-strong-font-weight);
 }
 
 .expenses-ui[data-expenses-list-page="expenses"] [data-expense-context] {
-  color: var(--eo-text-secondary);
+  color: var(--hh-text-secondary);
 }
 
 .expenses-ui[data-expenses-list-page="expenses"] [data-expense-amount] {
-  color: var(--eo-text-primary);
-  font-size: 15px;
-  font-weight: 600;
+  color: var(--hh-text-primary);
+  font-size: var(--hh-type-financial-font-size);
+  font-weight: var(--hh-type-financial-font-weight);
 }
 
 .expenses-ui[data-expenses-list-page="expenses"] [data-expense-amount] * {
-  color: var(--eo-text-primary) !important;
+  color: var(--hh-text-primary) !important;
 }
 
 @media (min-width: 1024px) {
@@ -1285,7 +1057,7 @@ html.dark .expenses-ui-dialog[data-expense-component-surface="create-option"] {
 
   .expense-operations-workspace[data-receipt-inbox-workspace][data-expense-detail-open="true"]
     [data-expense-detail-panel] {
-    border-color: var(--eo-border-floating) !important;
+    border-color: var(--hh-border-floating) !important;
   }
 
   .expense-review-workspace {
@@ -1296,12 +1068,12 @@ html.dark .expenses-ui-dialog[data-expense-component-surface="create-option"] {
 
   .expense-receipt-review-stage {
     display: block;
-    border-right: 1px solid var(--eo-border);
-    background: var(--eo-depth-structural);
+    border-right: 1px solid var(--hh-border);
+    background: var(--hh-l3-hover);
   }
 
   .expense-review-panel {
-    background: var(--eo-depth-l1);
+    background: var(--hh-l1-workspace);
   }
 
   .expense-review-inline-evidence {
@@ -1477,7 +1249,7 @@ html.dark .expenses-ui-dialog[data-expense-component-surface="create-option"] {
     align-items: center;
     gap: 8px;
     padding: 3px 6px;
-    border-radius: 6px;
+    border-radius: var(--hh-radius-compact);
   }
 
   .expense-operations-workspace[data-expense-detail-open="true"]
@@ -1546,7 +1318,7 @@ html.dark .expenses-ui-dialog[data-expense-component-surface="create-option"] {
     min-height: 100dvh;
     border: 0;
     border-radius: 0;
-    background: var(--eo-surface-elevated);
+    background: var(--hh-l2-operational-surface);
     padding-top: env(safe-area-inset-top, 0px);
   }
 
@@ -1595,7 +1367,7 @@ html.dark .expenses-ui-dialog[data-expense-component-surface="create-option"] {
   .expense-detail-actions > button {
     min-width: 0;
     padding-inline: 12px;
-    font-size: 12px;
+    font-size: var(--hh-type-control-font-size);
   }
 
   .expense-detail-actions > button:last-child {
@@ -1651,8 +1423,8 @@ html.dark .expenses-ui-dialog[data-expense-component-surface="create-option"] {
   .expenses-ui-dialog[data-expense-component-surface="quick-expense"] [data-quick-expense-amount] {
     height: 48px !important;
     min-height: 48px !important;
-    font-size: 18px !important;
-    font-weight: 600 !important;
+    font-size: var(--hh-type-financial-total-font-size) !important;
+    font-weight: var(--hh-type-financial-total-font-weight) !important;
   }
 
   .upload-receipt-mobile-overlay {

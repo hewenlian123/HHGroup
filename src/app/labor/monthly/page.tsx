@@ -134,7 +134,9 @@ export default async function MonthlyLaborPage({ searchParams }: Props) {
           <span className="text-sm text-muted-foreground">Outstanding</span>
           <span
             className={`text-xl font-medium tabular-nums ${
-              outstanding > 0 ? "text-red-600 dark:text-red-400" : "text-foreground"
+              outstanding > 0
+                ? "text-[var(--hh-danger)] text-[var(--hh-danger)]"
+                : "text-foreground"
             }`}
           >
             {formatCurrency(outstanding)}
@@ -149,16 +151,16 @@ export default async function MonthlyLaborPage({ searchParams }: Props) {
         <table className="w-full text-sm border-collapse">
           <thead>
             <tr className="border-b border-border/60">
-              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-normalr">
                 Worker
               </th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-normalr tabular-nums">
                 Earned
               </th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-normalr tabular-nums">
                 Paid
               </th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-normalr tabular-nums">
                 Balance
               </th>
             </tr>
@@ -195,10 +197,10 @@ export default async function MonthlyLaborPage({ searchParams }: Props) {
         <table className="w-full text-sm border-collapse">
           <thead>
             <tr className="border-b border-border/60">
-              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-normalr">
                 Project
               </th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-normalr tabular-nums">
                 Total Labor Cost
               </th>
             </tr>

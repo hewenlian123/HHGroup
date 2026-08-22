@@ -43,7 +43,7 @@ export function EstimateDocumentStyleField({
       disabled={disabled}
     >
       <legend className={cn(EB.sheetLabel, "mb-2")}>Estimate style</legend>
-      <p className="eb-estimate-style-helper mb-3 text-xs leading-snug text-[var(--eb-muted)]">
+      <p className="eb-estimate-style-helper mb-3 text-xs leading-snug text-[var(--hh-text-tertiary)]">
         Controls customer preview, print, and PDF output only.
       </p>
       <div className="eb-estimate-style-options grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -67,14 +67,14 @@ export function EstimateDocumentStyleField({
                 checked={checked}
                 disabled={disabled}
                 aria-label={option.label}
-                className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--eb-text)]"
+                className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--hh-text-primary)]"
                 onChange={() => onChange?.(option.value)}
               />
               <span className="min-w-0">
-                <span className="block text-sm font-medium text-[var(--eb-text)]">
+                <span className="block text-sm font-medium text-[var(--hh-text-primary)]">
                   {option.label}
                 </span>
-                <span className="mt-0.5 block text-xs leading-snug text-[var(--eb-muted)]">
+                <span className="mt-0.5 block text-xs leading-snug text-[var(--hh-text-tertiary)]">
                   {option.hint}
                 </span>
               </span>
@@ -94,10 +94,10 @@ export function EstimateDocumentStyleReadOnly({
   const label = normalizeEstimateDocumentStyleLabel(value);
   return (
     <div className="min-w-0">
-      <Label className="eb-estimate-context-label mb-0.5 block text-[12px] font-medium leading-tight text-[var(--eb-muted)]">
+      <Label className="eb-estimate-context-label mb-0.5 block text-[12px] font-medium leading-tight text-[var(--hh-text-tertiary)]">
         Estimate style
       </Label>
-      <p className="text-[14px] font-medium leading-snug text-[var(--eb-text)]">{label}</p>
+      <p className="text-[14px] font-medium leading-snug text-[var(--hh-text-primary)]">{label}</p>
     </div>
   );
 }

@@ -106,14 +106,14 @@ export default function PayrollSummaryPage() {
   return (
     <div
       className={cn(
-        "dark neo-page-on-graphite page-container page-stack py-6 text-[var(--neo-canvas-text-secondary)]",
+        " page-container page-stack py-6 text-[var(--hh-text-secondary)]",
         mobileListPagePaddingClass,
         "max-md:!gap-3"
       )}
     >
       <div className="hidden md:block">
         <PageHeader
-          className="gap-1 border-b border-white/10 pb-3 lg:items-baseline lg:gap-x-4 [&_h1]:!text-[24px] [&_h1]:!font-semibold [&_h1]:!leading-none [&_h1]:!tracking-normal [&_h1]:!text-[var(--neo-canvas-text-primary)] [&_p]:!mt-1 [&_p]:!max-w-xl [&_p]:!text-[14px] [&_p]:!leading-snug [&_p]:!text-[var(--neo-canvas-text-secondary)]"
+          className="gap-1 border-b border-[var(--hh-border)] pb-3 lg:items-baseline lg:gap-x-4 [&_h1]:!text-hh-financial-total [&_h1]:!font-semibold [&_h1]:!leading-none [&_h1]:!tracking-normal [&_h1]:!text-[var(--hh-text-primary)] [&_p]:!mt-1 [&_p]:!max-w-xl [&_p]:!text-hh-body [&_p]:!leading-snug [&_p]:!text-[var(--hh-text-secondary)]"
           title="Payroll Summary"
           subtitle="Summarize labor entries by worker for a date range."
           actions={
@@ -166,35 +166,41 @@ export default function PayrollSummaryPage() {
             className="w-full"
           />
         </div>
-        <Button type="button" className="w-full rounded-sm" onClick={() => setFiltersOpen(false)}>
+        <Button
+          type="button"
+          className="w-full rounded-hh-compact"
+          onClick={() => setFiltersOpen(false)}
+        >
           Done
         </Button>
       </MobileFilterSheet>
       <NeoToolbar className="hidden gap-3 pb-3 sm:flex-row sm:flex-wrap sm:items-end md:flex">
         <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          <label className="text-xs font-medium uppercase tracking-normalr text-muted-foreground">
             From
           </label>
           <Input
             type="date"
             value={fromDate}
             onChange={(e) => setFromDate(e.target.value)}
-            className="h-9 max-md:min-h-11 w-full rounded-md sm:w-[152px]"
+            className="h-9 max-md:min-h-11 w-full rounded-hh-compact sm:w-[152px]"
           />
         </div>
         <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          <label className="text-xs font-medium uppercase tracking-normalr text-muted-foreground">
             To
           </label>
           <Input
             type="date"
             value={toDate}
             onChange={(e) => setToDate(e.target.value)}
-            className="h-9 max-md:min-h-11 w-full rounded-md sm:w-[152px]"
+            className="h-9 max-md:min-h-11 w-full rounded-hh-compact sm:w-[152px]"
           />
         </div>
       </NeoToolbar>
-      {error ? <p className="py-2 text-sm text-red-600 dark:text-red-400">{error}</p> : null}
+      {error ? (
+        <p className="py-2 text-sm text-[var(--hh-danger)] text-[var(--hh-danger)]">{error}</p>
+      ) : null}
       <div className="border-b border-border/60 pb-3 md:hidden">
         {loading ? (
           <p className="py-6 text-center text-xs text-muted-foreground">Loading…</p>
@@ -216,7 +222,7 @@ export default function PayrollSummaryPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="btn-outline-ghost h-8 w-fit -ml-2 rounded-sm font-medium text-foreground"
+                    className="btn-outline-ghost h-8 w-fit -ml-2 rounded-hh-compact font-medium text-foreground"
                     onClick={() => openWorkerDetail(r.workerId)}
                   >
                     {r.workerName}
@@ -263,16 +269,16 @@ export default function PayrollSummaryPage() {
       <NeoTable className="hidden md:block" tableClassName="min-w-[480px] lg:min-w-0">
         <thead>
           <tr className="border-b border-border/60">
-            <th className="text-left py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+            <th className="text-left py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-normalr">
               Worker
             </th>
-            <th className="text-right py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+            <th className="text-right py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-normalr tabular-nums">
               Days Worked
             </th>
-            <th className="text-right py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+            <th className="text-right py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-normalr tabular-nums">
               OT Total
             </th>
-            <th className="text-right py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+            <th className="text-right py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-normalr tabular-nums">
               Total Pay
             </th>
           </tr>
@@ -347,19 +353,19 @@ export default function PayrollSummaryPage() {
             <table className="w-full min-w-[480px] border-collapse text-sm lg:min-w-0">
               <thead>
                 <tr className="border-b border-border/60">
-                  <th className="text-left py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  <th className="text-left py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-normalr">
                     Date
                   </th>
-                  <th className="text-left py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  <th className="text-left py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-normalr">
                     Project
                   </th>
-                  <th className="text-left py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  <th className="text-left py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-normalr">
                     Day Type
                   </th>
-                  <th className="text-right py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+                  <th className="text-right py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-normalr tabular-nums">
                     OT
                   </th>
-                  <th className="text-right py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+                  <th className="text-right py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-normalr tabular-nums">
                     Pay
                   </th>
                 </tr>
@@ -374,7 +380,7 @@ export default function PayrollSummaryPage() {
                 ) : (
                   detailEntries.map((e) => (
                     <tr key={e.id} className="border-b border-border/40">
-                      <td className="py-2 px-4 font-mono tabular-nums tracking-tight text-zinc-500">
+                      <td className="py-2 px-4 hh-fin tracking-normal text-zinc-500">
                         {formatDate(e.workDate)}
                       </td>
                       <td className="py-2 px-4 text-muted-foreground">

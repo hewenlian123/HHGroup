@@ -51,7 +51,7 @@ export default async function SubcontractBillsPage({ params }: Props) {
           actions={
             <Link
               href={`/projects/${projectId}/subcontracts`}
-              className="text-sm text-muted-foreground hover:text-foreground"
+              className="text-hh-body text-[var(--hh-text-secondary)] hover:text-[var(--hh-text-primary)]"
             >
               Subcontracts
             </Link>
@@ -68,25 +68,25 @@ export default async function SubcontractBillsPage({ params }: Props) {
 
       <div className="airtable-table-wrap airtable-table-wrap--ruled">
         <div className="airtable-table-scroll">
-          <table className="w-full text-sm">
+          <table className="w-full text-hh-body">
             <thead>
               <tr>
-                <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                   Bill Date
                 </th>
-                <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                   Due
                 </th>
-                <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                   Description
                 </th>
-                <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
                   Amount
                 </th>
-                <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                   Status
                 </th>
-                <th className="h-8 px-3 text-right align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                <th className="h-8 px-3 text-right align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                   Actions
                 </th>
               </tr>
@@ -96,7 +96,7 @@ export default async function SubcontractBillsPage({ params }: Props) {
                 <tr>
                   <td
                     colSpan={6}
-                    className="h-11 min-h-[44px] px-3 py-0 text-center text-xs text-muted-foreground"
+                    className="h-11 min-h-[44px] px-3 py-0 text-center text-hh-metadata text-[var(--hh-text-secondary)]"
                   >
                     No bills yet.
                   </td>
@@ -112,41 +112,41 @@ export default async function SubcontractBillsPage({ params }: Props) {
                       r.status !== "Void";
                     return (
                       <tr key={r.id} className={listTableRowStaticClassName}>
-                        <td className="h-11 min-h-[44px] px-3 py-0 align-middle font-mono text-[13px] font-medium tabular-nums">
+                        <td className="h-11 min-h-[44px] px-3 py-0 align-middle hh-fin text-hh-table-cell font-medium tabular-nums">
                           {r.bill_date}
                         </td>
-                        <td className="h-11 min-h-[44px] px-3 py-0 align-middle font-mono text-[13px] tabular-nums">
+                        <td className="h-11 min-h-[44px] px-3 py-0 align-middle hh-fin text-hh-table-cell tabular-nums">
                           {r.due_date ? (
                             <div className="flex items-center gap-2">
                               <span
                                 className={
                                   overdue
-                                    ? "text-red-600 dark:text-red-400"
-                                    : "text-muted-foreground"
+                                    ? "text-[var(--hh-danger)]"
+                                    : "text-[var(--hh-text-secondary)]"
                                 }
                               >
                                 {r.due_date}
                               </span>
                               {overdue ? (
-                                <span className="rounded-sm border border-red-200/70 bg-red-50 px-1.5 py-0.5 text-[10px] font-medium text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300">
+                                <span className="rounded-hh-compact border border-[var(--hh-danger-border)] bg-[var(--hh-danger-soft-fill)] px-1.5 py-0.5 text-hh-status font-medium text-[var(--hh-danger)] ">
                                   Overdue
                                 </span>
                               ) : null}
                             </div>
                           ) : (
-                            <span className="text-muted-foreground">—</span>
+                            <span className="text-[var(--hh-text-secondary)]">—</span>
                           )}
                         </td>
-                        <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] text-muted-foreground">
+                        <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell text-[var(--hh-text-secondary)]">
                           {r.description ?? "—"}
                         </td>
-                        <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle font-mono text-[13px] tabular-nums">
+                        <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums">
                           ${fmtUsd(r.amount)}
                         </td>
-                        <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px]">
+                        <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell">
                           {r.status}
                         </td>
-                        <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle text-[13px]">
+                        <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle text-hh-table-cell">
                           {r.status === "Pending" ? (
                             <div className="flex items-center justify-end gap-2">
                               <ApproveBillButton

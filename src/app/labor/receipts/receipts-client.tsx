@@ -116,13 +116,13 @@ function ReceiptEvidence({
           prominent && "h-full min-h-[360px]"
         )}
       >
-        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--eo-warning-soft)] text-[var(--eo-warning)]">
+        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--hh-warning-soft-fill)] text-[var(--hh-warning)]">
           <FileWarning className="h-5 w-5" aria-hidden />
         </span>
-        <p className="mt-3 text-sm font-semibold text-[var(--eo-text-primary)]">
+        <p className="mt-3 text-sm font-semibold text-[var(--hh-text-primary)]">
           Missing receipt evidence
         </p>
-        <p className="mt-1 max-w-xs text-xs leading-relaxed text-[var(--eo-text-secondary)]">
+        <p className="mt-1 max-w-xs text-xs leading-relaxed text-[var(--hh-text-secondary)]">
           This worker submission does not include a receipt attachment.
         </p>
       </div>
@@ -138,11 +138,11 @@ function ReceiptEvidence({
           prominent && "h-full min-h-[360px]"
         )}
       >
-        <CircleAlert className="h-6 w-6 text-[var(--eo-danger)]" aria-hidden />
-        <p className="mt-3 text-sm font-semibold text-[var(--eo-text-primary)]">
+        <CircleAlert className="h-6 w-6 text-[var(--hh-danger)]" aria-hidden />
+        <p className="mt-3 text-sm font-semibold text-[var(--hh-text-primary)]">
           Receipt preview unavailable
         </p>
-        <p className="mt-1 text-xs text-[var(--eo-text-secondary)]">
+        <p className="mt-1 text-xs text-[var(--hh-text-secondary)]">
           Retry the preview or open the original evidence.
         </p>
         <div className="mt-4 flex flex-wrap justify-center gap-2">
@@ -244,14 +244,14 @@ function ReceiptDetail({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex items-start justify-between gap-3 border-b border-[var(--eo-border)] px-4 py-3.5">
+      <div className="flex items-start justify-between gap-3 border-b border-[var(--hh-border)] px-4 py-3.5">
         <div className="min-w-0">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--eo-text-tertiary)]">
+          <p className="text-hh-status font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]">
             Worker receipt
           </p>
           <div className="mt-1 flex flex-wrap items-center gap-2">
             <ReceiptStatus status={receipt.status} />
-            <span className={cn("text-[11px]", LEDGER_DATE_CLASS)}>
+            <span className={cn("text-hh-status", LEDGER_DATE_CLASS)}>
               Submitted {formatLedgerDate(receipt.createdAt, "compact")}
             </span>
           </div>
@@ -281,45 +281,45 @@ function ReceiptDetail({
         {showEvidence ? <ReceiptEvidence receipt={receipt} onOpen={onOpenEvidence} /> : null}
 
         <div className={showEvidence ? "mt-5" : undefined}>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--eo-text-tertiary)]">
+          <p className="text-hh-status font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]">
             Amount
           </p>
-          <p className="worker-receipt-financial-nums mt-1 text-[30px] font-semibold leading-none text-[var(--eo-text-strong)]">
+          <p className="hh-fin mt-1 text-hh-financial-total font-semibold leading-none text-[var(--hh-text-strong)]">
             {formatCurrency(receipt.amount)}
           </p>
         </div>
 
         <div className="mt-5">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--eo-text-tertiary)]">
+          <p className="text-hh-status font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]">
             Worker
           </p>
-          <h2 className="mt-1 text-[18px] font-semibold leading-snug text-[var(--eo-text-strong)]">
+          <h2 className="mt-1 text-hh-section-title font-semibold leading-snug text-[var(--hh-text-strong)]">
             {receipt.workerName}
           </h2>
-          <p className="mt-1 text-sm font-medium text-[var(--eo-text-secondary)]">
+          <p className="mt-1 text-sm font-medium text-[var(--hh-text-secondary)]">
             {receipt.projectId ? receipt.projectName || "—" : "No project assigned"}
           </p>
         </div>
 
-        <dl className="mt-5 grid grid-cols-2 gap-x-5 gap-y-4 border-t border-[var(--eo-border)] pt-4 text-sm">
+        <dl className="mt-5 grid grid-cols-2 gap-x-5 gap-y-4 border-t border-[var(--hh-border)] pt-4 text-sm">
           <div className="min-w-0">
-            <dt className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--eo-text-tertiary)]">
+            <dt className="text-hh-status font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]">
               Vendor
             </dt>
-            <dd className="mt-1 truncate font-medium text-[var(--eo-text-primary)]">
+            <dd className="mt-1 truncate font-medium text-[var(--hh-text-primary)]">
               {receipt.vendor?.trim() || "—"}
             </dd>
           </div>
           <div className="min-w-0">
-            <dt className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--eo-text-tertiary)]">
+            <dt className="text-hh-status font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]">
               Classification
             </dt>
-            <dd className="mt-1 truncate text-[var(--eo-text-primary)]">
+            <dd className="mt-1 truncate text-[var(--hh-text-primary)]">
               {receipt.expenseType || "—"}
             </dd>
           </div>
           <div className="min-w-0">
-            <dt className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--eo-text-tertiary)]">
+            <dt className="text-hh-status font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]">
               Receipt date
             </dt>
             <dd className={cn("mt-1", LEDGER_DATE_CLASS)}>
@@ -327,22 +327,22 @@ function ReceiptDetail({
             </dd>
           </div>
           <div className="min-w-0">
-            <dt className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--eo-text-tertiary)]">
+            <dt className="text-hh-status font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]">
               Status
             </dt>
-            <dd className="mt-1 text-[var(--eo-text-primary)]">{receipt.status}</dd>
+            <dd className="mt-1 text-[var(--hh-text-primary)]">{receipt.status}</dd>
           </div>
         </dl>
 
         {missingReceipt || missingProject ? (
           <div className="mt-5 flex flex-wrap gap-2" aria-label="Missing information">
             {missingReceipt ? (
-              <span className="inline-flex min-h-7 items-center gap-1.5 rounded-md border border-[var(--eo-warning-border)] bg-[var(--eo-warning-soft)] px-2 text-xs font-medium text-[var(--eo-warning)]">
+              <span className="inline-flex min-h-7 items-center gap-1.5 rounded-md border border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] px-2 text-xs font-medium text-[var(--hh-warning)]">
                 <Paperclip className="h-3.5 w-3.5" aria-hidden /> Missing receipt
               </span>
             ) : null}
             {missingProject ? (
-              <span className="inline-flex min-h-7 items-center gap-1.5 rounded-md border border-[var(--eo-warning-border)] bg-[var(--eo-warning-soft)] px-2 text-xs font-medium text-[var(--eo-warning)]">
+              <span className="inline-flex min-h-7 items-center gap-1.5 rounded-md border border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] px-2 text-xs font-medium text-[var(--hh-warning)]">
                 <AlertTriangle className="h-3.5 w-3.5" aria-hidden /> Missing project
               </span>
             ) : null}
@@ -350,30 +350,30 @@ function ReceiptDetail({
         ) : null}
 
         {receipt.status === "Rejected" && receipt.rejectionReason ? (
-          <div className="mt-5 rounded-md border border-[var(--eo-danger-border)] bg-[var(--eo-danger-soft)] px-3 py-2.5 text-xs leading-relaxed text-[var(--eo-danger)]">
+          <div className="mt-5 rounded-md border border-[var(--hh-danger-border)] bg-[var(--hh-danger-soft-fill)] px-3 py-2.5 text-xs leading-relaxed text-[var(--hh-danger)]">
             <p className="font-semibold">Rejection reason</p>
             <p className="mt-0.5">{receipt.rejectionReason}</p>
           </div>
         ) : null}
 
         {receipt.description || receipt.notes ? (
-          <div className="mt-5 space-y-4 border-t border-[var(--eo-border)] pt-4">
+          <div className="mt-5 space-y-4 border-t border-[var(--hh-border)] pt-4">
             {receipt.description ? (
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--eo-text-tertiary)]">
+                <p className="text-hh-status font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                   Description
                 </p>
-                <p className="mt-1 text-sm leading-relaxed text-[var(--eo-text-secondary)]">
+                <p className="mt-1 text-sm leading-relaxed text-[var(--hh-text-secondary)]">
                   {receipt.description}
                 </p>
               </div>
             ) : null}
             {receipt.notes ? (
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--eo-text-tertiary)]">
+                <p className="text-hh-status font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                   Notes
                 </p>
-                <p className="mt-1 text-sm leading-relaxed text-[var(--eo-text-secondary)]">
+                <p className="mt-1 text-sm leading-relaxed text-[var(--hh-text-secondary)]">
                   {receipt.notes}
                 </p>
               </div>
@@ -382,10 +382,12 @@ function ReceiptDetail({
         ) : null}
       </div>
 
-      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-[var(--eo-border)] bg-[var(--eo-depth-l2)] px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         <div className="flex min-w-0 flex-wrap items-center gap-1">
           {queuePosition ? (
-            <span className="mr-1 text-[11px] text-[var(--eo-text-tertiary)]">{queuePosition}</span>
+            <span className="mr-1 text-hh-status text-[var(--hh-text-tertiary)]">
+              {queuePosition}
+            </span>
           ) : null}
           <Button
             type="button"
@@ -410,13 +412,13 @@ function ReceiptDetail({
           {receipt.reimbursementId ? (
             <Link
               href="/labor/reimbursements"
-              className="inline-flex min-h-11 items-center gap-1.5 rounded-md px-2 text-xs font-medium text-[var(--eo-text-primary)] hover:bg-[var(--eo-depth-l3-hover)]"
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-md px-2 text-xs font-medium text-[var(--hh-text-primary)] hover:bg-[var(--hh-l3-hover)]"
             >
               View reimbursement
               <ChevronRight className="h-3.5 w-3.5" aria-hidden />
             </Link>
           ) : (
-            <span className="text-[11px] text-[var(--eo-text-tertiary)]">
+            <span className="text-hh-status text-[var(--hh-text-tertiary)]">
               {receipt.status === "Pending" ? "Awaiting review" : "Review complete"}
             </span>
           )}
@@ -822,11 +824,11 @@ export function ReceiptsClient({
   ];
 
   const controlClass =
-    "h-10 w-full min-w-0 rounded-md border border-[var(--eo-border)] bg-[var(--eo-depth-l2)] px-3 text-sm text-[var(--eo-text-primary)] shadow-none outline-none hover:bg-[var(--eo-depth-l3-hover)] focus-visible:border-[var(--eo-border-strong)] focus-visible:ring-2 focus-visible:ring-[var(--eo-focus-ring)]";
+    "h-10 w-full min-w-0 rounded-md border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 text-sm text-[var(--hh-text-primary)] shadow-none outline-none hover:bg-[var(--hh-l3-hover)] focus-visible:border-[var(--hh-border-strong)] focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)]";
 
   const searchInput = (
     <div className="relative min-w-0 flex-1">
-      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--eo-text-tertiary)]" />
+      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--hh-text-tertiary)]" />
       <Input
         value={searchQuery}
         onChange={(event) => setSearchQuery(event.target.value)}
@@ -906,7 +908,7 @@ export function ReceiptsClient({
         <ReceiptInboxSourceNav />
         <div className="hidden md:block">
           <PageHeader
-            className="gap-2 pb-1 lg:items-end [&_h1]:!text-[24px] [&_h1]:!font-semibold [&_h1]:!tracking-normal [&_h1]:!text-[var(--eo-text-strong)] [&_p]:!mt-1 [&_p]:!text-[14px] [&_p]:!leading-snug [&_p]:!text-[var(--eo-text-secondary)]"
+            className="gap-2 pb-1 lg:items-end [&_h1]:!text-hh-page-title [&_h1]:!tracking-normal [&_p]:!mt-1 [&_p]:!text-hh-body"
             title="Worker Submitted"
             subtitle="Review worker-submitted evidence with the existing approval and reimbursement workflow."
             actions={
@@ -936,12 +938,12 @@ export function ReceiptsClient({
                 index === 4 && "col-span-2 lg:col-span-1"
               )}
             >
-              <Icon className="h-4 w-4 shrink-0 text-[var(--eo-text-tertiary)]" aria-hidden />
+              <Icon className="h-4 w-4 shrink-0 text-[var(--hh-text-tertiary)]" aria-hidden />
               <div className="min-w-0">
-                <dt className="truncate text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--eo-text-tertiary)]">
+                <dt className="truncate text-hh-status font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                   {label}
                 </dt>
-                <dd className="worker-receipt-financial-nums mt-1 truncate text-[18px] font-semibold leading-none text-[var(--eo-text-strong)]">
+                <dd className="hh-fin mt-1 truncate text-hh-section-title font-semibold leading-none text-[var(--hh-text-strong)]">
                   {value}
                 </dd>
               </div>
@@ -951,7 +953,7 @@ export function ReceiptsClient({
 
         {dataLoadWarning ? (
           <div
-            className="rounded-md border border-[var(--eo-warning-border)] bg-[var(--eo-warning-soft)] px-3 py-2 text-sm text-[var(--eo-warning)]"
+            className="rounded-md border border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] px-3 py-2 text-sm text-[var(--hh-warning)]"
             role="status"
           >
             {dataLoadWarning}
@@ -966,7 +968,7 @@ export function ReceiptsClient({
           searchSlot={searchInput}
         />
 
-        <div className="hidden min-w-0 grid-cols-[minmax(0,1.3fr)_repeat(3,minmax(135px,0.55fr))_auto] items-center gap-2 rounded-lg border border-[var(--eo-border)] bg-[var(--eo-depth-l2)] p-2 lg:grid">
+        <div className="hidden min-w-0 grid-cols-[minmax(0,1.3fr)_repeat(3,minmax(135px,0.55fr))_auto] items-center gap-2 rounded-lg border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-2 lg:grid">
           {searchInput}
           {workerSelect}
           {projectSelect}
@@ -1000,21 +1002,21 @@ export function ReceiptsClient({
         <MobileFilterSheet open={filtersOpen} onOpenChange={setFiltersOpen} title="Filters">
           <div className="grid gap-4">
             <div className="space-y-1.5">
-              <p className="text-xs font-medium text-[var(--eo-text-secondary)]">Worker</p>
+              <p className="text-xs font-medium text-[var(--hh-text-secondary)]">Worker</p>
               {workerSelect}
             </div>
             <div className="space-y-1.5">
-              <p className="text-xs font-medium text-[var(--eo-text-secondary)]">Project</p>
+              <p className="text-xs font-medium text-[var(--hh-text-secondary)]">Project</p>
               {projectSelect}
             </div>
             <div className="space-y-1.5">
-              <p className="text-xs font-medium text-[var(--eo-text-secondary)]">Status</p>
+              <p className="text-xs font-medium text-[var(--hh-text-secondary)]">Status</p>
               {statusSelect}
             </div>
             <div className="space-y-1.5">
               <label
                 htmlFor="worker-receipts-from"
-                className="text-xs font-medium text-[var(--eo-text-secondary)]"
+                className="text-xs font-medium text-[var(--hh-text-secondary)]"
               >
                 From
               </label>
@@ -1023,13 +1025,13 @@ export function ReceiptsClient({
                 type="date"
                 value={dateFrom}
                 onChange={(event) => setDateFrom(event.target.value)}
-                className={cn(controlClass, "worker-receipt-financial-nums")}
+                className={cn(controlClass, "hh-fin")}
               />
             </div>
             <div className="space-y-1.5">
               <label
                 htmlFor="worker-receipts-to"
-                className="text-xs font-medium text-[var(--eo-text-secondary)]"
+                className="text-xs font-medium text-[var(--hh-text-secondary)]"
               >
                 To
               </label>
@@ -1038,7 +1040,7 @@ export function ReceiptsClient({
                 type="date"
                 value={dateTo}
                 onChange={(event) => setDateTo(event.target.value)}
-                className={cn(controlClass, "worker-receipt-financial-nums")}
+                className={cn(controlClass, "hh-fin")}
               />
             </div>
           </div>
@@ -1054,7 +1056,7 @@ export function ReceiptsClient({
 
         {message ? (
           <div
-            className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-[var(--eo-danger-border)] bg-[var(--eo-danger-soft)] px-3 py-2 text-sm text-[var(--eo-danger)]"
+            className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-[var(--hh-danger-border)] bg-[var(--hh-danger-soft-fill)] px-3 py-2 text-sm text-[var(--hh-danger)]"
             role="alert"
           >
             <span>{message}</span>
@@ -1070,7 +1072,7 @@ export function ReceiptsClient({
         ) : null}
         {successMessage ? (
           <div
-            className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-[var(--eo-success-border)] bg-[var(--eo-success-soft)] px-3 py-2 text-sm text-[var(--eo-success)]"
+            className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-[var(--hh-success-border)] bg-[var(--hh-success-soft-fill)] px-3 py-2 text-sm text-[var(--hh-success)]"
             role="status"
           >
             <span>{successMessage}</span>
@@ -1086,16 +1088,18 @@ export function ReceiptsClient({
             aria-label="Worker receipt queue"
             className="min-w-0 overflow-hidden rounded-lg border"
           >
-            <div className="flex min-h-[48px] items-center justify-between gap-3 border-b border-[var(--eo-border)] bg-[var(--eo-depth-structural)] px-3.5 py-2.5">
+            <div className="flex min-h-[48px] items-center justify-between gap-3 border-b border-[var(--hh-border)] bg-[var(--hh-l3-hover)] px-3.5 py-2.5">
               <div>
-                <h2 className="text-sm font-semibold text-[var(--eo-text-primary)]">
+                <h2 className="text-sm font-semibold text-[var(--hh-text-primary)]">
                   Receipt queue
                 </h2>
-                <p className="mt-0.5 text-[11px] text-[var(--eo-text-tertiary)]">
+                <p className="mt-0.5 text-hh-status text-[var(--hh-text-tertiary)]">
                   {displayRows.length} of {rows.length} uploads
                 </p>
               </div>
-              <span className="text-[11px] text-[var(--eo-text-tertiary)]">Select to review</span>
+              <span className="text-hh-status text-[var(--hh-text-tertiary)]">
+                Select to review
+              </span>
             </div>
             <div
               data-worker-receipts-scroll
@@ -1107,11 +1111,11 @@ export function ReceiptsClient({
             >
               {rows.length === 0 ? (
                 <div className="flex min-h-[300px] flex-col items-center justify-center px-5 py-10 text-center">
-                  <FileText className="h-8 w-8 text-[var(--eo-text-tertiary)]" aria-hidden />
-                  <p className="mt-3 text-sm font-semibold text-[var(--eo-text-primary)]">
+                  <FileText className="h-8 w-8 text-[var(--hh-text-tertiary)]" aria-hidden />
+                  <p className="mt-3 text-sm font-semibold text-[var(--hh-text-primary)]">
                     No uploads in queue
                   </p>
-                  <p className="mt-1 max-w-sm text-xs text-[var(--eo-text-secondary)]">
+                  <p className="mt-1 max-w-sm text-xs text-[var(--hh-text-secondary)]">
                     Worker-submitted receipts will appear here for review.
                   </p>
                   <Button variant="outline" size="sm" className="mt-4" asChild>
@@ -1144,7 +1148,7 @@ export function ReceiptsClient({
                       >
                         <span
                           className={cn(
-                            "flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold ring-1 ring-inset ring-zinc-950/[0.055] dark:ring-white/[0.08]",
+                            "flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-hh-status font-semibold ring-1 ring-inset ring-zinc-950/[0.055] dark:ring-white/[0.08]",
                             avatarTone(receipt.workerId ?? receipt.id)
                           )}
                           aria-hidden
@@ -1153,14 +1157,14 @@ export function ReceiptsClient({
                         </span>
                         <span className="min-w-0 flex-1">
                           <span className="flex min-w-0 items-start justify-between gap-3">
-                            <span className="min-w-0 truncate text-[13px] font-semibold text-[var(--eo-text-primary)]">
+                            <span className="min-w-0 truncate text-hh-table-cell font-semibold text-[var(--hh-text-primary)]">
                               {receipt.workerName}
                             </span>
-                            <span className="worker-receipt-financial-nums shrink-0 text-[15px] font-semibold text-[var(--eo-text-strong)]">
+                            <span className="hh-fin shrink-0 text-hh-body-strong font-semibold text-[var(--hh-text-strong)]">
                               {formatCurrency(receipt.amount)}
                             </span>
                           </span>
-                          <span className="mt-1 flex min-w-0 items-center gap-1.5 text-[11px] text-[var(--eo-text-secondary)]">
+                          <span className="mt-1 flex min-w-0 items-center gap-1.5 text-hh-status text-[var(--hh-text-secondary)]">
                             <span className="truncate font-medium">
                               {receipt.projectId ? receipt.projectName || "—" : "No project"}
                             </span>
@@ -1174,12 +1178,12 @@ export function ReceiptsClient({
                           <span className="mt-1.5 flex flex-wrap items-center gap-2">
                             <ReceiptStatus status={receipt.status} />
                             {missingReceipt ? (
-                              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-[var(--eo-warning)]">
+                              <span className="inline-flex items-center gap-1 text-hh-status font-medium text-[var(--hh-warning)]">
                                 <Paperclip className="h-3 w-3" aria-hidden /> Missing receipt
                               </span>
                             ) : null}
                             {missingProject && !missingReceipt ? (
-                              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-[var(--eo-warning)]">
+                              <span className="inline-flex items-center gap-1 text-hh-status font-medium text-[var(--hh-warning)]">
                                 <AlertTriangle className="h-3 w-3" aria-hidden /> Missing project
                               </span>
                             ) : null}
@@ -1205,12 +1209,12 @@ export function ReceiptsClient({
             aria-label="Worker receipt preview"
             className="hidden min-h-0 min-w-0 overflow-hidden rounded-lg border lg:flex lg:flex-col"
           >
-            <div className="flex min-h-[48px] shrink-0 items-center justify-between gap-3 border-b border-[var(--eo-border)] bg-[var(--eo-depth-structural)] px-3.5 py-2.5">
+            <div className="flex min-h-[48px] shrink-0 items-center justify-between gap-3 border-b border-[var(--hh-border)] bg-[var(--hh-l3-hover)] px-3.5 py-2.5">
               <div className="min-w-0">
-                <h2 className="text-sm font-semibold text-[var(--eo-text-primary)]">
+                <h2 className="text-sm font-semibold text-[var(--hh-text-primary)]">
                   Receipt preview
                 </h2>
-                <p className="mt-0.5 truncate text-[11px] text-[var(--eo-text-tertiary)]">
+                <p className="mt-0.5 truncate text-hh-status text-[var(--hh-text-tertiary)]">
                   {selectedReceipt
                     ? selectedReceipt.receiptUrl?.trim()
                       ? "Submitted evidence"
@@ -1239,8 +1243,8 @@ export function ReceiptsClient({
                   prominent
                 />
               ) : (
-                <div className="flex h-full min-h-[360px] flex-col items-center justify-center px-6 text-center text-[var(--eo-text-secondary)]">
-                  <FileText className="h-6 w-6 text-[var(--eo-text-tertiary)]" aria-hidden />
+                <div className="flex h-full min-h-[360px] flex-col items-center justify-center px-6 text-center text-[var(--hh-text-secondary)]">
+                  <FileText className="h-6 w-6 text-[var(--hh-text-tertiary)]" aria-hidden />
                   <p className="mt-3 text-sm font-medium">Evidence opens here</p>
                 </div>
               )}
@@ -1277,13 +1281,13 @@ export function ReceiptsClient({
               />
             ) : (
               <div className="flex min-h-[520px] w-full flex-col items-center justify-center px-8 text-center">
-                <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--eo-depth-l3-hover)] text-[var(--eo-text-tertiary)]">
+                <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--hh-l3-hover)] text-[var(--hh-text-tertiary)]">
                   <FileText className="h-5 w-5" aria-hidden />
                 </span>
-                <h2 className="mt-4 text-sm font-semibold text-[var(--eo-text-primary)]">
+                <h2 className="mt-4 text-sm font-semibold text-[var(--hh-text-primary)]">
                   Select a worker receipt
                 </h2>
-                <p className="mt-1 max-w-xs text-xs leading-relaxed text-[var(--eo-text-secondary)]">
+                <p className="mt-1 max-w-xs text-xs leading-relaxed text-[var(--hh-text-secondary)]">
                   Review evidence, amount, project context, and available canonical actions without
                   leaving the queue.
                 </p>
@@ -1349,7 +1353,7 @@ export function ReceiptsClient({
           <div className="flex flex-col gap-2">
             <label
               htmlFor="worker-receipt-rejection-reason"
-              className="text-xs font-medium text-[var(--eo-text-secondary)]"
+              className="text-xs font-medium text-[var(--hh-text-secondary)]"
             >
               Reason (optional)
             </label>
@@ -1364,12 +1368,12 @@ export function ReceiptsClient({
           {message ? (
             <div
               role="alert"
-              className="rounded-lg border border-[var(--eo-danger-border)] bg-[var(--eo-danger-soft)] px-3 py-2 text-xs leading-relaxed text-[var(--eo-danger)]"
+              className="rounded-lg border border-[var(--hh-danger-border)] bg-[var(--hh-danger-soft-fill)] px-3 py-2 text-xs leading-relaxed text-[var(--hh-danger)]"
             >
               {message}
             </div>
           ) : null}
-          <DialogFooter className="border-[var(--eo-border)] bg-transparent">
+          <DialogFooter className="border-[var(--hh-border)] bg-transparent">
             <Button type="button" variant="outline" onClick={() => setRejectOpen(false)}>
               Cancel
             </Button>

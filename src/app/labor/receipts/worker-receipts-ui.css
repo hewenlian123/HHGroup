@@ -1,25 +1,25 @@
 .worker-receipts-ui {
   min-height: 100%;
-  background: var(--eo-depth-l0);
-  color: var(--eo-text-primary);
+  background: var(--hh-l0-canvas);
+  color: var(--hh-text-primary);
 }
 
 .worker-receipts-ui [data-worker-receipts-kpis],
 .worker-receipts-ui [data-worker-receipts-queue],
 .worker-receipts-ui [data-worker-receipts-evidence-stage],
 .worker-receipts-ui [data-worker-receipts-detail] {
-  border-color: var(--eo-border);
-  background: var(--eo-depth-l2);
-  box-shadow: var(--eo-shadow-operational);
+  border-color: var(--hh-border);
+  background: var(--hh-l2-operational-surface);
+  box-shadow: var(--hh-shadow-operational);
 }
 
 .worker-receipts-ui [data-worker-receipts-kpis] > div + div {
-  border-left: 1px solid var(--eo-border);
+  border-left: 1px solid var(--hh-border);
 }
 
 .worker-receipts-ui [data-worker-receipt-id] {
-  border-bottom: 1px solid var(--eo-border);
-  background: var(--eo-depth-l2);
+  border-bottom: 1px solid var(--hh-border);
+  background: var(--hh-l2-operational-surface);
   transition:
     background-color 120ms cubic-bezier(0.2, 0, 0, 1),
     box-shadow 120ms cubic-bezier(0.2, 0, 0, 1);
@@ -30,27 +30,27 @@
 }
 
 .worker-receipts-ui [data-worker-receipt-id]:hover {
-  background: var(--eo-depth-l3-hover);
+  background: var(--hh-l3-hover);
 }
 
 .worker-receipts-ui [data-worker-receipt-id][aria-selected="true"] {
-  background: var(--eo-depth-l3-selected);
-  box-shadow: inset 2px 0 0 var(--eo-text-secondary);
+  background: var(--hh-l3-selected);
+  box-shadow: inset 2px 0 0 var(--hh-text-secondary);
 }
 
 .worker-receipts-ui [data-worker-receipt-id]:has(:focus-visible) {
-  background: var(--eo-depth-l3-hover);
-  box-shadow: inset 2px 0 0 var(--eo-text-secondary);
+  background: var(--hh-l3-hover);
+  box-shadow: inset 2px 0 0 var(--hh-text-secondary);
 }
 
 .worker-receipts-ui [data-worker-receipt-id] button:focus-visible,
 .worker-receipts-ui [data-worker-receipt-control]:focus-visible {
-  outline: 2px solid var(--eo-focus-ring);
+  outline: 2px solid var(--hh-focus-ring);
   outline-offset: -2px;
 }
 
 .worker-receipts-ui [data-worker-receipt-id]:active {
-  background: var(--eo-depth-l3-pressed);
+  background: var(--hh-l3-pressed);
 }
 
 .worker-receipts-ui [data-worker-receipts-scroll],
@@ -72,26 +72,15 @@
 }
 
 .worker-receipts-ui [data-worker-receipt-evidence] {
-  border-color: var(--eo-border-floating);
-  background: var(--eo-depth-l4);
-  box-shadow: var(--eo-shadow-operational);
-}
-
-.worker-receipts-ui .worker-receipt-financial-nums,
-.expenses-ui-dialog .worker-receipt-financial-nums {
-  font-family: var(--font-geist-sans), "Geist", "Inter", system-ui, sans-serif;
-  font-variant-numeric: tabular-nums lining-nums;
-  font-feature-settings:
-    "tnum" 1,
-    "lnum" 1,
-    "zero" 0;
-  letter-spacing: 0;
+  border-color: var(--hh-border-floating);
+  background: var(--hh-l4-floating-surface);
+  box-shadow: var(--hh-shadow-operational);
 }
 
 .worker-receipts-ui .worker-receipt-approve,
 .expenses-ui-dialog .worker-receipt-approve {
   border-color: transparent !important;
-  background: var(--eo-success) !important;
+  background: var(--hh-success) !important;
   color: #fff !important;
 }
 
@@ -102,14 +91,14 @@
 
 .worker-receipts-ui .worker-receipt-reject,
 .expenses-ui-dialog .worker-receipt-reject {
-  border-color: var(--eo-danger-border) !important;
+  border-color: var(--hh-danger-border) !important;
   background: transparent !important;
-  color: var(--eo-danger) !important;
+  color: var(--hh-danger) !important;
 }
 
 .worker-receipts-ui .worker-receipt-reject:hover,
 .expenses-ui-dialog .worker-receipt-reject:hover {
-  background: var(--eo-danger-soft) !important;
+  background: var(--hh-danger-soft-fill) !important;
 }
 
 .worker-receipts-ui [data-worker-receipts-master-detail] {
@@ -117,25 +106,25 @@
 }
 
 .worker-receipts-ui [data-worker-receipts-evidence-stage] {
-  background: var(--eo-depth-structural);
+  background: var(--hh-l3-hover);
 }
 
 .worker-receipts-ui [data-worker-receipts-evidence-stage] [data-worker-receipt-evidence] {
   background: white;
-  box-shadow: var(--eo-shadow-focused);
+  box-shadow: var(--hh-shadow-floating);
 }
 
 .expenses-ui-dialog[data-expense-component-surface="worker-receipt-detail"] {
-  background: var(--eo-depth-l5) !important;
-  border-color: var(--eo-border-floating) !important;
-  box-shadow: var(--eo-shadow-task) !important;
+  background: var(--hh-l5-task-surface) !important;
+  border-color: var(--hh-border-floating) !important;
+  box-shadow: var(--hh-shadow-task) !important;
 }
 
 .expenses-ui-dialog[data-expense-component-surface="worker-receipt-detail"]
   [data-worker-receipt-evidence] {
-  border-color: var(--eo-border-floating);
-  background: var(--eo-depth-l4);
-  box-shadow: var(--eo-shadow-operational);
+  border-color: var(--hh-border-floating);
+  background: var(--hh-l4-floating-surface);
+  box-shadow: var(--hh-shadow-operational);
 }
 
 @media (max-width: 1023px) {
@@ -144,7 +133,7 @@
   }
 
   .worker-receipts-ui [data-worker-receipts-kpis] > div {
-    border-bottom: 1px solid var(--eo-border);
+    border-bottom: 1px solid var(--hh-border);
   }
 
   .worker-receipts-ui [data-worker-receipts-kpis] > div:last-child {

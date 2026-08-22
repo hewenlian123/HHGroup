@@ -66,10 +66,10 @@ type Props = {
 };
 
 const advKpiTile =
-  "rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)] md:rounded-xl";
+  "rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-operational md:rounded-hh-task";
 
 const advKpiIcon =
-  "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] text-[var(--neo-text-secondary)] md:h-8 md:w-8";
+  "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[var(--hh-border)] bg-[var(--hh-l3-hover)] text-[var(--hh-text-secondary)] md:h-8 md:w-8";
 
 const AVATAR_RING = [
   "bg-zinc-200/80 text-zinc-800 dark:bg-zinc-700/50 dark:text-zinc-100",
@@ -493,12 +493,12 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
   const fetchBusy = loading;
 
   const selectFieldClass =
-    "h-10 w-full min-w-0 rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-3 text-sm text-[var(--neo-text-primary)] shadow-none transition-colors hover:bg-[var(--neo-surface-muted)] focus-visible:border-[var(--neo-gold)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]";
+    "h-10 w-full min-w-0 rounded-hh-compact border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 text-sm text-[var(--hh-text-primary)] shadow-none transition-colors hover:bg-[var(--hh-l3-hover)] focus-visible:border-[var(--hh-action-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)]";
 
   const dateInputClass = cn(
     selectFieldClass,
-    "font-mono text-[13px] tabular-nums text-[var(--neo-text-secondary)] [color-scheme:dark]",
-    "bg-[var(--neo-surface-muted)] hover:bg-[var(--neo-surface-muted)]"
+    "hh-fin text-hh-table-cell tabular-nums text-[var(--hh-text-secondary)] ",
+    "bg-[var(--hh-l3-hover)] hover:bg-[var(--hh-l3-hover)]"
   );
 
   const searchInput = (
@@ -508,7 +508,7 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
         placeholder="Search notes…"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        className="h-11 min-h-[44px] border-[var(--neo-border)] bg-[var(--neo-surface-raised)] pl-8 text-sm text-[var(--neo-text-primary)] shadow-none hover:bg-[var(--neo-surface-muted)] focus-visible:border-[var(--neo-gold)] focus-visible:ring-[var(--neo-gold-ring)] md:h-10 md:min-h-10"
+        className="h-11 min-h-[44px] border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] pl-8 text-sm text-[var(--hh-text-primary)] shadow-none hover:bg-[var(--hh-l3-hover)] focus-visible:border-[var(--hh-action-primary)] focus-visible:ring-[var(--hh-focus-ring)] md:h-10 md:min-h-10"
         aria-label="Search advances"
       />
     </div>
@@ -579,35 +579,35 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
   return (
     <div
       className={cn(
-        "dark neo-page-on-graphite min-w-0 overflow-x-hidden pb-[max(1rem,env(safe-area-inset-bottom,0px))] pt-[max(0.35rem,env(safe-area-inset-top,0px))] text-[var(--neo-canvas-text-secondary)]",
+        " min-w-0 overflow-x-hidden pb-[max(1rem,env(safe-area-inset-bottom,0px))] pt-[max(0.35rem,env(safe-area-inset-top,0px))] text-[var(--hh-text-secondary)]",
         "flex flex-col"
       )}
     >
       <div
         className={cn(
-          "neo-page-on-graphite page-shell-wide mx-auto flex w-full max-w-[430px] flex-1 flex-col gap-2 px-4 py-2 pb-4 sm:max-w-[460px] md:gap-2 md:px-6 md:pb-6 md:pt-3",
+          " page-shell-wide mx-auto flex w-full max-w-[430px] flex-1 flex-col gap-2 px-4 py-2 pb-4 sm:max-w-[460px] md:gap-2 md:px-6 md:pb-6 md:pt-3",
           mobileListPagePaddingClass,
           "max-md:!gap-2"
         )}
       >
-        <div className="flex flex-col gap-2 border-b border-[var(--neo-border)] pb-2 pt-1">
+        <div className="flex flex-col gap-2 border-b border-[var(--hh-border)] pb-2 pt-1">
           <div className="flex flex-wrap items-center gap-2">
             <Button
               asChild
               variant="outline"
               size="sm"
-              className="min-h-11 rounded-full border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-3 text-[13px] font-semibold text-[var(--neo-text-primary)] shadow-none hover:border-[rgb(216_180_106_/_0.36)] hover:bg-[var(--neo-surface-muted)] hover:text-[var(--neo-gold-soft)] md:min-h-9"
+              className="min-h-11 rounded-full border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 text-hh-table-cell font-semibold text-[var(--hh-text-primary)] shadow-none border-[var(--hh-warning-border)] hover:bg-[var(--hh-l3-hover)] hover:text-[var(--hh-action-primary)] md:min-h-9"
             >
               <Link href={returnHref}>{returnLabel}</Link>
             </Button>
-            <span className="text-xs text-[var(--neo-text-tertiary)]">
+            <span className="text-xs text-[var(--hh-text-tertiary)]">
               Worker Center{sourceWorkerName ? ` › ${sourceWorkerName}` : ""} › Advances
             </span>
           </div>
         </div>
         <div className="hidden md:block">
           <PageHeader
-            className="gap-1 border-b border-white/10 pb-3 lg:items-baseline lg:gap-x-4 [&_h1]:!text-[24px] [&_h1]:!font-semibold [&_h1]:!leading-none [&_h1]:!tracking-normal [&_h1]:!text-[var(--neo-canvas-text-primary)] [&_p]:!mt-1 [&_p]:!max-w-xl [&_p]:!text-[14px] [&_p]:!leading-snug [&_p]:!text-[var(--neo-canvas-text-secondary)]"
+            className="gap-1 border-b border-[var(--hh-border)] pb-3 lg:items-baseline lg:gap-x-4 [&_h1]:!text-hh-financial-total [&_h1]:!font-semibold [&_h1]:!leading-none [&_h1]:!tracking-normal [&_h1]:!text-[var(--hh-text-primary)] [&_p]:!mt-1 [&_p]:!max-w-xl [&_p]:!text-hh-body [&_p]:!leading-snug [&_p]:!text-[var(--hh-text-secondary)]"
             title="Worker Advances"
             subtitle="Track salary advances and deductions for workers."
             actions={
@@ -647,13 +647,13 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
                 <DollarSign className="h-3 w-3 md:h-3.5 md:w-3.5" strokeWidth={1.75} aria-hidden />
               </span>
               <div className="min-w-0 flex-1">
-                <p className="text-[8px] font-medium uppercase leading-none tracking-wide text-muted-foreground md:text-[9px] md:normal-case md:tracking-normal">
+                <p className="text-hh-status font-medium uppercase leading-none tracking-normal text-muted-foreground md:text-hh-status md:normal-case md:tracking-normal">
                   Total advanced
                 </p>
                 <p className="mt-0.5 truncate text-base font-medium tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
                   {formatCurrency(summary.totalAdvanced)}
                 </p>
-                <p className="mt-0.5 text-[9px] leading-none text-muted-foreground">All time</p>
+                <p className="mt-0.5 text-hh-status leading-none text-muted-foreground">All time</p>
               </div>
             </div>
             <div
@@ -666,13 +666,13 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
                 <ListOrdered className="h-3 w-3 md:h-3.5 md:w-3.5" strokeWidth={1.75} aria-hidden />
               </span>
               <div className="min-w-0 flex-1">
-                <p className="text-[8px] font-medium uppercase leading-none tracking-wide text-muted-foreground md:text-[9px] md:normal-case md:tracking-normal">
+                <p className="text-hh-status font-medium uppercase leading-none tracking-normal text-muted-foreground md:text-hh-status md:normal-case md:tracking-normal">
                   Active advances
                 </p>
                 <p className="mt-0.5 text-base font-medium tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
                   {summary.activeAdvances}
                 </p>
-                <p className="mt-0.5 text-[9px] leading-none text-muted-foreground">Pending</p>
+                <p className="mt-0.5 text-hh-status leading-none text-muted-foreground">Pending</p>
               </div>
             </div>
             <div
@@ -685,13 +685,13 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
                 <Users className="h-3 w-3 md:h-3.5 md:w-3.5" strokeWidth={1.75} aria-hidden />
               </span>
               <div className="min-w-0 flex-1">
-                <p className="text-[8px] font-medium uppercase leading-none tracking-wide text-muted-foreground md:text-[9px] md:normal-case md:tracking-normal">
+                <p className="text-hh-status font-medium uppercase leading-none tracking-normal text-muted-foreground md:text-hh-status md:normal-case md:tracking-normal">
                   Workers
                 </p>
                 <p className="mt-0.5 text-base font-medium tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
                   {summary.workers}
                 </p>
-                <p className="mt-0.5 text-[9px] leading-none text-muted-foreground">
+                <p className="mt-0.5 text-hh-status leading-none text-muted-foreground">
                   With advances
                 </p>
               </div>
@@ -710,13 +710,15 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
                 />
               </span>
               <div className="min-w-0 flex-1">
-                <p className="text-[8px] font-medium uppercase leading-none tracking-wide text-muted-foreground md:text-[9px] md:normal-case md:tracking-normal">
+                <p className="text-hh-status font-medium uppercase leading-none tracking-normal text-muted-foreground md:text-hh-status md:normal-case md:tracking-normal">
                   Avg advance
                 </p>
                 <p className="mt-0.5 truncate text-base font-medium tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
                   {formatCurrency(summary.avgAdvance)}
                 </p>
-                <p className="mt-0.5 text-[9px] leading-none text-muted-foreground">Per advance</p>
+                <p className="mt-0.5 text-hh-status leading-none text-muted-foreground">
+                  Per advance
+                </p>
               </div>
             </div>
             <div
@@ -733,13 +735,13 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
                 />
               </span>
               <div className="min-w-0 flex-1">
-                <p className="text-[8px] font-medium uppercase leading-none tracking-wide text-muted-foreground md:text-[9px] md:normal-case md:tracking-normal">
+                <p className="text-hh-status font-medium uppercase leading-none tracking-normal text-muted-foreground md:text-hh-status md:normal-case md:tracking-normal">
                   This month
                 </p>
                 <p className="mt-0.5 truncate text-base font-medium tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
                   {formatCurrency(summary.thisMonth)}
                 </p>
-                <p className="mt-0.5 truncate text-[9px] leading-none text-muted-foreground">
+                <p className="mt-0.5 truncate text-hh-status leading-none text-muted-foreground">
                   {thisMonthLabel()}
                 </p>
               </div>
@@ -781,7 +783,7 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
             type="button"
             variant="outline"
             size="sm"
-            className="h-10 w-full shrink-0 gap-1.5 rounded-sm border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-none hover:bg-[var(--neo-surface-muted)] lg:ml-auto lg:w-auto"
+            className="h-10 w-full shrink-0 gap-1.5 rounded-hh-compact border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-none hover:bg-[var(--hh-l3-hover)] lg:ml-auto lg:w-auto"
             onClick={() => void load()}
             disabled={fetchBusy}
           >
@@ -856,7 +858,7 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
             type="button"
             variant="outline"
             size="sm"
-            className="h-11 min-h-[44px] w-full rounded-sm"
+            className="h-11 min-h-[44px] w-full rounded-hh-compact"
             disabled={fetchBusy}
             onClick={() => {
               void load();
@@ -868,7 +870,7 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
           </Button>
           <Button
             type="button"
-            className="h-11 min-h-[44px] w-full rounded-sm"
+            className="h-11 min-h-[44px] w-full rounded-hh-compact"
             onClick={() => setFiltersOpen(false)}
           >
             Done
@@ -904,7 +906,7 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
             </div>
           ) : rows.length === 0 ? (
             <NeoMobileCard className="px-4 py-10 text-center">
-              <p className="text-sm font-medium text-[var(--neo-text-primary)]">No advances yet</p>
+              <p className="text-sm font-medium text-[var(--hh-text-primary)]">No advances yet</p>
               <p className="mt-1 text-xs text-muted-foreground">
                 Create an advance to track salary prepayments and deductions.
               </p>
@@ -930,7 +932,7 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
                     <div className="flex min-w-0 flex-1 items-start gap-3">
                       <span
                         className={cn(
-                          "flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[12px] font-semibold leading-none tabular-nums antialiased",
+                          "flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-hh-metadata font-semibold leading-none tabular-nums antialiased",
                           workerAvatarRing,
                           avatarRingClass(row.workerId)
                         )}
@@ -958,7 +960,7 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
                     </div>
                   </div>
                   <div className="flex flex-wrap items-end justify-between gap-2 border-b border-zinc-100/70 pb-2 dark:border-border/40">
-                    <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                    <span className="text-hh-status font-medium uppercase tracking-normal text-muted-foreground">
                       Amount
                     </span>
                     <NeoAmount className="max-w-full min-w-0 text-right text-xl">
@@ -967,7 +969,7 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
                   </div>
                   <dl className="grid grid-cols-1 gap-x-3 gap-y-2 text-xs sm:grid-cols-2">
                     <div className="min-w-0">
-                      <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                      <dt className="text-hh-status font-medium uppercase tracking-normal text-muted-foreground">
                         Date
                       </dt>
                       <dd className={cn("truncate pt-0.5", LEDGER_DATE_CLASS)}>
@@ -975,7 +977,7 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
                       </dd>
                     </div>
                     <div className="min-w-0">
-                      <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                      <dt className="text-hh-status font-medium uppercase tracking-normal text-muted-foreground">
                         Project
                       </dt>
                       <dd className="truncate pt-0.5 text-sm text-zinc-700 dark:text-zinc-200">
@@ -983,7 +985,7 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
                       </dd>
                     </div>
                     <div className="min-w-0 sm:col-span-2">
-                      <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                      <dt className="text-hh-status font-medium uppercase tracking-normal text-muted-foreground">
                         Notes
                       </dt>
                       <dd className={cn("line-clamp-2 break-words pt-0.5", TYPO.pageSubtitle)}>
@@ -1007,14 +1009,14 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
           busy={refreshing && rows.length > 0}
         >
           <thead>
-            <tr className="border-b border-[var(--neo-border)] bg-[var(--neo-surface-muted)]">
+            <tr className="border-b border-[var(--hh-border)] bg-[var(--hh-l3-hover)]">
               <th className={cn(thClass, "min-w-[200px]")}>Worker</th>
               <th className={cn(thClass, "min-w-[120px]")}>Project</th>
               <th className={cn(thRight, "min-w-[100px]")}>Amount</th>
               <th className={cn(thRight, "whitespace-nowrap")}>Date</th>
               <th className={cn(thClass, "min-w-[100px]")}>Status</th>
               <th className={cn(thClass, "min-w-[140px]")}>Notes</th>
-              <th className="w-12 px-2 py-2 text-right align-middle text-[10px] font-medium uppercase leading-none tracking-normal text-[var(--neo-text-secondary)]">
+              <th className="w-12 px-2 py-2 text-right align-middle text-hh-status font-medium uppercase leading-none tracking-normal text-[var(--hh-text-secondary)]">
                 <span className="sr-only">Actions</span>
               </th>
             </tr>
@@ -1048,7 +1050,7 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
                     <Skeleton className="h-4 w-32" />
                   </td>
                   <td className="px-2 py-2.5 text-right">
-                    <Skeleton className="ml-auto h-8 w-8 rounded-sm" />
+                    <Skeleton className="ml-auto h-8 w-8 rounded-hh-compact" />
                   </td>
                 </tr>
               ))
@@ -1085,7 +1087,7 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
                     <div className="flex min-w-0 items-center gap-2.5">
                       <span
                         className={cn(
-                          "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold leading-none tabular-nums antialiased",
+                          "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-hh-status font-semibold leading-none tabular-nums antialiased",
                           workerAvatarRing,
                           avatarRingClass(row.workerId)
                         )}

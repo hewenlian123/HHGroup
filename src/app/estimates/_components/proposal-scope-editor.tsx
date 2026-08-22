@@ -78,7 +78,7 @@ export function ProposalScopeEditor({
   const comfortable = density === "comfortable";
   const rowPad = comfortable ? "py-2.5" : "py-2 md:py-1.5";
   const textClass = comfortable
-    ? "text-[15px] leading-[1.55] tracking-[-0.01em] text-zinc-100"
+    ? "text-hh-section-title leading-[1.55] tracking-normal text-zinc-100"
     : "text-sm leading-[1.5] text-zinc-100";
 
   const onRowTextChange = (rowId: string, text: string): void => {
@@ -180,7 +180,7 @@ export function ProposalScopeEditor({
     >
       {isEmpty && !disabled ? (
         <p
-          className="pointer-events-none select-none px-2 pb-1 text-[13px] leading-snug text-zinc-500/90"
+          className="pointer-events-none select-none px-2 pb-1 text-hh-table-cell leading-snug text-zinc-500/90"
           aria-hidden
         >
           {placeholder}
@@ -202,7 +202,7 @@ export function ProposalScopeEditor({
                 <span
                   className={cn(
                     "mt-2.5 flex w-4 shrink-0 justify-center font-serif text-zinc-500 md:hidden",
-                    comfortable ? "text-[15px]" : "text-sm"
+                    comfortable ? "text-hh-section-title" : "text-sm"
                   )}
                   aria-hidden
                 >
@@ -219,7 +219,7 @@ export function ProposalScopeEditor({
               <span
                 className={cn(
                   "mt-2.5 flex w-4 shrink-0 justify-center font-serif text-zinc-500",
-                  comfortable ? "text-[15px]" : "text-sm"
+                  comfortable ? "text-hh-section-title" : "text-sm"
                 )}
                 aria-hidden
               >

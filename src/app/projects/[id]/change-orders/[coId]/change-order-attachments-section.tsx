@@ -62,18 +62,18 @@ export function ChangeOrderAttachmentsSection({
       <SectionHeader label="Attachments" />
       <Divider />
       {attachments.length === 0 && readOnly ? (
-        <p className="py-4 text-sm text-muted-foreground">No attachments.</p>
+        <p className="py-4 text-hh-body text-[var(--hh-text-secondary)]">No attachments.</p>
       ) : (
         <ul className="space-y-2 py-2">
           {attachments.map((att) => (
             <li
               key={att.id}
-              className="flex items-center justify-between gap-2 rounded border border-border/60 px-3 py-2 text-sm"
+              className="flex items-center justify-between gap-2 rounded border border-border/60 px-3 py-2 text-hh-body"
             >
               <span className="flex items-center gap-2 truncate">
-                <Paperclip className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <Paperclip className="h-4 w-4 shrink-0 text-[var(--hh-text-secondary)]" />
                 <span className="truncate font-medium">{att.fileName}</span>
-                <span className="text-muted-foreground">
+                <span className="text-[var(--hh-text-secondary)]">
                   {att.sizeBytes > 0 ? ` (${(att.sizeBytes / 1024).toFixed(1)} KB)` : ""}
                 </span>
               </span>
@@ -82,7 +82,7 @@ export function ChangeOrderAttachmentsSection({
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="btn-outline-ghost h-8 w-8 shrink-0 p-0 text-muted-foreground hover:text-destructive"
+                  className="btn-outline-ghost h-8 w-8 shrink-0 p-0 text-[var(--hh-text-secondary)] hover:text-destructive"
                   onClick={() => handleDelete(att.id)}
                   disabled={pending}
                 >
@@ -98,13 +98,13 @@ export function ChangeOrderAttachmentsSection({
           <input
             type="file"
             name="file"
-            className="max-w-[220px] text-sm file:mr-2 file:rounded file:border-0 file:bg-muted file:px-3 file:py-1.5 file:text-sm"
+            className="max-w-[220px] text-hh-body file:mr-2 file:rounded file:border-0 file:bg-muted file:px-3 file:py-1.5 file:text-hh-body"
             disabled={pending}
           />
           <Button type="submit" size="sm" disabled={pending}>
             {pending ? "Uploading…" : "Upload"}
           </Button>
-          {error && <span className="text-xs text-destructive">{error}</span>}
+          {error && <span className="text-hh-metadata text-destructive">{error}</span>}
         </form>
       )}
     </>

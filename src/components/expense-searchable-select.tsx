@@ -234,8 +234,8 @@ export function ExpenseSearchableSelect({
           data-expense-combobox-trigger="true"
           onKeyDown={handleTriggerKeyDown}
           className={cn(
-            "flex h-10 min-h-10 w-full min-w-0 items-center justify-between gap-2 rounded-[7px] border border-border/60 bg-background px-3 text-left text-sm text-foreground shadow-none transition-colors duration-150",
-            "hover:border-[var(--eo-border-strong,var(--neo-border-strong))] hover:bg-muted/50 focus-visible:border-[var(--eo-border-strong,var(--neo-border-strong))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--eo-focus-ring,var(--neo-gold-ring))]",
+            "flex h-10 min-h-10 w-full min-w-0 items-center justify-between gap-2 rounded-hh-compact border border-border/60 bg-background px-3 text-left text-sm text-foreground shadow-none transition-colors duration-150",
+            "hover:border-[var(--hh-border-strong)] hover:bg-muted/50 focus-visible:border-[var(--hh-border-strong)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)]",
             "disabled:cursor-not-allowed disabled:opacity-55 max-md:h-11 max-md:min-h-11 max-md:text-base",
             className
           )}
@@ -254,7 +254,7 @@ export function ExpenseSearchableSelect({
         data-expense-combobox-content="true"
         data-expense-component-surface="combobox"
         className={cn(
-          "expenses-ui-dialog z-[220] w-[min(var(--radix-popover-trigger-width),calc(100vw-1rem))] min-w-[min(16rem,calc(100vw-1rem))] overflow-hidden rounded-[10px] border-border/70 bg-popover p-0 text-popover-foreground shadow-[var(--eo-shadow-overlay)]",
+          "expenses-ui-dialog z-[220] w-[min(var(--radix-popover-trigger-width),calc(100vw-1rem))] min-w-[min(16rem,calc(100vw-1rem))] overflow-hidden rounded-hh-standard border-border/70 bg-popover p-0 text-popover-foreground shadow-floating",
           "max-md:max-h-[min(22rem,calc(100svh-8rem))]",
           contentClassName
         )}
@@ -266,7 +266,7 @@ export function ExpenseSearchableSelect({
         onEscapeKeyDown={(event) => event.stopPropagation()}
       >
         <div className="border-b border-border/60 p-2">
-          <div className="flex h-9 items-center gap-2 rounded-md border border-border/60 bg-background px-2.5 focus-within:border-[var(--eo-border-strong,var(--neo-border-strong))] focus-within:ring-2 focus-within:ring-[var(--eo-focus-ring,var(--neo-gold-ring))] max-md:h-11">
+          <div className="flex h-9 items-center gap-2 rounded-md border border-border/60 bg-background px-2.5 focus-within:border-[var(--hh-border-strong)] focus-within:ring-2 focus-within:ring-[var(--hh-focus-ring)] max-md:h-11">
             <Search className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
             <input
               ref={inputRef}
@@ -304,8 +304,8 @@ export function ExpenseSearchableSelect({
                     role="option"
                     aria-selected={false}
                     className={cn(
-                      "flex min-h-9 w-full items-center px-3 py-2 text-left text-sm font-medium text-[var(--eo-text-primary,var(--neo-text-primary))] transition-colors max-md:min-h-11 max-md:text-base",
-                      isActive && "bg-[var(--eo-surface-selected)] text-[var(--neo-text-primary)]"
+                      "flex min-h-9 w-full items-center px-3 py-2 text-left text-sm font-medium text-[var(--hh-text-primary)] transition-colors max-md:min-h-11 max-md:text-base",
+                      isActive && "bg-[var(--hh-l3-selected)] text-[var(--hh-text-primary)]"
                     )}
                     onMouseEnter={() => setActiveIndex(index)}
                     onMouseDown={(event) => event.preventDefault()}
@@ -328,7 +328,7 @@ export function ExpenseSearchableSelect({
                     "flex min-h-9 w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors max-md:min-h-11 max-md:text-base",
                     "disabled:cursor-not-allowed disabled:opacity-50",
                     isActive
-                      ? "bg-[var(--eo-surface-selected)] text-foreground"
+                      ? "bg-[var(--hh-l3-selected)] text-foreground"
                       : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
                     selectedOption && "text-foreground"
                   )}
@@ -338,7 +338,10 @@ export function ExpenseSearchableSelect({
                 >
                   <span className="min-w-0 flex-1 truncate">{entry.option.label}</span>
                   {selectedOption ? (
-                    <Check className="h-4 w-4 shrink-0 text-[var(--neo-gold)]" aria-hidden />
+                    <Check
+                      className="h-4 w-4 shrink-0 text-[var(--hh-action-primary)]"
+                      aria-hidden
+                    />
                   ) : null}
                 </button>
               );

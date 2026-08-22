@@ -32,7 +32,7 @@ export function ProposalPaymentMilestoneList({
     return (
       <div className={cn(EB.paymentEmptyBox, className)}>
         <Wallet className={cn("h-5 w-5", EB.paymentEmptyIcon)} aria-hidden />
-        <p className={cn("text-[14px] leading-snug", EB.paymentEmpty)}>{emptyMessage}</p>
+        <p className={cn("text-hh-body leading-snug", EB.paymentEmpty)}>{emptyMessage}</p>
       </div>
     );
   }
@@ -52,11 +52,11 @@ export function ProposalPaymentMilestoneList({
           >
             <div className="min-w-0 flex-1 space-y-0.5">
               <div className="flex flex-wrap items-center gap-2">
-                <p className="text-[14px] font-semibold leading-snug tracking-[-0.01em] text-foreground">
+                <p className="text-hh-body font-semibold leading-snug tracking-normal text-foreground">
                   {m.title.trim() || "—"}
                 </p>
                 {m.status ? (
-                  <span className="rounded-sm border border-border bg-muted/60 px-1.5 py-0.5 text-[10.5px] font-medium capitalize leading-none text-muted-foreground">
+                  <span className="rounded-sm border border-border bg-muted/60 px-1.5 py-0.5 text-hh-status font-medium capitalize leading-none text-muted-foreground">
                     {m.status}
                   </span>
                 ) : null}
@@ -66,19 +66,19 @@ export function ProposalPaymentMilestoneList({
                   text={m.description}
                   variant="compact"
                   maxBullets={2}
-                  className="text-[13px] leading-snug text-muted-foreground"
+                  className="text-hh-table-cell leading-snug text-muted-foreground"
                 />
               ) : null}
               {dueLabel ? (
-                <p className="text-[13px] leading-snug text-muted-foreground">{dueLabel}</p>
+                <p className="text-hh-table-cell leading-snug text-muted-foreground">{dueLabel}</p>
               ) : null}
             </div>
             <div className="flex shrink-0 items-center gap-2">
               <span className="text-right">
-                <span className="block text-[10px] font-medium text-muted-foreground">
+                <span className="block text-hh-status font-medium text-muted-foreground">
                   Milestone amount
                 </span>
-                <span className="mt-0.5 block text-[14px] font-semibold tabular-nums tracking-[-0.01em] text-foreground [font-feature-settings:'tnum']">
+                <span className="mt-0.5 block text-hh-body font-semibold tabular-nums tracking-normal text-foreground hh-fin">
                   {formatEstimateCurrency(m.amount)}
                 </span>
               </span>

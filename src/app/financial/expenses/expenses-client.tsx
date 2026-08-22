@@ -242,15 +242,15 @@ const ExpenseInboxTransactionList = dynamic(
 
 /** HH Finance OS — visual parity with Finance Owner dashboard (presentation only). */
 const financeOsPageWrap =
-  "financial-nums expenses-ui min-w-0 overflow-x-hidden bg-[var(--eo-depth-l1)] pb-[max(1rem,env(safe-area-inset-bottom,0px))] pt-[max(0.35rem,env(safe-area-inset-top,0px))] text-[var(--eo-text-secondary)]";
+  "financial-nums expenses-ui min-w-0 overflow-x-hidden bg-[var(--hh-l1-workspace)] pb-[max(1rem,env(safe-area-inset-bottom,0px))] pt-[max(0.35rem,env(safe-area-inset-top,0px))] text-[var(--hh-text-secondary)]";
 
 const financeOsListShell = "overflow-hidden p-0";
 
 const financeToolbarButtonClass =
-  "h-9 shrink-0 rounded-lg border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-xs font-medium text-[var(--neo-text-primary)] shadow-none transition-colors duration-150 hover:bg-[var(--neo-surface-muted)] focus-visible:ring-[var(--neo-gold-ring)]";
+  "h-9 shrink-0 rounded-lg border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-xs font-medium text-[var(--hh-text-primary)] shadow-none transition-colors duration-150 hover:bg-[var(--hh-l3-hover)] focus-visible:ring-[var(--hh-focus-ring)]";
 
 const financePrimaryActionClass =
-  "border-transparent bg-[var(--eo-action-primary)] text-[var(--eo-action-primary-text)] shadow-none hover:bg-[var(--eo-action-primary-hover)] focus-visible:ring-[var(--eo-focus-ring)]";
+  "border-transparent bg-[var(--hh-action-primary)] text-[var(--hh-action-primary-foreground)] shadow-none hover:bg-[var(--hh-action-primary)] focus-visible:ring-[var(--hh-focus-ring)]";
 
 function mergeExpenseReviewPatch(e: Expense, p: ExpenseReviewSavePatch): Expense {
   const nextLines =
@@ -366,7 +366,7 @@ type ExpensesAdvancedFiltersFieldsProps = {
 };
 
 const EXPENSE_FILTER_FIELD_LABEL_CLASS =
-  "text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--eo-text-tertiary,var(--neo-text-tertiary))]";
+  "text-hh-status font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]";
 
 function ExpensesAdvancedFiltersFields({
   projectFilter,
@@ -410,7 +410,9 @@ function ExpensesAdvancedFiltersFields({
         </Select>
       </div>
       {projectsError ? (
-        <span className="text-[11px] text-amber-600 dark:text-amber-400">{projectsError}</span>
+        <span className="text-hh-status text-[var(--hh-warning)] dark:text-[var(--hh-warning)]">
+          {projectsError}
+        </span>
       ) : null}
       <div className="grid gap-1.5">
         <span className={EXPENSE_FILTER_FIELD_LABEL_CLASS}>Category</span>
@@ -2178,12 +2180,12 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
             )}
           >
             <div className="min-w-0 flex-1">
-              <h1 className="text-[17px] font-semibold leading-tight tracking-normal text-[var(--fieldbook-ink)]">
+              <h1 className="text-hh-page-title tracking-normal text-[var(--hh-text-primary)]">
                 {pageTitle}
               </h1>
               <p
                 className={cn(
-                  "text-[11px] leading-snug text-[var(--fieldbook-muted)]",
+                  "text-hh-status leading-snug text-[var(--hh-text-secondary)]",
                   inboxMode ? "mt-0.5 line-clamp-2" : "mt-1 hidden sm:line-clamp-2"
                 )}
               >
@@ -2201,32 +2203,32 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
           {inboxMode ? (
             <div
               data-inbox-queue-summary
-              className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-[var(--neo-border)] pb-2 md:-mt-1 md:pb-2"
+              className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-[var(--hh-border)] pb-2 md:-mt-1 md:pb-2"
               aria-label="Inbox queue summary"
             >
               <span
                 data-inbox-queue-state="pending"
-                className="inline-flex min-h-8 items-center gap-1.5 rounded-md border border-transparent bg-transparent px-1.5 py-1 text-[11px] text-[var(--neo-text-secondary)]"
+                className="inline-flex min-h-8 items-center gap-1.5 rounded-md border border-transparent bg-transparent px-1.5 py-1 text-hh-status text-[var(--hh-text-secondary)]"
               >
-                <span className="font-semibold tabular-nums text-[var(--neo-text-primary)]">
+                <span className="font-semibold tabular-nums text-[var(--hh-text-primary)]">
                   {inboxReviewStats.pending}
                 </span>
                 pending
               </span>
               <span
                 data-inbox-queue-state="missing-info"
-                className="inline-flex min-h-8 items-center gap-1.5 rounded-md border border-transparent bg-transparent px-1.5 py-1 text-[11px] text-[var(--neo-text-secondary)]"
+                className="inline-flex min-h-8 items-center gap-1.5 rounded-md border border-transparent bg-transparent px-1.5 py-1 text-hh-status text-[var(--hh-text-secondary)]"
               >
-                <span className="font-semibold tabular-nums text-[var(--neo-text-primary)]">
+                <span className="font-semibold tabular-nums text-[var(--hh-text-primary)]">
                   {inboxReviewStats.missingInfo}
                 </span>
                 missing info
               </span>
               <span
                 data-inbox-queue-state="missing-receipt"
-                className="inline-flex min-h-8 items-center gap-1.5 rounded-md border border-transparent bg-transparent px-1.5 py-1 text-[11px] text-[var(--eo-warning)]"
+                className="inline-flex min-h-8 items-center gap-1.5 rounded-md border border-transparent bg-transparent px-1.5 py-1 text-hh-status text-[var(--hh-warning)]"
               >
-                <span className="font-semibold tabular-nums text-[var(--neo-text-primary)]">
+                <span className="font-semibold tabular-nums text-[var(--hh-text-primary)]">
                   {inboxReviewStats.missingReceipt}
                 </span>
                 no receipt
@@ -2240,7 +2242,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
           >
             <PageHeader
               className={cn(
-                "border-b-0 pb-3 [&_h1]:!text-[24px] [&_h1]:!font-semibold [&_h1]:!leading-none [&_h1]:!tracking-normal [&_h1]:!text-[var(--fieldbook-ink)] [&_p]:!mt-1 [&_p]:!max-w-xl [&_p]:!text-[14px] [&_p]:!leading-snug [&_p]:!text-[var(--fieldbook-muted)]",
+                "border-b-0 pb-3 [&_h1]:!text-hh-page-title [&_h1]:!tracking-normal [&_p]:!mt-1 [&_p]:!max-w-xl [&_p]:!text-hh-body",
                 inboxMode ? "gap-2 lg:items-baseline lg:gap-x-4 lg:gap-y-2" : "gap-3"
               )}
               title={pageTitle}
@@ -2260,7 +2262,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
             <section
               data-inbox-decision-brief
               aria-label="Expense decision brief"
-              className="-mt-0.5 overflow-hidden border-y border-[var(--neo-border)] bg-transparent text-[var(--neo-text-primary)] md:-mt-1"
+              className="-mt-0.5 overflow-hidden border-y border-[var(--hh-border)] bg-transparent text-[var(--hh-text-primary)] md:-mt-1"
             >
               <dl className="grid grid-cols-2 md:grid-cols-4">
                 {[
@@ -2285,15 +2287,15 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                     key={metric.label}
                     className={cn(
                       "min-w-0 px-3 py-2 md:px-3.5 md:py-2.5",
-                      index % 2 === 1 && "border-l border-[var(--neo-border)]",
-                      index >= 2 && "border-t border-[var(--neo-border)] md:border-t-0",
-                      index >= 1 && "md:border-l md:border-[var(--neo-border)]"
+                      index % 2 === 1 && "border-l border-[var(--hh-border)]",
+                      index >= 2 && "border-t border-[var(--hh-border)] md:border-t-0",
+                      index >= 1 && "md:border-l md:border-[var(--hh-border)]"
                     )}
                   >
-                    <dt className="truncate text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--neo-text-tertiary)]">
+                    <dt className="truncate text-hh-status font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                       {metric.label}
                     </dt>
-                    <dd className="mt-1 truncate text-[15px] font-semibold tabular-nums leading-none">
+                    <dd className="mt-1 truncate text-hh-body font-semibold tabular-nums leading-none">
                       {metric.amount ? <NeoAmount>{metric.value}</NeoAmount> : metric.value}
                     </dd>
                   </div>
@@ -2304,7 +2306,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
             <section
               data-expenses-kpi-strip
               aria-label="Expense summary"
-              className="overflow-x-auto rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)]"
+              className="overflow-x-auto rounded-lg border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-operational"
             >
               <dl className="flex min-w-max items-stretch">
                 {[
@@ -2325,10 +2327,10 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                     key={metric.label}
                     className="flex min-w-40 flex-1 items-baseline justify-between gap-3 px-3 py-2.5 md:min-w-44 md:px-4"
                   >
-                    <dt className="whitespace-nowrap text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--neo-text-tertiary)]">
+                    <dt className="whitespace-nowrap text-hh-status font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                       {metric.label}
                     </dt>
-                    <dd className="whitespace-nowrap text-sm font-semibold tabular-nums leading-none md:text-[15px]">
+                    <dd className="whitespace-nowrap text-sm font-semibold tabular-nums leading-none md:text-hh-body">
                       {metric.amount ? <NeoAmount>{metric.value}</NeoAmount> : metric.value}
                     </dd>
                   </div>
@@ -2344,7 +2346,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
               className="relative min-w-0 flex-1"
             >
               <Search
-                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--neo-text-tertiary)]"
+                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--hh-text-tertiary)]"
                 aria-hidden
               />
               <Input
@@ -2353,13 +2355,13 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                 placeholder="Merchant, description, project…"
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
-                className="h-11 min-h-11 w-full rounded-lg border-[var(--neo-border)] bg-[var(--neo-surface-raised)] pl-9 pr-11 text-base text-[var(--neo-text-primary)] shadow-none placeholder:text-[var(--neo-text-tertiary)] focus-visible:border-[var(--neo-gold)] focus-visible:ring-[var(--neo-gold-ring)]"
+                className="h-11 min-h-11 w-full rounded-lg border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] pl-9 pr-11 text-base text-[var(--hh-text-primary)] shadow-none placeholder:text-[var(--hh-text-tertiary)] focus-visible:border-[var(--hh-action-primary)] focus-visible:ring-[var(--hh-focus-ring)]"
               />
               {searchInput ? (
                 <button
                   type="button"
                   aria-label="Clear expense search"
-                  className="absolute right-0 top-0 flex h-11 w-11 touch-manipulation items-center justify-center rounded-lg text-[var(--neo-text-tertiary)] outline-none hover:text-[var(--neo-text-primary)] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--neo-gold-ring)]"
+                  className="absolute right-0 top-0 flex h-11 w-11 touch-manipulation items-center justify-center rounded-lg text-[var(--hh-text-tertiary)] outline-none hover:text-[var(--hh-text-primary)] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--hh-focus-ring)]"
                   onClick={() => setSearchInput("")}
                 >
                   <X className="h-4 w-4" aria-hidden />
@@ -2370,7 +2372,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
               type="button"
               variant="outline"
               size="sm"
-              className="relative h-11 min-h-11 w-[5.75rem] shrink-0 gap-1 rounded-lg border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-2 text-[var(--neo-text-primary)] shadow-none transition-colors duration-150 hover:bg-[var(--neo-surface-muted)]"
+              className="relative h-11 min-h-11 w-[5.75rem] shrink-0 gap-1 rounded-lg border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-2 text-[var(--hh-text-primary)] shadow-none transition-colors duration-150 hover:bg-[var(--hh-l3-hover)]"
               onClick={() => setFiltersDrawerOpen(true)}
             >
               <Filter className="h-4 w-4 shrink-0" aria-hidden />
@@ -2379,7 +2381,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                 {activeAdvancedFilterCount > 0 ? (
                   <span
                     data-expenses-active-filter-count
-                    className="ml-1 inline-flex min-w-4 items-center justify-center rounded-full bg-[var(--eo-surface-selected)] px-1 text-[10px] tabular-nums text-[var(--neo-text-secondary)]"
+                    className="ml-1 inline-flex min-w-4 items-center justify-center rounded-full bg-[var(--hh-l3-selected)] px-1 text-hh-status tabular-nums text-[var(--hh-text-secondary)]"
                   >
                     {activeAdvancedFilterCount}
                   </span>
@@ -2396,7 +2398,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
               <SheetHeader className="flex-row items-center justify-between gap-3 pr-11 text-left">
                 <div>
                   <SheetTitle className="text-base font-semibold">Expense filters</SheetTitle>
-                  <p className="mt-0.5 text-xs text-[var(--neo-text-secondary)]">
+                  <p className="mt-0.5 text-xs text-[var(--hh-text-secondary)]">
                     Narrow the current queue without leaving context.
                   </p>
                 </div>
@@ -2413,7 +2415,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                 ) : null}
               </SheetHeader>
               <div className="mt-4 flex flex-col gap-4 pb-8">
-                <div className="flex flex-col gap-2 border-b border-[var(--neo-border)] pb-4">
+                <div className="flex flex-col gap-2 border-b border-[var(--hh-border)] pb-4">
                   <Button
                     type="button"
                     variant="default"
@@ -2461,7 +2463,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                   safeProjects={safeProjects}
                   categoriesList={categoriesList}
                   projectsError={projectsError}
-                  selectTriggerClassName="h-10 w-full rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-xs text-[var(--neo-text-primary)] shadow-none"
+                  selectTriggerClassName="h-10 w-full rounded-md border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-xs text-[var(--hh-text-primary)] shadow-none"
                 />
                 <Button
                   type="button"
@@ -2494,7 +2496,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                 <div className="pointer-events-none absolute inset-x-0 top-0 z-[1] flex justify-center pt-1">
                   <LoadingState
                     text="Updating..."
-                    className="rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-3 py-1 text-xs shadow-[var(--neo-shadow-panel)]"
+                    className="rounded-full border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 py-1 text-xs shadow-operational"
                   />
                 </div>
               ) : null}
@@ -2507,7 +2509,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
               >
                 <NeoToolbar
                   data-inbox-toolbar={inboxMode ? "" : undefined}
-                  className="hidden flex-wrap items-center justify-between gap-3 rounded-none border-0 border-b border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-4 py-3 shadow-none md:flex"
+                  className="hidden flex-wrap items-center justify-between gap-3 rounded-none border-0 border-b border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-4 py-3 shadow-none md:flex"
                 >
                   <div className="flex flex-wrap items-center gap-1.5">
                     <Button
@@ -2530,7 +2532,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                   >
                     <div className="relative min-w-[12rem] max-w-md flex-1">
                       <Search
-                        className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--neo-text-tertiary)]"
+                        className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--hh-text-tertiary)]"
                         aria-hidden
                       />
                       <Input
@@ -2539,19 +2541,19 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                         placeholder="Merchant, description, project…"
                         value={searchInput}
                         onChange={(e) => setSearchInput(e.target.value)}
-                        className="h-9 rounded-lg border-[var(--neo-border)] bg-[var(--neo-surface-raised)] py-1 pl-8 pr-14 text-sm text-[var(--neo-text-primary)] shadow-none placeholder:text-[var(--neo-text-tertiary)] transition-[border-color] duration-150 focus-visible:border-[var(--neo-gold)] focus-visible:ring-[var(--neo-gold-ring)]"
+                        className="h-9 rounded-lg border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] py-1 pl-8 pr-14 text-sm text-[var(--hh-text-primary)] shadow-none placeholder:text-[var(--hh-text-tertiary)] transition-[border-color] duration-150 focus-visible:border-[var(--hh-action-primary)] focus-visible:ring-[var(--hh-focus-ring)]"
                       />
                       {searchInput ? (
                         <button
                           type="button"
                           aria-label="Clear expense search"
-                          className="absolute right-0 top-0 flex h-9 w-9 items-center justify-center rounded-lg text-[var(--neo-text-tertiary)] outline-none hover:text-[var(--neo-text-primary)] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--neo-gold-ring)]"
+                          className="absolute right-0 top-0 flex h-9 w-9 items-center justify-center rounded-lg text-[var(--hh-text-tertiary)] outline-none hover:text-[var(--hh-text-primary)] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--hh-focus-ring)]"
                           onClick={() => setSearchInput("")}
                         >
                           <X className="h-3.5 w-3.5" aria-hidden />
                         </button>
                       ) : (
-                        <kbd className="pointer-events-none absolute right-2 top-1/2 hidden -translate-y-1/2 select-none rounded border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-1.5 py-0.5 font-sans text-[10px] font-medium text-[var(--neo-text-tertiary)] lg:inline">
+                        <kbd className="pointer-events-none absolute right-2 top-1/2 hidden -translate-y-1/2 select-none rounded border border-[var(--hh-border)] bg-[var(--hh-l3-hover)] px-1.5 py-0.5 font-sans text-hh-status font-medium text-[var(--hh-text-tertiary)] lg:inline">
                           ⌘K
                         </kbd>
                       )}
@@ -2570,7 +2572,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                             {activeAdvancedFilterCount > 0 ? (
                               <span
                                 data-expenses-active-filter-count
-                                className="ml-1 inline-flex min-w-4 items-center justify-center rounded-full bg-[var(--eo-surface-selected)] px-1 text-[10px] tabular-nums text-[var(--neo-text-secondary)]"
+                                className="ml-1 inline-flex min-w-4 items-center justify-center rounded-full bg-[var(--hh-l3-selected)] px-1 text-hh-status tabular-nums text-[var(--hh-text-secondary)]"
                               >
                                 {activeAdvancedFilterCount}
                               </span>
@@ -2582,14 +2584,14 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                         align="end"
                         sideOffset={8}
                         data-expense-component-surface="filters"
-                        className="expenses-ui-dialog z-50 w-[min(calc(100vw-2rem),22rem)] overflow-visible rounded-[10px] border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] p-3 text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)]"
+                        className="expenses-ui-dialog z-50 w-[min(calc(100vw-2rem),22rem)] overflow-visible rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-3 text-[var(--hh-text-primary)] shadow-operational"
                       >
-                        <div className="mb-3 flex items-center justify-between gap-3 border-b border-[var(--neo-border)] pb-2.5">
+                        <div className="mb-3 flex items-center justify-between gap-3 border-b border-[var(--hh-border)] pb-2.5">
                           <div>
-                            <p className="text-xs font-semibold text-[var(--neo-text-primary)]">
+                            <p className="text-xs font-semibold text-[var(--hh-text-primary)]">
                               Expense filters
                             </p>
-                            <p className="mt-0.5 text-[10px] text-[var(--neo-text-tertiary)]">
+                            <p className="mt-0.5 text-hh-status text-[var(--hh-text-tertiary)]">
                               Refine the current queue
                             </p>
                           </div>
@@ -2598,7 +2600,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                               type="button"
                               variant="ghost"
                               size="sm"
-                              className="h-8 shrink-0 px-2 text-[11px]"
+                              className="h-8 shrink-0 px-2 text-hh-status"
                               onClick={clearAdvancedFilters}
                             >
                               Clear
@@ -2619,7 +2621,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                           safeProjects={safeProjects}
                           categoriesList={categoriesList}
                           projectsError={projectsError}
-                          selectTriggerClassName="h-9 w-full rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-xs text-[var(--neo-text-primary)] shadow-none transition-colors duration-150"
+                          selectTriggerClassName="h-9 w-full rounded-lg border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-xs text-[var(--hh-text-primary)] shadow-none transition-colors duration-150"
                         />
                       </PopoverContent>
                     </Popover>
@@ -2628,7 +2630,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                 {inboxMode ? (
                   <p
                     data-inbox-shortcuts
-                    className="hidden border-b border-[var(--neo-border)] px-4 py-2 text-[11px] leading-snug text-[var(--neo-text-secondary)] md:block"
+                    className="hidden border-b border-[var(--hh-border)] px-4 py-2 text-hh-status leading-snug text-[var(--hh-text-secondary)] md:block"
                   >
                     ⌘/Ctrl+Enter: approve &amp; next · ⌘/Ctrl+S: save · Tab: field · Esc: protect
                     changes
@@ -2637,19 +2639,19 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                 {focusedIssueNotFound ? (
                   <div
                     data-testid="expense-focus-not-found"
-                    className="mx-3 mt-3 flex items-start gap-2 rounded-lg border border-[var(--eo-warning-border)] bg-[var(--eo-warning-soft)] px-3 py-2.5 text-sm text-[var(--neo-text-secondary)]"
+                    className="mx-3 mt-3 flex items-start gap-2 rounded-lg border border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] px-3 py-2.5 text-sm text-[var(--hh-text-secondary)]"
                     role="status"
                   >
                     <AlertCircle
-                      className="mt-0.5 h-4 w-4 shrink-0 text-[var(--eo-warning)]"
+                      className="mt-0.5 h-4 w-4 shrink-0 text-[var(--hh-warning)]"
                       strokeWidth={1.75}
                       aria-hidden
                     />
                     <div className="min-w-0">
-                      <p className="font-medium text-[var(--neo-text-primary)]">
+                      <p className="font-medium text-[var(--hh-text-primary)]">
                         Expense issue not found on this page.
                       </p>
-                      <p className="mt-0.5 text-xs text-[var(--neo-text-secondary)]">
+                      <p className="mt-0.5 text-xs text-[var(--hh-text-secondary)]">
                         Try clearing filters.
                       </p>
                     </div>
@@ -2660,16 +2662,16 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                     data-expenses-error
                     role="alert"
                     aria-live="assertive"
-                    className="flex min-h-56 flex-col items-start justify-center gap-4 border-t border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-5 py-10 text-left md:min-h-72 md:flex-row md:items-center md:justify-center md:px-8"
+                    className="flex min-h-56 flex-col items-start justify-center gap-4 border-t border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-5 py-10 text-left md:min-h-72 md:flex-row md:items-center md:justify-center md:px-8"
                   >
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[var(--neo-border-strong)] bg-[var(--neo-surface-muted)] text-[var(--neo-gold)]">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[var(--hh-border-strong)] bg-[var(--hh-l3-hover)] text-[var(--hh-action-primary)]">
                       <AlertCircle className="h-5 w-5" strokeWidth={1.75} aria-hidden />
                     </span>
                     <div className="min-w-0 max-w-md flex-1 md:flex-none">
-                      <p className="text-sm font-semibold text-[var(--neo-text-primary)]">
+                      <p className="text-sm font-semibold text-[var(--hh-text-primary)]">
                         Expenses couldn’t load
                       </p>
-                      <p className="mt-1 text-xs leading-relaxed text-[var(--neo-text-secondary)]">
+                      <p className="mt-1 text-xs leading-relaxed text-[var(--hh-text-secondary)]">
                         The ledger is unavailable right now. No expense totals or empty results are
                         being inferred.
                       </p>
@@ -2685,7 +2687,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                     </Button>
                   </div>
                 ) : showExpensesSkeleton && expenses.length === 0 ? (
-                  <div className="border-t border-[var(--neo-border)] px-4 py-8 md:border-t-0">
+                  <div className="border-t border-[var(--hh-border)] px-4 py-8 md:border-t-0">
                     <ExpensesListSkeleton
                       rows={8}
                       showStatCards={false}
@@ -2695,12 +2697,12 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                 ) : total === 0 ? (
                   <>
                     <div
-                      className="hidden min-h-[280px] flex-col justify-center border-t border-[var(--neo-border)] px-6 py-14 text-center md:flex"
+                      className="hidden min-h-[280px] flex-col justify-center border-t border-[var(--hh-border)] px-6 py-14 text-center md:flex"
                       tabIndex={-1}
                       data-expenses-empty
                     >
                       <EmptyState
-                        className="mx-auto max-w-md border-[var(--neo-border-strong)] bg-[var(--neo-surface-muted)] px-8 py-10"
+                        className="mx-auto max-w-md border-[var(--hh-border-strong)] bg-[var(--hh-l3-hover)] px-8 py-10"
                         title={
                           inboxMode &&
                           !hasNarrowingFilters &&
@@ -2761,7 +2763,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                       />
                     </div>
                     <EmptyState
-                      className="mx-2 mb-2 border-[var(--neo-border-strong)] bg-[var(--neo-surface-muted)] px-4 py-10 md:hidden"
+                      className="mx-2 mb-2 border-[var(--hh-border-strong)] bg-[var(--hh-l3-hover)] px-4 py-10 md:hidden"
                       tabIndex={-1}
                       data-expenses-empty-mobile
                       icon={<Upload className="h-5 w-5" aria-hidden />}
@@ -2829,7 +2831,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                   <>
                     <div
                       data-expenses-ledger-body
-                      className="w-full min-h-0 overflow-hidden bg-[var(--neo-surface-raised)]"
+                      className="w-full min-h-0 overflow-hidden bg-[var(--hh-l2-operational-surface)]"
                     >
                       <ExpenseInboxTransactionList
                         dateChunks={visibleDateGroups}
@@ -2859,7 +2861,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                     <div
                       data-inbox-pagination={inboxMode ? "" : undefined}
                       data-expenses-pagination={!inboxMode ? "" : undefined}
-                      className="flex flex-col gap-3 border-t border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-4 py-3 text-xs text-[var(--neo-text-secondary)] md:flex-row md:items-center md:justify-between md:gap-4"
+                      className="flex flex-col gap-3 border-t border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-4 py-3 text-xs text-[var(--hh-text-secondary)] md:flex-row md:items-center md:justify-between md:gap-4"
                     >
                       <p
                         data-expenses-pagination-summary
@@ -2878,7 +2880,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                             type="button"
                             variant="outline"
                             size="sm"
-                            className="h-11 min-h-11 w-11 min-w-11 shrink-0 border-[var(--neo-border)] bg-[var(--neo-surface-raised)] p-0 text-[var(--neo-text-primary)] shadow-none transition-colors duration-150 hover:bg-[var(--neo-surface-muted)] md:h-7 md:min-h-0 md:w-7 md:min-w-0"
+                            className="h-11 min-h-11 w-11 min-w-11 shrink-0 border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-0 text-[var(--hh-text-primary)] shadow-none transition-colors duration-150 hover:bg-[var(--hh-l3-hover)] md:h-7 md:min-h-0 md:w-7 md:min-w-0"
                             disabled={curPage <= 1}
                             aria-label="Previous page"
                             onClick={() => setPage(curPage - 1)}
@@ -2892,7 +2894,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                             type="button"
                             variant="outline"
                             size="sm"
-                            className="h-11 min-h-11 w-11 min-w-11 shrink-0 border-[var(--neo-border)] bg-[var(--neo-surface-raised)] p-0 text-[var(--neo-text-primary)] shadow-none transition-colors duration-150 hover:bg-[var(--neo-surface-muted)] md:h-7 md:min-h-0 md:w-7 md:min-w-0"
+                            className="h-11 min-h-11 w-11 min-w-11 shrink-0 border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-0 text-[var(--hh-text-primary)] shadow-none transition-colors duration-150 hover:bg-[var(--hh-l3-hover)] md:h-7 md:min-h-0 md:w-7 md:min-w-0"
                             disabled={curPage >= totalPages}
                             aria-label="Next page"
                             onClick={() => setPage(curPage + 1)}
@@ -2901,14 +2903,14 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                           </Button>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className="whitespace-nowrap text-[var(--neo-text-secondary)]">
+                          <span className="whitespace-nowrap text-[var(--hh-text-secondary)]">
                             Groups/page
                           </span>
                           <Select
                             value={String(pageSize)}
                             onValueChange={(v) => setPageSizeAndReset(Number(v))}
                           >
-                            <SelectTrigger className="h-11 min-h-11 w-[4.25rem] rounded-lg border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-xs shadow-none transition-colors duration-150 md:h-7 md:min-h-0">
+                            <SelectTrigger className="h-11 min-h-11 w-[4.25rem] rounded-lg border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-xs shadow-none transition-colors duration-150 md:h-7 md:min-h-0">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent

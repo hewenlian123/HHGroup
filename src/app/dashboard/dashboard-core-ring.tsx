@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { TYPO } from "@/lib/typography";
 
 type CoreNode = {
   label: string;
@@ -143,9 +144,9 @@ export function DashboardCoreRing({
           style={{ animationDelay: `${index * 180}ms` }}
         >
           <span className="dashboard-core-node__dot" aria-hidden />
-          <span className="dashboard-core-node__text">
+          <span className={cn(TYPO.label, "dashboard-core-node__text")}>
             {node.label}
-            <span>{node.value}</span>
+            <span className={TYPO.amount}>{node.value}</span>
           </span>
         </div>
       ))}
@@ -160,16 +161,16 @@ export function DashboardCoreRing({
           }
         )}
       >
-        <p className="dashboard-profit-core__label">{label}</p>
-        <p className="dashboard-profit-core__value" title={value}>
+        <p className={cn(TYPO.tableHeader, "dashboard-profit-core__label")}>{label}</p>
+        <p className={cn(TYPO.kpiTotal, "dashboard-profit-core__value")} title={value}>
           {value}
         </p>
         <div className="dashboard-profit-core__pulse" aria-hidden />
-        <p className="dashboard-profit-core__status">
+        <p className={cn(TYPO.chip, "dashboard-profit-core__status")}>
           <span aria-hidden />
           {status}
         </p>
-        <p className="dashboard-profit-core__helper">{helper}</p>
+        <p className={cn(TYPO.helper, "dashboard-profit-core__helper")}>{helper}</p>
       </div>
     </section>
   );

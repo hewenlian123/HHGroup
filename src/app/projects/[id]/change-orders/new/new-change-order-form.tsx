@@ -24,7 +24,7 @@ export function NewChangeOrderForm({
       <div className="mb-3">
         <Link
           href={`/projects/${projectId}?tab=change-orders`}
-          className="text-xs text-muted-foreground hover:text-foreground"
+          className="text-hh-metadata text-[var(--hh-text-secondary)] hover:text-[var(--hh-text-primary)]"
         >
           ← {projectName}
         </Link>
@@ -49,42 +49,44 @@ export function NewChangeOrderForm({
         <SectionHeader label="Details" />
         <div className="grid gap-3 sm:grid-cols-1">
           <div>
-            <label className="mb-1 block text-xs font-medium text-muted-foreground">Title</label>
+            <label className="mb-1 block text-hh-metadata font-medium text-[var(--hh-text-secondary)]">
+              Title
+            </label>
             <Input name="title" placeholder="e.g. Additional scope – Phase 2" className="w-full" />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-muted-foreground">
+            <label className="mb-1 block text-hh-metadata font-medium text-[var(--hh-text-secondary)]">
               Description
             </label>
             <textarea
               name="description"
               placeholder="Describe the change and reason."
               rows={3}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              className="w-full rounded-hh-standard border border-input bg-[var(--hh-l1-workspace)] px-3 py-2 text-hh-body"
             />
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
             <div>
-              <label className="mb-1 block text-xs font-medium text-muted-foreground">
+              <label className="mb-1 block text-hh-metadata font-medium text-[var(--hh-text-secondary)]">
                 Amount (revenue impact)
               </label>
               <Input name="amount" type="number" step="0.01" min="0" placeholder="0" />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-muted-foreground">
+              <label className="mb-1 block text-hh-metadata font-medium text-[var(--hh-text-secondary)]">
                 Cost impact
               </label>
               <Input name="costImpact" type="number" step="0.01" placeholder="0" />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-muted-foreground">
+              <label className="mb-1 block text-hh-metadata font-medium text-[var(--hh-text-secondary)]">
                 Schedule impact (days)
               </label>
               <Input name="scheduleImpactDays" type="number" step="1" min="0" placeholder="0" />
             </div>
           </div>
         </div>
-        {error ? <p className="text-sm text-destructive">{error}</p> : null}
+        {error ? <p className="text-hh-body text-destructive">{error}</p> : null}
         <div className="flex gap-2 border-t border-border/60 pt-4">
           <Button type="submit" disabled={pending}>
             {pending ? "Creating…" : "Create change order"}

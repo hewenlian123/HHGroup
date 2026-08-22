@@ -31,7 +31,7 @@ function EstimateListStatus({ status }: { status: string }) {
     <NeoStatus
       label={meta.label}
       variant={meta.variant}
-      className="h-5 whitespace-nowrap px-2 text-[11px]"
+      className="text-hh-status h-5 whitespace-nowrap px-2"
     />
   );
 }
@@ -70,31 +70,23 @@ const EstimateListRowMobile = memo(function EstimateListRowMobile({
     <NeoMobileCard className="estimate-list-mobile-card flex min-h-[84px] items-start gap-1.5 p-3">
       <Link
         href={href}
-        className="estimate-list-mobile-link min-w-0 flex-1 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#171717]/15"
+        className="estimate-list-mobile-link min-w-0 flex-1 rounded-hh-compact text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)]"
       >
         <div className="flex min-w-0 items-baseline justify-between gap-3">
-          <p className="truncate text-[14px] font-semibold text-[var(--neo-text-primary)]">
-            {row.number}
-          </p>
-          <NeoAmount className="shrink-0 text-[14px]">
-            {formatEstimateCurrency(row.total)}
-          </NeoAmount>
+          <p className="text-hh-body-strong truncate text-[var(--hh-text-primary)]">{row.number}</p>
+          <NeoAmount className="hh-fin shrink-0">{formatEstimateCurrency(row.total)}</NeoAmount>
         </div>
         <div className="mt-1.5 min-w-0">
-          <p className="truncate text-[12px] font-medium leading-4 text-[var(--neo-text-secondary)]">
-            {row.client}
-          </p>
-          <p className="truncate text-[12px] leading-4 text-[var(--neo-text-tertiary)]">
-            {row.project}
-          </p>
+          <p className="text-hh-label truncate text-[var(--hh-text-secondary)]">{row.client}</p>
+          <p className="text-hh-metadata truncate text-[var(--hh-text-tertiary)]">{row.project}</p>
           <div className="mt-2 flex min-w-0 items-center gap-2">
             <EstimateListStatus status={row.status} />
-            <span aria-hidden="true" className="text-[var(--neo-border-strong)]">
+            <span aria-hidden="true" className="text-[var(--hh-border-strong)]">
               ·
             </span>
             <time
               data-testid="estimate-mobile-updated"
-              className="truncate text-[11px] tabular-nums text-[var(--neo-text-tertiary)]"
+              className="text-hh-status hh-fin truncate text-[var(--hh-text-tertiary)]"
               dateTime={row.updatedAt}
             >
               {row.updatedAt}
@@ -139,7 +131,7 @@ export const EstimateListRow = memo(function EstimateListRow({
       <td className={cn(tableRawTdClass, "estimate-list-col-number font-medium")}>
         <Link
           href={href}
-          className="estimate-list-number-link block w-full text-[var(--neo-text-primary)] transition-colors duration-150 hover:text-black focus:outline-none focus:text-black focus-visible:underline focus-visible:underline-offset-2"
+          className="estimate-list-number-link block w-full text-[var(--hh-text-primary)] transition-colors duration-150 hover:text-[var(--hh-text-strong)] focus:text-[var(--hh-text-strong)] focus:outline-none focus-visible:underline focus-visible:underline-offset-2"
           onClick={(e) => e.stopPropagation()}
         >
           {row.number}
@@ -174,7 +166,7 @@ export const EstimateListRow = memo(function EstimateListRow({
       <td
         className={cn(
           tableRawTdClass,
-          "estimate-list-col-updated whitespace-nowrap text-[var(--neo-text-secondary)]"
+          "estimate-list-col-updated hh-fin whitespace-nowrap text-[var(--hh-text-secondary)]"
         )}
       >
         <time dateTime={row.updatedAt}>{row.updatedAt}</time>

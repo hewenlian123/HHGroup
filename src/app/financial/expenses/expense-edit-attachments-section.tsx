@@ -29,7 +29,7 @@ function attachmentIsImage(att: ExpenseAttachment): boolean {
 }
 
 const CARD_FRAME =
-  "relative flex h-24 w-24 shrink-0 flex-col overflow-hidden rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] shadow-none transition-[box-shadow,border-color,background-color]";
+  "relative flex h-24 w-24 shrink-0 flex-col overflow-hidden rounded-lg border border-[var(--hh-border)] bg-[var(--hh-l3-hover)] shadow-none transition-[box-shadow,border-color,background-color]";
 
 export type ExpenseEditAttachmentsSectionProps = {
   expense: Expense;
@@ -266,7 +266,7 @@ export function ExpenseEditAttachmentsSection({
         )}
       >
         {!supabase ? (
-          <p className="text-xs text-[var(--neo-text-secondary)]">
+          <p className="text-xs text-[var(--hh-text-secondary)]">
             Configure Supabase to add attachments.
           </p>
         ) : showEmptyIdle ? (
@@ -276,27 +276,25 @@ export function ExpenseEditAttachmentsSection({
               disabled={busy}
               onClick={() => cameraInputRef.current?.click()}
               className={cn(
-                "group flex min-h-20 cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-3 py-3 text-center outline-none sm:hidden",
-                "transition-[border-color,background-color] hover:border-[var(--neo-border-strong)] hover:bg-[var(--neo-surface-raised)] focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)] disabled:opacity-50"
+                "group flex min-h-20 cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border border-[var(--hh-border)] bg-[var(--hh-l3-hover)] px-3 py-3 text-center outline-none sm:hidden",
+                "transition-[border-color,background-color] hover:border-[var(--hh-border-strong)] hover:bg-[var(--hh-l2-operational-surface)] focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)] disabled:opacity-50"
               )}
             >
               <Camera className="h-[18px] w-[18px]" strokeWidth={1.8} aria-hidden />
-              <span className="text-xs font-medium text-[var(--neo-text-primary)]">Take photo</span>
+              <span className="text-xs font-medium text-[var(--hh-text-primary)]">Take photo</span>
             </button>
             <button
               type="button"
               disabled={busy}
               onClick={openFilePicker}
               className={cn(
-                "group flex min-h-20 cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-3 py-3 text-center outline-none",
-                "transition-[border-color,background-color] hover:border-[var(--neo-border-strong)] hover:bg-[var(--neo-surface-raised)] focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)] disabled:opacity-50 sm:min-h-24"
+                "group flex min-h-20 cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border border-[var(--hh-border)] bg-[var(--hh-l3-hover)] px-3 py-3 text-center outline-none",
+                "transition-[border-color,background-color] hover:border-[var(--hh-border-strong)] hover:bg-[var(--hh-l2-operational-surface)] focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)] disabled:opacity-50 sm:min-h-24"
               )}
             >
               <Upload className="h-[18px] w-[18px]" strokeWidth={1.8} aria-hidden />
-              <span className="text-xs font-medium text-[var(--neo-text-primary)]">
-                Upload file
-              </span>
-              <span className="hidden text-[11px] text-[var(--neo-text-secondary)] sm:block">
+              <span className="text-xs font-medium text-[var(--hh-text-primary)]">Upload file</span>
+              <span className="hidden text-hh-status text-[var(--hh-text-secondary)] sm:block">
                 Drop, browse, or select a photo or PDF
               </span>
             </button>
@@ -322,10 +320,10 @@ export function ExpenseEditAttachmentsSection({
                     {isPdf ? (
                       <div className="flex flex-1 flex-col items-center justify-center gap-1 px-1.5 pb-2 pt-3">
                         <FileText
-                          className="h-7 w-7 shrink-0 text-[var(--neo-text-secondary)]"
+                          className="h-7 w-7 shrink-0 text-[var(--hh-text-secondary)]"
                           strokeWidth={1.5}
                         />
-                        <span className="line-clamp-2 w-full text-center text-[10px] leading-tight text-[var(--neo-text-secondary)]">
+                        <span className="line-clamp-2 w-full text-center text-hh-status leading-tight text-[var(--hh-text-secondary)]">
                           {att.fileName}
                         </span>
                       </div>
@@ -333,8 +331,8 @@ export function ExpenseEditAttachmentsSection({
                       /* eslint-disable-next-line @next/next/no-img-element */
                       <img src={thumb} alt="" className="h-full w-full object-cover" />
                     ) : (
-                      <div className="flex flex-1 items-center justify-center bg-[var(--neo-surface-raised)]">
-                        <Skeleton className="h-16 w-16 rounded-md bg-[var(--neo-surface-muted)]" />
+                      <div className="flex flex-1 items-center justify-center bg-[var(--hh-l2-operational-surface)]">
+                        <Skeleton className="h-16 w-16 rounded-md bg-[var(--hh-l3-hover)]" />
                       </div>
                     )}
                   </button>
@@ -342,7 +340,7 @@ export function ExpenseEditAttachmentsSection({
                     <button
                       type="button"
                       className={cn(
-                        "absolute right-1 top-1 z-10 flex h-7 w-7 items-center justify-center rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-secondary)] shadow-sm backdrop-blur-sm transition-opacity hover:bg-rose-500/10 hover:text-rose-200",
+                        "absolute right-1 top-1 z-10 flex h-7 w-7 items-center justify-center rounded-full border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-secondary)] shadow-sm backdrop-blur-sm transition-opacity hover:bg-[var(--hh-danger-soft-fill)] hover:text-[var(--hh-danger)]",
                         "opacity-100 md:opacity-0 md:group-hover/card:opacity-100"
                       )}
                       aria-label="Remove attachment"
@@ -358,7 +356,7 @@ export function ExpenseEditAttachmentsSection({
 
             {uploadBusy ? (
               <div className={cn(CARD_FRAME, "items-center justify-center")}>
-                <Skeleton className="h-14 w-14 rounded-md bg-[var(--neo-surface-raised)]" />
+                <Skeleton className="h-14 w-14 rounded-md bg-[var(--hh-l2-operational-surface)]" />
               </div>
             ) : null}
 
@@ -369,12 +367,12 @@ export function ExpenseEditAttachmentsSection({
               aria-label="Add attachment"
               className={cn(
                 CARD_FRAME,
-                "cursor-pointer items-center justify-center border border-dashed border-[var(--neo-border-strong)] text-[var(--neo-text-secondary)] shadow-none transition-[border-color,box-shadow,background-color] duration-200 ease-out",
-                "hover:border-[var(--neo-border-strong)] hover:bg-[var(--eo-surface-selected)] hover:text-[var(--neo-text-primary)] active:bg-[var(--eo-surface-secondary,var(--neo-surface-muted))] focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]"
+                "cursor-pointer items-center justify-center border border-dashed border-[var(--hh-border-strong)] text-[var(--hh-text-secondary)] shadow-none transition-[border-color,box-shadow,background-color] duration-200 ease-out",
+                "hover:border-[var(--hh-border-strong)] hover:bg-[var(--hh-l3-selected)] hover:text-[var(--hh-text-primary)] active:bg-[var(--hh-l3-hover)] focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)]"
               )}
             >
               <Plus className="h-7 w-7" strokeWidth={1.5} />
-              <span className="mt-0.5 text-[10px] font-medium tracking-wide">Add</span>
+              <span className="mt-0.5 text-hh-status font-medium tracking-normal">Add</span>
             </button>
           </div>
         )}
@@ -387,20 +385,22 @@ export function ExpenseEditAttachmentsSection({
           className={cn(
             "flex max-w-md items-start justify-between gap-3 rounded-lg border px-3 py-2.5",
             uploadFeedback.tone === "error"
-              ? "border-rose-500/25 bg-rose-500/[0.06] text-rose-700 dark:text-rose-200"
-              : "border-emerald-500/25 bg-emerald-500/[0.06] text-emerald-700 dark:text-emerald-200"
+              ? "border-[var(--hh-danger-border)] bg-[var(--hh-danger-soft-fill)] text-[var(--hh-danger)] dark:text-[var(--hh-danger)]"
+              : "border-[var(--hh-success-border)] bg-[var(--hh-success-soft-fill)] text-[var(--hh-success)] dark:text-[var(--hh-success)]"
           )}
         >
           <div className="min-w-0">
             <p className="text-xs font-semibold">{uploadFeedback.title}</p>
             {uploadFeedback.detail ? (
-              <p className="mt-0.5 text-[11px] leading-snug opacity-85">{uploadFeedback.detail}</p>
+              <p className="mt-0.5 text-hh-status leading-snug opacity-85">
+                {uploadFeedback.detail}
+              </p>
             ) : null}
           </div>
           {failedUploads.length > 0 ? (
             <button
               type="button"
-              className="min-h-11 shrink-0 rounded-md px-2 text-xs font-semibold underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]"
+              className="min-h-11 shrink-0 rounded-md px-2 text-xs font-semibold underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)]"
               disabled={busy}
               onClick={() => void handleUploadFiles(failedUploads)}
             >

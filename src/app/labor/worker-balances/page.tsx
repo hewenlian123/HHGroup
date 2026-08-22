@@ -53,22 +53,22 @@ type WorkerBalanceRow = {
 
 /** KPI strip only — lighter edge + shadow than main surfaces */
 const wbKpiTile =
-  "rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)] md:rounded-xl";
+  "rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-operational md:rounded-hh-task";
 
 const wbKpiIcon =
-  "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] text-[var(--neo-text-secondary)] md:h-8 md:w-8";
+  "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[var(--hh-border)] bg-[var(--hh-l3-hover)] text-[var(--hh-text-secondary)] md:h-8 md:w-8";
 
 const AVATAR_RING = [
   "bg-slate-500/[0.08] text-slate-900 dark:text-slate-100",
   "bg-zinc-500/[0.08] text-zinc-900 dark:text-zinc-100",
-  "bg-emerald-500/[0.09] text-emerald-900 dark:text-emerald-100",
-  "bg-amber-500/[0.09] text-amber-950 dark:text-amber-100",
-  "bg-rose-500/[0.09] text-rose-900 dark:text-rose-100",
+  "bg-[var(--hh-success-soft-fill)] text-[var(--hh-success)] text-[var(--hh-success)]",
+  "bg-[var(--hh-warning-soft-fill)] text-[var(--hh-warning)] text-[var(--hh-warning)]",
+  "bg-[var(--hh-danger-soft-fill)] text-[var(--hh-danger)] text-[var(--hh-danger)]",
   "bg-slate-600/[0.08] text-slate-900 dark:text-slate-100",
 ];
 
 const workerAvatarRing =
-  "ring-1 ring-inset ring-zinc-950/[0.05] shadow-[inset_0_1px_0_rgba(255,255,255,0.35)] dark:shadow-none dark:ring-white/[0.07]";
+  "ring-1 ring-inset ring-zinc-950/[0.05] shadow-operational dark:shadow-none dark:ring-white/[0.07]";
 
 function workerInitials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -208,20 +208,20 @@ export default function WorkerBalancesPage() {
   return (
     <div
       className={cn(
-        "dark neo-page-on-graphite min-w-0 overflow-x-hidden pb-[max(1rem,env(safe-area-inset-bottom,0px))] pt-[max(0.35rem,env(safe-area-inset-top,0px))] text-[var(--neo-canvas-text-secondary)]",
+        " min-w-0 overflow-x-hidden pb-[max(1rem,env(safe-area-inset-bottom,0px))] pt-[max(0.35rem,env(safe-area-inset-top,0px))] text-[var(--hh-text-secondary)]",
         "flex flex-col"
       )}
     >
       <div
         className={cn(
-          "neo-page-on-graphite page-shell-wide mx-auto flex w-full max-w-[430px] flex-1 flex-col gap-2 px-4 py-2 pb-4 sm:max-w-[460px] md:gap-2 md:px-6 md:pb-6 md:pt-3",
+          " page-shell-wide mx-auto flex w-full max-w-[430px] flex-1 flex-col gap-2 px-4 py-2 pb-4 sm:max-w-[460px] md:gap-2 md:px-6 md:pb-6 md:pt-3",
           mobileListPagePaddingClass,
           "max-md:!gap-2"
         )}
       >
         <div className="hidden md:block">
           <PageHeader
-            className="gap-1 border-b border-white/10 pb-3 lg:items-baseline lg:gap-x-4 [&_h1]:!text-[24px] [&_h1]:!font-semibold [&_h1]:!leading-none [&_h1]:!tracking-normal [&_h1]:!text-[var(--neo-canvas-text-primary)] [&_p]:!mt-1 [&_p]:!max-w-xl [&_p]:!text-[14px] [&_p]:!leading-snug [&_p]:!text-[var(--neo-canvas-text-secondary)]"
+            className="gap-1 border-b border-[var(--hh-border)] pb-3 lg:items-baseline lg:gap-x-4 [&_h1]:!text-hh-financial-total [&_h1]:!font-semibold [&_h1]:!leading-none [&_h1]:!tracking-normal [&_h1]:!text-[var(--hh-text-primary)] [&_p]:!mt-1 [&_p]:!max-w-xl [&_p]:!text-hh-body [&_p]:!leading-snug [&_p]:!text-[var(--hh-text-secondary)]"
             title="Worker Balances"
             subtitle="Labor owed, reimbursements, payments, and balance per worker."
             actions={
@@ -268,7 +268,7 @@ export default function WorkerBalancesPage() {
                 <Users className="h-3 w-3 md:h-3.5 md:w-3.5" strokeWidth={1.75} aria-hidden />
               </span>
               <div className="min-w-0">
-                <p className="text-[8px] font-medium uppercase leading-none tracking-wide text-muted-foreground md:text-[9px] md:normal-case md:tracking-normal">
+                <p className="text-hh-status font-medium uppercase leading-none tracking-normal text-muted-foreground md:text-hh-status md:normal-case md:tracking-normal">
                   Workers owed
                 </p>
                 <p className="mt-0.5 text-base font-semibold tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
@@ -286,7 +286,7 @@ export default function WorkerBalancesPage() {
                 <DollarSign className="h-3 w-3 md:h-3.5 md:w-3.5" strokeWidth={1.75} aria-hidden />
               </span>
               <div className="min-w-0">
-                <p className="text-[8px] font-medium uppercase leading-none tracking-wide text-muted-foreground md:text-[9px] md:normal-case md:tracking-normal">
+                <p className="text-hh-status font-medium uppercase leading-none tracking-normal text-muted-foreground md:text-hh-status md:normal-case md:tracking-normal">
                   Total balance
                 </p>
                 <p className="mt-0.5 truncate text-base font-semibold tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
@@ -304,7 +304,7 @@ export default function WorkerBalancesPage() {
                 <Briefcase className="h-3 w-3 md:h-3.5 md:w-3.5" strokeWidth={1.75} aria-hidden />
               </span>
               <div className="min-w-0">
-                <p className="text-[8px] font-medium uppercase leading-none tracking-wide text-muted-foreground md:text-[9px] md:normal-case md:tracking-normal">
+                <p className="text-hh-status font-medium uppercase leading-none tracking-normal text-muted-foreground md:text-hh-status md:normal-case md:tracking-normal">
                   Labor owed
                 </p>
                 <p className="mt-0.5 truncate text-base font-semibold tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
@@ -322,7 +322,7 @@ export default function WorkerBalancesPage() {
                 <FileText className="h-3 w-3 md:h-3.5 md:w-3.5" strokeWidth={1.75} aria-hidden />
               </span>
               <div className="min-w-0">
-                <p className="text-[8px] font-medium uppercase leading-none tracking-wide text-muted-foreground md:text-[9px] md:normal-case md:tracking-normal">
+                <p className="text-hh-status font-medium uppercase leading-none tracking-normal text-muted-foreground md:text-hh-status md:normal-case md:tracking-normal">
                   Reimbursements
                 </p>
                 <p className="mt-0.5 truncate text-base font-semibold tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
@@ -344,7 +344,7 @@ export default function WorkerBalancesPage() {
                 />
               </span>
               <div className="min-w-0">
-                <p className="text-[8px] font-medium uppercase leading-none tracking-wide text-muted-foreground md:text-[9px] md:normal-case md:tracking-normal">
+                <p className="text-hh-status font-medium uppercase leading-none tracking-normal text-muted-foreground md:text-hh-status md:normal-case md:tracking-normal">
                   Advances
                 </p>
                 <p className="mt-0.5 truncate text-base font-semibold tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
@@ -384,7 +384,7 @@ export default function WorkerBalancesPage() {
             type="button"
             variant="outline"
             size="sm"
-            className="h-10 shrink-0 gap-1.5 rounded-sm shadow-none"
+            className="h-10 shrink-0 gap-1.5 rounded-hh-compact shadow-none"
             onClick={() => setFiltersOpen(true)}
           >
             Filters
@@ -396,7 +396,7 @@ export default function WorkerBalancesPage() {
             type="button"
             variant="outline"
             size="sm"
-            className="h-11 min-h-[44px] w-full rounded-sm"
+            className="h-11 min-h-[44px] w-full rounded-hh-compact"
             onClick={() => {
               void load();
               setFiltersOpen(false);
@@ -408,7 +408,7 @@ export default function WorkerBalancesPage() {
           </Button>
           <Button
             type="button"
-            className="h-11 min-h-[44px] w-full rounded-sm"
+            className="h-11 min-h-[44px] w-full rounded-hh-compact"
             onClick={() => setFiltersOpen(false)}
           >
             Done
@@ -446,7 +446,7 @@ export default function WorkerBalancesPage() {
             </div>
           ) : rows.length === 0 ? (
             <NeoMobileCard className="px-4 py-10 text-center">
-              <p className="text-sm font-medium text-[var(--neo-text-primary)]">No workers yet</p>
+              <p className="text-sm font-medium text-[var(--hh-text-primary)]">No workers yet</p>
               <p className="mt-1 text-xs text-muted-foreground">
                 Balances appear when workers have labor, reimbursements, or payments.
               </p>
@@ -471,7 +471,7 @@ export default function WorkerBalancesPage() {
                   <div className="flex items-start gap-3">
                     <span
                       className={cn(
-                        "flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[12px] font-semibold leading-none tabular-nums antialiased",
+                        "flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-hh-metadata font-semibold leading-none tabular-nums antialiased",
                         workerAvatarRing,
                         avatarRingClass(r.workerId)
                       )}
@@ -483,14 +483,14 @@ export default function WorkerBalancesPage() {
                       <Link
                         href={workerDetailHref(r.workerId)}
                         title={r.workerName}
-                        className="line-clamp-2 text-[15px] font-semibold leading-snug tracking-normal text-[var(--neo-text-primary)] hover:underline"
+                        className="line-clamp-2 text-hh-section-title font-semibold leading-snug tracking-normal text-[var(--hh-text-primary)] hover:underline"
                       >
                         {r.workerName}
                       </Link>
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-100/90 pb-2 dark:border-border/50">
-                    <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                    <span className="text-hh-status font-medium uppercase tracking-normal text-muted-foreground">
                       Balance
                     </span>
                     <div className="flex flex-wrap items-center justify-end gap-2">
@@ -505,7 +505,7 @@ export default function WorkerBalancesPage() {
                   </div>
                   <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
                     <div className="min-w-0">
-                      <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                      <dt className="text-hh-status font-medium uppercase tracking-normal text-muted-foreground">
                         Labor
                       </dt>
                       <dd className="truncate">
@@ -513,7 +513,7 @@ export default function WorkerBalancesPage() {
                       </dd>
                     </div>
                     <div className="min-w-0">
-                      <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                      <dt className="text-hh-status font-medium uppercase tracking-normal text-muted-foreground">
                         Reimb.
                       </dt>
                       <dd className="truncate">
@@ -521,7 +521,7 @@ export default function WorkerBalancesPage() {
                       </dd>
                     </div>
                     <div className="min-w-0">
-                      <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                      <dt className="text-hh-status font-medium uppercase tracking-normal text-muted-foreground">
                         Payments
                       </dt>
                       <dd className="truncate">
@@ -529,7 +529,7 @@ export default function WorkerBalancesPage() {
                       </dd>
                     </div>
                     <div className="min-w-0">
-                      <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                      <dt className="text-hh-status font-medium uppercase tracking-normal text-muted-foreground">
                         Advances
                       </dt>
                       <dd className="truncate">
@@ -542,7 +542,7 @@ export default function WorkerBalancesPage() {
                       type="button"
                       variant="outline"
                       size="sm"
-                      className="h-11 min-h-[44px] flex-1 rounded-sm shadow-none"
+                      className="h-11 min-h-[44px] flex-1 rounded-hh-compact shadow-none"
                       asChild
                     >
                       <Link href={workerDetailHref(r.workerId)}>Open Worker</Link>
@@ -552,7 +552,7 @@ export default function WorkerBalancesPage() {
                         type="button"
                         variant="outline"
                         size="sm"
-                        className="h-11 min-h-[44px] flex-1 rounded-sm text-destructive shadow-none hover:bg-rose-500/[0.06] hover:text-destructive"
+                        className="h-11 min-h-[44px] flex-1 rounded-hh-compact text-destructive shadow-none hover:bg-[var(--hh-danger-soft-fill)] hover:text-destructive"
                         aria-label={`Delete ${r.workerName}`}
                         onClick={() => setDeleteTarget(r)}
                       >
@@ -577,26 +577,26 @@ export default function WorkerBalancesPage() {
           busy={refreshing && rows.length > 0}
         >
           <thead>
-            <tr className="border-b border-[var(--neo-border)] bg-[var(--neo-surface-muted)]">
-              <th className="min-w-[200px] px-3 py-2 text-left text-[10px] font-medium uppercase tracking-normal text-[var(--neo-text-secondary)]">
+            <tr className="border-b border-[var(--hh-border)] bg-[var(--hh-l3-hover)]">
+              <th className="min-w-[200px] px-3 py-2 text-left text-hh-status font-medium uppercase tracking-normal text-[var(--hh-text-secondary)]">
                 Worker
               </th>
-              <th className="whitespace-nowrap px-3 py-2 text-right text-[10px] font-medium uppercase tracking-normal text-[var(--neo-text-secondary)] tabular-nums">
+              <th className="whitespace-nowrap px-3 py-2 text-right text-hh-status font-medium uppercase tracking-normal text-[var(--hh-text-secondary)] tabular-nums">
                 Labor
               </th>
-              <th className="whitespace-nowrap px-3 py-2 text-right text-[10px] font-medium uppercase tracking-normal text-[var(--neo-text-secondary)] tabular-nums">
+              <th className="whitespace-nowrap px-3 py-2 text-right text-hh-status font-medium uppercase tracking-normal text-[var(--hh-text-secondary)] tabular-nums">
                 Reimb.
               </th>
-              <th className="whitespace-nowrap px-3 py-2 text-right text-[10px] font-medium uppercase tracking-normal text-[var(--neo-text-secondary)] tabular-nums">
+              <th className="whitespace-nowrap px-3 py-2 text-right text-hh-status font-medium uppercase tracking-normal text-[var(--hh-text-secondary)] tabular-nums">
                 Payments
               </th>
-              <th className="whitespace-nowrap px-3 py-2 text-right text-[10px] font-medium uppercase tracking-normal text-[var(--neo-text-secondary)] tabular-nums">
+              <th className="whitespace-nowrap px-3 py-2 text-right text-hh-status font-medium uppercase tracking-normal text-[var(--hh-text-secondary)] tabular-nums">
                 Advances
               </th>
-              <th className="min-w-[128px] whitespace-nowrap px-3 py-2 text-right text-[10px] font-medium uppercase tracking-normal text-[var(--neo-text-secondary)] tabular-nums">
+              <th className="min-w-[128px] whitespace-nowrap px-3 py-2 text-right text-hh-status font-medium uppercase tracking-normal text-[var(--hh-text-secondary)] tabular-nums">
                 Balance
               </th>
-              <th className="w-14 px-2 py-2 text-right text-[10px] font-medium uppercase tracking-normal text-[var(--neo-text-secondary)]">
+              <th className="w-14 px-2 py-2 text-right text-hh-status font-medium uppercase tracking-normal text-[var(--hh-text-secondary)]">
                 <span className="sr-only">Actions</span>
               </th>
             </tr>
@@ -620,7 +620,7 @@ export default function WorkerBalancesPage() {
                     </td>
                   ))}
                   <td className="px-2 py-2.5 text-right">
-                    <Skeleton className="ml-auto h-8 w-8 rounded-sm" />
+                    <Skeleton className="ml-auto h-8 w-8 rounded-hh-compact" />
                   </td>
                 </tr>
               ))
@@ -657,7 +657,7 @@ export default function WorkerBalancesPage() {
                     <div className="flex min-w-0 items-center gap-2.5">
                       <span
                         className={cn(
-                          "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold leading-none tabular-nums antialiased",
+                          "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-hh-status font-semibold leading-none tabular-nums antialiased",
                           workerAvatarRing,
                           avatarRingClass(r.workerId)
                         )}
@@ -669,7 +669,7 @@ export default function WorkerBalancesPage() {
                         <Link
                           href={workerDetailHref(r.workerId)}
                           title={r.workerName}
-                          className="line-clamp-2 text-[13px] font-semibold leading-snug tracking-tight text-zinc-900 hover:underline dark:text-foreground"
+                          className="line-clamp-2 text-hh-table-cell font-semibold leading-snug tracking-normal text-zinc-900 hover:underline dark:text-foreground"
                         >
                           {r.workerName}
                         </Link>
@@ -708,7 +708,7 @@ export default function WorkerBalancesPage() {
                         type="button"
                         variant="ghost"
                         size="icon"
-                        className="h-10 w-10 rounded-sm text-muted-foreground/35 opacity-100 transition-opacity hover:bg-zinc-100/80 hover:text-destructive dark:text-muted-foreground/30 dark:hover:bg-muted/40 md:h-8 md:w-8 md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100"
+                        className="h-10 w-10 rounded-hh-compact text-muted-foreground/35 opacity-100 transition-opacity hover:bg-zinc-100/80 hover:text-destructive dark:text-muted-foreground/30 dark:hover:bg-muted/40 md:h-8 md:w-8 md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100"
                         aria-label={`Delete ${r.workerName}`}
                         onClick={() => setDeleteTarget(r)}
                       >
@@ -728,7 +728,7 @@ export default function WorkerBalancesPage() {
           open={deleteTarget != null}
           onOpenChange={(o) => !o && !deleteBusy && setDeleteTarget(null)}
         >
-          <DialogContent className="max-w-sm rounded-md border-border/60 p-5">
+          <DialogContent className="max-w-sm rounded-hh-compact border-border/60 p-5">
             <DialogHeader>
               <DialogTitle className="text-base font-semibold">Delete worker?</DialogTitle>
               <DialogDescription className="text-sm text-muted-foreground">

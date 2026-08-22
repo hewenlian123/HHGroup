@@ -76,17 +76,14 @@ export function ExpenseOperationsWorkspaceNav({ className }: { className?: strin
   return (
     <section
       data-expense-operations-shell
-      className={cn(
-        "min-w-0 shrink-0 border-b border-[var(--eo-border,var(--neo-border))] pb-2",
-        className
-      )}
+      className={cn("min-w-0 shrink-0 border-b border-[var(--hh-border)] pb-2", className)}
     >
       <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
         <div className="min-w-0">
-          <h1 className="text-[17px] font-semibold leading-tight tracking-normal text-[var(--eo-text-primary,var(--neo-text-primary))] md:text-[19px]">
+          <h1 className="text-hh-page-title tracking-normal text-[var(--hh-text-primary)]">
             Expense Operations
           </h1>
-          <p className="mt-0.5 text-[11px] leading-snug text-[var(--eo-text-secondary,var(--neo-text-secondary))]">
+          <p className="mt-0.5 text-hh-status leading-snug text-[var(--hh-text-secondary)]">
             Daily operational workspace
           </p>
         </div>
@@ -103,10 +100,10 @@ export function ExpenseOperationsWorkspaceNav({ className }: { className?: strin
                 aria-current={active ? "page" : undefined}
                 className={cn(
                   "inline-flex min-h-11 shrink-0 items-center rounded-md px-3 text-xs font-medium outline-none transition-colors duration-120 md:min-h-9",
-                  "focus-visible:ring-2 focus-visible:ring-[var(--eo-focus,var(--neo-gold-ring))] focus-visible:ring-offset-1",
+                  "focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)] focus-visible:ring-offset-1",
                   active
-                    ? "bg-[var(--eo-selected,var(--neo-surface-muted))] text-[var(--eo-text-primary,var(--neo-text-primary))]"
-                    : "text-[var(--eo-text-secondary,var(--neo-text-secondary))] hover:bg-[var(--eo-hover,var(--neo-surface-muted))] hover:text-[var(--eo-text-primary,var(--neo-text-primary))]"
+                    ? "bg-[var(--hh-l3-selected)] text-[var(--hh-text-primary)]"
+                    : "text-[var(--hh-text-secondary)] hover:bg-[var(--hh-l3-hover)] hover:text-[var(--hh-text-primary)]"
                 )}
               >
                 {surface.label}

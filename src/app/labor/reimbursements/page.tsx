@@ -73,52 +73,51 @@ function todayLocalISODate(): string {
 const STATUS_OPTIONS: WorkerReimbursementStatus[] = ["pending", "approved", "paid", "settled"];
 
 const rbShell =
-  "border border-[color:var(--rb-border)] bg-[var(--rb-elevated)] text-[color:var(--rb-text)] transition-colors duration-120";
+  "border border-[color:var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[color:var(--hh-text-primary)] transition-colors duration-120";
 
 const rbKpiIcon =
-  "flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-[var(--rb-input)] text-[color:var(--rb-muted)] md:h-9 md:w-9";
+  "flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-[var(--hh-l3-hover)] text-[color:var(--hh-text-tertiary)] md:h-9 md:w-9";
 
 const rbKpiCardClass =
   "flex min-h-[72px] items-center gap-2.5 px-3 py-3 md:h-[86px] md:gap-3 md:px-4 md:py-3";
 
 const rbKpiLabelClass =
-  "text-[10px] font-semibold uppercase leading-none tracking-[0.06em] text-[color:var(--rb-muted)]";
+  "text-hh-status font-semibold uppercase leading-none tracking-normal text-[color:var(--hh-text-tertiary)]";
 
-const rbKpiValueClass =
-  "mt-1 text-[20px] font-semibold tabular-nums leading-none tracking-normal text-[color:var(--rb-text)] md:text-[24px]";
+const rbKpiValueClass = "hh-fin mt-1 text-hh-financial-total tracking-normal text-foreground";
 
-const rbKpiMetaClass = "mt-1 text-[11px] leading-none text-[color:var(--rb-faint)]";
+const rbKpiMetaClass = "mt-1 text-hh-status leading-none text-[color:var(--hh-text-tertiary)]";
 
 const rbSegmentedNav =
-  "inline-flex min-h-9 items-center rounded-lg border border-[color:var(--rb-border-soft)] bg-[var(--rb-panel)] p-1";
+  "inline-flex min-h-9 items-center rounded-lg border border-[color:var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-1";
 
 const rbSegmentedNavLink =
-  "inline-flex h-7 items-center rounded-md px-3 text-[12px] font-medium text-[color:var(--rb-secondary)] transition-colors duration-120 hover:bg-[var(--rb-row-hover)] hover:text-[color:var(--rb-text)]";
+  "inline-flex h-7 items-center rounded-md px-3 text-hh-metadata font-medium text-[color:var(--hh-text-secondary)] transition-colors duration-120 hover:bg-[var(--hh-l3-hover)] hover:text-[color:var(--hh-text-primary)]";
 
 const rbHeaderActionButton =
-  "h-9 rounded-md border-transparent bg-[var(--eo-action-primary)] px-3 text-[13px] font-semibold text-[var(--eo-action-primary-text)] shadow-none transition-colors duration-120 hover:bg-[var(--eo-action-primary-hover)] hover:text-[var(--eo-action-primary-text)]";
+  "h-9 rounded-md border-transparent bg-[var(--hh-action-primary)] px-3 text-hh-table-cell font-semibold text-[var(--hh-action-primary-foreground)] shadow-none transition-colors duration-120 hover:bg-[var(--hh-action-primary-hover)] hover:text-[var(--hh-action-primary-foreground)]";
 
 const rbStatusChip =
-  "inline-flex h-6 items-center gap-1.5 rounded-full border bg-[var(--rb-panel)] px-2.5 text-[11px] font-semibold leading-none tracking-normal";
+  "inline-flex h-6 items-center gap-1.5 rounded-full border bg-[var(--hh-l2-operational-surface)] px-2.5 text-hh-status font-semibold leading-none tracking-normal";
 
 const rbChipBase =
-  "inline-flex min-h-9 items-center gap-1.5 rounded-full border bg-[var(--rb-panel)] px-3 py-1.5 text-[11px] font-medium transition-colors duration-120";
+  "inline-flex min-h-9 items-center gap-1.5 rounded-full border bg-[var(--hh-l2-operational-surface)] px-3 py-1.5 text-hh-status font-medium transition-colors duration-120";
 
 const rbFormLabelClass =
-  "mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.06em] text-[color:var(--rb-muted)]";
+  "mb-1.5 block text-hh-status font-semibold uppercase tracking-normal text-[color:var(--hh-text-tertiary)]";
 
 const rbFormControlClass =
-  "h-10 rounded-md border-[color:var(--rb-border)] bg-[var(--rb-input)] text-[color:var(--rb-text)] shadow-none focus-visible:border-[color:var(--eo-focus)] focus-visible:ring-[var(--eo-focus-ring)]";
+  "h-10 rounded-md border-[color:var(--hh-border)] bg-[var(--hh-l3-hover)] text-[color:var(--hh-text-primary)] shadow-none focus-visible:border-[color:var(--hh-focus-ring)] focus-visible:ring-[var(--hh-focus-ring)]";
 
 function hasReceiptUrl(r: WorkerReimbursement): boolean {
   return Boolean((r.receiptUrl ?? "").trim());
 }
 
 const receiptPillAttachedInteractive =
-  "inline-flex max-w-full shrink-0 items-center gap-1.5 rounded-md border border-[color:var(--rb-border)] bg-[var(--rb-panel)] px-2.5 py-1 text-[11px] font-semibold tabular-nums text-[color:var(--rb-secondary)] transition-colors duration-120 hover:border-[color:var(--rb-border-strong)] hover:bg-[var(--rb-row-hover)] hover:text-[color:var(--rb-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--eo-focus-ring)]";
+  "inline-flex max-w-full shrink-0 items-center gap-1.5 rounded-md border border-[color:var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-2.5 py-1 text-hh-status font-semibold tabular-nums text-[color:var(--hh-text-secondary)] transition-colors duration-120 hover:border-[color:var(--hh-border-strong)] hover:bg-[var(--hh-l3-hover)] hover:text-[color:var(--hh-text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)]";
 
 const receiptPillMissing =
-  "inline-flex max-w-full shrink-0 items-center gap-1.5 rounded-md bg-[var(--eo-warning-soft)] px-2.5 py-1 text-[11px] font-medium tabular-nums text-[color:var(--rb-amber)]";
+  "inline-flex max-w-full shrink-0 items-center gap-1.5 rounded-md bg-[var(--hh-warning-soft-fill)] px-2.5 py-1 text-hh-status font-medium tabular-nums text-[color:var(--hh-warning)]";
 
 function ReimbursementCheckbox({
   ariaLabel,
@@ -152,16 +151,16 @@ function ReimbursementCheckbox({
       <span
         aria-hidden
         className={cn(
-          "flex h-4 w-4 items-center justify-center rounded-[5px] border border-[color:var(--rb-border-strong)] bg-[var(--rb-input)]",
+          "flex h-4 w-4 items-center justify-center rounded-hh-compact border border-[color:var(--hh-border-strong)] bg-[var(--hh-l3-hover)]",
           "transition-[background-color,border-color,box-shadow] duration-120",
-          "group-hover/reimbursement-checkbox:border-[color:var(--eo-text-tertiary)] group-hover/reimbursement-checkbox:bg-[var(--rb-row-hover)]",
-          "peer-focus-visible:border-[color:var(--eo-focus)] peer-focus-visible:ring-2 peer-focus-visible:ring-[var(--eo-focus-ring)]",
-          "peer-checked:border-[color:var(--eo-action-primary)] peer-checked:bg-[var(--eo-action-primary)]",
-          "peer-disabled:border-[color:var(--rb-border)] peer-disabled:bg-[var(--rb-input)]"
+          "group-hover/reimbursement-checkbox:border-[color:var(--hh-text-tertiary)] group-hover/reimbursement-checkbox:bg-[var(--hh-l3-hover)]",
+          "peer-focus-visible:border-[color:var(--hh-focus-ring)] peer-focus-visible:ring-2 peer-focus-visible:ring-[var(--hh-focus-ring)]",
+          "peer-checked:border-[color:var(--hh-action-primary)] peer-checked:bg-[var(--hh-action-primary)]",
+          "peer-disabled:border-[color:var(--hh-border)] peer-disabled:bg-[var(--hh-l3-hover)]"
         )}
       >
         {checked ? (
-          <Check className="h-3 w-3 text-[var(--eo-action-primary-text)]" strokeWidth={3} />
+          <Check className="h-3 w-3 text-[var(--hh-action-primary-foreground)]" strokeWidth={3} />
         ) : null}
       </span>
     </label>
@@ -182,10 +181,10 @@ function ReimbursementStatusChip({ status }: { status: WorkerReimbursementStatus
     <span
       className={cn(
         rbStatusChip,
-        "border-[color:var(--eo-warning-border)] text-[color:var(--rb-amber)]"
+        "border-[color:var(--hh-warning-border)] text-[color:var(--hh-warning)]"
       )}
     >
-      <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--rb-amber)]" aria-hidden />
+      <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--hh-warning)]" aria-hidden />
       Pending
     </span>
   );
@@ -682,7 +681,7 @@ export default function WorkerReimbursementsPage() {
             <Button
               variant="ghost"
               size="icon"
-              className="h-11 w-11 min-h-[44px] min-w-[44px] rounded-md border border-transparent text-[color:var(--rb-faint)] touch-manipulation transition-colors duration-120 hover:border-[color:var(--rb-border)] hover:bg-[var(--rb-row-hover)] hover:text-[color:var(--rb-text)] data-[state=open]:border-[color:var(--rb-border-strong)] data-[state=open]:bg-[var(--rb-row-hover)] md:h-8 md:w-8 md:min-h-8 md:min-w-8"
+              className="h-11 w-11 min-h-[44px] min-w-[44px] rounded-md border border-transparent text-[color:var(--hh-text-tertiary)] touch-manipulation transition-colors duration-120 hover:border-[color:var(--hh-border)] hover:bg-[var(--hh-l3-hover)] hover:text-[color:var(--hh-text-primary)] data-[state=open]:border-[color:var(--hh-border-strong)] data-[state=open]:bg-[var(--hh-l3-hover)] md:h-8 md:w-8 md:min-h-8 md:min-w-8"
               aria-label="Actions"
             >
               <MoreHorizontal className="h-4 w-4 opacity-80" />
@@ -742,30 +741,30 @@ export default function WorkerReimbursementsPage() {
     <div
       data-reimbursements-workspace
       className={cn(
-        "expenses-ui reimbursements-ui page-shell-wide mx-auto flex min-h-[calc(100dvh-1rem)] w-full !max-w-none flex-col gap-1 bg-[var(--rb-page)] px-4 py-1 pb-2.5 text-[color:var(--rb-secondary)] md:gap-2 md:px-6 md:pb-3 md:pt-0.5",
+        "expenses-ui reimbursements-ui page-shell-wide mx-auto flex min-h-[calc(100dvh-1rem)] w-full !max-w-none flex-col gap-1 bg-[var(--hh-l0-canvas)] px-4 py-1 pb-2.5 text-[color:var(--hh-text-secondary)] md:gap-2 md:px-6 md:pb-3 md:pt-0.5",
         mobileListPagePaddingClass,
         "max-md:!gap-1"
       )}
     >
       <ExpenseOperationsWorkspaceNav className="mb-1" />
-      <div className="flex flex-col gap-2 border-b border-[color:var(--rb-border-soft)] pb-2 pt-1">
+      <div className="flex flex-col gap-2 border-b border-[color:var(--hh-border)] pb-2 pt-1">
         <div className="flex flex-wrap items-center gap-2">
           <Button
             asChild
             variant="outline"
             size="sm"
-            className="min-h-11 rounded-md border-[color:var(--rb-border)] bg-[var(--rb-panel)] px-3 text-[13px] font-semibold text-[color:var(--rb-text)] shadow-none hover:border-[color:var(--rb-border-strong)] hover:bg-[var(--rb-row-hover)] md:min-h-9"
+            className="min-h-11 rounded-md border-[color:var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 text-hh-table-cell font-semibold text-[color:var(--hh-text-primary)] shadow-none hover:border-[color:var(--hh-border-strong)] hover:bg-[var(--hh-l3-hover)] md:min-h-9"
           >
             <Link href={returnHref}>{returnLabel}</Link>
           </Button>
-          <span className="text-xs text-[color:var(--rb-muted)]">
+          <span className="text-xs text-[color:var(--hh-text-tertiary)]">
             Worker Center{sourceWorkerName ? ` › ${sourceWorkerName}` : ""} › Reimbursements
           </span>
         </div>
       </div>
       <div className="hidden md:block">
         <PageHeader
-          className="gap-2 border-b border-[color:var(--rb-border-soft)] pb-4 lg:items-end lg:gap-x-5 [&_h1]:!text-[24px] [&_h1]:!font-semibold [&_h1]:!leading-none [&_h1]:!tracking-normal [&_h1]:!text-[color:var(--rb-text)] [&_p]:!mt-1 [&_p]:!max-w-xl [&_p]:!text-[14px] [&_p]:!leading-snug [&_p]:!text-[color:var(--rb-secondary)]"
+          className="gap-2 border-b border-[color:var(--hh-border)] pb-4 lg:items-end lg:gap-x-5 [&_h1]:!text-hh-page-title [&_h1]:!tracking-normal [&_p]:!mt-1 [&_p]:!max-w-xl [&_p]:!text-hh-body"
           title="Worker Reimbursements"
           subtitle="Review pending reimbursements, receipts, and payouts before marking paid."
           actions={
@@ -804,16 +803,16 @@ export default function WorkerReimbursementsPage() {
       />
 
       <div
-        className="flex flex-wrap items-center gap-2 border-b border-[color:var(--rb-border-soft)] pb-2 pt-1"
+        className="flex flex-wrap items-center gap-2 border-b border-[color:var(--hh-border)] pb-2 pt-1"
         aria-label="Reimbursement queue summary"
       >
         <span
           className={cn(
             rbChipBase,
-            "border-[color:var(--rb-border)] text-[color:var(--rb-secondary)]"
+            "border-[color:var(--hh-border)] text-[color:var(--hh-text-secondary)]"
           )}
         >
-          <span className="font-semibold tabular-nums text-[color:var(--rb-text)]">
+          <span className="font-semibold tabular-nums text-[color:var(--hh-text-primary)]">
             {reimbursementStats.pendingCount}
           </span>
           Pending
@@ -821,10 +820,10 @@ export default function WorkerReimbursementsPage() {
         <span
           className={cn(
             rbChipBase,
-            "border-[color:var(--eo-warning-border)] text-[color:var(--rb-amber)]"
+            "border-[color:var(--hh-warning-border)] text-[color:var(--hh-warning)]"
           )}
         >
-          <span className="font-semibold tabular-nums text-[color:var(--rb-amber)]">
+          <span className="font-semibold tabular-nums text-[color:var(--hh-warning)]">
             {reimbursementStats.missingReceipt}
           </span>
           Missing receipt
@@ -832,10 +831,10 @@ export default function WorkerReimbursementsPage() {
         <span
           className={cn(
             rbChipBase,
-            "border-[color:var(--rb-border)] text-[color:var(--rb-secondary)]"
+            "border-[color:var(--hh-border)] text-[color:var(--hh-text-secondary)]"
           )}
         >
-          <span className="font-semibold tabular-nums text-[color:var(--rb-text)]">
+          <span className="font-semibold tabular-nums text-[color:var(--hh-text-primary)]">
             {reimbursementStats.readyToPay}
           </span>
           With receipt
@@ -844,7 +843,7 @@ export default function WorkerReimbursementsPage() {
 
       <div
         data-reimbursements-kpis
-        className="grid grid-cols-2 overflow-hidden rounded-lg border border-[color:var(--rb-border)] bg-[var(--rb-panel)] md:grid-cols-4"
+        className="grid grid-cols-2 overflow-hidden rounded-lg border border-[color:var(--hh-border)] bg-[var(--hh-l2-operational-surface)] md:grid-cols-4"
       >
         <div className={cn(rbShell, rbKpiCardClass)}>
           <span className={rbKpiIcon}>
@@ -898,12 +897,12 @@ export default function WorkerReimbursementsPage() {
         activeFilterCount={sortFilterActive}
         searchSlot={
           <div className="relative w-full">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[color:var(--rb-muted)]" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[color:var(--hh-text-tertiary)]" />
             <Input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Worker, project, vendor…"
-              className="h-11 min-h-[44px] rounded-md border-[color:var(--rb-border)] bg-[var(--rb-input)] pl-9 text-sm text-[color:var(--rb-text)] placeholder:text-[color:var(--rb-faint)] focus-visible:border-[color:var(--eo-focus)] focus-visible:ring-[var(--eo-focus-ring)] md:h-10 md:min-h-0"
+              className="h-11 min-h-[44px] rounded-md border-[color:var(--hh-border)] bg-[var(--hh-l3-hover)] pl-9 text-sm text-[color:var(--hh-text-primary)] placeholder:text-[color:var(--hh-text-tertiary)] focus-visible:border-[color:var(--hh-focus-ring)] focus-visible:ring-[var(--hh-focus-ring)] md:h-10 md:min-h-0"
               aria-label="Search reimbursements"
             />
           </div>
@@ -958,34 +957,34 @@ export default function WorkerReimbursementsPage() {
         </Button>
       </MobileFilterSheet>
       {schemaWarning ? (
-        <div className="rounded-lg border border-[color:var(--eo-warning-border)] bg-[var(--eo-warning-soft)] px-3 py-2 text-sm text-[color:var(--rb-amber)]">
+        <div className="rounded-lg border border-[color:var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] px-3 py-2 text-sm text-[color:var(--hh-warning)]">
           {schemaWarning} Run Labor schema migration (e.g. ensure labor tables) or check Supabase
           Project Settings → API → Reload schema.
         </div>
       ) : null}
-      <NeoToolbar className="hidden border-[color:var(--rb-border)] bg-[var(--rb-panel)] shadow-[var(--eo-shadow-operational)] md:block md:p-2.5">
+      <NeoToolbar className="hidden border-[color:var(--hh-border)] bg-[var(--hh-l2-operational-surface)] shadow-operational md:block md:p-2.5">
         <div className="flex w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
           <div className="min-w-[260px] flex-1 space-y-1.5">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[color:var(--rb-muted)]">
+            <p className="text-hh-status font-semibold uppercase tracking-normal text-[color:var(--hh-text-tertiary)]">
               Search
             </p>
             <div className="relative">
               <Search
-                className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[color:var(--rb-muted)]"
+                className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[color:var(--hh-text-tertiary)]"
                 aria-hidden
               />
               <Input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Worker, project, vendor…"
-                className="h-10 rounded-md border-[color:var(--rb-border)] bg-[var(--rb-input)] pl-9 text-[color:var(--rb-text)] placeholder:text-[color:var(--rb-faint)] focus-visible:border-[color:var(--eo-focus)] focus-visible:ring-[var(--eo-focus-ring)]"
+                className="h-10 rounded-md border-[color:var(--hh-border)] bg-[var(--hh-l3-hover)] pl-9 text-[color:var(--hh-text-primary)] placeholder:text-[color:var(--hh-text-tertiary)] focus-visible:border-[color:var(--hh-focus-ring)] focus-visible:ring-[var(--hh-focus-ring)]"
               />
             </div>
           </div>
           <Button
             size="sm"
             variant="outline"
-            className="h-10 w-full rounded-md border-[color:var(--rb-border)] bg-[var(--rb-elevated)] px-4 text-[13px] font-semibold text-[color:var(--rb-text)] shadow-none transition-colors duration-120 hover:border-[color:var(--rb-border-strong)] hover:bg-[var(--rb-row-hover)] disabled:border-[color:var(--rb-border-soft)] disabled:bg-[var(--rb-input)] disabled:text-[color:var(--rb-faint)] sm:w-[210px]"
+            className="h-10 w-full rounded-md border-[color:var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-4 text-hh-table-cell font-semibold text-[color:var(--hh-text-primary)] shadow-none transition-colors duration-120 hover:border-[color:var(--hh-border-strong)] hover:bg-[var(--hh-l3-hover)] disabled:border-[color:var(--hh-border)] disabled:bg-[var(--hh-l3-hover)] disabled:text-[color:var(--hh-text-tertiary)] sm:w-[210px]"
             disabled={selectedIds.size === 0 || !selectedSameWorker || selectedRows.length === 0}
             onClick={openCreateWorkerPayment}
           >
@@ -995,7 +994,7 @@ export default function WorkerReimbursementsPage() {
         </div>
       </NeoToolbar>
       {message ? (
-        <div className="rounded-lg border border-[color:var(--rb-border)] bg-[var(--rb-panel)] px-3 py-2 text-sm text-[color:var(--rb-secondary)]">
+        <div className="rounded-lg border border-[color:var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 py-2 text-sm text-[color:var(--hh-text-secondary)]">
           {message}
         </div>
       ) : null}
@@ -1003,9 +1002,9 @@ export default function WorkerReimbursementsPage() {
       {showForm && (
         <section
           data-reimbursement-form
-          className="reimbursement-task-surface rounded-lg border border-[color:var(--rb-border)] bg-[var(--rb-elevated)] p-4 shadow-[var(--eo-shadow-task)]"
+          className="reimbursement-task-surface rounded-lg border border-[color:var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-4 shadow-task"
         >
-          <h2 className="mb-3 text-sm font-semibold text-[color:var(--rb-text)]">
+          <h2 className="mb-3 text-sm font-semibold text-[color:var(--hh-text-primary)]">
             {editingId ? "Edit Reimbursement" : "New Reimbursement"}
           </h2>
           <form onSubmit={handleSubmit} className="flex flex-wrap gap-3 items-end">
@@ -1131,16 +1130,16 @@ export default function WorkerReimbursementsPage() {
 
       <div data-reimbursements-queue className="md:hidden">
         {loading ? (
-          <div className="rounded-lg border border-[color:var(--rb-border)] bg-[var(--rb-panel)] px-4 py-8 text-center text-xs text-[color:var(--rb-muted)]">
+          <div className="rounded-lg border border-[color:var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-4 py-8 text-center text-xs text-[color:var(--hh-text-tertiary)]">
             Loading…
           </div>
         ) : paged.length === 0 ? (
-          <div className="flex flex-col items-center rounded-lg border border-dashed border-[color:var(--rb-border)] bg-[var(--rb-panel)] px-4 py-10 text-center md:hidden">
-            <Search className="h-8 w-8 text-[color:var(--rb-muted)]" aria-hidden />
-            <p className="mt-3 text-sm font-medium text-[color:var(--rb-secondary)]">
+          <div className="flex flex-col items-center rounded-lg border border-dashed border-[color:var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-4 py-10 text-center md:hidden">
+            <Search className="h-8 w-8 text-[color:var(--hh-text-tertiary)]" aria-hidden />
+            <p className="mt-3 text-sm font-medium text-[color:var(--hh-text-secondary)]">
               No reimbursements yet.
             </p>
-            <p className="mt-1 max-w-[240px] text-xs leading-snug text-[color:var(--rb-muted)]">
+            <p className="mt-1 max-w-[240px] text-xs leading-snug text-[color:var(--hh-text-tertiary)]">
               New worker reimbursements will appear here for review and payout.
             </p>
           </div>
@@ -1152,9 +1151,9 @@ export default function WorkerReimbursementsPage() {
                 data-reimbursement-id={r.id}
                 data-selected={selectedIds.has(r.id) ? "true" : undefined}
                 className={cn(
-                  "flex flex-col gap-2.5 rounded-lg border-[color:var(--rb-border)] bg-[var(--rb-elevated)] px-3 py-3 shadow-none",
+                  "flex flex-col gap-2.5 rounded-lg border-[color:var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 py-3 shadow-none",
                   selectedIds.has(r.id) &&
-                    "border-[color:var(--rb-border-strong)] bg-[var(--eo-depth-l3-selected)]"
+                    "border-[color:var(--hh-border-strong)] bg-[var(--hh-l3-selected)]"
                 )}
               >
                 <div className="flex items-start gap-2">
@@ -1167,26 +1166,26 @@ export default function WorkerReimbursementsPage() {
                     />
                   ) : null}
                   <div className="min-w-0 flex-1 space-y-1">
-                    <p className="truncate text-[15px] font-semibold leading-snug tracking-normal text-[color:var(--rb-text)]">
+                    <p className="truncate text-hh-body-strong font-semibold leading-snug tracking-normal text-[color:var(--hh-text-primary)]">
                       {workerName(r)}
                     </p>
                     {r.paidAt ? (
-                      <p className="text-[11px] text-[color:var(--rb-faint)] tabular-nums">
+                      <p className="text-hh-status text-[color:var(--hh-text-tertiary)] tabular-nums">
                         Paid {formatDate(r.paidAt)}
                       </p>
                     ) : null}
-                    <p className="truncate text-[12px] leading-snug text-[color:var(--rb-secondary)]">
+                    <p className="truncate text-hh-metadata leading-snug text-[color:var(--hh-text-secondary)]">
                       {r.projectId && projectName(r) !== "—" ? projectName(r) : "No project"}
                     </p>
-                    <p className="truncate text-[13px] font-semibold leading-snug text-[color:var(--rb-text)]">
+                    <p className="truncate text-hh-table-cell font-semibold leading-snug text-[color:var(--hh-text-primary)]">
                       {r.vendor?.trim() ? r.vendor : "No vendor"}
                     </p>
                     {r.description?.trim() ? (
-                      <p className="line-clamp-2 text-[12px] leading-snug text-[color:var(--rb-secondary)]">
+                      <p className="line-clamp-2 text-hh-metadata leading-snug text-[color:var(--hh-text-secondary)]">
                         {r.description.trim()}
                       </p>
                     ) : null}
-                    <p className="text-[11px] text-[color:var(--rb-faint)] tabular-nums">
+                    <p className="text-hh-status text-[color:var(--hh-text-tertiary)] tabular-nums">
                       {formatDate(r.reimbursementDate || r.createdAt)}
                     </p>
                   </div>
@@ -1235,7 +1234,7 @@ export default function WorkerReimbursementsPage() {
                           aria-label="Missing receipt"
                         >
                           <span
-                            className="h-1 w-1 shrink-0 rounded-full bg-[var(--rb-amber)]"
+                            className="h-1 w-1 shrink-0 rounded-full bg-[var(--hh-warning)]"
                             aria-hidden
                           />
                           Missing
@@ -1244,7 +1243,7 @@ export default function WorkerReimbursementsPage() {
                     </div>
                   </div>
                 </div>
-                <div className="flex justify-end border-t border-[color:var(--rb-border-soft)] pt-2">
+                <div className="flex justify-end border-t border-[color:var(--hh-border)] pt-2">
                   <ActionsDropdown r={r} />
                 </div>
               </NeoMobileCard>
@@ -1256,11 +1255,11 @@ export default function WorkerReimbursementsPage() {
       {/* Desktop: table */}
       <div data-reimbursements-queue className="hidden md:-mt-1 md:block">
         <NeoTable
-          className="border-[color:var(--rb-border)] bg-[var(--rb-panel)] shadow-[var(--eo-shadow-operational)]"
+          className="border-[color:var(--hh-border)] bg-[var(--hh-l2-operational-surface)] shadow-operational"
           tableClassName="min-w-[900px] lg:min-w-0"
         >
           <thead>
-            <tr className="border-b border-[color:var(--rb-border)] bg-[var(--rb-elevated)]">
+            <tr className="border-b border-[color:var(--hh-border)] bg-[var(--hh-l2-operational-surface)]">
               <th className="w-12 px-2 py-1.5 text-center">
                 <div className="flex min-h-10 min-w-10 items-center justify-center">
                   <ReimbursementCheckbox
@@ -1273,61 +1272,61 @@ export default function WorkerReimbursementsPage() {
                 </div>
               </th>
               <th
-                className="w-[88px] cursor-pointer select-none whitespace-nowrap px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[color:var(--rb-muted)] tabular-nums transition-colors hover:text-[color:var(--rb-text)]"
+                className="w-[88px] cursor-pointer select-none whitespace-nowrap px-3 py-2 text-left text-hh-status font-semibold uppercase tracking-normal text-[color:var(--hh-text-tertiary)] tabular-nums transition-colors hover:text-[color:var(--hh-text-primary)]"
                 onClick={() => toggleSort("reimbursementDate")}
               >
                 Date
               </th>
-              <th className="min-w-[128px] px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[color:var(--rb-muted)]">
+              <th className="min-w-[128px] px-3 py-2 text-left text-hh-status font-semibold uppercase tracking-normal text-[color:var(--hh-text-tertiary)]">
                 Worker
               </th>
-              <th className="max-w-[140px] min-w-[100px] px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[color:var(--rb-muted)]">
+              <th className="max-w-[140px] min-w-[100px] px-3 py-2 text-left text-hh-status font-semibold uppercase tracking-normal text-[color:var(--hh-text-tertiary)]">
                 Project
               </th>
-              <th className="min-w-[160px] px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[color:var(--rb-muted)]">
+              <th className="min-w-[160px] px-3 py-2 text-left text-hh-status font-semibold uppercase tracking-normal text-[color:var(--hh-text-tertiary)]">
                 Review item
               </th>
               <th
-                className="w-[92px] cursor-pointer select-none whitespace-nowrap px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-[0.06em] text-[color:var(--rb-muted)] tabular-nums transition-colors hover:text-[color:var(--rb-text)]"
+                className="w-[92px] cursor-pointer select-none whitespace-nowrap px-3 py-2 text-right text-hh-status font-semibold uppercase tracking-normal text-[color:var(--hh-text-tertiary)] tabular-nums transition-colors hover:text-[color:var(--hh-text-primary)]"
                 onClick={() => toggleSort("amount")}
               >
                 Amount
               </th>
               <th
-                className="w-[108px] cursor-pointer select-none whitespace-nowrap px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[color:var(--rb-muted)] transition-colors hover:text-[color:var(--rb-text)]"
+                className="w-[108px] cursor-pointer select-none whitespace-nowrap px-3 py-2 text-left text-hh-status font-semibold uppercase tracking-normal text-[color:var(--hh-text-tertiary)] transition-colors hover:text-[color:var(--hh-text-primary)]"
                 onClick={() => toggleSort("status")}
               >
                 Status
               </th>
-              <th className="w-[88px] whitespace-nowrap px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[color:var(--rb-muted)]">
+              <th className="w-[88px] whitespace-nowrap px-3 py-2 text-left text-hh-status font-semibold uppercase tracking-normal text-[color:var(--hh-text-tertiary)]">
                 Receipt
               </th>
-              <th className="w-24 px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-[0.06em] text-[color:var(--rb-muted)]">
+              <th className="w-24 px-3 py-2 text-right text-hh-status font-semibold uppercase tracking-normal text-[color:var(--hh-text-tertiary)]">
                 Actions
               </th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr className="border-b border-[color:var(--rb-border-soft)] bg-[var(--rb-input)]">
+              <tr className="border-b border-[color:var(--hh-border)] bg-[var(--hh-l3-hover)]">
                 <td
                   colSpan={9}
-                  className="px-3 py-8 text-center text-xs text-[color:var(--rb-muted)]"
+                  className="px-3 py-8 text-center text-xs text-[color:var(--hh-text-tertiary)]"
                 >
                   Loading…
                 </td>
               </tr>
             ) : paged.length === 0 ? (
-              <tr className="border-b border-[color:var(--rb-border-soft)] bg-[var(--rb-input)]">
+              <tr className="border-b border-[color:var(--hh-border)] bg-[var(--hh-l3-hover)]">
                 <td colSpan={9} className="px-3 py-9 text-center">
                   <div className="mx-auto flex max-w-[360px] flex-col items-center">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-md bg-[var(--rb-input)] text-[color:var(--rb-muted)]">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-md bg-[var(--hh-l3-hover)] text-[color:var(--hh-text-tertiary)]">
                       <Search className="h-4 w-4" strokeWidth={1.75} aria-hidden />
                     </div>
-                    <p className="mt-3 text-[13px] font-medium text-[color:var(--rb-secondary)]">
+                    <p className="mt-3 text-hh-table-cell font-medium text-[color:var(--hh-text-secondary)]">
                       No reimbursements yet.
                     </p>
-                    <p className="mt-1 text-[12px] leading-snug text-[color:var(--rb-muted)]">
+                    <p className="mt-1 text-hh-metadata leading-snug text-[color:var(--hh-text-tertiary)]">
                       New worker reimbursements will appear here for review and payout.
                     </p>
                   </div>
@@ -1341,9 +1340,9 @@ export default function WorkerReimbursementsPage() {
                   data-selected={selectedIds.has(r.id) ? "true" : undefined}
                   className={cn(
                     listTableRowClassName,
-                    "group border-b border-[color:var(--rb-border-soft)] bg-[var(--rb-row)] transition-[background-color,box-shadow] duration-120 hover:bg-[var(--rb-row-hover)]",
+                    "group border-b border-[color:var(--hh-border)] bg-[var(--hh-l1-workspace)] transition-[background-color,box-shadow] duration-120 hover:bg-[var(--hh-l3-hover)]",
                     selectedIds.has(r.id) &&
-                      "bg-[var(--eo-depth-l3-selected)] shadow-[inset_2px_0_0_0_var(--eo-text-tertiary)]"
+                      "bg-[var(--hh-l3-selected)] shadow-[inset_2px_0_0_0_var(--hh-text-tertiary)]"
                   )}
                   onClick={() => handleEdit(r)}
                 >
@@ -1363,22 +1362,22 @@ export default function WorkerReimbursementsPage() {
                       <span className="text-muted-foreground">—</span>
                     )}
                   </td>
-                  <td className="px-3 py-2.5 align-middle text-[12px] leading-snug text-[color:var(--rb-secondary)] tabular-nums">
+                  <td className="px-3 py-2.5 align-middle text-hh-metadata leading-snug text-[color:var(--hh-text-secondary)] tabular-nums">
                     {formatDate(r.reimbursementDate || r.createdAt)}
                   </td>
                   <td
                     className={cn(
                       "min-w-0 px-3 py-2.5 align-middle leading-snug",
                       listTablePrimaryCellClassName,
-                      "text-[color:var(--rb-text)]"
+                      "text-[color:var(--hh-text-primary)]"
                     )}
                   >
                     <div className="min-w-0 space-y-0.5">
-                      <span className="line-clamp-2 text-[14px] font-semibold tracking-normal text-[color:var(--rb-text)]">
+                      <span className="line-clamp-2 text-hh-body font-semibold tracking-normal text-[color:var(--hh-text-primary)]">
                         {workerName(r)}
                       </span>
                       {r.paidAt ? (
-                        <span className="block text-[11px] leading-none text-[color:var(--rb-faint)] tabular-nums">
+                        <span className="block text-hh-status leading-none text-[color:var(--hh-text-tertiary)] tabular-nums">
                           Paid {formatDate(r.paidAt)}
                         </span>
                       ) : null}
@@ -1386,20 +1385,22 @@ export default function WorkerReimbursementsPage() {
                   </td>
                   <td className="max-w-[160px] px-3 py-2.5 align-middle">
                     {r.projectId && projectName(r) !== "—" ? (
-                      <span className="line-clamp-2 text-[13px] leading-snug text-[color:var(--rb-secondary)]">
+                      <span className="line-clamp-2 text-hh-table-cell leading-snug text-[color:var(--hh-text-secondary)]">
                         {projectName(r)}
                       </span>
                     ) : (
-                      <span className="text-[13px] text-[color:var(--rb-faint)]">No project</span>
+                      <span className="text-hh-table-cell text-[color:var(--hh-text-tertiary)]">
+                        No project
+                      </span>
                     )}
                   </td>
                   <td className="min-w-0 px-3 py-2.5 align-middle leading-snug">
                     <div className="min-w-0 space-y-0.5">
-                      <span className="line-clamp-2 text-[13px] font-semibold leading-snug text-[color:var(--rb-text)]">
+                      <span className="line-clamp-2 text-hh-table-cell font-semibold leading-snug text-[color:var(--hh-text-primary)]">
                         {r.vendor?.trim() ? r.vendor : "No vendor"}
                       </span>
                       {r.description?.trim() ? (
-                        <span className="line-clamp-2 text-[12px] leading-snug text-[color:var(--rb-secondary)]">
+                        <span className="line-clamp-2 text-hh-metadata leading-snug text-[color:var(--hh-text-secondary)]">
                           {r.description.trim()}
                         </span>
                       ) : null}
@@ -1411,7 +1412,9 @@ export default function WorkerReimbursementsPage() {
                       listTableAmountCellClassName
                     )}
                   >
-                    <NeoAmount className="text-[15px]">{formatCurrency(r.amount)}</NeoAmount>
+                    <NeoAmount className="text-hh-body-strong">
+                      {formatCurrency(r.amount)}
+                    </NeoAmount>
                   </td>
                   <td className="whitespace-nowrap px-3 py-2.5 align-middle">
                     <ReimbursementStatusChip status={r.status} />
@@ -1453,7 +1456,7 @@ export default function WorkerReimbursementsPage() {
                     ) : (
                       <span className={receiptPillMissing}>
                         <span
-                          className="h-1 w-1 shrink-0 rounded-full bg-[var(--rb-amber)]"
+                          className="h-1 w-1 shrink-0 rounded-full bg-[var(--hh-warning)]"
                           aria-hidden
                         />
                         Missing
@@ -1473,8 +1476,8 @@ export default function WorkerReimbursementsPage() {
         </NeoTable>
       </div>
 
-      <div className="flex items-center justify-between rounded-lg border border-[color:var(--rb-border)] bg-[var(--rb-panel)] px-3 py-2 text-sm text-[color:var(--rb-secondary)] shadow-none md:-mt-1">
-        <span className="text-[13px] font-medium tabular-nums">
+      <div className="flex items-center justify-between rounded-lg border border-[color:var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 py-2 text-sm text-[color:var(--hh-text-secondary)] shadow-none md:-mt-1">
+        <span className="text-hh-table-cell font-medium tabular-nums">
           {filtered.length === 0
             ? "0"
             : `${(page - 1) * pageSize + 1}–${Math.min(page * pageSize, filtered.length)} of ${filtered.length}`}
@@ -1483,7 +1486,7 @@ export default function WorkerReimbursementsPage() {
           <Button
             size="sm"
             variant="outline"
-            className="h-11 min-h-[44px] rounded-md border-[color:var(--rb-border)] bg-[var(--rb-elevated)] px-4 text-[13px] font-semibold text-[color:var(--rb-text)] hover:border-[color:var(--rb-border-strong)] hover:bg-[var(--rb-row-hover)] disabled:bg-[var(--rb-input)] disabled:text-[color:var(--rb-faint)] md:h-8 md:min-h-8"
+            className="h-11 min-h-[44px] rounded-md border-[color:var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-4 text-hh-table-cell font-semibold text-[color:var(--hh-text-primary)] hover:border-[color:var(--hh-border-strong)] hover:bg-[var(--hh-l3-hover)] disabled:bg-[var(--hh-l3-hover)] disabled:text-[color:var(--hh-text-tertiary)] md:h-8 md:min-h-8"
             disabled={page <= 1}
             onClick={() => setPage((p) => Math.max(1, p - 1))}
           >
@@ -1492,7 +1495,7 @@ export default function WorkerReimbursementsPage() {
           <Button
             size="sm"
             variant="outline"
-            className="h-11 min-h-[44px] rounded-md border-[color:var(--rb-border)] bg-[var(--rb-elevated)] px-4 text-[13px] font-semibold text-[color:var(--rb-text)] hover:border-[color:var(--rb-border-strong)] hover:bg-[var(--rb-row-hover)] disabled:bg-[var(--rb-input)] disabled:text-[color:var(--rb-faint)] md:h-8 md:min-h-8"
+            className="h-11 min-h-[44px] rounded-md border-[color:var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-4 text-hh-table-cell font-semibold text-[color:var(--hh-text-primary)] hover:border-[color:var(--hh-border-strong)] hover:bg-[var(--hh-l3-hover)] disabled:bg-[var(--hh-l3-hover)] disabled:text-[color:var(--hh-text-tertiary)] md:h-8 md:min-h-8"
             disabled={page >= totalPages}
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
           >
@@ -1518,7 +1521,7 @@ export default function WorkerReimbursementsPage() {
               </div>
               <div>
                 <label className={rbFormLabelClass}>Reimbursements</label>
-                <ul className="max-h-40 overflow-auto rounded-md border border-[color:var(--rb-border)] text-sm divide-y divide-[color:var(--rb-border)]">
+                <ul className="max-h-40 overflow-auto rounded-md border border-[color:var(--hh-border)] text-sm divide-y divide-[color:var(--hh-border)]">
                   {batchPaymentModal.items.map((r) => (
                     <li key={r.id} className="py-2 px-3 flex justify-between gap-2">
                       <span className="truncate">

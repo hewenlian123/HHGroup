@@ -48,7 +48,7 @@ import { hawaiiTodayYmd } from "@/lib/hawaii-calendar-date";
 
 type ProjectOption = { id: string; name: string | null };
 
-const FIELD_LABEL = "text-xs uppercase tracking-wide text-muted-foreground";
+const FIELD_LABEL = "text-xs uppercase tracking-normal text-muted-foreground";
 const CONTROL_CLASS = "h-10 rounded-sm border-border/60 text-sm";
 const SELECT_TRIGGER = cn(CONTROL_CLASS, "[&>span]:line-clamp-1");
 
@@ -380,7 +380,7 @@ export default function NewExpensePage() {
 
         <form onSubmit={onSubmit} className="space-y-6">
           <section className="space-y-3 border-b border-border/60 pb-6">
-            <h2 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            <h2 className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
               Core
             </h2>
             <div className="grid gap-4 md:grid-cols-2">
@@ -399,7 +399,7 @@ export default function NewExpensePage() {
                 </div>
               </div>
               <div className="space-y-2">
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-normal">
                   Vendor
                 </label>
                 <CreatableSelect
@@ -678,7 +678,7 @@ export default function NewExpensePage() {
                 if (file) setReceiptFile(file);
               }}
             >
-              <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              <span className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
                 Drag receipt here
               </span>
               <span className="mt-1 text-sm text-foreground">or click to upload</span>
@@ -746,7 +746,7 @@ export default function NewExpensePage() {
                       fileType: "pdf",
                     })
                   }
-                  className="flex h-16 w-16 cursor-pointer items-center justify-center rounded-sm border border-border/60 text-[10px] font-medium text-muted-foreground transition-transform duration-200 ease-out hover:scale-105"
+                  className="flex h-16 w-16 cursor-pointer items-center justify-center rounded-sm border border-border/60 text-hh-status font-medium text-muted-foreground transition-transform duration-200 ease-out hover:scale-105"
                 >
                   PDF
                 </button>

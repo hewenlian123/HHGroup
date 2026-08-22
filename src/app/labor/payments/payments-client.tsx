@@ -224,8 +224,8 @@ export default function LaborPaymentsClient() {
       />
 
       {error ? (
-        <div className="rounded-lg border border-border/60 bg-background px-4 py-3">
-          <p className="text-sm text-rose-600 dark:text-rose-400">{error}</p>
+        <div className="rounded-hh-standard border border-border/60 bg-background px-4 py-3">
+          <p className="text-sm text-[var(--hh-danger)] text-[var(--hh-danger)]">{error}</p>
         </div>
       ) : null}
 
@@ -254,7 +254,7 @@ export default function LaborPaymentsClient() {
       </FilterBar>
 
       <Card className="overflow-hidden p-0">
-        <div className="grid divide-y divide-[#E5E7EB] sm:grid-cols-3 sm:divide-y-0 sm:divide-x dark:divide-border/60">
+        <div className="grid divide-y divide-[var(--hh-border)] sm:grid-cols-3 sm:divide-y-0 sm:divide-x dark:divide-border/60">
           <div className="p-5">
             <p className={TYPO.kpiLabel}>Total Due</p>
             {loading ? (
@@ -294,7 +294,7 @@ export default function LaborPaymentsClient() {
       </Card>
 
       {message ? (
-        <div className="rounded-lg border border-gray-100 dark:border-border bg-background px-3 py-2 text-sm text-muted-foreground">
+        <div className="rounded-hh-standard border border-gray-100 dark:border-border bg-background px-3 py-2 text-sm text-muted-foreground">
           {message}
         </div>
       ) : null}
@@ -347,7 +347,7 @@ export default function LaborPaymentsClient() {
                 rows.map((row) => (
                   <React.Fragment key={row.workerId}>
                     <tr className={listTableRowStaticClassName}>
-                      <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] font-medium text-foreground">
+                      <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell font-medium text-foreground">
                         <button
                           type="button"
                           className="hover:underline text-left"
@@ -384,7 +384,7 @@ export default function LaborPaymentsClient() {
                       >
                         {formatCurrency(row.balance)}
                       </td>
-                      <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px]">
+                      <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell">
                         <span
                           className={
                             row.balance > 0 ? "hh-pill-warning text-xs" : "hh-pill-success text-xs"
@@ -393,7 +393,7 @@ export default function LaborPaymentsClient() {
                           {row.balance > 0 ? "Outstanding" : "Paid"}
                         </span>
                       </td>
-                      <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle text-[13px]">
+                      <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle text-hh-table-cell">
                         <RowActionsMenu
                           appearance="list"
                           ariaLabel={`Actions for ${row.workerName}`}
@@ -419,7 +419,7 @@ export default function LaborPaymentsClient() {
                       </td>
                     </tr>
                     {expandedWorkerId === row.workerId ? (
-                      <tr className="bg-[#F9FAFB] dark:bg-muted/20">
+                      <tr className="bg-[var(--hh-l3-hover)] dark:bg-muted/20">
                         <td
                           className="min-h-[44px] px-3 py-3 text-xs text-muted-foreground"
                           colSpan={6}
@@ -496,7 +496,7 @@ export default function LaborPaymentsClient() {
         >
           <Card
             className={cn(
-              "w-full max-w-[560px] rounded-[1.5rem] border-white/10 bg-[var(--neo-surface-raised)] p-6 text-[var(--neo-text-primary)] shadow-[0_30px_90px_rgb(0_0_0_/_0.46),inset_0_1px_0_rgb(255_255_255_/_0.05)]",
+              "w-full max-w-[560px] rounded-hh-task border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-6 text-[var(--hh-text-primary)] shadow-operational",
               "max-md:max-h-[calc(100dvh-0.75rem)] max-md:overflow-y-auto max-md:rounded-b-none max-md:rounded-t-[1.5rem] max-md:pb-[max(1.5rem,env(safe-area-inset-bottom))]",
               hhNeoFocusRevealPanel
             )}
@@ -509,7 +509,7 @@ export default function LaborPaymentsClient() {
             </p>
             <div className="mt-4 grid gap-3">
               <div>
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-normalr">
                   Date
                 </label>
                 <Input
@@ -520,7 +520,7 @@ export default function LaborPaymentsClient() {
                 />
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-normalr">
                   Amount
                 </label>
                 <Input
@@ -533,7 +533,7 @@ export default function LaborPaymentsClient() {
                 />
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-normalr">
                   Method
                 </label>
                 <Select
@@ -549,7 +549,7 @@ export default function LaborPaymentsClient() {
                 </Select>
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-normalr">
                   Memo (optional)
                 </label>
                 <Input
@@ -560,7 +560,9 @@ export default function LaborPaymentsClient() {
                 />
               </div>
               {modalWarning ? (
-                <p className="text-xs text-amber-600 dark:text-amber-400">{modalWarning}</p>
+                <p className="text-xs text-[var(--hh-warning)] text-[var(--hh-warning)]">
+                  {modalWarning}
+                </p>
               ) : null}
             </div>
             <div className="mt-6 flex justify-end gap-2">

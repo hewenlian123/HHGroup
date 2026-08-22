@@ -39,7 +39,7 @@ export function ChangeOrderStatusDropdown({
         <StatusBadge label="Rejected" variant="muted" />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className="gap-1 text-xs">
+            <Button variant="outline" size="sm" className="gap-1 text-hh-metadata">
               Status <ChevronDown className="h-3.5 w-3.5" />
             </Button>
           </DropdownMenuTrigger>
@@ -72,7 +72,7 @@ export function ChangeOrderStatusDropdown({
       {nextOptions.length > 0 ? (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className="gap-1 text-xs">
+            <Button variant="outline" size="sm" className="gap-1 text-hh-metadata">
               Status <ChevronDown className="h-3.5 w-3.5" />
             </Button>
           </DropdownMenuTrigger>

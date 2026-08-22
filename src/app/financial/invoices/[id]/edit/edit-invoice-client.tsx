@@ -107,7 +107,7 @@ function AutoResizeTextarea({
         resize(e.currentTarget);
       }}
       className={[
-        "block min-h-[44px] w-full resize-none overflow-hidden rounded-md border border-transparent bg-transparent px-2 py-1.5 text-sm leading-5 text-[var(--neo-text-secondary)] shadow-none transition-all duration-150 placeholder:text-[var(--neo-text-tertiary)] hover:bg-[var(--neo-surface-muted)] focus:border-[var(--neo-gold)] focus:bg-[var(--neo-surface-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--neo-gold-ring)] disabled:cursor-not-allowed disabled:opacity-50",
+        "block min-h-[44px] w-full resize-none overflow-hidden rounded-hh-standard border border-transparent bg-transparent px-2 py-1.5 text-hh-body leading-5 text-[var(--hh-text-secondary)] shadow-none transition-all duration-150 placeholder:text-[var(--hh-text-tertiary)] hover:bg-[var(--hh-l3-hover)] focus:border-[var(--hh-action-primary)] focus:bg-[var(--hh-l3-selected)] focus:outline-none focus:ring-2 focus:ring-[var(--hh-focus-ring)] disabled:cursor-not-allowed disabled:opacity-50",
         className,
       ].join(" ")}
       {...props}
@@ -116,23 +116,23 @@ function AutoResizeTextarea({
 }
 
 const PAGE_CLASS =
-  "dark financial-nums neo-page-on-graphite mx-auto flex w-full max-w-[960px] flex-col gap-4 px-4 py-5 pb-[calc(10.5rem+env(safe-area-inset-bottom))] text-[var(--neo-canvas-text-secondary)] sm:px-6 md:gap-5 md:py-6 md:pb-[calc(6rem+env(safe-area-inset-bottom))]";
+  "hh-fin mx-auto flex w-full max-w-[960px] flex-col gap-4 bg-[var(--hh-l0-canvas)] px-4 py-5 pb-[calc(10.5rem+env(safe-area-inset-bottom))] text-[var(--hh-text-secondary)] sm:px-6 md:gap-5 md:py-6 md:pb-[calc(6rem+env(safe-area-inset-bottom))]";
 const FIELD_CLASS = "neo-input mt-1";
-const ERROR_TEXT_CLASS = "mt-1 text-xs font-medium text-rose-300";
-const SKELETON_CLASS = "bg-[var(--neo-surface-muted)]";
+const ERROR_TEXT_CLASS = "mt-1 text-hh-metadata font-medium text-[var(--hh-danger)]";
+const SKELETON_CLASS = "bg-[var(--hh-l2-operational-surface)]";
 const LINE_CARD_CLASS =
-  "group relative rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-4 py-4 shadow-[0_1px_0_rgb(255_255_255_/_0.03)_inset] transition-all duration-150 hover:border-[var(--neo-border-strong)] hover:bg-[rgb(255_255_255_/_0.045)]";
-const LINE_CARD_INVALID_CLASS = "border-rose-400/35 bg-rose-500/10";
+  "group relative rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-4 py-4 shadow-none transition-all duration-150 hover:border-[var(--hh-border-strong)] hover:bg-[var(--hh-l3-hover)]";
+const LINE_CARD_INVALID_CLASS = "border-[var(--hh-danger-border)] bg-[var(--hh-danger-soft-fill)]";
 const COMPACT_FIELD_CLASS =
-  "neo-input h-8 min-h-8 rounded-md border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-2 text-right text-sm font-normal tabular-nums text-[var(--neo-text-secondary)] hover:bg-[var(--neo-surface-muted)] focus-visible:bg-[var(--neo-surface-muted)]";
+  "neo-input h-8 min-h-8 rounded-hh-standard border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-2 text-right text-hh-body font-normal tabular-nums text-[var(--hh-text-secondary)] hover:bg-[var(--hh-l3-hover)] focus-visible:bg-[var(--hh-l3-selected)]";
 const FOOTER_CLASS =
-  "-mx-4 mt-0 flex-col gap-2 rounded-t-xl border-t border-[var(--neo-border)] bg-[rgba(21,26,32,0.96)] px-4 pt-3 shadow-[0_-16px_36px_rgb(0_0_0_/_0.18)] backdrop-blur sm:mx-0 sm:rounded-xl sm:border sm:px-4 md:px-5 [&_button]:max-md:min-h-11 [&_button]:max-md:w-full";
+  "-mx-4 mt-0 flex-col gap-2 rounded-t-hh-task border-t border-[var(--hh-border)] bg-[var(--hh-l4-floating-surface)] px-4 pt-3 shadow-floating sm:mx-0 sm:rounded-hh-task sm:border sm:px-4 md:px-5 [&_button]:max-md:min-h-11 [&_button]:max-md:w-full";
 const SECONDARY_BUTTON_CLASS =
-  "rounded-md border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] hover:bg-[var(--neo-surface-muted)] hover:text-[var(--neo-text-primary)]";
+  "rounded-hh-standard border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] hover:bg-[var(--hh-l3-hover)] hover:text-[var(--hh-text-primary)]";
 const PRIMARY_BUTTON_CLASS =
-  "rounded-md border-transparent bg-[var(--neo-gold)] text-zinc-950 hover:bg-[var(--neo-gold-soft)] focus-visible:ring-[var(--neo-gold-ring)]";
+  "rounded-hh-standard border-transparent bg-[var(--hh-action-primary)] text-[var(--hh-action-primary-foreground)] hover:bg-[var(--hh-action-primary)] focus-visible:ring-[var(--hh-focus-ring)]";
 const GHOST_BUTTON_CLASS =
-  "-ml-2 rounded-md text-[var(--neo-canvas-text-secondary)] hover:bg-[var(--neo-surface-muted)] hover:text-[var(--neo-text-primary)]";
+  "-ml-2 rounded-hh-standard text-[var(--hh-text-secondary)] hover:bg-[var(--hh-l3-hover)] hover:text-[var(--hh-text-primary)]";
 
 export default function EditInvoiceClient({
   invoice,
@@ -325,7 +325,7 @@ export default function EditInvoiceClient({
           description="Only draft invoices can be edited."
         />
         <NeoPanel bodyClassName="p-4 md:p-5">
-          <p className="text-sm text-[var(--neo-text-secondary)]">
+          <p className="text-hh-body text-[var(--hh-text-secondary)]">
             Only draft invoices can be edited.
           </p>
         </NeoPanel>
@@ -350,8 +350,8 @@ export default function EditInvoiceClient({
         }
         description="Update project, client, dates, and billable items."
         actions={
-          <div className="rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-3 py-2 text-left text-sm text-[var(--neo-text-secondary)] shadow-[var(--neo-shadow-panel)] sm:min-w-[220px] sm:text-right">
-            <p className="font-medium text-[var(--neo-text-primary)]">{invoice.clientName}</p>
+          <div className="rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 py-2 text-left text-hh-body text-[var(--hh-text-secondary)] shadow-operational sm:min-w-[220px] sm:text-right">
+            <p className="font-medium text-[var(--hh-text-primary)]">{invoice.clientName}</p>
             <p>{initialProjectName}</p>
             <p>Issued {formatDate(invoice.issueDate)}</p>
           </div>
@@ -360,7 +360,7 @@ export default function EditInvoiceClient({
 
       {error ? (
         <NeoPanel bodyClassName="p-4">
-          <p className="text-sm font-medium text-rose-300">{error}</p>
+          <p className="text-hh-body font-medium text-[var(--hh-danger)]">{error}</p>
         </NeoPanel>
       ) : null}
 
@@ -493,14 +493,14 @@ export default function EditInvoiceClient({
       </NeoPanel>
 
       <NeoPanel className="overflow-hidden">
-        <div className="flex items-center justify-between border-b border-[var(--neo-border)] px-4 py-3">
-          <h2 className="text-sm font-semibold text-[var(--neo-text-primary)]">Line items</h2>
-          <span className="text-xs text-[var(--neo-text-tertiary)]">
+        <div className="flex items-center justify-between border-b border-[var(--hh-border)] px-4 py-3">
+          <h2 className="text-hh-body font-semibold text-[var(--hh-text-primary)]">Line items</h2>
+          <span className="text-hh-metadata text-[var(--hh-text-tertiary)]">
             {lines.length} item{lines.length === 1 ? "" : "s"}
           </span>
         </div>
         {submitAttempted && !lines.some(lineHasContent) ? (
-          <p className="px-4 pt-3 text-xs font-medium text-rose-300">
+          <p className="px-4 pt-3 text-hh-metadata font-medium text-[var(--hh-danger)]">
             At least one line item is required.
           </p>
         ) : null}
@@ -524,7 +524,7 @@ export default function EditInvoiceClient({
                       placeholder="Item name"
                       aria-label={`Line item ${idx + 1} item name`}
                       aria-invalid={invalidLine}
-                      className="h-8 min-h-8 border-transparent bg-transparent px-2 py-1 text-[15px] font-medium leading-5 text-[var(--neo-text-primary)] placeholder:text-[var(--neo-text-tertiary)] hover:bg-[var(--neo-surface-raised)] focus-visible:border-[var(--neo-gold)] focus-visible:bg-[var(--neo-surface-raised)] focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)] max-md:text-base"
+                      className="h-8 min-h-8 border-transparent bg-transparent px-2 py-1 text-hh-body font-medium leading-5 text-[var(--hh-text-primary)] placeholder:text-[var(--hh-text-tertiary)] hover:bg-[var(--hh-l3-hover)] focus-visible:border-[var(--hh-action-primary)] focus-visible:bg-[var(--hh-l3-selected)] focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)] hh-type-text-entry"
                     />
                     <AutoResizeTextarea
                       data-testid={`invoice-edit-line-${idx + 1}-description-input`}
@@ -538,7 +538,7 @@ export default function EditInvoiceClient({
 
                   <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-end gap-2 md:contents">
                     <div className="space-y-1">
-                      <NeoFieldLabel className="text-[10px]">Qty</NeoFieldLabel>
+                      <NeoFieldLabel className="text-hh-status">Qty</NeoFieldLabel>
                       <NeoInput
                         data-testid={`invoice-edit-line-${idx + 1}-qty-input`}
                         type="number"
@@ -550,11 +550,11 @@ export default function EditInvoiceClient({
                         aria-label={`Line item ${idx + 1} quantity`}
                       />
                     </div>
-                    <span className="pb-2 text-sm text-[var(--neo-text-tertiary)] md:hidden">
+                    <span className="pb-2 text-hh-body text-[var(--hh-text-tertiary)] md:hidden">
                       ×
                     </span>
                     <div className="space-y-1">
-                      <NeoFieldLabel className="text-[10px]">Rate</NeoFieldLabel>
+                      <NeoFieldLabel className="text-hh-status">Rate</NeoFieldLabel>
                       <NeoInput
                         data-testid={`invoice-edit-line-${idx + 1}-rate-input`}
                         type="number"
@@ -568,17 +568,19 @@ export default function EditInvoiceClient({
                     </div>
                   </div>
 
-                  <div className="flex items-end justify-between border-t border-[var(--neo-border)] pt-3 md:block md:border-0 md:pt-0 md:text-right">
-                    <span className="text-[10px] font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)] md:block">
+                  <div className="flex items-end justify-between border-t border-[var(--hh-border)] pt-3 md:block md:border-0 md:pt-0 md:text-right">
+                    <span className="text-hh-status font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] md:block">
                       Amount
                     </span>
-                    <NeoAmount className="mt-2 block text-base">{formatCurrency(amount)}</NeoAmount>
+                    <NeoAmount className="mt-2 block hh-type-text-entry">
+                      {formatCurrency(amount)}
+                    </NeoAmount>
                   </div>
 
                   <Button
                     variant="outline"
                     size="sm"
-                    className="absolute right-3 top-3 h-8 w-8 border-transparent bg-transparent p-0 text-[var(--neo-text-tertiary)] opacity-100 transition-colors hover:border-rose-400/20 hover:bg-rose-500/10 hover:text-rose-300 md:static md:mt-5 md:opacity-0 md:group-hover:opacity-100"
+                    className="absolute right-3 top-3 h-8 w-8 border-transparent bg-transparent p-0 text-[var(--hh-text-tertiary)] opacity-100 transition-colors hover:border-[var(--hh-danger-border)] hover:bg-[var(--hh-danger-soft-fill)] hover:text-[var(--hh-danger)] md:static md:mt-5 md:opacity-0 md:group-hover:opacity-100"
                     aria-label="Remove line item"
                     disabled={saving || lines.length <= 1}
                     onClick={() => removeLine(idx)}
@@ -595,28 +597,30 @@ export default function EditInvoiceClient({
             type="button"
             onClick={addLine}
             disabled={saving}
-            className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-medium text-[var(--neo-text-secondary)] transition-colors hover:bg-[var(--neo-surface-muted)] hover:text-[var(--neo-text-primary)] disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex w-full items-center gap-2 rounded-hh-standard px-3 py-2 text-left text-hh-body font-medium text-[var(--hh-text-secondary)] transition-colors hover:bg-[var(--hh-l3-hover)] hover:text-[var(--hh-text-primary)] disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Plus className="h-4 w-4" />
             Add another item
           </button>
         </div>
 
-        <div className="flex justify-end border-t border-[var(--neo-border)] p-4">
-          <div className="w-full max-w-sm space-y-1 text-sm">
+        <div className="flex justify-end border-t border-[var(--hh-border)] p-4">
+          <div className="w-full max-w-sm space-y-1 text-hh-body">
             <div className="flex justify-between">
-              <span className="text-[var(--neo-text-secondary)]">Subtotal</span>
+              <span className="text-[var(--hh-text-secondary)]">Subtotal</span>
               <NeoAmount tone="muted">{formatCurrency(computedSubtotal)}</NeoAmount>
             </div>
             {computedTax > 0 ? (
               <div className="flex justify-between">
-                <span className="text-[var(--neo-text-secondary)]">Tax ({taxPct || 0}%)</span>
+                <span className="text-[var(--hh-text-secondary)]">Tax ({taxPct || 0}%)</span>
                 <NeoAmount tone="muted">{formatCurrency(computedTax)}</NeoAmount>
               </div>
             ) : null}
-            <div className="flex justify-between border-t border-[var(--neo-border)] pt-2 font-medium text-[var(--neo-text-primary)]">
+            <div className="flex justify-between border-t border-[var(--hh-border)] pt-2 font-medium text-[var(--hh-text-primary)]">
               <span>Total</span>
-              <NeoAmount className="text-[17px]">{formatCurrency(computedTotal)}</NeoAmount>
+              <NeoAmount className="text-hh-financial-total">
+                {formatCurrency(computedTotal)}
+              </NeoAmount>
             </div>
           </div>
         </div>
@@ -638,7 +642,7 @@ export default function EditInvoiceClient({
           </Button>
         </div>
         {submitAttempted && validationErrors.length > 0 ? (
-          <p className="text-center text-xs font-medium text-rose-300 sm:text-right">
+          <p className="text-center text-hh-metadata font-medium text-[var(--hh-danger)] sm:text-right">
             {validationErrors[0]}
           </p>
         ) : null}

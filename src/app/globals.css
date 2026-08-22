@@ -133,20 +133,8 @@
   }
 
   .dashboard-command-hud {
-    --hud-bg: var(--hh-l2-operational-surface);
-    --hud-surface: var(--hh-l2-operational-surface);
-    --hud-surface-muted: var(--hh-l2-operational-surface);
-    --hud-line: var(--hh-border);
-    --hud-text: var(--hh-text-primary);
-    --hud-muted: var(--hh-text-secondary);
-    --hud-muted-2: var(--hh-text-tertiary);
-    --hud-neutral: var(--hh-text-secondary);
-    --hud-success: var(--hh-success);
-    --hud-steel: var(--hh-text-tertiary);
-    --hud-danger: var(--hh-danger);
-    --hud-track: var(--hh-border);
-    border: 1px solid var(--hud-line);
-    background: var(--hud-bg);
+    border: 1px solid var(--hh-border);
+    background: var(--hh-l2-operational-surface);
     box-shadow: var(--hh-shadow-operational);
   }
 
@@ -154,8 +142,8 @@
     position: absolute;
     inset: 0;
     background-image:
-      linear-gradient(var(--neo-border) 1px, transparent 1px),
-      linear-gradient(90deg, var(--neo-border) 1px, transparent 1px);
+      linear-gradient(var(--hh-border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--hh-border) 1px, transparent 1px);
     background-size: 5.125rem 5.125rem;
     mask-image: linear-gradient(to bottom, rgb(0 0 0 / 0.72), rgb(0 0 0 / 0.18));
     pointer-events: none;
@@ -164,13 +152,13 @@
   .dashboard-hud-card,
   .dashboard-telemetry-shell,
   .dashboard-attention-feed {
-    border: 1px solid var(--hud-line);
-    background: var(--hud-surface);
+    border: 1px solid var(--hh-border);
+    background: var(--hh-l2-operational-surface);
     box-shadow: var(--hh-shadow-operational);
   }
 
   .dashboard-hud-card {
-    --hud-accent: var(--hud-neutral);
+    --hud-accent: var(--hh-text-secondary);
     --hud-spark-muted: var(--hh-border);
     transition:
       border-color 150ms ease,
@@ -178,19 +166,19 @@
   }
 
   .dashboard-hud-card--emerald {
-    --hud-accent: var(--hud-success);
+    --hud-accent: var(--hh-success);
   }
 
   .dashboard-hud-card--steel {
-    --hud-accent: var(--hud-steel);
+    --hud-accent: var(--hh-text-tertiary);
   }
 
   .dashboard-hud-card--alert {
-    --hud-accent: var(--hud-danger);
+    --hud-accent: var(--hh-danger);
   }
 
   .dashboard-hud-card:hover {
-    border-color: color-mix(in srgb, var(--hud-accent) 30%, var(--hud-line));
+    border-color: color-mix(in srgb, var(--hud-accent) 30%, var(--hh-border));
     box-shadow: var(--hh-shadow-operational);
   }
 
@@ -332,18 +320,18 @@
   }
 
   .dashboard-profit-core {
-    --profit-core-accent: var(--hud-neutral);
+    --profit-core-accent: var(--hh-text-secondary);
     isolation: isolate;
     pointer-events: none;
     z-index: 30;
   }
 
   .dashboard-profit-core--positive {
-    --profit-core-accent: var(--hud-success);
+    --profit-core-accent: var(--hh-success);
   }
 
   .dashboard-profit-core--pressure {
-    --profit-core-accent: var(--hud-danger);
+    --profit-core-accent: var(--hh-danger);
   }
 
   .dashboard-profit-core--review {
@@ -351,10 +339,7 @@
   }
 
   .dashboard-profit-core__label {
-    color: color-mix(in srgb, var(--profit-core-accent) 72%, var(--hud-muted));
-    font-size: 0.62rem;
-    font-weight: 700;
-    line-height: 1;
+    color: color-mix(in srgb, var(--profit-core-accent) 72%, var(--hh-text-secondary));
     text-transform: uppercase;
   }
 
@@ -363,10 +348,7 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    color: var(--hud-text);
-    font-size: 2.125rem;
-    font-weight: 700;
-    line-height: 0.95;
+    color: var(--hh-text-primary);
     font-variant-numeric: tabular-nums;
   }
 
@@ -398,10 +380,7 @@
     border-radius: 999px;
     background: var(--hh-l3-selected);
     padding: 0.24rem 0.58rem;
-    color: color-mix(in srgb, var(--profit-core-accent) 72%, var(--hud-text));
-    font-size: 0.68rem;
-    font-weight: 700;
-    line-height: 1;
+    color: color-mix(in srgb, var(--profit-core-accent) 72%, var(--hh-text-primary));
   }
 
   .dashboard-profit-core__status span {
@@ -414,24 +393,9 @@
   .dashboard-profit-core__helper {
     margin-top: 0.5rem;
     overflow: hidden;
-    color: var(--hud-muted-2);
-    font-size: 0.65rem;
-    font-weight: 500;
-    line-height: 1.15;
+    color: var(--hh-text-tertiary);
     text-overflow: ellipsis;
     white-space: nowrap;
-  }
-
-  @media (min-width: 640px) {
-    .dashboard-profit-core__value {
-      font-size: 2.625rem;
-    }
-  }
-
-  @media (min-width: 768px) {
-    .dashboard-profit-core__value {
-      font-size: 3rem;
-    }
   }
 
   .dashboard-telemetry-fill::after {
@@ -439,7 +403,7 @@
   }
 
   .dashboard-core-node {
-    --node-accent: var(--hud-neutral);
+    --node-accent: var(--hh-text-secondary);
     display: flex;
     z-index: 20;
     align-items: center;
@@ -447,15 +411,15 @@
   }
 
   .dashboard-core-node--emerald {
-    --node-accent: var(--hud-success);
+    --node-accent: var(--hh-success);
   }
 
   .dashboard-core-node--steel {
-    --node-accent: var(--hud-steel);
+    --node-accent: var(--hh-text-tertiary);
   }
 
   .dashboard-core-node--alert {
-    --node-accent: var(--hud-danger);
+    --node-accent: var(--hh-danger);
   }
 
   .dashboard-core-node__dot {
@@ -469,30 +433,26 @@
     display: flex;
     flex-direction: column;
     gap: 0.15rem;
-    color: var(--hud-muted);
-    font-size: 0.68rem;
-    font-weight: 600;
-    line-height: 1;
+    color: var(--hh-text-secondary);
   }
 
   .dashboard-core-node__text span {
-    color: var(--hud-text);
-    font-size: 0.72rem;
+    color: var(--hh-text-primary);
     font-variant-numeric: tabular-nums;
   }
 
   .dashboard-telemetry-rail {
-    --hud-accent: var(--hud-neutral);
-    border: 1px solid var(--hud-line);
-    background: var(--hud-surface-muted);
+    --hud-accent: var(--hh-text-secondary);
+    border: 1px solid var(--hh-border);
+    background: var(--hh-l2-operational-surface);
   }
 
   .dashboard-telemetry-rail--emerald {
-    --hud-accent: var(--hud-success);
+    --hud-accent: var(--hh-success);
   }
 
   .dashboard-telemetry-rail--alert {
-    --hud-accent: var(--hud-danger);
+    --hud-accent: var(--hh-danger);
   }
 
   .dashboard-telemetry-fill {

@@ -1459,7 +1459,7 @@ function LineItemRow({
         {isLocked ? (
           <span
             className={cn(
-              "flex h-8 min-h-8 items-center justify-end px-2 text-[13px] text-foreground",
+              "flex h-8 min-h-8 items-center justify-end px-2 text-hh-table-cell text-foreground",
               EB.inputNumeric,
               EB.lineQtyInput
             )}
@@ -1488,7 +1488,7 @@ function LineItemRow({
         {isLocked ? (
           <span
             className={cn(
-              "flex h-8 min-h-8 items-center px-2 text-[13px] text-foreground",
+              "flex h-8 min-h-8 items-center px-2 text-hh-table-cell text-foreground",
               EB.inputMuted,
               EB.lineMeasureInput
             )}
@@ -1515,7 +1515,7 @@ function LineItemRow({
         {isLocked ? (
           <span
             className={cn(
-              "flex h-8 min-h-8 items-center justify-end px-2 text-[13px] text-foreground",
+              "flex h-8 min-h-8 items-center justify-end px-2 text-hh-table-cell text-foreground",
               EB.inputNumeric,
               EB.lineUnitInput
             )}
@@ -1595,7 +1595,7 @@ function LineItemRow({
             <EstimateLineItemStatusPill status={row.status} />
             {row.hideAmountOnPdf ? (
               <span
-                className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/55 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
+                className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/55 px-1.5 py-0.5 text-hh-status font-medium text-muted-foreground"
                 aria-label="PDF amount hidden"
                 title="This line's amount is hidden on Itemized PDF output"
               >
@@ -2120,7 +2120,7 @@ function AddCategoryBlock({
                           >
                             <span>{cc.name}</span>
                             {existingCategorySet.has(cc.code) ? (
-                              <span className="ml-auto text-[11px] text-zinc-500">
+                              <span className="ml-auto text-hh-status text-zinc-500">
                                 Already added
                               </span>
                             ) : null}

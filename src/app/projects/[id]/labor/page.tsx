@@ -107,7 +107,7 @@ export default async function ProjectLaborPage({ params }: Props) {
           actions={
             <Link
               href={`/projects/${id}`}
-              className="text-sm text-muted-foreground hover:text-foreground"
+              className="text-hh-body text-[var(--hh-text-secondary)] hover:text-[var(--hh-text-primary)]"
             >
               Project
             </Link>
@@ -117,14 +117,17 @@ export default async function ProjectLaborPage({ params }: Props) {
     >
       <SetBreadcrumbEntityTitle label={project.name} />
       {dataLoadWarning ? (
-        <p className="border-b border-border/60 pb-3 text-sm text-muted-foreground" role="status">
+        <p
+          className="border-b border-border/60 pb-3 text-hh-body text-[var(--hh-text-secondary)]"
+          role="status"
+        >
           {dataLoadWarning}
         </p>
       ) : null}
       {/* Header: Project name, Total Labor Cost */}
       <div className="flex items-baseline justify-between py-3 border-b border-border/60">
-        <h2 className="text-lg font-semibold">{project.name}</h2>
-        <span className="text-xl font-medium tabular-nums">
+        <h2 className="text-hh-section-title font-semibold">{project.name}</h2>
+        <span className="text-hh-section-title font-medium tabular-nums">
           Total Labor Cost: ${fmtUsd(totalLaborCost)}
         </span>
       </div>
@@ -134,16 +137,16 @@ export default async function ProjectLaborPage({ params }: Props) {
       <SectionHeader label="By Worker" />
       <div className="airtable-table-wrap airtable-table-wrap--ruled">
         <div className="airtable-table-scroll">
-          <table className="w-full text-sm">
+          <table className="w-full text-hh-body">
             <thead>
               <tr>
-                <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                   Worker
                 </th>
-                <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
                   Days
                 </th>
-                <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
                   Total Earned
                 </th>
               </tr>
@@ -153,7 +156,7 @@ export default async function ProjectLaborPage({ params }: Props) {
                 <tr>
                   <td
                     colSpan={3}
-                    className="h-11 min-h-[44px] px-3 py-0 text-center text-xs text-muted-foreground"
+                    className="h-11 min-h-[44px] px-3 py-0 text-center text-hh-metadata text-[var(--hh-text-secondary)]"
                   >
                     No labor entries.
                   </td>
@@ -161,13 +164,13 @@ export default async function ProjectLaborPage({ params }: Props) {
               ) : (
                 workerRows.map((r) => (
                   <tr key={r.worker_id} className={listTableRowStaticClassName}>
-                    <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] font-medium">
+                    <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell font-medium">
                       {r.worker_name}
                     </td>
-                    <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle font-mono text-[13px] tabular-nums">
+                    <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums">
                       {r.days}
                     </td>
-                    <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle font-mono text-[13px] tabular-nums">
+                    <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums">
                       ${fmtUsd(r.total)}
                     </td>
                   </tr>
@@ -183,13 +186,13 @@ export default async function ProjectLaborPage({ params }: Props) {
       <SectionHeader label="By Cost Code" />
       <div className="airtable-table-wrap airtable-table-wrap--ruled">
         <div className="airtable-table-scroll">
-          <table className="w-full text-sm">
+          <table className="w-full text-hh-body">
             <thead>
               <tr>
-                <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                   Cost Code
                 </th>
-                <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
                   Total
                 </th>
               </tr>
@@ -199,7 +202,7 @@ export default async function ProjectLaborPage({ params }: Props) {
                 <tr>
                   <td
                     colSpan={2}
-                    className="h-11 min-h-[44px] px-3 py-0 text-center text-xs text-muted-foreground"
+                    className="h-11 min-h-[44px] px-3 py-0 text-center text-hh-metadata text-[var(--hh-text-secondary)]"
                   >
                     No cost code breakdown.
                   </td>
@@ -207,10 +210,10 @@ export default async function ProjectLaborPage({ params }: Props) {
               ) : (
                 costCodeRows.map((r) => (
                   <tr key={r.cost_code} className={listTableRowStaticClassName}>
-                    <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] font-medium">
+                    <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell font-medium">
                       {r.cost_code}
                     </td>
-                    <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle font-mono text-[13px] tabular-nums">
+                    <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums">
                       ${fmtUsd(r.total)}
                     </td>
                   </tr>

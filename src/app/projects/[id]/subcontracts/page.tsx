@@ -88,7 +88,7 @@ export default async function ProjectSubcontractsPage({ params }: Props) {
           actions={
             <Link
               href={`/projects/${id}`}
-              className="text-sm text-muted-foreground hover:text-foreground"
+              className="text-hh-body text-[var(--hh-text-secondary)] hover:text-[var(--hh-text-primary)]"
             >
               Project
             </Link>
@@ -105,37 +105,37 @@ export default async function ProjectSubcontractsPage({ params }: Props) {
 
       <div className="airtable-table-wrap airtable-table-wrap--ruled">
         <div className="airtable-table-scroll">
-          <table className="w-full min-w-[1180px] text-sm">
+          <table className="w-full min-w-[1180px] text-hh-body">
             <thead>
               <tr>
-                <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                   Subcontractor
                 </th>
-                <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                   Cost Code
                 </th>
-                <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
                   Contract Amount
                 </th>
-                <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
                   Scheduled
                 </th>
-                <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
                   Billed To Date
                 </th>
-                <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
                   Paid To Date
                 </th>
-                <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
                   AP Outstanding
                 </th>
-                <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
                   Remaining Contract
                 </th>
-                <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                   Status
                 </th>
-                <th className="h-8 px-3 text-right align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                <th className="h-8 px-3 text-right align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                   Actions
                 </th>
               </tr>
@@ -145,7 +145,7 @@ export default async function ProjectSubcontractsPage({ params }: Props) {
                 <tr>
                   <td
                     colSpan={10}
-                    className="h-11 min-h-[44px] px-3 py-0 text-center text-xs text-muted-foreground"
+                    className="h-11 min-h-[44px] px-3 py-0 text-center text-hh-metadata text-[var(--hh-text-secondary)]"
                   >
                     No subcontracts yet.
                   </td>
@@ -153,46 +153,46 @@ export default async function ProjectSubcontractsPage({ params }: Props) {
               ) : (
                 rows.map((r) => (
                   <tr key={r.id} className={listTableRowStaticClassName}>
-                    <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] font-medium">
+                    <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell font-medium">
                       <Link
                         href={`/projects/${id}/subcontracts/${r.id}`}
-                        className="hover:text-foreground hover:underline"
+                        className="hover:text-[var(--hh-text-primary)] hover:underline"
                       >
                         {r.subcontractor_name}
                       </Link>
                     </td>
-                    <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] text-muted-foreground">
+                    <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell text-[var(--hh-text-secondary)]">
                       {r.cost_code ?? "—"}
                     </td>
-                    <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle font-mono text-[13px] tabular-nums">
+                    <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums">
                       <NeoAmount>${fmtUsd(r.financials.contractAmount)}</NeoAmount>
                     </td>
-                    <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle font-mono text-[13px] tabular-nums">
+                    <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums">
                       <NeoAmount>${fmtUsd(r.financials.scheduledAmount)}</NeoAmount>
                     </td>
-                    <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle font-mono text-[13px] tabular-nums">
+                    <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums">
                       <NeoAmount>${fmtUsd(r.financials.billedToDate)}</NeoAmount>
                     </td>
-                    <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle font-mono text-[13px] tabular-nums">
+                    <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums">
                       <NeoAmount tone="income">${fmtUsd(r.financials.paidToDate)}</NeoAmount>
                     </td>
-                    <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle font-mono text-[13px] tabular-nums">
+                    <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums">
                       <NeoAmount tone={r.financials.apOutstanding > 0 ? "expense" : "neutral"}>
                         ${fmtUsd(r.financials.apOutstanding)}
                       </NeoAmount>
                     </td>
-                    <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle font-mono text-[13px] tabular-nums">
+                    <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums">
                       <NeoAmount tone={r.financials.remainingContract < 0 ? "expense" : "neutral"}>
                         ${fmtUsd(r.financials.remainingContract)}
                       </NeoAmount>
                     </td>
-                    <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px]">
+                    <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell">
                       {r.status ?? "Draft"}
                     </td>
-                    <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle text-[13px]">
+                    <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle text-hh-table-cell">
                       <Link
                         href={`/projects/${id}/subcontracts/${r.id}/bills`}
-                        className="text-sm text-muted-foreground hover:text-foreground"
+                        className="text-hh-body text-[var(--hh-text-secondary)] hover:text-[var(--hh-text-primary)]"
                       >
                         View Bills
                       </Link>

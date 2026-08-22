@@ -46,33 +46,37 @@ export default function NewWorkerPage() {
       <section className="border-b border-gray-100 pb-6 dark:border-border">
         <div className="grid gap-4">
           <div className="grid gap-1.5">
-            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+            <label className="text-hh-status font-medium uppercase tracking-normal text-muted-foreground">
               Name *
             </label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} className="rounded-sm" />
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="rounded-hh-compact"
+            />
           </div>
           <div className="grid gap-1.5">
-            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+            <label className="text-hh-status font-medium uppercase tracking-normal text-muted-foreground">
               Phone
             </label>
             <Input
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              className="rounded-sm"
+              className="rounded-hh-compact"
             />
           </div>
           <div className="grid gap-1.5">
-            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+            <label className="text-hh-status font-medium uppercase tracking-normal text-muted-foreground">
               Trade
             </label>
             <Input
               value={trade}
               onChange={(e) => setTrade(e.target.value)}
-              className="rounded-sm"
+              className="rounded-hh-compact"
             />
           </div>
           <div className="grid gap-1.5">
-            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+            <label className="text-hh-status font-medium uppercase tracking-normal text-muted-foreground">
               Half-day Rate
             </label>
             <Input
@@ -81,17 +85,17 @@ export default function NewWorkerPage() {
               step="0.01"
               value={halfDayRate}
               onChange={(e) => setHalfDayRate(Number(e.target.value) || 0)}
-              className="rounded-sm"
+              className="rounded-hh-compact"
             />
           </div>
           <div className="grid gap-1.5">
-            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+            <label className="text-hh-status font-medium uppercase tracking-normal text-muted-foreground">
               Notes
             </label>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              className="min-h-[88px] rounded-sm border border-gray-100 bg-background px-3 py-2 text-sm dark:border-border"
+              className="min-h-[88px] rounded-hh-compact border border-gray-100 bg-background px-3 py-2 text-sm dark:border-border"
             />
           </div>
         </div>
@@ -99,12 +103,17 @@ export default function NewWorkerPage() {
           <Button
             variant="outline"
             size="sm"
-            className="rounded-sm"
+            className="rounded-hh-compact"
             onClick={() => router.push("/workers")}
           >
             Cancel
           </Button>
-          <Button size="sm" className="rounded-sm" onClick={handleCreate} disabled={!name.trim()}>
+          <Button
+            size="sm"
+            className="rounded-hh-compact"
+            onClick={handleCreate}
+            disabled={!name.trim()}
+          >
             Create Worker
           </Button>
         </div>

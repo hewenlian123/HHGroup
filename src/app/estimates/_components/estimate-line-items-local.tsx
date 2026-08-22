@@ -148,7 +148,7 @@ export function ScopeSectionHeader({
               onClick={(e) => e.stopPropagation()}
               onKeyDown={(e) => e.stopPropagation()}
               className={ebInput(
-                "h-7 min-h-7 w-full min-w-[8rem] max-w-full border-0 bg-transparent px-0 text-[15px] font-semibold tracking-tight text-zinc-50 shadow-none focus-visible:ring-0"
+                "h-7 min-h-7 w-full min-w-[8rem] max-w-full border-0 bg-transparent px-0 text-hh-section-title font-semibold tracking-normal text-zinc-50 shadow-none focus-visible:ring-0"
               )}
               placeholder={catalogName}
               disabled={disabled}

@@ -27,10 +27,10 @@ export function EstimateBuilderSaveStatus({
     <span
       className={cn(
         "text-xs font-medium tabular-nums",
-        status === "unsaved" && "text-amber-700 dark:text-amber-500",
+        status === "unsaved" && "text-[var(--hh-warning)]",
         status === "saving" && "text-muted-foreground",
-        status === "saved" && "text-emerald-700 dark:text-emerald-500",
-        status === "failed" && "text-rose-700 dark:text-rose-400",
+        status === "saved" && "text-[var(--hh-success)]",
+        status === "failed" && "text-[var(--hh-danger)]",
         className
       )}
       role="status"

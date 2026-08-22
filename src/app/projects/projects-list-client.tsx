@@ -98,11 +98,11 @@ type SnapshotBatchResponse =
     }
   | { ok: false; message?: string };
 
-const PAGE_BG = "dark neo-page-on-graphite text-[var(--neo-canvas-text-secondary)]";
+const PAGE_BG = "bg-[var(--hh-l0-canvas)] text-[var(--hh-text-secondary)]";
 const FIELD =
-  "h-10 rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[14px] text-[var(--neo-text-primary)] shadow-none focus-visible:border-[var(--neo-gold)] focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]";
+  "h-10 rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-hh-body text-[var(--hh-text-primary)] shadow-none focus-visible:border-[var(--hh-action-primary)] focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)]";
 const MODAL =
-  "dark max-w-[480px] w-full gap-0 border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] p-8 shadow-[var(--neo-shadow-panel)] rounded-xl sm:max-w-[480px]";
+  "dark max-w-[480px] w-full gap-0 border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-8 shadow-operational rounded-hh-task sm:max-w-[480px]";
 
 function fmtUsd0(n: number): string {
   const rounded = Math.round(Math.abs(n));
@@ -112,7 +112,7 @@ function fmtUsd0(n: number): string {
 function profitClass(n: number): string {
   if (n > 0.005) return OS.emeraldAccent;
   if (n < -0.005) return OS.dangerAmount;
-  return "text-[var(--neo-text-secondary)]";
+  return "text-[var(--hh-text-secondary)]";
 }
 
 function applySnapshotFinancials(
@@ -173,7 +173,7 @@ function ProjectListStatusPill({ status }: { status: string }) {
     },
   } as const;
   const c = map[n];
-  return <NeoStatus label={c.label} variant={c.variant} className="h-5 text-[11px]" />;
+  return <NeoStatus label={c.label} variant={c.variant} className="h-5 text-hh-status" />;
 }
 
 export function ProjectsListClient({
@@ -360,7 +360,7 @@ export function ProjectsListClient({
   return (
     <div
       className={cn(
-        "page-container page-shell-wide page-stack py-8 text-[14px] leading-normal",
+        "page-container page-shell-wide page-stack py-8 text-hh-body leading-normal",
         PAGE_BG,
         mobileListPagePaddingClass,
         "max-md:!gap-3 max-md:!pb-[calc(7.5rem+env(safe-area-inset-bottom,0px))]"
@@ -368,7 +368,7 @@ export function ProjectsListClient({
     >
       {dataLoadWarning ? (
         <p
-          className="border-b border-white/10 pb-3 text-sm text-[var(--neo-canvas-text-secondary)]"
+          className="border-b border-[var(--hh-border)] pb-3 text-hh-body text-[var(--hh-text-secondary)]"
           role="status"
         >
           {dataLoadWarning}
@@ -376,7 +376,7 @@ export function ProjectsListClient({
       ) : null}
       {snapshotListWarning ? (
         <p
-          className="rounded-xl border border-[rgb(184_137_45_/_0.24)] bg-[rgb(184_137_45_/_0.12)] px-3 py-2 text-[12px] font-medium text-[var(--neo-text-primary)]"
+          className="rounded-hh-task border border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] px-3 py-2 text-hh-metadata font-medium text-[var(--hh-text-primary)]"
           role="status"
         >
           {snapshotListWarning}
@@ -393,17 +393,17 @@ export function ProjectsListClient({
         <div>
           <h1
             data-testid="projects-page-heading"
-            className="text-2xl font-semibold tracking-normal text-[var(--neo-canvas-text-primary)]"
+            className="text-hh-page-title font-semibold tracking-normal text-[var(--hh-text-primary)]"
           >
             Projects
           </h1>
-          <p className="mt-1 max-w-xl text-[14px] text-[var(--neo-canvas-text-secondary)]">
+          <p className="mt-1 max-w-xl text-hh-body text-[var(--hh-text-secondary)]">
             Revenue, actual cost, and guarded profit — click a row or View to open a project.
           </p>
         </div>
         <Button
           asChild
-          className="h-10 shrink-0 rounded-md bg-[var(--neo-gold)] px-4 text-[14px] font-medium text-zinc-950 hover:bg-[var(--neo-gold-soft)]"
+          className="h-10 shrink-0 rounded-hh-standard bg-[var(--hh-action-primary)] px-4 text-hh-body font-medium text-[var(--hh-action-primary-foreground)] hover:bg-[var(--hh-action-primary)]"
         >
           <Link href="/projects/new">
             <Plus className="mr-2 h-4 w-4" />
@@ -426,7 +426,7 @@ export function ProjectsListClient({
             label={label}
             value={label === "TOTAL BUDGET" ? fmtUsd0(value as number) : (value as number)}
             className="min-h-[92px]"
-            valueClassName="text-[20px]"
+            valueClassName="text-hh-financial-total"
           />
         ))}
       </div>
@@ -437,7 +437,7 @@ export function ProjectsListClient({
         activeFilterCount={activeDrawerFilterCount}
         searchSlot={
           <div className="relative w-full">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--neo-text-tertiary)]" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--hh-text-tertiary)]" />
             <Input
               data-testid="projects-list-search"
               value={query}
@@ -452,7 +452,7 @@ export function ProjectsListClient({
 
       <NeoToolbar className="hidden md:flex lg:flex-row lg:flex-wrap">
         <div className="relative min-w-[200px] flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--neo-text-tertiary)]" />
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--hh-text-tertiary)]" />
           <Input
             data-testid="projects-list-search-desktop"
             value={query}
@@ -489,7 +489,7 @@ export function ProjectsListClient({
 
       <MobileFilterSheet open={filtersOpen} onOpenChange={setFiltersOpen} title="Filters">
         <div className="space-y-2">
-          <p className="text-xs font-medium text-[var(--neo-text-secondary)]">Status</p>
+          <p className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]">Status</p>
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as ProjectListStatusFilter)}
@@ -504,7 +504,7 @@ export function ProjectsListClient({
           </select>
         </div>
         <div className="space-y-2">
-          <p className="text-xs font-medium text-[var(--neo-text-secondary)]">Sort</p>
+          <p className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]">Sort</p>
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
@@ -517,7 +517,11 @@ export function ProjectsListClient({
             <option value="profit">Profit (high)</option>
           </select>
         </div>
-        <Button type="button" className="w-full rounded-sm" onClick={() => setFiltersOpen(false)}>
+        <Button
+          type="button"
+          className="w-full rounded-hh-compact"
+          onClick={() => setFiltersOpen(false)}
+        >
           Done
         </Button>
       </MobileFilterSheet>
@@ -566,31 +570,31 @@ export function ProjectsListClient({
         </>
       ) : (
         <>
-          <NeoMobileCard className="divide-y divide-[var(--neo-border)] overflow-hidden md:hidden">
+          <NeoMobileCard className="divide-y divide-[var(--hh-border)] overflow-hidden md:hidden">
             {filtered.map((r) => (
               <div key={r.id} className="flex min-h-[56px] items-center gap-2">
                 <MobileListRow asChild className="min-w-0 flex-1 rounded-none">
                   <Link href={`/projects/${r.id}`}>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-[var(--neo-text-primary)]">
+                      <p className="truncate text-hh-body font-medium text-[var(--hh-text-primary)]">
                         {r.name}
                       </p>
-                      <p className="truncate text-xs text-[var(--neo-text-secondary)]">
+                      <p className="truncate text-hh-metadata text-[var(--hh-text-secondary)]">
                         {(r.clientName ?? "—") + " · " + r.updatedAt}
                       </p>
                     </div>
                     <div className="flex min-w-[4.5rem] shrink-0 flex-col items-end gap-1 text-right">
                       <span
-                        className="text-xs font-medium tabular-nums text-[var(--neo-text-secondary)]"
+                        className="text-hh-metadata font-medium tabular-nums text-[var(--hh-text-secondary)]"
                         data-testid={`project-list-actual-cost-${r.id}`}
                       >
                         Cost {fmtUsd0(r.actualCost)}
                       </span>
                       <span
                         className={cn(
-                          "text-sm font-medium tabular-nums",
+                          "text-hh-body font-medium tabular-nums",
                           r.profitReadinessWarning
-                            ? "text-[var(--neo-gold-soft)]"
+                            ? "text-[var(--hh-action-primary)]"
                             : profitClass(r.profit)
                         )}
                         data-testid={`project-list-profit-${r.id}`}
@@ -648,7 +652,7 @@ export function ProjectsListClient({
                   aria-label={`Open project ${r.name}`}
                   className={listTableRowClassName}
                 >
-                  <td className={cn(tableRawTdClass, "font-medium text-[var(--neo-text-primary)]")}>
+                  <td className={cn(tableRawTdClass, "font-medium text-[var(--hh-text-primary)]")}>
                     {r.name}
                   </td>
                   <td className={tableRawTdClass}>{r.clientName ?? "—"}</td>
@@ -658,7 +662,7 @@ export function ProjectsListClient({
                   <td
                     className={cn(
                       tableRawTdClass,
-                      "text-right font-mono tabular-nums text-[var(--neo-text-primary)]"
+                      "text-right hh-fin tabular-nums text-[var(--hh-text-primary)]"
                     )}
                   >
                     <NeoAmount>{fmtUsd0(r.revenue)}</NeoAmount>
@@ -666,20 +670,20 @@ export function ProjectsListClient({
                   <td
                     className={cn(
                       tableRawTdClass,
-                      "text-right font-mono tabular-nums text-[var(--neo-text-secondary)]"
+                      "text-right hh-fin tabular-nums text-[var(--hh-text-secondary)]"
                     )}
                     data-testid={`project-list-actual-cost-${r.id}`}
                   >
-                    <NeoAmount className="text-[var(--neo-text-secondary)]">
+                    <NeoAmount className="text-[var(--hh-text-secondary)]">
                       {fmtUsd0(r.actualCost)}
                     </NeoAmount>
                   </td>
                   <td
                     className={cn(
                       tableRawTdClass,
-                      "text-right font-mono text-base font-semibold tabular-nums",
+                      "text-right hh-fin text-hh-body font-semibold tabular-nums",
                       r.profitReadinessWarning
-                        ? "text-[var(--neo-gold-soft)]"
+                        ? "text-[var(--hh-action-primary)]"
                         : profitClass(r.profit)
                     )}
                     data-testid={`project-list-profit-${r.id}`}
@@ -695,7 +699,7 @@ export function ProjectsListClient({
                   <td
                     className={cn(
                       tableRawTdClass,
-                      "font-mono text-[13px] text-[var(--neo-text-secondary)]"
+                      "hh-fin text-hh-table-cell text-[var(--hh-text-secondary)]"
                     )}
                   >
                     {r.updatedAt}
@@ -748,16 +752,16 @@ export function ProjectsListClient({
       <Dialog open={deleteBlockedOpen} onOpenChange={setDeleteBlockedOpen}>
         <DialogContent className={MODAL}>
           <DialogHeader className="text-left">
-            <DialogTitle className="text-xl font-semibold text-[var(--neo-text-primary)]">
+            <DialogTitle className="text-hh-section-title font-semibold text-[var(--hh-text-primary)]">
               Cannot delete project
             </DialogTitle>
-            <DialogDescription className="text-[13px] leading-relaxed text-[var(--neo-text-secondary)]">
+            <DialogDescription className="text-hh-table-cell leading-relaxed text-[var(--hh-text-secondary)]">
               This project has related records. Remove or reassign them first, or archive the
               project.
             </DialogDescription>
           </DialogHeader>
           {deleteBlockedCounts && deleteBlockedProjectId != null && (
-            <ul className="max-h-[40vh] space-y-2 overflow-y-auto text-[14px] text-[var(--neo-text-primary)]">
+            <ul className="max-h-[40vh] space-y-2 overflow-y-auto text-hh-body text-[var(--hh-text-primary)]">
               {DELETE_BLOCKED_RELATED_CONFIG.map(({ key }) => {
                 const n = deleteBlockedCounts[key] ?? 0;
                 if (n <= 0) return null;
@@ -769,7 +773,7 @@ export function ProjectsListClient({
                 return (
                   <li
                     key={key}
-                    className="flex items-center justify-between gap-3 border-b border-[var(--neo-border)] pb-2 last:border-0 last:pb-0"
+                    className="flex items-center justify-between gap-3 border-b border-[var(--hh-border)] pb-2 last:border-0 last:pb-0"
                   >
                     <span>
                       {label} ({n})
@@ -778,7 +782,7 @@ export function ProjectsListClient({
                       <Button
                         variant="outline"
                         size="sm"
-                        className="h-9 shrink-0 rounded-lg text-[13px]"
+                        className="h-9 shrink-0 rounded-hh-standard text-hh-table-cell"
                         asChild
                       >
                         <Link href={href} onClick={() => setDeleteBlockedOpen(false)}>
@@ -796,7 +800,7 @@ export function ProjectsListClient({
                 .map(([key, n]) => (
                   <li
                     key={key}
-                    className="flex items-center justify-between gap-3 border-b border-[var(--neo-border)] pb-2 last:border-0 last:pb-0"
+                    className="flex items-center justify-between gap-3 border-b border-[var(--hh-border)] pb-2 last:border-0 last:pb-0"
                   >
                     <span>
                       {getLabelForKey(key)} ({n})
@@ -805,10 +809,10 @@ export function ProjectsListClient({
                 ))}
             </ul>
           )}
-          <DialogFooter className="mt-4 flex-wrap gap-2 border-t border-[var(--neo-border)] bg-transparent pt-4">
+          <DialogFooter className="mt-4 flex-wrap gap-2 border-t border-[var(--hh-border)] bg-transparent pt-4">
             <Button
               variant="outline"
-              className="h-10 rounded-lg text-[14px] font-medium"
+              className="h-10 rounded-hh-standard text-hh-body font-medium"
               onClick={() => setDeleteBlockedOpen(false)}
               disabled={forceDeleteInProgress}
             >
@@ -818,7 +822,7 @@ export function ProjectsListClient({
               <>
                 <Button
                   variant="outline"
-                  className="h-10 rounded-lg text-[14px] font-medium"
+                  className="h-10 rounded-hh-standard text-hh-body font-medium"
                   onClick={async () => {
                     if (!deleteBlockedProjectId) return;
                     const result = await archiveProjectAction(deleteBlockedProjectId);
@@ -836,7 +840,7 @@ export function ProjectsListClient({
                   Archive project
                 </Button>
                 <Button
-                  className="h-10 rounded-lg bg-rose-600 text-[14px] font-medium text-white hover:bg-rose-700"
+                  className="h-10 rounded-hh-standard bg-[var(--hh-danger)] text-hh-body font-medium text-white hover:opacity-90"
                   disabled={forceDeleteInProgress || deletingId != null}
                   onClick={async () => {
                     if (!deleteBlockedProjectId || !deleteBlockedCounts) return;

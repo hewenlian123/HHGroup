@@ -63,7 +63,7 @@ export function EstimateHeader({
           Back
         </Link>
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+          <h1 className="text-2xl font-semibold tracking-normal text-foreground">
             Estimate #{estimateNumber}
           </h1>
           <Badge
@@ -76,7 +76,7 @@ export function EstimateHeader({
                     ? "default"
                     : "outline"
             }
-            className="text-[10px] font-medium"
+            className="text-hh-status font-medium"
           >
             Status: {status === "Converted" ? "Converted to Project" : status}
           </Badge>

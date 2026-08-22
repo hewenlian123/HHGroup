@@ -52,7 +52,7 @@ export function EstimateWorkspaceCommandHeader({
         <div className="min-w-0 flex-1 space-y-2">
           <Link
             href="/estimates"
-            className="inline-flex min-h-11 items-center gap-2 text-[14px] leading-snug text-muted-foreground transition-colors duration-150 hover:text-foreground lg:min-h-8"
+            className="inline-flex min-h-11 items-center gap-2 text-hh-body leading-snug text-muted-foreground transition-colors duration-150 hover:text-foreground lg:min-h-8"
           >
             <ArrowLeft className="h-4 w-4" aria-hidden />
             Estimates
@@ -65,7 +65,7 @@ export function EstimateWorkspaceCommandHeader({
               <NeoStatus
                 label={statusMeta.label}
                 variant={statusMeta.variant}
-                className="h-5 px-2 text-[11px]"
+                className="h-5 px-2 text-hh-status"
               />
             </div>
             <p className="truncate text-sm text-muted-foreground">{contextLabel}</p>

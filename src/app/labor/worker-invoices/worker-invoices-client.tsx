@@ -43,13 +43,13 @@ import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 
 const invShell =
-  "rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)] md:rounded-2xl";
+  "rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-operational md:rounded-hh-task";
 
 const invKpiTile =
-  "rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)] md:rounded-xl";
+  "rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-operational md:rounded-hh-task";
 
 const invKpiIcon =
-  "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] text-[var(--neo-text-secondary)] md:h-8 md:w-8";
+  "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[var(--hh-border)] bg-[var(--hh-l3-hover)] text-[var(--hh-text-secondary)] md:h-8 md:w-8";
 
 const AVATAR_RING = [
   "bg-zinc-200/80 text-zinc-800 dark:bg-zinc-700/50 dark:text-zinc-100",
@@ -354,7 +354,7 @@ export function WorkerInvoicesClient({
   const fetchBusy = loading;
 
   const selectFieldClass =
-    "h-10 w-full min-w-0 rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-3 text-sm text-[var(--neo-text-primary)] shadow-none transition-colors hover:bg-[var(--neo-surface-muted)] focus-visible:border-[var(--neo-gold)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]";
+    "h-10 w-full min-w-0 rounded-hh-compact border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 text-sm text-[var(--hh-text-primary)] shadow-none transition-colors hover:bg-[var(--hh-l3-hover)] focus-visible:border-[var(--hh-action-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)]";
 
   const searchInput = (
     <div className="relative w-full min-w-0">
@@ -363,7 +363,7 @@ export function WorkerInvoicesClient({
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder={copy.searchPlaceholder}
-        className="h-11 min-h-[44px] border-[var(--neo-border)] bg-[var(--neo-surface-raised)] pl-8 text-sm text-[var(--neo-text-primary)] shadow-none hover:bg-[var(--neo-surface-muted)] focus-visible:border-[var(--neo-gold)] focus-visible:ring-[var(--neo-gold-ring)] md:h-10 md:min-h-10"
+        className="h-11 min-h-[44px] border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] pl-8 text-sm text-[var(--hh-text-primary)] shadow-none hover:bg-[var(--hh-l3-hover)] focus-visible:border-[var(--hh-action-primary)] focus-visible:ring-[var(--hh-focus-ring)] md:h-10 md:min-h-10"
         aria-label={copy.searchAriaLabel}
       />
     </div>
@@ -375,13 +375,13 @@ export function WorkerInvoicesClient({
   return (
     <div
       className={cn(
-        "dark neo-page-on-graphite min-w-0 overflow-x-hidden pb-[max(1rem,env(safe-area-inset-bottom,0px))] pt-[max(0.35rem,env(safe-area-inset-top,0px))] text-[var(--neo-canvas-text-secondary)]",
+        " min-w-0 overflow-x-hidden pb-[max(1rem,env(safe-area-inset-bottom,0px))] pt-[max(0.35rem,env(safe-area-inset-top,0px))] text-[var(--hh-text-secondary)]",
         "flex flex-col"
       )}
     >
       <div
         className={cn(
-          "neo-page-on-graphite page-shell-wide mx-auto flex w-full max-w-[430px] flex-1 flex-col gap-2 px-4 py-2 pb-4 sm:max-w-[460px] md:gap-2 md:px-6 md:pb-6 md:pt-3",
+          " page-shell-wide mx-auto flex w-full max-w-[430px] flex-1 flex-col gap-2 px-4 py-2 pb-4 sm:max-w-[460px] md:gap-2 md:px-6 md:pb-6 md:pt-3",
           mobileListPagePaddingClass,
           "max-md:!gap-2"
         )}
@@ -443,13 +443,13 @@ export function WorkerInvoicesClient({
                 <DollarSign className="h-3 w-3 md:h-3.5 md:w-3.5" strokeWidth={1.75} aria-hidden />
               </span>
               <div className="min-w-0 flex-1">
-                <p className="text-[8px] font-medium uppercase leading-none tracking-wide text-muted-foreground md:text-[9px] md:normal-case md:tracking-normal">
+                <p className="text-hh-status font-medium uppercase leading-none tracking-normal text-muted-foreground md:text-hh-status md:normal-case md:tracking-normal">
                   {copy.totalLabel}
                 </p>
                 <p className="mt-0.5 truncate text-base font-medium tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
                   {formatCurrency(summary.totalInvoiced)}
                 </p>
-                <p className="mt-0.5 text-[9px] leading-none text-muted-foreground">All time</p>
+                <p className="mt-0.5 text-hh-status leading-none text-muted-foreground">All time</p>
               </div>
             </div>
             <div
@@ -462,13 +462,13 @@ export function WorkerInvoicesClient({
                 <ListOrdered className="h-3 w-3 md:h-3.5 md:w-3.5" strokeWidth={1.75} aria-hidden />
               </span>
               <div className="min-w-0 flex-1">
-                <p className="text-[8px] font-medium uppercase leading-none tracking-wide text-muted-foreground md:text-[9px] md:normal-case md:tracking-normal">
+                <p className="text-hh-status font-medium uppercase leading-none tracking-normal text-muted-foreground md:text-hh-status md:normal-case md:tracking-normal">
                   {copy.openLabel}
                 </p>
                 <p className="mt-0.5 text-base font-medium tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
                   {summary.openInvoices}
                 </p>
-                <p className="mt-0.5 text-[9px] leading-none text-muted-foreground">Unpaid</p>
+                <p className="mt-0.5 text-hh-status leading-none text-muted-foreground">Unpaid</p>
               </div>
             </div>
             <div
@@ -481,13 +481,13 @@ export function WorkerInvoicesClient({
                 <Users className="h-3 w-3 md:h-3.5 md:w-3.5" strokeWidth={1.75} aria-hidden />
               </span>
               <div className="min-w-0 flex-1">
-                <p className="text-[8px] font-medium uppercase leading-none tracking-wide text-muted-foreground md:text-[9px] md:normal-case md:tracking-normal">
+                <p className="text-hh-status font-medium uppercase leading-none tracking-normal text-muted-foreground md:text-hh-status md:normal-case md:tracking-normal">
                   {copy.paidLabel}
                 </p>
                 <p className="mt-0.5 text-base font-medium tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
                   {summary.paidInvoices}
                 </p>
-                <p className="mt-0.5 text-[9px] leading-none text-muted-foreground">Closed</p>
+                <p className="mt-0.5 text-hh-status leading-none text-muted-foreground">Closed</p>
               </div>
             </div>
             <div
@@ -500,13 +500,15 @@ export function WorkerInvoicesClient({
                 <FileText className="h-3 w-3 md:h-3.5 md:w-3.5" strokeWidth={1.75} aria-hidden />
               </span>
               <div className="min-w-0 flex-1">
-                <p className="text-[8px] font-medium uppercase leading-none tracking-wide text-muted-foreground md:text-[9px] md:normal-case md:tracking-normal">
+                <p className="text-hh-status font-medium uppercase leading-none tracking-normal text-muted-foreground md:text-hh-status md:normal-case md:tracking-normal">
                   Outstanding
                 </p>
                 <p className="mt-0.5 truncate text-base font-medium tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
                   {formatCurrency(summary.outstanding)}
                 </p>
-                <p className="mt-0.5 text-[9px] leading-none text-muted-foreground">Open balance</p>
+                <p className="mt-0.5 text-hh-status leading-none text-muted-foreground">
+                  Open balance
+                </p>
               </div>
             </div>
             <div
@@ -523,13 +525,13 @@ export function WorkerInvoicesClient({
                 />
               </span>
               <div className="min-w-0 flex-1">
-                <p className="text-[8px] font-medium uppercase leading-none tracking-wide text-muted-foreground md:text-[9px] md:normal-case md:tracking-normal">
+                <p className="text-hh-status font-medium uppercase leading-none tracking-normal text-muted-foreground md:text-hh-status md:normal-case md:tracking-normal">
                   This month
                 </p>
                 <p className="mt-0.5 truncate text-base font-medium tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
                   {formatCurrency(summary.thisMonth)}
                 </p>
-                <p className="mt-0.5 truncate text-[9px] leading-none text-muted-foreground">
+                <p className="mt-0.5 truncate text-hh-status leading-none text-muted-foreground">
                   {thisMonthLabel()}
                 </p>
               </div>
@@ -580,7 +582,7 @@ export function WorkerInvoicesClient({
               type="button"
               variant="outline"
               size="sm"
-              className="h-10 w-full shrink-0 gap-1.5 rounded-sm border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-none hover:bg-[var(--neo-surface-muted)] lg:ml-auto lg:w-auto"
+              className="h-10 w-full shrink-0 gap-1.5 rounded-hh-compact border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-none hover:bg-[var(--hh-l3-hover)] lg:ml-auto lg:w-auto"
               onClick={() => void load()}
               disabled={fetchBusy}
             >
@@ -623,7 +625,7 @@ export function WorkerInvoicesClient({
             type="button"
             variant="outline"
             size="sm"
-            className="h-11 min-h-[44px] w-full rounded-sm"
+            className="h-11 min-h-[44px] w-full rounded-hh-compact"
             disabled={fetchBusy}
             onClick={() => {
               void load();
@@ -635,7 +637,7 @@ export function WorkerInvoicesClient({
           </Button>
           <Button
             type="button"
-            className="h-11 min-h-[44px] w-full rounded-sm"
+            className="h-11 min-h-[44px] w-full rounded-hh-compact"
             onClick={() => setFiltersOpen(false)}
           >
             Done
@@ -651,7 +653,7 @@ export function WorkerInvoicesClient({
         {showForm && (
           <div className={cn(invShell, "p-3 md:p-4")}>
             <div className="flex items-baseline justify-between gap-2 border-b border-zinc-100/80 pb-2 dark:border-border/50">
-              <h2 className="text-[13px] font-medium text-zinc-900 dark:text-foreground">
+              <h2 className="text-hh-table-cell font-medium text-zinc-900 dark:text-foreground">
                 {editingId ? copy.editTitle : copy.newTitle}
               </h2>
               <button
@@ -667,7 +669,7 @@ export function WorkerInvoicesClient({
               className="mt-3 flex flex-col items-stretch gap-3 max-md:[&_button]:min-h-11 md:flex-row md:flex-wrap md:items-end"
             >
               <div>
-                <label className="mb-1 block text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                <label className="mb-1 block text-xs font-medium text-muted-foreground uppercase tracking-normalr">
                   Worker
                 </label>
                 <select
@@ -685,7 +687,7 @@ export function WorkerInvoicesClient({
                 </select>
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                <label className="mb-1 block text-xs font-medium text-muted-foreground uppercase tracking-normalr">
                   Project
                 </label>
                 <select
@@ -702,7 +704,7 @@ export function WorkerInvoicesClient({
                 </select>
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                <label className="mb-1 block text-xs font-medium text-muted-foreground uppercase tracking-normalr">
                   Amount
                 </label>
                 <Input
@@ -711,11 +713,11 @@ export function WorkerInvoicesClient({
                   step="0.01"
                   value={form.amount}
                   onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
-                  className="h-9 w-28 rounded-md tabular-nums"
+                  className="h-9 w-28 rounded-hh-compact tabular-nums"
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                <label className="mb-1 block text-xs font-medium text-muted-foreground uppercase tracking-normalr">
                   Status
                 </label>
                 <select
@@ -730,7 +732,7 @@ export function WorkerInvoicesClient({
                 </select>
               </div>
               <div className="min-w-0">
-                <label className="mb-1 block text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                <label className="mb-1 block text-xs font-medium text-muted-foreground uppercase tracking-normalr">
                   {copy.fileLabel}
                 </label>
                 <Input
@@ -738,7 +740,7 @@ export function WorkerInvoicesClient({
                   value={form.invoiceFile}
                   onChange={(e) => setForm((f) => ({ ...f, invoiceFile: e.target.value }))}
                   placeholder={copy.filePlaceholder}
-                  className="h-9 min-w-[220px] rounded-md"
+                  className="h-9 min-w-[220px] rounded-hh-compact"
                 />
               </div>
               <div className="flex w-full flex-col gap-2 md:w-auto md:flex-row">
@@ -831,7 +833,7 @@ export function WorkerInvoicesClient({
                       <div className="flex min-w-0 flex-1 items-start gap-3">
                         <span
                           className={cn(
-                            "flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[12px] font-semibold leading-none tabular-nums antialiased",
+                            "flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-hh-metadata font-semibold leading-none tabular-nums antialiased",
                             workerAvatarRing,
                             avatarRingClass(r.workerId)
                           )}
@@ -840,7 +842,7 @@ export function WorkerInvoicesClient({
                           {workerInitials(workerName)}
                         </span>
                         <div className="min-w-0 flex-1">
-                          <p className="line-clamp-2 text-[13px] font-medium leading-snug tracking-tight text-zinc-900 dark:text-foreground">
+                          <p className="line-clamp-2 text-hh-table-cell font-medium leading-snug tracking-normal text-zinc-900 dark:text-foreground">
                             {workerName}
                           </p>
                         </div>
@@ -854,32 +856,32 @@ export function WorkerInvoicesClient({
                       </div>
                     </div>
                     <div className="flex flex-wrap items-end justify-between gap-2 border-b border-zinc-100/70 pb-2 dark:border-border/40">
-                      <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                      <span className="text-hh-status font-medium uppercase tracking-normal text-muted-foreground">
                         Amount
                       </span>
-                      <span className="max-w-full min-w-0 text-right text-xl font-semibold tabular-nums tracking-tight text-zinc-800 dark:text-zinc-100">
+                      <span className="max-w-full min-w-0 text-right text-xl font-semibold tabular-nums tracking-normal text-zinc-800 dark:text-zinc-100">
                         {formatCurrency(r.amount)}
                       </span>
                     </div>
                     <dl className="grid grid-cols-1 gap-x-3 gap-y-2 text-xs sm:grid-cols-2">
                       <div className="min-w-0">
-                        <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                        <dt className="text-hh-status font-medium uppercase tracking-normal text-muted-foreground">
                           {copy.idColumnLabel}
                         </dt>
-                        <dd className="truncate pt-0.5 font-mono text-sm tabular-nums text-zinc-500 dark:text-zinc-400">
+                        <dd className="truncate pt-0.5 hh-fin text-sm tabular-nums text-zinc-500 dark:text-zinc-400">
                           {invNo}
                         </dd>
                       </div>
                       <div className="min-w-0">
-                        <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                        <dt className="text-hh-status font-medium uppercase tracking-normal text-muted-foreground">
                           Date
                         </dt>
-                        <dd className="truncate pt-0.5 font-mono text-sm tabular-nums text-zinc-500 dark:text-zinc-400">
+                        <dd className="truncate pt-0.5 hh-fin text-sm tabular-nums text-zinc-500 dark:text-zinc-400">
                           {formatDate(r.createdAt)}
                         </dd>
                       </div>
                       <div className="min-w-0 sm:col-span-2">
-                        <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                        <dt className="text-hh-status font-medium uppercase tracking-normal text-muted-foreground">
                           Project
                         </dt>
                         <dd className="truncate pt-0.5 text-sm text-zinc-600 dark:text-zinc-300">
@@ -917,7 +919,7 @@ export function WorkerInvoicesClient({
                   <th className={cn(thRight, "min-w-[110px]")}>Amount</th>
                   <th className={cn(thClass, "min-w-[110px]")}>Status</th>
                   <th className={cn(thRight, "whitespace-nowrap")}>Date</th>
-                  <th className="w-12 px-2 py-2 text-right align-middle text-[10px] font-medium uppercase leading-none tracking-[0.08em] text-muted-foreground">
+                  <th className="w-12 px-2 py-2 text-right align-middle text-hh-status font-medium uppercase leading-none tracking-normal text-muted-foreground">
                     <span className="sr-only">Actions</span>
                   </th>
                 </tr>
@@ -951,7 +953,7 @@ export function WorkerInvoicesClient({
                         <Skeleton className="ml-auto h-4 w-24" />
                       </td>
                       <td className="px-2 py-2.5 text-right">
-                        <Skeleton className="ml-auto h-8 w-8 rounded-sm" />
+                        <Skeleton className="ml-auto h-8 w-8 rounded-hh-compact" />
                       </td>
                     </tr>
                   ))
@@ -972,7 +974,7 @@ export function WorkerInvoicesClient({
                           type="button"
                           variant="outline"
                           size="sm"
-                          className="mt-4 h-9 rounded-sm"
+                          className="mt-4 h-9 rounded-hh-compact"
                           onClick={openNewInvoice}
                         >
                           <Plus className="mr-2 h-3.5 w-3.5" aria-hidden />
@@ -1020,7 +1022,7 @@ export function WorkerInvoicesClient({
                           <div className="flex min-w-0 items-center gap-2.5">
                             <span
                               className={cn(
-                                "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold leading-none tabular-nums antialiased",
+                                "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-hh-status font-semibold leading-none tabular-nums antialiased",
                                 workerAvatarRing,
                                 avatarRingClass(r.workerId)
                               )}
@@ -1029,7 +1031,7 @@ export function WorkerInvoicesClient({
                               {workerInitials(workerName)}
                             </span>
                             <div className="min-w-0">
-                              <p className="line-clamp-2 text-[13px] font-medium leading-snug tracking-tight text-zinc-900 dark:text-foreground">
+                              <p className="line-clamp-2 text-hh-table-cell font-medium leading-snug tracking-normal text-zinc-900 dark:text-foreground">
                                 {workerName}
                               </p>
                             </div>
@@ -1038,16 +1040,16 @@ export function WorkerInvoicesClient({
                         <td className="max-w-[220px] truncate px-3 py-2.5 align-middle text-sm text-zinc-600 dark:text-zinc-300">
                           {projectName ?? "—"}
                         </td>
-                        <td className="whitespace-nowrap px-3 py-2.5 align-middle font-mono text-sm tabular-nums text-zinc-500 dark:text-zinc-400">
+                        <td className="whitespace-nowrap px-3 py-2.5 align-middle hh-fin text-sm tabular-nums text-zinc-500 dark:text-zinc-400">
                           {invNo}
                         </td>
-                        <td className="whitespace-nowrap px-3 py-2.5 text-right align-middle text-base font-semibold tabular-nums tracking-tight text-zinc-800 dark:text-zinc-100">
+                        <td className="whitespace-nowrap px-3 py-2.5 text-right align-middle text-base font-semibold tabular-nums tracking-normal text-zinc-800 dark:text-zinc-100">
                           {formatCurrency(r.amount)}
                         </td>
                         <td className="px-3 py-2.5 align-middle">
                           <InvoiceStatusChip status={r.status} />
                         </td>
-                        <td className="whitespace-nowrap px-3 py-2.5 text-right align-middle font-mono text-sm tabular-nums text-zinc-500 dark:text-zinc-400">
+                        <td className="whitespace-nowrap px-3 py-2.5 text-right align-middle hh-fin text-sm tabular-nums text-zinc-500 dark:text-zinc-400">
                           {formatDate(r.createdAt)}
                         </td>
                         <td
@@ -1082,7 +1084,7 @@ export function WorkerInvoicesClient({
             <Button
               size="sm"
               variant="outline"
-              className="h-8 flex-1 rounded-sm shadow-none sm:flex-none"
+              className="h-8 flex-1 rounded-hh-compact shadow-none sm:flex-none"
               disabled={page <= 1}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
             >
@@ -1091,7 +1093,7 @@ export function WorkerInvoicesClient({
             <Button
               size="sm"
               variant="outline"
-              className="h-8 flex-1 rounded-sm shadow-none sm:flex-none"
+              className="h-8 flex-1 rounded-hh-compact shadow-none sm:flex-none"
               disabled={page >= totalPages}
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
             >

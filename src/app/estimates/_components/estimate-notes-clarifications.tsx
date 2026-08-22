@@ -140,7 +140,7 @@ export function EstimateNotesClarifications({
                       minHeight={32}
                       maxHeight={112}
                       className={ebInput(
-                        "eb-note-title-textarea min-h-8 w-full min-w-0 border-0 bg-transparent px-0 py-1 text-[14px] font-semibold leading-[1.35] text-[#F6F7FA] shadow-none focus-visible:ring-0"
+                        "eb-note-title-textarea min-h-8 w-full min-w-0 border-0 bg-transparent px-0 py-1 text-hh-body-strong text-foreground shadow-none focus-visible:ring-0"
                       )}
                       aria-label="Note title"
                     />
@@ -189,7 +189,7 @@ export function EstimateNotesClarifications({
                     maxHeight={360}
                     className={cn(
                       EB.noteBlockTextarea,
-                      ebInput("w-full text-[13px] leading-[1.45]")
+                      ebInput("w-full text-hh-table-cell leading-[1.45]")
                     )}
                     placeholder={`${NOTE_TYPE_LABELS[note.type]} details…`}
                     aria-label={`${note.title} body`}

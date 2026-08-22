@@ -112,12 +112,12 @@ export function ProjectDocumentsTab({ projectId, documents }: Props) {
               name="file"
               accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.webp,image/*"
               capture="environment"
-              className="min-h-[44px] text-xs file:mr-2 file:rounded file:border-0 file:bg-muted file:px-2 file:py-1 file:text-xs md:min-h-0"
+              className="min-h-[44px] text-hh-metadata file:mr-2 file:rounded file:border-0 file:bg-muted file:px-2 file:py-1 file:text-hh-metadata md:min-h-0"
             />
             <select
               name="file_type"
               defaultValue="Other"
-              className="h-8 min-w-[100px] rounded border border-input bg-transparent px-2 text-xs"
+              className="h-8 min-w-[100px] rounded border border-input bg-transparent px-2 text-hh-metadata"
             >
               {DOCUMENT_FILE_TYPES.map((t) => (
                 <option key={t} value={t}>
@@ -125,11 +125,17 @@ export function ProjectDocumentsTab({ projectId, documents }: Props) {
                 </option>
               ))}
             </select>
-            <Input name="notes" placeholder="Notes (optional)" className="h-8 w-36 text-xs" />
+            <Input
+              name="notes"
+              placeholder="Notes (optional)"
+              className="h-8 w-36 text-hh-metadata"
+            />
             <Button type="submit" size="sm" disabled={uploading}>
               {uploading ? "Uploading…" : "Upload"}
             </Button>
-            {uploadError && <span className="text-xs text-destructive">{uploadError}</span>}
+            {uploadError && (
+              <span className="text-hh-metadata text-destructive">{uploadError}</span>
+            )}
           </form>
         }
       />
@@ -137,9 +143,9 @@ export function ProjectDocumentsTab({ projectId, documents }: Props) {
       <SectionHeader label="Documents" className="mt-4" />
       <Divider />
       {documents.length === 0 ? (
-        <p className="py-6 text-sm text-muted-foreground">
+        <p className="py-6 text-hh-body text-[var(--hh-text-secondary)]">
           No documents yet. Upload files above or view all in{" "}
-          <a href="/documents" className="hover:text-foreground">
+          <a href="/documents" className="hover:text-[var(--hh-text-primary)]">
             Documents
           </a>
           .
@@ -147,16 +153,16 @@ export function ProjectDocumentsTab({ projectId, documents }: Props) {
       ) : (
         <div className="airtable-table-wrap airtable-table-wrap--ruled">
           <div className="airtable-table-scroll">
-            <table className="w-full text-sm">
+            <table className="w-full text-hh-body">
               <thead>
                 <tr>
-                  <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                  <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                     File
                   </th>
-                  <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                  <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                     Type
                   </th>
-                  <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                  <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                     Uploaded
                   </th>
                   <th className="h-8 w-32 px-1" />
@@ -166,23 +172,23 @@ export function ProjectDocumentsTab({ projectId, documents }: Props) {
                 {documents.map((doc) => (
                   <tr key={doc.id} className={listTableRowStaticClassName}>
                     <td
-                      className="h-11 min-h-[44px] max-w-[240px] truncate px-3 py-0 align-middle text-[13px] font-medium"
+                      className="h-11 min-h-[44px] max-w-[240px] truncate px-3 py-0 align-middle text-hh-table-cell font-medium"
                       title={doc.file_name}
                     >
                       {doc.file_name}
                     </td>
-                    <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] text-muted-foreground">
+                    <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell text-[var(--hh-text-secondary)]">
                       {doc.file_type}
                     </td>
-                    <td className="h-11 min-h-[44px] px-3 py-0 align-middle font-mono text-[13px] tabular-nums text-muted-foreground">
+                    <td className="h-11 min-h-[44px] px-3 py-0 align-middle hh-fin text-hh-table-cell tabular-nums text-[var(--hh-text-secondary)]">
                       {formatDate(doc.uploaded_at)}
                     </td>
-                    <td className="h-11 min-h-[44px] px-1 py-0 align-middle text-[13px]">
+                    <td className="h-11 min-h-[44px] px-1 py-0 align-middle text-hh-table-cell">
                       <div className="flex items-center gap-1">
                         <Button
                           variant="outline"
                           size="sm"
-                          className="btn-outline-ghost h-7 text-xs"
+                          className="btn-outline-ghost h-7 text-hh-metadata"
                           onClick={() => handlePreview(doc)}
                           disabled={loadingPreview}
                         >
@@ -191,7 +197,7 @@ export function ProjectDocumentsTab({ projectId, documents }: Props) {
                         <Button
                           variant="outline"
                           size="sm"
-                          className="btn-outline-ghost h-7 text-xs"
+                          className="btn-outline-ghost h-7 text-hh-metadata"
                           onClick={() => handleDownload(doc)}
                         >
                           Download
@@ -199,7 +205,7 @@ export function ProjectDocumentsTab({ projectId, documents }: Props) {
                         <Button
                           variant="outline"
                           size="sm"
-                          className="btn-outline-ghost h-7 text-xs text-red-600"
+                          className="btn-outline-ghost h-7 text-hh-metadata text-[var(--hh-danger)]"
                           onClick={() => handleDelete(doc)}
                           disabled={deletingId === doc.id}
                         >
@@ -223,7 +229,7 @@ export function ProjectDocumentsTab({ projectId, documents }: Props) {
         fileName={previewDoc?.file_name ?? ""}
         isLoading={loadingPreview && !!previewDoc}
       />
-      {deleteError ? <p className="mt-2 text-xs text-destructive">{deleteError}</p> : null}
+      {deleteError ? <p className="mt-2 text-hh-metadata text-destructive">{deleteError}</p> : null}
     </>
   );
 }

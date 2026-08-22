@@ -108,7 +108,7 @@ export function formatExpenseDateFilterTrigger(value: ExpenseDateFilterValue): s
 type Panel = "menu" | "custom";
 
 const MENU_ITEM =
-  "flex w-full cursor-pointer items-center rounded-md px-3 py-2 text-left text-sm text-[var(--neo-text-primary)] outline-none transition-colors hover:bg-[var(--neo-surface-muted)] focus:bg-[var(--neo-surface-muted)]";
+  "flex w-full cursor-pointer items-center rounded-md px-3 py-2 text-left text-sm text-[var(--hh-text-primary)] outline-none transition-colors hover:bg-[var(--hh-l3-hover)] focus:bg-[var(--hh-l3-hover)]";
 
 export type ExpenseDateRangeFilterProps = {
   value: ExpenseDateFilterValue;
@@ -195,7 +195,7 @@ export function ExpenseDateRangeFilter({
           type="button"
           data-expenses-filter-date
           className={cn(
-            "inline-flex h-8 min-w-[7.5rem] items-center justify-between gap-2 rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-2.5 text-left text-xs font-medium text-[var(--neo-text-primary)] shadow-none transition-colors hover:bg-[var(--neo-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]",
+            "inline-flex h-8 min-w-[7.5rem] items-center justify-between gap-2 rounded-lg border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-2.5 text-left text-xs font-medium text-[var(--hh-text-primary)] shadow-none transition-colors hover:bg-[var(--hh-l3-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)]",
             className
           )}
         >
@@ -238,7 +238,7 @@ export function ExpenseDateRangeFilter({
             <button type="button" className={MENU_ITEM} onClick={() => applyPreset("lastMonth")}>
               Last month
             </button>
-            <div className="my-1.5 h-px bg-[var(--neo-border)]" />
+            <div className="my-1.5 h-px bg-[var(--hh-border)]" />
             <button
               type="button"
               className={cn(MENU_ITEM, "justify-between font-medium")}
@@ -250,7 +250,7 @@ export function ExpenseDateRangeFilter({
           </div>
         ) : (
           <div className="flex flex-col gap-0 sm:flex-row">
-            <div className="expense-date-range-picker border-b border-[var(--neo-border)] p-2 sm:border-b-0 sm:border-r">
+            <div className="expense-date-range-picker border-b border-[var(--hh-border)] p-2 sm:border-b-0 sm:border-r">
               <DayPicker
                 mode="range"
                 today={ymdToLocalDate(hawaiiTodayYmd())}
@@ -266,37 +266,37 @@ export function ExpenseDateRangeFilter({
                   month: cn(rdp.month, "space-y-2"),
                   month_caption: cn(
                     rdp.month_caption,
-                    "flex items-center justify-center gap-1 pt-1 text-sm font-medium text-[var(--neo-text-primary)]"
+                    "flex items-center justify-center gap-1 pt-1 text-sm font-medium text-[var(--hh-text-primary)]"
                   ),
                   nav: cn(rdp.nav, "flex items-center gap-1"),
                   button_previous: cn(
                     rdp.button_previous,
-                    "inline-flex h-8 w-8 items-center justify-center rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] hover:bg-[var(--neo-surface-muted)]"
+                    "inline-flex h-8 w-8 items-center justify-center rounded-md border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] hover:bg-[var(--hh-l3-hover)]"
                   ),
                   button_next: cn(
                     rdp.button_next,
-                    "inline-flex h-8 w-8 items-center justify-center rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] hover:bg-[var(--neo-surface-muted)]"
+                    "inline-flex h-8 w-8 items-center justify-center rounded-md border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] hover:bg-[var(--hh-l3-hover)]"
                   ),
                   month_grid: cn(rdp.month_grid, "w-full"),
                   weekdays: cn(rdp.weekdays, "flex"),
-                  weekday: cn(rdp.weekday, "w-9 text-[11px] font-medium text-zinc-500"),
+                  weekday: cn(rdp.weekday, "w-9 text-hh-status font-medium text-zinc-500"),
                   week: cn(rdp.week, "flex w-full"),
                   day: cn(rdp.day, "p-0 text-center text-sm"),
                   day_button: cn(
                     rdp.day_button,
-                    "h-9 w-9 rounded-md text-[var(--neo-text-primary)] hover:bg-[var(--neo-surface-muted)]"
+                    "h-9 w-9 rounded-md text-[var(--hh-text-primary)] hover:bg-[var(--hh-l3-hover)]"
                   ),
                   selected: cn(
                     rdp.selected,
-                    "!bg-[var(--eo-action-primary)] font-medium !text-[var(--eo-action-primary-text)] hover:!bg-[var(--eo-action-primary)]"
+                    "!bg-[var(--hh-action-primary)] font-medium !text-[var(--hh-action-primary-foreground)] hover:!bg-[var(--hh-action-primary)]"
                   ),
-                  range_start: cn(rdp.range_start, "rounded-r-none !bg-[var(--eo-action-primary)]"),
-                  range_end: cn(rdp.range_end, "rounded-l-none !bg-[var(--eo-action-primary)]"),
+                  range_start: cn(rdp.range_start, "rounded-r-none !bg-[var(--hh-action-primary)]"),
+                  range_end: cn(rdp.range_end, "rounded-l-none !bg-[var(--hh-action-primary)]"),
                   range_middle: cn(
                     rdp.range_middle,
-                    "rounded-none bg-[var(--eo-surface-selected)] text-[var(--neo-text-primary)]"
+                    "rounded-none bg-[var(--hh-l3-selected)] text-[var(--hh-text-primary)]"
                   ),
-                  today: cn(rdp.today, "font-semibold text-[var(--eo-text-primary)]"),
+                  today: cn(rdp.today, "font-semibold text-[var(--hh-text-primary)]"),
                   outside: cn(rdp.outside, "text-zinc-400 opacity-60"),
                   disabled: cn(rdp.disabled, "opacity-40"),
                 }}
@@ -304,7 +304,7 @@ export function ExpenseDateRangeFilter({
             </div>
             <div className="flex w-full flex-col justify-between gap-3 p-3 sm:w-[148px] sm:shrink-0">
               <div className="flex flex-col gap-1">
-                <p className="px-1 text-[11px] font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]">
+                <p className="px-1 text-hh-status font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                   Quick select
                 </p>
                 <button
@@ -336,7 +336,7 @@ export function ExpenseDateRangeFilter({
                   This month
                 </button>
               </div>
-              <div className="flex flex-col gap-2 border-t border-[var(--neo-border)] pt-3">
+              <div className="flex flex-col gap-2 border-t border-[var(--hh-border)] pt-3">
                 <Button
                   type="button"
                   variant="outline"

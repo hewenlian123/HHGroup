@@ -101,7 +101,7 @@ function ExpenseReceiptCell({
         data-expense-receipt-state="missing"
         data-expense-issue-indicator="missing-receipt"
         className={cn(
-          "inline-flex h-7 items-center gap-1 whitespace-nowrap rounded-md px-1.5 text-[11px] font-medium text-[var(--eo-warning)] outline-none transition-colors hover:bg-[var(--eo-warning-soft)] focus-visible:ring-1 focus-visible:ring-[var(--neo-gold-ring)]",
+          "inline-flex h-7 items-center gap-1 whitespace-nowrap rounded-md px-1.5 text-hh-status font-medium text-[var(--hh-warning)] outline-none transition-colors hover:bg-[var(--hh-warning-soft-fill)] focus-visible:ring-1 focus-visible:ring-[var(--hh-focus-ring)]",
           touch && "h-11 min-h-11 px-2 md:h-7 md:min-h-0"
         )}
         onClick={(event) => {
@@ -122,7 +122,7 @@ function ExpenseReceiptCell({
       type="button"
       data-expense-receipt-state="attached"
       className={cn(
-        "inline-flex h-7 max-h-7 cursor-pointer items-center gap-1 rounded-md px-1.5 text-[11px] font-medium leading-none text-[var(--neo-text-primary)] outline-none transition-colors hover:bg-emerald-500/[0.08] hover:text-[var(--neo-emerald)] focus-visible:ring-1 focus-visible:ring-[var(--neo-gold-ring)]",
+        "inline-flex h-7 max-h-7 cursor-pointer items-center gap-1 rounded-md px-1.5 text-hh-status font-medium leading-none text-[var(--hh-text-primary)] outline-none transition-colors hover:bg-[var(--hh-success-soft-fill)] hover:text-[var(--hh-success)] focus-visible:ring-1 focus-visible:ring-[var(--hh-focus-ring)]",
         touch && "h-11 max-h-none min-h-11 md:h-7 md:max-h-7 md:min-h-0"
       )}
       onMouseEnter={() => onReceiptPrefetch?.()}
@@ -336,7 +336,7 @@ function ExpenseIssuesCell({
         data-testid="expense-inbox-issues"
         data-expense-issue-state="clear"
         className={cn(
-          "inline-flex h-6 items-center justify-center text-[11px] font-medium text-[var(--neo-text-tertiary)]",
+          "inline-flex h-6 items-center justify-center text-hh-status font-medium text-[var(--hh-text-tertiary)]",
           !touch && "min-w-6"
         )}
         aria-label="No issues"
@@ -380,7 +380,7 @@ function ExpenseIssuesCell({
               data-expense-issue-indicator="count"
               data-expense-row-passive
               className={cn(
-                "inline-flex h-6 max-h-6 min-w-6 items-center justify-center gap-1 px-1 text-[11px] font-semibold leading-none text-[var(--eo-warning)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--neo-gold-ring)]",
+                "inline-flex h-6 max-h-6 min-w-6 items-center justify-center gap-1 px-1 text-hh-status font-semibold leading-none text-[var(--hh-warning)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--hh-focus-ring)]",
                 touch &&
                   "h-11 max-h-none min-h-11 min-w-11 px-2 md:h-6 md:max-h-6 md:min-h-0 md:min-w-6"
               )}
@@ -394,7 +394,7 @@ function ExpenseIssuesCell({
               }}
               onBlur={scheduleClose}
             >
-              <span className="text-[10px] leading-none" aria-hidden>
+              <span className="text-hh-status leading-none" aria-hidden>
                 ⚠
               </span>
               <span className="tabular-nums">{visibleIssues.length}</span>
@@ -407,7 +407,7 @@ function ExpenseIssuesCell({
               type="button"
               data-expense-issue-indicator="count"
               className={cn(
-                "inline-flex h-6 max-h-6 min-w-6 items-center justify-center gap-1 rounded-md px-1 text-[11px] font-semibold leading-none text-[var(--eo-warning)] transition-colors hover:bg-[var(--neo-surface-muted)] focus-visible:outline focus-visible:ring-1 focus-visible:ring-[var(--neo-gold-ring)]",
+                "inline-flex h-6 max-h-6 min-w-6 items-center justify-center gap-1 rounded-md px-1 text-hh-status font-semibold leading-none text-[var(--hh-warning)] transition-colors hover:bg-[var(--hh-l3-hover)] focus-visible:outline focus-visible:ring-1 focus-visible:ring-[var(--hh-focus-ring)]",
                 touch &&
                   "h-11 max-h-none min-h-11 min-w-11 px-2 md:h-6 md:max-h-6 md:min-h-0 md:min-w-6"
               )}
@@ -434,7 +434,7 @@ function ExpenseIssuesCell({
                 openPopover(pointerType === "touch" ? "touch" : "focus");
               }}
             >
-              <span className="text-[10px] leading-none" aria-hidden>
+              <span className="text-hh-status leading-none" aria-hidden>
                 ⚠
               </span>
               <span className="tabular-nums">{visibleIssues.length}</span>
@@ -495,29 +495,29 @@ function ExpenseIssuesCell({
               <div key={issue.id} className="flex gap-2 rounded-md px-1.5 py-1.5">
                 {issue.id === "duplicate" ? (
                   <Copy
-                    className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--neo-text-tertiary)]"
+                    className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--hh-text-tertiary)]"
                     strokeWidth={2}
                     aria-hidden
                   />
                 ) : (
                   <span
-                    className="mt-[-1px] inline-flex h-4 w-4 shrink-0 items-center justify-center text-[12px] font-semibold leading-none text-[var(--eo-warning)]"
+                    className="mt-[-1px] inline-flex h-4 w-4 shrink-0 items-center justify-center text-hh-metadata font-semibold leading-none text-[var(--hh-warning)]"
                     aria-hidden
                   >
                     ⚠
                   </span>
                 )}
                 <div className="min-w-0 flex-1">
-                  <p className="text-[12px] font-medium leading-tight text-[var(--neo-text-primary)]">
+                  <p className="text-hh-metadata font-medium leading-tight text-[var(--hh-text-primary)]">
                     {issue.label}
                   </p>
-                  <p className="mt-0.5 text-[11px] leading-snug text-[var(--neo-text-secondary)]">
+                  <p className="mt-0.5 text-hh-status leading-snug text-[var(--hh-text-secondary)]">
                     {issue.detail}
                   </p>
                 </div>
                 <button
                   type="button"
-                  className="ml-1 inline-flex h-8 shrink-0 items-center rounded-md px-2 text-[11px] font-medium text-[var(--neo-text-tertiary)] transition-colors duration-150 hover:bg-[var(--neo-surface-muted)] hover:text-[var(--neo-text-primary)] focus-visible:outline focus-visible:ring-1 focus-visible:ring-[var(--neo-gold-ring)]"
+                  className="ml-1 inline-flex h-8 shrink-0 items-center rounded-md px-2 text-hh-status font-medium text-[var(--hh-text-tertiary)] transition-colors duration-150 hover:bg-[var(--hh-l3-hover)] hover:text-[var(--hh-text-primary)] focus-visible:outline focus-visible:ring-1 focus-visible:ring-[var(--hh-focus-ring)]"
                   aria-label={`Dismiss ${issue.label}`}
                   title="Hide this issue"
                   onClick={(e) => {
@@ -549,12 +549,12 @@ function ExpenseHeaderLineMismatchIssueCell({
     <div
       data-testid="expense-header-line-mismatch-issue"
       className={cn(
-        "w-full rounded-lg border border-[var(--eo-warning-border)] bg-[var(--eo-warning-soft)] px-2 py-1.5 text-left shadow-[inset_2px_0_0_var(--eo-warning)]",
+        "w-full rounded-lg border border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] px-2 py-1.5 text-left shadow-[inset_2px_0_0_var(--hh-warning)]",
         touch && "px-2.5 py-2"
       )}
     >
-      <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] leading-snug text-[var(--neo-text-secondary)]">
-        <span className="font-semibold text-[var(--eo-warning)]">
+      <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-hh-status leading-snug text-[var(--hh-text-secondary)]">
+        <span className="font-semibold text-[var(--hh-warning)]">
           Header: <span className="tabular-nums">{formatCurrency(mismatch.headerTotal)}</span>
         </span>
         <span className="tabular-nums">Lines: {formatCurrency(mismatch.linesTotal)}</span>
@@ -564,7 +564,7 @@ function ExpenseHeaderLineMismatchIssueCell({
         type="button"
         data-testid="expense-review-issue-button"
         className={cn(
-          "mt-1 inline-flex h-7 items-center rounded-md border border-[var(--eo-warning-border)] bg-[var(--eo-warning-soft)] px-2 text-[11px] font-medium text-[var(--eo-warning)] transition-colors duration-150 hover:bg-[var(--eo-warning-soft)] focus-visible:outline focus-visible:ring-1 focus-visible:ring-[var(--neo-gold-ring)]",
+          "mt-1 inline-flex h-7 items-center rounded-md border border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] px-2 text-hh-status font-medium text-[var(--hh-warning)] transition-colors duration-150 hover:bg-[var(--hh-warning-soft-fill)] focus-visible:outline focus-visible:ring-1 focus-visible:ring-[var(--hh-focus-ring)]",
           touch && "h-11 min-h-11"
         )}
         onClick={onReviewIssue}
@@ -727,7 +727,7 @@ function ExpenseStatusCell({
       <NeoStatus
         label={inboxSt.label}
         variant={inboxSt.variant}
-        className={cn("h-6 max-h-6 px-1.5 text-[10px]", className)}
+        className={cn("h-6 max-h-6 px-1.5 text-hh-status", className)}
       />
     );
   }
@@ -735,19 +735,19 @@ function ExpenseStatusCell({
   return (
     <span
       className={cn(
-        "inline-flex h-6 items-center whitespace-nowrap text-[11px] font-medium leading-none",
+        "inline-flex h-6 items-center whitespace-nowrap text-hh-status font-medium leading-none",
         className
       )}
       title={inboxSt.label}
     >
       <span
         data-testid="expense-status-inline-dot"
-        className="inline-block text-[9px] leading-none text-[rgb(79_175_124_/_0.58)]"
+        className="inline-block text-hh-status leading-none text-[var(--hh-success)]"
         aria-hidden
       >
         ●
       </span>{" "}
-      <span data-testid="expense-status-inline-label" className="text-[rgb(79_175_124_/_0.82)]">
+      <span data-testid="expense-status-inline-label" className="text-[var(--hh-success)]">
         {inboxSt.label}
       </span>
     </span>
@@ -842,7 +842,7 @@ function RowActionsMenu({ row }: { row: Expense }) {
       appearance="list"
       className="h-11 min-h-11 w-11 min-w-11 opacity-100 md:h-8 md:min-h-0 md:w-8 md:min-w-0 md:opacity-0 md:p-1.5 md:group-focus-within:opacity-100 md:group-hover:opacity-100"
       contentClassName="expenses-ui-dialog w-44"
-      destructiveItemClassName="mt-1 border-t border-[var(--neo-border)] pt-2 text-rose-600 focus:text-rose-600 hover:bg-rose-600 hover:text-white dark:text-rose-400 dark:focus:text-rose-400"
+      destructiveItemClassName="mt-1 border-t border-[var(--hh-border)] pt-2 text-[var(--hh-danger)] focus:text-[var(--hh-danger)] hover:bg-[var(--hh-danger-soft-fill)] hover:text-white dark:text-[var(--hh-danger)] dark:focus:text-[var(--hh-danger)]"
       actions={[
         {
           label: "Edit",
@@ -907,21 +907,21 @@ function DateGroupDesktopHeader({
     <tr
       data-expense-date-group={ledgerMode ? "desktop" : undefined}
       className={cn(
-        "border-b border-[var(--neo-border)] bg-[var(--neo-surface-muted)]",
+        "border-b border-[var(--hh-border)] bg-[var(--hh-l3-hover)]",
         ledgerMode && "expense-ledger-date-group"
       )}
     >
       <td colSpan={COL_COUNT} className="p-0 align-middle">
         <div className="flex min-w-0 items-stretch">
           {groupSelect?.show ? (
-            <div className="flex shrink-0 items-center border-r border-[var(--neo-border)] px-2">
+            <div className="flex shrink-0 items-center border-r border-[var(--hh-border)] px-2">
               <input
                 ref={groupCbRef}
                 type="checkbox"
                 checked={groupSelect.checked}
                 onChange={groupSelect.onToggleGroup}
                 onClick={(e) => e.stopPropagation()}
-                className="h-4 w-4 shrink-0 rounded border-[var(--neo-border)] text-[var(--neo-gold)]"
+                className="h-4 w-4 shrink-0 rounded border-[var(--hh-border)] text-[var(--hh-action-primary)]"
                 aria-label={`Select all for ${chunk.dateLabel}`}
               />
             </div>
@@ -933,27 +933,27 @@ function DateGroupDesktopHeader({
             aria-expanded={expanded}
             className={cn(
               "flex min-h-11 min-w-0 flex-1 cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm transition-colors duration-200 ease-out md:min-h-0",
-              "hover:bg-[var(--neo-surface-raised)] disabled:cursor-default disabled:hover:bg-transparent"
+              "hover:bg-[var(--hh-l2-operational-surface)] disabled:cursor-default disabled:hover:bg-transparent"
             )}
           >
             <ChevronRight
               className={cn(
-                "h-4 w-4 shrink-0 text-[var(--neo-text-secondary)] transition-transform duration-200 ease-out",
+                "h-4 w-4 shrink-0 text-[var(--hh-text-secondary)] transition-transform duration-200 ease-out",
                 expanded && "rotate-90"
               )}
               aria-hidden
             />
-            <span className="font-medium text-[var(--neo-text-primary)]">{chunk.dateLabel}</span>
-            <span className="flex min-w-0 flex-wrap items-center gap-x-1.5 text-[var(--neo-text-secondary)]">
+            <span className="font-medium text-[var(--hh-text-primary)]">{chunk.dateLabel}</span>
+            <span className="flex min-w-0 flex-wrap items-center gap-x-1.5 text-[var(--hh-text-secondary)]">
               <span className="tabular-nums">{chunk.itemCount}</span>
               <span aria-hidden>·</span>
-              <NeoAmount tone={ledgerMode ? "expense" : "neutral"} className="text-[12px]">
+              <NeoAmount tone={ledgerMode ? "expense" : "neutral"} className="text-hh-metadata">
                 {formatCurrency(-chunk.totalAmount)}
               </NeoAmount>
               {chunk.missingReceiptCount > 0 ? (
                 <>
                   <span aria-hidden>·</span>
-                  <span className="text-[var(--eo-warning)]">
+                  <span className="text-[var(--hh-warning)]">
                     {chunk.missingReceiptCount} missing receipt
                     {chunk.missingReceiptCount !== 1 ? "s" : ""}
                   </span>
@@ -1000,15 +1000,15 @@ function DesktopRows({
   const dupIds = possibleDuplicateIds;
 
   const projectTextClass = cn(
-    "block max-w-[10.5rem] truncate text-[13px] leading-tight text-[var(--neo-text-secondary)]",
+    "block max-w-[10.5rem] truncate text-hh-table-cell leading-tight text-[var(--hh-text-secondary)]",
     "font-medium opacity-90"
   );
   const categoryTextClass = cn(
-    "block max-w-[6.5rem] truncate text-[12px] leading-tight text-[var(--neo-text-secondary)]",
+    "block max-w-[6.5rem] truncate text-hh-metadata leading-tight text-[var(--hh-text-secondary)]",
     "font-normal"
   );
   const sourceClass = cn(
-    "block max-w-[6.5rem] truncate text-[11px] leading-tight text-[var(--neo-text-secondary)]",
+    "block max-w-[6.5rem] truncate text-hh-status leading-tight text-[var(--hh-text-secondary)]",
     "font-normal opacity-85"
   );
 
@@ -1101,22 +1101,22 @@ function DesktopRows({
                       tabIndex={0}
                       aria-label={`Review ${vendorTitle}`}
                       className={cn(
-                        "expense-row-continuity exp-row group h-12 cursor-pointer bg-[var(--neo-surface-raised)] transition-[background-color,box-shadow] duration-150 ease-out hover:bg-[var(--neo-surface-muted)] [&>td]:align-middle [&>td]:px-2.5 [&>td]:py-1",
-                        ledgerMode ? "border-b-0" : "border-b border-[var(--neo-border)]",
+                        "expense-row-continuity exp-row group h-12 cursor-pointer bg-[var(--hh-l2-operational-surface)] transition-[background-color,box-shadow] duration-150 ease-out hover:bg-[var(--hh-l3-hover)] [&>td]:align-middle [&>td]:px-2.5 [&>td]:py-1",
+                        ledgerMode ? "border-b-0" : "border-b border-[var(--hh-border)]",
                         a.deletingExpenseId === row.id &&
                           "pointer-events-none opacity-0 duration-300 ease-out",
                         uploadHighlight &&
-                          "bg-emerald-500/[0.06] shadow-[inset_0_0_0_1px_rgba(16,185,129,0.28)] dark:bg-emerald-500/[0.08] dark:shadow-[inset_0_0_0_1px_rgba(16,185,129,0.22)]",
+                          "bg-[var(--hh-success-soft-fill)] ring-1 ring-inset ring-[var(--hh-success-border)] dark:bg-[var(--hh-success-soft-fill)] dark:ring-1 ring-inset ring-[var(--hh-success-border)]",
                         a.listView === "unreviewed" &&
                           a.activeExpenseId === row.id &&
-                          "ring-1 ring-inset ring-[var(--eo-border-strong)]",
+                          "ring-1 ring-inset ring-[var(--hh-border-strong)]",
                         systemHealthFocused && "expense-ledger-row-high-attention",
                         ledgerMode && hasException && "expense-ledger-row-exception",
                         ledgerMode && a.activeExpenseId === row.id && "expense-ledger-row-active",
                         rowSelected &&
                           (triageLayout
-                            ? "bg-[var(--eo-surface-selected)] shadow-[inset_3px_0_0_0_var(--eo-text-primary)] ring-1 ring-inset ring-[var(--eo-border-strong)]"
-                            : "bg-[var(--eo-surface-selected)]")
+                            ? "bg-[var(--hh-l3-selected)] shadow-[inset_3px_0_0_0_var(--hh-text-primary)] ring-1 ring-inset ring-[var(--hh-border-strong)]"
+                            : "bg-[var(--hh-l3-selected)]")
                       )}
                       onClick={(e) => {
                         if (selectionEnabled && (e.metaKey || e.ctrlKey || e.shiftKey)) {
@@ -1136,7 +1136,7 @@ function DesktopRows({
                         a.openExpensePreview(row, { focusReview: true });
                       }}
                     >
-                      <td className="w-[82px] shrink-0 whitespace-nowrap text-[12px] font-medium text-[var(--neo-text-secondary)]">
+                      <td className="w-[82px] shrink-0 whitespace-nowrap text-hh-metadata font-medium text-[var(--hh-text-secondary)]">
                         {inboxSubtitleDate(row.date)}
                       </td>
                       <td className="min-w-0 max-w-[min(28rem,34vw)]">
@@ -1150,13 +1150,13 @@ function DesktopRows({
                                 toggleSelected(row.id, e.target.checked);
                               }}
                               onClick={(e) => e.stopPropagation()}
-                              className="mt-1 h-4 w-4 shrink-0 rounded border-[var(--neo-border)] text-[var(--neo-gold)]"
+                              className="mt-1 h-4 w-4 shrink-0 rounded border-[var(--hh-border)] text-[var(--hh-action-primary)]"
                               aria-label={`Select ${vendorTitle}`}
                             />
                           ) : (
                             <button
                               type="button"
-                              className="mt-1 h-4 w-4 shrink-0 rounded-sm border border-transparent hover:border-[var(--neo-border-strong)] focus-visible:outline focus-visible:ring-1 focus-visible:ring-[var(--neo-gold-ring)]"
+                              className="mt-1 h-4 w-4 shrink-0 rounded-sm border border-transparent hover:border-[var(--hh-border-strong)] focus-visible:outline focus-visible:ring-1 focus-visible:ring-[var(--hh-focus-ring)]"
                               aria-label={`Select ${vendorTitle}`}
                               title="Select"
                               onClick={(e) => {
@@ -1171,7 +1171,7 @@ function DesktopRows({
                           >
                             <p
                               className={cn(
-                                "min-w-0 max-w-full truncate text-[13px] leading-tight text-[var(--neo-text-primary)]",
+                                "min-w-0 max-w-full truncate text-hh-table-cell leading-tight text-[var(--hh-text-primary)]",
                                 "font-semibold"
                               )}
                               title={vendorClean || vendorTitle}
@@ -1181,14 +1181,14 @@ function DesktopRows({
                             {triageLayout ? (
                               <p
                                 data-inbox-compact-context
-                                className="mt-0.5 truncate text-[10px] leading-tight text-[var(--neo-text-tertiary)]"
+                                className="mt-0.5 truncate text-hh-status leading-tight text-[var(--hh-text-tertiary)]"
                                 title={compactQueueContext}
                               >
                                 {compactQueueContext || "Needs classification"}
                               </p>
                             ) : (
                               <p
-                                className="mt-0.5 truncate text-[10px] leading-tight text-[var(--neo-text-tertiary)]"
+                                className="mt-0.5 truncate text-hh-status leading-tight text-[var(--hh-text-tertiary)]"
                                 title={secondaryLine}
                               >
                                 {secondaryLine}
@@ -1197,7 +1197,7 @@ function DesktopRows({
                             {triageLayout && hasException ? (
                               <p
                                 data-inbox-compact-attention
-                                className="mt-1 truncate text-[10px] font-medium leading-tight text-[var(--eo-warning)]"
+                                className="mt-1 truncate text-hh-status font-medium leading-tight text-[var(--hh-warning)]"
                               >
                                 {missingReceipt
                                   ? "Missing receipt"
@@ -1280,8 +1280,8 @@ function DesktopRows({
                           tone={triageLayout ? "neutral" : "expense"}
                           className={cn(
                             triageLayout
-                              ? "text-[15px] font-semibold leading-none text-[var(--eo-text-strong)]"
-                              : "text-[15px] font-semibold leading-none"
+                              ? "text-hh-body font-semibold leading-none text-[var(--hh-text-strong)]"
+                              : "text-hh-body font-semibold leading-none"
                           )}
                         >
                           {formatCurrency(-rowTotal)}
@@ -1331,20 +1331,20 @@ function DateGroupMobileHeader({
     <li
       data-expense-date-group={ledgerMode ? "mobile" : undefined}
       className={cn(
-        "list-none border-b border-[var(--neo-border)] bg-[var(--neo-surface-muted)] p-0",
+        "list-none border-b border-[var(--hh-border)] bg-[var(--hh-l3-hover)] p-0",
         ledgerMode && "expense-ledger-date-group"
       )}
     >
       <div className="flex min-w-0 items-stretch">
         {groupSelect?.show ? (
-          <div className="flex shrink-0 items-center border-r border-[var(--neo-border)] px-2">
+          <div className="flex shrink-0 items-center border-r border-[var(--hh-border)] px-2">
             <input
               ref={groupCbRef}
               type="checkbox"
               checked={groupSelect.checked}
               onChange={groupSelect.onToggleGroup}
               onClick={(e) => e.stopPropagation()}
-              className="h-4 w-4 shrink-0 rounded border-[var(--neo-border)] text-[var(--neo-gold)]"
+              className="h-4 w-4 shrink-0 rounded border-[var(--hh-border)] text-[var(--hh-action-primary)]"
               aria-label={`Select all for ${chunk.dateLabel}`}
             />
           </div>
@@ -1356,28 +1356,28 @@ function DateGroupMobileHeader({
           aria-expanded={expanded}
           className={cn(
             "flex min-h-11 min-w-0 flex-1 cursor-pointer items-center gap-2 px-3 py-2.5 text-left text-sm transition-colors duration-200 ease-out",
-            "hover:bg-[var(--neo-surface-raised)] disabled:cursor-default disabled:hover:bg-transparent"
+            "hover:bg-[var(--hh-l2-operational-surface)] disabled:cursor-default disabled:hover:bg-transparent"
           )}
         >
           <ChevronRight
             className={cn(
-              "h-4 w-4 shrink-0 text-[var(--neo-text-secondary)] transition-transform duration-200 ease-out",
+              "h-4 w-4 shrink-0 text-[var(--hh-text-secondary)] transition-transform duration-200 ease-out",
               expanded && "rotate-90"
             )}
             aria-hidden
           />
           <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-            <span className="font-medium text-[var(--neo-text-primary)]">{chunk.dateLabel}</span>
-            <span className="flex flex-wrap items-center gap-x-1.5 text-xs text-[var(--neo-text-secondary)]">
+            <span className="font-medium text-[var(--hh-text-primary)]">{chunk.dateLabel}</span>
+            <span className="flex flex-wrap items-center gap-x-1.5 text-xs text-[var(--hh-text-secondary)]">
               <span className="tabular-nums">{chunk.itemCount} items</span>
               <span aria-hidden>·</span>
-              <NeoAmount tone={ledgerMode ? "expense" : "neutral"} className="text-[12px]">
+              <NeoAmount tone={ledgerMode ? "expense" : "neutral"} className="text-hh-metadata">
                 {formatCurrency(-chunk.totalAmount)}
               </NeoAmount>
               {chunk.missingReceiptCount > 0 ? (
                 <>
                   <span aria-hidden>·</span>
-                  <span className="text-[var(--eo-warning)]">
+                  <span className="text-[var(--hh-warning)]">
                     {chunk.missingReceiptCount} missing receipt
                     {chunk.missingReceiptCount !== 1 ? "s" : ""}
                   </span>
@@ -1520,22 +1520,22 @@ function MobileRows({
                         aria-label={`Review ${vendorTitle}`}
                         className={cn(
                           "expense-row-continuity exp-row group list-none cursor-pointer rounded-none border-x-0 border-t-0 px-3 py-2.5 shadow-none",
-                          ledgerMode ? "border-b-0" : "border-b border-[var(--neo-border)]",
-                          "min-h-[52px] hover:bg-[var(--neo-surface-muted)]",
+                          ledgerMode ? "border-b-0" : "border-b border-[var(--hh-border)]",
+                          "min-h-[52px] hover:bg-[var(--hh-l3-hover)]",
                           a.deletingExpenseId === row.id &&
                             "pointer-events-none opacity-0 duration-300 ease-out",
                           uploadHighlight &&
-                            "bg-emerald-500/[0.06] shadow-[inset_0_0_0_1px_rgba(16,185,129,0.28)] dark:bg-emerald-500/[0.08] dark:shadow-[inset_0_0_0_1px_rgba(16,185,129,0.22)]",
+                            "bg-[var(--hh-success-soft-fill)] ring-1 ring-inset ring-[var(--hh-success-border)] dark:bg-[var(--hh-success-soft-fill)] dark:ring-1 ring-inset ring-[var(--hh-success-border)]",
                           a.listView === "unreviewed" &&
                             a.activeExpenseId === row.id &&
-                            "ring-1 ring-inset ring-[var(--eo-border-strong)]",
+                            "ring-1 ring-inset ring-[var(--hh-border-strong)]",
                           systemHealthFocused && "expense-ledger-row-high-attention",
                           ledgerMode && hasException && "expense-ledger-row-exception",
                           ledgerMode && a.activeExpenseId === row.id && "expense-ledger-row-active",
                           rowSelected &&
                             (triageLayout
-                              ? "bg-[var(--eo-surface-selected)] shadow-[inset_3px_0_0_0_var(--eo-text-primary)]"
-                              : "bg-[var(--eo-surface-selected)]")
+                              ? "bg-[var(--hh-l3-selected)] shadow-[inset_3px_0_0_0_var(--hh-text-primary)]"
+                              : "bg-[var(--hh-l3-selected)]")
                         )}
                         onTouchStart={
                           selectionEnabled && !showSelectionUi ? lp.onTouchStart : undefined
@@ -1577,13 +1577,13 @@ function MobileRows({
                                 toggleSelected(row.id, e.target.checked);
                               }}
                               onClick={(e) => e.stopPropagation()}
-                              className="mt-1 h-4 w-4 shrink-0 rounded border-[var(--neo-border)] text-[var(--neo-gold)]"
+                              className="mt-1 h-4 w-4 shrink-0 rounded border-[var(--hh-border)] text-[var(--hh-action-primary)]"
                               aria-label={`Select ${vendorTitle}`}
                             />
                           ) : (
                             <button
                               type="button"
-                              className="mt-1 h-4 w-4 shrink-0 rounded-sm border border-transparent hover:border-[var(--neo-border-strong)] focus-visible:outline focus-visible:ring-1 focus-visible:ring-[var(--neo-gold-ring)]"
+                              className="mt-1 h-4 w-4 shrink-0 rounded-sm border border-transparent hover:border-[var(--hh-border-strong)] focus-visible:outline focus-visible:ring-1 focus-visible:ring-[var(--hh-focus-ring)]"
                               aria-label={`Select ${vendorTitle}`}
                               title="Select (long-press row)"
                               onClick={(e) => {
@@ -1602,7 +1602,7 @@ function MobileRows({
                                 className="min-w-0 flex-1"
                               >
                                 <p
-                                  className="line-clamp-1 min-w-0 break-words text-sm font-semibold leading-tight text-[var(--neo-text-primary)]"
+                                  className="line-clamp-1 min-w-0 break-words text-sm font-semibold leading-tight text-[var(--hh-text-primary)]"
                                   title={vendorClean || vendorTitle}
                                 >
                                   {vendorTitle}
@@ -1610,7 +1610,7 @@ function MobileRows({
                                 {ledgerMode ? (
                                   <p
                                     data-expense-row-description=""
-                                    className="mt-0.5 truncate text-[11px] leading-tight text-[var(--neo-text-secondary)]"
+                                    className="mt-0.5 truncate text-hh-status leading-tight text-[var(--hh-text-secondary)]"
                                     title={secondaryLine}
                                   >
                                     {secondaryLine}
@@ -1621,13 +1621,13 @@ function MobileRows({
                                   data-expense-mobile-context
                                   data-inbox-compact-context={triageLayout ? "" : undefined}
                                   data-expense-row-metadata={ledgerMode ? "" : undefined}
-                                  className="mt-1 line-clamp-1 text-[11px] leading-tight text-[var(--neo-text-tertiary)]"
+                                  className="mt-1 line-clamp-1 text-hh-status leading-tight text-[var(--hh-text-tertiary)]"
                                   aria-label={`Project ${projLabel}, category ${catLabel}, source ${expensePaymentSourceDisplayLabel(row)}`}
                                   title={`${projLabel} · ${catLabel} · ${expensePaymentSourceDisplayLabel(row)}`}
                                 >
                                   <span
                                     data-expense-context-part="project"
-                                    className="font-medium text-[var(--neo-text-secondary)]"
+                                    className="font-medium text-[var(--hh-text-secondary)]"
                                   >
                                     {projLabel}
                                   </span>{" "}
@@ -1647,7 +1647,7 @@ function MobileRows({
                                   tone={triageLayout ? "neutral" : "expense"}
                                   className={cn(
                                     triageLayout
-                                      ? "text-base font-semibold leading-none text-[var(--eo-text-strong)]"
+                                      ? "text-base font-semibold leading-none text-[var(--hh-text-strong)]"
                                       : "text-sm"
                                   )}
                                 >
@@ -1948,7 +1948,7 @@ export function ExpenseInboxTransactionList({
         {desktopLayout ? (
           <NeoTable
             className="rounded-none border-0 shadow-none"
-            scrollClassName="expense-compact-table-scroll bg-[var(--neo-surface-raised)]"
+            scrollClassName="expense-compact-table-scroll bg-[var(--hh-l2-operational-surface)]"
             tableClassName="min-w-[1100px] table-fixed text-sm"
           >
             <colgroup>
@@ -2003,7 +2003,7 @@ export function ExpenseInboxTransactionList({
         ) : (
           <ul
             data-expense-mobile-ledger=""
-            className="exp-divide flex flex-col border-y border-[var(--neo-border)]"
+            className="exp-divide flex flex-col border-y border-[var(--hh-border)]"
           >
             <MobileRows
               dateChunks={dateChunks}

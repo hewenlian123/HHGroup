@@ -65,7 +65,9 @@ export function ExpenseSubcontractDeductionFields({
         appearance === "compact"
           ? "border-0 bg-transparent p-0 shadow-none"
           : "rounded-lg border border-border/60 bg-muted/15 p-3",
-        appearance === "panel" && enabled && "border-amber-500/40 bg-amber-500/5",
+        appearance === "panel" &&
+          enabled &&
+          "border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)]",
         className
       )}
       data-testid={`${idPrefix}-section`}
@@ -75,7 +77,7 @@ export function ExpenseSubcontractDeductionFields({
         className={cn(
           "flex items-center font-medium text-foreground",
           appearance === "compact"
-            ? "min-h-9 gap-2.5 text-[13px] max-md:min-h-11"
+            ? "min-h-9 gap-2.5 text-hh-table-cell max-md:min-h-11"
             : "min-h-10 gap-3 text-sm"
         )}
       >
@@ -84,7 +86,7 @@ export function ExpenseSubcontractDeductionFields({
           checked={enabled}
           onChange={(event) => onEnabledChange(event.currentTarget.checked)}
           disabled={disabled}
-          className="h-4 w-4 rounded border-border accent-[var(--neo-gold)]"
+          className="h-4 w-4 rounded border-border accent-[var(--hh-action-primary)]"
           data-testid={`${idPrefix}-checkbox`}
         />
         <span>Deduct from subcontractor</span>
@@ -94,7 +96,7 @@ export function ExpenseSubcontractDeductionFields({
           className={cn("grid gap-3 md:grid-cols-2", appearance === "compact" ? "mt-2.5" : "mt-3")}
         >
           <div className="space-y-1.5 md:col-span-2">
-            <label className="text-xs uppercase tracking-wide text-muted-foreground">
+            <label className="text-xs uppercase tracking-normal text-muted-foreground">
               Subcontractor
             </label>
             <ExpenseSearchableSelect
@@ -128,7 +130,7 @@ export function ExpenseSubcontractDeductionFields({
             />
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs uppercase tracking-wide text-muted-foreground">
+            <label className="text-xs uppercase tracking-normal text-muted-foreground">
               Deduction amount
             </label>
             <Input
@@ -143,7 +145,7 @@ export function ExpenseSubcontractDeductionFields({
             />
           </div>
           <div className="space-y-1.5 md:col-span-2">
-            <label className="text-xs uppercase tracking-wide text-muted-foreground">
+            <label className="text-xs uppercase tracking-normal text-muted-foreground">
               Deduction note
             </label>
             <Textarea

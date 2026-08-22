@@ -20,7 +20,7 @@ export const EB = {
   goldTotal: "eb-gold-total",
   goldLink: "eb-gold-link",
   goldAccent: "eb-gold-accent",
-  tabularNums: "tabular-nums [font-feature-settings:'tnum']",
+  tabularNums: "hh-fin",
 
   btnPrimary: "eb-btn-primary",
   btnGhost: "eb-btn-ghost",
@@ -68,10 +68,11 @@ export const EB = {
   lineTotalBlock: "eb-line-total-block",
   lineTotalAmount: "eb-line-total-amount",
   lineItemMoreTrigger:
-    "eb-line-item-more-trigger inline-flex h-7 w-7 min-h-7 min-w-7 shrink-0 items-center justify-center rounded-md border-0 bg-transparent p-0 text-muted-foreground opacity-70 transition-[opacity,background,color] duration-150 hover:!translate-y-0 hover:bg-muted hover:text-foreground hover:opacity-100 active:!scale-100 active:!duration-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-md:h-11 max-md:w-11 max-md:min-h-11 max-md:min-w-11 max-md:opacity-90",
-  lineItemMoreMenu: "eb-line-item-more-menu min-w-[9.5rem] w-[9.5rem] rounded-md border p-1",
+    "eb-line-item-more-trigger inline-flex h-7 w-7 min-h-7 min-w-7 shrink-0 items-center justify-center rounded-hh-compact border-0 bg-transparent p-0 text-muted-foreground opacity-70 transition-[opacity,background,color] duration-150 hover:!translate-y-0 hover:bg-muted hover:text-foreground hover:opacity-100 active:!scale-100 active:!duration-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-md:h-11 max-md:w-11 max-md:min-h-11 max-md:min-w-11 max-md:opacity-90",
+  lineItemMoreMenu:
+    "eb-line-item-more-menu min-w-[9.5rem] w-[9.5rem] rounded-hh-compact border p-1",
   lineItemMoreMenuItem:
-    "eb-line-item-more-menu-item flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-[13px] leading-snug text-foreground outline-none transition-colors",
+    "eb-line-item-more-menu-item text-hh-table-cell flex cursor-pointer items-center gap-2 rounded-hh-compact px-2 py-1.5 text-foreground outline-none transition-colors",
   lineItemMoreMenuItemDanger: "eb-line-item-more-menu-item--danger",
   linePricingTotal: "eb-line-pricing-total",
   iconAction: "eb-icon-action",
@@ -82,13 +83,13 @@ export const EB = {
 
   draftBadge: "eb-draft-badge",
   draftBadgePill: "eb-draft-badge-pill",
-  pageTitle: "eb-page-title text-xl font-semibold tracking-normal text-foreground",
-  pageMeta: "eb-page-meta text-[13px] leading-snug text-muted-foreground",
+  pageTitle: "eb-page-title text-hh-page-title text-foreground",
+  pageMeta: "eb-page-meta text-hh-metadata text-muted-foreground",
   section: "pb-5 last:pb-0",
-  sectionTitle: "eb-section-title text-[15px] font-semibold leading-snug text-foreground",
-  sectionSubtitle: "eb-section-subtitle mt-0.5 text-[12.5px] leading-snug text-muted-foreground",
-  scopeHeading: "eb-scope-heading text-[15px] font-semibold leading-snug text-foreground",
-  scopeSubtitle: "eb-scope-subtitle mt-0.5 text-[12.5px] leading-snug text-muted-foreground",
+  sectionTitle: "eb-section-title text-hh-section-title text-foreground",
+  sectionSubtitle: "eb-section-subtitle mt-0.5 text-hh-metadata text-muted-foreground",
+  scopeHeading: "eb-scope-heading text-hh-section-title text-foreground",
+  scopeSubtitle: "eb-scope-subtitle mt-0.5 text-hh-metadata text-muted-foreground",
   scopeEmpty: "eb-scope-empty",
   scopeEmptyMessage: "eb-scope-empty-message",
   fieldStack: "space-y-1",
@@ -96,22 +97,19 @@ export const EB = {
   coreGrid: "grid grid-cols-1 gap-3 sm:grid-cols-2",
   readGrid: "grid grid-cols-2 gap-x-5 gap-y-3.5 sm:grid-cols-4",
   readRow: "space-y-0.5 min-w-0",
-  readLabel:
-    "eb-read-label text-[11px] font-semibold uppercase tracking-[0.06em] leading-tight text-muted-foreground",
-  readValue: "eb-read-value text-[14px] font-medium leading-snug text-foreground truncate",
-  readValueMuted:
-    "eb-read-value-muted text-[14px] leading-snug text-muted-foreground truncate tabular-nums [font-feature-settings:'tnum']",
-  readDash: "eb-read-dash text-[14px] leading-snug text-muted-foreground",
+  readLabel: "eb-read-label text-hh-table-header uppercase text-muted-foreground",
+  readValue: "eb-read-value text-hh-label truncate text-foreground",
+  readValueMuted: "eb-read-value-muted text-hh-metadata hh-fin truncate text-muted-foreground",
+  readDash: "eb-read-dash text-hh-body text-muted-foreground",
   input:
-    "eb-input min-h-11 w-full rounded-md px-3 py-1 text-base font-normal leading-[1.4] text-foreground transition-[border-color,background,box-shadow] duration-150 placeholder:text-muted-foreground placeholder:font-normal focus-visible:outline-none focus-visible:ring-0 disabled:cursor-not-allowed disabled:text-muted-foreground disabled:opacity-100 md:h-8 md:min-h-8 md:px-2.5 md:text-[14px] md:leading-[1.4]",
+    "eb-input hh-type-text-entry min-h-11 w-full rounded-hh-compact px-3 py-1 text-foreground transition-[border-color,background,box-shadow] duration-150 placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-0 disabled:cursor-not-allowed disabled:text-muted-foreground disabled:opacity-100 md:h-8 md:min-h-8 md:px-2.5",
   inputMuted: "font-normal text-foreground",
-  inputNumeric: "text-right tabular-nums",
-  lineTableHead:
-    "border-b border-border pb-2 text-[11px] font-semibold uppercase tracking-[0.06em] leading-tight text-muted-foreground",
+  inputNumeric: "hh-fin text-right",
+  lineTableHead: "border-b border-border pb-2 text-hh-table-header uppercase text-muted-foreground",
   /** Lighter pricing strip below proposal scope cards */
   pricingSection: "mt-5 border-t border-border pt-3",
   pricingTableHead:
-    "border-b border-border pb-2 text-[11px] font-semibold uppercase tracking-[0.06em] leading-tight text-muted-foreground",
+    "border-b border-border pb-2 text-hh-table-header uppercase text-muted-foreground",
   pricingTableRow:
     "border-b border-border/70 transition-colors duration-150 last:border-0 hover:bg-muted/40",
   lineTableRow:
@@ -119,31 +117,28 @@ export const EB = {
   lineRowActions:
     "opacity-0 group-hover/line:opacity-100 transition-opacity duration-150 max-md:opacity-100",
   lineDetailsLink:
-    "inline-flex min-h-11 items-center px-2 text-[13px] opacity-0 transition-[opacity,color] duration-150 group-hover/line:opacity-100 focus-visible:opacity-100 focus-visible:outline-none md:min-h-0 md:px-0 max-md:opacity-100 eb-gold-link",
-  lineTotal:
-    "eb-line-total text-[13px] font-semibold tabular-nums text-foreground [font-feature-settings:'tnum'] md:text-[14px]",
+    "inline-flex min-h-11 items-center px-2 text-hh-table-cell opacity-0 transition-[opacity,color] duration-150 group-hover/line:opacity-100 focus-visible:opacity-100 focus-visible:outline-none md:min-h-0 md:px-0 max-md:opacity-100 eb-gold-link",
+  lineTotal: "eb-line-total text-hh-financial hh-fin text-foreground",
   scopeBlock: "mb-2 last:mb-0",
   scopeBlockHeader:
     "eb-scope-section-header flex flex-wrap items-center justify-between gap-x-2.5 gap-y-1.5 border-b border-border pb-2 pt-0",
   addSectionComposer: "eb-add-section-composer",
-  scopeBlockTitle: "eb-scope-block-title text-[15.5px] font-semibold leading-snug text-foreground",
-  scopeBlockTotal:
-    "eb-scope-block-total text-[14px] font-semibold tabular-nums text-foreground [font-feature-settings:'tnum']",
+  scopeBlockTitle: "eb-scope-block-title text-hh-section-title text-foreground",
+  scopeBlockTotal: "eb-scope-block-total text-hh-financial hh-fin text-foreground",
   composerAddSection:
-    "eb-add-section eb-action-secondary inline-flex min-h-11 items-center gap-1.5 px-2.5 text-[14px] font-medium leading-[1.35] md:h-8 md:min-h-8",
-  commandMenu: "z-[100] max-h-64 overflow-y-auto rounded-xl border py-1 eb-glass-command",
+    "eb-add-section eb-action-secondary inline-flex min-h-11 items-center gap-1.5 px-2.5 text-hh-control md:h-8 md:min-h-8",
+  commandMenu: "z-[100] max-h-64 overflow-y-auto rounded-hh-task border py-1 eb-glass-command",
   commandMenuItem:
-    "mx-1 flex min-h-11 cursor-pointer items-center gap-2 rounded-md px-2.5 py-2 text-[14px] leading-snug text-foreground transition-colors hover:bg-muted md:min-h-0",
+    "mx-1 flex min-h-11 cursor-pointer items-center gap-2 rounded-hh-compact px-2.5 py-2 text-hh-body text-foreground transition-colors hover:bg-muted md:min-h-0",
   commandMenuItemActive: "bg-muted text-foreground",
   addLineLink:
-    "eb-add-line inline-flex min-h-11 items-center gap-1.5 rounded-[0.625rem] border px-2.5 text-[13px] font-medium leading-none transition-[color,background,border-color,opacity] duration-150 md:h-8 md:min-h-8",
+    "eb-add-line inline-flex min-h-11 items-center gap-1.5 rounded-hh-standard border px-2.5 text-hh-control transition-[color,background,border-color,opacity] duration-150 md:h-8 md:min-h-8",
   lineIndexBadge:
-    "eb-line-index inline-flex w-[32px] shrink-0 items-center justify-start text-[12.5px] font-medium tabular-nums leading-none tracking-[-0.02em] text-muted-foreground [font-feature-settings:'tnum']",
-  paymentTitle: "eb-payment-title text-[15px] font-semibold leading-snug text-foreground",
-  paymentSubtitle: "eb-payment-subtitle mt-0.5 text-[12.5px] leading-snug text-muted-foreground",
-  paymentStatLabel: "eb-payment-stat-label text-[13px] leading-snug text-muted-foreground",
-  paymentStatValue:
-    "eb-payment-stat-value text-[14px] font-semibold tabular-nums text-foreground [font-feature-settings:'tnum']",
+    "eb-line-index inline-flex w-[32px] shrink-0 items-center justify-start text-hh-metadata hh-fin text-muted-foreground",
+  paymentTitle: "eb-payment-title text-hh-section-title text-foreground",
+  paymentSubtitle: "eb-payment-subtitle mt-0.5 text-hh-metadata text-muted-foreground",
+  paymentStatLabel: "eb-payment-stat-label text-hh-table-cell text-muted-foreground",
+  paymentStatValue: "eb-payment-stat-value text-hh-financial hh-fin text-foreground",
   categoryGroup: "mb-3 last:mb-0",
   addNextSectionRow: "eb-add-next-section-row",
   addFinalSectionRow: "eb-add-final-section-row",
@@ -156,30 +151,27 @@ export const EB = {
   scopeSectionHeaderCollapsed: "eb-scope-section-header--collapsed",
   scopeSectionHeaderMeta: "eb-scope-section-header-meta flex shrink-0 items-center gap-3",
   scopeSectionAddLine:
-    "eb-scope-section-add-line inline-flex min-h-11 items-center gap-1 rounded-md border border-border bg-background px-2.5 text-[12px] font-medium text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:h-8 md:min-h-8",
+    "eb-scope-section-add-line inline-flex min-h-11 items-center gap-1 rounded-hh-compact border border-border bg-background px-2.5 text-hh-control text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:h-8 md:min-h-8",
   scopeSectionItemCount:
-    "eb-scope-section-item-count text-[12.5px] font-medium tabular-nums leading-none text-muted-foreground",
+    "eb-scope-section-item-count text-hh-metadata hh-fin text-muted-foreground",
   scopeSectionBody:
     "eb-scope-section-body grid transition-[grid-template-rows,opacity] duration-150 ease-out",
   scopeSectionBodyCollapsed: "eb-scope-section-body--collapsed",
   scopeSectionBodyInner: "eb-scope-section-body-inner min-h-0 overflow-hidden",
   scopeSectionMobile: "eb-scope-section-mobile mb-3 last:mb-0",
   builderPickerMenu: "eb-builder-picker-menu z-[100] max-h-72 min-w-[12rem] overflow-y-auto",
-  builderPickerGroupLabel:
-    "px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-muted-foreground",
+  builderPickerGroupLabel: "px-2.5 py-1.5 text-hh-table-header uppercase text-muted-foreground",
   lineItemStatusPill:
-    "eb-line-item-status-pill inline-flex shrink-0 items-center rounded-sm border border-border bg-muted/60 px-1.5 py-0.5 text-[10.5px] font-medium leading-none tracking-[0.01em] text-muted-foreground",
+    "eb-line-item-status-pill inline-flex shrink-0 items-center rounded-hh-compact border border-border bg-muted/60 px-1.5 py-0.5 text-hh-status text-muted-foreground",
   noteBlock: "eb-note-block pb-3 last:pb-0",
   noteBlockTextarea: "eb-note-block-textarea",
-  categorySectionTotal: "text-[13px] font-normal tabular-nums text-muted-foreground",
+  categorySectionTotal: "text-hh-table-cell hh-fin text-muted-foreground",
   backLink:
-    "inline-flex min-h-11 items-center gap-1 text-[14px] leading-snug text-muted-foreground transition-colors duration-150 hover:text-foreground",
-  summaryInternalLabel:
-    "text-[11px] font-semibold uppercase tracking-[0.08em] leading-tight text-muted-foreground",
-  summaryLineLabel: "text-[13px] leading-snug text-muted-foreground",
-  summaryLineValue: "text-[14px] tabular-nums text-foreground [font-feature-settings:'tnum']",
-  summaryLineValueMuted:
-    "text-[14px] tabular-nums text-muted-foreground [font-feature-settings:'tnum']",
+    "inline-flex min-h-11 items-center gap-1 text-hh-body text-muted-foreground transition-colors duration-150 hover:text-foreground",
+  summaryInternalLabel: "text-hh-table-header uppercase text-muted-foreground",
+  summaryLineLabel: "text-hh-table-cell text-muted-foreground",
+  summaryLineValue: "text-hh-financial hh-fin text-foreground",
+  summaryLineValueMuted: "text-hh-financial hh-fin text-muted-foreground",
   draftPanel: "eb-draft-panel",
 
   /** Premium glass sheets (Estimate Builder drawers only) */
@@ -196,11 +188,11 @@ export const EB = {
   sheetLabel: "eb-sheet-label",
   sheetLabelRow: "flex flex-wrap items-center justify-between gap-2",
   sheetHelperTrigger:
-    "eb-sheet-helper-trigger h-7 min-h-7 shrink-0 px-2 text-[11px] font-medium tracking-wide text-muted-foreground hover:bg-muted hover:text-foreground",
+    "eb-sheet-helper-trigger h-7 min-h-7 shrink-0 px-2 text-hh-status text-muted-foreground hover:bg-muted hover:text-foreground",
   sheetHelperChips: "mt-1.5 flex flex-wrap gap-1.5",
   sheetHelperChip:
-    "eb-sheet-helper-chip h-7 min-h-7 rounded-sm border border-border bg-background px-2.5 text-[11px] font-medium tracking-wide text-muted-foreground hover:bg-muted hover:text-foreground",
-  sheetHelperHint: "mt-1 text-[11px] leading-snug text-muted-foreground",
+    "eb-sheet-helper-chip h-7 min-h-7 rounded-hh-compact border border-border bg-background px-2.5 text-hh-status text-muted-foreground hover:bg-muted hover:text-foreground",
+  sheetHelperHint: "mt-1 text-hh-helper text-muted-foreground",
   paymentAmountRow: "flex flex-col gap-2 sm:flex-row sm:items-end sm:gap-2",
   paymentAmountCol: "min-w-0 flex-1",
   paymentPercentCol: "w-full shrink-0 sm:w-[5.75rem]",

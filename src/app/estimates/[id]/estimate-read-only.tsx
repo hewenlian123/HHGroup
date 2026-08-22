@@ -45,7 +45,7 @@ export function EstimateReadOnlyContent({ payload }: { payload: EstimateReadOnly
     <>
       <div className="grid grid-cols-1 gap-8 border-b border-border/15 pb-8 md:grid-cols-2">
         <div className="space-y-2">
-          <h3 className="text-[10px] font-medium uppercase tracking-[0.1em] text-muted-foreground/50">
+          <h3 className="text-hh-status font-medium uppercase tracking-normal text-muted-foreground/50">
             Client
           </h3>
           <p className="text-sm font-medium text-foreground">{payload.clientName}</p>
@@ -58,7 +58,7 @@ export function EstimateReadOnlyContent({ payload }: { payload: EstimateReadOnly
           <p className="text-sm text-muted-foreground/70">{payload.clientAddress}</p>
         </div>
         <div className="space-y-2">
-          <h3 className="text-[10px] font-medium uppercase tracking-[0.1em] text-muted-foreground/50">
+          <h3 className="text-hh-status font-medium uppercase tracking-normal text-muted-foreground/50">
             Project
           </h3>
           <p className="text-sm font-medium text-foreground">{payload.projectName}</p>
@@ -67,7 +67,7 @@ export function EstimateReadOnlyContent({ payload }: { payload: EstimateReadOnly
       </div>
 
       <section className="border-b border-border/15 py-8">
-        <h2 className="mb-6 text-[10px] font-medium uppercase tracking-[0.1em] text-muted-foreground/50">
+        <h2 className="mb-6 text-hh-status font-medium uppercase tracking-normal text-muted-foreground/50">
           Scope of work
         </h2>
         <div className="space-y-8">
@@ -89,10 +89,10 @@ export function EstimateReadOnlyContent({ payload }: { payload: EstimateReadOnly
           <SummaryRow label="Subtotal" value={subtotal} />
         </div>
         <div className="mt-6 border-t border-border/15 pt-4">
-          <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground/45">
+          <p className="text-hh-status font-medium uppercase tracking-normal text-muted-foreground/45">
             Total
           </p>
-          <p className="mt-2 text-2xl font-semibold tabular-nums tracking-tight text-foreground">
+          <p className="mt-2 text-2xl font-semibold tabular-nums tracking-normal text-foreground">
             {formatEstimateCurrency(subtotal)}
           </p>
         </div>
@@ -122,7 +122,7 @@ function EstimateSectionReadOnly({
       <summary className="flex cursor-pointer list-none items-center justify-between gap-3 border-b border-border/10 py-2.5 hover:bg-transparent [&::-webkit-details-marker]:hidden">
         <div className="flex min-w-0 items-center gap-2">
           <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/50 transition-transform group-open:rotate-90" />
-          <span className="text-[15px] font-semibold tracking-tight text-foreground">
+          <span className="text-hh-section-title font-semibold tracking-normal text-foreground">
             {headerLabel}
           </span>
         </div>
@@ -133,7 +133,7 @@ function EstimateSectionReadOnly({
       <div className="overflow-x-auto pt-3">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-border/10 text-[10px] font-normal text-muted-foreground/45">
+            <tr className="border-b border-border/10 text-hh-status font-normal text-muted-foreground/45">
               <th className="pb-2 pr-4 text-left font-normal">Description</th>
               <th className="w-16 pb-2 pr-2 text-right font-normal tabular-nums">Qty</th>
               <th className="w-14 pb-2 pr-2 text-left font-normal">Unit</th>

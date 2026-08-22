@@ -130,14 +130,14 @@ function EstimateTemplateSelector({
       <div className={ebGlassPanel("px-3 py-2 sm:px-4")}>
         <div className="flex items-center justify-between gap-2">
           <div className="flex min-w-0 items-center gap-2">
-            <span className="eb-estimate-template-tool-icon flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-[var(--eb-border)] bg-[var(--eb-bg-soft)] text-[var(--eb-muted)]">
+            <span className="eb-estimate-template-tool-icon flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-[var(--hh-border)] bg-[var(--hh-l3-hover)] text-[var(--hh-text-tertiary)]">
               <Sparkles className="h-4 w-4" aria-hidden />
             </span>
             <div className="min-w-0">
-              <h2 className="whitespace-nowrap text-[12.5px] font-semibold leading-snug text-foreground sm:text-[13px]">
+              <h2 className="whitespace-nowrap text-hh-metadata font-semibold leading-snug text-foreground sm:text-hh-table-cell">
                 Start from template
               </h2>
-              <p className="hidden truncate text-[11.5px] leading-snug text-muted-foreground sm:block">
+              <p className="hidden truncate text-hh-status leading-snug text-muted-foreground sm:block">
                 Optional reusable scope
               </p>
             </div>
@@ -757,7 +757,7 @@ export function NewEstimateEditor({
           {formError ? (
             <div
               role="alert"
-              className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800"
+              className="rounded-hh-standard border border-[var(--hh-danger-border)] bg-[var(--hh-danger-soft-fill)] p-3 text-hh-error text-[var(--hh-danger)]"
             >
               {formError}
             </div>
@@ -927,7 +927,7 @@ export function NewEstimateEditor({
                       variant="outline"
                       size="icon"
                       className={cn(
-                        "min-h-11 min-w-11 text-red-700 hover:bg-red-50 hover:text-red-800 md:h-8 md:min-h-8 md:w-8 md:min-w-8",
+                        "min-h-11 min-w-11 text-[var(--hh-danger)] hover:bg-[var(--hh-danger-soft-fill)] md:h-8 md:min-h-8 md:w-8 md:min-w-8",
                         EB.btnGhost
                       )}
                       aria-label={`Delete ${m.title}`}
@@ -975,7 +975,11 @@ export function NewEstimateEditor({
                           aria-describedby={pmError ? "pm-title-error" : undefined}
                         />
                         {pmError ? (
-                          <p id="pm-title-error" role="alert" className="text-xs text-rose-700">
+                          <p
+                            id="pm-title-error"
+                            role="alert"
+                            className="text-hh-error text-[var(--hh-danger)]"
+                          >
                             {pmError}
                           </p>
                         ) : null}
@@ -996,7 +1000,7 @@ export function NewEstimateEditor({
                               inputMode="decimal"
                               placeholder="0.00"
                               className={ebSheetInput(
-                                cn("text-sm text-right text-[#F4F7FB]", EB.inputNumeric)
+                                cn("text-hh-financial text-right text-foreground", EB.inputNumeric)
                               )}
                               onWheel={(event) => event.currentTarget.blur()}
                             />
@@ -1016,7 +1020,7 @@ export function NewEstimateEditor({
                               inputMode="decimal"
                               placeholder="Optional"
                               className={ebSheetInput(
-                                cn("text-sm text-right text-[#F4F7FB]", EB.inputNumeric)
+                                cn("text-hh-financial text-right text-foreground", EB.inputNumeric)
                               )}
                               aria-describedby={
                                 pmPercentHelperText ? "pm-percent-helper" : undefined

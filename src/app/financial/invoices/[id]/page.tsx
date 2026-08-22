@@ -126,10 +126,10 @@ function DetailMetric({
       label={label}
       value={value}
       tone={kpiTone}
-      className="min-h-[92px] rounded-2xl px-3.5 py-3.5"
+      className="min-h-[92px] rounded-hh-task px-3.5 py-3.5"
       valueClassName={cn(
-        "truncate text-[18px]",
-        tone === "muted" && "text-[var(--neo-text-secondary)]"
+        "truncate text-hh-financial-total",
+        tone === "muted" && "text-[var(--hh-text-secondary)]"
       )}
     />
   );
@@ -137,25 +137,25 @@ function DetailMetric({
 
 function EmptyLedgerState({ children }: { children: React.ReactNode }) {
   return (
-    <div className="rounded-xl border border-dashed border-[var(--neo-border-strong)] bg-[var(--neo-surface-muted)] px-4 py-5 text-sm text-[var(--neo-text-secondary)] shadow-[inset_0_1px_0_rgb(255_255_255_/_0.035)]">
+    <div className="rounded-hh-task border border-dashed border-[var(--hh-border-strong)] bg-[var(--hh-l2-operational-surface)] px-4 py-5 text-hh-body text-[var(--hh-text-secondary)] shadow-none">
       {children}
     </div>
   );
 }
 
-const neoPanelClass =
-  "rounded-2xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)]";
-const neoPanelHeaderClass = "border-b border-[var(--neo-border)] px-4 py-3";
-const neoSectionTitleClass = "text-sm font-semibold text-[var(--neo-text-primary)]";
-const neoSectionDescriptionClass = "mt-0.5 text-xs text-[var(--neo-text-secondary)]";
-const neoLabelClass =
-  "text-[11px] font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]";
-const neoInputClass =
-  "rounded-md border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-none placeholder:text-[var(--neo-text-tertiary)] hover:bg-[var(--neo-surface-muted)] focus-visible:border-[var(--neo-gold)] focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]";
-const neoTableShellClass =
-  "overflow-hidden rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-muted)]";
-const neoTableRowClass =
-  "border-b border-[var(--neo-border)] transition-colors last:border-0 hover:bg-[var(--neo-surface-raised)]";
+const invoicePanelClass =
+  "rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-operational";
+const invoicePanelHeaderClass = "border-b border-[var(--hh-border)] px-4 py-3";
+const invoiceSectionTitleClass = "text-hh-body font-semibold text-[var(--hh-text-primary)]";
+const invoiceSectionDescriptionClass = "mt-0.5 text-hh-metadata text-[var(--hh-text-secondary)]";
+const invoiceLabelClass =
+  "text-hh-status font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]";
+const invoiceInputClass =
+  "rounded-hh-standard border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-none placeholder:text-[var(--hh-text-tertiary)] hover:bg-[var(--hh-l3-hover)] focus-visible:border-[var(--hh-action-primary)] focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)]";
+const invoiceTableShellClass =
+  "overflow-hidden rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)]";
+const invoiceTableRowClass =
+  "border-b border-[var(--hh-border)] transition-colors last:border-0 hover:bg-[var(--hh-l3-hover)]";
 
 export default function InvoiceDetailPage() {
   const params = useParams();
@@ -558,12 +558,12 @@ export default function InvoiceDetailPage() {
 
   if (!id) {
     return (
-      <div className="dark neo-page-on-graphite page-container page-stack max-w-[800px] p-6 text-[var(--neo-canvas-text-secondary)]">
-        <p className="text-[var(--neo-text-secondary)]">Invoice not found.</p>
+      <div className="bg-[var(--hh-l0-canvas)] page-container page-stack max-w-[800px] p-6 text-[var(--hh-text-secondary)]">
+        <p className="text-[var(--hh-text-secondary)]">Invoice not found.</p>
         <Button
           asChild
           variant="outline"
-          className="mt-4 rounded-lg border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] hover:bg-[var(--neo-surface-muted)]"
+          className="mt-4 rounded-hh-standard border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] hover:bg-[var(--hh-l3-hover)]"
         >
           <Link href="/financial/invoices">Back to Invoices</Link>
         </Button>
@@ -573,12 +573,12 @@ export default function InvoiceDetailPage() {
 
   if (notFound) {
     return (
-      <div className="dark neo-page-on-graphite page-container page-stack max-w-[800px] p-6 text-[var(--neo-canvas-text-secondary)]">
-        <p className="text-[var(--neo-text-secondary)]">Invoice not found.</p>
+      <div className="bg-[var(--hh-l0-canvas)] page-container page-stack max-w-[800px] p-6 text-[var(--hh-text-secondary)]">
+        <p className="text-[var(--hh-text-secondary)]">Invoice not found.</p>
         <Button
           asChild
           variant="outline"
-          className="mt-4 rounded-lg border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] hover:bg-[var(--neo-surface-muted)]"
+          className="mt-4 rounded-hh-standard border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] hover:bg-[var(--hh-l3-hover)]"
         >
           <Link href="/financial/invoices">Back to Invoices</Link>
         </Button>
@@ -588,7 +588,7 @@ export default function InvoiceDetailPage() {
 
   if (!invoice) {
     return (
-      <div className="dark neo-page-on-graphite page-container page-stack max-w-[800px] p-6 text-[var(--neo-canvas-text-secondary)]">
+      <div className="bg-[var(--hh-l0-canvas)] page-container page-stack max-w-[800px] p-6 text-[var(--hh-text-secondary)]">
         Loading...
       </div>
     );
@@ -601,9 +601,9 @@ export default function InvoiceDetailPage() {
   const primaryActionBusy = actionBusy || editSaving;
   const projectName = project?.name ?? invoice.projectId;
   const toolbarButtonClass =
-    "h-9 min-h-[44px] rounded-lg border-0 bg-transparent px-3 text-[13px] font-medium text-[var(--neo-text-secondary)] shadow-none transition-all duration-150 ease-out hover:!translate-y-0 hover:bg-[var(--neo-surface-muted)] hover:text-[var(--neo-text-primary)] hover:shadow-none focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)] sm:min-h-9";
+    "h-9 min-h-[44px] rounded-hh-standard border-0 bg-transparent px-3 text-hh-table-cell font-medium text-[var(--hh-text-secondary)] shadow-none transition-all duration-150 ease-out hover:!translate-y-0 hover:bg-[var(--hh-l3-hover)] hover:text-[var(--hh-text-primary)] hover:shadow-none focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)] sm:min-h-9";
   const primaryToolbarButtonClass =
-    "h-9 min-h-[44px] rounded-lg border border-[rgb(184_147_90_/_0.34)] bg-[var(--neo-gold)] px-3.5 text-[13px] font-semibold text-zinc-950 shadow-[0_10px_24px_rgb(184_147_90_/_0.16)] transition-all duration-150 ease-out hover:bg-[var(--neo-gold-soft)] hover:opacity-100 focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)] sm:min-h-9";
+    "h-9 min-h-[44px] rounded-hh-standard border border-[var(--hh-border-strong)] bg-[var(--hh-action-primary)] px-3.5 text-hh-table-cell font-semibold text-[var(--hh-action-primary-foreground)] shadow-none transition-all duration-150 ease-out hover:bg-[var(--hh-action-primary)] hover:opacity-100 focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)] sm:min-h-9";
   const displayedSubtotal = editing ? editSubtotal : invoice.subtotal;
   const displayedTax = editing ? editTaxAmount : (invoice.taxAmount ?? 0);
   const displayedTotal = editing ? editTotal : invoice.total;
@@ -615,34 +615,34 @@ export default function InvoiceDetailPage() {
   return (
     <div
       data-testid="invoice-detail"
-      className="dark financial-nums neo-page-on-graphite page-container page-shell-wide page-stack flex w-full flex-col gap-4 py-4 text-[var(--neo-canvas-text-secondary)] sm:gap-5 lg:py-6"
+      className="hh-fin bg-[var(--hh-l0-canvas)] page-container page-shell-wide page-stack flex w-full flex-col gap-4 py-4 text-[var(--hh-text-secondary)] sm:gap-5 lg:py-6"
     >
-      <div className="flex flex-col gap-4 border-b border-[var(--neo-border)] pb-4 lg:flex-row lg:items-start lg:justify-between">
+      <div className="flex flex-col gap-4 border-b border-[var(--hh-border)] pb-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0">
           <Link
             href={estimateReturnPath ?? "/financial/invoices"}
             data-testid={estimateReturnPath ? "invoice-detail-return-to-estimate" : undefined}
-            className="mb-3 inline-flex min-h-[44px] items-center gap-1.5 rounded-lg text-sm font-medium text-[var(--neo-text-secondary)] transition-colors hover:text-[var(--neo-text-primary)]"
+            className="mb-3 inline-flex min-h-[44px] items-center gap-1.5 rounded-hh-standard text-hh-body font-medium text-[var(--hh-text-secondary)] transition-colors hover:text-[var(--hh-text-primary)]"
           >
             <ArrowLeft className="h-4 w-4" />
             {estimateReturnPath ? "Back to estimate" : "Invoices"}
           </Link>
           <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-[30px] font-semibold leading-tight tracking-normal text-[var(--neo-canvas-text-primary)] md:text-[34px]">
+            <h1 className="text-hh-page-title font-semibold leading-tight tracking-normal text-[var(--hh-text-primary)] md:text-hh-page-title">
               {invoice.invoiceNo}
             </h1>
             <span data-testid="invoice-detail-status">
               <InvoiceStatusBadge status={invoice.computedStatus} />
             </span>
           </div>
-          <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-[var(--neo-canvas-text-secondary)]">
+          <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-hh-body text-[var(--hh-text-secondary)]">
             <span className="inline-flex min-w-0 items-center gap-2">
               <Building2 className="h-4 w-4 shrink-0" />
               <span className="truncate">
-                <span className="font-medium text-[var(--neo-canvas-text-primary)]">
+                <span className="font-medium text-[var(--hh-text-primary)]">
                   {invoice.clientName}
                 </span>
-                <span className="mx-1 text-[var(--neo-text-tertiary)]">/</span>
+                <span className="mx-1 text-[var(--hh-text-tertiary)]">/</span>
                 {projectName}
               </span>
             </span>
@@ -656,7 +656,7 @@ export default function InvoiceDetailPage() {
         <div className="flex w-full justify-start lg:w-auto lg:justify-end">
           <div className="flex max-w-full flex-wrap items-center gap-2 lg:justify-end">
             {editing ? (
-              <div className="inline-flex items-center gap-1 rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] p-1 shadow-[var(--neo-shadow-control)]">
+              <div className="inline-flex items-center gap-1 rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-1 shadow-operational">
                 <Button
                   variant="ghost"
                   size="sm"
@@ -678,7 +678,7 @@ export default function InvoiceDetailPage() {
               </div>
             ) : (
               <>
-                <div className="inline-flex min-h-[44px] items-center gap-1 rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] p-1 shadow-[var(--neo-shadow-control)] sm:min-h-0">
+                <div className="inline-flex min-h-[44px] items-center gap-1 rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-1 shadow-operational sm:min-h-0">
                   <Button asChild variant="ghost" size="sm" className={toolbarButtonClass}>
                     <Link
                       href={appendEstimateReturnPath(
@@ -739,7 +739,7 @@ export default function InvoiceDetailPage() {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent
                     align="end"
-                    className="dark min-w-[220px] rounded-xl border-[var(--neo-border)] bg-[var(--neo-surface-raised)] p-1.5 text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)]"
+                    className="min-w-[220px] rounded-hh-task border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-1.5 text-[var(--hh-text-primary)] shadow-operational"
                   >
                     <DropdownMenuItem
                       onSelect={(e) => {
@@ -786,7 +786,7 @@ export default function InvoiceDetailPage() {
                     </DropdownMenuItem>
                     {!isVoid ? (
                       <DropdownMenuItem
-                        className="text-rose-300 focus:bg-rose-500/10 focus:text-rose-200"
+                        className="text-[var(--hh-danger)] focus:bg-[var(--hh-danger-soft-fill)] focus:text-[var(--hh-danger)]"
                         onSelect={(e) => {
                           e.preventDefault();
                           setVoidConfirmOpen(true);
@@ -798,7 +798,7 @@ export default function InvoiceDetailPage() {
                       </DropdownMenuItem>
                     ) : null}
                     <DropdownMenuItem
-                      className="text-rose-300 focus:bg-rose-500/10 focus:text-rose-200"
+                      className="text-[var(--hh-danger)] focus:bg-[var(--hh-danger-soft-fill)] focus:text-[var(--hh-danger)]"
                       onSelect={(e) => {
                         e.preventDefault();
                         if (isVoid) handleDeleteRequest();
@@ -818,29 +818,31 @@ export default function InvoiceDetailPage() {
       </div>
 
       {editing ? (
-        <section className={cn(neoPanelClass, "p-4")}>
+        <section className={cn(invoicePanelClass, "p-4")}>
           <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <label className={neoLabelClass}>Client name</label>
+              <label className={invoiceLabelClass}>Client name</label>
               <Input
                 value={editClientName}
                 onChange={(e) => setEditClientName(e.target.value)}
                 placeholder="Client"
-                className={cn("mt-1 min-h-[44px] sm:min-h-10", neoInputClass)}
+                className={cn("mt-1 min-h-[44px] sm:min-h-10", invoiceInputClass)}
                 aria-invalid={editAttempted && !editClientName.trim()}
               />
               {editAttempted && !editClientName.trim() ? (
-                <p className="mt-1 text-xs text-rose-300">Client name is required.</p>
+                <p className="mt-1 text-hh-metadata text-[var(--hh-danger)]">
+                  Client name is required.
+                </p>
               ) : null}
             </div>
             <div>
-              <p className={neoLabelClass}>Project</p>
-              <p className="mt-1 rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-3 py-2 text-sm text-[var(--neo-text-primary)]">
+              <p className={invoiceLabelClass}>Project</p>
+              <p className="mt-1 rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 py-2 text-hh-body text-[var(--hh-text-primary)]">
                 {projectName}
               </p>
             </div>
             <div>
-              <label className={neoLabelClass}>Issue date</label>
+              <label className={invoiceLabelClass}>Issue date</label>
               <Input
                 type="date"
                 value={editIssueDate}
@@ -848,40 +850,42 @@ export default function InvoiceDetailPage() {
                 onInput={(e) =>
                   setEditIssueDate((e.currentTarget.value || editIssueDate).slice(0, 10))
                 }
-                className={cn("mt-1 min-h-[44px] sm:min-h-10", neoInputClass)}
+                className={cn("mt-1 min-h-[44px] sm:min-h-10", invoiceInputClass)}
               />
             </div>
             <div>
-              <label className={neoLabelClass}>Due date</label>
+              <label className={invoiceLabelClass}>Due date</label>
               <Input
                 type="date"
                 value={editDueDate}
                 onChange={(e) => setEditDueDate((e.target.value || editDueDate).slice(0, 10))}
                 onInput={(e) => setEditDueDate((e.currentTarget.value || editDueDate).slice(0, 10))}
-                className={cn("mt-1 min-h-[44px] sm:min-h-10", neoInputClass)}
+                className={cn("mt-1 min-h-[44px] sm:min-h-10", invoiceInputClass)}
               />
             </div>
             <div>
-              <label className={neoLabelClass}>Tax %</label>
+              <label className={invoiceLabelClass}>Tax %</label>
               <Input
                 type="number"
                 min="0"
                 step="0.01"
                 value={editTaxPct}
                 onChange={(e) => setEditTaxPct(safeNumber(e.target.value))}
-                className={cn("mt-1 min-h-[44px] sm:min-h-10", neoInputClass)}
+                className={cn("mt-1 min-h-[44px] sm:min-h-10", invoiceInputClass)}
               />
             </div>
             <div>
-              <label className={neoLabelClass}>Notes</label>
+              <label className={invoiceLabelClass}>Notes</label>
               <Input
                 value={editNotes}
                 onChange={(e) => setEditNotes(e.target.value)}
                 placeholder="Terms / notes"
-                className={cn("mt-1 min-h-[44px] sm:min-h-10", neoInputClass)}
+                className={cn("mt-1 min-h-[44px] sm:min-h-10", invoiceInputClass)}
               />
             </div>
-            {editError ? <p className="text-sm text-rose-300 md:col-span-2">{editError}</p> : null}
+            {editError ? (
+              <p className="text-hh-body text-[var(--hh-danger)] md:col-span-2">{editError}</p>
+            ) : null}
           </div>
         </section>
       ) : null}
@@ -901,11 +905,11 @@ export default function InvoiceDetailPage() {
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
         <main className="min-w-0 space-y-5">
-          <section className={cn(neoPanelClass, "overflow-hidden")}>
-            <div className={cn(neoPanelHeaderClass, "flex items-center justify-between gap-3")}>
+          <section className={cn(invoicePanelClass, "overflow-hidden")}>
+            <div className={cn(invoicePanelHeaderClass, "flex items-center justify-between gap-3")}>
               <div>
-                <h2 className={neoSectionTitleClass}>Line items</h2>
-                <p className={neoSectionDescriptionClass}>
+                <h2 className={invoiceSectionTitleClass}>Line items</h2>
+                <p className={invoiceSectionDescriptionClass}>
                   Billable work and materials on this invoice.
                 </p>
               </div>
@@ -914,7 +918,7 @@ export default function InvoiceDetailPage() {
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="min-h-[44px] rounded-lg border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] hover:bg-[var(--neo-surface-muted)] sm:min-h-9"
+                  className="min-h-[44px] rounded-hh-standard border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] hover:bg-[var(--hh-l3-hover)] sm:min-h-9"
                   onClick={() =>
                     setEditLines((prev) => [...prev, { description: "", qty: 1, unitPrice: 0 }])
                   }
@@ -924,7 +928,7 @@ export default function InvoiceDetailPage() {
                   Add line
                 </Button>
               ) : (
-                <span className="text-xs tabular-nums text-[var(--neo-text-tertiary)]">
+                <span className="text-hh-metadata tabular-nums text-[var(--hh-text-tertiary)]">
                   {invoice.lineItems.length} item{invoice.lineItems.length === 1 ? "" : "s"}
                 </span>
               )}
@@ -932,22 +936,24 @@ export default function InvoiceDetailPage() {
             {editing &&
             editAttempted &&
             !editLines.some((line) => line.description.trim().length > 0) ? (
-              <p className="px-4 pt-3 text-xs text-rose-300">At least one line item is required.</p>
+              <p className="px-4 pt-3 text-hh-metadata text-[var(--hh-danger)]">
+                At least one line item is required.
+              </p>
             ) : null}
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[720px] text-sm text-[var(--neo-text-primary)]">
+              <table className="w-full min-w-[720px] text-hh-body text-[var(--hh-text-primary)]">
                 <thead>
-                  <tr className="border-b border-[var(--neo-border)] bg-[var(--neo-surface-muted)]">
-                    <th className="px-4 py-3 text-left text-[11px] font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]">
+                  <tr className="border-b border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)]">
+                    <th className="px-4 py-3 text-left text-hh-status font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                       Description
                     </th>
-                    <th className="px-4 py-3 text-right text-[11px] font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)] tabular-nums">
+                    <th className="px-4 py-3 text-right text-hh-status font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
                       Qty
                     </th>
-                    <th className="px-4 py-3 text-right text-[11px] font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)] tabular-nums">
+                    <th className="px-4 py-3 text-right text-hh-status font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
                       Unit price
                     </th>
-                    <th className="px-4 py-3 text-right text-[11px] font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)] tabular-nums">
+                    <th className="px-4 py-3 text-right text-hh-status font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
                       Amount
                     </th>
                     {editing ? <th className="py-3 px-2 w-[52px]" /> : null}
@@ -965,9 +971,9 @@ export default function InvoiceDetailPage() {
                       <tr
                         key={idx}
                         data-testid={`invoice-detail-line-${idx + 1}`}
-                        className="border-b border-[var(--neo-border)] transition-colors last:border-0 hover:bg-[var(--neo-surface-muted)]"
+                        className="border-b border-[var(--hh-border)] transition-colors last:border-0 hover:bg-[var(--hh-l3-hover)]"
                       >
-                        <td className="whitespace-pre-wrap px-4 py-3 text-[var(--neo-text-primary)]">
+                        <td className="whitespace-pre-wrap px-4 py-3 text-[var(--hh-text-primary)]">
                           {editing ? (
                             <Input
                               data-testid={`invoice-detail-edit-line-${idx + 1}-description-input`}
@@ -984,7 +990,7 @@ export default function InvoiceDetailPage() {
                               placeholder="Description"
                               aria-label={`Line item ${idx + 1} description`}
                               aria-invalid={editAttempted && !line.description.trim()}
-                              className={neoInputClass}
+                              className={invoiceInputClass}
                             />
                           ) : (
                             <span data-testid={`invoice-detail-line-${idx + 1}-description`}>
@@ -994,7 +1000,7 @@ export default function InvoiceDetailPage() {
                         </td>
                         <td
                           data-testid={`invoice-detail-line-${idx + 1}-qty`}
-                          className="px-4 py-3 text-right tabular-nums text-[var(--neo-text-secondary)]"
+                          className="px-4 py-3 text-right tabular-nums text-[var(--hh-text-secondary)]"
                         >
                           {editing ? (
                             <Input
@@ -1012,7 +1018,7 @@ export default function InvoiceDetailPage() {
                                   )
                                 )
                               }
-                              className={cn("text-right tabular-nums", neoInputClass)}
+                              className={cn("text-right tabular-nums", invoiceInputClass)}
                               aria-label={`Line item ${idx + 1} quantity`}
                             />
                           ) : (
@@ -1021,7 +1027,7 @@ export default function InvoiceDetailPage() {
                         </td>
                         <td
                           data-testid={`invoice-detail-line-${idx + 1}-rate`}
-                          className="px-4 py-3 text-right tabular-nums text-[var(--neo-text-secondary)]"
+                          className="px-4 py-3 text-right tabular-nums text-[var(--hh-text-secondary)]"
                         >
                           {editing ? (
                             <Input
@@ -1039,7 +1045,7 @@ export default function InvoiceDetailPage() {
                                   )
                                 )
                               }
-                              className={cn("text-right tabular-nums", neoInputClass)}
+                              className={cn("text-right tabular-nums", invoiceInputClass)}
                               aria-label={`Line item ${idx + 1} unit price`}
                             />
                           ) : (
@@ -1048,7 +1054,7 @@ export default function InvoiceDetailPage() {
                         </td>
                         <td
                           data-testid={`invoice-detail-line-${idx + 1}-amount`}
-                          className="px-4 py-3 text-right font-semibold tabular-nums text-[var(--neo-text-primary)]"
+                          className="px-4 py-3 text-right font-semibold tabular-nums text-[var(--hh-text-primary)]"
                         >
                           {formatCurrency(amount)}
                         </td>
@@ -1058,7 +1064,7 @@ export default function InvoiceDetailPage() {
                               type="button"
                               variant="outline"
                               size="sm"
-                              className="h-8 rounded-md border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-rose-300 hover:bg-rose-500/10 hover:text-rose-200"
+                              className="h-8 rounded-hh-standard border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-danger)] hover:bg-[var(--hh-danger-soft-fill)] hover:text-[var(--hh-danger)]"
                               aria-label="Remove line item"
                               title="Remove line item"
                               onClick={() =>
@@ -1080,11 +1086,11 @@ export default function InvoiceDetailPage() {
             </div>
           </section>
 
-          <section className={cn(neoPanelClass, "p-4")}>
+          <section className={cn(invoicePanelClass, "p-4")}>
             <div className="mb-4 flex items-center justify-between">
               <div>
-                <h2 className={neoSectionTitleClass}>Activity ledger</h2>
-                <p className={neoSectionDescriptionClass}>
+                <h2 className={invoiceSectionTitleClass}>Activity ledger</h2>
+                <p className={invoiceSectionDescriptionClass}>
                   Payments, deposits, and receipt records tied to this invoice.
                 </p>
               </div>
@@ -1092,29 +1098,31 @@ export default function InvoiceDetailPage() {
 
             <div className="grid gap-3 lg:grid-cols-3">
               <div>
-                <h3 className={cn(neoLabelClass, "mb-2")}>Payments history</h3>
+                <h3 className={cn(invoiceLabelClass, "mb-2")}>Payments history</h3>
                 {payments.length === 0 ? (
                   <EmptyLedgerState>No payments recorded.</EmptyLedgerState>
                 ) : (
-                  <div className={neoTableShellClass}>
-                    <table className="w-full text-sm text-[var(--neo-text-primary)]">
+                  <div className={invoiceTableShellClass}>
+                    <table className="w-full text-hh-body text-[var(--hh-text-primary)]">
                       <tbody>
                         {payments.map((p) => (
-                          <tr key={p.id} className={neoTableRowClass}>
+                          <tr key={p.id} className={invoiceTableRowClass}>
                             <td className="px-3 py-2">
-                              <p className="tabular-nums text-[var(--neo-text-primary)]">
+                              <p className="tabular-nums text-[var(--hh-text-primary)]">
                                 {formatDate(p.date)}
                               </p>
-                              <p className="text-xs text-[var(--neo-text-secondary)]">{p.method}</p>
+                              <p className="text-hh-metadata text-[var(--hh-text-secondary)]">
+                                {p.method}
+                              </p>
                             </td>
-                            <td className="px-3 py-2 text-right font-semibold tabular-nums text-emerald-400">
+                            <td className="px-3 py-2 text-right font-semibold tabular-nums text-[var(--hh-success)]">
                               {formatCurrency(p.amount)}
                             </td>
                             <td className="w-10 px-2 py-2 text-right">
                               <Button
                                 variant="outline"
                                 size="sm"
-                                className="h-8 rounded-md border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-rose-300 hover:bg-rose-500/10 hover:text-rose-200"
+                                className="h-8 rounded-hh-standard border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-danger)] hover:bg-[var(--hh-danger-soft-fill)] hover:text-[var(--hh-danger)]"
                                 onClick={() => handleDeletePayment(p.id)}
                                 disabled={deletingPaymentId === p.id}
                                 title="Delete payment"
@@ -1131,20 +1139,20 @@ export default function InvoiceDetailPage() {
               </div>
 
               <div>
-                <h3 className={cn(neoLabelClass, "mb-2")}>Payments</h3>
+                <h3 className={cn(invoiceLabelClass, "mb-2")}>Payments</h3>
                 {paymentsReceived.length === 0 ? (
                   <EmptyLedgerState>No payments received yet.</EmptyLedgerState>
                 ) : (
-                  <div className={neoTableShellClass}>
-                    <table className="w-full text-sm text-[var(--neo-text-primary)]">
+                  <div className={invoiceTableShellClass}>
+                    <table className="w-full text-hh-body text-[var(--hh-text-primary)]">
                       <tbody>
                         {paymentsReceived.map((p) => (
-                          <tr key={p.id} className={neoTableRowClass}>
+                          <tr key={p.id} className={invoiceTableRowClass}>
                             <td className="px-3 py-2">
-                              <p className="tabular-nums text-[var(--neo-text-primary)]">
+                              <p className="tabular-nums text-[var(--hh-text-primary)]">
                                 {formatDate(p.payment_date)}
                               </p>
-                              <p className="truncate text-xs text-[var(--neo-text-secondary)]">
+                              <p className="truncate text-hh-metadata text-[var(--hh-text-secondary)]">
                                 {p.payment_method ?? "No method"}
                               </p>
                               {(p.attachments ?? []).length > 0 ? (
@@ -1152,7 +1160,7 @@ export default function InvoiceDetailPage() {
                                   type="button"
                                   disabled={openingPaymentAttachmentsId === p.id}
                                   onClick={() => void openPaymentAttachments(p.id, p.attachments)}
-                                  className="mt-1 inline-flex max-w-full items-center gap-1 rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-2 py-0.5 text-[11px] font-medium text-[var(--neo-text-secondary)] transition-colors hover:bg-[var(--neo-surface-muted)] hover:text-[var(--neo-text-primary)] disabled:pointer-events-none disabled:opacity-50"
+                                  className="mt-1 inline-flex max-w-full items-center gap-1 rounded-full border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-2 py-0.5 text-hh-status font-medium text-[var(--hh-text-secondary)] transition-colors hover:bg-[var(--hh-l3-hover)] hover:text-[var(--hh-text-primary)] disabled:pointer-events-none disabled:opacity-50"
                                 >
                                   <Paperclip className="h-3 w-3 shrink-0" strokeWidth={1.7} />
                                   <span className="truncate">
@@ -1165,7 +1173,7 @@ export default function InvoiceDetailPage() {
                                 </button>
                               ) : null}
                             </td>
-                            <td className="px-3 py-2 text-right font-semibold tabular-nums text-emerald-400">
+                            <td className="px-3 py-2 text-right font-semibold tabular-nums text-[var(--hh-success)]">
                               {formatCurrency(p.amount)}
                             </td>
                           </tr>
@@ -1177,24 +1185,24 @@ export default function InvoiceDetailPage() {
               </div>
 
               <div>
-                <h3 className={cn(neoLabelClass, "mb-2")}>Deposits</h3>
+                <h3 className={cn(invoiceLabelClass, "mb-2")}>Deposits</h3>
                 {deposits.length === 0 ? (
                   <EmptyLedgerState>No deposits linked.</EmptyLedgerState>
                 ) : (
-                  <div className={neoTableShellClass}>
-                    <table className="w-full text-sm text-[var(--neo-text-primary)]">
+                  <div className={invoiceTableShellClass}>
+                    <table className="w-full text-hh-body text-[var(--hh-text-primary)]">
                       <tbody>
                         {deposits.map((d) => (
-                          <tr key={d.id} className={neoTableRowClass}>
+                          <tr key={d.id} className={invoiceTableRowClass}>
                             <td className="px-3 py-2">
-                              <p className="tabular-nums text-[var(--neo-text-primary)]">
+                              <p className="tabular-nums text-[var(--hh-text-primary)]">
                                 {formatDate((d as { date?: string }).date)}
                               </p>
-                              <p className="truncate text-xs text-[var(--neo-text-secondary)]">
+                              <p className="truncate text-hh-metadata text-[var(--hh-text-secondary)]">
                                 {(d as { account?: string | null }).account ?? "No account"}
                               </p>
                             </td>
-                            <td className="px-3 py-2 text-right font-semibold tabular-nums text-emerald-400">
+                            <td className="px-3 py-2 text-right font-semibold tabular-nums text-[var(--hh-success)]">
                               {formatCurrency(d.amount)}
                             </td>
                           </tr>
@@ -1209,21 +1217,21 @@ export default function InvoiceDetailPage() {
         </main>
 
         <aside className="space-y-4">
-          <section className={cn(neoPanelClass, "p-4")}>
-            <h2 className={neoSectionTitleClass}>Invoice summary</h2>
-            <div className="mt-4 space-y-2 text-sm">
+          <section className={cn(invoicePanelClass, "p-4")}>
+            <h2 className={invoiceSectionTitleClass}>Invoice summary</h2>
+            <div className="mt-4 space-y-2 text-hh-body">
               <div className="flex justify-between gap-4">
-                <span className="text-[var(--neo-text-secondary)]">Subtotal</span>
+                <span className="text-[var(--hh-text-secondary)]">Subtotal</span>
                 <span
                   data-testid="invoice-detail-subtotal"
-                  className="tabular-nums text-[var(--neo-text-primary)]"
+                  className="tabular-nums text-[var(--hh-text-primary)]"
                 >
                   {formatCurrency(displayedSubtotal)}
                 </span>
               </div>
               {displayedTax > 0 ? (
                 <div className="flex justify-between gap-4">
-                  <span className="text-[var(--neo-text-secondary)]">
+                  <span className="text-[var(--hh-text-secondary)]">
                     Tax{" "}
                     {editing
                       ? `(${editTaxPct || 0}%)`
@@ -1233,23 +1241,23 @@ export default function InvoiceDetailPage() {
                   </span>
                   <span
                     data-testid="invoice-detail-tax"
-                    className="tabular-nums text-[var(--neo-text-primary)]"
+                    className="tabular-nums text-[var(--hh-text-primary)]"
                   >
                     {formatCurrency(displayedTax)}
                   </span>
                 </div>
               ) : null}
-              <div className="flex justify-between gap-4 border-t border-[var(--neo-border)] pt-3 font-semibold text-[var(--neo-text-primary)]">
+              <div className="flex justify-between gap-4 border-t border-[var(--hh-border)] pt-3 font-semibold text-[var(--hh-text-primary)]">
                 <span>Total</span>
                 <span data-testid="invoice-detail-total" className="tabular-nums">
                   {formatCurrency(displayedTotal)}
                 </span>
               </div>
-              <div className="flex justify-between gap-4 text-emerald-400">
+              <div className="flex justify-between gap-4 text-[var(--hh-success)]">
                 <span>Paid</span>
                 <span className="tabular-nums">{formatCurrency(invoice.paidTotal)}</span>
               </div>
-              <div className="flex justify-between gap-4 rounded-xl border border-[rgb(184_147_90_/_0.18)] bg-[rgb(184_147_90_/_0.08)] px-3 py-2 text-base font-semibold text-[var(--neo-text-primary)]">
+              <div className="flex justify-between gap-4 rounded-hh-task border border-[var(--hh-border-strong)] bg-[var(--hh-l3-selected)] px-3 py-2 hh-type-text-entry font-semibold text-[var(--hh-text-primary)]">
                 <span>Balance due</span>
                 <span data-testid="invoice-detail-balance" className="tabular-nums">
                   {formatCurrency(displayedBalance)}
@@ -1258,29 +1266,29 @@ export default function InvoiceDetailPage() {
             </div>
           </section>
 
-          <section className={cn(neoPanelClass, "p-4")}>
-            <h2 className={neoSectionTitleClass}>Record</h2>
-            <div className="mt-4 space-y-3 text-sm">
+          <section className={cn(invoicePanelClass, "p-4")}>
+            <h2 className={invoiceSectionTitleClass}>Record</h2>
+            <div className="mt-4 space-y-3 text-hh-body">
               <div>
-                <p className={neoLabelClass}>Client</p>
-                <p className="mt-1 font-medium text-[var(--neo-text-primary)]">
+                <p className={invoiceLabelClass}>Client</p>
+                <p className="mt-1 font-medium text-[var(--hh-text-primary)]">
                   {invoice.clientName}
                 </p>
               </div>
               <div>
-                <p className={neoLabelClass}>Project</p>
-                <p className="mt-1 text-[var(--neo-text-primary)]">{projectName}</p>
+                <p className={invoiceLabelClass}>Project</p>
+                <p className="mt-1 text-[var(--hh-text-primary)]">{projectName}</p>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <p className={neoLabelClass}>Issue</p>
-                  <p className="mt-1 tabular-nums text-[var(--neo-text-primary)]">
+                  <p className={invoiceLabelClass}>Issue</p>
+                  <p className="mt-1 tabular-nums text-[var(--hh-text-primary)]">
                     {formatDate(invoice.issueDate)}
                   </p>
                 </div>
                 <div>
-                  <p className={neoLabelClass}>Due</p>
-                  <p className="mt-1 tabular-nums text-[var(--neo-text-primary)]">
+                  <p className={invoiceLabelClass}>Due</p>
+                  <p className="mt-1 tabular-nums text-[var(--hh-text-primary)]">
                     {formatDate(invoice.dueDate)}
                   </p>
                 </div>
@@ -1317,19 +1325,21 @@ export default function InvoiceDetailPage() {
       />
 
       <Dialog open={deleteBlockedOpen} onOpenChange={setDeleteBlockedOpen}>
-        <DialogContent className="max-w-sm rounded-2xl border-[var(--neo-border)] bg-[var(--neo-surface-raised)] p-5 text-[var(--neo-text-primary)]">
+        <DialogContent className="max-w-sm rounded-hh-task border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-5 text-[var(--hh-text-primary)]">
           <DialogHeader>
-            <DialogTitle className="text-base font-semibold">Cannot delete invoice</DialogTitle>
-            <DialogDescription className="text-sm text-[var(--neo-text-secondary)]">
+            <DialogTitle className="hh-type-text-entry font-semibold">
+              Cannot delete invoice
+            </DialogTitle>
+            <DialogDescription className="text-hh-body text-[var(--hh-text-secondary)]">
               Only voided invoices can be permanently deleted. Void this invoice first, then run the
               dependency check again.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="border-t border-[var(--neo-border)] pt-3">
+          <DialogFooter className="border-t border-[var(--hh-border)] pt-3">
             <Button
               variant="outline"
               size="sm"
-              className="border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] hover:bg-[var(--neo-surface-muted)]"
+              className="border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] hover:bg-[var(--hh-l3-hover)]"
               onClick={() => setDeleteBlockedOpen(false)}
             >
               OK

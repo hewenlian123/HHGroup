@@ -18,7 +18,7 @@ export function AddBillButton({ projectId, subcontractId }: Props) {
       <button
         type="button"
         onClick={() => setModalOpen(true)}
-        className="inline-flex h-9 items-center rounded-md border border-input bg-transparent px-3 text-sm hover:bg-accent hover:text-accent-foreground"
+        className="inline-flex h-9 items-center rounded-hh-standard border border-input bg-transparent px-3 text-hh-body hover:bg-accent hover:text-accent-foreground"
       >
         + Add Bill
       </button>

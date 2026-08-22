@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { formatCompactCurrency, formatCurrency } from "@/lib/formatters";
 import type { OverdueInvoiceRow } from "@/lib/invoices-db";
+import { TYPO } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 import { DashboardAttentionFeed } from "./dashboard-attention-feed";
 import { DashboardCoreRing } from "./dashboard-core-ring";
@@ -109,7 +110,7 @@ export function DashboardCommandHud({
   return (
     <section
       className={cn(
-        "dashboard-command-hud relative isolate min-w-0 overflow-hidden rounded-xl px-3 py-3 text-[var(--hud-text)] sm:px-4 sm:py-4 md:px-5 md:py-5",
+        "dashboard-command-hud relative isolate min-w-0 overflow-hidden rounded-hh-standard px-3 py-3 text-[var(--hh-text-primary)] sm:px-4 sm:py-4 md:px-5 md:py-5",
         className
       )}
       aria-label="HH Command Center"
@@ -118,13 +119,11 @@ export function DashboardCommandHud({
 
       <div className="relative z-10 flex min-w-0 flex-col gap-4 2xl:flex-row 2xl:items-start 2xl:justify-between">
         <div className="min-w-0">
-          <p className="text-[10px] font-semibold uppercase tracking-normal text-[var(--hud-muted)]">
-            HH Neo Operations OS
+          <p className={cn(TYPO.tableHeader, "uppercase text-[var(--hh-text-secondary)]")}>
+            HH Operations
           </p>
-          <h2 className="mt-2 max-w-[34rem] text-[28px] font-semibold leading-tight tracking-normal text-[var(--hud-text)] md:text-[40px]">
-            HH Command Center
-          </h2>
-          <p className="mt-2 max-w-[42rem] text-[13px] leading-relaxed text-[var(--hud-muted)] md:text-[14px]">
+          <h2 className={cn(TYPO.sectionTitle, "mt-2 max-w-[34rem]")}>HH Command Center</h2>
+          <p className={cn(TYPO.body, "mt-2 max-w-[42rem]")}>
             Cash, project health, labor, AP, and owner action signals from the current dashboard
             feed.
           </p>
@@ -140,11 +139,19 @@ export function DashboardCommandHud({
               <>
                 <Link
                   href="/settings/project-financial-review"
-                  className="inline-flex h-8 items-center rounded-full border border-rose-500/20 bg-rose-500/10 px-3 text-[10px] font-semibold uppercase tracking-normal text-rose-300 transition hover:border-rose-400/30 hover:bg-rose-500/15"
+                  className={cn(
+                    TYPO.chip,
+                    "inline-flex min-h-hh-control-compact items-center rounded-full border border-[var(--hh-danger-border)] bg-[var(--hh-danger-soft-fill)] px-3 uppercase text-[var(--hh-danger)] transition-colors hover:border-[var(--hh-border-strong)]"
+                  )}
                 >
                   Contract value review
                 </Link>
-                <span className="inline-flex min-h-8 items-center text-[10px] font-semibold uppercase tracking-normal text-rose-200/80">
+                <span
+                  className={cn(
+                    TYPO.chip,
+                    "inline-flex min-h-hh-control-compact items-center uppercase text-[var(--hh-danger)]"
+                  )}
+                >
                   {contractReviewCount} contract checks · Projects need contract value review
                 </span>
               </>
@@ -262,7 +269,8 @@ function StatusPill({
   return (
     <span
       className={cn(
-        "inline-flex h-8 items-center rounded-full border px-3 text-[10px] font-semibold uppercase tracking-normal",
+        TYPO.chip,
+        "inline-flex min-h-hh-control-compact items-center rounded-full border px-3 uppercase",
         tone === "emerald" &&
           "border-[var(--hh-success-border)] bg-[var(--hh-success-soft-fill)] text-[var(--hh-success)]",
         tone === "alert" &&

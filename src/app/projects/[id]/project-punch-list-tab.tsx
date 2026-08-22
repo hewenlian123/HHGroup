@@ -38,33 +38,35 @@ export function ProjectPunchListTab({
         <SectionHeader label="Punch List" />
         <Link
           href={`/punch-list?project_id=${encodeURIComponent(projectId)}`}
-          className="text-xs font-medium text-muted-foreground hover:text-foreground"
+          className="text-hh-metadata font-medium text-[var(--hh-text-secondary)] hover:text-[var(--hh-text-primary)]"
         >
           View full punch list →
         </Link>
       </div>
       <Divider />
       {punchItems.length === 0 ? (
-        <p className="py-6 text-sm text-muted-foreground">No punch list issues for this project.</p>
+        <p className="py-6 text-hh-body text-[var(--hh-text-secondary)]">
+          No punch list issues for this project.
+        </p>
       ) : (
         <div className="airtable-table-wrap airtable-table-wrap--ruled">
           <div className="airtable-table-scroll">
-            <table className="w-full text-sm">
+            <table className="w-full text-hh-body">
               <thead>
                 <tr>
-                  <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                  <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                     Issue
                   </th>
-                  <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                  <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                     Location
                   </th>
-                  <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                  <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                     Assigned
                   </th>
-                  <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                  <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                     Priority
                   </th>
-                  <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                  <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                     Status
                   </th>
                 </tr>
@@ -72,27 +74,28 @@ export function ProjectPunchListTab({
               <tbody>
                 {punchItems.map((r) => (
                   <tr key={r.id} className={listTableRowStaticClassName}>
-                    <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] font-medium">
+                    <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell font-medium">
                       {r.issue || "—"}
                     </td>
-                    <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] text-muted-foreground">
+                    <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell text-[var(--hh-text-secondary)]">
                       {r.location ?? "—"}
                     </td>
-                    <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] text-muted-foreground">
+                    <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell text-[var(--hh-text-secondary)]">
                       {r.worker_name ?? "—"}
                     </td>
-                    <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px]">
+                    <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell">
                       {r.priority ?? "Medium"}
                     </td>
-                    <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px]">
+                    <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell">
                       <span
                         className={cn(
-                          "inline-flex items-center gap-1.5 rounded-sm px-1.5 py-0.5 text-xs font-medium",
+                          "inline-flex items-center gap-1.5 rounded-hh-compact px-1.5 py-0.5 text-hh-metadata font-medium",
                           normStatus(r.status) === "completed" &&
-                            "bg-[#DCFCE7] text-[#166534] dark:bg-green-950 dark:text-green-300",
+                            "bg-[var(--hh-success-soft-fill)] text-[var(--hh-success)] dark:bg-[var(--hh-success-soft-fill)] dark:text-[var(--hh-success)]",
                           normStatus(r.status) === "assigned" &&
-                            "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
-                          normStatus(r.status) === "open" && "bg-muted text-muted-foreground"
+                            "bg-[var(--hh-warning-soft-fill)] text-[var(--hh-warning)] dark:bg-[var(--hh-warning-soft-fill)] dark:text-[var(--hh-warning)]",
+                          normStatus(r.status) === "open" &&
+                            "bg-muted text-[var(--hh-text-secondary)]"
                         )}
                       >
                         {STATUS_LABEL[normStatus(r.status)] ?? r.status}

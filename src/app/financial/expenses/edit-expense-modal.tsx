@@ -99,7 +99,7 @@ function receiptItemsToPreviewFiles(items: ReceiptPreviewItem[]): AttachmentPrev
 type ProjectOption = { id: string; name: string | null };
 type WorkerOption = { id: string; name: string };
 
-const FIELD_LABEL = "text-xs uppercase tracking-wide text-muted-foreground";
+const FIELD_LABEL = "text-xs uppercase tracking-normal text-muted-foreground";
 const INPUT_ROW = "h-10 rounded-sm border-border/60 text-sm";
 const SELECT_TRIGGER = "h-10 rounded-sm border-border/60 text-sm [&>span]:line-clamp-1";
 
@@ -586,7 +586,7 @@ export function EditExpenseModal({
                       <label className={FIELD_LABEL}>Category</label>
                       <Link
                         href="/settings/expenses"
-                        className="text-[11px] text-muted-foreground underline-offset-4 hover:underline"
+                        className="text-hh-status text-muted-foreground underline-offset-4 hover:underline"
                       >
                         Manage
                       </Link>
@@ -604,7 +604,7 @@ export function EditExpenseModal({
                       <label className={FIELD_LABEL}>Payment method</label>
                       <Link
                         href="/settings/expenses"
-                        className="text-[11px] text-muted-foreground underline-offset-4 hover:underline"
+                        className="text-hh-status text-muted-foreground underline-offset-4 hover:underline"
                       >
                         Manage
                       </Link>
@@ -622,7 +622,7 @@ export function EditExpenseModal({
                       <label className={FIELD_LABEL}>Payment account</label>
                       <Link
                         href="/settings/expenses"
-                        className="text-[11px] text-muted-foreground underline-offset-4 hover:underline"
+                        className="text-hh-status text-muted-foreground underline-offset-4 hover:underline"
                       >
                         Manage
                       </Link>
@@ -671,7 +671,7 @@ export function EditExpenseModal({
                       <label className={FIELD_LABEL}>Payment source</label>
                       <Link
                         href="/settings/expenses"
-                        className="text-[11px] text-muted-foreground underline-offset-4 hover:underline"
+                        className="text-hh-status text-muted-foreground underline-offset-4 hover:underline"
                       >
                         Manage
                       </Link>
@@ -697,7 +697,9 @@ export function EditExpenseModal({
                             <span
                               className={cn(
                                 "h-2 w-2 shrink-0 rounded-full",
-                                expenseNeedsReviewFromDb(w) ? "bg-orange-500" : "bg-green-500"
+                                expenseNeedsReviewFromDb(w)
+                                  ? "bg-[var(--hh-warning)]"
+                                  : "bg-[var(--hh-success)]"
                               )}
                               aria-hidden
                             />
@@ -706,7 +708,7 @@ export function EditExpenseModal({
                         );
                       })()}
                     </Badge>
-                    <p className="text-[11px] text-muted-foreground">
+                    <p className="text-hh-status text-muted-foreground">
                       Set project and category to mark done when you save.
                     </p>
                   </div>

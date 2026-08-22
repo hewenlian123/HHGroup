@@ -36,7 +36,7 @@ export function EstimateBuilderSummary({
     return (
       <div className={shellClass} aria-label="Estimate overview">
         <SummaryHeader />
-        <p className="text-[13px] leading-snug text-muted-foreground">
+        <p className="text-hh-table-cell leading-snug text-muted-foreground">
           Add scope lines to see totals.
         </p>
       </div>
@@ -57,13 +57,13 @@ export function EstimateBuilderSummary({
 
       {paymentSummary && paymentSummary.milestoneCount > 0 ? (
         <div className="mb-3 border-b border-border pb-2.5">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] leading-tight text-muted-foreground">
+          <p className="text-hh-status font-semibold uppercase tracking-normal leading-tight text-muted-foreground">
             Payments
           </p>
-          <p className="mt-1 text-[12.5px] leading-snug text-muted-foreground">
+          <p className="mt-1 text-hh-metadata leading-snug text-muted-foreground">
             {paymentSummary.milestoneCount} milestone
             {paymentSummary.milestoneCount === 1 ? "" : "s"} ·{" "}
-            <span className="font-medium tabular-nums text-foreground [font-feature-settings:'tnum']">
+            <span className="font-medium tabular-nums text-foreground hh-fin">
               {fmt(paymentSummary.scheduledTotal)}
             </span>{" "}
             scheduled
@@ -79,7 +79,7 @@ export function EstimateBuilderSummary({
               <InternalLine key={label} label={label} value={value} />
             ))
           ) : (
-            <p className="py-0.5 text-[12.5px] leading-snug text-muted-foreground">
+            <p className="py-0.5 text-hh-metadata leading-snug text-muted-foreground">
               No internal costs
             </p>
           )}
@@ -93,12 +93,12 @@ export function EstimateBuilderSummary({
       </div>
 
       <div className="mt-4 border-t border-border pt-3.5">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.08em] leading-tight text-muted-foreground">
+        <p className="text-hh-status font-semibold uppercase tracking-normal leading-tight text-muted-foreground">
           Total
         </p>
         <p
           className={cn(
-            "mt-1.5 break-words text-[clamp(1.25rem,4vw,1.625rem)] font-semibold leading-none tabular-nums tracking-[-0.02em] [font-feature-settings:'tnum']",
+            "mt-1.5 break-words text-[clamp(1.25rem,4vw,1.625rem)] font-semibold leading-none tabular-nums tracking-normal hh-fin",
             EB.goldTotal
           )}
         >
@@ -150,14 +150,14 @@ export function EstimateBuilderCompactSummary({
                     <InternalLine label="Subcontractor" value={summary.subcontractorCost} />
                   </div>
                 ) : (
-                  <p className="mt-1 text-[12.5px] text-muted-foreground">No internal costs</p>
+                  <p className="mt-1 text-hh-metadata text-muted-foreground">No internal costs</p>
                 )}
               </div>
             ) : null}
             {paymentSummary && paymentSummary.milestoneCount > 0 ? (
               <div className="eb-pricing-summary-payment">
                 <p className={EB.summaryInternalLabel}>Payments</p>
-                <p className="mt-1 text-[12.5px] text-muted-foreground">
+                <p className="mt-1 text-hh-metadata text-muted-foreground">
                   {paymentSummary.milestoneCount} milestone
                   {paymentSummary.milestoneCount === 1 ? "" : "s"} ·{" "}
                   <span className="font-medium tabular-nums text-foreground">
@@ -204,7 +204,7 @@ export function EstimateBuilderMobileSummary({
 function SummaryHeader(): React.ReactElement {
   return (
     <div className="mb-3.5 border-b border-border pb-2.5">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.08em] leading-tight text-muted-foreground">
+      <p className="text-hh-status font-semibold uppercase tracking-normal leading-tight text-muted-foreground">
         Estimate overview
       </p>
     </div>

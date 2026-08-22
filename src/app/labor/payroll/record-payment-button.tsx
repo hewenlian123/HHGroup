@@ -20,7 +20,7 @@ export function RecordPaymentButton({ workerId }: Props) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex h-9 items-center rounded-md border border-input bg-transparent px-3 text-sm hover:bg-accent hover:text-accent-foreground"
+        className="inline-flex h-9 items-center rounded-hh-compact border border-input bg-transparent px-3 text-sm hover:bg-accent hover:text-accent-foreground"
       >
         Record Payment
       </button>

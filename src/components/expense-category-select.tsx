@@ -217,7 +217,7 @@ export function ExpenseCategorySelect({
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
         <DialogContent
           data-expense-component-surface="create-option"
-          className="expenses-ui-dialog max-w-sm !rounded-[10px] border-border/60 max-md:!rounded-b-none max-md:!rounded-t-[14px]"
+          className="expenses-ui-dialog max-w-sm !rounded-hh-standard border-border/60 max-md:!rounded-b-none max-md:!rounded-t-[14px]"
         >
           <DialogHeader>
             <DialogTitle className="text-base font-medium">New category</DialogTitle>

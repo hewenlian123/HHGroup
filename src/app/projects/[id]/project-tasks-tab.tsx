@@ -99,7 +99,7 @@ export function ProjectTasksTab({
         <SectionHeader label="Tasks" />
         <Button
           size="sm"
-          className="rounded-xl bg-black text-white px-4 py-2 hover:bg-black/90"
+          className="rounded-hh-task bg-[var(--hh-action-primary)] text-[var(--hh-action-primary-foreground)] px-4 py-2 hover:bg-[var(--hh-l3-pressed)]"
           onClick={handleOpen}
         >
           + New Task
@@ -107,25 +107,25 @@ export function ProjectTasksTab({
       </div>
       <div className="airtable-table-wrap airtable-table-wrap--ruled">
         {tasks.length === 0 ? (
-          <div className="py-8 text-center text-sm text-muted-foreground">
+          <div className="py-8 text-center text-hh-body text-[var(--hh-text-secondary)]">
             No tasks yet. Add one to get started.
           </div>
         ) : (
           <div className="airtable-table-scroll">
-            <table className="w-full text-sm">
+            <table className="w-full text-hh-body">
               <thead>
                 <tr>
                   <th className="h-8 w-10 px-3 text-left align-middle" />
-                  <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                  <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                     Title
                   </th>
-                  <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                  <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                     Assigned
                   </th>
-                  <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                  <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                     Due date
                   </th>
-                  <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                  <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                     Priority
                   </th>
                 </tr>
@@ -142,22 +142,24 @@ export function ProjectTasksTab({
                         className="h-4 w-4 rounded border-border"
                       />
                     </td>
-                    <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] font-medium text-foreground">
+                    <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell font-medium text-[var(--hh-text-primary)]">
                       {t.title || "—"}
                     </td>
-                    <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] text-muted-foreground">
+                    <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell text-[var(--hh-text-secondary)]">
                       {t.worker_name ?? "—"}
                     </td>
-                    <td className="h-11 min-h-[44px] px-3 py-0 align-middle font-mono text-[13px] tabular-nums text-muted-foreground">
+                    <td className="h-11 min-h-[44px] px-3 py-0 align-middle hh-fin text-hh-table-cell tabular-nums text-[var(--hh-text-secondary)]">
                       {t.due_date ? new Date(t.due_date).toLocaleDateString() : "—"}
                     </td>
-                    <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px]">
+                    <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell">
                       <span
                         className={cn(
-                          "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
-                          t.priority === "high" && "bg-red-100 text-red-800",
-                          t.priority === "medium" && "bg-amber-100 text-amber-800",
-                          t.priority === "low" && "bg-page text-text-secondary"
+                          "inline-flex items-center rounded-full px-2 py-0.5 text-hh-metadata font-medium",
+                          t.priority === "high" &&
+                            "bg-[var(--hh-danger-soft-fill)] text-[var(--hh-danger)]",
+                          t.priority === "medium" &&
+                            "bg-[var(--hh-warning-soft-fill)] text-[var(--hh-warning)]",
+                          t.priority === "low" && "bg-page text-[var(--hh-text-secondary)]"
                         )}
                       >
                         {PRIORITY_LABEL[t.priority] ?? t.priority}
@@ -181,13 +183,13 @@ export function ProjectTasksTab({
                 variant="outline"
                 size="sm"
                 onClick={() => setModalOpen(false)}
-                className="h-10 rounded-md"
+                className="h-10 rounded-hh-standard"
               >
                 Cancel
               </Button>
               <Button
                 size="sm"
-                className="h-10 rounded-md"
+                className="h-10 rounded-hh-standard"
                 onClick={handleSave}
                 disabled={submitting}
               >

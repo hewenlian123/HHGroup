@@ -302,7 +302,7 @@ export function EstimateSectionTitleMenu({
             disabled={moving}
             className={cn(
               "eb-section-title-trigger h-7 min-w-0 flex-1 text-left flex items-center gap-1.5 rounded-sm px-0.5 -mx-0.5",
-              "text-[15px] font-semibold tracking-tight text-foreground",
+              "text-hh-section-title font-semibold tracking-normal text-foreground",
               "hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
               moving && "opacity-60 pointer-events-none"
             )}

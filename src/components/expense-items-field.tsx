@@ -71,12 +71,12 @@ export function ExpenseItemsField({
           {normalizedItems.map((item) => (
             <span
               key={item}
-              className="inline-flex items-center gap-1 rounded-sm border border-[var(--eo-border)] px-1.5 py-0.5 text-[11px]"
+              className="inline-flex items-center gap-1 rounded-sm border border-[var(--hh-border)] px-1.5 py-0.5 text-hh-status"
             >
               {item}
               <button
                 type="button"
-                className="-mr-1 inline-flex h-7 w-7 touch-manipulation items-center justify-center rounded-sm text-muted-foreground transition-colors duration-120 hover:bg-[var(--eo-surface-secondary)] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--eo-focus-ring)] max-md:h-11 max-md:w-11"
+                className="-mr-1 inline-flex h-7 w-7 touch-manipulation items-center justify-center rounded-sm text-muted-foreground transition-colors duration-120 hover:bg-[var(--hh-l3-hover)] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)] max-md:h-11 max-md:w-11"
                 onClick={() =>
                   onItemsChange(
                     normalizedItems.filter(

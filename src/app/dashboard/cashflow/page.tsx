@@ -164,16 +164,16 @@ export default async function CashflowPage() {
         <table className="w-full text-sm border-collapse">
           <thead>
             <tr className="border-b border-border/60">
-              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              <th className="px-3 py-2 text-left text-hh-table-header uppercase text-muted-foreground">
                 Project
               </th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+              <th className="px-3 py-2 text-right text-hh-table-header uppercase text-muted-foreground hh-fin">
                 Cash In
               </th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+              <th className="px-3 py-2 text-right text-hh-table-header uppercase text-muted-foreground hh-fin">
                 Cash Out
               </th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+              <th className="px-3 py-2 text-right text-hh-table-header uppercase text-muted-foreground hh-fin">
                 Net
               </th>
             </tr>

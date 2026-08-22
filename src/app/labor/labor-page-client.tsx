@@ -49,34 +49,35 @@ function monthAdd(ym: string, deltaMonths: number): string {
 }
 
 function sessionBadgeClass(session: LaborSession): string {
-  if (session === "morning") return "bg-amber-50 text-amber-800 ring-1 ring-amber-200/60";
+  if (session === "morning")
+    return "bg-[var(--hh-warning-soft-fill)] text-[var(--hh-warning)] ring-1 ring-[var(--hh-warning-border)]";
   if (session === "afternoon") return "bg-zinc-100 text-zinc-700 ring-1 ring-zinc-200/70";
-  return "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200/70";
+  return "bg-[var(--hh-success-soft-fill)] text-[var(--hh-success)] ring-1 ring-[var(--hh-success-border)]";
 }
 
 const timeShell =
-  "rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)] md:rounded-xl";
+  "rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-operational md:rounded-hh-task";
 
 const timeKpiTile =
-  "rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)] md:rounded-xl";
+  "rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-operational md:rounded-hh-task";
 
 const timeKpiIcon =
-  "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] text-[var(--neo-text-secondary)] md:h-8 md:w-8";
+  "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[var(--hh-border)] bg-[var(--hh-l3-hover)] text-[var(--hh-text-secondary)] md:h-8 md:w-8";
 
 const timeSegmentedShell =
-  "relative flex h-10 min-h-[44px] shrink-0 items-center rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] p-0.5 shadow-[var(--neo-shadow-panel)] backdrop-blur";
+  "relative flex h-10 min-h-[44px] shrink-0 items-center rounded-hh-compact border border-[var(--hh-border)] bg-[var(--hh-l3-hover)] p-0.5 shadow-operational ";
 
 const timeSegmentedPill =
-  "absolute inset-y-0.5 left-0.5 w-[calc(50%-2px)] rounded-[6px] bg-[var(--neo-gold)] shadow-[0_6px_18px_rgba(184,137,45,0.18)] transition-transform duration-200 ease-out";
+  "absolute inset-y-0.5 left-0.5 w-[calc(50%-2px)] rounded-hh-standard bg-[var(--hh-action-primary)] shadow-operational transition-transform duration-200 ease-out";
 
 const timeSegmentedButton =
-  "relative z-10 flex h-full w-1/2 items-center justify-center gap-1.5 rounded-[6px] px-3 text-xs font-medium transition-colors duration-200";
+  "relative z-10 flex h-full w-1/2 items-center justify-center gap-1.5 rounded-hh-standard px-3 text-xs font-medium transition-colors duration-200";
 
 const calendarControlButton =
-  "h-9 min-h-[44px] rounded-md border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-3 text-[13px] text-[var(--neo-text-primary)] shadow-none hover:border-[var(--neo-border-strong)] hover:bg-[var(--neo-surface-hover)] focus-visible:ring-[var(--neo-gold-ring)] md:min-h-9";
+  "h-9 min-h-[44px] rounded-hh-compact border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 text-hh-table-cell text-[var(--hh-text-primary)] shadow-none hover:border-[var(--hh-border-strong)] hover:bg-[var(--hh-l3-hover)] focus-visible:ring-[var(--hh-focus-ring)] md:min-h-9";
 
 const calendarIconButton =
-  "h-9 w-9 min-h-[44px] min-w-[44px] rounded-md border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-secondary)] shadow-none hover:border-[var(--neo-border-strong)] hover:bg-[var(--neo-surface-hover)] hover:text-[var(--neo-text-primary)] focus-visible:ring-[var(--neo-gold-ring)] md:min-h-9 md:min-w-9";
+  "h-9 w-9 min-h-[44px] min-w-[44px] rounded-hh-compact border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-secondary)] shadow-none hover:border-[var(--hh-border-strong)] hover:bg-[var(--hh-l3-hover)] hover:text-[var(--hh-text-primary)] focus-visible:ring-[var(--hh-focus-ring)] md:min-h-9 md:min-w-9";
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const HIGH_COST_THRESHOLD = 1000;
@@ -592,26 +593,26 @@ export default function LaborPageClient() {
   return (
     <div
       className={cn(
-        "dark neo-page-on-graphite min-w-0 overflow-x-hidden pb-[max(1rem,env(safe-area-inset-bottom,0px))] pt-[max(0.35rem,env(safe-area-inset-top,0px))] text-[var(--neo-canvas-text-secondary)]",
+        " min-w-0 overflow-x-hidden pb-[max(1rem,env(safe-area-inset-bottom,0px))] pt-[max(0.35rem,env(safe-area-inset-top,0px))] text-[var(--hh-text-secondary)]",
         "flex flex-col"
       )}
     >
       <div
         className={cn(
-          "neo-page-on-graphite page-shell-wide mx-auto flex w-full max-w-[430px] flex-1 flex-col gap-2 px-4 py-2 pb-4 sm:max-w-[460px] md:gap-2 md:px-6 md:pb-6 md:pt-3",
+          " page-shell-wide mx-auto flex w-full max-w-[430px] flex-1 flex-col gap-2 px-4 py-2 pb-4 sm:max-w-[460px] md:gap-2 md:px-6 md:pb-6 md:pt-3",
           mobileListPagePaddingClass,
           "max-md:!gap-2"
         )}
       >
         <div className="hidden md:block">
           <PageHeader
-            className="gap-1 border-b border-white/10 pb-3 lg:items-baseline lg:gap-x-4 [&_h1]:!text-[24px] [&_h1]:!font-semibold [&_h1]:!leading-none [&_h1]:!tracking-normal [&_h1]:!text-[var(--neo-canvas-text-primary)] [&_p]:!mt-1 [&_p]:!max-w-xl [&_p]:!text-[14px] [&_p]:!leading-snug [&_p]:!text-[var(--neo-canvas-text-secondary)]"
+            className="gap-1 border-b border-[var(--hh-border)] pb-3 lg:items-baseline lg:gap-x-4 [&_h1]:!text-hh-financial-total [&_h1]:!font-semibold [&_h1]:!leading-none [&_h1]:!tracking-normal [&_h1]:!text-[var(--hh-text-primary)] [&_p]:!mt-1 [&_p]:!max-w-xl [&_p]:!text-hh-body [&_p]:!leading-snug [&_p]:!text-[var(--hh-text-secondary)]"
             title="Daily Labor"
             subtitle="Track and manage daily labor entries by worker and project."
             actions={
               <Button
                 size="sm"
-                className="h-9 shrink-0 gap-1.5 border-transparent bg-[var(--neo-gold)] text-zinc-950 shadow-none hover:bg-[var(--neo-gold-soft)]"
+                className="h-9 shrink-0 gap-1.5 border-transparent bg-[var(--hh-action-primary)] text-zinc-950 shadow-none hover:bg-[var(--hh-action-primary)]"
                 onClick={() => setModalOpen(true)}
                 disabled={loadingProjects}
               >
@@ -631,7 +632,7 @@ export default function LaborPageClient() {
           <NeoToolbar className="!flex-col !items-stretch gap-3 border-0 bg-transparent p-0 shadow-none dark:bg-transparent">
             <div className="flex w-full flex-wrap items-end gap-3 md:flex-nowrap">
               <div className="flex min-w-[160px] flex-1 flex-col gap-1 sm:flex-initial">
-                <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
+                <label className="text-hh-status font-medium uppercase tracking-normal text-text-secondary/75 dark:text-muted-foreground">
                   Month
                 </label>
                 <Select
@@ -652,7 +653,7 @@ export default function LaborPageClient() {
                 </Select>
               </div>
               <div className="flex min-w-[180px] flex-1 flex-col gap-1 sm:flex-initial">
-                <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
+                <label className="text-hh-status font-medium uppercase tracking-normal text-text-secondary/75 dark:text-muted-foreground">
                   Project
                 </label>
                 <Select
@@ -673,7 +674,7 @@ export default function LaborPageClient() {
                 </Select>
               </div>
               <div className="flex min-w-[180px] flex-1 flex-col gap-1 sm:flex-initial">
-                <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
+                <label className="text-hh-status font-medium uppercase tracking-normal text-text-secondary/75 dark:text-muted-foreground">
                   Worker
                 </label>
                 <Select
@@ -734,25 +735,25 @@ export default function LaborPageClient() {
           </NeoToolbar>
         </div>
 
-        {error ? <p className="py-3 text-sm text-red-600">{error}</p> : null}
+        {error ? <p className="py-3 text-sm text-[var(--hh-danger)]">{error}</p> : null}
         {message ? <p className="py-3 text-sm text-muted-foreground">{message}</p> : null}
         {lastSavedEntry ? (
           <div
             data-testid="daily-entry-next-actions"
             className={cn(
-              "mb-4 flex flex-col gap-3 rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-3 py-3 shadow-[var(--neo-shadow-panel)]",
+              "mb-4 flex flex-col gap-3 rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 py-3 shadow-operational",
               "sm:flex-row sm:items-center sm:justify-between"
             )}
           >
             <div className="flex min-w-0 items-center gap-2.5">
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-emerald-400/20 bg-emerald-400/10 text-emerald-300">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[var(--hh-success-border)] bg-[var(--hh-success-soft-fill)] text-[var(--hh-success)]">
                 <CheckCircle2 className="h-4 w-4" aria-hidden />
               </span>
               <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-[var(--neo-text-primary)]">
+                <p className="truncate text-sm font-semibold text-[var(--hh-text-primary)]">
                   Entry saved
                 </p>
-                <p className="truncate text-xs text-[var(--neo-text-secondary)]">
+                <p className="truncate text-xs text-[var(--hh-text-secondary)]">
                   {lastSavedEntry.workerName}
                   {lastSavedEntry.rowCount > 1 ? ` + ${lastSavedEntry.rowCount - 1} more` : ""}
                 </p>
@@ -763,18 +764,13 @@ export default function LaborPageClient() {
                 type="button"
                 variant="outline"
                 size="sm"
-                className="min-h-[40px] rounded-[0.625rem]"
+                className="min-h-[40px] rounded-hh-task"
                 onClick={() => setModalOpen(true)}
               >
                 <Plus className="mr-2 h-4 w-4" aria-hidden />
                 Add Another
               </Button>
-              <Button
-                asChild
-                variant="outline"
-                size="sm"
-                className="min-h-[40px] rounded-[0.625rem]"
-              >
+              <Button asChild variant="outline" size="sm" className="min-h-[40px] rounded-hh-task">
                 <Link href={`/workers/${encodeURIComponent(lastSavedEntry.workerId)}`}>
                   <ExternalLink className="mr-2 h-4 w-4" aria-hidden />
                   Open Worker
@@ -783,7 +779,7 @@ export default function LaborPageClient() {
               <Button
                 asChild
                 size="sm"
-                className="min-h-[40px] rounded-[0.625rem] bg-[var(--neo-gold)] text-zinc-950 hover:bg-[var(--neo-gold-soft)]"
+                className="min-h-[40px] rounded-hh-task bg-[var(--hh-action-primary)] text-zinc-950 hover:bg-[var(--hh-action-primary)]"
               >
                 <Link
                   href={`/labor/workers/${encodeURIComponent(
@@ -800,7 +796,7 @@ export default function LaborPageClient() {
 
         {/* Monthly Summary */}
         <section className="border-b border-border/60 pb-4">
-          <p className="mb-3 text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
+          <p className="mb-3 text-hh-status font-medium uppercase tracking-normal text-text-secondary/75 dark:text-muted-foreground">
             Monthly Summary · {formatMonthLabel(selectedMonth)}
           </p>
           <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 lg:gap-2">
@@ -814,13 +810,15 @@ export default function LaborPageClient() {
                 <DollarSign className="h-3 w-3 md:h-3.5 md:w-3.5" strokeWidth={1.75} aria-hidden />
               </span>
               <div className="min-w-0 flex-1">
-                <p className="text-[8px] font-medium uppercase leading-none tracking-wide text-muted-foreground md:text-[9px] md:normal-case md:tracking-normal">
+                <p className="text-hh-status font-medium uppercase leading-none tracking-normal text-muted-foreground md:text-hh-status md:normal-case md:tracking-normal">
                   Total labor cost
                 </p>
                 <NeoAmount className="mt-0.5 block truncate text-base leading-none md:text-xl">
                   {formatCurrency(summary.totalLaborCost)}
                 </NeoAmount>
-                <p className="mt-0.5 text-[9px] leading-none text-muted-foreground">This month</p>
+                <p className="mt-0.5 text-hh-status leading-none text-muted-foreground">
+                  This month
+                </p>
               </div>
             </div>
             <div
@@ -837,13 +835,15 @@ export default function LaborPageClient() {
                 />
               </span>
               <div className="min-w-0 flex-1">
-                <p className="text-[8px] font-medium uppercase leading-none tracking-wide text-muted-foreground md:text-[9px] md:normal-case md:tracking-normal">
+                <p className="text-hh-status font-medium uppercase leading-none tracking-normal text-muted-foreground md:text-hh-status md:normal-case md:tracking-normal">
                   Work days
                 </p>
                 <p className="mt-0.5 text-base font-medium tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
                   {formatInteger(summary.totalWorkDays)}
                 </p>
-                <p className="mt-0.5 text-[9px] leading-none text-muted-foreground">Unique dates</p>
+                <p className="mt-0.5 text-hh-status leading-none text-muted-foreground">
+                  Unique dates
+                </p>
               </div>
             </div>
             <div
@@ -856,13 +856,13 @@ export default function LaborPageClient() {
                 <ListOrdered className="h-3 w-3 md:h-3.5 md:w-3.5" strokeWidth={1.75} aria-hidden />
               </span>
               <div className="min-w-0 flex-1">
-                <p className="text-[8px] font-medium uppercase leading-none tracking-wide text-muted-foreground md:text-[9px] md:normal-case md:tracking-normal">
+                <p className="text-hh-status font-medium uppercase leading-none tracking-normal text-muted-foreground md:text-hh-status md:normal-case md:tracking-normal">
                   Entries
                 </p>
                 <p className="mt-0.5 text-base font-medium tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
                   {formatInteger(summary.totalEntries)}
                 </p>
-                <p className="mt-0.5 text-[9px] leading-none text-muted-foreground">Recorded</p>
+                <p className="mt-0.5 text-hh-status leading-none text-muted-foreground">Recorded</p>
               </div>
             </div>
           </div>
@@ -870,14 +870,14 @@ export default function LaborPageClient() {
           {/* PROJECT LABOR COST — labor cost per project for selected month, sorted by highest */}
           {projectLaborCost.length > 0 && (
             <div className="mt-4 pt-4 border-t border-border/60">
-              <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
+              <p className="mb-2 text-hh-status font-medium uppercase tracking-normal text-text-secondary/75 dark:text-muted-foreground">
                 PROJECT LABOR COST
               </p>
-              <div className="overflow-hidden rounded-lg border border-gray-100 bg-white shadow-sm dark:border-border dark:bg-card dark:shadow-none">
+              <div className="overflow-hidden rounded-hh-standard border border-gray-100 bg-white shadow-sm dark:border-border dark:bg-card dark:shadow-none">
                 {projectLaborCost.map(({ id, name, total }) => (
                   <div
                     key={id}
-                    className="flex items-center justify-between gap-3 border-b border-gray-100 px-2.5 py-2.5 last:border-b-0 hover:bg-[#F9FAFB] dark:border-border dark:hover:bg-muted/40"
+                    className="flex items-center justify-between gap-3 border-b border-gray-100 px-2.5 py-2.5 last:border-b-0 bg-[var(--hh-l3-hover)] dark:border-border dark:hover:bg-muted/40"
                   >
                     <span className="text-sm font-medium text-foreground truncate">{name}</span>
                     <NeoAmount className="shrink-0 text-sm">{formatCurrency(total)}</NeoAmount>
@@ -891,7 +891,7 @@ export default function LaborPageClient() {
         {/* List View */}
         {view === "list" && (
           <section className="mt-4 border-b border-border/60 pb-4">
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-2">
+            <p className="text-xs font-medium uppercase tracking-normal text-muted-foreground mb-2">
               Daily entries · {formatMonthLabel(selectedMonth)}
             </p>
             {loadingEntries ? (
@@ -912,7 +912,7 @@ export default function LaborPageClient() {
                 <Button
                   size="sm"
                   variant="outline"
-                  className="mt-4 h-9 rounded-sm shadow-none"
+                  className="mt-4 h-9 rounded-hh-compact shadow-none"
                   onClick={() => setModalOpen(true)}
                 >
                   <Plus className="mr-2 h-3.5 w-3.5" aria-hidden />
@@ -920,7 +920,7 @@ export default function LaborPageClient() {
                 </Button>
               </div>
             ) : (
-              <div className="flex flex-col divide-y divide-border/60 rounded-sm border border-border/70 overflow-hidden">
+              <div className="flex flex-col divide-y divide-border/60 rounded-hh-compact border border-border/70 overflow-hidden">
                 {datesInMonth
                   .filter((d) => (entriesByDate.get(d) ?? []).length > 0)
                   .map((date) => {
@@ -941,7 +941,7 @@ export default function LaborPageClient() {
                           )}
                         >
                           <div className="flex items-baseline gap-3 min-w-0">
-                            <span className="text-[15px] font-semibold text-foreground shrink-0">
+                            <span className="text-hh-section-title font-semibold text-foreground shrink-0">
                               {formatShortDate(date)}
                             </span>
                             <span className="text-xs text-muted-foreground/80 truncate">
@@ -975,16 +975,16 @@ export default function LaborPageClient() {
                               <table className="hidden w-full min-w-[480px] border-collapse text-sm md:table">
                                 <thead>
                                   <tr className="border-b border-border/60">
-                                    <th className="text-left py-2 px-3 text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70">
+                                    <th className="text-left py-2 px-3 text-hh-status font-medium uppercase tracking-normalst text-muted-foreground/70">
                                       Worker
                                     </th>
-                                    <th className="text-left py-2 px-3 text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70">
+                                    <th className="text-left py-2 px-3 text-hh-status font-medium uppercase tracking-normalst text-muted-foreground/70">
                                       Project
                                     </th>
-                                    <th className="text-left py-2 px-3 text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70">
+                                    <th className="text-left py-2 px-3 text-hh-status font-medium uppercase tracking-normalst text-muted-foreground/70">
                                       Session
                                     </th>
-                                    <th className="text-right py-2 px-3 text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70 tabular-nums">
+                                    <th className="text-right py-2 px-3 text-hh-status font-medium uppercase tracking-normalst text-muted-foreground/70 tabular-nums">
                                       Total Pay
                                     </th>
                                     <th className="w-[84px] py-2 px-3" />
@@ -1005,7 +1005,7 @@ export default function LaborPageClient() {
                                             <td className="py-2 px-3 font-semibold text-foreground">
                                               <button
                                                 type="button"
-                                                className="inline-flex min-h-9 max-w-full items-center gap-2 rounded-md pr-2 text-left transition-colors hover:text-[var(--neo-gold-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]"
+                                                className="inline-flex min-h-9 max-w-full items-center gap-2 rounded-hh-compact pr-2 text-left transition-colors hover:text-[var(--hh-action-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)]"
                                                 onClick={() => toggleDailyEntryGroup(row.id)}
                                                 aria-expanded={isGroupExpanded}
                                                 aria-label={`${isGroupExpanded ? "Collapse" : "Expand"} ${row.workerName} session details`}
@@ -1024,7 +1024,7 @@ export default function LaborPageClient() {
                                               {row.projectSummary}
                                             </td>
                                             <td className="py-2 px-3">
-                                              <span className="inline-flex items-center rounded-full border border-[var(--neo-border-strong)] bg-[var(--neo-surface-muted)] px-2 py-0.5 text-xs font-medium text-[var(--neo-text-primary)]">
+                                              <span className="inline-flex items-center rounded-full border border-[var(--hh-border-strong)] bg-[var(--hh-l3-hover)] px-2 py-0.5 text-xs font-medium text-[var(--hh-text-primary)]">
                                                 {row.sessionSummary}
                                               </span>
                                             </td>
@@ -1035,7 +1035,7 @@ export default function LaborPageClient() {
                                                   : "—"}
                                               </NeoAmount>
                                             </td>
-                                            <td className="py-2 px-3 text-right text-[11px] uppercase tracking-[0.12em] text-muted-foreground/60">
+                                            <td className="py-2 px-3 text-right text-hh-status uppercase tracking-normal text-muted-foreground/60">
                                               Details
                                             </td>
                                           </tr>
@@ -1081,7 +1081,7 @@ export default function LaborPageClient() {
                                                       <div className="flex items-center justify-end gap-2">
                                                         <button
                                                           type="button"
-                                                          className="h-8 w-8 inline-flex items-center justify-center rounded-sm text-emerald-700 hover:bg-emerald-50/60 hover:text-emerald-800"
+                                                          className="h-8 w-8 inline-flex items-center justify-center rounded-hh-compact text-[var(--hh-success)] hover:bg-[var(--hh-success-soft-fill)] hover:text-[var(--hh-success)]"
                                                           onClick={() => openEdit(child)}
                                                           aria-label={`Edit ${sessionLabel(childSession)} entry for ${row.workerName}`}
                                                         >
@@ -1089,7 +1089,7 @@ export default function LaborPageClient() {
                                                         </button>
                                                         <button
                                                           type="button"
-                                                          className="h-8 w-8 inline-flex items-center justify-center rounded-sm text-red-600 hover:text-red-700 hover:bg-red-50/60"
+                                                          className="h-8 w-8 inline-flex items-center justify-center rounded-hh-compact text-[var(--hh-danger)] hover:text-[var(--hh-danger)] hover:bg-[var(--hh-danger-soft-fill)]"
                                                           onClick={() => void handleDelete(child)}
                                                           aria-label={`Delete ${sessionLabel(childSession)} entry for ${row.workerName}`}
                                                           disabled={workerMode}
@@ -1147,7 +1147,7 @@ export default function LaborPageClient() {
                                           <div className="flex items-center justify-end gap-2">
                                             <button
                                               type="button"
-                                              className="h-8 w-8 inline-flex items-center justify-center rounded-sm text-emerald-700 hover:bg-emerald-50/60 hover:text-emerald-800"
+                                              className="h-8 w-8 inline-flex items-center justify-center rounded-hh-compact text-[var(--hh-success)] hover:bg-[var(--hh-success-soft-fill)] hover:text-[var(--hh-success)]"
                                               onClick={() => openEdit(e)}
                                               aria-label="Edit"
                                             >
@@ -1155,7 +1155,7 @@ export default function LaborPageClient() {
                                             </button>
                                             <button
                                               type="button"
-                                              className="h-8 w-8 inline-flex items-center justify-center rounded-sm text-red-600 hover:text-red-700 hover:bg-red-50/60"
+                                              className="h-8 w-8 inline-flex items-center justify-center rounded-hh-compact text-[var(--hh-danger)] hover:text-[var(--hh-danger)] hover:bg-[var(--hh-danger-soft-fill)]"
                                               onClick={() => void handleDelete(e)}
                                               aria-label="Delete"
                                               disabled={workerMode}
@@ -1183,7 +1183,7 @@ export default function LaborPageClient() {
                                       <div key={row.id} className="px-3 py-3">
                                         <button
                                           type="button"
-                                          className="flex min-h-11 w-full items-start justify-between gap-3 rounded-md text-left"
+                                          className="flex min-h-11 w-full items-start justify-between gap-3 rounded-hh-compact text-left"
                                           onClick={() => toggleDailyEntryGroup(row.id)}
                                           aria-expanded={isGroupExpanded}
                                           aria-label={`${isGroupExpanded ? "Collapse" : "Expand"} ${row.workerName} session details`}
@@ -1201,7 +1201,7 @@ export default function LaborPageClient() {
                                                 <span className="truncate text-sm font-semibold text-foreground">
                                                   {row.workerName}
                                                 </span>
-                                                <span className="inline-flex shrink-0 items-center rounded-full border border-[var(--neo-border-strong)] bg-[var(--neo-surface-muted)] px-2 py-0.5 text-[11px] font-medium text-[var(--neo-text-primary)]">
+                                                <span className="inline-flex shrink-0 items-center rounded-full border border-[var(--hh-border-strong)] bg-[var(--hh-l3-hover)] px-2 py-0.5 text-hh-status font-medium text-[var(--hh-text-primary)]">
                                                   {row.sessionSummary}
                                                 </span>
                                               </div>
@@ -1222,13 +1222,13 @@ export default function LaborPageClient() {
                                               return (
                                                 <div
                                                   key={child.id}
-                                                  className="rounded-md border border-border/50 bg-muted/[0.05] px-3 py-2"
+                                                  className="rounded-hh-compact border border-border/50 bg-muted/[0.05] px-3 py-2"
                                                 >
                                                   <div className="flex items-start justify-between gap-3">
                                                     <div className="min-w-0">
                                                       <span
                                                         className={cn(
-                                                          "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium",
+                                                          "inline-flex items-center rounded-full px-2 py-0.5 text-hh-status font-medium",
                                                           sessionBadgeClass(childSession)
                                                         )}
                                                       >
@@ -1250,7 +1250,7 @@ export default function LaborPageClient() {
                                                       <div className="mt-1 flex items-center justify-end gap-2">
                                                         <button
                                                           type="button"
-                                                          className="inline-flex h-11 w-11 items-center justify-center rounded-sm border border-border/70 text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground active:scale-[0.98]"
+                                                          className="inline-flex h-11 w-11 items-center justify-center rounded-hh-compact border border-border/70 text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground active:scale-[0.98]"
                                                           onClick={() => openEdit(child)}
                                                           aria-label={`Edit ${sessionLabel(childSession)} entry for ${row.workerName}`}
                                                         >
@@ -1258,7 +1258,7 @@ export default function LaborPageClient() {
                                                         </button>
                                                         <button
                                                           type="button"
-                                                          className="inline-flex h-11 w-11 items-center justify-center rounded-sm border border-border/70 text-muted-foreground transition-colors hover:bg-muted/40 hover:text-destructive active:scale-[0.98]"
+                                                          className="inline-flex h-11 w-11 items-center justify-center rounded-hh-compact border border-border/70 text-muted-foreground transition-colors hover:bg-muted/40 hover:text-destructive active:scale-[0.98]"
                                                           onClick={() => void handleDelete(child)}
                                                           aria-label={`Delete ${sessionLabel(childSession)} entry for ${row.workerName}`}
                                                           disabled={workerMode}
@@ -1295,7 +1295,7 @@ export default function LaborPageClient() {
                                             </span>
                                             <span
                                               className={cn(
-                                                "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium",
+                                                "inline-flex items-center rounded-full px-2 py-0.5 text-hh-status font-medium",
                                                 sessionBadgeClass(session)
                                               )}
                                             >
@@ -1313,7 +1313,7 @@ export default function LaborPageClient() {
                                           <div className="mt-1 flex items-center justify-end gap-2">
                                             <button
                                               type="button"
-                                              className="inline-flex h-11 w-11 items-center justify-center rounded-sm border border-border/70 text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground active:scale-[0.98]"
+                                              className="inline-flex h-11 w-11 items-center justify-center rounded-hh-compact border border-border/70 text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground active:scale-[0.98]"
                                               onClick={() => openEdit(e)}
                                               aria-label="Edit"
                                             >
@@ -1321,7 +1321,7 @@ export default function LaborPageClient() {
                                             </button>
                                             <button
                                               type="button"
-                                              className="inline-flex h-11 w-11 items-center justify-center rounded-sm border border-border/70 text-muted-foreground transition-colors hover:bg-muted/40 hover:text-destructive active:scale-[0.98]"
+                                              className="inline-flex h-11 w-11 items-center justify-center rounded-hh-compact border border-border/70 text-muted-foreground transition-colors hover:bg-muted/40 hover:text-destructive active:scale-[0.98]"
                                               onClick={() => void handleDelete(e)}
                                               aria-label="Delete"
                                               disabled={workerMode}
@@ -1354,13 +1354,13 @@ export default function LaborPageClient() {
         {/* Calendar View */}
         {view === "calendar" && (
           <section className="mt-6 pb-4 md:mt-7">
-            <div className="overflow-hidden rounded-2xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)]">
-              <div className="flex flex-col gap-3 border-b border-[var(--neo-border)] px-3 py-3 sm:px-4 md:flex-row md:items-center md:justify-between md:px-5 md:py-4">
+            <div className="overflow-hidden rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-operational">
+              <div className="flex flex-col gap-3 border-b border-[var(--hh-border)] px-3 py-3 sm:px-4 md:flex-row md:items-center md:justify-between md:px-5 md:py-4">
                 <div className="min-w-0">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+                  <p className="text-hh-status font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                     Daily Labor Calendar
                   </p>
-                  <h2 className="mt-1 truncate text-[20px] font-semibold leading-none tracking-normal text-[var(--neo-text-primary)] md:text-[22px]">
+                  <h2 className="mt-1 truncate text-hh-financial-total font-semibold leading-none tracking-normal text-[var(--hh-text-primary)] md:text-hh-financial-total">
                     {formatMonthLabel(selectedMonth)}
                   </h2>
                 </div>
@@ -1412,30 +1412,30 @@ export default function LaborPageClient() {
               </div>
 
               {loadingEntries ? (
-                <p className="px-4 py-6 text-sm text-[var(--neo-text-secondary)]">Loading…</p>
+                <p className="px-4 py-6 text-sm text-[var(--hh-text-secondary)]">Loading…</p>
               ) : (
                 <>
                   <div className="hidden px-3 pb-3 pt-4 md:block md:px-5 md:pb-5">
-                    <div className="overflow-hidden rounded-[18px] border border-[var(--neo-border)] bg-[var(--neo-border)]">
-                      <div className="grid grid-cols-7 bg-[var(--neo-surface-muted)]">
+                    <div className="overflow-hidden rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-border)]">
+                      <div className="grid grid-cols-7 bg-[var(--hh-l3-hover)]">
                         {WEEKDAYS.map((wd) => (
                           <div
                             key={wd}
-                            className="border-r border-[var(--neo-border)] px-2 py-2.5 text-center text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)] last:border-r-0"
+                            className="border-r border-[var(--hh-border)] px-2 py-2.5 text-center text-hh-status font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)] last:border-r-0"
                           >
                             {wd}
                           </div>
                         ))}
                       </div>
-                      <div className="grid grid-cols-7 gap-px bg-[var(--neo-border)]">
+                      <div className="grid grid-cols-7 gap-px bg-[var(--hh-border)]">
                         {getCalendarGrid(selectedMonth)
                           .flat()
                           .map((day, idx) => (
                             <div
                               key={idx}
                               className={cn(
-                                "min-h-[136px] bg-[var(--neo-surface-raised)] p-1.5 lg:min-h-[148px]",
-                                day === null && "bg-[var(--neo-surface-muted)]"
+                                "min-h-[136px] bg-[var(--hh-l2-operational-surface)] p-1.5 lg:min-h-[148px]",
+                                day === null && "bg-[var(--hh-l3-hover)]"
                               )}
                             >
                               {day === null ? (
@@ -1478,12 +1478,12 @@ export default function LaborPageClient() {
                                           : `${formatShortDate(dateStr)}, no labor entries`
                                       }
                                       className={cn(
-                                        "group relative flex h-full min-h-[124px] w-full flex-col overflow-hidden rounded-[14px] border px-3 py-2.5 text-left transition-[background,border-color,box-shadow] duration-150 ease-out motion-reduce:transition-none lg:min-h-[136px]",
+                                        "group relative flex h-full min-h-[124px] w-full flex-col overflow-hidden rounded-hh-task border px-3 py-2.5 text-left transition-[background,border-color,box-shadow] duration-150 ease-out motion-reduce:transition-none lg:min-h-[136px]",
                                         hasEntries
-                                          ? "border-[var(--neo-border)] bg-[rgb(255_255_255_/_0.025)] text-[var(--neo-text-primary)] shadow-[0_1px_0_rgb(255_255_255_/_0.035)_inset] hover:border-[var(--neo-border-strong)] hover:bg-[var(--neo-surface-hover)]"
-                                          : "border-transparent bg-transparent text-[var(--neo-text-secondary)] hover:bg-[var(--neo-surface-muted)]",
+                                          ? "border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-operational hover:border-[var(--hh-border-strong)] hover:bg-[var(--hh-l3-hover)]"
+                                          : "border-transparent bg-transparent text-[var(--hh-text-secondary)] hover:bg-[var(--hh-l3-hover)]",
                                         isToday &&
-                                          "border-[rgb(184_147_90_/_0.38)] bg-[rgb(184_147_90_/_0.06)] ring-1 ring-inset ring-[rgb(184_147_90_/_0.18)]"
+                                          "border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] ring-1 ring-inset ring-[var(--hh-focus-ring)]"
                                       )}
                                     >
                                       {hasEntries ? (
@@ -1492,17 +1492,17 @@ export default function LaborPageClient() {
                                           className={cn(
                                             "absolute left-0 top-3 h-10 w-[2px] rounded-full",
                                             isHighCost
-                                              ? "bg-[rgb(184_147_90_/_0.72)]"
-                                              : "bg-emerald-400/45"
+                                              ? "bg-[var(--hh-warning-soft-fill)]"
+                                              : "bg-[var(--hh-success-soft-fill)]"
                                           )}
                                         />
                                       ) : null}
                                       <div className="flex items-start justify-between gap-2">
                                         <span
                                           className={cn(
-                                            "inline-flex h-7 min-w-7 items-center justify-center rounded-full px-2 text-[12px] font-semibold tabular-nums text-[var(--neo-text-primary)]",
+                                            "inline-flex h-7 min-w-7 items-center justify-center rounded-full px-2 text-hh-metadata font-semibold tabular-nums text-[var(--hh-text-primary)]",
                                             isToday &&
-                                              "bg-[rgb(184_147_90_/_0.14)] text-[var(--neo-gold-soft)] ring-1 ring-inset ring-[rgb(184_147_90_/_0.26)]"
+                                              "bg-[var(--hh-warning-soft-fill)] text-[var(--hh-action-primary)] ring-1 ring-inset ring-[var(--hh-focus-ring)]"
                                           )}
                                         >
                                           {day}
@@ -1513,14 +1513,14 @@ export default function LaborPageClient() {
                                         <>
                                           <div
                                             className={cn(
-                                              "mt-3 rounded-xl border px-2.5 py-2",
+                                              "mt-3 rounded-hh-task border px-2.5 py-2",
                                               isHighCost
-                                                ? "border-[rgb(184_147_90_/_0.26)] bg-[rgb(184_147_90_/_0.10)]"
-                                                : "border-emerald-400/15 bg-emerald-400/5"
+                                                ? "border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)]"
+                                                : "border-[var(--hh-success-border)] bg-[var(--hh-success-soft-fill)]"
                                             )}
                                           >
                                             <div className="flex items-baseline justify-between gap-2">
-                                              <span className="shrink-0 text-[13px] font-semibold tabular-nums leading-none text-[var(--neo-text-primary)]">
+                                              <span className="shrink-0 text-hh-table-cell font-semibold tabular-nums leading-none text-[var(--hh-text-primary)]">
                                                 {formatLaborDaysLabel(totalLaborDays, {
                                                   compact: true,
                                                 })}
@@ -1528,8 +1528,8 @@ export default function LaborPageClient() {
                                               <NeoAmount
                                                 tone={isHighCost ? "neutral" : "income"}
                                                 className={cn(
-                                                  "min-w-0 truncate text-right text-[12px] leading-none",
-                                                  isHighCost && "text-[var(--neo-gold-soft)]"
+                                                  "min-w-0 truncate text-right text-hh-metadata leading-none",
+                                                  isHighCost && "text-[var(--hh-action-primary)]"
                                                 )}
                                               >
                                                 {formatCurrency(totalPay)}
@@ -1543,7 +1543,7 @@ export default function LaborPageClient() {
                                                 {crewPreview.map(({ name, initials }, i) => (
                                                   <span
                                                     key={`${name}-${i}`}
-                                                    className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] text-[10px] font-semibold uppercase tracking-normal text-[var(--neo-text-secondary)] shadow-[0_1px_0_rgb(255_255_255_/_0.035)_inset]"
+                                                    className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[var(--hh-border)] bg-[var(--hh-l3-hover)] text-hh-status font-semibold uppercase tracking-normal text-[var(--hh-text-secondary)] shadow-operational"
                                                     aria-hidden
                                                     title={name}
                                                   >
@@ -1551,19 +1551,19 @@ export default function LaborPageClient() {
                                                   </span>
                                                 ))}
                                                 {workerCount > crewPreview.length ? (
-                                                  <span className="inline-flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-1.5 text-[10px] font-semibold tabular-nums text-[var(--neo-text-tertiary)]">
+                                                  <span className="inline-flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-1.5 text-hh-status font-semibold tabular-nums text-[var(--hh-text-tertiary)]">
                                                     +{workerCount - crewPreview.length}
                                                   </span>
                                                 ) : null}
                                               </div>
-                                              <span className="shrink-0 text-[11px] font-medium text-[var(--neo-text-tertiary)]">
+                                              <span className="shrink-0 text-hh-status font-medium text-[var(--hh-text-tertiary)]">
                                                 {workerLabel}
                                               </span>
                                             </div>
                                           </div>
                                         </>
                                       ) : (
-                                        <span className="mt-auto h-1.5 w-1.5 rounded-full bg-[var(--neo-border-strong)] opacity-0 transition-opacity duration-150 group-hover:opacity-100 motion-reduce:transition-none" />
+                                        <span className="mt-auto h-1.5 w-1.5 rounded-full bg-[var(--hh-border-strong)] opacity-0 transition-opacity duration-150 group-hover:opacity-100 motion-reduce:transition-none" />
                                       )}
                                     </button>
                                   );
@@ -1577,11 +1577,11 @@ export default function LaborPageClient() {
 
                   <div className="px-3 pb-3 pt-3 md:hidden">
                     {calendarEntryDates.length === 0 ? (
-                      <div className="rounded-xl border border-dashed border-[var(--neo-border-strong)] bg-[var(--neo-surface-muted)] px-4 py-8 text-center">
-                        <p className="text-sm font-medium text-[var(--neo-text-primary)]">
+                      <div className="rounded-hh-task border border-dashed border-[var(--hh-border-strong)] bg-[var(--hh-l3-hover)] px-4 py-8 text-center">
+                        <p className="text-sm font-medium text-[var(--hh-text-primary)]">
                           No labor entries this month
                         </p>
-                        <p className="mt-1 text-xs text-[var(--neo-text-secondary)]">
+                        <p className="mt-1 text-xs text-[var(--hh-text-secondary)]">
                           Add a labor entry to see the month agenda.
                         </p>
                       </div>
@@ -1610,18 +1610,18 @@ export default function LaborPageClient() {
                               type="button"
                               onClick={() => setSelectedDayForDetail(date)}
                               className={cn(
-                                "flex min-h-[72px] w-full items-center justify-between gap-3 rounded-xl border border-[var(--neo-border)] bg-[rgb(255_255_255_/_0.025)] px-3 py-3 text-left transition-[background,border-color,box-shadow] duration-150 ease-out hover:border-[var(--neo-border-strong)] hover:bg-[var(--neo-surface-hover)] motion-reduce:transition-none",
+                                "flex min-h-[72px] w-full items-center justify-between gap-3 rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 py-3 text-left transition-[background,border-color,box-shadow] duration-150 ease-out hover:border-[var(--hh-border-strong)] hover:bg-[var(--hh-l3-hover)] motion-reduce:transition-none",
                                 isToday &&
-                                  "border-[rgb(184_147_90_/_0.38)] bg-[rgb(184_147_90_/_0.06)]"
+                                  "border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)]"
                               )}
                             >
                               <div className="min-w-0">
                                 <div className="flex items-center gap-2">
-                                  <span className="text-sm font-semibold text-[var(--neo-text-primary)]">
+                                  <span className="text-sm font-semibold text-[var(--hh-text-primary)]">
                                     {formatShortDate(date)}
                                   </span>
                                   {isToday ? (
-                                    <span className="rounded-full border border-[rgb(184_147_90_/_0.26)] bg-[rgb(184_147_90_/_0.12)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-gold-soft)]">
+                                    <span className="rounded-full border border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] px-2 py-0.5 text-hh-status font-semibold uppercase tracking-normal text-[var(--hh-action-primary)]">
                                       Today
                                     </span>
                                   ) : null}
@@ -1631,7 +1631,7 @@ export default function LaborPageClient() {
                                     {crewPreview.map(({ name, initials }, i) => (
                                       <span
                                         key={`${name}-${i}`}
-                                        className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] text-[10px] font-semibold uppercase text-[var(--neo-text-secondary)]"
+                                        className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-[var(--hh-border)] bg-[var(--hh-l3-hover)] text-hh-status font-semibold uppercase text-[var(--hh-text-secondary)]"
                                         aria-hidden
                                         title={name}
                                       >
@@ -1639,32 +1639,32 @@ export default function LaborPageClient() {
                                       </span>
                                     ))}
                                     {workerCount > crewPreview.length ? (
-                                      <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-1.5 text-[10px] font-semibold tabular-nums text-[var(--neo-text-tertiary)]">
+                                      <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-1.5 text-hh-status font-semibold tabular-nums text-[var(--hh-text-tertiary)]">
                                         +{workerCount - crewPreview.length}
                                       </span>
                                     ) : null}
                                   </div>
-                                  <span className="truncate text-xs font-medium text-[var(--neo-text-secondary)]">
+                                  <span className="truncate text-xs font-medium text-[var(--hh-text-secondary)]">
                                     {workerLabel}
                                   </span>
                                 </div>
                               </div>
                               <div
                                 className={cn(
-                                  "shrink-0 rounded-xl border px-2.5 py-2 text-right",
+                                  "shrink-0 rounded-hh-task border px-2.5 py-2 text-right",
                                   isHighCost
-                                    ? "border-[rgb(184_147_90_/_0.26)] bg-[rgb(184_147_90_/_0.10)]"
-                                    : "border-emerald-400/15 bg-emerald-400/5"
+                                    ? "border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)]"
+                                    : "border-[var(--hh-success-border)] bg-[var(--hh-success-soft-fill)]"
                                 )}
                               >
-                                <p className="text-[13px] font-semibold tabular-nums leading-none text-[var(--neo-text-primary)]">
+                                <p className="text-hh-table-cell font-semibold tabular-nums leading-none text-[var(--hh-text-primary)]">
                                   {formatLaborDaysLabel(totalLaborDays)}
                                 </p>
                                 <NeoAmount
                                   tone={isHighCost ? "neutral" : "income"}
                                   className={cn(
-                                    "mt-1 block text-[12px] leading-none",
-                                    isHighCost && "text-[var(--neo-gold-soft)]"
+                                    "mt-1 block text-hh-metadata leading-none",
+                                    isHighCost && "text-[var(--hh-action-primary)]"
                                   )}
                                 >
                                   {formatCurrency(totalPay)}
@@ -1700,7 +1700,7 @@ export default function LaborPageClient() {
           open={!!selectedDayForDetail}
           onOpenChange={(open) => !open && setSelectedDayForDetail(null)}
         >
-          <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col border-border/60 rounded-sm">
+          <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col border-border/60 rounded-hh-compact">
             <DialogHeader>
               <DialogTitle className="text-base font-semibold">
                 {selectedDayForDetail ? formatShortDate(selectedDayForDetail) : ""}
@@ -1720,22 +1720,22 @@ export default function LaborPageClient() {
                       <table className="w-full min-w-[560px] border-collapse text-sm">
                         <thead>
                           <tr className="border-b border-border/60">
-                            <th className="px-3 py-2 text-left text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70">
+                            <th className="px-3 py-2 text-left text-hh-status font-medium uppercase tracking-normalst text-muted-foreground/70">
                               Worker
                             </th>
-                            <th className="px-3 py-2 text-left text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70">
+                            <th className="px-3 py-2 text-left text-hh-status font-medium uppercase tracking-normalst text-muted-foreground/70">
                               Project
                             </th>
-                            <th className="px-3 py-2 text-left text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70">
+                            <th className="px-3 py-2 text-left text-hh-status font-medium uppercase tracking-normalst text-muted-foreground/70">
                               Session
                             </th>
-                            <th className="px-3 py-2 text-right text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70 tabular-nums">
+                            <th className="px-3 py-2 text-right text-hh-status font-medium uppercase tracking-normalst text-muted-foreground/70 tabular-nums">
                               OT
                             </th>
-                            <th className="px-3 py-2 text-right text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70 tabular-nums">
+                            <th className="px-3 py-2 text-right text-hh-status font-medium uppercase tracking-normalst text-muted-foreground/70 tabular-nums">
                               OT Amount
                             </th>
-                            <th className="px-3 py-2 text-right text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70 tabular-nums">
+                            <th className="px-3 py-2 text-right text-hh-status font-medium uppercase tracking-normalst text-muted-foreground/70 tabular-nums">
                               Total Pay
                             </th>
                             <th className="w-[84px] px-3 py-2" />
@@ -1783,7 +1783,7 @@ export default function LaborPageClient() {
                                   <div className="flex items-center justify-end gap-2">
                                     <button
                                       type="button"
-                                      className="h-8 w-8 inline-flex items-center justify-center rounded-sm text-emerald-700 hover:bg-emerald-50/60 hover:text-emerald-800"
+                                      className="h-8 w-8 inline-flex items-center justify-center rounded-hh-compact text-[var(--hh-success)] hover:bg-[var(--hh-success-soft-fill)] hover:text-[var(--hh-success)]"
                                       onClick={() => openEdit(e)}
                                       aria-label="Edit"
                                     >
@@ -1791,7 +1791,7 @@ export default function LaborPageClient() {
                                     </button>
                                     <button
                                       type="button"
-                                      className="h-8 w-8 inline-flex items-center justify-center rounded-sm text-red-600 hover:text-red-700 hover:bg-red-50/60"
+                                      className="h-8 w-8 inline-flex items-center justify-center rounded-hh-compact text-[var(--hh-danger)] hover:text-[var(--hh-danger)] hover:bg-[var(--hh-danger-soft-fill)]"
                                       onClick={() => void handleDelete(e)}
                                       aria-label="Delete"
                                       disabled={workerMode}

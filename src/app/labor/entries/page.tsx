@@ -152,7 +152,7 @@ const LaborEntryTableRow = React.memo(function LaborEntryTableRow({
           className="h-4 w-4 rounded border-input"
         />
       </td>
-      <td className="py-1.5 px-3 font-mono tabular-nums tracking-tight text-zinc-500">
+      <td className="py-1.5 px-3 hh-fin tracking-normal text-zinc-500">
         {formatDate(row.work_date)}
       </td>
       <td className="py-1.5 px-3">{row.worker_name ?? "—"}</td>
@@ -176,7 +176,7 @@ const LaborEntryTableRow = React.memo(function LaborEntryTableRow({
       >
         <div>${cost.toFixed(2)}</div>
         {overtimeAmount > 0 ? (
-          <div className="mt-0.5 text-[11px] font-normal text-muted-foreground">
+          <div className="mt-0.5 text-hh-status font-normal text-muted-foreground">
             incl OT ${overtimeAmount.toFixed(2)}
           </div>
         ) : null}
@@ -204,7 +204,7 @@ const LaborEntryTableRow = React.memo(function LaborEntryTableRow({
           <Button
             variant="outline"
             size="sm"
-            className="btn-outline-ghost h-7 text-xs text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+            className="btn-outline-ghost h-7 text-xs text-[var(--hh-danger)] hover:text-[var(--hh-danger)] text-[var(--hh-danger)] dark:hover:text-[var(--hh-danger)]"
             onClick={() => onDelete(row)}
             disabled={rowLocked || isDeleting}
           >
@@ -598,7 +598,11 @@ function DailyEntriesPageInner() {
             <option value="Locked">Locked</option>
           </Select>
         </div>
-        <Button type="button" className="w-full rounded-sm" onClick={() => setFiltersOpen(false)}>
+        <Button
+          type="button"
+          className="w-full rounded-hh-compact"
+          onClick={() => setFiltersOpen(false)}
+        >
           Done
         </Button>
       </MobileFilterSheet>
@@ -606,7 +610,7 @@ function DailyEntriesPageInner() {
       <FilterBar className="hidden md:block">
         <div className="grid w-full grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-6">
           <div className="space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
+            <p className="text-hh-status font-medium uppercase tracking-normal text-text-secondary/75 dark:text-muted-foreground">
               From
             </p>
             <Input
@@ -619,7 +623,7 @@ function DailyEntriesPageInner() {
             />
           </div>
           <div className="space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
+            <p className="text-hh-status font-medium uppercase tracking-normal text-text-secondary/75 dark:text-muted-foreground">
               To
             </p>
             <Input
@@ -630,7 +634,7 @@ function DailyEntriesPageInner() {
             />
           </div>
           <div className="space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
+            <p className="text-hh-status font-medium uppercase tracking-normal text-text-secondary/75 dark:text-muted-foreground">
               Worker
             </p>
             <Select
@@ -648,7 +652,7 @@ function DailyEntriesPageInner() {
             </Select>
           </div>
           <div className="space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
+            <p className="text-hh-status font-medium uppercase tracking-normal text-text-secondary/75 dark:text-muted-foreground">
               Project
             </p>
             <Select
@@ -666,7 +670,7 @@ function DailyEntriesPageInner() {
             </Select>
           </div>
           <div className="space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
+            <p className="text-hh-status font-medium uppercase tracking-normal text-text-secondary/75 dark:text-muted-foreground">
               Status
             </p>
             <Select
@@ -686,7 +690,7 @@ function DailyEntriesPageInner() {
             </Select>
           </div>
           <div className="space-y-1 sm:col-span-2 lg:col-span-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
+            <p className="text-hh-status font-medium uppercase tracking-normal text-text-secondary/75 dark:text-muted-foreground">
               Search
             </p>
             <Input
@@ -744,12 +748,12 @@ function DailyEntriesPageInner() {
         </div>
       ) : null}
       {error ? (
-        <div className="rounded-lg border border-border/60 bg-background px-4 py-3">
-          <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+        <div className="rounded-hh-standard border border-border/60 bg-background px-4 py-3">
+          <p className="text-sm text-[var(--hh-danger)] text-[var(--hh-danger)]">{error}</p>
         </div>
       ) : null}
       {message ? (
-        <div className="rounded-lg border border-gray-100 bg-background px-3 py-2 text-sm text-muted-foreground dark:border-border">
+        <div className="rounded-hh-standard border border-gray-100 bg-background px-3 py-2 text-sm text-muted-foreground dark:border-border">
           {message}
         </div>
       ) : null}
@@ -803,7 +807,7 @@ function DailyEntriesPageInner() {
                         if (!rowLocked) openEdit(row);
                       }}
                     >
-                      <p className="font-mono tabular-nums tracking-tight text-xs text-zinc-500">
+                      <p className="hh-fin tracking-normal text-xs text-zinc-500">
                         {formatDate(row.work_date)}
                       </p>
                       <p className="text-sm font-medium text-foreground">
@@ -837,7 +841,7 @@ function DailyEntriesPageInner() {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="btn-outline-ghost h-8 flex-1 rounded-sm"
+                      className="btn-outline-ghost h-8 flex-1 rounded-hh-compact"
                       onClick={() => openEdit(row)}
                       disabled={rowLocked}
                     >
@@ -846,7 +850,7 @@ function DailyEntriesPageInner() {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="btn-outline-ghost h-8 flex-1 rounded-sm text-red-600 dark:text-red-400"
+                      className="btn-outline-ghost h-8 flex-1 rounded-hh-compact text-[var(--hh-danger)] text-[var(--hh-danger)]"
                       onClick={() => handleDelete(row)}
                       disabled={rowLocked || deletingId === row.id}
                     >
@@ -872,28 +876,28 @@ function DailyEntriesPageInner() {
                   className="h-4 w-4 rounded border-input"
                 />
               </th>
-              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-normalr">
                 Date
               </th>
-              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-normalr">
                 Worker
               </th>
-              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-normalr">
                 Project
               </th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-normalr tabular-nums">
                 Hours
               </th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-normalr tabular-nums">
                 Rate
               </th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-normalr tabular-nums">
                 Cost
               </th>
-              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-normalr">
                 Status
               </th>
-              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-normalr">
                 Notes
               </th>
               <th className="w-24 px-1" />
@@ -1050,16 +1054,16 @@ function DailyEntriesPageInner() {
                   />
                 </div>
               </div>
-              <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-3">
+              <div className="rounded-hh-standard border border-border/60 bg-muted/20 px-3 py-3">
                 <div className="grid grid-cols-3 gap-3 text-sm tabular-nums">
                   <div>
-                    <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+                    <p className="text-hh-status font-medium uppercase tracking-normal text-muted-foreground">
                       Base Pay
                     </p>
                     <p className="mt-1 font-semibold text-foreground">${editBasePay.toFixed(2)}</p>
                   </div>
                   <div className="text-center">
-                    <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+                    <p className="text-hh-status font-medium uppercase tracking-normal text-muted-foreground">
                       Overtime
                     </p>
                     <p className="mt-1 font-semibold text-foreground">
@@ -1067,7 +1071,7 @@ function DailyEntriesPageInner() {
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+                    <p className="text-hh-status font-medium uppercase tracking-normal text-muted-foreground">
                       Total
                     </p>
                     <p className="mt-1 font-semibold text-foreground">${editTotalPay.toFixed(2)}</p>

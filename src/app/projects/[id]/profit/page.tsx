@@ -200,7 +200,7 @@ export default async function ProjectProfitPage({ params }: Props) {
           actions={
             <Link
               href={`/projects/${id}`}
-              className="text-sm text-muted-foreground hover:text-foreground"
+              className="text-hh-body text-[var(--hh-text-secondary)] hover:text-[var(--hh-text-primary)]"
             >
               Project
             </Link>
@@ -210,19 +210,19 @@ export default async function ProjectProfitPage({ params }: Props) {
     >
       <SetBreadcrumbEntityTitle label={project.name} />
       <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2 py-3 border-b border-border/60">
-        <span className="text-sm text-muted-foreground">Revenue</span>
-        <span className="text-lg font-medium tabular-nums">${fmtUsd(revenue)}</span>
-        <span className="text-sm text-muted-foreground">Total Cost</span>
-        <span className="text-lg font-medium tabular-nums">${fmtUsd(totalCost)}</span>
-        <span className="text-sm text-muted-foreground">Profit</span>
+        <span className="text-hh-body text-[var(--hh-text-secondary)]">Revenue</span>
+        <span className="text-hh-section-title font-medium tabular-nums">${fmtUsd(revenue)}</span>
+        <span className="text-hh-body text-[var(--hh-text-secondary)]">Total Cost</span>
+        <span className="text-hh-section-title font-medium tabular-nums">${fmtUsd(totalCost)}</span>
+        <span className="text-hh-body text-[var(--hh-text-secondary)]">Profit</span>
         <span
-          className={`text-lg font-medium tabular-nums ${profit >= 0 ? "text-foreground" : "text-destructive"}`}
+          className={`text-hh-section-title font-medium tabular-nums ${profit >= 0 ? "text-[var(--hh-text-primary)]" : "text-destructive"}`}
         >
           ${fmtUsd(profit)}
         </span>
-        <span className="text-sm text-muted-foreground">Margin</span>
+        <span className="text-hh-body text-[var(--hh-text-secondary)]">Margin</span>
         <span
-          className={`text-lg font-medium tabular-nums ${marginPct >= 0 ? "text-foreground" : "text-destructive"}`}
+          className={`text-hh-section-title font-medium tabular-nums ${marginPct >= 0 ? "text-[var(--hh-text-primary)]" : "text-destructive"}`}
         >
           {marginPct.toFixed(1)}%
         </span>
@@ -230,23 +230,27 @@ export default async function ProjectProfitPage({ params }: Props) {
       <Divider />
       <SectionHeader label="Forecast" />
       <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2 py-3 border-b border-border/60">
-        <span className="text-sm text-muted-foreground">Revenue</span>
-        <span className="text-lg font-medium tabular-nums">${fmtUsd(revenue)}</span>
-        <span className="text-sm text-muted-foreground">Actual Cost</span>
-        <span className="text-lg font-medium tabular-nums">${fmtUsd(totalCost)}</span>
-        <span className="text-sm text-muted-foreground">Remaining Commitment</span>
-        <span className="text-lg font-medium tabular-nums">${fmtUsd(remainingCommitment)}</span>
-        <span className="text-sm text-muted-foreground">Forecast Final Cost</span>
-        <span className="text-lg font-medium tabular-nums">${fmtUsd(forecastFinalCost)}</span>
-        <span className="text-sm text-muted-foreground">Forecast Profit</span>
+        <span className="text-hh-body text-[var(--hh-text-secondary)]">Revenue</span>
+        <span className="text-hh-section-title font-medium tabular-nums">${fmtUsd(revenue)}</span>
+        <span className="text-hh-body text-[var(--hh-text-secondary)]">Actual Cost</span>
+        <span className="text-hh-section-title font-medium tabular-nums">${fmtUsd(totalCost)}</span>
+        <span className="text-hh-body text-[var(--hh-text-secondary)]">Remaining Commitment</span>
+        <span className="text-hh-section-title font-medium tabular-nums">
+          ${fmtUsd(remainingCommitment)}
+        </span>
+        <span className="text-hh-body text-[var(--hh-text-secondary)]">Forecast Final Cost</span>
+        <span className="text-hh-section-title font-medium tabular-nums">
+          ${fmtUsd(forecastFinalCost)}
+        </span>
+        <span className="text-hh-body text-[var(--hh-text-secondary)]">Forecast Profit</span>
         <span
-          className={`text-lg font-medium tabular-nums ${forecastProfit < 0 ? "text-destructive" : forecastProfit > 0 ? "text-hh-profit-positive dark:text-hh-profit-positive" : ""}`}
+          className={`text-hh-section-title font-medium tabular-nums ${forecastProfit < 0 ? "text-destructive" : forecastProfit > 0 ? "text-hh-profit-positive dark:text-hh-profit-positive" : ""}`}
         >
           ${fmtUsd(forecastProfit)}
         </span>
-        <span className="text-sm text-muted-foreground">Forecast Margin %</span>
+        <span className="text-hh-body text-[var(--hh-text-secondary)]">Forecast Margin %</span>
         <span
-          className={`text-lg font-medium tabular-nums ${forecastProfit < 0 ? "text-destructive" : forecastProfit > 0 ? "text-hh-profit-positive dark:text-hh-profit-positive" : ""}`}
+          className={`text-hh-section-title font-medium tabular-nums ${forecastProfit < 0 ? "text-destructive" : forecastProfit > 0 ? "text-hh-profit-positive dark:text-hh-profit-positive" : ""}`}
         >
           {forecastMarginPct.toFixed(1)}%
         </span>
@@ -255,25 +259,25 @@ export default async function ProjectProfitPage({ params }: Props) {
       <SectionHeader label="Forecast by Cost Code" />
       <div className="airtable-table-wrap airtable-table-wrap--ruled">
         <div className="airtable-table-scroll">
-          <table className="w-full text-sm">
+          <table className="w-full text-hh-body">
             <thead>
               <tr>
-                <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                   Cost Code
                 </th>
-                <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
                   Budget
                 </th>
-                <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
                   Actual
                 </th>
-                <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
                   Remaining
                 </th>
-                <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
                   Forecast
                 </th>
-                <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
                   Variance
                 </th>
               </tr>
@@ -283,7 +287,7 @@ export default async function ProjectProfitPage({ params }: Props) {
                 <tr>
                   <td
                     colSpan={6}
-                    className="h-11 min-h-[44px] px-3 py-0 text-center text-xs text-muted-foreground"
+                    className="h-11 min-h-[44px] px-3 py-0 text-center text-hh-metadata text-[var(--hh-text-secondary)]"
                   >
                     No budget items.
                   </td>
@@ -296,23 +300,23 @@ export default async function ProjectProfitPage({ params }: Props) {
                     : "text-hh-profit-positive dark:text-hh-profit-positive";
                   return (
                     <tr key={r.costCode} className={listTableRowStaticClassName}>
-                      <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] font-medium">
+                      <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell font-medium">
                         {r.costCode}
                       </td>
-                      <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle font-mono text-[13px] tabular-nums">
+                      <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums">
                         ${fmtUsd(r.budget)}
                       </td>
-                      <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle font-mono text-[13px] tabular-nums">
+                      <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums">
                         ${fmtUsd(r.actual)}
                       </td>
-                      <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle font-mono text-[13px] tabular-nums">
+                      <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums">
                         ${fmtUsd(r.remaining)}
                       </td>
-                      <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle font-mono text-[13px] tabular-nums">
+                      <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums">
                         ${fmtUsd(r.forecast)}
                       </td>
                       <td
-                        className={`h-11 min-h-[44px] px-3 py-0 text-right align-middle font-mono text-[13px] tabular-nums ${varianceClass}`}
+                        className={`h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums ${varianceClass}`}
                       >
                         ${fmtUsd(r.variance)}
                       </td>
@@ -328,22 +332,22 @@ export default async function ProjectProfitPage({ params }: Props) {
       <SectionHeader label="Cost breakdown" />
       <div className="airtable-table-wrap airtable-table-wrap--ruled">
         <div className="airtable-table-scroll">
-          <table className="w-full text-sm">
+          <table className="w-full text-hh-body">
             <thead>
               <tr>
-                <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                   Category
                 </th>
-                <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
                   Budget
                 </th>
-                <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
                   Actual
                 </th>
-                <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
                   Variance
                 </th>
-                <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
                   Impact on Profit
                 </th>
               </tr>
@@ -351,20 +355,20 @@ export default async function ProjectProfitPage({ params }: Props) {
             <tbody>
               {rows.map((r) => (
                 <tr key={r.category} className={listTableRowStaticClassName}>
-                  <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] font-medium">
+                  <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell font-medium">
                     {r.category}
                   </td>
-                  <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle font-mono text-[13px] tabular-nums">
+                  <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums">
                     {r.budget != null ? `$${fmtUsd(r.budget)}` : "—"}
                   </td>
-                  <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle font-mono text-[13px] tabular-nums">
+                  <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums">
                     ${fmtUsd(r.actual)}
                   </td>
-                  <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle font-mono text-[13px] tabular-nums">
+                  <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums">
                     {r.variance != null ? `$${fmtUsd(r.variance)}` : "—"}
                   </td>
                   <td
-                    className={`h-11 min-h-[44px] px-3 py-0 text-right align-middle font-mono text-[13px] tabular-nums ${r.impactOnProfit <= 0 ? "text-destructive" : ""}`}
+                    className={`h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums ${r.impactOnProfit <= 0 ? "text-destructive" : ""}`}
                   >
                     ${fmtUsd(r.impactOnProfit)}
                   </td>
@@ -378,19 +382,19 @@ export default async function ProjectProfitPage({ params }: Props) {
       <SectionHeader label="Subcontracts" />
       <div className="airtable-table-wrap airtable-table-wrap--ruled">
         <div className="airtable-table-scroll">
-          <table className="w-full text-sm">
+          <table className="w-full text-hh-body">
             <thead>
               <tr>
-                <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                   Subcontractor
                 </th>
-                <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
                   Revised Contract
                 </th>
-                <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
                   Paid
                 </th>
-                <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
                   Exposure
                 </th>
               </tr>
@@ -400,7 +404,7 @@ export default async function ProjectProfitPage({ params }: Props) {
                 <tr>
                   <td
                     colSpan={4}
-                    className="h-11 min-h-[44px] px-3 py-0 text-center text-xs text-muted-foreground"
+                    className="h-11 min-h-[44px] px-3 py-0 text-center text-hh-metadata text-[var(--hh-text-secondary)]"
                   >
                     No subcontracts.
                   </td>
@@ -410,23 +414,23 @@ export default async function ProjectProfitPage({ params }: Props) {
                   const exposurePositive = s.exposure > 0;
                   const paidInFull = s.paid >= s.revised;
                   const rowClass = paidInFull
-                    ? "bg-[#166534]/10 dark:bg-[#166534]/10"
+                    ? "bg-[var(--hh-success-soft-fill)]"
                     : exposurePositive
-                      ? "bg-orange-500/10 dark:bg-orange-500/10"
+                      ? "bg-[var(--hh-warning-soft-fill)] dark:bg-[var(--hh-warning-soft-fill)]"
                       : "";
                   return (
                     <tr key={s.id} className={cn(listTableRowStaticClassName, rowClass)}>
-                      <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] font-medium">
+                      <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell font-medium">
                         {s.subcontractor_name}
                       </td>
-                      <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle font-mono text-[13px] tabular-nums">
+                      <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums">
                         ${fmtUsd(s.revised)}
                       </td>
-                      <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle font-mono text-[13px] tabular-nums">
+                      <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums">
                         ${fmtUsd(s.paid)}
                       </td>
                       <td
-                        className={`h-11 min-h-[44px] px-3 py-0 text-right align-middle font-mono text-[13px] tabular-nums ${exposurePositive ? "text-orange-600 dark:text-orange-400" : paidInFull ? "text-hh-profit-positive dark:text-hh-profit-positive" : ""}`}
+                        className={`h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums ${exposurePositive ? "text-[var(--hh-warning)] dark:text-[var(--hh-warning)]" : paidInFull ? "text-hh-profit-positive dark:text-hh-profit-positive" : ""}`}
                       >
                         ${fmtUsd(s.exposure)}
                       </td>

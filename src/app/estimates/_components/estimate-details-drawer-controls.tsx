@@ -90,7 +90,9 @@ export function EstimateTaxPresetMenu({
           >
             {preset.label}
             {preset.ratePct > 0 ? (
-              <span className="ml-auto tabular-nums text-[#929CAF]">{preset.ratePct}%</span>
+              <span className="hh-fin ml-auto text-[var(--hh-text-tertiary)]">
+                {preset.ratePct}%
+              </span>
             ) : null}
           </DropdownMenuItem>
         ))}
@@ -101,7 +103,7 @@ export function EstimateTaxPresetMenu({
             onSelect={() => applyRate(preset.ratePct)}
           >
             {preset.label}
-            <span className="ml-auto tabular-nums text-[#929CAF]">{preset.ratePct}%</span>
+            <span className="hh-fin ml-auto text-[var(--hh-text-tertiary)]">{preset.ratePct}%</span>
           </DropdownMenuItem>
         ))}
         <DropdownMenuSeparator className="bg-white/[0.08]" />
@@ -180,7 +182,7 @@ export function EstimateDiscountOptionsPopover({
           type="button"
           variant="ghost"
           size="sm"
-          className={cn("h-8 w-full justify-start text-[12px]", EB.lineItemMoreMenuItem)}
+          className={cn("h-8 w-full justify-start text-hh-metadata", EB.lineItemMoreMenuItem)}
           onClick={applyNoDiscount}
         >
           No discount
@@ -189,15 +191,13 @@ export function EstimateDiscountOptionsPopover({
           type="button"
           variant="ghost"
           size="sm"
-          className={cn("h-8 w-full justify-start text-[12px]", EB.lineItemMoreMenuItem)}
+          className={cn("h-8 w-full justify-start text-hh-metadata", EB.lineItemMoreMenuItem)}
           onClick={applyNoDiscount}
         >
           Clear discount
         </Button>
         <div className="border-t border-white/[0.08] pt-2 space-y-1.5">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[#929CAF]">
-            Percentage %
-          </p>
+          <p className="text-hh-status uppercase text-[var(--hh-text-tertiary)]">Percentage %</p>
           <div className="flex gap-1.5">
             <Input
               type="number"
@@ -224,9 +224,7 @@ export function EstimateDiscountOptionsPopover({
           ) : null}
         </div>
         <div className="border-t border-white/[0.08] pt-2 space-y-1.5">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[#929CAF]">
-            Fixed amount $
-          </p>
+          <p className="text-hh-status uppercase text-[var(--hh-text-tertiary)]">Fixed amount $</p>
           <div className="flex gap-1.5">
             <Input
               type="number"

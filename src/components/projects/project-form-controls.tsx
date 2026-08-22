@@ -106,14 +106,14 @@ export function ProjectBudgetInput({
     <div className={className ?? neoFormFieldClassName}>
       <div className="flex items-center justify-between gap-2">
         <NeoFieldLabel htmlFor={inputId}>{label}</NeoFieldLabel>
-        <p className="min-w-0 truncate text-right text-[11px] font-medium tabular-nums text-[var(--neo-text-secondary)]">
+        <p className="min-w-0 truncate text-right text-hh-status font-medium tabular-nums text-[var(--hh-text-secondary)]">
           {estimate || estimateFallback}
         </p>
       </div>
-      <div className="group flex h-11 items-center overflow-hidden rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] shadow-none transition-all duration-150 ease-out focus-within:border-[var(--neo-gold)] focus-within:ring-2 focus-within:ring-[var(--neo-gold-ring)]">
-        <div className="flex h-full items-center gap-2 border-r border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-3 text-xs font-semibold tracking-normal text-[var(--neo-text-secondary)]">
+      <div className="group flex h-11 items-center overflow-hidden rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] shadow-none transition-all duration-150 ease-out focus-within:border-[var(--hh-action-primary)] focus-within:ring-2 focus-within:ring-[var(--hh-focus-ring)]">
+        <div className="flex h-full items-center gap-2 border-r border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 text-hh-metadata font-semibold tracking-normal text-[var(--hh-text-secondary)]">
           <span>USD</span>
-          <span className="financial-nums text-sm tracking-normal text-[var(--neo-text-primary)]">
+          <span className="financial-nums text-hh-body tracking-normal text-[var(--hh-text-primary)]">
             $
           </span>
         </div>
@@ -129,7 +129,7 @@ export function ProjectBudgetInput({
           onChange={(e) => onValueChange(budgetDigits(e.target.value))}
           disabled={disabled}
           aria-invalid={error}
-          className="financial-nums h-full min-w-0 flex-1 bg-transparent px-3 text-right text-[15px] font-semibold tracking-normal text-[var(--neo-text-primary)] outline-none placeholder:text-[var(--neo-text-tertiary)] disabled:cursor-not-allowed disabled:opacity-50"
+          className="financial-nums h-full min-w-0 flex-1 bg-transparent px-3 text-right text-hh-body font-semibold tracking-normal text-[var(--hh-text-primary)] outline-none placeholder:text-[var(--hh-text-tertiary)] disabled:cursor-not-allowed disabled:opacity-50"
         />
       </div>
     </div>
@@ -183,7 +183,7 @@ export function ProjectAddressField({
           type="button"
           variant="ghost"
           size="sm"
-          className="h-8 px-2 text-xs text-[var(--neo-gold)] hover:text-[var(--neo-gold-soft)]"
+          className="h-8 px-2 text-hh-metadata text-[var(--hh-action-primary)] hover:text-[var(--hh-action-primary)]"
           onClick={openAddressEditor}
           disabled={disabled}
         >
@@ -200,13 +200,14 @@ export function ProjectAddressField({
         aria-label={value ? `Project address: ${value}` : "Add project address"}
         onClick={openAddressEditor}
         className={cn(
-          "flex min-h-10 w-full items-center rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-3 py-2 text-left text-sm text-[var(--neo-text-primary)] shadow-none transition-all duration-150 ease-out",
-          "cursor-pointer hover:bg-[var(--neo-surface-muted)] focus-visible:border-[var(--neo-gold)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]",
+          "flex min-h-10 w-full items-center rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 py-2 text-left text-hh-body text-[var(--hh-text-primary)] shadow-none transition-all duration-150 ease-out",
+          "cursor-pointer hover:bg-[var(--hh-l2-operational-surface)] focus-visible:border-[var(--hh-action-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)]",
           "disabled:cursor-not-allowed disabled:opacity-50 max-md:min-h-11",
-          error && "border-rose-500/45 focus-visible:border-rose-400 focus-visible:ring-rose-500/20"
+          error &&
+            "border-[var(--hh-danger-border)] focus-visible:border-[var(--hh-danger-border)] focus-visible:ring-[var(--hh-danger-border)]"
         )}
       >
-        <span className={cn("min-w-0 truncate", !value && "text-[var(--neo-text-tertiary)]")}>
+        <span className={cn("min-w-0 truncate", !value && "text-[var(--hh-text-tertiary)]")}>
           {value || "Add project address"}
         </span>
       </button>
@@ -220,12 +221,16 @@ export function ProjectAddressField({
               <Button
                 type="button"
                 variant="outline"
-                className="min-h-11 rounded-md"
+                className="min-h-11 rounded-hh-standard"
                 onClick={() => setOpen(false)}
               >
                 Cancel
               </Button>
-              <Button type="button" className="min-h-11 rounded-md" onClick={saveAddressDetails}>
+              <Button
+                type="button"
+                className="min-h-11 rounded-hh-standard"
+                onClick={saveAddressDetails}
+              >
                 Save address
               </Button>
             </>

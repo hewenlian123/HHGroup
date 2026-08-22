@@ -75,19 +75,19 @@ export function EstimateAddLineMenu({
         >
           Blank line
         </DropdownMenuItem>
-        <DropdownMenuSeparator className="my-1 bg-[var(--eb-border)]" />
+        <DropdownMenuSeparator className="my-1 bg-[var(--hh-border)]" />
         <DropdownMenuLabel className={EB.builderPickerGroupLabel}>Examples</DropdownMenuLabel>
         {LINE_ITEM_QUICK_PRESETS.map((preset) => renderPresetItem(preset, `ex-${preset.title}`))}
         {recentItems.length > 0 ? (
           <>
-            <DropdownMenuSeparator className="my-1 bg-[var(--eb-border)]" />
+            <DropdownMenuSeparator className="my-1 bg-[var(--hh-border)]" />
             <DropdownMenuLabel className={EB.builderPickerGroupLabel}>Recent</DropdownMenuLabel>
             {recentItems.map((preset) => renderPresetItem(preset, preset.id))}
           </>
         ) : null}
         {savedItems.length > 0 ? (
           <>
-            <DropdownMenuSeparator className="my-1 bg-[var(--eb-border)]" />
+            <DropdownMenuSeparator className="my-1 bg-[var(--hh-border)]" />
             <DropdownMenuLabel className={EB.builderPickerGroupLabel}>Saved</DropdownMenuLabel>
             {savedItems.map((preset) => renderPresetItem(preset, preset.id))}
           </>

@@ -1,15 +1,15 @@
 .invoice-estimate-origin-workspace {
   min-height: 100%;
   background: var(--hh-l1-workspace);
-  color: var(--neo-text-secondary);
+  color: var(--hh-text-secondary);
 }
 
 .invoice-estimate-origin-workspace [data-neo-page-header="true"] h1 {
-  color: var(--neo-text-primary);
+  color: var(--hh-text-primary);
 }
 
 .invoice-estimate-origin-workspace [data-neo-page-header="true"] p {
-  color: var(--neo-text-secondary);
+  color: var(--hh-text-secondary);
 }
 
 .invoice-estimate-origin-workspace .invoice-new-line-card {
@@ -17,20 +17,20 @@
 }
 
 .invoice-estimate-origin-workspace .invoice-new-line-card:hover {
-  background: var(--hh-l2-operational-surface);
+  background: var(--hh-l3-hover);
 }
 
 .invoice-estimate-origin-workspace .invoice-new-action-footer {
-  background: var(--hh-l2-operational-surface);
-  box-shadow: 0 -8px 24px rgb(17 19 21 / 6%);
+  background: var(--hh-l4-floating-surface);
+  box-shadow: var(--hh-shadow-floating);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
 
 .invoice-estimate-origin-workspace [aria-label="Remove line item"]:hover:not(:disabled) {
-  border-color: #fecdd3 !important;
-  background: #fff1f2 !important;
-  color: #a13737 !important;
+  border-color: var(--hh-danger-border) !important;
+  background: var(--hh-danger-soft-fill) !important;
+  color: var(--hh-danger) !important;
 }
 
 @media (prefers-reduced-motion: reduce) {

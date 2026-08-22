@@ -153,7 +153,7 @@ export function BillRowActions({
           <Button
             variant="outline"
             size="sm"
-            className="btn-outline-ghost h-7 text-xs"
+            className="btn-outline-ghost h-7 text-hh-metadata"
             onClick={() => setEditOpen(true)}
           >
             Edit
@@ -161,7 +161,7 @@ export function BillRowActions({
           <Button
             variant="outline"
             size="sm"
-            className="btn-outline-ghost h-7 text-xs text-red-600"
+            className="btn-outline-ghost h-7 text-hh-metadata text-[var(--hh-danger)]"
             onClick={handleDelete}
             disabled={busy}
           >
@@ -174,7 +174,7 @@ export function BillRowActions({
           <Button
             variant="outline"
             size="sm"
-            className="btn-outline-ghost h-7 text-xs"
+            className="btn-outline-ghost h-7 text-hh-metadata"
             onClick={() => setPayOpen(true)}
           >
             Record payment
@@ -182,7 +182,7 @@ export function BillRowActions({
           <Button
             variant="outline"
             size="sm"
-            className="btn-outline-ghost h-7 text-xs text-muted-foreground"
+            className="btn-outline-ghost h-7 text-hh-metadata text-[var(--hh-text-secondary)]"
             onClick={handleVoid}
             disabled={busy}
           >
@@ -191,7 +191,7 @@ export function BillRowActions({
         </>
       ) : null}
       {error && !editOpen && !payOpen ? (
-        <span className="text-xs text-red-600 dark:text-red-400">{error}</span>
+        <span className="text-hh-metadata text-[var(--hh-danger)]">{error}</span>
       ) : null}
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
@@ -201,7 +201,9 @@ export function BillRowActions({
           </DialogHeader>
           <div className="grid gap-3 py-2">
             <div>
-              <label className="text-xs font-medium text-muted-foreground">Bill date</label>
+              <label className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]">
+                Bill date
+              </label>
               <Input
                 type="date"
                 value={billDate}
@@ -211,7 +213,9 @@ export function BillRowActions({
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground">Due date</label>
+              <label className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]">
+                Due date
+              </label>
               <Input
                 type="date"
                 value={dueDate}
@@ -220,7 +224,9 @@ export function BillRowActions({
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground">Amount</label>
+              <label className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]">
+                Amount
+              </label>
               <Input
                 type="number"
                 step="0.01"
@@ -232,7 +238,9 @@ export function BillRowActions({
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground">Description</label>
+              <label className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]">
+                Description
+              </label>
               <Input
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
@@ -240,7 +248,7 @@ export function BillRowActions({
               />
             </div>
             {error ? (
-              <p className="text-xs text-red-600 dark:text-red-400" role="alert">
+              <p className="text-hh-metadata text-[var(--hh-danger)]" role="alert">
                 {error}
               </p>
             ) : null}
@@ -269,26 +277,28 @@ export function BillRowActions({
             <DialogTitle>Record payment</DialogTitle>
           </DialogHeader>
           <div className="grid gap-3 py-2">
-            <div className="grid grid-cols-2 gap-2 rounded-md border border-border/60 bg-muted/20 p-3 text-xs">
+            <div className="grid grid-cols-2 gap-2 rounded-hh-standard border border-border/60 bg-muted/20 p-3 text-hh-metadata">
               <div>
-                <p className="text-muted-foreground">Bill amount</p>
-                <p className="font-mono tabular-nums">${fmtUsd(bill.amount)}</p>
+                <p className="text-[var(--hh-text-secondary)]">Bill amount</p>
+                <p className="hh-fin tabular-nums">${fmtUsd(bill.amount)}</p>
               </div>
               <div>
-                <p className="text-muted-foreground">Material deductions</p>
-                <p className="font-mono tabular-nums">${fmtUsd(materialDeductions)}</p>
+                <p className="text-[var(--hh-text-secondary)]">Material deductions</p>
+                <p className="hh-fin tabular-nums">${fmtUsd(materialDeductions)}</p>
               </div>
               <div>
-                <p className="text-muted-foreground">Payments made</p>
-                <p className="font-mono tabular-nums">${fmtUsd(paymentsMade)}</p>
+                <p className="text-[var(--hh-text-secondary)]">Payments made</p>
+                <p className="hh-fin tabular-nums">${fmtUsd(paymentsMade)}</p>
               </div>
               <div>
-                <p className="text-muted-foreground">Net payable</p>
-                <p className="font-mono font-semibold tabular-nums">${fmtUsd(netPayable)}</p>
+                <p className="text-[var(--hh-text-secondary)]">Net payable</p>
+                <p className="hh-fin font-semibold tabular-nums">${fmtUsd(netPayable)}</p>
               </div>
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground">Payment date</label>
+              <label className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]">
+                Payment date
+              </label>
               <Input
                 type="date"
                 value={paymentDate}
@@ -298,7 +308,9 @@ export function BillRowActions({
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground">Amount</label>
+              <label className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]">
+                Amount
+              </label>
               <Input
                 type="number"
                 aria-label="Payment amount"
@@ -311,7 +323,9 @@ export function BillRowActions({
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground">Method</label>
+              <label className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]">
+                Method
+              </label>
               <Input
                 value={paymentMethod}
                 onChange={(e) => setPaymentMethod(e.target.value)}
@@ -320,7 +334,9 @@ export function BillRowActions({
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground">Note</label>
+              <label className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]">
+                Note
+              </label>
               <Input
                 value={paymentNote}
                 onChange={(e) => setPaymentNote(e.target.value)}
@@ -328,7 +344,7 @@ export function BillRowActions({
               />
             </div>
             {error ? (
-              <p className="text-xs text-red-600 dark:text-red-400" role="alert">
+              <p className="text-hh-metadata text-[var(--hh-danger)]" role="alert">
                 {error}
               </p>
             ) : null}

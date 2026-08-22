@@ -37,11 +37,11 @@ import {
 import { cn } from "@/lib/utils";
 import "./estimate-list-operational.css";
 
-const PAGE_BG = "estimate-list-workspace text-[var(--neo-text-secondary)]";
+const PAGE_BG = "estimate-list-workspace text-[var(--hh-text-secondary)]";
 const FIELD =
-  "estimate-list-search-field h-10 rounded-md border border-[var(--neo-border)] bg-[var(--hh-l2-operational-surface)] text-[14px] text-[var(--neo-text-primary)] shadow-none transition-[border-color,background-color,box-shadow] duration-150 placeholder:text-[var(--neo-text-tertiary)] hover:border-[var(--neo-border-strong)] hover:bg-[var(--neo-surface-hover)] focus-visible:border-[var(--neo-gold)] focus-visible:bg-[var(--hh-l2-operational-surface)] focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]";
+  "estimate-list-search-field text-hh-control h-hh-control-standard rounded-hh-compact border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-none transition-[border-color,background-color,box-shadow] duration-150 placeholder:text-[var(--hh-text-tertiary)] hover:border-[var(--hh-border-strong)] hover:bg-[var(--hh-l3-hover)] focus-visible:border-[var(--hh-border-strong)] focus-visible:bg-[var(--hh-l2-operational-surface)] focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)]";
 const PRIMARY_ACTION =
-  "rounded-md border border-[#171717] bg-[#171717] text-white shadow-sm hover:border-[#30302e] hover:bg-[#30302e] hover:text-white focus-visible:ring-2 focus-visible:ring-[#171717]/20";
+  "rounded-hh-compact border border-[var(--hh-action-primary)] bg-[var(--hh-action-primary)] text-[var(--hh-action-primary-foreground)] shadow-none hover:opacity-90 focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)]";
 
 export function EstimatesListClient({
   list,
@@ -159,7 +159,7 @@ export function EstimatesListClient({
       {loadWarning && (
         <p
           role="status"
-          className="rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-3 py-2 text-sm text-[var(--neo-text-secondary)]"
+          className="text-hh-body rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l3-hover)] px-3 py-2 text-[var(--hh-text-secondary)]"
         >
           {loadWarning}
         </p>
@@ -167,7 +167,7 @@ export function EstimatesListClient({
       {errorMessage && (
         <p
           role="alert"
-          className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700"
+          className="text-hh-error rounded-hh-standard border border-[var(--hh-danger-border)] bg-[var(--hh-danger-soft-fill)] px-3 py-2 text-[var(--hh-danger)]"
         >
           {errorMessage}
         </p>
@@ -195,7 +195,7 @@ export function EstimatesListClient({
             label="Sent"
             value={sentCount}
             tone="warning"
-            valueClassName="!text-[#835d18]"
+            valueClassName="!text-[var(--hh-warning)]"
             meta="Awaiting owner response"
           />
           <KpiTile
@@ -229,7 +229,7 @@ export function EstimatesListClient({
               <div className="space-y-2">
                 <label
                   htmlFor="estimate-mobile-status-filter"
-                  className="text-xs font-medium text-[var(--neo-text-secondary)]"
+                  className="text-hh-label text-[var(--hh-text-secondary)]"
                 >
                   Status
                 </label>
@@ -258,7 +258,7 @@ export function EstimatesListClient({
             <NeoToolbar className="estimate-list-toolbar hidden gap-2 p-2 md:flex md:flex-row md:items-center md:justify-between">
               <div className="relative min-w-[260px] max-w-md flex-1">
                 <Search
-                  className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--neo-text-tertiary)]"
+                  className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--hh-text-tertiary)]"
                   aria-hidden="true"
                 />
                 <Input

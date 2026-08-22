@@ -27,7 +27,7 @@ export function PayrollWorkerSelect({
     <select
       value={selectedWorkerId}
       onChange={handleChange}
-      className="h-9 min-w-[220px] rounded-md border border-input bg-transparent px-3 text-sm"
+      className="h-9 min-w-[220px] rounded-hh-compact border border-input bg-transparent px-3 text-sm"
     >
       <option value="">Select worker</option>
       {workers.map((w) => (

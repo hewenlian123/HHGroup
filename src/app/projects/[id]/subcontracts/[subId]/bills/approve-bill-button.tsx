@@ -36,11 +36,11 @@ export function ApproveBillButton({ projectId, subcontractId, billId }: Props) {
         type="button"
         onClick={handleClick}
         disabled={busy}
-        className="h-8 rounded-md border border-input bg-transparent px-2.5 text-xs hover:bg-accent hover:text-accent-foreground disabled:opacity-50"
+        className="h-8 rounded-hh-standard border border-input bg-transparent px-2.5 text-hh-metadata hover:bg-accent hover:text-accent-foreground disabled:opacity-50"
       >
         {busy ? "…" : "Approve"}
       </button>
-      {error ? <span className="text-xs text-red-600 dark:text-red-400">{error}</span> : null}
+      {error ? <span className="text-hh-metadata text-[var(--hh-danger)]">{error}</span> : null}
     </span>
   );
 }

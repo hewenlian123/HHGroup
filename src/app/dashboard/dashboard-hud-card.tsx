@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { TYPO } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 
 type HudTone = "copper" | "emerald" | "steel" | "alert";
@@ -32,7 +33,7 @@ export function DashboardHudCard({
   return (
     <article
       className={cn(
-        "dashboard-hud-card group relative min-w-0 overflow-hidden rounded-xl px-4 py-4",
+        "dashboard-hud-card group relative min-w-0 overflow-hidden rounded-hh-standard px-4 py-4",
         toneClass[tone],
         className
       )}
@@ -40,15 +41,11 @@ export function DashboardHudCard({
     >
       <span className="dashboard-hud-corner dashboard-hud-corner--tl" aria-hidden />
       <span className="dashboard-hud-corner dashboard-hud-corner--tr" aria-hidden />
-      <p className="text-[10px] font-semibold uppercase leading-none tracking-normal text-[var(--hud-muted)]">
-        {label}
-      </p>
-      <div className="mt-3 truncate text-[23px] font-semibold leading-none tracking-normal text-[var(--hud-text)] tabular-nums md:text-[28px]">
+      <p className={cn(TYPO.tableHeader, "uppercase text-[var(--hh-text-secondary)]")}>{label}</p>
+      <div className={cn(TYPO.kpiTotal, "mt-3 truncate text-[var(--hh-text-primary)]")}>
         {value}
       </div>
-      <p className="mt-3 line-clamp-2 min-h-[2rem] text-[12px] leading-snug text-[var(--hud-muted)]">
-        {meta}
-      </p>
+      <p className={cn(TYPO.metadata, "mt-3 line-clamp-2 min-h-[2rem]")}>{meta}</p>
       <div className="mt-4 flex h-6 items-end gap-1" aria-hidden>
         {sparkHeights.map((height, index) => (
           <span

@@ -93,7 +93,7 @@ export default function LaborInvoiceDetailPage() {
         <p className="text-muted-foreground">Labor invoice not found.</p>
         <Button
           variant="outline"
-          className="rounded-lg w-fit"
+          className="rounded-hh-standard w-fit"
           onClick={() => router.push("/labor/invoices")}
         >
           Back to list
@@ -221,7 +221,7 @@ export default function LaborInvoiceDetailPage() {
       <section className="border-b border-gray-100 pb-6 dark:border-border">
         <div className="mb-4 flex items-center justify-between gap-3">
           <div>
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+            <p className="text-hh-status font-medium uppercase tracking-normal text-muted-foreground">
               Invoice #
             </p>
             <p className="text-lg font-semibold text-foreground">{invoice.invoiceNo}</p>
@@ -232,25 +232,35 @@ export default function LaborInvoiceDetailPage() {
           </span>
         </div>
         <div className="mb-5 flex flex-wrap gap-2">
-          <Button size="sm" className="rounded-sm" onClick={handleSaveDraft} disabled={isReadOnly}>
+          <Button
+            size="sm"
+            className="rounded-hh-compact"
+            onClick={handleSaveDraft}
+            disabled={isReadOnly}
+          >
             Save
           </Button>
           <Button
             variant="outline"
             size="sm"
-            className="rounded-sm"
+            className="rounded-hh-compact"
             onClick={handleMarkReviewed}
             disabled={isReadOnly}
           >
             Mark Reviewed
           </Button>
-          <Button size="sm" className="rounded-sm" onClick={handleConfirm} disabled={!canConfirm}>
+          <Button
+            size="sm"
+            className="rounded-hh-compact"
+            onClick={handleConfirm}
+            disabled={!canConfirm}
+          >
             Confirm
           </Button>
           <Button
             variant="outline"
             size="sm"
-            className="rounded-sm"
+            className="rounded-hh-compact"
             onClick={handleVoid}
             disabled={invoice.status === "void"}
           >
@@ -259,7 +269,7 @@ export default function LaborInvoiceDetailPage() {
         </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div className="grid gap-1.5">
-            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+            <label className="text-hh-status font-medium uppercase tracking-normal text-muted-foreground">
               Worker
             </label>
             <Select
@@ -275,19 +285,19 @@ export default function LaborInvoiceDetailPage() {
             </Select>
           </div>
           <div className="grid gap-1.5">
-            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+            <label className="text-hh-status font-medium uppercase tracking-normal text-muted-foreground">
               Date
             </label>
             <Input
               type="date"
               value={invoice.invoiceDate}
               onChange={(e) => handleHeaderSave({ invoiceDate: e.target.value })}
-              className="rounded-sm"
+              className="rounded-hh-compact"
               disabled={isReadOnly}
             />
           </div>
           <div className="grid gap-1.5">
-            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+            <label className="text-hh-status font-medium uppercase tracking-normal text-muted-foreground">
               Amount
             </label>
             <Input
@@ -297,11 +307,11 @@ export default function LaborInvoiceDetailPage() {
               value={invoice.amount}
               onChange={(e) => handleHeaderSave({ amount: Number(e.target.value) || 0 })}
               disabled={isReadOnly}
-              className="rounded-sm"
+              className="rounded-hh-compact"
             />
           </div>
           <div className="grid gap-1.5">
-            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+            <label className="text-hh-status font-medium uppercase tracking-normal text-muted-foreground">
               Status
             </label>
             <div className="flex h-10 items-center">
@@ -313,17 +323,17 @@ export default function LaborInvoiceDetailPage() {
           </div>
         </div>
         <div className="mt-4 grid gap-1.5">
-          <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+          <label className="text-hh-status font-medium uppercase tracking-normal text-muted-foreground">
             Memo
           </label>
           <textarea
             value={invoice.memo ?? ""}
             onChange={(e) => handleHeaderSave({ memo: e.target.value })}
             disabled={isReadOnly}
-            className="min-h-[88px] rounded-sm border border-gray-100 bg-background px-3 py-2 text-sm dark:border-border"
+            className="min-h-[88px] rounded-hh-compact border border-gray-100 bg-background px-3 py-2 text-sm dark:border-border"
           />
         </div>
-        <p className="mt-3 text-xs text-amber-600 dark:text-amber-400">
+        <p className="mt-3 text-xs text-[var(--hh-warning)] text-[var(--hh-warning)]">
           Do not confirm invoice if the same labor is already confirmed via daily entries.
         </p>
       </section>
@@ -342,7 +352,7 @@ export default function LaborInvoiceDetailPage() {
         <Button
           variant="outline"
           size="sm"
-          className="rounded-sm"
+          className="rounded-hh-compact"
           onClick={() => fileInputRef.current?.click()}
           disabled={isReadOnly}
         >
@@ -408,7 +418,7 @@ export default function LaborInvoiceDetailPage() {
           <Button
             size="sm"
             variant="outline"
-            className="h-8 rounded-sm"
+            className="h-8 rounded-hh-compact"
             onClick={handleSplitAdd}
             disabled={isReadOnly}
           >
@@ -440,12 +450,12 @@ export default function LaborInvoiceDetailPage() {
                 value={split.amount}
                 onChange={(e) => handleSplitChange(idx, { amount: Number(e.target.value) || 0 })}
                 disabled={isReadOnly}
-                className="rounded-sm text-right tabular-nums"
+                className="rounded-hh-compact text-right tabular-nums"
               />
               <Button
                 size="sm"
                 variant="outline"
-                className="h-10 rounded-sm"
+                className="h-10 rounded-hh-compact"
                 onClick={() => handleSplitRemove(idx)}
                 disabled={isReadOnly}
               >
@@ -463,7 +473,7 @@ export default function LaborInvoiceDetailPage() {
             className={
               isRemainingZero
                 ? "font-medium text-hh-profit-positive dark:text-hh-profit-positive"
-                : "font-medium text-amber-600 dark:text-amber-400"
+                : "font-medium text-[var(--hh-warning)] text-[var(--hh-warning)]"
             }
           >
             {formatCurrency(remaining)}
@@ -512,7 +522,12 @@ export default function LaborInvoiceDetailPage() {
           </label>
         </div>
         <div className="mt-4">
-          <Button size="sm" className="rounded-sm" onClick={handleConfirm} disabled={!canConfirm}>
+          <Button
+            size="sm"
+            className="rounded-hh-compact"
+            onClick={handleConfirm}
+            disabled={!canConfirm}
+          >
             Confirm
           </Button>
           {!canConfirm ? (

@@ -8,50 +8,12 @@
  */
 .estimate-builder,
 .estimate-builder.eb-sheet-glass {
-  --eb-bg: #f7f7f6;
-  --eb-bg-soft: #f4f4f2;
-  --eb-bg-warm: #fafaf9;
-  --eb-shell: #ffffff;
-  --eb-panel: #ffffff;
-  --eb-panel-strong: #ffffff;
-  --eb-panel-elevated: #fafaf9;
-  --eb-panel-deep: #f4f4f2;
-  --eb-input: #ffffff;
-  --eb-input-hover: #fafaf9;
-  --eb-surface-hover: #f4f4f2;
-  --eb-border: rgb(22 22 22 / 9%);
-  --eb-border-strong: rgb(22 22 22 / 18%);
-  --eb-border-soft: rgb(22 22 22 / 7%);
-  --eb-highlight: rgb(255 255 255 / 70%);
-  --eb-highlight-soft: rgb(255 255 255 / 45%);
-  --eb-text: #171717;
-  --eb-text-soft: #343432;
-  --eb-secondary: #4f4f4c;
-  --eb-text-secondary: #4f4f4c;
-  --eb-muted: #6b6b67;
-  --eb-text-muted: #6b6b67;
-  --eb-label: #6b6b67;
-  --eb-placeholder: #8a8a86;
-  --eb-empty: #777773;
-  --eb-text-faint: #8a8a86;
-  --eb-accent: #171717;
-  --eb-accent-2: #343432;
-  --eb-amber: #835d18;
-  --eb-amber-soft: #faf4e8;
-  --eb-focus: rgb(23 23 23 / 18%);
-  --eb-total-accent: #090909;
-  --eb-glass-shadow: 0 1px 2px rgb(0 0 0 / 4%), 0 8px 24px rgb(0 0 0 / 4%);
-  --eb-glass-shadow-hover: 0 1px 2px rgb(0 0 0 / 5%), 0 10px 28px rgb(0 0 0 / 5%);
-  --eb-glass-inset: inset 0 1px 0 rgb(255 255 255 / 75%);
-  --eb-sheet-bg: #ffffff;
-  --eb-sheet-border: rgb(22 22 22 / 12%);
-  color: var(--eb-text);
-  color-scheme: light;
+  color: var(--hh-text-primary);
 }
 
 .estimate-builder {
   min-height: 100%;
-  background: var(--eb-bg);
+  background: var(--hh-l0-canvas);
 }
 
 .estimate-builder-new .eb-builder-content {
@@ -59,9 +21,9 @@
 }
 
 .estimate-builder [data-estimate-return-highlight="true"] {
-  outline: 2px solid rgb(23 23 23 / 18%);
+  outline: 2px solid var(--hh-focus-ring);
   outline-offset: 4px;
-  background: #fafaf9;
+  background: var(--hh-l3-hover);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -81,7 +43,7 @@
 .estimate-builder .eb-builder-picker-menu,
 .estimate-builder .eb-glass-sidebar,
 .estimate-builder .proposal-scope-inline-editor {
-  scrollbar-color: rgb(107 107 103 / 42%) transparent;
+  scrollbar-color: var(--hh-border-strong) transparent;
 }
 
 .estimate-builder .eb-glass-panel,
@@ -90,9 +52,9 @@
 .estimate-builder .eb-glass-notes,
 .estimate-builder .eb-payment-schedule,
 .estimate-builder .eb-line-item-card {
-  border-color: var(--eb-border);
-  background: var(--eb-panel);
-  box-shadow: var(--eb-glass-shadow);
+  border-color: var(--hh-border);
+  background: var(--hh-l2-operational-surface);
+  box-shadow: var(--hh-shadow-operational);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
@@ -102,14 +64,14 @@
 .estimate-builder .eb-glass-sidebar:hover,
 .estimate-builder .eb-glass-sidebar:focus-within,
 .estimate-builder .eb-line-item-card:hover {
-  border-color: var(--eb-border-strong);
-  background: var(--eb-panel);
-  box-shadow: var(--eb-glass-shadow-hover);
+  border-color: var(--hh-border-strong);
+  background: var(--hh-l2-operational-surface);
+  box-shadow: var(--hh-shadow-operational);
   transform: none;
 }
 
 .estimate-builder .eb-glass-sidebar {
-  background: #ffffff;
+  background: var(--hh-l2-operational-surface);
 }
 
 .estimate-builder .eb-glass-sidebar::before {
@@ -117,15 +79,15 @@
 }
 
 .estimate-builder .eb-glass-mobile-bar {
-  border-color: var(--eb-border);
-  background: rgb(255 255 255 / 97%);
-  box-shadow: 0 -4px 18px rgb(0 0 0 / 5%);
+  border-color: var(--hh-border);
+  background: var(--hh-l1-workspace);
+  box-shadow: var(--hh-shadow-operational);
 }
 
 @media (min-width: 768px) {
   .estimate-builder .eb-estimate-command-bar {
-    border-bottom-color: var(--eb-border);
-    background: rgb(247 247 246 / 96%);
+    border-bottom-color: var(--hh-border);
+    background: var(--hh-l0-canvas);
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
   }
@@ -133,23 +95,23 @@
 
 @media (max-width: 1023px) {
   .estimate-builder .eb-mobile-summary-total {
-    font-size: 1.25rem;
+    font-size: var(--hh-type-financial-total-font-size);
   }
 }
 
 .estimate-builder .eb-gold-total,
 .estimate-builder .eb-gold-link {
-  color: var(--eb-text);
+  color: var(--hh-text-primary);
 }
 
 .estimate-builder .eb-gold-link:hover {
-  color: #000000;
+  color: var(--hh-text-strong);
 }
 
 .estimate-builder .eb-draft-badge-pill {
-  border-color: #e8d8b7;
-  background: var(--eb-amber-soft);
-  color: var(--eb-amber);
+  border-color: var(--hh-warning-border);
+  background: var(--hh-warning-soft-fill);
+  color: var(--hh-warning);
 }
 
 .estimate-builder .eb-glass-command,
@@ -158,17 +120,10 @@
 .eb-glass-command,
 .eb-builder-picker-menu,
 .eb-line-item-more-menu {
-  --eb-bg-soft: #f4f4f2;
-  --eb-bg-warm: #fafaf9;
-  --eb-border: rgb(22 22 22 / 9%);
-  --eb-border-strong: rgb(22 22 22 / 18%);
-  --eb-text: #171717;
-  --eb-muted: #6b6b67;
-  --eb-placeholder: #8a8a86;
-  border-color: var(--eb-border-strong, rgb(22 22 22 / 18%)) !important;
-  background: #ffffff !important;
-  color: #171717 !important;
-  box-shadow: 0 12px 32px rgb(0 0 0 / 12%) !important;
+  border-color: var(--hh-border-strong) !important;
+  background: var(--hh-l4-floating-surface) !important;
+  color: var(--hh-text-primary) !important;
+  box-shadow: var(--hh-shadow-floating) !important;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
@@ -181,43 +136,43 @@
 .estimate-builder .eb-line-item-more-menu-item:focus,
 .eb-line-item-more-menu-item:hover,
 .eb-line-item-more-menu-item:focus {
-  background: #f4f4f2 !important;
-  color: #171717 !important;
+  background: var(--hh-l3-hover) !important;
+  color: var(--hh-text-primary) !important;
 }
 
 .eb-glass-command :where([role="menuitem"], [role="option"]),
 .eb-line-item-more-menu-item {
-  color: #171717 !important;
+  color: var(--hh-text-primary) !important;
 }
 
 .eb-glass-command :where([role="menuitem"], [role="option"])[data-disabled] {
-  color: #8a8a86 !important;
+  color: var(--hh-text-tertiary) !important;
 }
 
 .eb-glass-command [role="separator"] {
-  background: rgb(22 22 22 / 9%) !important;
+  background: var(--hh-border) !important;
 }
 
 .estimate-builder .eb-line-item-more-menu-item--danger,
 .eb-line-item-more-menu-item--danger {
-  color: #a13737 !important;
+  color: var(--hh-danger) !important;
 }
 
 .estimate-builder .eb-btn-primary,
 .estimate-builder.eb-sheet-glass .eb-sheet-primary {
-  border-color: #171717 !important;
-  background: #171717 !important;
-  color: #ffffff !important;
-  box-shadow: 0 1px 2px rgb(0 0 0 / 12%) !important;
+  border-color: var(--hh-action-primary) !important;
+  background: var(--hh-action-primary) !important;
+  color: var(--hh-action-primary-foreground) !important;
+  box-shadow: none !important;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
 
 .estimate-builder .eb-btn-primary:hover:not(:disabled),
 .estimate-builder.eb-sheet-glass .eb-sheet-primary:hover:not(:disabled) {
-  border-color: #30302e !important;
-  background: #30302e !important;
-  box-shadow: 0 2px 5px rgb(0 0 0 / 14%) !important;
+  border-color: var(--hh-action-primary) !important;
+  background: var(--hh-action-primary) !important;
+  box-shadow: none !important;
 }
 
 .estimate-builder .eb-btn-primary:active:not(:disabled),
@@ -230,9 +185,9 @@
 .estimate-builder .eb-add-section,
 .estimate-builder .eb-action-secondary,
 .estimate-builder.eb-sheet-glass .eb-sheet-secondary {
-  border-color: var(--eb-border) !important;
-  background: #ffffff !important;
-  color: var(--eb-secondary) !important;
+  border-color: var(--hh-border) !important;
+  background: var(--hh-l2-operational-surface) !important;
+  color: var(--hh-text-secondary) !important;
   box-shadow: none !important;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
@@ -243,9 +198,9 @@
 .estimate-builder .eb-add-section:hover:not(:disabled),
 .estimate-builder .eb-action-secondary:hover:not(:disabled),
 .estimate-builder.eb-sheet-glass .eb-sheet-secondary:hover:not(:disabled) {
-  border-color: var(--eb-border-strong) !important;
-  background: var(--eb-bg-soft) !important;
-  color: var(--eb-text) !important;
+  border-color: var(--hh-border-strong) !important;
+  background: var(--hh-l3-hover) !important;
+  color: var(--hh-text-primary) !important;
 }
 
 .estimate-builder .eb-input,
@@ -255,56 +210,56 @@
 .estimate-builder input.flex.h-8,
 .estimate-builder.eb-sheet-glass .eb-sheet-input,
 .estimate-builder.eb-sheet-glass .eb-sheet-textarea {
-  border-color: var(--eb-border) !important;
-  background: #ffffff !important;
-  color: var(--eb-text) !important;
+  border-color: var(--hh-border) !important;
+  background: var(--hh-l2-operational-surface) !important;
+  color: var(--hh-text-primary) !important;
   box-shadow: none !important;
 }
 
 .estimate-builder :where(input, textarea)::placeholder,
 .estimate-builder.eb-sheet-glass :where(input, textarea)::placeholder {
-  color: var(--eb-placeholder) !important;
+  color: var(--hh-text-tertiary) !important;
 }
 
 .estimate-builder .eb-glass-panel :where(input, textarea, select):focus-visible,
 .estimate-builder .eb-glass-scope :where(input, textarea, select):focus-visible,
 .estimate-builder .eb-input:focus-visible,
 .estimate-builder.eb-sheet-glass :where(input, textarea, select):focus-visible {
-  border-color: rgb(23 23 23 / 45%) !important;
-  background: #ffffff !important;
-  box-shadow: 0 0 0 2px var(--eb-focus) !important;
+  border-color: var(--hh-border-strong) !important;
+  background: var(--hh-l2-operational-surface) !important;
+  box-shadow: 0 0 0 2px var(--hh-focus-ring) !important;
 }
 
 .estimate-builder .eb-line-row:hover,
 .estimate-builder-new .eb-line-item-icon:hover:not(:disabled) {
-  background: var(--eb-bg-soft) !important;
+  background: var(--hh-l3-hover) !important;
 }
 
 .estimate-builder-new .eb-line-item-card {
-  border-color: var(--eb-border);
-  background: #fafaf9;
+  border-color: var(--hh-border);
+  background: var(--hh-l3-hover);
 }
 
 .estimate-builder-new .eb-line-item-card:hover {
-  border-color: var(--eb-border-strong);
-  background: #ffffff;
-  box-shadow: 0 1px 3px rgb(0 0 0 / 5%);
+  border-color: var(--hh-border-strong);
+  background: var(--hh-l2-operational-surface);
+  box-shadow: var(--hh-shadow-operational);
 }
 
 .estimate-builder .eb-line-item-mobile-summary,
 .estimate-builder.estimate-builder-new .eb-glass-panel .eb-line-item-mobile-summary,
 .estimate-builder button.eb-line-item-mobile-summary[aria-expanded],
 .estimate-builder .eb-line-item-mobile-details {
-  border-color: var(--eb-border) !important;
-  background: #ffffff !important;
-  color: var(--eb-text) !important;
+  border-color: var(--hh-border) !important;
+  background: var(--hh-l2-operational-surface) !important;
+  color: var(--hh-text-primary) !important;
 }
 
 .estimate-builder .eb-line-item-mobile-summary:hover,
 .estimate-builder.estimate-builder-new .eb-glass-panel .eb-line-item-mobile-summary:hover,
 .estimate-builder button.eb-line-item-mobile-summary[aria-expanded]:hover {
-  border-color: var(--eb-border-strong) !important;
-  background: var(--eb-bg-soft) !important;
+  border-color: var(--hh-border-strong) !important;
+  background: var(--hh-l3-hover) !important;
 }
 
 .estimate-builder-new .eb-line-item-first-row--no-index {
@@ -316,8 +271,8 @@
 .estimate-builder.estimate-builder-new .eb-line-item-description-block .eb-scope-editor-surface,
 .estimate-builder-new .eb-line-item-description-block .eb-scope-editor-surface,
 .estimate-builder-new .eb-scope-editor-toolbar {
-  border-color: var(--eb-border) !important;
-  background: #ffffff !important;
+  border-color: var(--hh-border) !important;
+  background: var(--hh-l2-operational-surface) !important;
   box-shadow: none !important;
 }
 
@@ -327,7 +282,7 @@
 .estimate-builder.estimate-builder-new button[aria-label="Italic"],
 .estimate-builder.estimate-builder-new button[aria-label="Bullet list"] {
   background: transparent !important;
-  color: var(--eb-muted) !important;
+  color: var(--hh-text-tertiary) !important;
 }
 
 .estimate-builder .eb-scope-editor-toolbar button:hover,
@@ -335,14 +290,14 @@
 .estimate-builder.estimate-builder-new button[aria-label="Bold"]:hover,
 .estimate-builder.estimate-builder-new button[aria-label="Italic"]:hover,
 .estimate-builder.estimate-builder-new button[aria-label="Bullet list"]:hover {
-  background: var(--eb-bg-soft) !important;
-  color: var(--eb-text) !important;
+  background: var(--hh-l3-hover) !important;
+  color: var(--hh-text-primary) !important;
 }
 
 .estimate-builder .proposal-scope-inline-editor,
 .estimate-builder.estimate-builder-new .proposal-scope-inline-editor {
-  background: #ffffff !important;
-  color: var(--eb-text-soft) !important;
+  background: var(--hh-l2-operational-surface) !important;
+  color: var(--hh-text-secondary) !important;
 }
 
 .estimate-builder-new .eb-line-item-actions-inner {
@@ -352,77 +307,77 @@
 
 .estimate-builder-new .eb-line-item-card:hover .eb-line-item-actions-inner,
 .estimate-builder-new .eb-line-item-card:focus-within .eb-line-item-actions-inner {
-  border-color: var(--eb-border);
-  background: #ffffff;
+  border-color: var(--hh-border);
+  background: var(--hh-l2-operational-surface);
 }
 
 .estimate-builder-new .eb-add-line,
 .estimate-builder-new .eb-add-final-section-row .eb-add-section,
 .estimate-builder .eb-add-next-section-row .eb-add-section {
-  border-color: var(--eb-border) !important;
-  background: #ffffff !important;
-  color: var(--eb-secondary) !important;
+  border-color: var(--hh-border) !important;
+  background: var(--hh-l2-operational-surface) !important;
+  color: var(--hh-text-secondary) !important;
 }
 
 .estimate-builder-new .eb-add-line:hover,
 .estimate-builder-new .eb-add-final-section-row .eb-add-section:hover,
 .estimate-builder .eb-add-next-section-row .eb-add-section:hover {
-  border-color: var(--eb-border-strong) !important;
-  background: var(--eb-bg-soft) !important;
-  color: var(--eb-text) !important;
+  border-color: var(--hh-border-strong) !important;
+  background: var(--hh-l3-hover) !important;
+  color: var(--hh-text-primary) !important;
 }
 
 .estimate-builder .eb-scope-section-add-line {
-  border-color: var(--eb-border) !important;
-  background: #ffffff !important;
-  color: var(--eb-secondary) !important;
+  border-color: var(--hh-border) !important;
+  background: var(--hh-l2-operational-surface) !important;
+  color: var(--hh-text-secondary) !important;
 }
 
 .estimate-builder .eb-scope-section-add-line:hover {
-  border-color: var(--eb-border-strong) !important;
-  background: var(--eb-bg-soft) !important;
-  color: var(--eb-text) !important;
+  border-color: var(--hh-border-strong) !important;
+  background: var(--hh-l3-hover) !important;
+  color: var(--hh-text-primary) !important;
 }
 
 .estimate-builder .eb-section-title-trigger {
   border-color: transparent !important;
   background: transparent !important;
-  color: var(--eb-text) !important;
+  color: var(--hh-text-primary) !important;
   box-shadow: none !important;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
 
 .estimate-builder .eb-section-title-trigger:hover:not(:disabled) {
-  border-color: var(--eb-border-soft) !important;
-  background: var(--eb-bg-soft) !important;
-  color: var(--eb-text) !important;
+  border-color: var(--hh-border) !important;
+  background: var(--hh-l3-hover) !important;
+  color: var(--hh-text-primary) !important;
 }
 
 .estimate-builder .eb-section-title-trigger:focus-visible {
-  border-color: var(--eb-border-strong) !important;
-  background: #ffffff !important;
-  color: var(--eb-text) !important;
-  box-shadow: 0 0 0 2px var(--eb-focus) !important;
+  border-color: var(--hh-border-strong) !important;
+  background: var(--hh-l2-operational-surface) !important;
+  color: var(--hh-text-primary) !important;
+  box-shadow: 0 0 0 2px var(--hh-focus-ring) !important;
 }
 
 .estimate-builder .eb-section-title-trigger:disabled {
   border-color: transparent !important;
   background: transparent !important;
-  color: var(--eb-muted) !important;
+  color: var(--hh-text-tertiary) !important;
 }
 
 .estimate-builder.eb-sheet-glass {
-  border-color: var(--eb-sheet-border) !important;
-  background: #ffffff !important;
-  color: var(--eb-text) !important;
-  box-shadow: -12px 0 32px rgb(0 0 0 / 10%) !important;
+  border-color: var(--hh-border-floating) !important;
+  background: var(--hh-l2-operational-surface) !important;
+  color: var(--hh-text-primary) !important;
+  box-shadow: var(--hh-shadow-task) !important;
 }
 
 .estimate-builder.eb-sheet-glass .eb-sheet-header,
 .estimate-builder.eb-sheet-glass .eb-sheet-footer {
-  border-color: var(--eb-sheet-border);
-  background: #ffffff;
+  border-color: var(--hh-border-floating);
+  background: var(--hh-l2-operational-surface);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
@@ -438,7 +393,7 @@
     .text-zinc-100,
     .text-zinc-200
   ) {
-  color: var(--eb-text) !important;
+  color: var(--hh-text-primary) !important;
 }
 
 .estimate-builder
@@ -451,12 +406,12 @@
     .text-zinc-500,
     .text-zinc-600
   ) {
-  color: var(--eb-muted) !important;
+  color: var(--hh-text-tertiary) !important;
 }
 
 .estimate-builder
   :where(.border-white\/\[0\.05\], .border-white\/\[0\.06\], .border-white\/\[0\.08\]) {
-  border-color: var(--eb-border) !important;
+  border-color: var(--hh-border) !important;
 }
 
 /* Scope Builder efficiency: compact toolbar + full-width estimating canvas. */
@@ -473,7 +428,7 @@
   align-items: center;
   gap: 0.5rem;
   margin-bottom: 0.75rem;
-  border-block: 1px solid var(--eb-border-soft);
+  border-block: 1px solid var(--hh-border);
   padding: 0.5rem 0;
 }
 
@@ -489,7 +444,7 @@
   left: 0.625rem;
   z-index: 1;
   transform: translateY(-50%);
-  color: var(--eb-muted);
+  color: var(--hh-text-tertiary);
   pointer-events: none;
 }
 
@@ -497,19 +452,19 @@
   width: 100%;
   height: 2rem;
   min-height: 2rem;
-  border: 1px solid var(--eb-border);
-  border-radius: 0.375rem;
-  background: #ffffff;
+  border: 1px solid var(--hh-border);
+  border-radius: var(--hh-radius-compact);
+  background: var(--hh-l2-operational-surface);
   padding: 0 0.625rem 0 1.875rem;
-  font-size: 0.8125rem;
-  color: var(--eb-text);
+  font-size: var(--hh-type-table-cell-font-size);
+  color: var(--hh-text-primary);
   outline: none;
 }
 
 .estimate-builder-new .eb-scope-toolbar-search-wrap > input:focus-visible,
 .estimate-builder-new .eb-scope-jump-wrap:focus-within {
-  border-color: rgb(23 23 23 / 45%);
-  box-shadow: 0 0 0 2px var(--eb-focus);
+  border-color: var(--hh-border-strong);
+  box-shadow: 0 0 0 2px var(--hh-focus-ring);
 }
 
 .estimate-builder-new .eb-scope-search-results {
@@ -520,11 +475,11 @@
   z-index: 40;
   max-height: 18rem;
   overflow-y: auto;
-  border: 1px solid var(--eb-border-strong);
-  border-radius: 0.5rem;
-  background: #ffffff;
+  border: 1px solid var(--hh-border-strong);
+  border-radius: var(--hh-radius-standard);
+  background: var(--hh-l2-operational-surface);
   padding: 0.25rem;
-  box-shadow: 0 12px 32px rgb(0 0 0 / 12%);
+  box-shadow: var(--hh-shadow-floating);
 }
 
 .estimate-builder-new .eb-scope-search-result {
@@ -534,21 +489,21 @@
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 0.75rem;
-  border-radius: 0.25rem;
+  border-radius: var(--hh-radius-compact);
   padding: 0.5rem 0.625rem;
   text-align: left;
-  font-size: 0.8125rem;
+  font-size: var(--hh-type-table-cell-font-size);
 }
 
 .estimate-builder-new .eb-scope-search-result:hover,
 .estimate-builder-new .eb-scope-search-result.is-active {
-  background: var(--eb-bg-soft);
+  background: var(--hh-l3-hover);
 }
 
 .estimate-builder-new .eb-scope-search-empty {
   padding: 0.625rem;
-  font-size: 0.8125rem;
-  color: var(--eb-muted);
+  font-size: var(--hh-type-table-cell-font-size);
+  color: var(--hh-text-tertiary);
 }
 
 .estimate-builder-new .eb-scope-jump-wrap {
@@ -558,9 +513,9 @@
   min-width: 11rem;
   flex: 0 1 14rem;
   align-items: center;
-  border: 1px solid var(--eb-border);
-  border-radius: 0.375rem;
-  background: #ffffff;
+  border: 1px solid var(--hh-border);
+  border-radius: var(--hh-radius-compact);
+  background: var(--hh-l2-operational-surface);
 }
 
 .estimate-builder-new .eb-scope-jump-wrap select {
@@ -570,15 +525,15 @@
   border: 0;
   background: transparent;
   padding: 0 1.75rem 0 0.625rem;
-  font-size: 0.8125rem;
-  color: var(--eb-text);
+  font-size: var(--hh-type-table-cell-font-size);
+  color: var(--hh-text-primary);
   outline: none;
 }
 
 .estimate-builder-new .eb-scope-jump-wrap > svg {
   position: absolute;
   right: 0.5rem;
-  color: var(--eb-muted);
+  color: var(--hh-text-tertiary);
   pointer-events: none;
 }
 
@@ -591,17 +546,17 @@
 
 .estimate-builder-new .eb-scope-toolbar-display-controls button {
   min-height: 2rem;
-  border-radius: 0.375rem;
+  border-radius: var(--hh-radius-compact);
   padding: 0 0.5rem;
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: var(--eb-muted);
+  font-size: var(--hh-type-metadata-font-size);
+  font-weight: var(--hh-type-label-font-weight);
+  color: var(--hh-text-tertiary);
 }
 
 .estimate-builder-new .eb-scope-toolbar-display-controls button:hover,
 .estimate-builder-new .eb-scope-toolbar-display-controls button:focus-visible {
-  background: var(--eb-bg-soft);
-  color: var(--eb-text);
+  background: var(--hh-l3-hover);
+  color: var(--hh-text-primary);
   outline: none;
 }
 
@@ -620,9 +575,9 @@
 .estimate-builder-new .eb-pricing-summary-strip {
   display: none;
   overflow: hidden;
-  border: 1px solid var(--eb-border);
-  border-radius: 0.5rem;
-  background: #ffffff;
+  border: 1px solid var(--hh-border);
+  border-radius: var(--hh-radius-standard);
+  background: var(--hh-l2-operational-surface);
 }
 
 .estimate-builder-new .eb-pricing-summary-main {
@@ -636,7 +591,7 @@
   align-items: baseline;
   justify-content: space-between;
   gap: 0.75rem;
-  border-right: 1px solid var(--eb-border-soft);
+  border-right: 1px solid var(--hh-border);
   padding: 0.625rem 0.75rem;
 }
 
@@ -645,35 +600,35 @@
 }
 
 .estimate-builder-new .eb-pricing-summary-cell > span {
-  font-size: 0.6875rem;
-  font-weight: 650;
-  letter-spacing: 0.055em;
+  font-size: var(--hh-type-table-header-font-size);
+  font-weight: var(--hh-type-body-strong-font-weight);
+  letter-spacing: 0;
   text-transform: uppercase;
-  color: var(--eb-muted);
+  color: var(--hh-text-tertiary);
 }
 
 .estimate-builder-new .eb-pricing-summary-cell > strong {
   overflow: hidden;
-  font-size: 0.875rem;
-  font-weight: 600;
+  font-size: var(--hh-type-body-font-size);
+  font-weight: var(--hh-type-panel-title-font-weight);
   font-variant-numeric: tabular-nums;
   text-align: right;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: var(--eb-text);
+  color: var(--hh-text-primary);
 }
 
 .estimate-builder-new .eb-pricing-summary-cell.is-total {
-  background: var(--eb-bg-warm);
+  background: var(--hh-l3-hover);
 }
 
 .estimate-builder-new .eb-pricing-summary-cell.is-total > strong {
-  font-size: 1rem;
-  font-weight: 700;
+  font-size: var(--hh-type-section-title-font-size);
+  font-weight: var(--hh-type-body-strong-font-weight);
 }
 
 .estimate-builder-new .eb-pricing-summary-details {
-  border-top: 1px solid var(--eb-border-soft);
+  border-top: 1px solid var(--hh-border);
 }
 
 .estimate-builder-new .eb-pricing-summary-details > summary {
@@ -685,9 +640,9 @@
   align-items: center;
   gap: 0.25rem;
   padding: 0 0.75rem;
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: var(--eb-muted);
+  font-size: var(--hh-type-metadata-font-size);
+  font-weight: var(--hh-type-label-font-weight);
+  color: var(--hh-text-tertiary);
 }
 
 .estimate-builder-new .eb-pricing-summary-details > summary::-webkit-details-marker {
@@ -701,7 +656,7 @@
 .estimate-builder-new .eb-pricing-summary-detail-grid {
   display: grid;
   gap: 0.75rem;
-  border-top: 1px solid var(--eb-border-soft);
+  border-top: 1px solid var(--hh-border);
   padding: 0.625rem 0.75rem;
 }
 
@@ -760,14 +715,14 @@
     z-index: 4;
     margin-inline: -0.125rem;
     padding: 0.375rem 0.125rem 0.5rem;
-    background: rgb(255 255 255 / 96%);
+    background: var(--hh-l1-workspace);
   }
 
   .estimate-builder-new .eb-scope-section-current > .eb-scope-section-header,
   .estimate-builder-new
     .eb-scope-section-current.eb-scope-section-mobile
     > .eb-scope-section-header {
-    box-shadow: inset 2px 0 0 var(--eb-accent);
+    box-shadow: inset 2px 0 0 var(--hh-action-primary);
   }
 
   .estimate-builder-new .eb-scope-section-lines {
@@ -777,7 +732,7 @@
 
   .estimate-builder-new .eb-line-item-card {
     border: 0;
-    border-bottom: 1px solid var(--eb-border-soft);
+    border-bottom: 1px solid var(--hh-border);
     border-radius: 0;
     background: transparent;
     box-shadow: none;
@@ -786,8 +741,8 @@
 
   .estimate-builder-new .eb-line-item-card:hover,
   .estimate-builder-new .eb-line-item-card:focus-within {
-    border-color: var(--eb-border);
-    background: var(--eb-bg-warm);
+    border-color: var(--hh-border);
+    background: var(--hh-l3-hover);
     box-shadow: none;
   }
 
@@ -879,14 +834,14 @@
 
   .estimate-builder-new .eb-line-item-grid-header {
     align-items: center;
-    border-bottom: 1px solid var(--eb-border);
-    background: rgb(255 255 255 / 97%);
+    border-bottom: 1px solid var(--hh-border);
+    background: var(--hh-l1-workspace);
     padding: 0.4375rem 0.25rem;
-    color: var(--eb-muted);
-    font-size: 0.65625rem;
-    font-weight: 650;
-    letter-spacing: 0.05em;
-    line-height: 1.2;
+    color: var(--hh-text-tertiary);
+    font-size: var(--hh-type-table-header-font-size);
+    font-weight: var(--hh-type-body-strong-font-weight);
+    letter-spacing: 0;
+    line-height: var(--hh-type-label-line-height);
     text-transform: uppercase;
   }
 
@@ -911,7 +866,7 @@
     grid-row: 1;
     align-self: start;
     padding-top: 0;
-    font-size: 0.6875rem;
+    font-size: var(--hh-type-table-header-font-size);
     justify-self: start;
   }
 
@@ -947,7 +902,7 @@
 
   .estimate-builder-new .eb-line-item-title-meta .eb-line-item-status-pill {
     max-width: 100%;
-    color: var(--eb-muted);
+    color: var(--hh-text-tertiary);
   }
 
   .estimate-builder-new .eb-line-item-grid--pricing > .eb-line-item-description-block {
@@ -965,8 +920,8 @@
   .estimate-builder-new .proposal-scope-inline-editor {
     min-height: 2.75rem;
     padding-block: 0.375rem;
-    font-size: 0.8125rem;
-    line-height: 1.35;
+    font-size: var(--hh-type-table-cell-font-size);
+    line-height: var(--hh-type-body-line-height);
   }
 
   .estimate-builder-new .eb-line-item-description-block .eb-scope-editor-toolbar {
@@ -1027,21 +982,21 @@
   .estimate-builder-new .eb-line-item-grid--pricing input.eb-input {
     height: 2rem !important;
     min-height: 2rem !important;
-    border-radius: 0.375rem;
+    border-radius: var(--hh-radius-compact);
     padding-inline: 0.5rem !important;
-    font-size: 0.8125rem;
-    line-height: 1.35;
+    font-size: var(--hh-type-table-cell-font-size);
+    line-height: var(--hh-type-body-line-height);
   }
 
   .estimate-builder-new .eb-line-item-grid--pricing input[aria-invalid="true"] {
-    border-color: #b7791f !important;
-    box-shadow: 0 0 0 2px rgb(183 121 31 / 14%) !important;
+    border-color: var(--hh-warning-border) !important;
+    box-shadow: 0 0 0 2px var(--hh-focus-ring) !important;
   }
 
   .estimate-builder-new .eb-line-item-grid--pricing input:disabled,
   .estimate-builder-new .eb-line-item-grid--pricing [contenteditable="false"] {
-    background: var(--eb-bg-soft) !important;
-    color: var(--eb-muted) !important;
+    background: var(--hh-l3-hover) !important;
+    color: var(--hh-text-tertiary) !important;
     cursor: not-allowed;
     opacity: 1;
   }
@@ -1136,7 +1091,7 @@
   }
 
   .estimate-builder.eb-sheet-glass {
-    border-radius: 0.5rem !important;
+    border-radius: var(--hh-radius-standard) !important;
   }
 }
 
@@ -1177,59 +1132,59 @@
   border-color: transparent !important;
   background: transparent !important;
   box-shadow: none !important;
-  color: var(--eb-muted) !important;
+  color: var(--hh-text-tertiary) !important;
 }
 
 .estimate-builder-new .eb-scope-section-add-line:hover,
 .estimate-builder-new .eb-scope-section-add-line:focus-visible {
-  border-color: var(--eb-border-soft) !important;
-  background: var(--eb-bg-soft) !important;
-  color: var(--eb-text) !important;
+  border-color: var(--hh-border) !important;
+  background: var(--hh-l3-hover) !important;
+  color: var(--hh-text-primary) !important;
 }
 
 @media (min-width: 1024px) {
   .estimate-builder-new .eb-line-item-grid--pricing input.eb-input {
     border-color: transparent !important;
-    background: var(--eb-bg-warm) !important;
+    background: var(--hh-l3-hover) !important;
     box-shadow: none !important;
   }
 
   .estimate-builder-new .eb-line-item-card:hover input.eb-input,
   .estimate-builder-new .eb-line-item-grid--pricing input.eb-input:hover {
-    border-color: var(--eb-border-soft) !important;
-    background: #ffffff !important;
+    border-color: var(--hh-border) !important;
+    background: var(--hh-l2-operational-surface) !important;
   }
 
   .estimate-builder-new .eb-line-item-grid--pricing input.eb-input:focus-visible {
-    border-color: rgb(23 23 23 / 45%) !important;
-    background: #ffffff !important;
-    box-shadow: 0 0 0 2px var(--eb-focus) !important;
+    border-color: var(--hh-border-strong) !important;
+    background: var(--hh-l2-operational-surface) !important;
+    box-shadow: 0 0 0 2px var(--hh-focus-ring) !important;
   }
 
   .estimate-builder-new .eb-line-item-description-block .eb-scope-editor-surface {
     border-color: transparent !important;
-    background: var(--eb-bg-warm) !important;
+    background: var(--hh-l3-hover) !important;
     box-shadow: none !important;
   }
 
   .estimate-builder-new .eb-line-item-card:hover .eb-scope-editor-surface {
-    border-color: var(--eb-border-soft) !important;
-    background: #ffffff !important;
+    border-color: var(--hh-border) !important;
+    background: var(--hh-l2-operational-surface) !important;
   }
 
   .estimate-builder-new .eb-line-item-description-block .eb-scope-editor-surface:focus-within {
-    border-color: rgb(23 23 23 / 45%) !important;
-    background: #ffffff !important;
-    box-shadow: 0 0 0 2px var(--eb-focus) !important;
+    border-color: var(--hh-border-strong) !important;
+    background: var(--hh-l2-operational-surface) !important;
+    box-shadow: 0 0 0 2px var(--hh-focus-ring) !important;
   }
 }
 
 @media (max-width: 767px) {
   .estimate-builder-new .eb-scope-work-panel,
   .estimate-builder-new .eb-scope-work-panel:hover {
-    border-color: var(--eb-border);
-    border-radius: 0.5rem;
-    background: #ffffff;
+    border-color: var(--hh-border);
+    border-radius: var(--hh-radius-standard);
+    background: var(--hh-l2-operational-surface);
   }
 }
 
@@ -1243,36 +1198,36 @@
 
 /* Premium visual-system lock-in — typography, continuity, controls, and Builder rhythm. */
 .estimate-builder-new .eb-page-title {
-  font-size: 1.375rem;
-  font-weight: 650;
-  line-height: 1.2;
-  letter-spacing: -0.015em;
+  font-size: var(--hh-type-financial-total-font-size);
+  font-weight: var(--hh-type-body-strong-font-weight);
+  line-height: var(--hh-type-label-line-height);
+  letter-spacing: 0;
 }
 
 .estimate-builder-new .eb-page-meta {
   max-width: 72rem;
-  font-size: 0.84375rem;
-  line-height: 1.4;
-  color: var(--eb-secondary);
+  font-size: var(--hh-type-table-cell-font-size);
+  line-height: var(--hh-type-body-line-height);
+  color: var(--hh-text-secondary);
 }
 
 .estimate-builder-new .eb-scope-heading {
-  font-size: 1rem;
-  font-weight: 650;
-  line-height: 1.3;
-  letter-spacing: -0.008em;
+  font-size: var(--hh-type-section-title-font-size);
+  font-weight: var(--hh-type-body-strong-font-weight);
+  line-height: var(--hh-type-body-line-height);
+  letter-spacing: 0;
 }
 
 .estimate-builder-new .eb-scope-subtitle {
-  font-size: 0.8125rem;
-  line-height: 1.4;
-  color: var(--eb-muted);
+  font-size: var(--hh-type-table-cell-font-size);
+  line-height: var(--hh-type-body-line-height);
+  color: var(--hh-text-tertiary);
 }
 
 .estimate-builder-new .eb-estimate-context-panel,
 .estimate-builder-new .eb-estimate-context-panel:hover {
   border: 0;
-  border-bottom: 1px solid var(--eb-border-soft);
+  border-bottom: 1px solid var(--hh-border);
   border-radius: 0;
   background: transparent;
   box-shadow: none;
@@ -1280,20 +1235,20 @@
 }
 
 .estimate-builder-new .eb-estimate-context-label {
-  font-size: 0.75rem;
-  font-weight: 500;
-  line-height: 1.25;
+  font-size: var(--hh-type-metadata-font-size);
+  font-weight: var(--hh-type-label-font-weight);
+  line-height: var(--hh-type-label-line-height);
   letter-spacing: normal;
   text-transform: none;
-  color: var(--eb-muted);
+  color: var(--hh-text-tertiary);
 }
 
 .estimate-builder-new .eb-estimate-context-primary dd {
-  font-size: 0.90625rem;
-  font-weight: 600;
-  line-height: 1.35;
-  letter-spacing: -0.006em;
-  color: var(--eb-text);
+  font-size: var(--hh-type-body-font-size);
+  font-weight: var(--hh-type-panel-title-font-weight);
+  line-height: var(--hh-type-body-line-height);
+  letter-spacing: 0;
+  color: var(--hh-text-primary);
   white-space: normal;
   overflow: hidden;
   display: -webkit-box;
@@ -1302,16 +1257,16 @@
 }
 
 .estimate-builder-new .eb-estimate-context-secondary dd {
-  font-size: 0.84375rem;
-  line-height: 1.4;
-  color: var(--eb-secondary);
+  font-size: var(--hh-type-table-cell-font-size);
+  line-height: var(--hh-type-body-line-height);
+  color: var(--hh-text-secondary);
 }
 
 /* New Estimate templates are a workspace setting, not an independent card. */
 .estimate-builder-new .eb-estimate-template-tool > .eb-glass-panel,
 .estimate-builder-new .eb-estimate-template-tool > .eb-glass-panel:hover {
   border: 0;
-  border-bottom: 1px solid var(--eb-border-soft);
+  border-bottom: 1px solid var(--hh-border);
   border-radius: 0;
   background: transparent;
   box-shadow: none;
@@ -1331,7 +1286,7 @@
 }
 
 .estimate-builder-new .eb-pricing-summary-strip {
-  border-block-color: var(--eb-border-soft);
+  border-block-color: var(--hh-border);
 }
 
 .estimate-builder-new .eb-pricing-summary-main {
@@ -1344,20 +1299,20 @@
 }
 
 .estimate-builder-new .eb-pricing-summary-cell > span {
-  font-size: 0.75rem;
-  font-weight: 500;
-  line-height: 1.25;
+  font-size: var(--hh-type-metadata-font-size);
+  font-weight: var(--hh-type-label-font-weight);
+  line-height: var(--hh-type-label-line-height);
   letter-spacing: normal;
   text-transform: none;
-  color: var(--eb-muted);
+  color: var(--hh-text-tertiary);
 }
 
 .estimate-builder-new .eb-pricing-summary-cell > strong {
-  font-size: 0.90625rem;
-  font-weight: 600;
-  line-height: 1.25;
+  font-size: var(--hh-type-body-font-size);
+  font-weight: var(--hh-type-panel-title-font-weight);
+  line-height: var(--hh-type-label-line-height);
   font-variant-numeric: tabular-nums lining-nums;
-  letter-spacing: -0.008em;
+  letter-spacing: 0;
 }
 
 .estimate-builder-new .eb-pricing-summary-cell.is-total {
@@ -1365,20 +1320,20 @@
 }
 
 .estimate-builder-new .eb-pricing-summary-cell.is-total > span {
-  font-weight: 600;
-  color: var(--eb-secondary);
+  font-weight: var(--hh-type-panel-title-font-weight);
+  color: var(--hh-text-secondary);
 }
 
 .estimate-builder-new .eb-pricing-summary-cell.is-total > strong {
-  font-size: 1.0625rem;
-  font-weight: 700;
-  color: var(--eb-total-accent);
+  font-size: var(--hh-type-section-title-font-size);
+  font-weight: var(--hh-type-body-strong-font-weight);
+  color: var(--hh-text-strong);
 }
 
 .estimate-builder-new .eb-pricing-summary-details > summary {
   min-height: 2.25rem;
   padding-inline: 0.875rem;
-  font-size: 0.75rem;
+  font-size: var(--hh-type-metadata-font-size);
 }
 
 .estimate-builder-new .eb-scope-toolbar {
@@ -1391,102 +1346,102 @@
 .estimate-builder-new .eb-scope-jump-wrap {
   height: 2rem;
   min-height: 2rem;
-  border-color: var(--eb-border-soft);
-  border-radius: 0.375rem;
-  background: var(--eb-bg-warm) !important;
+  border-color: var(--hh-border);
+  border-radius: var(--hh-radius-compact);
+  background: var(--hh-l3-hover) !important;
   box-shadow: none;
 }
 
 .estimate-builder-new .eb-scope-toolbar-search-wrap > input:hover,
 .estimate-builder-new .eb-scope-jump-wrap:hover {
-  border-color: var(--eb-border);
-  background: #ffffff !important;
+  border-color: var(--hh-border);
+  background: var(--hh-l2-operational-surface) !important;
 }
 
 .estimate-builder-new .eb-scope-toolbar-search-wrap > input:focus-visible,
 .estimate-builder-new .eb-scope-jump-wrap:focus-within {
-  border-color: rgb(23 23 23 / 45%);
-  background: #ffffff !important;
-  box-shadow: 0 0 0 2px var(--eb-focus);
+  border-color: var(--hh-border-strong);
+  background: var(--hh-l2-operational-surface) !important;
+  box-shadow: 0 0 0 2px var(--hh-focus-ring);
 }
 
 .estimate-builder-new .eb-scope-toolbar-display-controls button {
   border: 1px solid transparent;
-  border-radius: 0.375rem;
-  font-size: 0.75rem;
-  font-weight: 500;
+  border-radius: var(--hh-radius-compact);
+  font-size: var(--hh-type-metadata-font-size);
+  font-weight: var(--hh-type-label-font-weight);
 }
 
 .estimate-builder-new .eb-scope-toolbar-display-controls button:hover,
 .estimate-builder-new .eb-scope-toolbar-display-controls button:focus-visible {
-  border-color: var(--eb-border-soft);
+  border-color: var(--hh-border);
 }
 
 .estimate-builder-new .eb-scope-toolbar-add .eb-add-section {
-  border-color: var(--eb-border-soft) !important;
-  background: var(--eb-bg-warm) !important;
+  border-color: var(--hh-border) !important;
+  background: var(--hh-l3-hover) !important;
 }
 
 .estimate-builder-new .eb-scope-toolbar-add .eb-add-section:hover,
 .estimate-builder-new .eb-scope-toolbar-add .eb-add-section:focus-visible {
-  border-color: var(--eb-border) !important;
-  background: #ffffff !important;
+  border-color: var(--hh-border) !important;
+  background: var(--hh-l2-operational-surface) !important;
 }
 
 .estimate-builder-new .eb-scope-section-header {
-  border-bottom-color: var(--eb-border);
+  border-bottom-color: var(--hh-border);
   padding-block: 0.5rem 0.5625rem;
 }
 
 .estimate-builder-new .eb-scope-block-title {
-  font-size: 1rem;
-  font-weight: 650;
-  line-height: 1.3;
-  letter-spacing: -0.01em;
+  font-size: var(--hh-type-section-title-font-size);
+  font-weight: var(--hh-type-body-strong-font-weight);
+  line-height: var(--hh-type-body-line-height);
+  letter-spacing: 0;
 }
 
 .estimate-builder-new .eb-scope-section-item-count {
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: var(--eb-muted);
+  font-size: var(--hh-type-metadata-font-size);
+  font-weight: var(--hh-type-label-font-weight);
+  color: var(--hh-text-tertiary);
 }
 
 .estimate-builder-new .eb-scope-block-total {
-  font-size: 0.875rem;
-  font-weight: 650;
-  line-height: 1.25;
+  font-size: var(--hh-type-body-font-size);
+  font-weight: var(--hh-type-body-strong-font-weight);
+  line-height: var(--hh-type-label-line-height);
   font-variant-numeric: tabular-nums lining-nums;
-  letter-spacing: -0.006em;
+  letter-spacing: 0;
 }
 
 .estimate-builder-new .eb-scope-section-add-line {
-  font-size: 0.75rem;
-  font-weight: 500;
+  font-size: var(--hh-type-metadata-font-size);
+  font-weight: var(--hh-type-label-font-weight);
 }
 
 @media (min-width: 768px) {
   .estimate-builder-new .eb-line-item-card {
-    border-bottom-color: var(--eb-border-soft);
+    border-bottom-color: var(--hh-border);
     padding-block: 0.5rem;
   }
 
   .estimate-builder-new .eb-line-item-card:hover,
   .estimate-builder-new .eb-line-item-card:focus-within {
-    border-bottom-color: var(--eb-border);
-    background: var(--eb-bg-warm);
+    border-bottom-color: var(--hh-border);
+    background: var(--hh-l3-hover);
   }
 
   .estimate-builder-new .eb-line-item-title-control p {
-    font-size: 0.875rem;
-    font-weight: 600;
-    line-height: 1.35;
-    letter-spacing: -0.006em;
+    font-size: var(--hh-type-body-font-size);
+    font-weight: var(--hh-type-panel-title-font-weight);
+    line-height: var(--hh-type-body-line-height);
+    letter-spacing: 0;
   }
 
   .estimate-builder-new .eb-scope-description-readonly {
-    font-size: 0.8125rem;
-    line-height: 1.42;
-    color: var(--eb-secondary);
+    font-size: var(--hh-type-table-cell-font-size);
+    line-height: var(--hh-type-body-line-height);
+    color: var(--hh-text-secondary);
   }
 
   .estimate-builder-new .eb-scope-description-readonly :where(p, li) {
@@ -1497,7 +1452,7 @@
 
   .estimate-builder-new .eb-line-item-grid--pricing input.eb-input,
   .estimate-builder-new .eb-line-item-description-block .eb-scope-editor-surface {
-    border-radius: 0.375rem !important;
+    border-radius: var(--hh-radius-compact) !important;
     transition:
       border-color 120ms ease-out,
       background-color 120ms ease-out,
@@ -1505,7 +1460,7 @@
   }
 
   .estimate-builder-new .eb-scope-editor-toolbar {
-    border-color: var(--eb-border-soft) !important;
+    border-color: var(--hh-border) !important;
     background: transparent !important;
     opacity: 0.72;
   }
@@ -1519,16 +1474,15 @@
 .estimate-builder-new .eb-line-total-amount,
 .estimate-builder-new .eb-line-pricing-total {
   font-variant-numeric: tabular-nums lining-nums;
-  font-weight: 600;
-  letter-spacing: -0.006em;
+  font-weight: var(--hh-type-panel-title-font-weight);
+  letter-spacing: 0;
 }
 
 /* Edit Details belongs to the same white/graphite Estimate workspace. */
 .estimate-builder.eb-sheet-glass.eb-estimate-details-sheet {
-  --eb-sheet-input-bg: #ffffff;
-  border-color: var(--eb-sheet-border) !important;
-  background: #ffffff !important;
-  box-shadow: -10px 0 30px rgb(0 0 0 / 9%) !important;
+  border-color: var(--hh-border-floating) !important;
+  background: var(--hh-l5-task-surface) !important;
+  box-shadow: var(--hh-shadow-task) !important;
 }
 
 .estimate-builder.eb-sheet-glass.eb-estimate-details-sheet .eb-sheet-header {
@@ -1536,19 +1490,19 @@
 }
 
 .estimate-builder.eb-sheet-glass.eb-estimate-details-sheet .eb-sheet-title {
-  font-size: 1.0625rem;
-  font-weight: 650;
-  line-height: 1.3;
-  letter-spacing: -0.012em;
+  font-size: var(--hh-type-section-title-font-size);
+  font-weight: var(--hh-type-body-strong-font-weight);
+  line-height: var(--hh-type-body-line-height);
+  letter-spacing: 0;
 }
 
 .estimate-builder.eb-sheet-glass .eb-estimate-details-subtitle {
   display: block;
   margin-top: 0.25rem;
   max-width: 36rem;
-  font-size: 0.78125rem;
-  line-height: 1.4;
-  color: var(--eb-muted);
+  font-size: var(--hh-type-table-cell-font-size);
+  line-height: var(--hh-type-body-line-height);
+  color: var(--hh-text-tertiary);
 }
 
 .estimate-builder.eb-sheet-glass.eb-estimate-details-sheet .eb-sheet-content {
@@ -1576,19 +1530,19 @@
 }
 
 .estimate-builder.eb-sheet-glass .eb-estimate-details-group-title {
-  font-size: 0.875rem;
-  font-weight: 650;
-  line-height: 1.3;
-  letter-spacing: -0.006em;
-  color: var(--eb-text);
+  font-size: var(--hh-type-body-font-size);
+  font-weight: var(--hh-type-body-strong-font-weight);
+  line-height: var(--hh-type-body-line-height);
+  letter-spacing: 0;
+  color: var(--hh-text-primary);
 }
 
 .estimate-builder.eb-sheet-glass .eb-estimate-details-group-copy,
 .estimate-builder.eb-sheet-glass .eb-estimate-details-helper,
 .estimate-builder.eb-sheet-glass .eb-estimate-style-helper {
-  font-size: 0.75rem;
-  line-height: 1.4;
-  color: var(--eb-muted);
+  font-size: var(--hh-type-metadata-font-size);
+  line-height: var(--hh-type-body-line-height);
+  color: var(--hh-text-tertiary);
 }
 
 .estimate-builder.eb-sheet-glass .eb-estimate-details-group-copy {
@@ -1597,7 +1551,7 @@
 
 .estimate-builder.eb-sheet-glass .eb-estimate-details-supporting,
 .estimate-builder.eb-sheet-glass .eb-estimate-details-terms {
-  border-top: 1px solid var(--eb-border-soft);
+  border-top: 1px solid var(--hh-border);
   padding-top: 1.125rem;
 }
 
@@ -1608,22 +1562,22 @@
 }
 
 .estimate-builder.eb-sheet-glass .eb-sheet-label {
-  font-size: 0.75rem;
-  font-weight: 500;
-  line-height: 1.25;
+  font-size: var(--hh-type-metadata-font-size);
+  font-weight: var(--hh-type-label-font-weight);
+  line-height: var(--hh-type-label-line-height);
   letter-spacing: normal;
   text-transform: none;
-  color: var(--eb-secondary);
+  color: var(--hh-text-secondary);
 }
 
 .estimate-builder.eb-sheet-glass .eb-sheet-section-label {
   margin-bottom: 0.75rem;
-  font-size: 0.6875rem;
-  font-weight: 650;
-  line-height: 1.25;
-  letter-spacing: 0.055em;
+  font-size: var(--hh-type-table-header-font-size);
+  font-weight: var(--hh-type-body-strong-font-weight);
+  line-height: var(--hh-type-label-line-height);
+  letter-spacing: 0;
   text-transform: uppercase;
-  color: var(--eb-muted);
+  color: var(--hh-text-tertiary);
 }
 
 .estimate-builder.eb-sheet-glass .eb-estimate-details-supporting > .eb-sheet-section-label {
@@ -1639,36 +1593,36 @@
 .estimate-builder.eb-sheet-glass textarea.eb-sheet-input,
 .estimate-builder.eb-sheet-glass select.eb-sheet-input {
   min-height: 2.5rem;
-  border-color: var(--eb-border) !important;
-  border-radius: 0.375rem !important;
-  background: #ffffff !important;
+  border-color: var(--hh-border) !important;
+  border-radius: var(--hh-radius-compact) !important;
+  background: var(--hh-l2-operational-surface) !important;
   padding-inline: 0.75rem;
-  color: var(--eb-text) !important;
+  color: var(--hh-text-primary) !important;
   box-shadow: none !important;
 }
 
 .estimate-builder.eb-sheet-glass .eb-sheet-input:hover {
-  border-color: var(--eb-border-strong) !important;
-  background: #ffffff !important;
+  border-color: var(--hh-border-strong) !important;
+  background: var(--hh-l2-operational-surface) !important;
 }
 
 .estimate-builder.eb-sheet-glass .eb-sheet-input:focus-visible,
 .estimate-builder.eb-sheet-glass .eb-sheet-input[aria-expanded="true"] {
-  border-color: rgb(23 23 23 / 45%) !important;
-  background: #ffffff !important;
-  box-shadow: 0 0 0 2px var(--eb-focus) !important;
+  border-color: var(--hh-border-strong) !important;
+  background: var(--hh-l2-operational-surface) !important;
+  box-shadow: 0 0 0 2px var(--hh-focus-ring) !important;
 }
 
 .estimate-builder.eb-sheet-glass .eb-sheet-input:disabled {
-  border-color: var(--eb-border-soft) !important;
-  background: var(--eb-bg-soft) !important;
-  color: var(--eb-muted) !important;
+  border-color: var(--hh-border) !important;
+  background: var(--hh-l3-hover) !important;
+  color: var(--hh-text-tertiary) !important;
   opacity: 1;
 }
 
 .estimate-builder.eb-sheet-glass .eb-sheet-input[aria-invalid="true"] {
-  border-color: #a13737 !important;
-  box-shadow: 0 0 0 2px rgb(161 55 55 / 13%) !important;
+  border-color: var(--hh-danger-border) !important;
+  box-shadow: 0 0 0 2px var(--hh-focus-ring) !important;
 }
 
 .estimate-builder.eb-sheet-glass .eb-estimate-style-field {
@@ -1690,58 +1644,58 @@
 }
 
 .estimate-builder.eb-sheet-glass .eb-estimate-style-option:hover {
-  background: var(--eb-bg-warm);
+  background: var(--hh-l3-hover);
 }
 
 .estimate-builder.eb-sheet-glass .eb-estimate-style-option.is-selected {
-  border-color: var(--eb-border);
-  background: var(--eb-bg-warm);
+  border-color: var(--hh-border);
+  background: var(--hh-l3-hover);
   box-shadow: none;
 }
 
 .estimate-builder.eb-sheet-glass .eb-estimate-style-option:focus-within {
   outline: 0;
-  box-shadow: 0 0 0 2px var(--eb-focus);
+  box-shadow: 0 0 0 2px var(--hh-focus-ring);
 }
 
 .estimate-builder.eb-sheet-glass .eb-sheet-footer {
-  background: #ffffff;
+  background: var(--hh-l2-operational-surface);
 }
 
 .estimate-builder.eb-sheet-glass .eb-sheet-helper-chip {
-  border-color: var(--eb-border) !important;
-  background: #ffffff !important;
-  color: var(--eb-secondary) !important;
+  border-color: var(--hh-border) !important;
+  background: var(--hh-l2-operational-surface) !important;
+  color: var(--hh-text-secondary) !important;
   box-shadow: none !important;
 }
 
 .estimate-builder.eb-sheet-glass .eb-sheet-helper-chip:hover {
-  border-color: var(--eb-border-strong) !important;
-  background: var(--eb-bg-soft) !important;
-  color: var(--eb-text) !important;
+  border-color: var(--hh-border-strong) !important;
+  background: var(--hh-l3-hover) !important;
+  color: var(--hh-text-primary) !important;
 }
 
 .estimate-builder.eb-sheet-glass .eb-sheet-helper-trigger {
-  color: var(--eb-muted) !important;
+  color: var(--hh-text-tertiary) !important;
 }
 
 .estimate-builder.eb-sheet-glass .eb-sheet-footer-actions > button {
   min-height: 2.75rem;
-  border-radius: 0.375rem !important;
+  border-radius: var(--hh-radius-compact) !important;
 }
 
 @media (min-width: 768px) {
   .estimate-builder.eb-sheet-glass.eb-estimate-details-sheet.eb-sheet-glass-wide {
     width: min(720px, calc(100vw - 4rem)) !important;
     max-width: 720px !important;
-    border-radius: 0.75rem 0 0 0.75rem !important;
+    border-radius: var(--hh-radius-task) 0 0 var(--hh-radius-task) !important;
   }
 }
 
 @media (max-width: 767px) {
   .estimate-builder-new .eb-estimate-command-bar {
     border: 0;
-    border-bottom: 1px solid var(--eb-border-soft);
+    border-bottom: 1px solid var(--hh-border);
     border-radius: 0;
     background: transparent;
     padding: 0.5rem 0.75rem 0.625rem;
@@ -1754,7 +1708,7 @@
 
   .estimate-builder-new .eb-estimate-context-panel {
     border: 0;
-    border-bottom: 1px solid var(--eb-border-soft);
+    border-bottom: 1px solid var(--hh-border);
     border-radius: 0;
     background: transparent;
     padding: 0.625rem 0.75rem;
@@ -1765,13 +1719,13 @@
   }
 
   .estimate-builder-new .eb-estimate-context-mobile .eb-estimate-context-primary dd {
-    font-size: 0.875rem;
-    line-height: 1.3;
+    font-size: var(--hh-type-body-font-size);
+    line-height: var(--hh-type-body-line-height);
   }
 
   .estimate-builder-new .eb-estimate-mobile-supporting-context {
     margin-top: 0.5rem;
-    border-top: 1px solid var(--eb-border-soft);
+    border-top: 1px solid var(--hh-border);
   }
 
   .estimate-builder-new
@@ -1820,13 +1774,13 @@
 
   .estimate-builder.eb-sheet-glass .eb-estimate-style-option {
     min-height: 2.75rem;
-    border-color: var(--eb-border);
-    background: #ffffff;
+    border-color: var(--hh-border);
+    background: var(--hh-l2-operational-surface);
   }
 
   .estimate-builder.eb-sheet-glass .eb-estimate-style-option.is-selected {
-    border-color: var(--eb-border-strong);
-    background: var(--eb-bg-warm);
+    border-color: var(--hh-border-strong);
+    background: var(--hh-l3-hover);
   }
 
   .estimate-builder-new .eb-estimate-template-tool > .eb-glass-panel {

@@ -7,7 +7,7 @@ import { workerReceiptInboxPath } from "@/lib/expense-operations-routing";
 import { cn } from "@/lib/utils";
 
 const sourceLinkClass =
-  "inline-flex min-h-11 items-center rounded-md px-3 text-xs font-medium outline-none transition-colors duration-120 focus-visible:ring-2 focus-visible:ring-[var(--eo-focus)] focus-visible:ring-offset-1 md:min-h-9";
+  "inline-flex min-h-11 items-center rounded-md px-3 text-xs font-medium outline-none transition-colors duration-120 focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)] focus-visible:ring-offset-1 md:min-h-9";
 
 export function ReceiptInboxSourceNav({ className }: { className?: string }) {
   const pathname = usePathname();
@@ -37,7 +37,7 @@ export function ReceiptInboxSourceNav({ className }: { className?: string }) {
     <nav
       aria-label="Receipt Inbox sources"
       className={cn(
-        "flex min-w-0 max-w-full gap-1 overflow-x-auto rounded-lg bg-[var(--eo-depth-structural)] p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+        "flex min-w-0 max-w-full gap-1 overflow-x-auto rounded-lg bg-[var(--hh-l3-hover)] p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
         className
       )}
     >
@@ -47,8 +47,8 @@ export function ReceiptInboxSourceNav({ className }: { className?: string }) {
         className={cn(
           sourceLinkClass,
           !workerActive
-            ? "bg-[var(--eo-depth-l2)] text-[var(--eo-text-primary)] shadow-[var(--eo-shadow-operational)]"
-            : "text-[var(--eo-text-secondary)] hover:bg-[var(--eo-depth-l3-hover)] hover:text-[var(--eo-text-primary)]"
+            ? "bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-operational"
+            : "text-[var(--hh-text-secondary)] hover:bg-[var(--hh-l3-hover)] hover:text-[var(--hh-text-primary)]"
         )}
       >
         Expense Uploads
@@ -59,8 +59,8 @@ export function ReceiptInboxSourceNav({ className }: { className?: string }) {
         className={cn(
           sourceLinkClass,
           workerActive
-            ? "bg-[var(--eo-depth-l2)] text-[var(--eo-text-primary)] shadow-[var(--eo-shadow-operational)]"
-            : "text-[var(--eo-text-secondary)] hover:bg-[var(--eo-depth-l3-hover)] hover:text-[var(--eo-text-primary)]"
+            ? "bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-operational"
+            : "text-[var(--hh-text-secondary)] hover:bg-[var(--hh-l3-hover)] hover:text-[var(--hh-text-primary)]"
         )}
       >
         Worker Submitted

@@ -45,10 +45,10 @@ import { dispatchClientDataSync } from "@/lib/sync-router-client";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 
 const wpKpiTile =
-  "rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)] md:rounded-xl";
+  "rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-operational md:rounded-hh-task";
 
 const wpKpiIcon =
-  "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] text-[var(--neo-text-secondary)] md:h-8 md:w-8";
+  "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[var(--hh-border)] bg-[var(--hh-l3-hover)] text-[var(--hh-text-secondary)] md:h-8 md:w-8";
 
 const wpKpiTileLayout =
   "flex min-h-[52px] items-start gap-1.5 px-2 py-2 md:h-[62px] md:items-center md:gap-2 md:px-3 md:py-1.5";
@@ -66,7 +66,7 @@ const AVATAR_RING = [
 ];
 
 const workerAvatarRing =
-  "ring-1 ring-inset ring-zinc-950/[0.05] shadow-[inset_0_1px_0_rgba(255,255,255,0.35)] dark:shadow-none dark:ring-white/[0.07]";
+  "ring-1 ring-inset ring-zinc-950/[0.05] shadow-operational dark:shadow-none dark:ring-white/[0.07]";
 
 const METHOD_DOT_CLASS =
   "h-[4px] w-[4px] shrink-0 rounded-full bg-zinc-400/65 ring-1 ring-zinc-950/[0.04] dark:bg-zinc-500/55 dark:ring-white/[0.06]";
@@ -145,7 +145,7 @@ function PaymentRowActionsMenu({
           variant="ghost"
           size="icon"
           className={cn(
-            "shrink-0 rounded-sm text-muted-foreground/45 outline-none transition-colors",
+            "shrink-0 rounded-hh-compact text-muted-foreground/45 outline-none transition-colors",
             "hover:bg-zinc-100/90 hover:text-foreground focus-visible:ring-2 focus-visible:ring-zinc-400/30 dark:hover:bg-muted/45 dark:hover:text-foreground",
             layout === "mobile" ? "h-11 w-11 min-h-[44px] min-w-[44px]" : "h-8 w-8 md:h-8 md:w-8"
           )}
@@ -156,7 +156,7 @@ function PaymentRowActionsMenu({
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align="end"
-        className="min-w-[10rem] rounded-md border border-border/60 bg-popover p-1 shadow-floating"
+        className="min-w-[10rem] rounded-hh-compact border border-border/60 bg-popover p-1 shadow-floating"
       >
         <DropdownMenuItem
           className="cursor-pointer text-sm"
@@ -351,16 +351,16 @@ export default function WorkerPaymentsPage() {
   );
 
   const thClass =
-    "px-3 py-2 text-left text-[10px] font-medium uppercase tracking-normal text-[var(--neo-text-secondary)]";
+    "px-3 py-2 text-left text-hh-status font-medium uppercase tracking-normal text-[var(--hh-text-secondary)]";
   const thRight =
-    "px-3 py-2 text-right text-[10px] font-medium uppercase tracking-normal text-[var(--neo-text-secondary)] tabular-nums";
+    "px-3 py-2 text-right text-hh-status font-medium uppercase tracking-normal text-[var(--hh-text-secondary)] tabular-nums";
   const sortableTh =
-    "group/th cursor-pointer select-none transition-colors hover:text-[var(--neo-text-primary)]";
+    "group/th cursor-pointer select-none transition-colors hover:text-[var(--hh-text-primary)]";
 
   return (
     <div
       className={cn(
-        "dark neo-page-on-graphite min-w-0 overflow-x-hidden pb-[max(1rem,env(safe-area-inset-bottom,0px))] pt-[max(0.35rem,env(safe-area-inset-top,0px))] text-[var(--neo-canvas-text-secondary)]",
+        " min-w-0 overflow-x-hidden pb-[max(1rem,env(safe-area-inset-bottom,0px))] pt-[max(0.35rem,env(safe-area-inset-top,0px))] text-[var(--hh-text-secondary)]",
         "flex flex-col"
       )}
     >
@@ -374,14 +374,14 @@ export default function WorkerPaymentsPage() {
 
       <div
         className={cn(
-          "neo-page-on-graphite page-shell-wide mx-auto flex w-full max-w-[430px] flex-1 flex-col gap-2 px-4 py-2 pb-4 sm:max-w-[460px] md:gap-2 md:px-6 md:pb-6 md:pt-3",
+          " page-shell-wide mx-auto flex w-full max-w-[430px] flex-1 flex-col gap-2 px-4 py-2 pb-4 sm:max-w-[460px] md:gap-2 md:px-6 md:pb-6 md:pt-3",
           mobileListPagePaddingClass,
           "max-md:!gap-2"
         )}
       >
         <div className="hidden md:block">
           <PageHeader
-            className="gap-1 border-b border-white/10 pb-3 lg:items-baseline lg:gap-x-4 [&_h1]:!text-[24px] [&_h1]:!font-semibold [&_h1]:!leading-none [&_h1]:!tracking-normal [&_h1]:!text-[var(--neo-canvas-text-primary)] [&_p]:!mt-1 [&_p]:!max-w-xl [&_p]:!text-[14px] [&_p]:!leading-snug [&_p]:!text-[var(--neo-canvas-text-secondary)]"
+            className="gap-1 border-b border-[var(--hh-border)] pb-3 lg:items-baseline lg:gap-x-4 [&_h1]:!text-hh-financial-total [&_h1]:!font-semibold [&_h1]:!leading-none [&_h1]:!tracking-normal [&_h1]:!text-[var(--hh-text-primary)] [&_p]:!mt-1 [&_p]:!max-w-xl [&_p]:!text-hh-body [&_p]:!leading-snug [&_p]:!text-[var(--hh-text-secondary)]"
             title="Worker Payments"
             subtitle="Payment history for worker payouts."
             actions={
@@ -412,13 +412,13 @@ export default function WorkerPaymentsPage() {
                 <DollarSign className="h-3 w-3 md:h-3.5 md:w-3.5" strokeWidth={1.75} aria-hidden />
               </span>
               <div className="min-w-0 flex-1">
-                <p className="text-[8px] font-medium uppercase leading-none tracking-wide text-muted-foreground md:text-[9px] md:normal-case md:tracking-normal">
+                <p className="text-hh-status font-medium uppercase leading-none tracking-normal text-muted-foreground md:text-hh-status md:normal-case md:tracking-normal">
                   Total paid
                 </p>
                 <p className="mt-0.5 truncate text-base font-semibold tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
                   {formatCurrency(summary.totalPaid)}
                 </p>
-                <p className="mt-0.5 text-[9px] leading-none text-muted-foreground">All time</p>
+                <p className="mt-0.5 text-hh-status leading-none text-muted-foreground">All time</p>
               </div>
             </div>
             <div className={cn(wpKpiTile, wpKpiTileLayout)}>
@@ -426,13 +426,15 @@ export default function WorkerPaymentsPage() {
                 <ListOrdered className="h-3 w-3 md:h-3.5 md:w-3.5" strokeWidth={1.75} aria-hidden />
               </span>
               <div className="min-w-0 flex-1">
-                <p className="text-[8px] font-medium uppercase leading-none tracking-wide text-muted-foreground md:text-[9px] md:normal-case md:tracking-normal">
+                <p className="text-hh-status font-medium uppercase leading-none tracking-normal text-muted-foreground md:text-hh-status md:normal-case md:tracking-normal">
                   Payments count
                 </p>
                 <p className="mt-0.5 text-base font-semibold tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
                   {summary.count}
                 </p>
-                <p className="mt-0.5 text-[9px] leading-none text-muted-foreground">All records</p>
+                <p className="mt-0.5 text-hh-status leading-none text-muted-foreground">
+                  All records
+                </p>
               </div>
             </div>
             <div className={cn(wpKpiTile, wpKpiTileLayout)}>
@@ -444,13 +446,13 @@ export default function WorkerPaymentsPage() {
                 />
               </span>
               <div className="min-w-0 flex-1">
-                <p className="text-[8px] font-medium uppercase leading-none tracking-wide text-muted-foreground md:text-[9px] md:normal-case md:tracking-normal">
+                <p className="text-hh-status font-medium uppercase leading-none tracking-normal text-muted-foreground md:text-hh-status md:normal-case md:tracking-normal">
                   This month
                 </p>
                 <p className="mt-0.5 truncate text-base font-semibold tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
                   {formatCurrency(summary.thisMonthTotal)}
                 </p>
-                <p className="mt-0.5 truncate text-[9px] leading-none text-muted-foreground">
+                <p className="mt-0.5 truncate text-hh-status leading-none text-muted-foreground">
                   {thisMonthLabel()}
                 </p>
               </div>
@@ -460,13 +462,13 @@ export default function WorkerPaymentsPage() {
                 <Users className="h-3 w-3 md:h-3.5 md:w-3.5" strokeWidth={1.75} aria-hidden />
               </span>
               <div className="min-w-0 flex-1">
-                <p className="text-[8px] font-medium uppercase leading-none tracking-wide text-muted-foreground md:text-[9px] md:normal-case md:tracking-normal">
+                <p className="text-hh-status font-medium uppercase leading-none tracking-normal text-muted-foreground md:text-hh-status md:normal-case md:tracking-normal">
                   Workers paid
                 </p>
                 <p className="mt-0.5 text-base font-semibold tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
                   {summary.workersPaid}
                 </p>
-                <p className="mt-0.5 text-[9px] leading-none text-muted-foreground">Unique</p>
+                <p className="mt-0.5 text-hh-status leading-none text-muted-foreground">Unique</p>
               </div>
             </div>
             <div className={cn(wpKpiTile, wpKpiTileLayout, "col-span-2 sm:col-span-1")}>
@@ -474,13 +476,15 @@ export default function WorkerPaymentsPage() {
                 <Divide className="h-3 w-3 md:h-3.5 md:w-3.5" strokeWidth={1.75} aria-hidden />
               </span>
               <div className="min-w-0 flex-1">
-                <p className="text-[8px] font-medium uppercase leading-none tracking-wide text-muted-foreground md:text-[9px] md:normal-case md:tracking-normal">
+                <p className="text-hh-status font-medium uppercase leading-none tracking-normal text-muted-foreground md:text-hh-status md:normal-case md:tracking-normal">
                   Avg payment
                 </p>
                 <p className="mt-0.5 truncate text-base font-semibold tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
                   {formatCurrency(summary.avgPayment)}
                 </p>
-                <p className="mt-0.5 text-[9px] leading-none text-muted-foreground">Per payment</p>
+                <p className="mt-0.5 text-hh-status leading-none text-muted-foreground">
+                  Per payment
+                </p>
               </div>
             </div>
           </div>
@@ -516,7 +520,7 @@ export default function WorkerPaymentsPage() {
               type="button"
               variant="outline"
               size="sm"
-              className="h-10 shrink-0 gap-1.5 rounded-sm shadow-none"
+              className="h-10 shrink-0 gap-1.5 rounded-hh-compact shadow-none"
               onClick={() => setFiltersOpen(true)}
             >
               Filters
@@ -567,7 +571,7 @@ export default function WorkerPaymentsPage() {
             type="button"
             variant="outline"
             size="sm"
-            className="h-11 min-h-[44px] w-full rounded-sm"
+            className="h-11 min-h-[44px] w-full rounded-hh-compact"
             onClick={() => {
               void load();
               setFiltersOpen(false);
@@ -579,7 +583,7 @@ export default function WorkerPaymentsPage() {
           </Button>
           <Button
             type="button"
-            className="h-11 min-h-[44px] w-full rounded-sm"
+            className="h-11 min-h-[44px] w-full rounded-hh-compact"
             onClick={() => setFiltersOpen(false)}
           >
             Done
@@ -606,7 +610,7 @@ export default function WorkerPaymentsPage() {
                         <Skeleton className="h-3 w-1/2" />
                       </div>
                     </div>
-                    <Skeleton className="h-11 w-11 shrink-0 rounded-sm" />
+                    <Skeleton className="h-11 w-11 shrink-0 rounded-hh-compact" />
                   </div>
                   <Skeleton className="h-8 w-40" />
                   <Skeleton className="h-16 w-full" />
@@ -615,7 +619,7 @@ export default function WorkerPaymentsPage() {
             </div>
           ) : rows.length === 0 ? (
             <NeoMobileCard className="min-h-[122px] px-4 py-10 text-center">
-              <p className="text-sm font-medium text-[var(--neo-text-primary)]">No payments yet</p>
+              <p className="text-sm font-medium text-[var(--hh-text-primary)]">No payments yet</p>
               <p className="mt-1 text-xs text-muted-foreground">
                 Payouts you record will appear here with receipt links.
               </p>
@@ -644,7 +648,7 @@ export default function WorkerPaymentsPage() {
                       <div className="flex min-w-0 flex-1 items-start gap-3">
                         <span
                           className={cn(
-                            "flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[12px] font-semibold leading-none tabular-nums antialiased",
+                            "flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-hh-metadata font-semibold leading-none tabular-nums antialiased",
                             workerAvatarRing,
                             avatarRingClass(r.workerId)
                           )}
@@ -653,7 +657,7 @@ export default function WorkerPaymentsPage() {
                           {workerInitials(wName)}
                         </span>
                         <div className="min-w-0 flex-1">
-                          <p className="line-clamp-2 text-[13px] font-semibold leading-snug tracking-normal text-[var(--neo-text-primary)]">
+                          <p className="line-clamp-2 text-hh-table-cell font-semibold leading-snug tracking-normal text-[var(--hh-text-primary)]">
                             {wName}
                           </p>
                         </div>
@@ -666,7 +670,7 @@ export default function WorkerPaymentsPage() {
                       />
                     </div>
                     <div className="flex flex-wrap items-end justify-between gap-2 border-b border-zinc-100/70 pb-2 dark:border-border/40">
-                      <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                      <span className="text-hh-status font-medium uppercase tracking-normal text-muted-foreground">
                         Amount
                       </span>
                       <NeoAmount
@@ -678,7 +682,7 @@ export default function WorkerPaymentsPage() {
                     </div>
                     <dl className="grid grid-cols-1 gap-x-3 gap-y-2 text-xs sm:grid-cols-2">
                       <div className="min-w-0">
-                        <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                        <dt className="text-hh-status font-medium uppercase tracking-normal text-muted-foreground">
                           Method
                         </dt>
                         <dd className="min-w-0 pt-0.5">
@@ -686,15 +690,15 @@ export default function WorkerPaymentsPage() {
                         </dd>
                       </div>
                       <div className="min-w-0">
-                        <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                        <dt className="text-hh-status font-medium uppercase tracking-normal text-muted-foreground">
                           Date
                         </dt>
-                        <dd className="truncate pt-0.5 font-mono tabular-nums text-zinc-700 dark:text-zinc-200">
+                        <dd className="truncate pt-0.5 hh-fin text-zinc-700 dark:text-zinc-200">
                           {formatDate(r.paymentDate)}
                         </dd>
                       </div>
                       <div className="min-w-0 sm:col-span-2">
-                        <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                        <dt className="text-hh-status font-medium uppercase tracking-normal text-muted-foreground">
                           Project
                         </dt>
                         <dd className="truncate pt-0.5 text-zinc-700 dark:text-zinc-200">
@@ -702,7 +706,7 @@ export default function WorkerPaymentsPage() {
                         </dd>
                       </div>
                       <div className="min-w-0 sm:col-span-2">
-                        <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                        <dt className="text-hh-status font-medium uppercase tracking-normal text-muted-foreground">
                           Notes
                         </dt>
                         <dd className="line-clamp-2 break-words pt-0.5 text-sm leading-snug text-zinc-600 dark:text-zinc-400">
@@ -727,7 +731,7 @@ export default function WorkerPaymentsPage() {
           busy={refreshing && rows.length > 0}
         >
           <thead>
-            <tr className="border-b border-[var(--neo-border)] bg-[var(--neo-surface-muted)]">
+            <tr className="border-b border-[var(--hh-border)] bg-[var(--hh-l3-hover)]">
               <th className={cn(thClass, "min-w-[200px]")}>Worker</th>
               <th className={cn(thClass, "min-w-[120px]")}>Project</th>
               <th
@@ -771,7 +775,7 @@ export default function WorkerPaymentsPage() {
                 </span>
               </th>
               <th className={cn(thClass, "min-w-[140px]")}>Notes</th>
-              <th className="w-12 px-2 py-2 text-right align-middle text-[10px] font-medium uppercase tracking-normal text-[var(--neo-text-secondary)]">
+              <th className="w-12 px-2 py-2 text-right align-middle text-hh-status font-medium uppercase tracking-normal text-[var(--hh-text-secondary)]">
                 <span className="sr-only">Actions</span>
               </th>
             </tr>
@@ -798,7 +802,7 @@ export default function WorkerPaymentsPage() {
                     </td>
                   ))}
                   <td className="px-2 py-2.5 text-right align-middle">
-                    <Skeleton className="ml-auto h-8 w-8 rounded-sm" />
+                    <Skeleton className="ml-auto h-8 w-8 rounded-hh-compact" />
                   </td>
                 </tr>
               ))
@@ -837,7 +841,7 @@ export default function WorkerPaymentsPage() {
                       <div className="flex min-w-0 items-center gap-2.5">
                         <span
                           className={cn(
-                            "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold leading-none tabular-nums antialiased",
+                            "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-hh-status font-semibold leading-none tabular-nums antialiased",
                             workerAvatarRing,
                             avatarRingClass(r.workerId)
                           )}
@@ -846,7 +850,7 @@ export default function WorkerPaymentsPage() {
                           {workerInitials(wName)}
                         </span>
                         <div className="min-w-0">
-                          <p className="line-clamp-2 text-[13px] font-semibold leading-snug tracking-normal text-[var(--neo-text-primary)]">
+                          <p className="line-clamp-2 text-hh-table-cell font-semibold leading-snug tracking-normal text-[var(--hh-text-primary)]">
                             {wName}
                           </p>
                         </div>
@@ -863,7 +867,7 @@ export default function WorkerPaymentsPage() {
                     <td className="max-w-[160px] px-3 py-2.5 align-middle text-sm">
                       <PaymentMethodLabel method={r.paymentMethod ?? ""} />
                     </td>
-                    <td className="whitespace-nowrap px-3 py-2.5 align-middle font-mono text-sm tabular-nums text-zinc-600 dark:text-zinc-300">
+                    <td className="whitespace-nowrap px-3 py-2.5 align-middle hh-fin text-sm tabular-nums text-zinc-600 dark:text-zinc-300">
                       {formatDate(r.paymentDate)}
                     </td>
                     <td
@@ -908,7 +912,7 @@ export default function WorkerPaymentsPage() {
             <Button
               size="sm"
               variant="outline"
-              className="h-11 min-h-[44px] flex-1 rounded-sm shadow-none sm:h-8 sm:min-h-0 sm:flex-none"
+              className="h-11 min-h-[44px] flex-1 rounded-hh-compact shadow-none sm:h-8 sm:min-h-0 sm:flex-none"
               disabled={page <= 1}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
             >
@@ -917,7 +921,7 @@ export default function WorkerPaymentsPage() {
             <Button
               size="sm"
               variant="outline"
-              className="h-11 min-h-[44px] flex-1 rounded-sm shadow-none sm:h-8 sm:min-h-0 sm:flex-none"
+              className="h-11 min-h-[44px] flex-1 rounded-hh-compact shadow-none sm:h-8 sm:min-h-0 sm:flex-none"
               disabled={page >= totalPages}
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
             >

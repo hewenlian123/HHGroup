@@ -531,12 +531,12 @@ export function ExpenseDetailClient({ id, returnHref }: { id: string; returnHref
   };
 
   return (
-    <div className="financial-nums expenses-ui neo-page-on-graphite min-h-full px-3 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 text-[var(--fieldbook-muted)] md:px-8 md:py-8">
+    <div className="financial-nums expenses-ui min-h-full px-3 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 text-[var(--hh-text-secondary)] md:px-8 md:py-8">
       <div className="page-shell-wide mx-auto flex w-full max-w-6xl flex-col gap-4 md:gap-5">
         <div className="flex items-center justify-between gap-3">
           <Link
             href={returnHref}
-            className="inline-flex min-h-11 items-center gap-2 rounded-lg text-sm text-[var(--fieldbook-muted)] outline-none hover:text-[var(--fieldbook-ink)] focus-visible:ring-2 focus-visible:ring-[var(--fieldbook-focus)] md:min-h-9"
+            className="inline-flex min-h-11 items-center gap-2 rounded-lg text-sm text-[var(--hh-text-secondary)] outline-none hover:text-[var(--hh-text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)] md:min-h-9"
           >
             <ArrowLeft className="h-4 w-4" />
             {returnHref.startsWith("/projects/") ? "Project workspace" : "Expenses"}
@@ -549,7 +549,7 @@ export function ExpenseDetailClient({ id, returnHref }: { id: string; returnHref
         {error ? (
           <div
             role="alert"
-            className="rounded-[12px] border border-[var(--eo-danger-border)] bg-[var(--eo-danger-soft)] px-4 py-3 text-sm text-[var(--eo-danger)]"
+            className="rounded-hh-standard border border-[var(--hh-danger-border)] bg-[var(--hh-danger-soft-fill)] px-4 py-3 text-sm text-[var(--hh-danger)]"
           >
             {error}
           </div>
@@ -557,13 +557,13 @@ export function ExpenseDetailClient({ id, returnHref }: { id: string; returnHref
         {message ? (
           <div
             role="status"
-            className="rounded-[12px] border border-[var(--eo-success-border)] bg-[var(--eo-success-soft)] px-4 py-3 text-sm text-[var(--eo-success)]"
+            className="rounded-hh-standard border border-[var(--hh-success-border)] bg-[var(--hh-success-soft-fill)] px-4 py-3 text-sm text-[var(--hh-success)]"
           >
             {message}
           </div>
         ) : null}
 
-        <Card className="rounded-xl border-[var(--neo-border)] bg-[var(--neo-surface-raised)] p-4 shadow-[var(--neo-shadow-panel)] md:p-5">
+        <Card className="rounded-xl border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-4 shadow-operational md:p-5">
           {loading || !expense ? (
             <div className="space-y-3">
               <Skeleton className="h-6 w-48" />
@@ -576,7 +576,7 @@ export function ExpenseDetailClient({ id, returnHref }: { id: string; returnHref
                 <div>
                   <CreatableSelect
                     contentClassName="expenses-ui-dialog"
-                    selectedOptionClassName="bg-[var(--eo-surface-selected)] text-[var(--eo-text-primary)]"
+                    selectedOptionClassName="bg-[var(--hh-l3-selected)] text-[var(--hh-text-primary)]"
                     label="Vendor"
                     value={expense.vendor_name ?? ""}
                     options={vendors.options}
@@ -590,13 +590,13 @@ export function ExpenseDetailClient({ id, returnHref }: { id: string; returnHref
                     }}
                   />
                   {expense.vendor_name && vendors.disabled.has(expense.vendor_name) ? (
-                    <span className="mt-1 inline-block text-xs text-[var(--eo-warning)]">
+                    <span className="mt-1 inline-block text-xs text-[var(--hh-warning)]">
                       Disabled
                     </span>
                   ) : null}
                 </div>
                 <div className="space-y-1">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-normal">
                     Date
                   </p>
                   <ExpenseDatePicker
@@ -608,7 +608,7 @@ export function ExpenseDetailClient({ id, returnHref }: { id: string; returnHref
                   />
                 </div>
                 <div>
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-normal">
                     Payment method
                   </p>
                   <ExpensePaymentMethodSelect
@@ -620,13 +620,13 @@ export function ExpenseDetailClient({ id, returnHref }: { id: string; returnHref
                     className="mt-1"
                   />
                   {expense.payment_method && paymentMethods.disabled.has(expense.payment_method) ? (
-                    <span className="mt-1 inline-block text-xs text-[var(--eo-warning)]">
+                    <span className="mt-1 inline-block text-xs text-[var(--hh-warning)]">
                       Disabled
                     </span>
                   ) : null}
                 </div>
                 <div className="space-y-1">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-normal">
                     Reference #
                   </p>
                   <Input
@@ -641,7 +641,7 @@ export function ExpenseDetailClient({ id, returnHref }: { id: string; returnHref
                 </div>
               </div>
               <div className="space-y-1">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-normal">
                   Notes
                 </p>
                 <Input
@@ -682,7 +682,7 @@ export function ExpenseDetailClient({ id, returnHref }: { id: string; returnHref
 
         <Card
           data-expense-detail-attachments
-          className="rounded-xl border-[var(--neo-border)] bg-[var(--neo-surface-raised)] p-4 shadow-[var(--neo-shadow-panel)] md:p-5"
+          className="rounded-xl border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-4 shadow-operational md:p-5"
         >
           <div className="flex items-center justify-between gap-3">
             <div>
@@ -745,14 +745,14 @@ export function ExpenseDetailClient({ id, returnHref }: { id: string; returnHref
               className={cn(
                 "mt-3 flex items-start justify-between gap-3 rounded-lg border px-3 py-2.5",
                 attachmentFeedback.tone === "error"
-                  ? "border-[var(--eo-danger-border)] bg-[var(--eo-danger-soft)] text-[var(--eo-danger)]"
-                  : "border-[var(--eo-success-border)] bg-[var(--eo-success-soft)] text-[var(--eo-success)]"
+                  ? "border-[var(--hh-danger-border)] bg-[var(--hh-danger-soft-fill)] text-[var(--hh-danger)]"
+                  : "border-[var(--hh-success-border)] bg-[var(--hh-success-soft-fill)] text-[var(--hh-success)]"
               )}
             >
               <div className="min-w-0">
                 <p className="text-xs font-semibold">{attachmentFeedback.title}</p>
                 {attachmentFeedback.detail ? (
-                  <p className="mt-0.5 text-[11px] leading-snug opacity-85">
+                  <p className="mt-0.5 text-hh-status leading-snug opacity-85">
                     {attachmentFeedback.detail}
                   </p>
                 ) : null}
@@ -783,14 +783,14 @@ export function ExpenseDetailClient({ id, returnHref }: { id: string; returnHref
             ) : attachments.length === 0 ? (
               <button
                 type="button"
-                className="flex min-h-24 w-full flex-col items-center justify-center rounded-xl border border-dashed border-[var(--neo-border-strong)] bg-[var(--neo-surface-muted)] px-4 py-4 text-center outline-none hover:bg-[var(--neo-surface-raised)] focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]"
+                className="flex min-h-24 w-full flex-col items-center justify-center rounded-xl border border-dashed border-[var(--hh-border-strong)] bg-[var(--hh-l3-hover)] px-4 py-4 text-center outline-none hover:bg-[var(--hh-l2-operational-surface)] focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)]"
                 onClick={() => fileInputRef.current?.click()}
               >
-                <FileText className="h-5 w-5 text-[var(--neo-text-secondary)]" aria-hidden />
-                <span className="mt-2 text-sm font-medium text-[var(--neo-text-primary)]">
+                <FileText className="h-5 w-5 text-[var(--hh-text-secondary)]" aria-hidden />
+                <span className="mt-2 text-sm font-medium text-[var(--hh-text-primary)]">
                   No receipt attached
                 </span>
-                <span className="mt-0.5 text-xs text-[var(--neo-text-secondary)]">
+                <span className="mt-0.5 text-xs text-[var(--hh-text-secondary)]">
                   Add a photo or PDF as expense evidence
                 </span>
               </button>
@@ -798,7 +798,7 @@ export function ExpenseDetailClient({ id, returnHref }: { id: string; returnHref
               attachments.map((att) => (
                 <div
                   key={att.id}
-                  className="flex min-h-14 items-center gap-3 border-b border-[var(--neo-border)] px-1 py-2.5 last:border-b-0"
+                  className="flex min-h-14 items-center gap-3 border-b border-[var(--hh-border)] px-1 py-2.5 last:border-b-0"
                 >
                   <button
                     type="button"
@@ -841,7 +841,7 @@ export function ExpenseDetailClient({ id, returnHref }: { id: string; returnHref
           </div>
         </Card>
 
-        <Card className="rounded-xl border-[var(--neo-border)] bg-[var(--neo-surface-raised)] p-4 shadow-[var(--neo-shadow-panel)] md:p-5">
+        <Card className="rounded-xl border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-4 shadow-operational md:p-5">
           {loading ? (
             <div className="space-y-2">
               {Array.from({ length: 6 }).map((_, idx) => (
@@ -881,16 +881,16 @@ export function ExpenseDetailClient({ id, returnHref }: { id: string; returnHref
           )}
 
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <div className="rounded-[12px] border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] p-4">
-              <p className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
+            <div className="rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l3-hover)] p-4">
+              <p className="text-hh-status uppercase tracking-normal text-muted-foreground">
                 Lines total
               </p>
-              <p className="mt-1 text-xl font-semibold tabular-nums text-[var(--eo-danger)]">
+              <p className="mt-1 text-xl font-semibold tabular-nums text-[var(--hh-danger)]">
                 {formatCurrency(-linesTotal)}
               </p>
             </div>
-            <div className="rounded-[12px] border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] p-4">
-              <p className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
+            <div className="rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l3-hover)] p-4">
+              <p className="text-hh-status uppercase tracking-normal text-muted-foreground">
                 Per project
               </p>
               <ul className="mt-2 space-y-1 text-sm">

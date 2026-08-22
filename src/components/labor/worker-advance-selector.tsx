@@ -45,7 +45,7 @@ export function WorkerAdvanceSelector({
 
   return (
     <div className="space-y-2">
-      <div className="rounded-md border border-border/60">
+      <div className="rounded-hh-compact border border-border/60">
         {advances.map((a) => {
           const checked = selectedIds.includes(a.id);
           return (
@@ -65,7 +65,7 @@ export function WorkerAdvanceSelector({
                   <span className={TYPO.amount}>{formatCurrency(a.amount)}</span>
                   <span className={TYPO.date}>{formatDate(a.advanceDate)}</span>
                 </div>
-                <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                <div className="flex items-center justify-between text-hh-status text-muted-foreground">
                   <span className="truncate max-w-[160px]">{a.projectName ?? "No project"}</span>
                   {a.notes ? <span className="truncate max-w-[160px]">{a.notes}</span> : null}
                 </div>

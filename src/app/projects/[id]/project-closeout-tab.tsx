@@ -256,8 +256,8 @@ export function ProjectCloseoutTab({
       {message && (
         <p
           className={cn(
-            "text-sm",
-            message.startsWith("PDF") ? "text-hh-profit-positive" : "text-red-600"
+            "text-hh-body",
+            message.startsWith("PDF") ? "text-hh-profit-positive" : "text-[var(--hh-danger)]"
           )}
         >
           {message}
@@ -269,38 +269,50 @@ export function ProjectCloseoutTab({
         <SectionHeader label="Final Punch List" />
         <div className="mt-3 space-y-4">
           <div>
-            <label className="text-xs font-medium text-muted-foreground">Project</label>
-            <p className="mt-1 text-sm font-medium text-foreground">{projectName}</p>
+            <label className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]">
+              Project
+            </label>
+            <p className="mt-1 text-hh-body font-medium text-[var(--hh-text-primary)]">
+              {projectName}
+            </p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-medium text-muted-foreground">Inspection date</label>
+              <label className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]">
+                Inspection date
+              </label>
               <Input
                 type="date"
                 value={punchForm.inspection_date}
                 onChange={(e) => setPunchForm((p) => ({ ...p, inspection_date: e.target.value }))}
-                className="mt-1 h-9 rounded-sm border-border/60"
+                className="mt-1 h-9 rounded-hh-compact border-border/60"
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground">Inspector</label>
+              <label className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]">
+                Inspector
+              </label>
               <Input
                 value={punchForm.inspector}
                 onChange={(e) => setPunchForm((p) => ({ ...p, inspector: e.target.value }))}
                 placeholder="Inspector name"
-                className="mt-1 h-9 rounded-sm border-border/60"
+                className="mt-1 h-9 rounded-hh-compact border-border/60"
               />
             </div>
           </div>
           <div>
-            <label className="text-xs font-medium text-muted-foreground">Items checklist</label>
+            <label className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]">
+              Items checklist
+            </label>
             <div className="mt-1 flex items-center justify-between gap-2">
-              <span className="text-xs text-muted-foreground">Add and track items</span>
+              <span className="text-hh-metadata text-[var(--hh-text-secondary)]">
+                Add and track items
+              </span>
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                className="rounded-sm no-print"
+                className="rounded-hh-compact no-print"
                 onClick={addPunchItem}
               >
                 + Add item
@@ -308,13 +320,13 @@ export function ProjectCloseoutTab({
             </div>
             <div className="airtable-table-wrap airtable-table-wrap--ruled mt-2">
               <div className="airtable-table-scroll">
-                <table className="w-full text-sm">
+                <table className="w-full text-hh-body">
                   <thead>
                     <tr>
-                      <th className="h-8 px-2 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                      <th className="h-8 px-2 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                         Item
                       </th>
-                      <th className="h-8 w-24 px-2 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                      <th className="h-8 w-24 px-2 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                         Status
                       </th>
                       <th className="h-8 w-16 no-print" />
@@ -327,14 +339,14 @@ export function ProjectCloseoutTab({
                           <Input
                             value={row.item}
                             onChange={(e) => updatePunchItem(idx, "item", e.target.value)}
-                            className="h-9 rounded-sm border-border/60 text-sm"
+                            className="h-9 rounded-hh-compact border-border/60 text-hh-body"
                           />
                         </td>
                         <td className="min-h-[44px] px-2 py-1.5 align-middle">
                           <select
                             value={row.status}
                             onChange={(e) => updatePunchItem(idx, "status", e.target.value)}
-                            className="h-9 w-full rounded-sm border border-border/60 bg-background text-sm"
+                            className="h-9 w-full rounded-hh-compact border border-border/60 bg-[var(--hh-l1-workspace)] text-hh-body"
                           >
                             <option value="pending">Pending</option>
                             <option value="done">Done</option>
@@ -359,27 +371,31 @@ export function ProjectCloseoutTab({
             </div>
           </div>
           <div>
-            <label className="text-xs font-medium text-muted-foreground">Notes</label>
+            <label className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]">
+              Notes
+            </label>
             <textarea
               value={punchForm.notes}
               onChange={(e) => setPunchForm((p) => ({ ...p, notes: e.target.value }))}
               placeholder="Notes"
               rows={2}
-              className="mt-1 w-full rounded-sm border border-border/60 px-2.5 py-2 text-sm"
+              className="mt-1 w-full rounded-hh-compact border border-border/60 px-2.5 py-2 text-hh-body"
             />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-medium text-muted-foreground">Owner signature</label>
+              <label className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]">
+                Owner signature
+              </label>
               <Input
                 value={punchForm.client_signature}
                 onChange={(e) => setPunchForm((p) => ({ ...p, client_signature: e.target.value }))}
                 placeholder="Name or signed"
-                className="mt-1 h-9 rounded-sm border-border/60"
+                className="mt-1 h-9 rounded-hh-compact border-border/60"
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground">
+              <label className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]">
                 Contractor signature
               </label>
               <Input
@@ -388,7 +404,7 @@ export function ProjectCloseoutTab({
                   setPunchForm((p) => ({ ...p, contractor_signature: e.target.value }))
                 }
                 placeholder="Name or signed"
-                className="mt-1 h-9 rounded-sm border-border/60"
+                className="mt-1 h-9 rounded-hh-compact border-border/60"
               />
             </div>
           </div>
@@ -396,7 +412,7 @@ export function ProjectCloseoutTab({
             <Button
               size="sm"
               variant="outline"
-              className="rounded-sm"
+              className="rounded-hh-compact"
               onClick={savePunch}
               disabled={saving === "punch"}
             >
@@ -405,7 +421,7 @@ export function ProjectCloseoutTab({
             </Button>
             <Button
               size="sm"
-              className="rounded-sm bg-[#111111] text-white hover:bg-[#111111]/90"
+              className="rounded-hh-compact bg-[var(--hh-action-primary)] text-[var(--hh-action-primary-foreground)] hover:bg-[var(--hh-action-primary)]/90"
               onClick={generatePunchPdf}
               disabled={!!generating}
             >
@@ -416,25 +432,25 @@ export function ProjectCloseoutTab({
       </div>
 
       {/* 2. Warranty Information */}
-      <div className="rounded-xl border border-gray-100 bg-white shadow-sm overflow-hidden">
-        <div className="px-4 py-3 border-b border-gray-100">
+      <div className="rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] shadow-sm overflow-hidden">
+        <div className="px-4 py-3 border-b border-[var(--hh-border)]">
           <SectionHeader label="Warranty Information" />
         </div>
         <div className="p-4 space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">
+              <label className="text-hh-metadata font-medium text-[var(--hh-text-secondary)] uppercase tracking-normalr">
                 Start date
               </label>
               <Input
                 type="date"
                 value={warrantyForm.start_date}
                 onChange={(e) => setWarrantyForm((p) => ({ ...p, start_date: e.target.value }))}
-                className="mt-1 h-10 rounded-lg border-gray-100"
+                className="mt-1 h-10 rounded-hh-standard border-[var(--hh-border)]"
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">
+              <label className="text-hh-metadata font-medium text-[var(--hh-text-secondary)] uppercase tracking-normalr">
                 Period (months)
               </label>
               <Input
@@ -447,18 +463,18 @@ export function ProjectCloseoutTab({
                     period_months: parseInt(e.target.value, 10) || 12,
                   }))
                 }
-                className="mt-1 h-10 rounded-lg border-gray-100"
+                className="mt-1 h-10 rounded-hh-standard border-[var(--hh-border)]"
               />
             </div>
           </div>
           {warrantyExpiration && (
-            <p className="text-sm text-text-secondary">
+            <p className="text-hh-body text-[var(--hh-text-secondary)]">
               <span className="font-medium">Warranty expiration:</span>{" "}
               {new Date(warrantyExpiration).toLocaleDateString()}
             </p>
           )}
           <div>
-            <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">
+            <label className="text-hh-metadata font-medium text-[var(--hh-text-secondary)] uppercase tracking-normalr">
               Notes
             </label>
             <textarea
@@ -466,13 +482,13 @@ export function ProjectCloseoutTab({
               onChange={(e) => setWarrantyForm((p) => ({ ...p, notes: e.target.value }))}
               placeholder="Notes"
               rows={2}
-              className="mt-1 w-full rounded-lg border border-gray-100 px-3 py-2 text-sm"
+              className="mt-1 w-full rounded-hh-standard border border-[var(--hh-border)] px-3 py-2 text-hh-body"
             />
           </div>
           <Button
             size="sm"
             variant="outline"
-            className="rounded-lg"
+            className="rounded-hh-standard"
             onClick={saveWarranty}
             disabled={saving === "warranty"}
           >
@@ -483,29 +499,29 @@ export function ProjectCloseoutTab({
       </div>
 
       {/* 3. Final Invoice */}
-      <div className="rounded-xl border border-gray-100 bg-white shadow-sm overflow-hidden">
-        <div className="px-4 py-3 border-b border-gray-100">
+      <div className="rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] shadow-sm overflow-hidden">
+        <div className="px-4 py-3 border-b border-[var(--hh-border)]">
           <SectionHeader label="Final Invoice" />
         </div>
         <div className="p-4 space-y-3">
-          <div className="flex justify-between text-sm">
-            <span className="text-text-secondary">Contract value</span>
+          <div className="flex justify-between text-hh-body">
+            <span className="text-[var(--hh-text-secondary)]">Contract value</span>
             <span className="font-medium tabular-nums">${fmtUsd(contractValue)}</span>
           </div>
           <Divider />
-          <div className="flex justify-between text-sm">
-            <span className="text-text-secondary">Payments received</span>
+          <div className="flex justify-between text-hh-body">
+            <span className="text-[var(--hh-text-secondary)]">Payments received</span>
             <span className="font-medium tabular-nums">${fmtUsd(billingSummary.paidTotal)}</span>
           </div>
           <Divider />
-          <div className="flex justify-between text-sm">
-            <span className="text-text-secondary">Remaining balance</span>
+          <div className="flex justify-between text-hh-body">
+            <span className="text-[var(--hh-text-secondary)]">Remaining balance</span>
             <span className="font-medium tabular-nums">${fmtUsd(remainingBalance)}</span>
           </div>
           <div className="pt-2">
             <Button
               size="sm"
-              className="rounded-lg bg-black text-white hover:bg-black/90"
+              className="rounded-hh-standard bg-[var(--hh-action-primary)] text-[var(--hh-action-primary-foreground)] hover:bg-[var(--hh-l3-pressed)]"
               onClick={createFinalInvoicePdf}
               disabled={!!generating}
             >
@@ -516,19 +532,21 @@ export function ProjectCloseoutTab({
       </div>
 
       {/* 4. Completion Certificate */}
-      <div className="rounded-xl border border-gray-100 bg-white shadow-sm overflow-hidden">
-        <div className="px-4 py-3 border-b border-gray-100">
+      <div className="rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] shadow-sm overflow-hidden">
+        <div className="px-4 py-3 border-b border-[var(--hh-border)]">
           <SectionHeader label="Completion Certificate" />
         </div>
         <div className="p-4 space-y-4">
           <div>
-            <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">
+            <label className="text-hh-metadata font-medium text-[var(--hh-text-secondary)] uppercase tracking-normalr">
               Project
             </label>
-            <p className="mt-1 text-sm font-medium text-text-primary">{projectName}</p>
+            <p className="mt-1 text-hh-body font-medium text-[var(--hh-text-primary)]">
+              {projectName}
+            </p>
           </div>
           <div>
-            <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">
+            <label className="text-hh-metadata font-medium text-[var(--hh-text-secondary)] uppercase tracking-normalr">
               Completion date
             </label>
             <Input
@@ -537,12 +555,12 @@ export function ProjectCloseoutTab({
               onChange={(e) =>
                 setCompletionForm((p) => ({ ...p, completion_date: e.target.value }))
               }
-              className="mt-1 h-10 rounded-lg border-gray-100"
+              className="mt-1 h-10 rounded-hh-standard border-[var(--hh-border)]"
             />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">
+              <label className="text-hh-metadata font-medium text-[var(--hh-text-secondary)] uppercase tracking-normalr">
                 Contractor name
               </label>
               <Input
@@ -551,24 +569,24 @@ export function ProjectCloseoutTab({
                   setCompletionForm((p) => ({ ...p, contractor_name: e.target.value }))
                 }
                 placeholder="Contractor"
-                className="mt-1 h-10 rounded-lg border-gray-100"
+                className="mt-1 h-10 rounded-hh-standard border-[var(--hh-border)]"
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">
+              <label className="text-hh-metadata font-medium text-[var(--hh-text-secondary)] uppercase tracking-normalr">
                 Client name
               </label>
               <Input
                 value={completionForm.client_name}
                 onChange={(e) => setCompletionForm((p) => ({ ...p, client_name: e.target.value }))}
                 placeholder="Client"
-                className="mt-1 h-10 rounded-lg border-gray-100"
+                className="mt-1 h-10 rounded-hh-standard border-[var(--hh-border)]"
               />
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">
+              <label className="text-hh-metadata font-medium text-[var(--hh-text-secondary)] uppercase tracking-normalr">
                 Contractor signature
               </label>
               <Input
@@ -577,11 +595,11 @@ export function ProjectCloseoutTab({
                   setCompletionForm((p) => ({ ...p, contractor_signature: e.target.value }))
                 }
                 placeholder="Signature"
-                className="mt-1 h-10 rounded-lg border-gray-100"
+                className="mt-1 h-10 rounded-hh-standard border-[var(--hh-border)]"
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">
+              <label className="text-hh-metadata font-medium text-[var(--hh-text-secondary)] uppercase tracking-normalr">
                 Client signature
               </label>
               <Input
@@ -590,7 +608,7 @@ export function ProjectCloseoutTab({
                   setCompletionForm((p) => ({ ...p, client_signature: e.target.value }))
                 }
                 placeholder="Signature"
-                className="mt-1 h-10 rounded-lg border-gray-100"
+                className="mt-1 h-10 rounded-hh-standard border-[var(--hh-border)]"
               />
             </div>
           </div>
@@ -598,7 +616,7 @@ export function ProjectCloseoutTab({
             <Button
               size="sm"
               variant="outline"
-              className="rounded-lg"
+              className="rounded-hh-standard"
               onClick={saveCompletion}
               disabled={saving === "completion"}
             >
@@ -607,7 +625,7 @@ export function ProjectCloseoutTab({
             </Button>
             <Button
               size="sm"
-              className="rounded-lg bg-black text-white hover:bg-black/90"
+              className="rounded-hh-standard bg-[var(--hh-action-primary)] text-[var(--hh-action-primary-foreground)] hover:bg-[var(--hh-l3-pressed)]"
               onClick={generateCompletionPdf}
               disabled={!!generating}
             >

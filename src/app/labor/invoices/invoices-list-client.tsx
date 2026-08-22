@@ -217,7 +217,7 @@ export default function LaborInvoicesListClient() {
   );
 
   return (
-    <div className="dark neo-page-on-graphite page-container page-stack py-6 text-[var(--neo-canvas-text-secondary)]">
+    <div className=" page-container page-stack py-6 text-[var(--hh-text-secondary)]">
       <PageHeader
         title="Labor Invoices"
         subtitle="Worker invoices/receipts with attachment and project split review."
@@ -232,7 +232,7 @@ export default function LaborInvoicesListClient() {
       <FilterBar>
         <div className="grid w-full gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div className="space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
+            <p className="text-hh-status font-medium uppercase tracking-normal text-text-secondary/75 dark:text-muted-foreground">
               Search
             </p>
             <Input
@@ -242,7 +242,7 @@ export default function LaborInvoicesListClient() {
             />
           </div>
           <div className="space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
+            <p className="text-hh-status font-medium uppercase tracking-normal text-text-secondary/75 dark:text-muted-foreground">
               Status
             </p>
             <Select
@@ -257,13 +257,13 @@ export default function LaborInvoicesListClient() {
             </Select>
           </div>
           <div className="space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
+            <p className="text-hh-status font-medium uppercase tracking-normal text-text-secondary/75 dark:text-muted-foreground">
               From
             </p>
             <Input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
           </div>
           <div className="space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
+            <p className="text-hh-status font-medium uppercase tracking-normal text-text-secondary/75 dark:text-muted-foreground">
               To
             </p>
             <Input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
@@ -271,13 +271,13 @@ export default function LaborInvoicesListClient() {
         </div>
       </FilterBar>
       {message ? (
-        <div className="rounded-lg border border-gray-100 dark:border-border bg-background px-3 py-2 text-sm text-muted-foreground">
+        <div className="rounded-hh-standard border border-gray-100 dark:border-border bg-background px-3 py-2 text-sm text-muted-foreground">
           {message}
         </div>
       ) : null}
       {error ? (
-        <div className="rounded-lg border border-border/60 bg-background px-4 py-3">
-          <p className="text-sm text-red-600">{error}</p>
+        <div className="rounded-hh-standard border border-border/60 bg-background px-4 py-3">
+          <p className="text-sm text-[var(--hh-danger)]">{error}</p>
         </div>
       ) : null}
       <Card className="overflow-hidden p-0">
@@ -285,25 +285,25 @@ export default function LaborInvoicesListClient() {
           <table className="w-full min-w-[560px] text-sm md:min-w-0">
             <thead>
               <tr className="border-b border-gray-100 dark:border-border/60 bg-white dark:bg-muted/30">
-                <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                <th className="text-left py-3 px-4 text-xs uppercase tracking-normalr text-muted-foreground font-medium">
                   Invoice #
                 </th>
-                <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                <th className="text-left py-3 px-4 text-xs uppercase tracking-normalr text-muted-foreground font-medium">
                   Worker
                 </th>
-                <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                <th className="text-left py-3 px-4 text-xs uppercase tracking-normalr text-muted-foreground font-medium">
                   Date
                 </th>
-                <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                <th className="text-right py-3 px-4 text-xs uppercase tracking-normalr text-muted-foreground font-medium">
                   Amount
                 </th>
-                <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                <th className="text-right py-3 px-4 text-xs uppercase tracking-normalr text-muted-foreground font-medium">
                   Split Projects
                 </th>
-                <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                <th className="text-left py-3 px-4 text-xs uppercase tracking-normalr text-muted-foreground font-medium">
                   Status
                 </th>
-                <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                <th className="text-right py-3 px-4 text-xs uppercase tracking-normalr text-muted-foreground font-medium">
                   Actions
                 </th>
               </tr>

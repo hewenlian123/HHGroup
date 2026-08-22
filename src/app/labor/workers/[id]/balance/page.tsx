@@ -102,33 +102,33 @@ type Summary = {
 type BalanceTone = "owed" | "overpaid" | "settled";
 
 const neoSecondaryButton =
-  "min-h-[44px] w-full rounded-full border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-4 text-[13px] font-semibold text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-control)] transition-colors duration-150 hover:border-[var(--neo-border-strong)] hover:bg-[var(--neo-surface-hover)] hover:text-[var(--neo-gold-soft)] focus-visible:ring-[var(--neo-gold-ring)] sm:min-h-9 sm:w-auto";
+  "min-h-[44px] w-full rounded-full border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-4 text-hh-table-cell font-semibold text-[var(--hh-text-primary)] shadow-operational transition-colors duration-150 hover:border-[var(--hh-border-strong)] hover:bg-[var(--hh-l3-hover)] hover:text-[var(--hh-action-primary)] focus-visible:ring-[var(--hh-focus-ring)] sm:min-h-9 sm:w-auto";
 
 const neoPrimaryButton =
-  "min-h-[44px] w-full rounded-full border border-[rgb(184_147_90_/_0.30)] bg-[rgb(184_147_90_/_0.16)] px-4 text-[13px] font-semibold text-[var(--neo-gold-soft)] shadow-[var(--neo-shadow-control)] transition-colors duration-150 hover:border-[rgb(184_147_90_/_0.44)] hover:bg-[rgb(184_147_90_/_0.22)] focus-visible:ring-[var(--neo-gold-ring)] disabled:border-[var(--neo-border)] disabled:bg-[var(--neo-surface-muted)] disabled:text-[var(--neo-text-tertiary)] sm:min-h-9 sm:w-auto";
+  "min-h-[44px] w-full rounded-full border border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] px-4 text-hh-table-cell font-semibold text-[var(--hh-action-primary)] shadow-operational transition-colors duration-150 border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] focus-visible:ring-[var(--hh-focus-ring)] disabled:border-[var(--hh-border)] disabled:bg-[var(--hh-l3-hover)] disabled:text-[var(--hh-text-tertiary)] sm:min-h-9 sm:w-auto";
 
 const neoDialogContent =
-  "w-[min(520px,calc(100vw-24px))] max-h-[calc(100dvh-24px)] overflow-y-auto rounded-2xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] p-5 text-[var(--neo-text-primary)] shadow-[0_30px_90px_rgb(0_0_0_/_0.46),inset_0_1px_0_rgb(255_255_255_/_0.05)] [color-scheme:dark] [&>button]:right-4 [&>button]:top-4 [&>button]:h-9 [&>button]:w-9 [&>button]:rounded-lg [&>button]:border [&>button]:border-[var(--neo-border)] [&>button]:bg-white/[0.035] [&>button]:text-[var(--neo-text-secondary)] [&>button]:opacity-100 [&>button]:hover:bg-white/[0.08] [&>button]:hover:text-[var(--neo-text-primary)]";
+  "w-[min(520px,calc(100vw-24px))] max-h-[calc(100dvh-24px)] overflow-y-auto rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-5 text-[var(--hh-text-primary)] shadow-operational  [&>button]:right-4 [&>button]:top-4 [&>button]:h-9 [&>button]:w-9 [&>button]:rounded-hh-standard [&>button]:border [&>button]:border-[var(--hh-border)] [&>button]:bg-[var(--hh-l3-hover)] [&>button]:text-[var(--hh-text-secondary)] [&>button]:opacity-100 [&>button]:bg-[var(--hh-l3-hover)] [&>button]:hover:text-[var(--hh-text-primary)]";
 
 const neoFieldClass =
-  "min-h-[44px] rounded-xl border !border-[var(--neo-border)] !bg-[var(--neo-surface-base)] px-3 text-sm text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-control)] placeholder:text-[var(--neo-text-tertiary)] focus-visible:border-[var(--neo-gold)] focus-visible:ring-[var(--neo-gold-ring)] [color-scheme:dark]";
+  "min-h-[44px] rounded-hh-task border !border-[var(--hh-border)] !bg-[var(--hh-l1-workspace)] px-3 text-sm text-[var(--hh-text-primary)] shadow-operational placeholder:text-[var(--hh-text-tertiary)] focus-visible:border-[var(--hh-action-primary)] focus-visible:ring-[var(--hh-focus-ring)] ";
 
 const neoCheckboxClass =
-  "h-5 w-5 shrink-0 rounded border-[var(--neo-border)] bg-[var(--neo-surface-base)] accent-[var(--neo-gold-soft)]";
+  "h-5 w-5 shrink-0 rounded border-[var(--hh-border)] bg-[var(--hh-l1-workspace)] accent-[var(--hh-action-primary)]";
 
 const ledgerHeaderCell =
-  "py-2.5 pr-3 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]";
+  "py-2.5 pr-3 text-left text-hh-status font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]";
 
 const ledgerHeaderCellRight = cn(ledgerHeaderCell, "text-right tabular-nums");
 
 const ledgerRow =
-  "border-b border-[var(--neo-border)] bg-[var(--neo-surface-base)] transition-colors duration-150 last:border-b-0 hover:bg-[var(--neo-surface-hover)]";
+  "border-b border-[var(--hh-border)] bg-[var(--hh-l1-workspace)] transition-colors duration-150 last:border-b-0 hover:bg-[var(--hh-l3-hover)]";
 
 const ledgerCell =
-  "py-2.5 pr-3 align-middle text-[13px] leading-snug text-[var(--neo-text-secondary)]";
+  "py-2.5 pr-3 align-middle text-hh-table-cell leading-snug text-[var(--hh-text-secondary)]";
 
 const ledgerAmountCell =
-  "py-2.5 pr-3 text-right align-middle text-[13px] font-semibold tabular-nums tracking-normal text-[var(--neo-text-primary)] whitespace-nowrap";
+  "py-2.5 pr-3 text-right align-middle text-hh-table-cell font-semibold tabular-nums tracking-normal text-[var(--hh-text-primary)] whitespace-nowrap";
 
 function balanceTone(balance: number): BalanceTone {
   if (balance > 0) return "owed";
@@ -159,36 +159,36 @@ function KpiTile({
 }) {
   const emphasisClass =
     emphasis === "owed"
-      ? "border-[rgb(184_147_90_/_0.34)] bg-[rgb(184_147_90_/_0.08)]"
+      ? "border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)]"
       : emphasis === "overpaid"
-        ? "border-[rgb(244_63_94_/_0.30)] bg-[rgb(244_63_94_/_0.08)]"
+        ? "border-[var(--hh-danger-border)] bg-[var(--hh-danger-soft-fill)]"
         : emphasis === "settled"
-          ? "border-[rgb(16_185_129_/_0.26)] bg-[rgb(16_185_129_/_0.08)]"
-          : "border-[var(--neo-border)] bg-[var(--neo-surface-raised)]";
+          ? "border-[var(--hh-success-border)] bg-[var(--hh-success-soft-fill)]"
+          : "border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)]";
 
   const valueClass =
     emphasis === "owed"
-      ? "text-[var(--neo-gold-soft)]"
+      ? "text-[var(--hh-action-primary)]"
       : emphasis === "overpaid"
-        ? "text-rose-300"
+        ? "text-[var(--hh-danger)]"
         : emphasis === "settled"
-          ? "text-emerald-300"
-          : "text-[var(--neo-text-primary)]";
+          ? "text-[var(--hh-success)]"
+          : "text-[var(--hh-text-primary)]";
 
   return (
     <div
       className={cn(
-        "min-h-[76px] rounded-xl border px-3 py-3 shadow-[var(--neo-shadow-panel)]",
-        "flex flex-col justify-between transition-[border-color,background-color,transform] duration-200 ease-out hover:-translate-y-px hover:border-[var(--neo-border-strong)] hover:bg-[var(--neo-surface-hover)]",
+        "min-h-[76px] rounded-hh-task border px-3 py-3 shadow-operational",
+        "flex flex-col justify-between transition-[border-color,background-color,transform] duration-200 ease-out hover:-translate-y-px hover:border-[var(--hh-border-strong)] hover:bg-[var(--hh-l3-hover)]",
         emphasisClass
       )}
     >
-      <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+      <p className="text-hh-status font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]">
         {label}
       </p>
       <p
         className={cn(
-          "text-[19px] font-semibold tabular-nums tracking-normal whitespace-nowrap",
+          "text-hh-financial-total font-semibold tabular-nums tracking-normal whitespace-nowrap",
           valueClass
         )}
       >
@@ -205,15 +205,15 @@ function RecommendationPanel({ balance }: { balance: number }) {
 
   const shellClass =
     tone === "owed"
-      ? "border-[rgb(184_147_90_/_0.34)] bg-[rgb(184_147_90_/_0.10)]"
+      ? "border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)]"
       : tone === "overpaid"
-        ? "border-[rgb(244_63_94_/_0.28)] bg-[rgb(244_63_94_/_0.08)]"
-        : "border-[rgb(16_185_129_/_0.24)] bg-[rgb(16_185_129_/_0.08)]";
+        ? "border-[var(--hh-danger-border)] bg-[var(--hh-danger-soft-fill)]"
+        : "border-[var(--hh-success-border)] bg-[var(--hh-success-soft-fill)]";
 
   return (
     <div
       className={cn(
-        "rounded-xl border px-4 py-3 shadow-[var(--neo-shadow-control)]",
+        "rounded-hh-task border px-4 py-3 shadow-operational",
         "flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between",
         shellClass
       )}
@@ -223,28 +223,28 @@ function RecommendationPanel({ balance }: { balance: number }) {
           className={cn(
             "h-4 w-4",
             tone === "owed"
-              ? "text-[var(--neo-gold-soft)]"
+              ? "text-[var(--hh-action-primary)]"
               : tone === "overpaid"
-                ? "text-rose-300"
-                : "text-emerald-300"
+                ? "text-[var(--hh-danger)]"
+                : "text-[var(--hh-success)]"
           )}
           aria-hidden
         />
         <span className={chip.className}>{chip.label}</span>
-        <span className="truncate text-sm font-medium text-[var(--neo-text-primary)]">
+        <span className="truncate text-sm font-medium text-[var(--hh-text-primary)]">
           {recommendationLabel(tone)}
         </span>
       </div>
       <div className="flex items-baseline justify-between gap-3 sm:justify-end">
-        <span className="text-xs text-[var(--neo-text-tertiary)] sm:hidden">Balance</span>
+        <span className="text-xs text-[var(--hh-text-tertiary)] sm:hidden">Balance</span>
         <span
           className={cn(
-            "text-[16px] font-semibold tabular-nums tracking-normal",
+            "text-hh-section-title font-semibold tabular-nums tracking-normal",
             tone === "owed"
-              ? "text-[var(--neo-gold-soft)]"
+              ? "text-[var(--hh-action-primary)]"
               : tone === "overpaid"
-                ? "text-rose-300"
-                : "text-emerald-300"
+                ? "text-[var(--hh-danger)]"
+                : "text-[var(--hh-success)]"
           )}
         >
           {formatCurrency(balance)}
@@ -264,12 +264,12 @@ function LedgerSection({
   children: React.ReactNode;
 }) {
   return (
-    <section className="overflow-hidden rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)]">
-      <header className="flex flex-col gap-1.5 border-b border-[var(--neo-border)] px-4 py-3.5">
-        <h2 className="text-[12px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-primary)]">
+    <section className="overflow-hidden rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-operational">
+      <header className="flex flex-col gap-1.5 border-b border-[var(--hh-border)] px-4 py-3.5">
+        <h2 className="text-hh-metadata font-semibold uppercase tracking-normal text-[var(--hh-text-primary)]">
           {title}
         </h2>
-        <p className="text-[13px] leading-relaxed text-[var(--neo-text-secondary)]">
+        <p className="text-hh-table-cell leading-relaxed text-[var(--hh-text-secondary)]">
           {description}
         </p>
       </header>
@@ -280,15 +280,15 @@ function LedgerSection({
 
 function EmptyLedgerState({ title, subtitle }: { title: string; subtitle: string }) {
   return (
-    <div className="m-4 rounded-xl border border-dashed border-[var(--neo-border-strong)] bg-[var(--neo-surface-muted)] px-4 py-10 text-center">
-      <p className="text-sm font-medium text-[var(--neo-text-primary)]">{title}</p>
-      <p className="mt-1 text-xs leading-relaxed text-[var(--neo-text-secondary)]">{subtitle}</p>
+    <div className="m-4 rounded-hh-task border border-dashed border-[var(--hh-border-strong)] bg-[var(--hh-l3-hover)] px-4 py-10 text-center">
+      <p className="text-sm font-medium text-[var(--hh-text-primary)]">{title}</p>
+      <p className="mt-1 text-xs leading-relaxed text-[var(--hh-text-secondary)]">{subtitle}</p>
     </div>
   );
 }
 
 function Dash() {
-  return <span className="text-[var(--neo-text-tertiary)]">—</span>;
+  return <span className="text-[var(--hh-text-tertiary)]">—</span>;
 }
 
 function roundMoney(n: number): number {
@@ -880,8 +880,8 @@ export default function WorkerBalanceDetailPage() {
 
   if (!workerId) {
     return (
-      <div className="dark neo-page-on-graphite page-shell-standard mx-auto px-4 py-6">
-        <p className="rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-4 py-3 text-sm text-[var(--neo-text-secondary)]">
+      <div className=" page-shell-standard mx-auto px-4 py-6">
+        <p className="rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-4 py-3 text-sm text-[var(--hh-text-secondary)]">
           Worker not found.
         </p>
       </div>
@@ -889,14 +889,14 @@ export default function WorkerBalanceDetailPage() {
   }
 
   return (
-    <div className="dark neo-page-on-graphite page-shell-wide mx-auto flex w-full min-w-0 flex-col gap-4 overflow-x-hidden px-4 py-4 pb-[max(1.5rem,env(safe-area-inset-bottom,0px))] md:px-6 md:py-6">
-      <header className="border-b border-white/10 pb-4">
+    <div className=" page-shell-wide mx-auto flex w-full min-w-0 flex-col gap-4 overflow-x-hidden px-4 py-4 pb-[max(1.5rem,env(safe-area-inset-bottom,0px))] md:px-6 md:py-6">
+      <header className="border-b border-[var(--hh-border)] pb-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-baseline lg:justify-between lg:gap-4">
           <div className="min-w-0">
-            <h1 className="text-[32px] leading-tight font-semibold tracking-normal text-[var(--neo-canvas-text-primary)] md:text-[36px]">
+            <h1 className="text-hh-financial-total leading-tight font-semibold tracking-normal text-[var(--hh-text-primary)] md:text-hh-financial-total">
               {worker?.name ?? "Worker Balance"}
             </h1>
-            <p className="mt-1 max-w-2xl text-[15px] leading-relaxed text-[var(--neo-canvas-text-secondary)]">
+            <p className="mt-1 max-w-2xl text-hh-section-title leading-relaxed text-[var(--hh-text-secondary)]">
               Labor entries, reimbursements, payments, and balance.
             </p>
           </div>
@@ -925,7 +925,7 @@ export default function WorkerBalanceDetailPage() {
       </header>
 
       {message ? (
-        <p className="rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-4 py-3 text-sm text-[var(--neo-text-secondary)] shadow-[var(--neo-shadow-control)]">
+        <p className="rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-4 py-3 text-sm text-[var(--hh-text-secondary)] shadow-operational">
           {message}
         </p>
       ) : null}
@@ -934,19 +934,19 @@ export default function WorkerBalanceDetailPage() {
         <div
           data-testid="worker-payment-next-actions"
           className={cn(
-            "flex flex-col gap-3 rounded-xl border border-[rgb(16_185_129_/_0.24)] bg-[rgb(16_185_129_/_0.08)] px-4 py-3 shadow-[var(--neo-shadow-control)]",
+            "flex flex-col gap-3 rounded-hh-task border border-[var(--hh-success-border)] bg-[var(--hh-success-soft-fill)] px-4 py-3 shadow-operational",
             "sm:flex-row sm:items-center sm:justify-between"
           )}
         >
           <div className="flex min-w-0 items-center gap-2.5">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[rgb(16_185_129_/_0.24)] bg-[rgb(16_185_129_/_0.12)] text-emerald-300">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[var(--hh-success-border)] bg-[var(--hh-success-soft-fill)] text-[var(--hh-success)]">
               <CheckCircle2 className="h-4 w-4" aria-hidden />
             </span>
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-[var(--neo-text-primary)]">
+              <p className="truncate text-sm font-semibold text-[var(--hh-text-primary)]">
                 Payment saved
               </p>
-              <p className="truncate text-xs text-[var(--neo-text-secondary)]">
+              <p className="truncate text-xs text-[var(--hh-text-secondary)]">
                 Continue from {worker?.name ?? "this worker"}.
               </p>
             </div>
@@ -975,7 +975,7 @@ export default function WorkerBalanceDetailPage() {
       ) : null}
 
       {loading ? (
-        <p className="rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-4 py-6 text-sm text-[var(--neo-text-secondary)] shadow-[var(--neo-shadow-control)]">
+        <p className="rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-4 py-6 text-sm text-[var(--hh-text-secondary)] shadow-operational">
           Loading…
         </p>
       ) : (
@@ -1009,7 +1009,7 @@ export default function WorkerBalanceDetailPage() {
                   subtitle="Paid labor entries are available from Payments and Statements."
                 />
               ) : (
-                <div className="divide-y divide-[var(--neo-border)]">
+                <div className="divide-y divide-[var(--hh-border)]">
                   {laborGroups.map((group) => {
                     const expanded = expandedMonths.has(group.key);
                     const selectedCount = group.entries.filter((entry) =>
@@ -1019,14 +1019,14 @@ export default function WorkerBalanceDetailPage() {
                     const partiallySelected = selectedCount > 0 && !allSelected;
                     return (
                       <section key={group.key} data-testid={`worker-balance-month-${group.key}`}>
-                        <div className="flex flex-col gap-3 bg-[var(--neo-surface-base)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex flex-col gap-3 bg-[var(--hh-l1-workspace)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                           <button
                             type="button"
-                            className="flex min-h-[44px] min-w-0 flex-1 items-center gap-3 rounded-lg text-left transition-colors duration-150 hover:text-[var(--neo-gold-soft)]"
+                            className="flex min-h-[44px] min-w-0 flex-1 items-center gap-3 rounded-hh-standard text-left transition-colors duration-150 hover:text-[var(--hh-action-primary)]"
                             onClick={() => toggleMonthExpanded(group.key)}
                             aria-expanded={expanded}
                           >
-                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-secondary)]">
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-secondary)]">
                               <ChevronDown
                                 className={cn(
                                   "h-4 w-4 transition-transform duration-150",
@@ -1036,16 +1036,16 @@ export default function WorkerBalanceDetailPage() {
                               />
                             </span>
                             <span className="min-w-0">
-                              <span className="block text-sm font-semibold text-[var(--neo-text-primary)]">
+                              <span className="block text-sm font-semibold text-[var(--hh-text-primary)]">
                                 {group.label}
                               </span>
-                              <span className="mt-0.5 block text-xs text-[var(--neo-text-secondary)]">
+                              <span className="mt-0.5 block text-xs text-[var(--hh-text-secondary)]">
                                 {group.entryCount} {group.entryCount === 1 ? "entry" : "entries"} ·{" "}
                                 {formatDays(group.days)} · {formatCurrency(group.amount)}
                               </span>
                             </span>
                           </button>
-                          <label className="flex min-h-[44px] items-center justify-between gap-3 rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-3 text-xs font-semibold text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-control)] sm:justify-start">
+                          <label className="flex min-h-[44px] items-center justify-between gap-3 rounded-full border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 text-xs font-semibold text-[var(--hh-text-primary)] shadow-operational sm:justify-start">
                             <input
                               type="checkbox"
                               checked={allSelected}
@@ -1053,7 +1053,7 @@ export default function WorkerBalanceDetailPage() {
                                 if (node) node.indeterminate = partiallySelected;
                               }}
                               onChange={() => toggleMonthSelection(group)}
-                              className="h-5 w-5 rounded border-[var(--neo-border)] bg-transparent accent-[var(--neo-gold-soft)]"
+                              className="h-5 w-5 rounded border-[var(--hh-border)] bg-transparent accent-[var(--hh-action-primary)]"
                               aria-label={`${allSelected ? "Unselect" : "Select"} ${
                                 group.label
                               } labor entries`}
@@ -1069,13 +1069,13 @@ export default function WorkerBalanceDetailPage() {
                                 {group.entries.map((r) => (
                                   <label
                                     key={r.id}
-                                    className="flex min-h-[64px] items-start gap-3 rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-3 py-3 shadow-[var(--neo-shadow-control)]"
+                                    className="flex min-h-[64px] items-start gap-3 rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l3-hover)] px-3 py-3 shadow-operational"
                                   >
                                     <input
                                       type="checkbox"
                                       checked={selectedLaborIds.has(r.id)}
                                       onChange={() => toggleLabor(r.id)}
-                                      className="mt-1 h-5 w-5 shrink-0 rounded border-[var(--neo-border)] bg-transparent accent-[var(--neo-gold-soft)]"
+                                      className="mt-1 h-5 w-5 shrink-0 rounded border-[var(--hh-border)] bg-transparent accent-[var(--hh-action-primary)]"
                                       aria-label={`Select ${formatLedgerDate(
                                         r.date,
                                         "compact"
@@ -1085,14 +1085,14 @@ export default function WorkerBalanceDetailPage() {
                                       <span className={LEDGER_DATE_CLASS}>
                                         {formatLedgerDate(r.date, "compact")}
                                       </span>
-                                      <span className="mt-0.5 block text-sm font-medium text-[var(--neo-text-primary)]">
+                                      <span className="mt-0.5 block text-sm font-medium text-[var(--hh-text-primary)]">
                                         {r.session ?? "—"} · {r.projectName ?? r.projectId ?? "—"}
                                       </span>
-                                      <span className="mt-1 block text-xs text-[var(--neo-text-secondary)]">
+                                      <span className="mt-1 block text-xs text-[var(--hh-text-secondary)]">
                                         {formatDays(entryDays(r))}
                                       </span>
                                     </span>
-                                    <span className="shrink-0 text-sm font-semibold tabular-nums tracking-normal text-[var(--neo-text-primary)]">
+                                    <span className="shrink-0 text-sm font-semibold tabular-nums tracking-normal text-[var(--hh-text-primary)]">
                                       {formatCurrency(r.amount)}
                                     </span>
                                   </label>
@@ -1104,7 +1104,7 @@ export default function WorkerBalanceDetailPage() {
                               <div className="airtable-table-scroll overflow-x-auto">
                                 <table className="w-full min-w-[760px] border-collapse text-sm">
                                   <thead>
-                                    <tr className="border-b border-[var(--neo-border)] bg-[var(--neo-surface-muted)]">
+                                    <tr className="border-b border-[var(--hh-border)] bg-[var(--hh-l3-hover)]">
                                       <th className={cn(ledgerHeaderCell, "w-12 pl-4")}>Select</th>
                                       <th className={ledgerHeaderCell}>Date</th>
                                       <th className={ledgerHeaderCell}>Session</th>
@@ -1121,7 +1121,7 @@ export default function WorkerBalanceDetailPage() {
                                             type="checkbox"
                                             checked={selectedLaborIds.has(r.id)}
                                             onChange={() => toggleLabor(r.id)}
-                                            className="h-5 w-5 rounded border-[var(--neo-border)] bg-transparent accent-[var(--neo-gold-soft)]"
+                                            className="h-5 w-5 rounded border-[var(--hh-border)] bg-transparent accent-[var(--hh-action-primary)]"
                                             aria-label={`Select ${formatLedgerDate(
                                               r.date
                                             )} labor entry`}
@@ -1157,24 +1157,24 @@ export default function WorkerBalanceDetailPage() {
               )}
             </LedgerSection>
 
-            <div className="sticky bottom-3 z-20 rounded-2xl border border-[var(--neo-border)] bg-[rgb(15_17_20_/_0.94)] px-4 py-3 shadow-[0_18px_42px_rgb(0_0_0_/_0.34)] backdrop-blur supports-[backdrop-filter]:bg-[rgb(15_17_20_/_0.82)]">
+            <div className="sticky bottom-3 z-20 rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l5-task-surface)] px-4 py-3 shadow-operational  supports-[backdrop-filter]:bg-[var(--hh-l5-task-surface)]">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-3">
                   <div className="min-w-0">
-                    <p className="text-xs font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+                    <p className="text-xs font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                       Selected labor
                     </p>
-                    <p className="mt-0.5 text-sm font-medium text-[var(--neo-text-primary)]">
+                    <p className="mt-0.5 text-sm font-medium text-[var(--hh-text-primary)]">
                       {selectedLaborEntries.length}{" "}
                       {selectedLaborEntries.length === 1 ? "entry" : "entries"} ·{" "}
                       <span className="tabular-nums">{formatCurrency(selectedLaborTotal)}</span>
                     </p>
                   </div>
                   <div className="min-w-0">
-                    <p className="text-xs font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+                    <p className="text-xs font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                       Selected reimb.
                     </p>
-                    <p className="mt-0.5 text-sm font-medium text-[var(--neo-text-primary)]">
+                    <p className="mt-0.5 text-sm font-medium text-[var(--hh-text-primary)]">
                       {selectedReimbursements.length}{" "}
                       {selectedReimbursements.length === 1 ? "item" : "items"} ·{" "}
                       <span className="tabular-nums">
@@ -1183,10 +1183,10 @@ export default function WorkerBalanceDetailPage() {
                     </p>
                   </div>
                   <div className="min-w-0">
-                    <p className="text-xs font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+                    <p className="text-xs font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                       Estimated cash
                     </p>
-                    <p className="mt-0.5 text-sm font-semibold tabular-nums text-[var(--neo-gold-soft)]">
+                    <p className="mt-0.5 text-sm font-semibold tabular-nums text-[var(--hh-action-primary)]">
                       {formatCurrency(netPaymentAmount)}
                     </p>
                   </div>
@@ -1225,7 +1225,7 @@ export default function WorkerBalanceDetailPage() {
                   subtitle="Paid reimbursements are available from Payments and Statements."
                 />
               ) : (
-                <div className="divide-y divide-[var(--neo-border)]">
+                <div className="divide-y divide-[var(--hh-border)]">
                   {reimbGroups.map((group) => {
                     const expanded = expandedReimbMonths.has(group.key);
                     const selectedCount = group.entries.filter((entry) =>
@@ -1238,14 +1238,14 @@ export default function WorkerBalanceDetailPage() {
                         key={group.key}
                         data-testid={`worker-balance-reimbursement-month-${group.key}`}
                       >
-                        <div className="flex flex-col gap-3 bg-[var(--neo-surface-base)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex flex-col gap-3 bg-[var(--hh-l1-workspace)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                           <button
                             type="button"
-                            className="flex min-h-[44px] min-w-0 flex-1 items-center gap-3 rounded-lg text-left transition-colors duration-150 hover:text-[var(--neo-gold-soft)]"
+                            className="flex min-h-[44px] min-w-0 flex-1 items-center gap-3 rounded-hh-standard text-left transition-colors duration-150 hover:text-[var(--hh-action-primary)]"
                             onClick={() => toggleReimbMonthExpanded(group.key)}
                             aria-expanded={expanded}
                           >
-                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-secondary)]">
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-secondary)]">
                               <ChevronDown
                                 className={cn(
                                   "h-4 w-4 transition-transform duration-150",
@@ -1255,17 +1255,17 @@ export default function WorkerBalanceDetailPage() {
                               />
                             </span>
                             <span className="min-w-0">
-                              <span className="block text-sm font-semibold text-[var(--neo-text-primary)]">
+                              <span className="block text-sm font-semibold text-[var(--hh-text-primary)]">
                                 {group.label}
                               </span>
-                              <span className="mt-0.5 block text-xs text-[var(--neo-text-secondary)]">
+                              <span className="mt-0.5 block text-xs text-[var(--hh-text-secondary)]">
                                 {group.entryCount}{" "}
                                 {group.entryCount === 1 ? "reimbursement" : "reimbursements"} ·{" "}
                                 {formatCurrency(group.amount)}
                               </span>
                             </span>
                           </button>
-                          <label className="flex min-h-[44px] items-center justify-between gap-3 rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-3 text-xs font-semibold text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-control)] sm:justify-start">
+                          <label className="flex min-h-[44px] items-center justify-between gap-3 rounded-full border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 text-xs font-semibold text-[var(--hh-text-primary)] shadow-operational sm:justify-start">
                             <input
                               type="checkbox"
                               checked={allSelected}
@@ -1289,7 +1289,7 @@ export default function WorkerBalanceDetailPage() {
                                 {group.entries.map((r) => (
                                   <label
                                     key={r.id}
-                                    className="flex min-h-[64px] items-start gap-3 rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-3 py-3 shadow-[var(--neo-shadow-control)]"
+                                    className="flex min-h-[64px] items-start gap-3 rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l3-hover)] px-3 py-3 shadow-operational"
                                   >
                                     <input
                                       type="checkbox"
@@ -1305,21 +1305,21 @@ export default function WorkerBalanceDetailPage() {
                                       <span className={LEDGER_DATE_CLASS}>
                                         {formatLedgerDate(r.date, "compact")}
                                       </span>
-                                      <span className="mt-0.5 block text-sm font-medium text-[var(--neo-text-primary)]">
+                                      <span className="mt-0.5 block text-sm font-medium text-[var(--hh-text-primary)]">
                                         {r.vendor ?? "—"} · {r.projectName ?? r.projectId ?? "—"}
                                       </span>
                                       <span className="mt-2 inline-flex">
                                         <span
                                           className={cn(
                                             statusChipClass("warning"),
-                                            "rounded-sm px-2 py-0.5 text-[11px] leading-none"
+                                            "rounded-hh-compact px-2 py-0.5 text-hh-status leading-none"
                                           )}
                                         >
                                           {r.status}
                                         </span>
                                       </span>
                                     </span>
-                                    <span className="shrink-0 text-sm font-semibold tabular-nums tracking-normal text-[var(--neo-text-primary)]">
+                                    <span className="shrink-0 text-sm font-semibold tabular-nums tracking-normal text-[var(--hh-text-primary)]">
                                       {formatCurrency(r.amount)}
                                     </span>
                                   </label>
@@ -1331,7 +1331,7 @@ export default function WorkerBalanceDetailPage() {
                               <div className="airtable-table-scroll overflow-x-auto">
                                 <table className="w-full min-w-[760px] border-collapse text-sm">
                                   <thead>
-                                    <tr className="border-b border-[var(--neo-border)] bg-[var(--neo-surface-muted)]">
+                                    <tr className="border-b border-[var(--hh-border)] bg-[var(--hh-l3-hover)]">
                                       <th className={cn(ledgerHeaderCell, "w-12 pl-4")}>Select</th>
                                       <th className={ledgerHeaderCell}>Date</th>
                                       <th className={ledgerHeaderCell}>Vendor</th>
@@ -1367,7 +1367,7 @@ export default function WorkerBalanceDetailPage() {
                                           <span
                                             className={cn(
                                               statusChipClass("warning"),
-                                              "rounded-sm px-2 py-0.5 text-[11px] leading-none"
+                                              "rounded-hh-compact px-2 py-0.5 text-hh-status leading-none"
                                             )}
                                           >
                                             {r.status}
@@ -1400,22 +1400,22 @@ export default function WorkerBalanceDetailPage() {
                     {payments.map((r) => (
                       <div
                         key={r.id}
-                        className="rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-base)] px-3 py-3 shadow-[var(--neo-shadow-control)]"
+                        className="rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l1-workspace)] px-3 py-3 shadow-operational"
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
                             <p className={LEDGER_DATE_CLASS}>
                               {formatLedgerDate(r.date, "compact")}
                             </p>
-                            <p className="mt-0.5 text-sm text-[var(--neo-text-secondary)]">
+                            <p className="mt-0.5 text-sm text-[var(--hh-text-secondary)]">
                               {r.paymentMethod ?? <Dash />}
                             </p>
-                            <p className="mt-2 text-sm text-[var(--neo-text-primary)] break-words">
+                            <p className="mt-2 text-sm text-[var(--hh-text-primary)] break-words">
                               {r.notes ?? <Dash />}
                             </p>
                           </div>
                           <div className="shrink-0 text-right">
-                            <p className="text-sm font-semibold tabular-nums tracking-normal text-[var(--neo-text-primary)]">
+                            <p className="text-sm font-semibold tabular-nums tracking-normal text-[var(--hh-text-primary)]">
                               {formatCurrency(r.amount)}
                             </p>
                           </div>
@@ -1433,7 +1433,7 @@ export default function WorkerBalanceDetailPage() {
                   <div className="airtable-table-scroll overflow-x-auto">
                     <table className="w-full min-w-[860px] border-collapse text-sm">
                       <thead>
-                        <tr className="border-b border-[var(--neo-border)] bg-[var(--neo-surface-muted)]">
+                        <tr className="border-b border-[var(--hh-border)] bg-[var(--hh-l3-hover)]">
                           <th className={cn(ledgerHeaderCell, "pl-4")}>Date</th>
                           <th className={ledgerHeaderCellRight}>Amount</th>
                           <th className={ledgerHeaderCell}>Method</th>
@@ -1448,7 +1448,7 @@ export default function WorkerBalanceDetailPage() {
                             </td>
                             <td className={ledgerAmountCell}>{formatCurrency(r.amount)}</td>
                             <td className={ledgerCell}>{r.paymentMethod ?? <Dash />}</td>
-                            <td className="py-2.5 pr-4 align-middle text-[13px] leading-snug text-[var(--neo-text-secondary)]">
+                            <td className="py-2.5 pr-4 align-middle text-hh-table-cell leading-snug text-[var(--hh-text-secondary)]">
                               <span
                                 className="block max-w-[520px] truncate"
                                 title={r.notes ?? undefined}
@@ -1471,24 +1471,24 @@ export default function WorkerBalanceDetailPage() {
       {/* Pay Worker Modal */}
       <Dialog open={payModalOpen} onOpenChange={setPayModalOpen}>
         <DialogContent className={cn(neoDialogContent, "max-w-[520px]")}>
-          <DialogHeader className="border-b border-[var(--neo-border)] pb-3 pr-10">
-            <DialogTitle className="text-base font-semibold text-[var(--neo-text-primary)]">
+          <DialogHeader className="border-b border-[var(--hh-border)] pb-3 pr-10">
+            <DialogTitle className="text-base font-semibold text-[var(--hh-text-primary)]">
               Pay Worker
             </DialogTitle>
           </DialogHeader>
           <form onSubmit={handlePaySubmit} className="space-y-5 pt-1">
-            <p className="text-xs leading-relaxed text-[var(--neo-text-tertiary)]">
+            <p className="text-xs leading-relaxed text-[var(--hh-text-tertiary)]">
               Confirm the selected labor entries, reimbursements, advance deduction, and cash
               payment.
             </p>
 
-            <div className="rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-3 py-3">
+            <div className="rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l3-hover)] px-3 py-3">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-xs font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+                  <p className="text-xs font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                     Selected labor
                   </p>
-                  <p className="mt-1 text-sm font-medium text-[var(--neo-text-primary)]">
+                  <p className="mt-1 text-sm font-medium text-[var(--hh-text-primary)]">
                     {selectedLaborEntries.length}{" "}
                     {selectedLaborEntries.length === 1 ? "entry" : "entries"} ·{" "}
                     {selectedLaborMonthLabels.length > 0
@@ -1496,24 +1496,24 @@ export default function WorkerBalanceDetailPage() {
                       : "No month selected"}
                   </p>
                   {isPartialMonthPayment ? (
-                    <p className="mt-1 text-xs font-medium text-[var(--neo-gold-soft)]">
+                    <p className="mt-1 text-xs font-medium text-[var(--hh-action-primary)]">
                       Partial month payment
                     </p>
                   ) : null}
                 </div>
-                <p className="shrink-0 text-sm font-semibold tabular-nums tracking-normal text-[var(--neo-text-primary)]">
+                <p className="shrink-0 text-sm font-semibold tabular-nums tracking-normal text-[var(--hh-text-primary)]">
                   {formatCurrency(selectedLaborTotal)}
                 </p>
               </div>
             </div>
 
-            <div className="rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-3 py-3">
+            <div className="rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l3-hover)] px-3 py-3">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-xs font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+                  <p className="text-xs font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                     Selected reimbursements
                   </p>
-                  <p className="mt-1 text-sm font-medium text-[var(--neo-text-primary)]">
+                  <p className="mt-1 text-sm font-medium text-[var(--hh-text-primary)]">
                     {selectedReimbursements.length}{" "}
                     {selectedReimbursements.length === 1 ? "item" : "items"} ·{" "}
                     {selectedReimbMonthLabels.length > 0
@@ -1521,12 +1521,12 @@ export default function WorkerBalanceDetailPage() {
                       : "No reimbursement selected"}
                   </p>
                   {isPartialReimbursementMonthPayment ? (
-                    <p className="mt-1 text-xs font-medium text-[var(--neo-gold-soft)]">
+                    <p className="mt-1 text-xs font-medium text-[var(--hh-action-primary)]">
                       Partial reimbursement month
                     </p>
                   ) : null}
                 </div>
-                <p className="shrink-0 text-sm font-semibold tabular-nums tracking-normal text-[var(--neo-text-primary)]">
+                <p className="shrink-0 text-sm font-semibold tabular-nums tracking-normal text-[var(--hh-text-primary)]">
                   {formatCurrency(selectedReimbursementTotal)}
                 </p>
               </div>
@@ -1534,14 +1534,14 @@ export default function WorkerBalanceDetailPage() {
 
             {unpaidReimb.length > 0 && (
               <div>
-                <p className="text-xs font-medium uppercase tracking-wide text-[var(--neo-text-tertiary)] mb-2">
+                <p className="text-xs font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] mb-2">
                   Reimbursements
                 </p>
-                <div className="max-h-40 overflow-y-auto rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] shadow-[var(--neo-shadow-control)]">
+                <div className="max-h-40 overflow-y-auto rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l3-hover)] shadow-operational">
                   {unpaidReimb.map((r) => (
                     <label
                       key={r.id}
-                      className="flex min-h-[44px] cursor-pointer items-center justify-between gap-3 border-b border-[var(--neo-border)] px-3 py-2.5 last:border-b-0 hover:bg-[var(--neo-surface-hover)]"
+                      className="flex min-h-[44px] cursor-pointer items-center justify-between gap-3 border-b border-[var(--hh-border)] px-3 py-2.5 last:border-b-0 hover:bg-[var(--hh-l3-hover)]"
                     >
                       <input
                         type="checkbox"
@@ -1549,10 +1549,10 @@ export default function WorkerBalanceDetailPage() {
                         onChange={() => toggleReimb(r.id)}
                         className={neoCheckboxClass}
                       />
-                      <span className="text-sm flex-1 truncate text-[var(--neo-text-secondary)]">
+                      <span className="text-sm flex-1 truncate text-[var(--hh-text-secondary)]">
                         {formatLedgerDate(r.date, "compact")} · {r.vendor ?? "—"}
                       </span>
-                      <span className="text-sm tabular-nums font-semibold tracking-tight text-[var(--neo-text-primary)]">
+                      <span className="text-sm tabular-nums font-semibold tracking-normal text-[var(--hh-text-primary)]">
                         {formatCurrency(r.amount)}
                       </span>
                     </label>
@@ -1563,33 +1563,33 @@ export default function WorkerBalanceDetailPage() {
 
             {advances.length > 0 ? (
               <div>
-                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--neo-text-tertiary)]">
+                <p className="mb-2 text-xs font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                   Open advances
                 </p>
-                <div className="rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] shadow-[var(--neo-shadow-control)]">
+                <div className="rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l3-hover)] shadow-operational">
                   {advancePlan.rows.length > 0 ? (
-                    <ul className="divide-y divide-[var(--neo-border)]">
+                    <ul className="divide-y divide-[var(--hh-border)]">
                       {advancePlan.rows.map((advance) => (
                         <li
                           key={advance.id}
                           className="flex min-h-[44px] items-center justify-between gap-3 px-3 py-2 text-sm"
                         >
-                          <span className="min-w-0 truncate text-[var(--neo-text-secondary)]">
+                          <span className="min-w-0 truncate text-[var(--hh-text-secondary)]">
                             {formatLedgerDate(advance.date, "compact")} · deduction
                           </span>
-                          <span className="shrink-0 font-semibold tabular-nums tracking-normal text-rose-300">
+                          <span className="shrink-0 font-semibold tabular-nums tracking-normal text-[var(--hh-danger)]">
                             -{formatCurrency(advance.amount)}
                           </span>
                         </li>
                       ))}
                     </ul>
                   ) : (
-                    <p className="px-3 py-2 text-sm text-[var(--neo-text-secondary)]">
+                    <p className="px-3 py-2 text-sm text-[var(--hh-text-secondary)]">
                       No advances can be fully applied to this selection.
                     </p>
                   )}
                   {unappliedAdvanceAmount > 0.005 ? (
-                    <p className="border-t border-[var(--neo-border)] px-3 py-2 text-xs text-[var(--neo-text-tertiary)]">
+                    <p className="border-t border-[var(--hh-border)] px-3 py-2 text-xs text-[var(--hh-text-tertiary)]">
                       {formatCurrency(unappliedAdvanceAmount)} remains open after this payment.
                     </p>
                   ) : null}
@@ -1597,18 +1597,18 @@ export default function WorkerBalanceDetailPage() {
               </div>
             ) : null}
 
-            <div className="border-t border-[var(--neo-border)] pt-3">
+            <div className="border-t border-[var(--hh-border)] pt-3">
               <dl className="space-y-1.5 text-sm">
-                <div className="flex justify-between gap-3 text-[var(--neo-text-secondary)]">
+                <div className="flex justify-between gap-3 text-[var(--hh-text-secondary)]">
                   <dt>Selected labor</dt>
                   <dd className="tabular-nums">{formatCurrency(selectedLaborTotal)}</dd>
                 </div>
-                <div className="flex justify-between gap-3 text-[var(--neo-text-secondary)]">
+                <div className="flex justify-between gap-3 text-[var(--hh-text-secondary)]">
                   <dt>Included reimbursements</dt>
                   <dd className="tabular-nums">{formatCurrency(includedReimbursementTotal)}</dd>
                 </div>
                 {advanceDeductionAmount > 0 ? (
-                  <div className="flex justify-between gap-3 text-[var(--neo-text-secondary)]">
+                  <div className="flex justify-between gap-3 text-[var(--hh-text-secondary)]">
                     <dt>Advance deduction</dt>
                     <dd className="tabular-nums">-{formatCurrency(advanceDeductionAmount)}</dd>
                   </div>
@@ -1623,19 +1623,17 @@ export default function WorkerBalanceDetailPage() {
             <div className="space-y-2">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-[var(--neo-text-primary)]">
-                    Split payment
-                  </p>
+                  <p className="text-sm font-medium text-[var(--hh-text-primary)]">Split payment</p>
                 </div>
                 {netPaymentAmount > 0 ? (
                   <span
                     className={cn(
-                      "shrink-0 text-[11px] font-medium tabular-nums",
+                      "shrink-0 text-hh-status font-medium tabular-nums",
                       splitDelta === 0
-                        ? "text-emerald-300"
+                        ? "text-[var(--hh-success)]"
                         : splitDelta > 0
-                          ? "text-amber-300"
-                          : "text-rose-300"
+                          ? "text-[var(--hh-warning)]"
+                          : "text-[var(--hh-danger)]"
                     )}
                   >
                     {splitDelta === 0
@@ -1647,34 +1645,34 @@ export default function WorkerBalanceDetailPage() {
                 ) : null}
               </div>
 
-              <div className="mt-2 rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] p-2 shadow-[var(--neo-shadow-control)]">
+              <div className="mt-2 rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l3-hover)] p-2 shadow-operational">
                 {splitRows.length === 0 ? (
-                  <div className="rounded-xl border border-dashed border-[var(--neo-border)] bg-[var(--neo-surface-base)] px-3 py-3">
-                    <p className="text-sm text-[var(--neo-text-tertiary)]">
+                  <div className="rounded-hh-task border border-dashed border-[var(--hh-border)] bg-[var(--hh-l1-workspace)] px-3 py-3">
+                    <p className="text-sm text-[var(--hh-text-tertiary)]">
                       No payment methods yet.
                     </p>
                   </div>
                 ) : (
-                  <ul className="divide-y divide-[var(--neo-border)]">
+                  <ul className="divide-y divide-[var(--hh-border)]">
                     {splitRows.map((r, idx) => {
                       const amt = Number(r.amount);
                       const amtText = Number.isFinite(amt) ? formatCurrency(amt) : "—";
                       return (
                         <li key={r.id} className="flex items-center gap-3 py-2">
                           <div className="min-w-0 flex-1">
-                            <p className="text-sm text-[var(--neo-text-secondary)] truncate">
-                              <span className="font-medium text-[var(--neo-text-primary)]">
+                            <p className="text-sm text-[var(--hh-text-secondary)] truncate">
+                              <span className="font-medium text-[var(--hh-text-primary)]">
                                 {r.method || "—"}
                               </span>{" "}
-                              <span className="text-[var(--neo-text-tertiary)]">·</span>{" "}
-                              <span className="tabular-nums font-semibold tracking-tight text-[var(--neo-text-primary)]">
+                              <span className="text-[var(--hh-text-tertiary)]">·</span>{" "}
+                              <span className="tabular-nums font-semibold tracking-normal text-[var(--hh-text-primary)]">
                                 {amtText}
                               </span>
                               {r.reference?.trim() ? (
                                 <>
                                   {" "}
-                                  <span className="text-[var(--neo-text-tertiary)]">·</span>{" "}
-                                  <span className="text-[var(--neo-text-tertiary)] truncate">
+                                  <span className="text-[var(--hh-text-tertiary)]">·</span>{" "}
+                                  <span className="text-[var(--hh-text-tertiary)] truncate">
                                     {r.reference.trim()}
                                   </span>
                                 </>
@@ -1686,7 +1684,7 @@ export default function WorkerBalanceDetailPage() {
                               type="button"
                               variant="ghost"
                               size="icon"
-                              className="h-11 w-11 min-h-[44px] min-w-[44px] text-[var(--neo-text-tertiary)] hover:bg-[var(--neo-surface-hover)] hover:text-[var(--neo-text-primary)] sm:h-9 sm:w-9 sm:min-h-9 sm:min-w-9"
+                              className="h-11 w-11 min-h-[44px] min-w-[44px] text-[var(--hh-text-tertiary)] hover:bg-[var(--hh-l3-hover)] hover:text-[var(--hh-text-primary)] sm:h-9 sm:w-9 sm:min-h-9 sm:min-w-9"
                               onClick={() => openEditSplit(r)}
                               aria-label={`Edit payment split ${idx + 1}`}
                             >
@@ -1696,7 +1694,7 @@ export default function WorkerBalanceDetailPage() {
                               type="button"
                               variant="ghost"
                               size="icon"
-                              className="h-11 w-11 min-h-[44px] min-w-[44px] text-[var(--neo-text-tertiary)] hover:bg-[var(--neo-surface-hover)] hover:text-[var(--neo-text-primary)] sm:h-9 sm:w-9 sm:min-h-9 sm:min-w-9"
+                              className="h-11 w-11 min-h-[44px] min-w-[44px] text-[var(--hh-text-tertiary)] hover:bg-[var(--hh-l3-hover)] hover:text-[var(--hh-text-primary)] sm:h-9 sm:w-9 sm:min-h-9 sm:min-w-9"
                               onClick={() => removeSplitRow(r.id)}
                               aria-label={`Remove payment split ${idx + 1}`}
                               disabled={splitRows.length === 1}
@@ -1716,26 +1714,26 @@ export default function WorkerBalanceDetailPage() {
                     variant="ghost"
                     size="sm"
                     className={cn(
-                      "px-2 text-[var(--neo-text-secondary)] hover:text-[var(--neo-text-primary)] hover:bg-transparent",
+                      "px-2 text-[var(--hh-text-secondary)] hover:text-[var(--hh-text-primary)] hover:bg-transparent",
                       "min-h-[44px] sm:min-h-9 text-xs"
                     )}
                     onClick={openAddSplit}
                     disabled={totalPaymentAmount <= 0}
                   >
-                    <Plus className="mr-2 h-4 w-4 text-[var(--neo-text-tertiary)]" aria-hidden />
+                    <Plus className="mr-2 h-4 w-4 text-[var(--hh-text-tertiary)]" aria-hidden />
                     Add payment
                   </Button>
                 </div>
               </div>
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-medium text-[var(--neo-text-tertiary)] block">
+              <label className="text-xs font-medium text-[var(--hh-text-tertiary)] block">
                 Payment date
               </label>
               <FinanceDatePicker value={payDate} onChange={setPayDate} size="md" />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-medium text-[var(--neo-text-tertiary)] block">
+              <label className="text-xs font-medium text-[var(--hh-text-tertiary)] block">
                 Notes (optional)
               </label>
               <Input
@@ -1746,12 +1744,16 @@ export default function WorkerBalanceDetailPage() {
               />
             </div>
 
-            {payError ? <p className="text-sm font-medium text-rose-300">{payError}</p> : null}
+            {payError ? (
+              <p className="text-sm font-medium text-[var(--hh-danger)]">{payError}</p>
+            ) : null}
             {!splitValidation.ok && splitValidation.message ? (
-              <p className="text-sm font-medium text-rose-300">{splitValidation.message}</p>
+              <p className="text-sm font-medium text-[var(--hh-danger)]">
+                {splitValidation.message}
+              </p>
             ) : null}
 
-            <div className="flex flex-col justify-end gap-2 border-t border-[var(--neo-border)] pt-3 sm:flex-row">
+            <div className="flex flex-col justify-end gap-2 border-t border-[var(--hh-border)] pt-3 sm:flex-row">
               <Button
                 type="button"
                 variant="outline"
@@ -1795,15 +1797,15 @@ export default function WorkerBalanceDetailPage() {
             "max-w-[420px] max-sm:bottom-0 max-sm:top-auto max-sm:translate-y-0 max-sm:rounded-b-none max-sm:border-b-0"
           )}
         >
-          <DialogHeader className="border-b border-[var(--neo-border)] pb-3 pr-10">
-            <DialogTitle className="text-base font-semibold text-[var(--neo-text-primary)]">
+          <DialogHeader className="border-b border-[var(--hh-border)] pb-3 pr-10">
+            <DialogTitle className="text-base font-semibold text-[var(--hh-text-primary)]">
               {splitEditorMode === "edit" ? "Edit payment" : "Add payment"}
             </DialogTitle>
           </DialogHeader>
 
           <div className="space-y-3 pt-1">
             <div className="space-y-1.5">
-              <label className="block text-xs font-medium text-[var(--neo-text-tertiary)]">
+              <label className="block text-xs font-medium text-[var(--hh-text-tertiary)]">
                 Method
               </label>
               <select
@@ -1821,7 +1823,7 @@ export default function WorkerBalanceDetailPage() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="block text-xs font-medium text-[var(--neo-text-tertiary)]">
+              <label className="block text-xs font-medium text-[var(--hh-text-tertiary)]">
                 Amount
               </label>
               <Input
@@ -1833,7 +1835,7 @@ export default function WorkerBalanceDetailPage() {
                 onChange={(e) => setDraftAmount(e.target.value)}
                 className={cn(
                   neoFieldClass,
-                  "text-right tabular-nums font-semibold tracking-tight"
+                  "text-right tabular-nums font-semibold tracking-normal"
                 )}
                 placeholder="0.00"
                 required
@@ -1841,7 +1843,7 @@ export default function WorkerBalanceDetailPage() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="block text-xs font-medium text-[var(--neo-text-tertiary)]">
+              <label className="block text-xs font-medium text-[var(--hh-text-tertiary)]">
                 Reference (optional)
               </label>
               <Input
@@ -1852,10 +1854,12 @@ export default function WorkerBalanceDetailPage() {
               />
             </div>
 
-            {draftError ? <p className="text-sm font-medium text-rose-300">{draftError}</p> : null}
+            {draftError ? (
+              <p className="text-sm font-medium text-[var(--hh-danger)]">{draftError}</p>
+            ) : null}
           </div>
 
-          <div className="flex flex-col justify-end gap-2 border-t border-[var(--neo-border)] pt-3 sm:flex-row">
+          <div className="flex flex-col justify-end gap-2 border-t border-[var(--hh-border)] pt-3 sm:flex-row">
             <Button
               type="button"
               variant="outline"

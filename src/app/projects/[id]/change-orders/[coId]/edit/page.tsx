@@ -81,7 +81,7 @@ export default async function ChangeOrderEditPage({
         header={
           <PageHeader title={`${co.number} (edit)`}>
             <Link href={`/projects/${projectId}/change-orders/${coId}`}>
-              <Button variant="outline" size="sm" className="text-xs">
+              <Button variant="outline" size="sm" className="text-hh-metadata">
                 Back
               </Button>
             </Link>

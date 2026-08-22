@@ -111,11 +111,11 @@ export default function NewProjectPage() {
   );
 
   return (
-    <div className="dark neo-page-on-graphite page-container page-stack py-6 text-[var(--neo-canvas-text-secondary)]">
+    <div className="bg-[var(--hh-l0-canvas)] page-container page-stack py-6 text-[var(--hh-text-secondary)]">
       <div className="flex flex-col gap-2">
         <Link
           href="/projects"
-          className="inline-flex w-fit items-center gap-1.5 text-sm text-[var(--neo-canvas-text-secondary)] transition-colors hover:text-[var(--neo-canvas-text-primary)]"
+          className="inline-flex w-fit items-center gap-1.5 text-hh-body text-[var(--hh-text-secondary)] transition-colors hover:text-[var(--hh-text-primary)]"
         >
           <ArrowLeft className="h-4 w-4" />
           Projects

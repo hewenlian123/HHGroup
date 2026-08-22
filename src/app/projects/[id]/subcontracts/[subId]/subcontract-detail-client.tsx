@@ -73,12 +73,12 @@ export function SubcontractDetailClient({
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <span className="text-xs text-muted-foreground">Status</span>
+      <span className="text-hh-metadata text-[var(--hh-text-secondary)]">Status</span>
       <select
         value={status}
         onChange={(e) => handleChange(e.target.value as SubcontractWithSubcontractor["status"])}
         disabled={busy || options.length <= 1}
-        className="h-8 rounded border border-input bg-transparent px-2 text-xs"
+        className="h-8 rounded border border-input bg-transparent px-2 text-hh-metadata"
       >
         {STATUSES.filter((s) => optionsSet.has(s)).map((s) => (
           <option key={s} value={s}>
@@ -89,7 +89,7 @@ export function SubcontractDetailClient({
       <Button asChild variant="outline" size="sm" className="h-8">
         <Link href={`/projects/${projectId}/subcontracts/${subcontract.id}/bills`}>Bills</Link>
       </Button>
-      {error ? <span className="text-xs text-red-600 dark:text-red-400">{error}</span> : null}
+      {error ? <span className="text-hh-metadata text-[var(--hh-danger)]">{error}</span> : null}
     </div>
   );
 }
@@ -194,7 +194,7 @@ export function SubcontractPaymentScheduleClient({
     <NeoPanel title="Payment Schedule" bodyClassName="p-0">
       <form
         onSubmit={handleAddSchedule}
-        className="grid gap-3 border-b border-[var(--neo-border)] p-4 md:grid-cols-[1.3fr_1fr_0.8fr_0.8fr_auto]"
+        className="grid gap-3 border-b border-[var(--hh-border)] p-4 md:grid-cols-[1.3fr_1fr_0.8fr_0.8fr_auto]"
       >
         <div className="min-w-0 space-y-1.5">
           <NeoFieldLabel required>Title</NeoFieldLabel>
@@ -202,7 +202,7 @@ export function SubcontractPaymentScheduleClient({
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Deposit, rough-in, final"
-            className="h-10 rounded-[0.625rem]"
+            className="h-10 rounded-hh-standard"
             required
           />
         </div>
@@ -211,7 +211,7 @@ export function SubcontractPaymentScheduleClient({
           <NeoInput
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            className="h-10 rounded-[0.625rem]"
+            className="h-10 rounded-hh-standard"
           />
         </div>
         <div className="min-w-0 space-y-1.5">
@@ -224,7 +224,7 @@ export function SubcontractPaymentScheduleClient({
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             placeholder="0.00"
-            className="neo-amount h-10 rounded-[0.625rem] tabular-nums"
+            className="neo-amount h-10 rounded-hh-standard tabular-nums"
             required
           />
         </div>
@@ -234,7 +234,7 @@ export function SubcontractPaymentScheduleClient({
             type="date"
             value={dueDate}
             onChange={(e) => setDueDate(e.target.value)}
-            className="h-10 rounded-[0.625rem] tabular-nums [color-scheme:dark]"
+            className="h-10 rounded-hh-standard tabular-nums"
           />
         </div>
         <div className="flex items-end">
@@ -243,14 +243,14 @@ export function SubcontractPaymentScheduleClient({
           </Button>
         </div>
         {error ? (
-          <p className="rounded-lg border border-rose-500/25 bg-rose-500/10 px-3 py-2 text-[12px] font-medium text-rose-200 md:col-span-5">
+          <p className="rounded-hh-standard border border-[var(--hh-danger-border)] bg-[var(--hh-danger-soft-fill)] px-3 py-2 text-hh-metadata font-medium text-[var(--hh-danger)] md:col-span-5">
             {error}
           </p>
         ) : null}
       </form>
 
       {items.length === 0 ? (
-        <p className="px-4 py-6 text-sm text-[var(--neo-text-secondary)]">
+        <p className="px-4 py-6 text-hh-body text-[var(--hh-text-secondary)]">
           No payment schedule items yet.
         </p>
       ) : (
@@ -268,13 +268,13 @@ export function SubcontractPaymentScheduleClient({
             {items.map((item) => {
               const billId = item.ap_bill_id ?? createdBillIds[item.id] ?? null;
               return (
-                <tr key={item.id} className="border-b border-[var(--neo-border)] last:border-b-0">
+                <tr key={item.id} className="border-b border-[var(--hh-border)] last:border-b-0">
                   <td className={cn(tableRawTdClass, "max-w-[260px]")}>
-                    <span className="block truncate font-medium text-[var(--neo-text-primary)]">
+                    <span className="block truncate font-medium text-[var(--hh-text-primary)]">
                       {item.title}
                     </span>
                     {item.description ? (
-                      <span className="mt-0.5 block truncate text-xs text-[var(--neo-text-secondary)]">
+                      <span className="mt-0.5 block truncate text-hh-metadata text-[var(--hh-text-secondary)]">
                         {item.description}
                       </span>
                     ) : null}

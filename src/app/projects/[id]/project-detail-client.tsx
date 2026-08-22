@@ -292,7 +292,10 @@ export function ProjectDetailClient({ id }: { id: string }) {
       key: "bill_number",
       header: "Bill",
       render: (row) => (
-        <Link href={`/bills/${row.id}`} className="font-medium text-foreground hover:underline">
+        <Link
+          href={`/bills/${row.id}`}
+          className="font-medium text-[var(--hh-text-primary)] hover:underline"
+        >
           {row.bill_number || row.id.slice(0, 8)}
         </Link>
       ),
@@ -306,14 +309,14 @@ export function ProjectDetailClient({ id }: { id: string }) {
       key: "due_date",
       header: "Due",
       render: (row) => (
-        <span className="tabular-nums text-muted-foreground">{row.due_date || "—"}</span>
+        <span className="tabular-nums text-[var(--hh-text-secondary)]">{row.due_date || "—"}</span>
       ),
     },
     {
       key: "payee_name",
       header: "Payee",
       render: (row) => (
-        <span className="text-muted-foreground">
+        <span className="text-[var(--hh-text-secondary)]">
           {row.subcontractors?.name || row.payee_name || "—"}
         </span>
       ),
@@ -324,7 +327,9 @@ export function ProjectDetailClient({ id }: { id: string }) {
       align: "right",
       className: "tabular-nums",
       render: (row) => (
-        <span className="tabular-nums text-muted-foreground">{money(safeNumber(row.total))}</span>
+        <span className="tabular-nums text-[var(--hh-text-secondary)]">
+          {money(safeNumber(row.total))}
+        </span>
       ),
     },
     {
@@ -336,7 +341,7 @@ export function ProjectDetailClient({ id }: { id: string }) {
         <span
           className={cn(
             "tabular-nums font-medium",
-            safeNumber(row.balance) > 0 ? "text-amber-600" : "text-hh-profit-positive"
+            safeNumber(row.balance) > 0 ? "text-[var(--hh-warning)]" : "text-hh-profit-positive"
           )}
         >
           {money(Math.max(0, safeNumber(row.balance)))}
@@ -352,7 +357,7 @@ export function ProjectDetailClient({ id }: { id: string }) {
       render: (row) => (
         <Link
           href={row.subcontractors?.id ? `/subcontractors/${row.subcontractors.id}` : "#"}
-          className="font-medium text-foreground hover:underline"
+          className="font-medium text-[var(--hh-text-primary)] hover:underline"
         >
           {row.subcontractors?.name || "—"}
         </Link>
@@ -361,7 +366,7 @@ export function ProjectDetailClient({ id }: { id: string }) {
     {
       key: "role",
       header: "Role",
-      render: (row) => <span className="text-muted-foreground">{row.role || "—"}</span>,
+      render: (row) => <span className="text-[var(--hh-text-secondary)]">{row.role || "—"}</span>,
     },
     {
       key: "status",
@@ -396,13 +401,13 @@ export function ProjectDetailClient({ id }: { id: string }) {
           <div className="flex items-center gap-3">
             <Link
               href="/projects"
-              className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+              className="inline-flex items-center gap-2 text-hh-body text-[var(--hh-text-secondary)] hover:text-[var(--hh-text-primary)]"
             >
               <ArrowLeft className="h-4 w-4" />
               Projects
             </Link>
             <div className="flex items-center gap-2">
-              <h1 className="text-[22px] font-semibold tracking-[-0.02em] text-foreground">
+              <h1 className="text-hh-page-title font-semibold tracking-normal text-[var(--hh-text-primary)]">
                 {projectName}
               </h1>
               <StatusBadge status={status} />
@@ -430,7 +435,7 @@ export function ProjectDetailClient({ id }: { id: string }) {
         </div>
 
         {state.error ? (
-          <div className="rounded-[12px] border border-gray-100 bg-white px-4 py-3 text-sm text-muted-foreground">
+          <div className="rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-4 py-3 text-hh-body text-[var(--hh-text-secondary)]">
             {state.error}
           </div>
         ) : null}
@@ -476,7 +481,7 @@ export function ProjectDetailClient({ id }: { id: string }) {
           <div className="grid gap-4 xl:grid-cols-5">
             <Card className="xl:col-span-3">
               <CardHeader className="pb-2">
-                <CardTitle className="text-base">Bills (Recent)</CardTitle>
+                <CardTitle className="text-hh-body">Bills (Recent)</CardTitle>
               </CardHeader>
               <CardContent>
                 {state.loading ? (
@@ -498,7 +503,7 @@ export function ProjectDetailClient({ id }: { id: string }) {
 
             <Card className="xl:col-span-2">
               <CardHeader className="pb-2">
-                <CardTitle className="text-base">Subcontractors</CardTitle>
+                <CardTitle className="text-hh-body">Subcontractors</CardTitle>
               </CardHeader>
               <CardContent>
                 {state.loading ? (
@@ -510,7 +515,7 @@ export function ProjectDetailClient({ id }: { id: string }) {
                 ) : (
                   <>
                     <div className="mb-3 flex items-center justify-between">
-                      <div className="text-sm text-muted-foreground">
+                      <div className="text-hh-body text-[var(--hh-text-secondary)]">
                         {state.subs.length} linked
                       </div>
                       <Button asChild variant="outline" size="sm">
@@ -536,7 +541,7 @@ export function ProjectDetailClient({ id }: { id: string }) {
         <TabsContent value="bills">
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base">Bills</CardTitle>
+              <CardTitle className="text-hh-body">Bills</CardTitle>
             </CardHeader>
             <CardContent>
               {state.loading ? (
@@ -560,7 +565,7 @@ export function ProjectDetailClient({ id }: { id: string }) {
         <TabsContent value="subcontractors">
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base">Subcontractors</CardTitle>
+              <CardTitle className="text-hh-body">Subcontractors</CardTitle>
             </CardHeader>
             <CardContent>
               {state.loading ? (
@@ -584,10 +589,10 @@ export function ProjectDetailClient({ id }: { id: string }) {
         <TabsContent value="estimates">
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base">Estimates</CardTitle>
+              <CardTitle className="text-hh-body">Estimates</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-muted-foreground">No data yet.</p>
+              <p className="text-hh-body text-[var(--hh-text-secondary)]">No data yet.</p>
             </CardContent>
           </Card>
         </TabsContent>
@@ -595,10 +600,10 @@ export function ProjectDetailClient({ id }: { id: string }) {
         <TabsContent value="expenses">
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base">Expenses</CardTitle>
+              <CardTitle className="text-hh-body">Expenses</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-muted-foreground">No data yet.</p>
+              <p className="text-hh-body text-[var(--hh-text-secondary)]">No data yet.</p>
             </CardContent>
           </Card>
         </TabsContent>
@@ -606,10 +611,10 @@ export function ProjectDetailClient({ id }: { id: string }) {
         <TabsContent value="timesheets">
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base">Timesheets</CardTitle>
+              <CardTitle className="text-hh-body">Timesheets</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-muted-foreground">No data yet.</p>
+              <p className="text-hh-body text-[var(--hh-text-secondary)]">No data yet.</p>
             </CardContent>
           </Card>
         </TabsContent>
@@ -617,10 +622,10 @@ export function ProjectDetailClient({ id }: { id: string }) {
         <TabsContent value="documents">
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base">Documents</CardTitle>
+              <CardTitle className="text-hh-body">Documents</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-muted-foreground">No data yet.</p>
+              <p className="text-hh-body text-[var(--hh-text-secondary)]">No data yet.</p>
             </CardContent>
           </Card>
         </TabsContent>

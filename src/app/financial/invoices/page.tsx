@@ -63,52 +63,51 @@ import { InvoiceDeleteDependenciesDialog } from "./invoice-delete-dependencies-d
 const invoicesShell = OS.card;
 
 const kpiTile =
-  "rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] text-[var(--neo-text-primary)]";
+  "rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)]";
 
 const financePageTitleClass =
-  "text-[26px] font-semibold leading-[1.05] tracking-normal text-[var(--neo-canvas-text-primary)]";
+  "text-hh-page-title font-semibold  tracking-normal text-[var(--hh-text-primary)]";
 
 const financeSubtitleClass =
-  "mt-1.5 text-[13px] leading-snug tracking-normal text-[var(--neo-canvas-text-secondary)]";
+  "mt-1.5 text-hh-table-cell leading-snug tracking-normal text-[var(--hh-text-secondary)]";
 
 const financeSectionLabelClass = cn(
   TYPO.sectionLabel,
-  "text-[10.5px] font-semibold text-[var(--neo-text-tertiary)]"
+  "text-hh-status font-semibold text-[var(--hh-text-tertiary)]"
 );
 
 const financeControlLabelClass = cn(
   TYPO.sectionLabel,
-  "text-[10.5px] font-semibold text-[var(--neo-text-tertiary)]"
+  "text-hh-status font-semibold text-[var(--hh-text-tertiary)]"
 );
 
 const financePrimaryTextClass = cn(
   TYPO.primaryName,
-  "text-[14.5px] font-semibold leading-[1.18] text-[var(--neo-text-primary)]"
+  "text-hh-body font-semibold  text-[var(--hh-text-primary)]"
 );
 
-const financeMetadataClass =
-  "text-[11.5px] leading-[1.35] tracking-normal text-[var(--neo-text-secondary)]";
+const financeMetadataClass = "text-hh-metadata  tracking-normal text-[var(--hh-text-secondary)]";
 
 const financeMetadataStrongClass =
-  "text-[11.5px] font-medium tabular-nums tracking-normal text-[var(--neo-text-primary)]";
+  "text-hh-metadata font-medium tabular-nums tracking-normal text-[var(--hh-text-primary)]";
 
 const financeAmountClass =
-  "min-w-[112px] text-right text-[16px] font-semibold leading-none tracking-normal tabular-nums";
+  "min-w-[112px] text-right text-hh-financial font-semibold leading-none tracking-normal tabular-nums";
 
 const financeSecondaryAmountClass =
-  "text-[11.5px] font-medium tabular-nums tracking-normal text-[var(--neo-text-secondary)]";
+  "text-hh-metadata font-medium tabular-nums tracking-normal text-[var(--hh-text-secondary)]";
 
-const financeToolbarButtonTextClass = "text-[12px] font-medium tracking-normal";
+const financeToolbarButtonTextClass = "text-hh-metadata font-medium tracking-normal";
 
-const invoiceTableThClass = cn(tableRawThClass, "h-10 px-4 text-[10.5px] font-semibold");
+const invoiceTableThClass = cn(tableRawThClass, "h-10 px-4 text-hh-status font-semibold");
 const invoiceTableTdClass = cn(tableRawTdClass, "h-11 px-4");
 const invoiceTableNumericThClass = cn(invoiceTableThClass, "text-right tabular-nums");
 
 const invoiceActionsMenuContentClassName =
-  "z-[1000] min-w-[160px] overflow-hidden rounded-xl border border-stone-200 bg-popover p-1 py-2 text-popover-foreground !opacity-100 shadow-xl backdrop-blur-none data-[state=open]:!animate-none data-[state=closed]:!animate-none dark:border-border dark:bg-popover dark:text-popover-foreground";
+  "z-[1000] min-w-[160px] overflow-hidden rounded-hh-task border border-[var(--hh-border-floating)] bg-[var(--hh-l4-floating-surface)] p-1 py-2 text-[var(--hh-text-primary)] !opacity-100 shadow-floating backdrop-blur-none data-[state=open]:!animate-none data-[state=closed]:!animate-none";
 
 const invoiceActionsMenuContentStyle: React.CSSProperties = {
-  backgroundColor: "hsl(var(--popover))",
+  backgroundColor: "var(--hh-l4-floating-surface)",
   opacity: 1,
   zIndex: 1000,
   animation: "none",
@@ -164,7 +163,7 @@ function InvoiceStatusText({
     <NeoStatus
       label={statusMeta.label}
       variant={statusMeta.variant}
-      className={cn("h-5 px-2 text-[11px] whitespace-nowrap", className)}
+      className={cn("h-5 px-2 text-hh-status whitespace-nowrap", className)}
     />
   );
 }
@@ -179,12 +178,12 @@ function InvoiceMiniMetric({
   emphasized?: boolean;
 }) {
   return (
-    <div className="rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-2.5 py-1.5">
+    <div className="rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-2.5 py-1.5">
       <p className={financeSectionLabelClass}>{label}</p>
       <p
         className={cn(
-          "mt-1 text-[13px] font-medium tabular-nums leading-none tracking-normal text-[var(--neo-text-primary)]",
-          emphasized && "text-[14px] font-semibold"
+          "mt-1 text-hh-table-cell font-medium tabular-nums leading-none tracking-normal text-[var(--hh-text-primary)]",
+          emphasized && "text-hh-body font-semibold"
         )}
       >
         <NeoAmount>{value}</NeoAmount>
@@ -197,7 +196,7 @@ function CompactSummaryMetric({ label, value }: { label: string; value: string }
   return (
     <div className={cn(kpiTile, "px-2.5 py-2")}>
       <p className={financeSectionLabelClass}>{label}</p>
-      <p className="mt-1 text-[13px] font-semibold tabular-nums leading-none tracking-normal text-[var(--neo-text-primary)]">
+      <p className="mt-1 text-hh-table-cell font-semibold tabular-nums leading-none tracking-normal text-[var(--hh-text-primary)]">
         <NeoAmount>{value}</NeoAmount>
       </p>
     </div>
@@ -207,11 +206,11 @@ function CompactSummaryMetric({ label, value }: { label: string; value: string }
 function InvoiceListSkeleton() {
   return (
     <section className={cn(invoicesShell, "overflow-hidden p-0")}>
-      <div className="hidden border-b border-[var(--neo-border)] px-5 py-3 md:flex md:items-center md:justify-between">
+      <div className="hidden border-b border-[var(--hh-border)] px-5 py-3 md:flex md:items-center md:justify-between">
         <Skeleton className="h-3 w-24" />
         <Skeleton className="h-3 w-20" />
       </div>
-      <div className="hidden divide-y divide-[var(--neo-border)] md:block">
+      <div className="hidden divide-y divide-[var(--hh-border)] md:block">
         {Array.from({ length: 5 }).map((_, index) => (
           <div
             key={`desktop-skeleton-${index}`}
@@ -233,7 +232,7 @@ function InvoiceListSkeleton() {
               </div>
             </div>
             <div className="flex justify-end">
-              <Skeleton className="h-8 w-8 rounded-md" />
+              <Skeleton className="h-8 w-8 rounded-hh-standard" />
             </div>
           </div>
         ))}
@@ -246,16 +245,16 @@ function InvoiceListSkeleton() {
                 <Skeleton className="h-5 w-44" />
                 <Skeleton className="h-3 w-24" />
               </div>
-              <Skeleton className="h-10 w-10 rounded-md" />
+              <Skeleton className="h-10 w-10 rounded-hh-standard" />
             </div>
             <div className="mt-4 grid grid-cols-3 gap-2">
-              <Skeleton className="h-14 rounded-lg" />
-              <Skeleton className="h-14 rounded-lg" />
-              <Skeleton className="h-14 rounded-lg" />
+              <Skeleton className="h-14 rounded-hh-standard" />
+              <Skeleton className="h-14 rounded-hh-standard" />
+              <Skeleton className="h-14 rounded-hh-standard" />
             </div>
             <div className="mt-4 flex gap-2">
-              <Skeleton className="h-10 flex-1 rounded-md" />
-              <Skeleton className="h-10 flex-1 rounded-md" />
+              <Skeleton className="h-10 flex-1 rounded-hh-standard" />
+              <Skeleton className="h-10 flex-1 rounded-hh-standard" />
             </div>
           </NeoMobileCard>
         ))}
@@ -657,7 +656,7 @@ function InvoicesPageInner() {
   return (
     <div
       className={cn(
-        "dark financial-nums neo-page-on-graphite min-w-0 overflow-x-hidden pb-[max(1rem,env(safe-area-inset-bottom,0px))] pt-[max(0.35rem,env(safe-area-inset-top,0px))] text-[var(--neo-canvas-text-secondary)]",
+        "hh-fin min-w-0 overflow-x-hidden bg-[var(--hh-l0-canvas)] pb-[max(1rem,env(safe-area-inset-bottom,0px))] pt-[max(0.35rem,env(safe-area-inset-top,0px))] text-[var(--hh-text-secondary)]",
         "flex flex-col"
       )}
     >
@@ -673,7 +672,7 @@ function InvoicesPageInner() {
               <div className="flex items-center gap-3">
                 <h1 className={financePageTitleClass}>Invoices</h1>
                 {refreshing ? (
-                  <span className="text-[11px] font-medium tracking-normal text-[var(--neo-canvas-text-tertiary)]">
+                  <span className="text-hh-status font-medium tracking-normal text-[var(--hh-text-tertiary)]">
                     Updating...
                   </span>
                 ) : null}
@@ -685,7 +684,7 @@ function InvoicesPageInner() {
               size="sm"
               className={cn(
                 OS.primaryButton,
-                "h-[34px] shrink-0 gap-1.5 rounded-md px-3.5 shadow-none",
+                "h-[34px] shrink-0 gap-1.5 rounded-hh-standard px-3.5 shadow-none",
                 financeToolbarButtonTextClass
               )}
             >
@@ -708,12 +707,12 @@ function InvoicesPageInner() {
           filtersTriggerClassName="min-h-11"
           searchSlot={
             <div className="relative w-full">
-              <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--neo-text-tertiary)]" />
+              <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--hh-text-tertiary)]" />
               <Input
                 placeholder="Invoice #, client, project…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="h-11 pl-8 text-[13.5px] tracking-normal text-[var(--neo-text-primary)] placeholder:text-[var(--neo-text-tertiary)]"
+                className="h-11 pl-8 text-hh-table-cell tracking-normal text-[var(--hh-text-primary)] placeholder:text-[var(--hh-text-tertiary)]"
               />
             </div>
           }
@@ -767,7 +766,7 @@ function InvoicesPageInner() {
           </div>
           <Button
             type="button"
-            className={cn("w-full rounded-sm", financeToolbarButtonTextClass)}
+            className={cn("w-full rounded-hh-compact", financeToolbarButtonTextClass)}
             onClick={() => setFiltersOpen(false)}
           >
             Done
@@ -778,7 +777,7 @@ function InvoicesPageInner() {
           <section className={cn(invoicesShell, "overflow-hidden p-0")}>
             <button
               type="button"
-              className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors duration-150 hover:bg-[var(--neo-surface-muted)]"
+              className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors duration-150 hover:bg-[var(--hh-l3-hover)]"
               aria-expanded={summaryOpen}
               onClick={() => setSummaryOpen((open) => !open)}
             >
@@ -793,33 +792,33 @@ function InvoicesPageInner() {
                 ) : (
                   <div className="mt-1.5 flex flex-wrap items-center gap-x-6 gap-y-1.5">
                     <span className="inline-flex items-baseline gap-1">
-                      <span className="text-[11px] leading-none text-[var(--neo-text-secondary)]">
+                      <span className="text-hh-status leading-none text-[var(--hh-text-secondary)]">
                         Open
                       </span>
-                      <span className="text-[14px] font-semibold tabular-nums tracking-normal text-[var(--neo-text-primary)]">
+                      <span className="text-hh-body font-semibold tabular-nums tracking-normal text-[var(--hh-text-primary)]">
                         {formatInteger(summary.openCount)}
                       </span>
                     </span>
                     <span className="inline-flex items-baseline gap-1">
-                      <span className="text-[11px] leading-none text-[var(--neo-text-secondary)]">
+                      <span className="text-hh-status leading-none text-[var(--hh-text-secondary)]">
                         Outstanding
                       </span>
-                      <NeoAmount className="text-[14px] font-semibold leading-none">
+                      <NeoAmount className="text-hh-body font-semibold leading-none">
                         {formatCurrency(summary.outstanding)}
                       </NeoAmount>
                     </span>
                     <span className="inline-flex items-baseline gap-1">
-                      <span className="text-[11px] leading-none text-[var(--neo-text-secondary)]">
+                      <span className="text-hh-status leading-none text-[var(--hh-text-secondary)]">
                         Overdue
                       </span>
-                      <NeoAmount tone="danger" className="text-[14px] font-semibold leading-none">
+                      <NeoAmount tone="danger" className="text-hh-body font-semibold leading-none">
                         {formatCurrency(summary.overdue)}
                       </NeoAmount>
                     </span>
                   </div>
                 )}
               </div>
-              <span className="shrink-0 text-[var(--neo-text-secondary)]">
+              <span className="shrink-0 text-[var(--hh-text-secondary)]">
                 {summaryOpen ? (
                   <ChevronUp className="h-4 w-4" aria-hidden />
                 ) : (
@@ -828,7 +827,7 @@ function InvoicesPageInner() {
               </span>
             </button>
             {summaryOpen ? (
-              <div className="border-t border-[var(--neo-border)] p-2.5">
+              <div className="border-t border-[var(--hh-border)] p-2.5">
                 <div className="grid grid-cols-2 gap-2 md:grid-cols-6">
                   {isInitialLoading ? (
                     Array.from({ length: 6 }).map((_, index) => (
@@ -869,14 +868,14 @@ function InvoicesPageInner() {
         ) : null}
 
         <NeoToolbar className="hidden gap-2 p-2.5 md:flex md:flex-col md:items-stretch">
-          <div className="flex items-center gap-2 rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] p-1">
+          <div className="flex items-center gap-2 rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-1">
             <div className="relative min-w-0 flex-1">
-              <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--neo-text-tertiary)]" />
+              <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--hh-text-tertiary)]" />
               <Input
                 placeholder="Invoice #, client, project…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="h-9 border-transparent bg-[var(--neo-surface-raised)] pl-8 text-[13px] tracking-normal text-[var(--neo-text-primary)] placeholder:text-[var(--neo-text-tertiary)] shadow-none transition-colors focus-visible:border-[var(--neo-gold)] focus-visible:ring-[var(--neo-gold-ring)]"
+                className="h-9 border-transparent bg-[var(--hh-l2-operational-surface)] pl-8 text-hh-table-cell tracking-normal text-[var(--hh-text-primary)] placeholder:text-[var(--hh-text-tertiary)] shadow-none transition-colors focus-visible:border-[var(--hh-action-primary)] focus-visible:ring-[var(--hh-focus-ring)]"
               />
             </div>
             <Button
@@ -885,7 +884,7 @@ function InvoicesPageInner() {
               variant="outline"
               className={cn(
                 OS.secondaryButton,
-                "h-9 shrink-0 gap-1.5 rounded-md border-transparent px-3.5 shadow-none",
+                "h-9 shrink-0 gap-1.5 rounded-hh-standard border-transparent px-3.5 shadow-none",
                 financeToolbarButtonTextClass
               )}
               aria-expanded={desktopFiltersOpen}
@@ -894,7 +893,7 @@ function InvoicesPageInner() {
               <SlidersHorizontal className="h-3.5 w-3.5" aria-hidden />
               Filters
               {hasAdvancedFilters ? (
-                <span className="rounded-full bg-[rgb(184_137_45_/_0.12)] px-1.5 py-0.5 text-[10.5px] font-medium tracking-normal text-[var(--neo-gold)]">
+                <span className="rounded-full bg-[var(--hh-l3-selected)] px-1.5 py-0.5 text-hh-status font-medium tracking-normal text-[var(--hh-action-primary)]">
                   {activeDrawerFilterCount}
                 </span>
               ) : null}
@@ -905,7 +904,7 @@ function InvoicesPageInner() {
               variant="outline"
               className={cn(
                 NEO.buttonGhost,
-                "h-9 shrink-0 rounded-md px-3.5 shadow-none",
+                "h-9 shrink-0 rounded-hh-standard px-3.5 shadow-none",
                 financeToolbarButtonTextClass
               )}
               onClick={() => void refresh()}
@@ -920,7 +919,7 @@ function InvoicesPageInner() {
                 <button
                   key={chip.key}
                   type="button"
-                  className="inline-flex h-6 items-center gap-1 rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-2.5 text-[10px] font-medium tracking-normal text-[var(--neo-text-secondary)] transition-colors hover:text-[var(--neo-text-primary)]"
+                  className="inline-flex h-6 items-center gap-1 rounded-full border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-2.5 text-hh-status font-medium tracking-normal text-[var(--hh-text-secondary)] transition-colors hover:text-[var(--hh-text-primary)]"
                   onClick={() => clearFilterChip(chip.key)}
                 >
                   <span>{chip.label}</span>
@@ -929,7 +928,7 @@ function InvoicesPageInner() {
               ))}
               <button
                 type="button"
-                className="text-[10.5px] font-medium tracking-normal text-[var(--neo-text-secondary)] transition-colors hover:text-[var(--neo-text-primary)]"
+                className="text-hh-status font-medium tracking-normal text-[var(--hh-text-secondary)] transition-colors hover:text-[var(--hh-text-primary)]"
                 onClick={clearAdvancedFilters}
               >
                 Clear all
@@ -938,13 +937,13 @@ function InvoicesPageInner() {
           ) : null}
 
           {desktopFiltersOpen ? (
-            <div className="mt-2 grid gap-2 border-t border-[var(--neo-border)] pt-2 md:grid-cols-[168px_208px_156px_156px]">
+            <div className="mt-2 grid gap-2 border-t border-[var(--hh-border)] pt-2 md:grid-cols-[168px_208px_156px_156px]">
               <div className="space-y-1">
                 <label className={financeControlLabelClass}>Status</label>
                 <Select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value as "" | InvoiceComputedStatus)}
-                  className="h-8 w-full bg-[var(--neo-surface-raised)]"
+                  className="h-8 w-full bg-[var(--hh-l2-operational-surface)]"
                 >
                   {STATUS_OPTIONS.map((o) => (
                     <option key={o.value || "all"} value={o.value}>
@@ -958,7 +957,7 @@ function InvoicesPageInner() {
                 <Select
                   value={projectFilter}
                   onChange={(e) => setProjectFilter(e.target.value)}
-                  className="h-8 w-full bg-[var(--neo-surface-raised)]"
+                  className="h-8 w-full bg-[var(--hh-l2-operational-surface)]"
                 >
                   <option value="">All projects</option>
                   {projects.map((p) => (
@@ -974,7 +973,7 @@ function InvoicesPageInner() {
                   type="date"
                   value={dateFrom}
                   onChange={(e) => setDateFrom(e.target.value)}
-                  className="h-8 bg-[var(--neo-surface-raised)] tabular-nums"
+                  className="h-8 bg-[var(--hh-l2-operational-surface)] tabular-nums"
                 />
               </div>
               <div className="space-y-1">
@@ -983,7 +982,7 @@ function InvoicesPageInner() {
                   type="date"
                   value={dateTo}
                   onChange={(e) => setDateTo(e.target.value)}
-                  className="h-8 bg-[var(--neo-surface-raised)] tabular-nums"
+                  className="h-8 bg-[var(--hh-l2-operational-surface)] tabular-nums"
                 />
               </div>
             </div>
@@ -996,7 +995,7 @@ function InvoicesPageInner() {
               <button
                 key={`mobile-${chip.key}`}
                 type="button"
-                className="inline-flex h-7 items-center gap-1 rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-2.5 text-[11px] font-medium tracking-normal text-[var(--neo-text-secondary)]"
+                className="inline-flex h-7 items-center gap-1 rounded-full border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-2.5 text-hh-status font-medium tracking-normal text-[var(--hh-text-secondary)]"
                 onClick={() => clearFilterChip(chip.key)}
               >
                 <span>{chip.label}</span>
@@ -1019,7 +1018,7 @@ function InvoicesPageInner() {
                 variant="outline"
                 className={cn(
                   OS.secondaryButton,
-                  "h-9 rounded-md shadow-none",
+                  "h-9 rounded-hh-standard shadow-none",
                   financeToolbarButtonTextClass
                 )}
                 onClick={() => void refresh()}
@@ -1040,7 +1039,7 @@ function InvoicesPageInner() {
                   variant="outline"
                   className={cn(
                     OS.secondaryButton,
-                    "h-9 rounded-md shadow-none",
+                    "h-9 rounded-hh-standard shadow-none",
                     financeToolbarButtonTextClass
                   )}
                   onClick={() => {
@@ -1066,7 +1065,7 @@ function InvoicesPageInner() {
                   size="sm"
                   className={cn(
                     OS.primaryButton,
-                    "h-9 rounded-md shadow-none",
+                    "h-9 rounded-hh-standard shadow-none",
                     financeToolbarButtonTextClass
                   )}
                 >
@@ -1123,7 +1122,7 @@ function InvoicesPageInner() {
                   const dueTone =
                     inv.computedStatus === "Overdue"
                       ? OS.dangerAmount
-                      : "text-[var(--neo-text-secondary)]";
+                      : "text-[var(--hh-text-secondary)]";
                   const balanceTone = inv.computedStatus === "Overdue" ? "danger" : "neutral";
                   const rowActions = [
                     {
@@ -1205,7 +1204,7 @@ function InvoicesPageInner() {
                         </button>
                       </td>
                       <td className={cn(invoiceTableTdClass, "max-w-[220px]")}>
-                        <span className="block truncate text-[13px] font-medium text-[var(--neo-text-secondary)]">
+                        <span className="block truncate text-hh-table-cell font-medium text-[var(--hh-text-secondary)]">
                           {projectLabel}
                         </span>
                       </td>
@@ -1213,8 +1212,8 @@ function InvoicesPageInner() {
                         <InvoiceStatusText status={inv.computedStatus} />
                       </td>
                       <td className={invoiceTableTdClass}>
-                        <span className="inline-flex items-center gap-1 whitespace-nowrap text-[12.5px]">
-                          <span className="text-[var(--neo-text-tertiary)]">Due</span>
+                        <span className="inline-flex items-center gap-1 whitespace-nowrap text-hh-metadata">
+                          <span className="text-[var(--hh-text-tertiary)]">Due</span>
                           <span className={cn("font-medium tabular-nums", dueTone)}>
                             {formatDate(inv.dueDate)}
                           </span>
@@ -1266,7 +1265,7 @@ function InvoicesPageInner() {
                 const dueTone =
                   inv.computedStatus === "Overdue"
                     ? OS.dangerAmount
-                    : "text-[var(--neo-text-secondary)]";
+                    : "text-[var(--hh-text-secondary)]";
                 const secondaryAction =
                   inv.computedStatus === "Draft"
                     ? {
@@ -1349,17 +1348,17 @@ function InvoicesPageInner() {
                       <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
                         <RowActionsMenu
                           ariaLabel={`Actions for ${inv.invoiceNo}`}
-                          className="h-10 w-10 min-h-10 min-w-10 rounded-lg border-[var(--neo-border)] bg-[var(--neo-surface-raised)] shadow-none hover:bg-[var(--neo-surface-muted)]"
+                          className="h-10 w-10 min-h-10 min-w-10 rounded-hh-standard border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] shadow-none hover:bg-[var(--hh-l3-hover)]"
                           contentAvoidCollisions={false}
                           contentSide="bottom"
                           contentSideOffset={8}
                           contentClassName={cn(
                             invoiceActionsMenuContentClassName,
-                            "w-36 min-w-36 rounded-lg py-1"
+                            "w-36 min-w-36 rounded-hh-standard py-1"
                           )}
                           contentStyle={invoiceActionsMenuContentStyle}
-                          itemClassName="relative z-10 h-8 rounded-md px-3 py-0 text-[13px] font-medium tracking-normal"
-                          destructiveItemClassName="text-rose-600 focus:bg-rose-50 focus:text-rose-700 hover:bg-rose-50 hover:text-rose-700 dark:text-rose-400 dark:focus:bg-rose-950/35 dark:focus:text-rose-300 dark:hover:bg-rose-950/35 dark:hover:text-rose-300"
+                          itemClassName="relative z-10 h-8 rounded-hh-standard px-3 py-0 text-hh-table-cell font-medium tracking-normal"
+                          destructiveItemClassName="text-[var(--hh-danger)] focus:bg-[var(--hh-danger-soft-fill)] focus:text-[var(--hh-danger)] hover:bg-[var(--hh-danger-soft-fill)] hover:text-[var(--hh-danger)]"
                           touchFriendly={false}
                           actions={rowActions}
                         />
@@ -1398,7 +1397,7 @@ function InvoicesPageInner() {
                         variant="outline"
                         className={cn(
                           OS.secondaryButton,
-                          "h-9 flex-1 rounded-md shadow-none",
+                          "h-9 flex-1 rounded-hh-standard shadow-none",
                           financeToolbarButtonTextClass
                         )}
                       >
@@ -1410,7 +1409,7 @@ function InvoicesPageInner() {
                         variant="outline"
                         className={cn(
                           OS.secondaryButton,
-                          "h-9 flex-1 rounded-md shadow-none",
+                          "h-9 flex-1 rounded-hh-standard shadow-none",
                           financeToolbarButtonTextClass
                         )}
                       >

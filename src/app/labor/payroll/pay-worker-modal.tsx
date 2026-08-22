@@ -340,7 +340,7 @@ export function PayWorkerModal({
         onOpenChange(next);
       }}
     >
-      <DialogContent className="max-w-sm border-border/60 p-5 rounded-md gap-4">
+      <DialogContent className="max-w-sm border-border/60 p-5 rounded-hh-compact gap-4">
         <DialogHeader>
           <DialogTitle className="text-base font-semibold">Pay Worker</DialogTitle>
         </DialogHeader>
@@ -356,7 +356,7 @@ export function PayWorkerModal({
               value={projectId}
               onChange={(e) => setProjectId(e.target.value)}
               disabled={formLocked}
-              className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+              className="h-9 w-full rounded-hh-compact border border-input bg-transparent px-3 text-sm"
             >
               <option value="">All projects</option>
               {projects.map((p) => (
@@ -397,7 +397,7 @@ export function PayWorkerModal({
               value={method}
               onChange={(e) => setMethod(e.target.value)}
               disabled={formLocked}
-              className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+              className="h-9 w-full rounded-hh-compact border border-input bg-transparent px-3 text-sm"
             >
               {METHODS.map((m) => (
                 <option key={m} value={m}>
@@ -430,7 +430,9 @@ export function PayWorkerModal({
             />
           </div>
 
-          {error ? <p className="text-sm text-red-600 dark:text-red-400">{error}</p> : null}
+          {error ? (
+            <p className="text-sm text-[var(--hh-danger)] text-[var(--hh-danger)]">{error}</p>
+          ) : null}
           {busy && busyPhase ? (
             <p className="text-xs text-muted-foreground" role="status" aria-live="polite">
               {busyPhase === "payment"

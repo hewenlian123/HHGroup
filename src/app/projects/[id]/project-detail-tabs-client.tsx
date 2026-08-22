@@ -76,11 +76,11 @@ function ProjectDetailStatusPill({ status }: { status: string }) {
     },
   } as const;
   const c = map[n];
-  return <span className={cn(c.pill, "text-[12px] leading-tight")}>{c.label}</span>;
+  return <span className={cn(c.pill, "text-hh-metadata leading-tight")}>{c.label}</span>;
 }
 
 const TAB_PANEL =
-  "mt-4 rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] p-4 text-[14px] leading-normal text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)] sm:p-5";
+  "mt-4 rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-4 text-hh-body leading-normal text-[var(--hh-text-primary)] shadow-operational sm:p-5";
 
 function fmtMoney(n: number, opts?: { maximumFractionDigits?: number }) {
   const fd = opts?.maximumFractionDigits ?? 0;
@@ -233,14 +233,14 @@ function SnapshotMetricCard({
     "px-3 py-3 text-left transition-colors",
     onClick &&
       (active
-        ? "border-[var(--neo-gold)] bg-[rgb(184_137_45_/_0.08)] ring-1 ring-[var(--neo-gold-ring)]"
-        : "hover:bg-[var(--neo-surface-muted)]")
+        ? "border-[var(--hh-action-primary)] bg-[var(--hh-l3-selected)] ring-1 ring-[var(--hh-focus-ring)]"
+        : "hover:bg-[var(--hh-l2-operational-surface)]")
   );
 
   const body = (
     <>
-      <p className={cn(TYPO.kpiLabel, "text-[10px]")}>{label}</p>
-      <p data-testid={testId} className={cn(TYPO.amount, "mt-1 text-[16px]")}>
+      <p className={cn(TYPO.kpiLabel, "text-hh-status")}>{label}</p>
+      <p data-testid={testId} className={cn(TYPO.amount, "mt-1 text-hh-section-title")}>
         {fmtExactMoney(value)}
       </p>
     </>
@@ -268,8 +268,8 @@ function SnapshotTextMetricCard({
 }) {
   return (
     <div className={cn(OS.card, "px-3 py-3 text-left")}>
-      <p className={cn(TYPO.kpiLabel, "text-[10px]")}>{label}</p>
-      <p data-testid={testId} className={cn(TYPO.amount, "mt-1 text-[16px]")}>
+      <p className={cn(TYPO.kpiLabel, "text-hh-status")}>{label}</p>
+      <p data-testid={testId} className={cn(TYPO.amount, "mt-1 text-hh-section-title")}>
         {value}
       </p>
     </div>
@@ -290,22 +290,22 @@ function DashboardMetric({
   detail?: React.ReactNode;
 }) {
   return (
-    <div className="min-w-0 border-t border-[var(--neo-border)] pt-3 sm:border-l sm:border-t-0 sm:pl-4 sm:pt-0 first:sm:border-l-0 first:sm:pl-0">
-      <p className={cn(TYPO.kpiLabel, "text-[10px]")}>{label}</p>
+    <div className="min-w-0 border-t border-[var(--hh-border)] pt-3 sm:border-l sm:border-t-0 sm:pl-4 sm:pt-0 first:sm:border-l-0 first:sm:pl-0">
+      <p className={cn(TYPO.kpiLabel, "text-hh-status")}>{label}</p>
       <p
         data-testid={testId}
         className={cn(
           TYPO.amount,
-          "mt-1 truncate text-[20px] leading-tight sm:text-[22px]",
+          "mt-1 truncate text-hh-financial-total leading-tight sm:text-hh-page-title",
           tone === "positive" && OS.emeraldAccent,
           tone === "negative" && OS.dangerAmount,
-          tone === "attention" && "text-[var(--neo-gold)]"
+          tone === "attention" && "text-[var(--hh-action-primary)]"
         )}
       >
         {value}
       </p>
       {detail ? (
-        <p className="mt-1 truncate text-[11px] text-[var(--neo-text-tertiary)]">{detail}</p>
+        <p className="mt-1 truncate text-hh-status text-[var(--hh-text-tertiary)]">{detail}</p>
       ) : null}
     </div>
   );
@@ -327,7 +327,7 @@ function ExecutiveCard({
       <div className="flex min-h-8 items-center justify-between gap-3">
         <SectionHeader
           label={title}
-          className="text-[11px] font-medium tracking-normal text-[var(--neo-text-tertiary)]"
+          className="text-hh-status font-medium tracking-normal text-[var(--hh-text-tertiary)]"
         />
         {action}
       </div>
@@ -347,14 +347,16 @@ function DetailRow({
   tone?: "neutral" | "positive" | "negative" | "attention";
 }) {
   return (
-    <div className="flex min-h-9 items-center justify-between gap-3 border-b border-[var(--neo-border)] py-2 last:border-0">
-      <span className="min-w-0 truncate text-[13px] text-[var(--neo-text-secondary)]">{label}</span>
+    <div className="flex min-h-9 items-center justify-between gap-3 border-b border-[var(--hh-border)] py-2 last:border-0">
+      <span className="min-w-0 truncate text-hh-table-cell text-[var(--hh-text-secondary)]">
+        {label}
+      </span>
       <span
         className={cn(
-          "shrink-0 text-right text-[13px] font-medium tabular-nums text-[var(--neo-text-primary)]",
+          "shrink-0 text-right text-hh-table-cell font-medium tabular-nums text-[var(--hh-text-primary)]",
           tone === "positive" && OS.emeraldAccent,
           tone === "negative" && OS.dangerAmount,
-          tone === "attention" && "text-[var(--neo-gold)]"
+          tone === "attention" && "text-[var(--hh-action-primary)]"
         )}
       >
         {value}
@@ -905,12 +907,12 @@ export function ProjectDetailTabsClient({
   return (
     <PageLayout
       divider={false}
-      className="dark py-6 max-md:!pb-[calc(7.5rem+env(safe-area-inset-bottom,0px))]"
+      className="py-6 max-md:!pb-[calc(7.5rem+env(safe-area-inset-bottom,0px))]"
       header={
         <div className="space-y-4">
           <Link
             href="/projects"
-            className="inline-flex min-h-[36px] items-center gap-1.5 rounded-md px-1 text-[12px] font-medium text-[var(--neo-canvas-text-secondary)] hover:text-[var(--neo-canvas-text-primary)]"
+            className="inline-flex min-h-[36px] items-center gap-1.5 rounded-hh-standard px-1 text-hh-metadata font-medium text-[var(--hh-text-secondary)] hover:text-[var(--hh-text-primary)]"
           >
             <ArrowLeft className="h-4 w-4" />
             Projects
@@ -919,13 +921,13 @@ export function ProjectDetailTabsClient({
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="min-w-0 space-y-2">
                 <div className="flex flex-wrap items-center gap-3">
-                  <h1 className="text-xl font-semibold tracking-normal text-[var(--neo-text-primary)] sm:text-2xl">
+                  <h1 className="text-hh-section-title font-semibold tracking-normal text-[var(--hh-text-primary)] sm:text-hh-page-title">
                     {displayProject.name}
                   </h1>
                   <ProjectDetailStatusPill status={displayProject.status} />
                 </div>
                 {(displayProject.client || displayProject.address) && (
-                  <p className="text-[14px] text-[var(--neo-text-secondary)]">
+                  <p className="text-hh-body text-[var(--hh-text-secondary)]">
                     {[displayProject.client, displayProject.address].filter(Boolean).join(" · ")}
                   </p>
                 )}
@@ -934,7 +936,7 @@ export function ProjectDetailTabsClient({
                 <Button
                   type="button"
                   size="sm"
-                  className="h-9 rounded-lg bg-[var(--neo-gold)] text-[13px] text-zinc-950 hover:bg-[var(--neo-gold-soft)]"
+                  className="h-9 rounded-hh-standard bg-[var(--hh-action-primary)] text-hh-table-cell text-[var(--hh-action-primary-foreground)] hover:bg-[var(--hh-action-primary)]"
                   onClick={() => setEditModalOpen(true)}
                 >
                   Edit
@@ -944,7 +946,7 @@ export function ProjectDetailTabsClient({
                     <Button
                       variant="outline"
                       size="sm"
-                      className="h-9 rounded-lg text-[13px]"
+                      className="h-9 rounded-hh-standard text-hh-table-cell"
                       aria-label="Project actions"
                       data-testid="project-detail-actions"
                     >
@@ -974,7 +976,7 @@ export function ProjectDetailTabsClient({
                 </DropdownMenu>
               </div>
             </div>
-            <div className="mt-5 border-t border-[var(--neo-border)] pt-5">
+            <div className="mt-5 border-t border-[var(--hh-border)] pt-5">
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
                 <DashboardMetric
                   label="Contract Value"
@@ -995,14 +997,14 @@ export function ProjectDetailTabsClient({
                 <button
                   type="button"
                   onClick={goToCostTab}
-                  className="min-w-0 border-t border-[var(--neo-border)] pt-3 text-left outline-none transition-colors hover:bg-[var(--neo-surface-muted)] focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)] sm:border-l sm:border-t-0 sm:pl-4 sm:pt-0"
+                  className="min-w-0 border-t border-[var(--hh-border)] pt-3 text-left outline-none transition-colors hover:bg-[var(--hh-l2-operational-surface)] focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)] sm:border-l sm:border-t-0 sm:pl-4 sm:pt-0"
                 >
-                  <p className={cn(TYPO.kpiLabel, "text-[10px]")}>Actual Cost</p>
+                  <p className={cn(TYPO.kpiLabel, "text-hh-status")}>Actual Cost</p>
                   <p
                     data-testid="project-header-actual-cost"
                     className={cn(
                       TYPO.amount,
-                      "mt-1 truncate text-[20px] leading-tight underline decoration-[var(--neo-border)] underline-offset-4 sm:text-[22px]"
+                      "mt-1 truncate text-hh-financial-total leading-tight underline decoration-[var(--hh-border)] underline-offset-4 sm:text-hh-page-title"
                     )}
                   >
                     {fmtMoney(headerActualCost)}
@@ -1031,7 +1033,7 @@ export function ProjectDetailTabsClient({
               {headerFinancialWarning ? (
                 <p
                   data-testid="project-header-financial-warning"
-                  className="mt-3 rounded-lg border border-[rgb(184_137_45_/_0.24)] bg-[rgb(184_137_45_/_0.12)] px-3 py-2 text-[12px] font-medium text-[var(--neo-gold)]"
+                  className="mt-3 rounded-hh-standard border border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] px-3 py-2 text-hh-metadata font-medium text-[var(--hh-action-primary)]"
                 >
                   {headerFinancialWarning}
                 </p>
@@ -1090,7 +1092,7 @@ export function ProjectDetailTabsClient({
             }}
             className="w-full"
           >
-            <div className="max-w-full overflow-hidden border-b border-white/10 pb-0">
+            <div className="max-w-full overflow-hidden border-b border-[var(--hh-border)] pb-0">
               <TabsList
                 aria-label="Project workspace sections"
                 className="h-11 min-h-[44px] w-full touch-pan-x justify-start gap-0 overflow-x-auto overscroll-x-contain whitespace-nowrap rounded-none border-0 bg-transparent p-0 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
@@ -1099,7 +1101,7 @@ export function ProjectDetailTabsClient({
                   <TabsTrigger
                     key={t.key}
                     value={t.key}
-                    className="min-h-[44px] shrink-0 rounded-none border-b-2 border-transparent bg-transparent px-3 py-2.5 text-[13px] font-medium text-[var(--neo-canvas-text-secondary)] shadow-none data-[state=active]:border-[var(--neo-gold)] data-[state=active]:bg-transparent data-[state=active]:text-[var(--neo-canvas-text-primary)] data-[state=active]:shadow-none sm:px-4 sm:text-[14px]"
+                    className="min-h-[44px] shrink-0 rounded-none border-b-2 border-transparent bg-transparent px-3 py-2.5 text-hh-table-cell font-medium text-[var(--hh-text-secondary)] shadow-none data-[state=active]:border-[var(--hh-action-primary)] data-[state=active]:bg-transparent data-[state=active]:text-[var(--hh-text-primary)] data-[state=active]:shadow-none sm:px-4 sm:text-hh-body"
                   >
                     {t.label}
                   </TabsTrigger>
@@ -1115,7 +1117,7 @@ export function ProjectDetailTabsClient({
                     <button
                       type="button"
                       onClick={() => setTab("financial")}
-                      className="min-h-8 text-[12px] font-medium text-[var(--neo-gold)] underline-offset-4 hover:underline"
+                      className="min-h-8 text-hh-metadata font-medium text-[var(--hh-action-primary)] underline-offset-4 hover:underline"
                     >
                       Financial
                     </button>
@@ -1151,7 +1153,7 @@ export function ProjectDetailTabsClient({
                     <button
                       type="button"
                       onClick={goToCostTab}
-                      className="min-h-8 text-[12px] font-medium text-[var(--neo-gold)] underline-offset-4 hover:underline"
+                      className="min-h-8 text-hh-metadata font-medium text-[var(--hh-action-primary)] underline-offset-4 hover:underline"
                     >
                       Cost detail
                     </button>
@@ -1170,10 +1172,10 @@ export function ProjectDetailTabsClient({
                     ).map((cell) => (
                       <div
                         key={cell.label}
-                        className="rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-3 py-3"
+                        className="rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 py-3"
                       >
-                        <p className={cn(TYPO.kpiLabel, "text-[10px]")}>{cell.label}</p>
-                        <AmountCell className="mt-1 block text-[15px]">
+                        <p className={cn(TYPO.kpiLabel, "text-hh-status")}>{cell.label}</p>
+                        <AmountCell className="mt-1 block text-hh-body">
                           {fmtMoney(cell.value)}
                         </AmountCell>
                       </div>
@@ -1223,20 +1225,20 @@ export function ProjectDetailTabsClient({
                       tone={projectCost.alerts.missingReceiptCount > 0 ? "attention" : "positive"}
                     />
                   </div>
-                  <div className="mt-3 border-t border-[var(--neo-border)] pt-3 text-[13px] text-[var(--neo-text-secondary)]">
+                  <div className="mt-3 border-t border-[var(--hh-border)] pt-3 text-hh-table-cell text-[var(--hh-text-secondary)]">
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                      <span className="text-[var(--neo-text-tertiary)]">Client</span>
+                      <span className="text-[var(--hh-text-tertiary)]">Client</span>
                       {displayProject.customerId ? (
                         <Link
                           href={`/customers/${displayProject.customerId}`}
-                          className="font-medium text-[var(--neo-text-primary)] underline-offset-2 hover:underline"
+                          className="font-medium text-[var(--hh-text-primary)] underline-offset-2 hover:underline"
                         >
                           {displayProject.client ??
                             (displayProject as { client_name?: string }).client_name ??
                             "Customer"}
                         </Link>
                       ) : (
-                        <span className="font-medium text-[var(--neo-text-primary)]">
+                        <span className="font-medium text-[var(--hh-text-primary)]">
                           {displayProject.client ??
                             (displayProject as { client_name?: string }).client_name ??
                             "—"}
@@ -1251,36 +1253,39 @@ export function ProjectDetailTabsClient({
 
                 <ExecutiveCard title="Recent Activity">
                   {latestActivity.length > 0 ? (
-                    <ul className="divide-y divide-[var(--neo-border)]">
+                    <ul className="divide-y divide-[var(--hh-border)]">
                       {latestActivity.map((log) => (
-                        <li key={log.id} className="flex gap-3 py-2.5 text-[13px]">
-                          <span className="w-[6.5rem] shrink-0 font-mono tabular-nums text-[var(--neo-text-tertiary)]">
+                        <li key={log.id} className="flex gap-3 py-2.5 text-hh-table-cell">
+                          <span className="w-[6.5rem] shrink-0 hh-fin tabular-nums text-[var(--hh-text-tertiary)]">
                             {log.created_at?.slice(0, 10) ?? "—"}
                           </span>
-                          <span className="min-w-0 text-[var(--neo-text-primary)]">
+                          <span className="min-w-0 text-[var(--hh-text-primary)]">
                             {log.description ?? log.type}
                           </span>
                         </li>
                       ))}
                     </ul>
                   ) : recentCostActivity.length > 0 ? (
-                    <ul className="divide-y divide-[var(--neo-border)]">
+                    <ul className="divide-y divide-[var(--hh-border)]">
                       {recentCostActivity.map((row) => (
-                        <li key={row.id} className="flex items-center gap-3 py-2.5 text-[13px]">
-                          <span className="w-[6.5rem] shrink-0 font-mono tabular-nums text-[var(--neo-text-tertiary)]">
+                        <li
+                          key={row.id}
+                          className="flex items-center gap-3 py-2.5 text-hh-table-cell"
+                        >
+                          <span className="w-[6.5rem] shrink-0 hh-fin tabular-nums text-[var(--hh-text-tertiary)]">
                             {row.date ?? "—"}
                           </span>
-                          <span className="min-w-0 flex-1 truncate text-[var(--neo-text-primary)]">
+                          <span className="min-w-0 flex-1 truncate text-[var(--hh-text-primary)]">
                             {row.vendorName || row.memo || "Cost recorded"}
                           </span>
-                          <span className="shrink-0 font-mono tabular-nums text-[var(--neo-text-secondary)]">
+                          <span className="shrink-0 hh-fin tabular-nums text-[var(--hh-text-secondary)]">
                             {fmtMoney(row.amount)}
                           </span>
                         </li>
                       ))}
                     </ul>
                   ) : (
-                    <p className="py-6 text-sm text-[var(--neo-text-secondary)]">
+                    <p className="py-6 text-hh-body text-[var(--hh-text-secondary)]">
                       No recent activity for this project.
                     </p>
                   )}
@@ -1308,32 +1313,32 @@ export function ProjectDetailTabsClient({
                 action={
                   <Link
                     href="/schedule"
-                    className="min-h-8 text-[12px] font-medium text-[var(--neo-gold)] underline-offset-4 hover:underline"
+                    className="min-h-8 text-hh-metadata font-medium text-[var(--hh-action-primary)] underline-offset-4 hover:underline"
                   >
                     Company schedule
                   </Link>
                 }
               >
                 {scheduleItems.length === 0 ? (
-                  <p className="py-6 text-sm text-[var(--neo-text-secondary)]">
+                  <p className="py-6 text-hh-body text-[var(--hh-text-secondary)]">
                     No schedule milestones for this project.
                   </p>
                 ) : (
                   <div className="airtable-table-wrap airtable-table-wrap--ruled">
                     <div className="airtable-table-scroll">
-                      <table className="w-full text-sm">
+                      <table className="w-full text-hh-body">
                         <thead>
                           <tr>
-                            <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]">
+                            <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                               Title
                             </th>
-                            <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]">
+                            <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                               Start
                             </th>
-                            <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]">
+                            <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                               End
                             </th>
-                            <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]">
+                            <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                               Status
                             </th>
                           </tr>
@@ -1341,16 +1346,16 @@ export function ProjectDetailTabsClient({
                         <tbody>
                           {scheduleItems.map((s) => (
                             <tr key={s.id} className={listTableRowStaticClassName}>
-                              <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] font-medium">
+                              <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell font-medium">
                                 {s.title}
                               </td>
-                              <td className="h-11 min-h-[44px] px-3 py-0 align-middle font-mono text-[13px] tabular-nums">
+                              <td className="h-11 min-h-[44px] px-3 py-0 align-middle hh-fin text-hh-table-cell tabular-nums">
                                 {s.start_date ?? "—"}
                               </td>
-                              <td className="h-11 min-h-[44px] px-3 py-0 align-middle font-mono text-[13px] tabular-nums">
+                              <td className="h-11 min-h-[44px] px-3 py-0 align-middle hh-fin text-hh-table-cell tabular-nums">
                                 {s.end_date ?? "—"}
                               </td>
-                              <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] capitalize">
+                              <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell capitalize">
                                 {(s.status ?? "scheduled").replace(/_/g, " ")}
                               </td>
                             </tr>
@@ -1364,17 +1369,17 @@ export function ProjectDetailTabsClient({
 
               <ExecutiveCard title="Activity">
                 {activityLogs.length === 0 ? (
-                  <p className="py-6 text-sm text-[var(--neo-text-secondary)]">
+                  <p className="py-6 text-hh-body text-[var(--hh-text-secondary)]">
                     No activity for this project.
                   </p>
                 ) : (
-                  <ul className="divide-y divide-[var(--neo-border)]">
+                  <ul className="divide-y divide-[var(--hh-border)]">
                     {activityLogs.map((log) => (
-                      <li key={log.id} className="flex gap-3 py-2.5 text-[13px]">
-                        <span className="w-[9rem] shrink-0 font-mono tabular-nums text-[var(--neo-text-secondary)]">
+                      <li key={log.id} className="flex gap-3 py-2.5 text-hh-table-cell">
+                        <span className="w-[9rem] shrink-0 hh-fin tabular-nums text-[var(--hh-text-secondary)]">
                           {log.created_at?.slice(0, 19).replace("T", " ") ?? "—"}
                         </span>
-                        <span className="min-w-0 text-[var(--neo-text-primary)]">
+                        <span className="min-w-0 text-[var(--hh-text-primary)]">
                           {log.description ?? log.type}
                         </span>
                       </li>
@@ -1391,30 +1396,30 @@ export function ProjectDetailTabsClient({
             <TabsContent value="schedule" className={TAB_PANEL}>
               <SectionHeader
                 label="Schedule"
-                className="text-[11px] tracking-normal text-[var(--neo-text-tertiary)] font-medium"
+                className="text-hh-status tracking-normal text-[var(--hh-text-tertiary)] font-medium"
               />
               <Divider />
               {scheduleItems.length === 0 ? (
-                <p className="py-6 text-sm text-[var(--neo-text-secondary)]">
+                <p className="py-6 text-hh-body text-[var(--hh-text-secondary)]">
                   No schedule milestones for this project.
                 </p>
               ) : (
                 <>
                   <div className="airtable-table-wrap airtable-table-wrap--ruled mt-2">
                     <div className="airtable-table-scroll">
-                      <table className="w-full text-sm">
+                      <table className="w-full text-hh-body">
                         <thead>
                           <tr>
-                            <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]">
+                            <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                               Title
                             </th>
-                            <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]">
+                            <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                               Start
                             </th>
-                            <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]">
+                            <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                               End
                             </th>
-                            <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]">
+                            <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                               Status
                             </th>
                           </tr>
@@ -1422,16 +1427,16 @@ export function ProjectDetailTabsClient({
                         <tbody>
                           {scheduleItems.map((s) => (
                             <tr key={s.id} className={listTableRowStaticClassName}>
-                              <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] font-medium">
+                              <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell font-medium">
                                 {s.title}
                               </td>
-                              <td className="h-11 min-h-[44px] px-3 py-0 align-middle font-mono text-[13px] tabular-nums">
+                              <td className="h-11 min-h-[44px] px-3 py-0 align-middle hh-fin text-hh-table-cell tabular-nums">
                                 {s.start_date ?? "—"}
                               </td>
-                              <td className="h-11 min-h-[44px] px-3 py-0 align-middle font-mono text-[13px] tabular-nums">
+                              <td className="h-11 min-h-[44px] px-3 py-0 align-middle hh-fin text-hh-table-cell tabular-nums">
                                 {s.end_date ?? "—"}
                               </td>
-                              <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] capitalize">
+                              <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell capitalize">
                                 {(s.status ?? "scheduled").replace(/_/g, " ")}
                               </td>
                             </tr>
@@ -1443,7 +1448,7 @@ export function ProjectDetailTabsClient({
                   <div className="mt-3">
                     <Link
                       href="/schedule"
-                      className="text-xs font-medium text-[var(--neo-text-secondary)] hover:text-[var(--neo-text-primary)]"
+                      className="text-hh-metadata font-medium text-[var(--hh-text-secondary)] hover:text-[var(--hh-text-primary)]"
                     >
                       Open company schedule →
                     </Link>
@@ -1477,19 +1482,19 @@ export function ProjectDetailTabsClient({
                   />
                 </div>
                 {relatedEstimates.length > 0 ? (
-                  <div className="mt-4 border-t border-[var(--neo-border)] pt-3">
-                    <p className={cn(TYPO.kpiLabel, "mb-1 text-[10px]")}>Related estimates</p>
-                    <div className="divide-y divide-[var(--neo-border)]">
+                  <div className="mt-4 border-t border-[var(--hh-border)] pt-3">
+                    <p className={cn(TYPO.kpiLabel, "mb-1 text-hh-status")}>Related estimates</p>
+                    <div className="divide-y divide-[var(--hh-border)]">
                       {relatedEstimates.slice(0, 5).map((estimate) => (
                         <Link
                           key={estimate.id}
                           href={`/estimates/${estimate.id}`}
-                          className="flex min-h-10 items-center justify-between gap-3 py-2 text-sm underline-offset-2 hover:underline"
+                          className="flex min-h-10 items-center justify-between gap-3 py-2 text-hh-body underline-offset-2 hover:underline"
                         >
-                          <span className="min-w-0 truncate font-medium text-[var(--neo-text-primary)]">
+                          <span className="min-w-0 truncate font-medium text-[var(--hh-text-primary)]">
                             {estimate.number}
                           </span>
-                          <span className="shrink-0 text-xs text-[var(--neo-text-secondary)]">
+                          <span className="shrink-0 text-hh-metadata text-[var(--hh-text-secondary)]">
                             {estimate.status}
                           </span>
                         </Link>
@@ -1502,7 +1507,7 @@ export function ProjectDetailTabsClient({
               <ExecutiveCard title="Cost">
                 <SectionHeader
                   label="Cost breakdown"
-                  className="text-[11px] font-medium tracking-normal text-[var(--neo-text-tertiary)]"
+                  className="text-hh-status font-medium tracking-normal text-[var(--hh-text-tertiary)]"
                 />
                 <Divider />
                 <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
@@ -1564,10 +1569,10 @@ export function ProjectDetailTabsClient({
                 </div>
                 <div
                   data-testid="snapshot-cost-status"
-                  className="mt-2 space-y-1 text-[12px] text-[var(--neo-text-secondary)]"
+                  className="mt-2 space-y-1 text-hh-metadata text-[var(--hh-text-secondary)]"
                 >
                   {snapshotState.status === "error" ? (
-                    <p className="rounded-lg border border-[rgb(184_137_45_/_0.24)] bg-[rgb(184_137_45_/_0.12)] px-3 py-2 text-[var(--neo-gold)]">
+                    <p className="rounded-hh-standard border border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] px-3 py-2 text-[var(--hh-action-primary)]">
                       Using legacy cost data. Snapshot unavailable.
                     </p>
                   ) : null}
@@ -1584,7 +1589,7 @@ export function ProjectDetailTabsClient({
                       {snapshotNotes.slice(0, 4).map((note) => (
                         <li
                           key={note}
-                          className="rounded-full border border-[rgb(184_137_45_/_0.24)] bg-[rgb(184_137_45_/_0.12)] px-2 py-1 text-[11px] font-medium text-[var(--neo-gold)]"
+                          className="rounded-full border border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] px-2 py-1 text-hh-status font-medium text-[var(--hh-action-primary)]"
                         >
                           {note}
                         </li>
@@ -1592,7 +1597,7 @@ export function ProjectDetailTabsClient({
                     </ul>
                   ) : null}
                   {pendingCostReviewNote ? (
-                    <p className="rounded-lg border border-[rgb(184_137_45_/_0.24)] bg-[rgb(184_137_45_/_0.12)] px-3 py-2 text-[var(--neo-gold)]">
+                    <p className="rounded-hh-standard border border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] px-3 py-2 text-[var(--hh-action-primary)]">
                       <span className="font-medium">Pending review costs are not included.</span>{" "}
                       {pendingCostReviewNote}
                     </p>
@@ -1622,14 +1627,14 @@ export function ProjectDetailTabsClient({
                             testId="snapshot-profit-actual-cost"
                           />
                         </div>
-                        <p className="mt-2 rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-3 py-2 text-[12px] text-[var(--neo-text-secondary)]">
+                        <p className="mt-2 rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 py-2 text-hh-metadata text-[var(--hh-text-secondary)]">
                           Profit is based on confirmed costs and accrued commission. Pending review
                           costs, unpaid reimbursements, and generic AP are shown separately and are
                           not included yet.
                         </p>
                       </>
                     ) : (
-                      <p className="rounded-lg border border-[rgb(184_137_45_/_0.24)] bg-[rgb(184_137_45_/_0.12)] px-3 py-2 text-[12px] font-medium text-[var(--neo-gold)]">
+                      <p className="rounded-hh-standard border border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] px-3 py-2 text-hh-metadata font-medium text-[var(--hh-action-primary)]">
                         {profitReadinessWarning}
                       </p>
                     )}
@@ -1658,7 +1663,7 @@ export function ProjectDetailTabsClient({
               <ExecutiveCard title="Commission Commitments">
                 <SectionHeader
                   label="Commission commitments"
-                  className="text-[11px] font-medium tracking-normal text-[var(--neo-text-tertiary)]"
+                  className="text-hh-status font-medium tracking-normal text-[var(--hh-text-tertiary)]"
                 />
                 <Divider />
                 <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -1678,28 +1683,28 @@ export function ProjectDetailTabsClient({
                     testId="project-cost-commission-outstanding"
                   />
                 </div>
-                <p className="mt-2 rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-3 py-2 text-[12px] text-[var(--neo-text-secondary)]">
+                <p className="mt-2 rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 py-2 text-hh-metadata text-[var(--hh-text-secondary)]">
                   Commission / Selling Cost is accrued from commission records and included in
                   actual cost and profit. Paid and outstanding amounts are payment tracking only.
                 </p>
                 {commissions.length > 0 ? (
                   <div className="mt-3 overflow-x-auto">
-                    <table className="w-full min-w-[520px] border-collapse text-[13px]">
+                    <table className="w-full min-w-[520px] border-collapse text-hh-table-cell">
                       <thead>
-                        <tr className="border-b border-[var(--neo-border)] text-[var(--neo-text-tertiary)]">
-                          <th className="py-2 pr-3 text-left text-[11px] font-medium uppercase tracking-wide">
+                        <tr className="border-b border-[var(--hh-border)] text-[var(--hh-text-tertiary)]">
+                          <th className="py-2 pr-3 text-left text-hh-status font-medium uppercase tracking-normal">
                             Person
                           </th>
-                          <th className="py-2 pr-3 text-left text-[11px] font-medium uppercase tracking-wide">
+                          <th className="py-2 pr-3 text-left text-hh-status font-medium uppercase tracking-normal">
                             Role
                           </th>
-                          <th className="py-2 pr-3 text-right text-[11px] font-medium uppercase tracking-wide">
+                          <th className="py-2 pr-3 text-right text-hh-status font-medium uppercase tracking-normal">
                             Commission
                           </th>
-                          <th className="py-2 pr-3 text-right text-[11px] font-medium uppercase tracking-wide">
+                          <th className="py-2 pr-3 text-right text-hh-status font-medium uppercase tracking-normal">
                             Paid
                           </th>
-                          <th className="py-2 text-left text-[11px] font-medium uppercase tracking-wide">
+                          <th className="py-2 text-left text-hh-status font-medium uppercase tracking-normal">
                             Status
                           </th>
                         </tr>
@@ -1708,22 +1713,22 @@ export function ProjectDetailTabsClient({
                         {commissions.slice(0, 5).map((row) => (
                           <tr
                             key={row.id}
-                            className="border-b border-[var(--neo-border)] last:border-b-0"
+                            className="border-b border-[var(--hh-border)] last:border-b-0"
                             data-testid={`project-cost-commission-row-${row.id}`}
                           >
-                            <td className="py-2.5 pr-3 font-medium text-[var(--neo-text-primary)]">
+                            <td className="py-2.5 pr-3 font-medium text-[var(--hh-text-primary)]">
                               {row.person_name || "—"}
                             </td>
-                            <td className="py-2.5 pr-3 text-[var(--neo-text-secondary)]">
+                            <td className="py-2.5 pr-3 text-[var(--hh-text-secondary)]">
                               {row.role || "—"}
                             </td>
-                            <td className="py-2.5 pr-3 text-right tabular-nums text-[var(--neo-text-primary)]">
+                            <td className="py-2.5 pr-3 text-right tabular-nums text-[var(--hh-text-primary)]">
                               {fmtExactMoney(row.commission_amount)}
                             </td>
-                            <td className="py-2.5 pr-3 text-right tabular-nums text-[var(--neo-text-secondary)]">
+                            <td className="py-2.5 pr-3 text-right tabular-nums text-[var(--hh-text-secondary)]">
                               {fmtExactMoney(row.paid_amount)}
                             </td>
-                            <td className="py-2.5 text-[var(--neo-text-secondary)]">
+                            <td className="py-2.5 text-[var(--hh-text-secondary)]">
                               {row.payment_status === "paid"
                                 ? "Paid"
                                 : row.payment_status === "partial"
@@ -1737,14 +1742,14 @@ export function ProjectDetailTabsClient({
                     {commissions.length > 5 ? (
                       <Link
                         href="/financial/commissions"
-                        className="mt-2 inline-flex min-h-8 items-center text-[12px] font-medium text-[var(--neo-gold)] underline-offset-4 hover:underline"
+                        className="mt-2 inline-flex min-h-8 items-center text-hh-metadata font-medium text-[var(--hh-action-primary)] underline-offset-4 hover:underline"
                       >
                         View all commissions
                       </Link>
                     ) : null}
                   </div>
                 ) : (
-                  <p className="mt-3 rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-3 py-3 text-[13px] text-[var(--neo-text-secondary)]">
+                  <p className="mt-3 rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 py-3 text-hh-table-cell text-[var(--hh-text-secondary)]">
                     No commissions are linked to this project yet.
                   </p>
                 )}
@@ -1753,7 +1758,7 @@ export function ProjectDetailTabsClient({
               <ExecutiveCard title="Cost Detail">
                 <SectionHeader
                   label="Cost detail"
-                  className="text-[11px] font-medium tracking-normal text-[var(--neo-text-tertiary)]"
+                  className="text-hh-status font-medium tracking-normal text-[var(--hh-text-tertiary)]"
                 />
                 <Divider />
                 <div className="mt-3">
@@ -1774,7 +1779,7 @@ export function ProjectDetailTabsClient({
                 <SectionHeader
                   label="Invoicing"
                   action={
-                    <Button asChild size="sm" className="h-8 min-h-8 rounded-md px-3">
+                    <Button asChild size="sm" className="h-8 min-h-8 rounded-hh-standard px-3">
                       <Link
                         data-testid="project-create-invoice-link"
                         href={`/financial/invoices/new?projectId=${encodeURIComponent(projectId)}`}
@@ -1783,37 +1788,37 @@ export function ProjectDetailTabsClient({
                       </Link>
                     </Button>
                   }
-                  className="text-[11px] font-medium tracking-normal text-[var(--neo-text-tertiary)]"
+                  className="text-hh-status font-medium tracking-normal text-[var(--hh-text-tertiary)]"
                 />
                 <Divider />
-                <p className="mt-1 text-sm text-[var(--neo-text-secondary)]">
+                <p className="mt-1 text-hh-body text-[var(--hh-text-secondary)]">
                   Billed {fmtExactMoney(snapshotCostSummary.billedAmount)} · Paid{" "}
                   {fmtExactMoney(snapshotCostSummary.paidAmount)} · Open AR{" "}
                   {fmtExactMoney(snapshotCostSummary.openAR)}
                 </p>
                 {projectInvoices.length === 0 ? (
-                  <p className="py-6 text-sm text-[var(--neo-text-secondary)]">
+                  <p className="py-6 text-hh-body text-[var(--hh-text-secondary)]">
                     No invoices for this project.
                   </p>
                 ) : (
-                  <div className="airtable-table-wrap airtable-table-wrap--ruled mt-3 overflow-hidden rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)]">
+                  <div className="airtable-table-wrap airtable-table-wrap--ruled mt-3 overflow-hidden rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)]">
                     <div className="airtable-table-scroll">
-                      <table className="w-full text-sm">
+                      <table className="w-full text-hh-body">
                         <thead>
                           <tr>
-                            <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]">
+                            <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                               Invoice
                             </th>
-                            <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]">
+                            <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                               Issue date
                             </th>
-                            <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]">
+                            <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                               Status
                             </th>
-                            <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)] tabular-nums">
+                            <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
                               Total
                             </th>
-                            <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)] tabular-nums">
+                            <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
                               Balance
                             </th>
                           </tr>
@@ -1821,24 +1826,24 @@ export function ProjectDetailTabsClient({
                         <tbody>
                           {projectInvoices.map((inv) => (
                             <tr key={inv.id} className={listTableRowStaticClassName}>
-                              <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px]">
+                              <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell">
                                 <Link
                                   href={`/financial/invoices/${inv.id}`}
-                                  className="font-medium text-[var(--neo-text-primary)] hover:underline"
+                                  className="font-medium text-[var(--hh-text-primary)] hover:underline"
                                 >
                                   {inv.invoiceNo}
                                 </Link>
                               </td>
-                              <td className="h-11 min-h-[44px] px-3 py-0 align-middle font-mono text-[13px] tabular-nums">
+                              <td className="h-11 min-h-[44px] px-3 py-0 align-middle hh-fin text-hh-table-cell tabular-nums">
                                 {inv.issueDate?.slice(0, 10) ?? "—"}
                               </td>
-                              <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px]">
+                              <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell">
                                 <InvoiceStatusBadge status={inv.computedStatus} />
                               </td>
-                              <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle font-mono text-[13px] tabular-nums">
+                              <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums">
                                 ${inv.total.toLocaleString()}
                               </td>
-                              <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle font-mono text-[13px] tabular-nums">
+                              <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums">
                                 ${inv.balanceDue.toLocaleString()}
                               </td>
                             </tr>
@@ -1851,7 +1856,7 @@ export function ProjectDetailTabsClient({
                 <div className="mt-3">
                   <Link
                     href="/financial/invoices"
-                    className="text-xs font-medium text-[var(--neo-gold)] hover:underline"
+                    className="text-hh-metadata font-medium text-[var(--hh-action-primary)] hover:underline"
                   >
                     View all invoices →
                   </Link>
@@ -1861,26 +1866,26 @@ export function ProjectDetailTabsClient({
               <ExecutiveCard title="Bills (AP)">
                 <SectionHeader
                   label="Bills (AP)"
-                  className="text-[11px] font-medium tracking-normal text-[var(--neo-text-tertiary)]"
+                  className="text-hh-status font-medium tracking-normal text-[var(--hh-text-tertiary)]"
                 />
                 <Divider />
                 {bills.length === 0 ? (
-                  <p className="py-6 text-sm text-[var(--neo-text-secondary)]">
+                  <p className="py-6 text-hh-body text-[var(--hh-text-secondary)]">
                     No bills for this project.
                   </p>
                 ) : (
-                  <div className="airtable-table-wrap airtable-table-wrap--ruled mt-3 overflow-hidden rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)]">
+                  <div className="airtable-table-wrap airtable-table-wrap--ruled mt-3 overflow-hidden rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)]">
                     <div className="airtable-table-scroll">
-                      <table className="w-full text-sm">
+                      <table className="w-full text-hh-body">
                         <thead>
                           <tr>
-                            <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]">
+                            <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                               Vendor
                             </th>
-                            <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]">
+                            <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                               Bill no
                             </th>
-                            <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)] tabular-nums">
+                            <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
                               Amount
                             </th>
                           </tr>
@@ -1888,13 +1893,13 @@ export function ProjectDetailTabsClient({
                         <tbody>
                           {bills.map((b) => (
                             <tr key={b.id} className={listTableRowStaticClassName}>
-                              <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] font-medium">
+                              <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell font-medium">
                                 {b.vendor_name ?? "—"}
                               </td>
-                              <td className="h-11 min-h-[44px] px-3 py-0 align-middle font-mono text-[13px] tabular-nums">
+                              <td className="h-11 min-h-[44px] px-3 py-0 align-middle hh-fin text-hh-table-cell tabular-nums">
                                 {b.bill_no ?? "—"}
                               </td>
-                              <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle font-mono text-[13px] tabular-nums">
+                              <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums">
                                 ${Number(b.amount ?? 0).toLocaleString()}
                               </td>
                             </tr>
@@ -1913,25 +1918,25 @@ export function ProjectDetailTabsClient({
                   {peopleSections.map((section) => (
                     <div
                       key={section.label}
-                      className="rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] p-3"
+                      className="rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-3"
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <p className="text-[12px] font-medium uppercase tracking-normal text-[var(--neo-text-secondary)]">
+                          <p className="text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-secondary)]">
                             {section.label}
                           </p>
-                          <p className="mt-1 font-mono text-[18px] font-semibold tabular-nums text-[var(--neo-text-primary)]">
+                          <p className="mt-1 hh-fin text-hh-section-title font-semibold tabular-nums text-[var(--hh-text-primary)]">
                             {section.count}
                           </p>
                         </div>
                         <Link
                           href={section.href}
-                          className="shrink-0 text-[12px] font-medium text-[var(--neo-gold)] underline-offset-4 hover:underline"
+                          className="shrink-0 text-hh-metadata font-medium text-[var(--hh-action-primary)] underline-offset-4 hover:underline"
                         >
                           Open
                         </Link>
                       </div>
-                      <p className="mt-3 line-clamp-2 text-[13px] text-[var(--neo-text-secondary)]">
+                      <p className="mt-3 line-clamp-2 text-hh-table-cell text-[var(--hh-text-secondary)]">
                         {section.items.length > 0 ? section.items.join(", ") : "None linked"}
                       </p>
                     </div>
@@ -1949,11 +1954,11 @@ export function ProjectDetailTabsClient({
             <TabsContent value="photos" className={TAB_PANEL}>
               <SectionHeader
                 label="Photos"
-                className="text-[11px] tracking-normal text-[var(--neo-text-secondary)] font-medium"
+                className="text-hh-status tracking-normal text-[var(--hh-text-secondary)] font-medium"
                 action={
                   <Link
                     href={`/site-photos?project_id=${encodeURIComponent(projectId)}`}
-                    className="text-xs font-medium text-[var(--neo-gold)] underline-offset-4 hover:underline"
+                    className="text-hh-metadata font-medium text-[var(--hh-action-primary)] underline-offset-4 hover:underline"
                   >
                     Open site photos
                   </Link>
@@ -1962,19 +1967,19 @@ export function ProjectDetailTabsClient({
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
                 <Link
                   href={`/site-photos?project_id=${encodeURIComponent(projectId)}`}
-                  className="rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] p-3 text-sm font-medium text-[var(--neo-text-primary)] transition-colors hover:border-[var(--neo-gold)]"
+                  className="rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-3 text-hh-body font-medium text-[var(--hh-text-primary)] transition-colors hover:border-[var(--hh-action-primary)]"
                 >
                   Site Photos
-                  <span className="mt-1 block text-[12px] font-normal text-[var(--neo-text-secondary)]">
+                  <span className="mt-1 block text-hh-metadata font-normal text-[var(--hh-text-secondary)]">
                     Project photo stream
                   </span>
                 </Link>
                 <Link
                   href="/site-photos/upload"
-                  className="rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] p-3 text-sm font-medium text-[var(--neo-text-primary)] transition-colors hover:border-[var(--neo-gold)]"
+                  className="rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-3 text-hh-body font-medium text-[var(--hh-text-primary)] transition-colors hover:border-[var(--hh-action-primary)]"
                 >
                   Upload Photos
-                  <span className="mt-1 block text-[12px] font-normal text-[var(--neo-text-secondary)]">
+                  <span className="mt-1 block text-hh-metadata font-normal text-[var(--hh-text-secondary)]">
                     Field photo intake
                   </span>
                 </Link>
@@ -1984,29 +1989,29 @@ export function ProjectDetailTabsClient({
             <TabsContent value="inspections" className={TAB_PANEL}>
               <SectionHeader
                 label="Inspections"
-                className="text-[11px] tracking-normal text-[var(--neo-text-secondary)] font-medium"
+                className="text-hh-status tracking-normal text-[var(--hh-text-secondary)] font-medium"
                 action={
                   <Link
                     href="/inspection-log"
-                    className="text-xs font-medium text-[var(--neo-gold)] underline-offset-4 hover:underline"
+                    className="text-hh-metadata font-medium text-[var(--hh-action-primary)] underline-offset-4 hover:underline"
                   >
                     Open inspection log
                   </Link>
                 }
               />
-              <div className="mt-3 rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] p-3">
+              <div className="mt-3 rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-3">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <p className="text-sm font-medium text-[var(--neo-text-primary)]">
+                    <p className="text-hh-body font-medium text-[var(--hh-text-primary)]">
                       Inspection Log
                     </p>
-                    <p className="mt-1 text-[12px] text-[var(--neo-text-secondary)]">
+                    <p className="mt-1 text-hh-metadata text-[var(--hh-text-secondary)]">
                       Field inspections and punch follow-up
                     </p>
                   </div>
                   <Link
                     href="/inspection-log"
-                    className="min-h-9 rounded-md border border-[var(--neo-border)] px-3 py-2 text-xs font-medium text-[var(--neo-text-primary)] transition-colors hover:border-[var(--neo-gold)]"
+                    className="min-h-9 rounded-hh-standard border border-[var(--hh-border)] px-3 py-2 text-hh-metadata font-medium text-[var(--hh-text-primary)] transition-colors hover:border-[var(--hh-action-primary)]"
                   >
                     Open
                   </Link>
@@ -2017,7 +2022,7 @@ export function ProjectDetailTabsClient({
             <TabsContent value="expenses" className={TAB_PANEL}>
               <SectionHeader
                 label="Expenses"
-                className="text-[11px] tracking-normal text-[var(--neo-text-secondary)] font-medium"
+                className="text-hh-status tracking-normal text-[var(--hh-text-secondary)] font-medium"
               />
               <Divider />
               <div className="mt-2">
@@ -2026,7 +2031,7 @@ export function ProjectDetailTabsClient({
               <div className="mt-3">
                 <Link
                   href={`/financial/expenses?project_id=${encodeURIComponent(projectId)}`}
-                  className="text-xs font-medium text-[var(--neo-text-secondary)] hover:text-[var(--neo-text-primary)]"
+                  className="text-hh-metadata font-medium text-[var(--hh-text-secondary)] hover:text-[var(--hh-text-primary)]"
                 >
                   View all expenses →
                 </Link>
@@ -2035,23 +2040,23 @@ export function ProjectDetailTabsClient({
             <TabsContent value="budget" className={TAB_PANEL}>
               <SectionHeader
                 label="Budget"
-                className="text-[11px] tracking-normal text-[var(--neo-text-secondary)] font-medium"
+                className="text-hh-status tracking-normal text-[var(--hh-text-secondary)] font-medium"
               />
               <Divider />
               {budgetItems.length === 0 ? (
-                <p className="py-6 text-sm text-[var(--neo-text-secondary)]">
+                <p className="py-6 text-hh-body text-[var(--hh-text-secondary)]">
                   No budget items for this project.
                 </p>
               ) : (
                 <div className="airtable-table-wrap airtable-table-wrap--ruled mt-2">
                   <div className="airtable-table-scroll">
-                    <table className="w-full text-sm">
+                    <table className="w-full text-hh-body">
                       <thead>
                         <tr>
-                          <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]">
+                          <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                             Cost code
                           </th>
-                          <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)] tabular-nums">
+                          <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
                             Total
                           </th>
                         </tr>
@@ -2059,10 +2064,10 @@ export function ProjectDetailTabsClient({
                       <tbody>
                         {budgetItems.map((b) => (
                           <tr key={b.id} className={listTableRowStaticClassName}>
-                            <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] font-medium">
+                            <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell font-medium">
                               {b.costCode ?? "—"}
                             </td>
-                            <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle font-mono text-[13px] tabular-nums">
+                            <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums">
                               ${Number(b.total || 0).toLocaleString()}
                             </td>
                           </tr>
@@ -2076,18 +2081,21 @@ export function ProjectDetailTabsClient({
             <TabsContent value="activity" className={TAB_PANEL}>
               <SectionHeader
                 label="Activity"
-                className="text-[11px] tracking-normal text-[var(--neo-text-secondary)] font-medium"
+                className="text-hh-status tracking-normal text-[var(--hh-text-secondary)] font-medium"
               />
               <Divider />
               {activityLogs.length === 0 ? (
-                <p className="py-6 text-sm text-[var(--neo-text-secondary)]">
+                <p className="py-6 text-hh-body text-[var(--hh-text-secondary)]">
                   No activity for this project.
                 </p>
               ) : (
                 <ul className="space-y-2 py-2">
                   {activityLogs.map((log) => (
-                    <li key={log.id} className="text-sm border-b border-[var(--neo-border)] pb-2">
-                      <span className="text-[var(--neo-text-secondary)]">
+                    <li
+                      key={log.id}
+                      className="text-hh-body border-b border-[var(--hh-border)] pb-2"
+                    >
+                      <span className="text-[var(--hh-text-secondary)]">
                         {log.created_at?.slice(0, 19).replace("T", " ")}
                       </span>
                       {" — "}
@@ -2100,26 +2108,26 @@ export function ProjectDetailTabsClient({
             <TabsContent value="change-orders" className={TAB_PANEL}>
               <SectionHeader
                 label="Change Orders"
-                className="text-[11px] tracking-normal text-[var(--neo-text-secondary)] font-medium"
+                className="text-hh-status tracking-normal text-[var(--hh-text-secondary)] font-medium"
               />
               <Divider />
               {changeOrders.length === 0 ? (
-                <p className="py-6 text-sm text-[var(--neo-text-secondary)]">
+                <p className="py-6 text-hh-body text-[var(--hh-text-secondary)]">
                   No change orders for this project.
                 </p>
               ) : (
                 <div className="airtable-table-wrap airtable-table-wrap--ruled mt-2">
                   <div className="airtable-table-scroll">
-                    <table className="w-full text-sm">
+                    <table className="w-full text-hh-body">
                       <thead>
                         <tr>
-                          <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]">
+                          <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                             Number
                           </th>
-                          <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]">
+                          <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                             Status
                           </th>
-                          <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)] tabular-nums">
+                          <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
                             Amount
                           </th>
                         </tr>
@@ -2127,7 +2135,7 @@ export function ProjectDetailTabsClient({
                       <tbody>
                         {changeOrders.map((co) => (
                           <tr key={co.id} className={listTableRowStaticClassName}>
-                            <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] font-medium">
+                            <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell font-medium">
                               <div className="flex min-w-0 flex-col py-1.5">
                                 <Link
                                   href={`/projects/${projectId}/change-orders/${co.id}`}
@@ -2136,16 +2144,16 @@ export function ProjectDetailTabsClient({
                                   {co.number ?? "—"}
                                 </Link>
                                 {co.title ? (
-                                  <span className="mt-0.5 max-w-[18rem] truncate text-xs font-normal text-[var(--neo-text-secondary)]">
+                                  <span className="mt-0.5 max-w-[18rem] truncate text-hh-metadata font-normal text-[var(--hh-text-secondary)]">
                                     {co.title}
                                   </span>
                                 ) : null}
                               </div>
                             </td>
-                            <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px]">
+                            <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell">
                               {co.status ?? "—"}
                             </td>
-                            <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle font-mono text-[13px] tabular-nums">
+                            <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums">
                               ${Number(co.total ?? co.amount ?? 0).toLocaleString()}
                             </td>
                           </tr>
@@ -2187,7 +2195,7 @@ export function ProjectDetailTabsClient({
               />
             </TabsContent>
             <TabsContent value="commission" className={cn(TAB_PANEL, "p-0 overflow-hidden sm:p-0")}>
-              <div className="rounded-lg bg-[var(--neo-surface-muted)] p-4 sm:p-5">
+              <div className="rounded-hh-standard bg-[var(--hh-l2-operational-surface)] p-4 sm:p-5">
                 <ProjectCommissionTab
                   projectId={projectId}
                   commissions={commissions}
@@ -2203,23 +2211,23 @@ export function ProjectDetailTabsClient({
             <TabsContent value="subcontracts" className={TAB_PANEL}>
               <SectionHeader
                 label="Subcontracts"
-                className="text-[11px] tracking-normal text-[var(--neo-text-secondary)] font-medium"
+                className="text-hh-status tracking-normal text-[var(--hh-text-secondary)] font-medium"
               />
               <Divider />
               {subcontracts.length === 0 ? (
-                <p className="py-6 text-sm text-[var(--neo-text-secondary)]">
+                <p className="py-6 text-hh-body text-[var(--hh-text-secondary)]">
                   No subcontracts for this project.
                 </p>
               ) : (
                 <div className="airtable-table-wrap airtable-table-wrap--ruled mt-2">
                   <div className="airtable-table-scroll">
-                    <table className="w-full text-sm">
+                    <table className="w-full text-hh-body">
                       <thead>
                         <tr>
-                          <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]">
+                          <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                             Subcontractor
                           </th>
-                          <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)] tabular-nums">
+                          <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
                             Contract amount
                           </th>
                         </tr>
@@ -2227,10 +2235,10 @@ export function ProjectDetailTabsClient({
                       <tbody>
                         {subcontracts.map((s) => (
                           <tr key={s.id} className={listTableRowStaticClassName}>
-                            <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] font-medium">
+                            <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell font-medium">
                               {s.subcontractor_name ?? "—"}
                             </td>
-                            <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle font-mono text-[13px] tabular-nums">
+                            <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums">
                               ${Number(s.contract_amount ?? 0).toLocaleString()}
                             </td>
                           </tr>
@@ -2244,26 +2252,26 @@ export function ProjectDetailTabsClient({
             <TabsContent value="bills" className={TAB_PANEL}>
               <SectionHeader
                 label="Bills (AP)"
-                className="text-[11px] tracking-normal text-[var(--neo-text-secondary)] font-medium"
+                className="text-hh-status tracking-normal text-[var(--hh-text-secondary)] font-medium"
               />
               <Divider />
               {bills.length === 0 ? (
-                <p className="py-6 text-sm text-[var(--neo-text-secondary)]">
+                <p className="py-6 text-hh-body text-[var(--hh-text-secondary)]">
                   No bills for this project.
                 </p>
               ) : (
                 <div className="airtable-table-wrap airtable-table-wrap--ruled mt-2">
                   <div className="airtable-table-scroll">
-                    <table className="w-full text-sm">
+                    <table className="w-full text-hh-body">
                       <thead>
                         <tr>
-                          <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]">
+                          <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                             Vendor
                           </th>
-                          <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]">
+                          <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                             Bill no
                           </th>
-                          <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)] tabular-nums">
+                          <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
                             Amount
                           </th>
                         </tr>
@@ -2271,13 +2279,13 @@ export function ProjectDetailTabsClient({
                       <tbody>
                         {bills.map((b) => (
                           <tr key={b.id} className={listTableRowStaticClassName}>
-                            <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] font-medium">
+                            <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell font-medium">
                               {b.vendor_name ?? "—"}
                             </td>
-                            <td className="h-11 min-h-[44px] px-3 py-0 align-middle font-mono text-[13px] tabular-nums">
+                            <td className="h-11 min-h-[44px] px-3 py-0 align-middle hh-fin text-hh-table-cell tabular-nums">
                               {b.bill_no ?? "—"}
                             </td>
-                            <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle font-mono text-[13px] tabular-nums">
+                            <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums">
                               ${Number(b.amount ?? 0).toLocaleString()}
                             </td>
                           </tr>
@@ -2291,27 +2299,27 @@ export function ProjectDetailTabsClient({
             <TabsContent value="labor" className={TAB_PANEL}>
               <SectionHeader
                 label="Labor"
-                className="text-[11px] tracking-normal text-[var(--neo-text-secondary)] font-medium"
+                className="text-hh-status tracking-normal text-[var(--hh-text-secondary)] font-medium"
               />
               <Divider />
               {laborEntries.length === 0 ? (
-                <p className="py-6 text-sm text-[var(--neo-text-secondary)]">
+                <p className="py-6 text-hh-body text-[var(--hh-text-secondary)]">
                   No labor entries for this project.
                 </p>
               ) : (
                 <>
                   <div className="airtable-table-wrap airtable-table-wrap--ruled mt-2">
                     <div className="airtable-table-scroll">
-                      <table className="w-full text-sm">
+                      <table className="w-full text-hh-body">
                         <thead>
                           <tr>
-                            <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]">
+                            <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                               Worker
                             </th>
-                            <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]">
+                            <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                               Date
                             </th>
-                            <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)] tabular-nums">
+                            <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
                               Cost
                             </th>
                           </tr>
@@ -2319,13 +2327,13 @@ export function ProjectDetailTabsClient({
                         <tbody>
                           {laborEntries.slice(0, 20).map((e) => (
                             <tr key={e.id} className={listTableRowStaticClassName}>
-                              <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] font-medium">
+                              <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell font-medium">
                                 {e.worker_name ?? "—"}
                               </td>
-                              <td className="h-11 min-h-[44px] px-3 py-0 align-middle font-mono text-[13px] tabular-nums">
+                              <td className="h-11 min-h-[44px] px-3 py-0 align-middle hh-fin text-hh-table-cell tabular-nums">
                                 {e.work_date?.slice(0, 10)}
                               </td>
-                              <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle font-mono text-[13px] tabular-nums">
+                              <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums">
                                 ${Number(e.cost_amount ?? 0).toLocaleString()}
                               </td>
                             </tr>
@@ -2337,7 +2345,7 @@ export function ProjectDetailTabsClient({
                   <div className="mt-3">
                     <Link
                       href={`/projects/${projectId}/labor`}
-                      className="text-xs font-medium text-[var(--neo-text-secondary)] hover:text-[var(--neo-text-primary)]"
+                      className="text-hh-metadata font-medium text-[var(--hh-text-secondary)] hover:text-[var(--hh-text-primary)]"
                     >
                       View full labor log →
                     </Link>

@@ -41,7 +41,7 @@ export function WorkerAdvanceActionsMenu({
           variant="ghost"
           size="icon"
           className={cn(
-            "shrink-0 rounded-sm text-muted-foreground/45 outline-none transition-colors",
+            "shrink-0 rounded-hh-compact text-muted-foreground/45 outline-none transition-colors",
             "hover:bg-zinc-100/90 hover:text-foreground focus-visible:ring-2 focus-visible:ring-zinc-400/30 dark:hover:bg-muted/45 dark:hover:text-foreground",
             layout === "mobile" ? "h-11 w-11 min-h-[44px] min-w-[44px]" : "h-8 w-8"
           )}
@@ -53,7 +53,7 @@ export function WorkerAdvanceActionsMenu({
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align="end"
-        className="min-w-[10rem] rounded-md border border-border/60 bg-popover p-1 shadow-floating"
+        className="min-w-[10rem] rounded-hh-compact border border-border/60 bg-popover p-1 shadow-floating"
       >
         {onOpenWorker ? (
           <DropdownMenuItem className="cursor-pointer text-sm" onSelect={() => onOpenWorker()}>

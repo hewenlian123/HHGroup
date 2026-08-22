@@ -91,19 +91,19 @@ type ProjectOption = { id: string; name: string | null };
 type WorkerOption = { id: string; name: string };
 
 const FIELD_LABEL =
-  "text-[10px] font-semibold uppercase tracking-[0.04em] text-[var(--eo-text-tertiary,var(--neo-text-tertiary))]";
+  "text-hh-status font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]";
 const INPUT_CLASS =
-  "h-11 rounded-md border-[var(--eo-border,var(--neo-border))] bg-[var(--eo-surface-primary,var(--neo-surface-raised))] text-sm text-[var(--eo-text-primary,var(--neo-text-primary))] shadow-none placeholder:text-[var(--eo-text-tertiary,var(--neo-text-tertiary))] focus-visible:border-[var(--eo-focus,var(--neo-border-strong))] focus-visible:ring-[var(--eo-focus-ring,var(--neo-border-strong))] max-md:min-h-12 max-md:text-base";
+  "h-11 rounded-md border-[var(--hh-border)] bg-[var(--hh-l1-workspace)] text-sm text-[var(--hh-text-primary)] shadow-none placeholder:text-[var(--hh-text-tertiary)] focus-visible:border-[var(--hh-focus-ring)] focus-visible:ring-[var(--hh-focus-ring)] max-md:min-h-12 max-md:text-base";
 const SELECT_TRIGGER_CLASS =
-  "h-11 rounded-md border-[var(--eo-border,var(--neo-border))] bg-[var(--eo-surface-primary,var(--neo-surface-raised))] text-sm text-[var(--eo-text-primary,var(--neo-text-primary))] shadow-none focus-visible:border-[var(--eo-focus,var(--neo-border-strong))] focus-visible:ring-[var(--eo-focus-ring,var(--neo-border-strong))] max-md:min-h-12 max-md:text-base [&>span]:line-clamp-1";
+  "h-11 rounded-md border-[var(--hh-border)] bg-[var(--hh-l1-workspace)] text-sm text-[var(--hh-text-primary)] shadow-none focus-visible:border-[var(--hh-focus-ring)] focus-visible:ring-[var(--hh-focus-ring)] max-md:min-h-12 max-md:text-base [&>span]:line-clamp-1";
 const PREVIEW_SECONDARY_BUTTON =
-  "rounded-md border-[var(--eo-border,var(--neo-border))] bg-[var(--eo-surface-primary,var(--neo-surface-raised))] text-[var(--eo-text-primary,var(--neo-text-primary))] shadow-none hover:bg-[var(--eo-surface-selected,var(--neo-surface-muted))] focus-visible:ring-[var(--eo-focus-ring,var(--neo-border-strong))]";
+  "rounded-md border-[var(--hh-border)] bg-[var(--hh-l1-workspace)] text-[var(--hh-text-primary)] shadow-none hover:bg-[var(--hh-l3-selected)] focus-visible:ring-[var(--hh-focus-ring)]";
 const PREVIEW_QUIET_BUTTON =
-  "rounded-md border-transparent bg-transparent text-[var(--eo-text-secondary,var(--neo-text-secondary))] shadow-none hover:bg-[var(--eo-surface-secondary,var(--neo-surface-muted))] hover:text-[var(--eo-text-primary,var(--neo-text-primary))] focus-visible:ring-[var(--eo-focus-ring,var(--neo-border-strong))]";
+  "rounded-md border-transparent bg-transparent text-[var(--hh-text-secondary)] shadow-none hover:bg-[var(--hh-l3-hover)] hover:text-[var(--hh-text-primary)] focus-visible:ring-[var(--hh-focus-ring)]";
 const PREVIEW_PRIMARY_BUTTON =
-  "rounded-md border-transparent bg-[var(--eo-action-primary,#171717)] text-[var(--eo-action-primary-text,#fff)] shadow-none hover:bg-[var(--eo-action-primary-hover,#2a2a2a)] focus-visible:ring-[var(--eo-focus-ring,rgb(23_23_23_/_0.24))]";
+  "rounded-hh-compact border-transparent bg-[var(--hh-action-primary)] text-[var(--hh-action-primary-foreground)] shadow-none hover:bg-[var(--hh-action-primary-hover)] focus-visible:ring-[var(--hh-focus-ring)]";
 const PREVIEW_WARNING_CHIP =
-  "rounded-md border border-[var(--eo-warning-border,rgb(180_83_9_/_0.22))] bg-[var(--eo-warning-soft,rgb(245_158_11_/_0.10))] px-1.5 py-0.5 text-[11px] font-medium text-[var(--eo-warning,#a16207)]";
+  "rounded-hh-compact border border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] px-1.5 py-0.5 text-hh-status font-medium text-[var(--hh-warning)]";
 
 export type ExpenseInboxPreviewSavePayload = ExpenseReviewSavePatch;
 
@@ -135,7 +135,7 @@ function ReviewFieldError({ id, message }: { id: string; message?: string }) {
     <p
       id={id}
       role="alert"
-      className="flex items-start gap-1.5 text-xs leading-4 text-[var(--eo-danger)]"
+      className="flex items-start gap-1.5 text-xs leading-4 text-[var(--hh-danger)]"
     >
       <AlertCircle className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden />
       <span>{message}</span>
@@ -256,7 +256,7 @@ function ProgressiveDisclosure({
   if (!enabled) return <>{children}</>;
   return (
     <details className="expense-more-details group pt-1">
-      <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between rounded-md px-1.5 py-2 text-[13px] font-medium text-[var(--eo-text-primary,var(--neo-text-primary))] outline-none transition-colors duration-120 hover:bg-[var(--eo-surface-secondary,var(--neo-surface-muted))] focus-visible:ring-2 focus-visible:ring-[var(--eo-focus-ring,var(--neo-border-strong))]">
+      <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between rounded-md px-1.5 py-2 text-hh-table-cell font-medium text-[var(--hh-text-primary)] outline-none transition-colors duration-120 hover:bg-[var(--hh-l3-hover)] focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)]">
         More Details
         <ChevronDown
           className="h-4 w-4 transition-transform duration-180 group-open:rotate-180"
@@ -331,7 +331,7 @@ function PaymentSourceEditField({
         </label>
         <Link
           href="/settings/expenses"
-          className="text-[11px] text-muted-foreground underline-offset-4 hover:underline"
+          className="text-hh-status text-muted-foreground underline-offset-4 hover:underline"
         >
           Manage
         </Link>
@@ -354,7 +354,7 @@ function PreviewRow({ label, children }: { label: string; children: React.ReactN
       className="flex flex-col gap-1 py-2.5"
     >
       <div className={FIELD_LABEL}>{label}</div>
-      <div className="text-sm text-[var(--neo-text-primary)]">{children}</div>
+      <div className="text-sm text-[var(--hh-text-primary)]">{children}</div>
     </div>
   );
 }
@@ -371,10 +371,10 @@ function HeaderLineMismatchPanel({
   return (
     <div
       data-testid="expense-header-line-mismatch-panel"
-      className="rounded-xl border border-[var(--eo-warning-border)] bg-[var(--eo-warning-soft)] p-3 shadow-[inset_3px_0_0_var(--eo-warning)]"
+      className="rounded-xl border border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] p-3 shadow-[inset_3px_0_0_var(--hh-warning)]"
       role="status"
     >
-      <p className="text-sm font-semibold text-[var(--neo-text-primary)]">
+      <p className="text-sm font-semibold text-[var(--hh-text-primary)]">
         System Health found a header/line total mismatch.
       </p>
       <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
@@ -387,16 +387,16 @@ function HeaderLineMismatchPanel({
         ).map(([label, value]) => (
           <div
             key={label}
-            className="rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-2.5 py-2"
+            className="rounded-lg border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-2.5 py-2"
           >
             <p className={FIELD_LABEL}>{label}</p>
-            <p className="mt-1 tabular-nums text-sm font-semibold text-[var(--neo-text-primary)]">
+            <p className="mt-1 tabular-nums text-sm font-semibold text-[var(--hh-text-primary)]">
               {formatCurrency(Number(value))}
             </p>
           </div>
         ))}
       </div>
-      <div className="mt-3 flex flex-col gap-2 text-xs leading-snug text-[var(--neo-text-secondary)] sm:flex-row sm:items-center sm:justify-between">
+      <div className="mt-3 flex flex-col gap-2 text-xs leading-snug text-[var(--hh-text-secondary)] sm:flex-row sm:items-center sm:justify-between">
         <p>
           Review receipt. If receipt total matches lines, update header. If receipt total matches
           header, adjust split lines.
@@ -1419,7 +1419,7 @@ export function ExpenseInboxPreviewModal({
   const previewDivide =
     presentation === "dialog"
       ? "grid grid-cols-1 gap-x-5 gap-y-0 sm:grid-cols-2"
-      : "divide-y divide-[var(--neo-border)]";
+      : "divide-y divide-[var(--hh-border)]";
   const handlePanelKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
     if (
       inlineReviewWorkspace &&
@@ -1491,10 +1491,10 @@ export function ExpenseInboxPreviewModal({
       <div className="flex min-h-0 h-full flex-col">
         <div className="flex shrink-0 items-center justify-between gap-3 px-4 py-2.5">
           <div className="min-w-0">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--eo-text-tertiary)]">
+            <p className="text-hh-status font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]">
               Receipt preview
             </p>
-            <p className="mt-0.5 truncate text-xs text-[var(--eo-text-secondary)]">
+            <p className="mt-0.5 truncate text-xs text-[var(--hh-text-secondary)]">
               {embeddedReceiptItem
                 ? `${receiptItems.length} attachment${receiptItems.length === 1 ? "" : "s"}`
                 : "Evidence missing"}
@@ -1514,10 +1514,10 @@ export function ExpenseInboxPreviewModal({
           ) : null}
         </div>
         <div className="min-h-0 flex-1 p-3 pt-0">
-          <div className="flex h-full min-h-[280px] items-center justify-center overflow-hidden rounded-lg border border-[var(--eo-border-floating)] bg-white">
+          <div className="flex h-full min-h-[280px] items-center justify-center overflow-hidden rounded-lg border border-[var(--hh-border-floating)] bg-white">
             {!embeddedReceiptItem ? (
               <div className="max-w-xs px-6 text-center">
-                <span className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-[var(--eo-warning-soft)] text-[var(--eo-warning)]">
+                <span className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-[var(--hh-warning-soft-fill)] text-[var(--hh-warning)]">
                   <FileText className="h-5 w-5" aria-hidden />
                 </span>
                 <p className="mt-3 text-sm font-semibold text-zinc-900">No receipt attached</p>
@@ -1573,7 +1573,7 @@ export function ExpenseInboxPreviewModal({
           </div>
         </div>
         {embeddedReceiptItem ? (
-          <div className="shrink-0 px-4 pb-3 text-[11px] text-[var(--eo-text-tertiary)]">
+          <div className="shrink-0 px-4 pb-3 text-hh-status text-[var(--hh-text-tertiary)]">
             <p className="truncate" title={embeddedReceiptItem.fileName}>
               {embeddedReceiptItem.fileName}
             </p>
@@ -1592,25 +1592,22 @@ export function ExpenseInboxPreviewModal({
         <div>
           <h3
             id="expense-receipt-evidence-title"
-            className="text-[13px] font-semibold text-[var(--eo-text-primary,var(--neo-text-primary))]"
+            className="text-hh-table-cell font-semibold text-[var(--hh-text-primary)]"
           >
             Receipt Evidence
           </h3>
-          <p className="mt-0.5 text-[11px] text-[var(--eo-text-secondary,var(--neo-text-secondary))]">
+          <p className="mt-0.5 text-hh-status text-[var(--hh-text-secondary)]">
             {receiptItems.length > 0
               ? `${receiptItems.length} attachment${receiptItems.length === 1 ? "" : "s"}`
               : "No receipt attached"}
           </p>
         </div>
-        <FileText
-          className="h-4 w-4 text-[var(--eo-text-tertiary,var(--neo-text-tertiary))]"
-          aria-hidden
-        />
+        <FileText className="h-4 w-4 text-[var(--hh-text-tertiary)]" aria-hidden />
       </div>
       <button
         type="button"
         data-expense-receipt-evidence
-        className="expense-evidence-action mt-3 flex min-h-20 w-full items-center justify-between gap-3 rounded-[7px] border border-[var(--eo-border,var(--neo-border))] bg-[var(--eo-surface-primary,var(--neo-surface-raised))] px-4 py-3 text-left transition-colors duration-120 hover:bg-[var(--eo-surface-secondary,var(--neo-surface-muted))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--eo-focus-ring,var(--neo-border-strong))]"
+        className="expense-evidence-action mt-3 flex min-h-20 w-full items-center justify-between gap-3 rounded-hh-compact border border-[var(--hh-border)] bg-[var(--hh-l1-workspace)] px-4 py-3 text-left transition-colors duration-120 hover:bg-[var(--hh-l3-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)]"
         onClick={() => {
           const firstReceipt = receiptItems[0];
           if (firstReceipt) void openReceiptItemPreview(firstReceipt);
@@ -1618,16 +1615,16 @@ export function ExpenseInboxPreviewModal({
         }}
       >
         <span className="min-w-0">
-          <span className="block text-[13px] font-medium text-[var(--eo-text-primary,var(--neo-text-primary))]">
+          <span className="block text-hh-table-cell font-medium text-[var(--hh-text-primary)]">
             {receiptItems.length > 0 ? "Open receipt preview" : "Add receipt evidence"}
           </span>
-          <span className="mt-1 block text-[11px] leading-4 text-[var(--eo-text-secondary,var(--neo-text-secondary))]">
+          <span className="mt-1 block text-hh-status leading-4 text-[var(--hh-text-secondary)]">
             {receiptItems.length > 0
               ? "View the secured source document in context."
               : "Use the existing protected attachment path."}
           </span>
         </span>
-        <span className="shrink-0 text-xs font-medium text-[var(--eo-text-secondary,var(--neo-text-secondary))]">
+        <span className="shrink-0 text-xs font-medium text-[var(--hh-text-secondary)]">
           {receiptItems.length > 0 ? "View" : "Attach"}
         </span>
       </button>
@@ -1650,20 +1647,20 @@ export function ExpenseInboxPreviewModal({
   const detailSurface = (
     <>
       {presentation === "panel" ? (
-        <div className="expense-detail-panel-header shrink-0 border-b border-[var(--eo-border,var(--neo-border))] px-5 py-4">
+        <div className="expense-detail-panel-header shrink-0 border-b border-[var(--hh-border)] px-5 py-4">
           <div className="flex min-w-0 items-center gap-3">
             <Button
               type="button"
               variant="ghost"
               size="icon"
-              className="expense-detail-back h-11 w-11 shrink-0 rounded-md text-[var(--eo-text-secondary,var(--neo-text-secondary))] lg:hidden"
+              className="expense-detail-back h-11 w-11 shrink-0 rounded-md text-[var(--hh-text-secondary)] lg:hidden"
               aria-label={evidenceFirst ? "Back to receipt queue" : "Back to expense queue"}
               onClick={() => onOpenChange(false)}
             >
               <ArrowLeft className="h-4 w-4" aria-hidden />
             </Button>
             <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--eo-text-tertiary,var(--neo-text-tertiary))]">
+              <p className="text-hh-status font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                 {inlineReviewWorkspace
                   ? "Review details"
                   : mode === "preview"
@@ -1674,7 +1671,7 @@ export function ExpenseInboxPreviewModal({
                       ? "Editing receipt details"
                       : "Editing expense"}
               </p>
-              <p className="mt-0.5 truncate text-xs text-[var(--eo-text-secondary,var(--neo-text-secondary))]">
+              <p className="mt-0.5 truncate text-xs text-[var(--hh-text-secondary)]">
                 {formatDate(expense.date)} · {expenseStatusUiLabel(expense.status)}
               </p>
             </div>
@@ -1682,7 +1679,7 @@ export function ExpenseInboxPreviewModal({
               type="button"
               variant="ghost"
               size="icon"
-              className="hidden h-11 w-11 shrink-0 rounded-md text-[var(--eo-text-secondary,var(--neo-text-secondary))] hover:bg-[var(--eo-surface-selected,var(--neo-surface-muted))] hover:text-[var(--eo-text-primary,var(--neo-text-primary))] lg:inline-flex"
+              className="hidden h-11 w-11 shrink-0 rounded-md text-[var(--hh-text-secondary)] hover:bg-[var(--hh-l3-selected)] hover:text-[var(--hh-text-primary)] lg:inline-flex"
               aria-label={evidenceFirst ? "Close receipt detail" : "Close expense detail"}
               title={evidenceFirst ? "Close receipt detail" : "Close expense detail"}
               disabled={saving || markBusy}
@@ -1693,8 +1690,8 @@ export function ExpenseInboxPreviewModal({
           </div>
         </div>
       ) : (
-        <DialogHeader className="shrink-0 border-b border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-4 py-3">
-          <DialogTitle className="text-sm font-semibold text-[var(--neo-text-primary)]">
+        <DialogHeader className="shrink-0 border-b border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-4 py-3">
+          <DialogTitle className="text-sm font-semibold text-[var(--hh-text-primary)]">
             {mode === "preview" ? "Expense" : "Edit expense"}
           </DialogTitle>
         </DialogHeader>
@@ -1714,18 +1711,18 @@ export function ExpenseInboxPreviewModal({
               <section data-expense-detail-identity aria-label="Expense identity">
                 <p
                   data-expense-detail-amount
-                  className="financial-nums text-[34px] font-semibold leading-[1.1] tracking-normal text-[var(--eo-text-primary,var(--neo-text-primary))] sm:text-[40px]"
+                  className="financial-nums text-hh-financial-total font-semibold leading-[1.1] tracking-normal text-[var(--hh-text-primary)] sm:text-hh-financial-total"
                 >
                   {formatCurrency(-getExpenseTotal(expense))}
                 </p>
-                <h2 className="mt-3 text-xl font-semibold leading-6 tracking-normal text-[var(--eo-text-primary,var(--neo-text-primary))]">
+                <h2 className="mt-3 text-xl font-semibold leading-6 tracking-normal text-[var(--hh-text-primary)]">
                   <span data-expense-detail-merchant>
                     {(expense.vendorName ?? "").trim() || "Needs Review"}
                   </span>
                 </h2>
                 <p
                   data-expense-detail-project
-                  className="mt-1 text-[13px] font-medium leading-[18px] text-[var(--eo-text-secondary,var(--neo-text-secondary))]"
+                  className="mt-1 text-hh-table-cell font-medium leading-[18px] text-[var(--hh-text-secondary)]"
                 >
                   {projectLabelFromExpense(expense, projectNameById)}
                 </p>
@@ -1750,19 +1747,19 @@ export function ExpenseInboxPreviewModal({
               >
                 <div>
                   <dt className={FIELD_LABEL}>Date</dt>
-                  <dd className="mt-1 text-[13px] text-[var(--eo-text-primary,var(--neo-text-primary))]">
+                  <dd className="mt-1 text-hh-table-cell text-[var(--hh-text-primary)]">
                     {formatDate(expense.date)}
                   </dd>
                 </div>
                 <div>
                   <dt className={FIELD_LABEL}>Category</dt>
-                  <dd className="mt-1 truncate text-[13px] text-[var(--eo-text-primary,var(--neo-text-primary))]">
+                  <dd className="mt-1 truncate text-hh-table-cell text-[var(--hh-text-primary)]">
                     {expense.lines[0]?.category?.trim() || "—"}
                   </dd>
                 </div>
                 <div>
                   <dt className={FIELD_LABEL}>Payment source</dt>
-                  <dd className="mt-1 text-[13px] text-[var(--eo-text-primary,var(--neo-text-primary))]">
+                  <dd className="mt-1 text-hh-table-cell text-[var(--hh-text-primary)]">
                     {sourceTypeLabel(expense.sourceType)}
                   </dd>
                 </div>
@@ -1785,13 +1782,13 @@ export function ExpenseInboxPreviewModal({
 
               <section>
                 <h3 className={FIELD_LABEL}>{EXPENSE_FORM_FIELDS.description.label}</h3>
-                <p className="mt-2 text-[13px] leading-5 text-[var(--eo-text-primary,var(--neo-text-primary))]">
+                <p className="mt-2 text-hh-table-cell leading-5 text-[var(--hh-text-primary)]">
                   {displayedDescription.description || "—"}
                 </p>
               </section>
 
               <details className="expense-more-details group pt-1">
-                <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between rounded-md px-1.5 py-2 text-[13px] font-medium text-[var(--eo-text-primary,var(--neo-text-primary))] outline-none transition-colors duration-120 hover:bg-[var(--eo-surface-secondary,var(--neo-surface-muted))] focus-visible:ring-2 focus-visible:ring-[var(--eo-focus-ring,var(--neo-border-strong))]">
+                <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between rounded-md px-1.5 py-2 text-hh-table-cell font-medium text-[var(--hh-text-primary)] outline-none transition-colors duration-120 hover:bg-[var(--hh-l3-hover)] focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)]">
                   More Details
                   <ChevronDown
                     className="h-4 w-4 transition-transform duration-180 group-open:rotate-180"
@@ -1802,12 +1799,14 @@ export function ExpenseInboxPreviewModal({
                   {displayedDescription.items.length > 0 ? (
                     <div className="col-span-2">
                       <dt className={FIELD_LABEL}>{EXPENSE_FORM_FIELDS.items.label}</dt>
-                      <dd className="mt-1 text-[13px]">{displayedDescription.items.join(", ")}</dd>
+                      <dd className="mt-1 text-hh-table-cell">
+                        {displayedDescription.items.join(", ")}
+                      </dd>
                     </div>
                   ) : null}
                   <div>
                     <dt className={FIELD_LABEL}>{EXPENSE_FORM_FIELDS.worker.label}</dt>
-                    <dd className="mt-1 text-[13px]">
+                    <dd className="mt-1 text-hh-table-cell">
                       {expense.workerId
                         ? (workers.find((worker) => worker.id === expense.workerId)?.name ??
                           expense.workerId)
@@ -1816,19 +1815,19 @@ export function ExpenseInboxPreviewModal({
                   </div>
                   <div>
                     <dt className={FIELD_LABEL}>{EXPENSE_FORM_FIELDS.paymentMethod.label}</dt>
-                    <dd className="mt-1 text-[13px]">
+                    <dd className="mt-1 text-hh-table-cell">
                       {paymentMethodLabel(expense.paymentMethod)}
                     </dd>
                   </div>
                   <div>
                     <dt className={FIELD_LABEL}>{EXPENSE_FORM_FIELDS.paymentAccount.label}</dt>
-                    <dd className="mt-1 text-[13px]">
+                    <dd className="mt-1 text-hh-table-cell">
                       {expense.paymentAccountName?.trim() || "—"}
                     </dd>
                   </div>
                   <div>
                     <dt className={FIELD_LABEL}>Record</dt>
-                    <dd className="mt-1 truncate font-mono text-[11px] text-[var(--eo-text-secondary,var(--neo-text-secondary))]">
+                    <dd className="mt-1 truncate hh-fin text-hh-status text-[var(--hh-text-secondary)]">
                       {expense.id}
                     </dd>
                   </div>
@@ -1839,7 +1838,7 @@ export function ExpenseInboxPreviewModal({
             <div className="space-y-6">
               {possibleDuplicate ? (
                 <p
-                  className="rounded-md border border-[var(--eo-warning-border)] bg-[var(--eo-warning-soft)] px-2 py-1.5 text-xs text-[var(--eo-warning)]"
+                  className="rounded-md border border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] px-2 py-1.5 text-xs text-[var(--hh-warning)]"
                   role="status"
                 >
                   This transaction may be a duplicate.
@@ -1877,7 +1876,7 @@ export function ExpenseInboxPreviewModal({
                     {(expense.vendorName ?? "").trim() !== "" ? expense.vendorName : "Needs Review"}
                   </PreviewRow>
                   <PreviewRow label="Amount">
-                    <span className="financial-nums tabular-nums font-semibold tracking-normal text-[var(--eo-text-strong)]">
+                    <span className="financial-nums tabular-nums font-semibold tracking-normal text-[var(--hh-text-strong)]">
                       {formatCurrency(-getExpenseTotal(expense))}
                     </span>
                   </PreviewRow>
@@ -1933,11 +1932,11 @@ export function ExpenseInboxPreviewModal({
               <ModalSection title="Attachments">
                 <div
                   data-inbox-review-evidence
-                  className="rounded-lg border border-[var(--eo-border-floating)] bg-[var(--eo-depth-l4)] p-3"
+                  className="rounded-lg border border-[var(--hh-border-floating)] bg-[var(--hh-l4-floating-surface)] p-3"
                   data-testid="expense-preview-attachments"
                 >
                   {receiptItems.length === 0 ? (
-                    <span className="text-sm text-[var(--neo-text-secondary)]">—</span>
+                    <span className="text-sm text-[var(--hh-text-secondary)]">—</span>
                   ) : (
                     <ul className="space-y-3">
                       {receiptItems.map((item, idx) => {
@@ -1955,7 +1954,7 @@ export function ExpenseInboxPreviewModal({
                             <li key={`${item.url}-${idx}`}>
                               <button
                                 type="button"
-                                className="text-left text-sm text-[var(--neo-text-primary)] underline-offset-2 hover:text-[var(--neo-gold-soft)] hover:underline"
+                                className="text-left text-sm text-[var(--hh-text-primary)] underline-offset-2 hover:text-[var(--hh-action-primary)] hover:underline"
                                 onClick={() => void openReceiptItemPreview(item)}
                               >
                                 {item.fileName}
@@ -1972,7 +1971,7 @@ export function ExpenseInboxPreviewModal({
                         if (thumbState === undefined) {
                           return (
                             <li key={`${item.url}-${idx}`}>
-                              <Skeleton className="h-[200px] max-h-[240px] w-full rounded-lg bg-[var(--neo-surface-muted)]" />
+                              <Skeleton className="h-[200px] max-h-[240px] w-full rounded-lg bg-[var(--hh-l3-hover)]" />
                             </li>
                           );
                         }
@@ -1980,13 +1979,13 @@ export function ExpenseInboxPreviewModal({
                         if (thumbState === null || loadFailed) {
                           return (
                             <li key={`${item.url}-${idx}`}>
-                              <div className="flex flex-col gap-1 border-b border-[var(--neo-border)] py-2.5 last:border-b-0">
+                              <div className="flex flex-col gap-1 border-b border-[var(--hh-border)] py-2.5 last:border-b-0">
                                 <div className="flex items-start justify-between gap-3">
                                   <div className="min-w-0 flex-1">
-                                    <p className="truncate text-sm text-[var(--neo-text-primary)]">
+                                    <p className="truncate text-sm text-[var(--hh-text-primary)]">
                                       {item.fileName}
                                     </p>
-                                    <p className="text-xs text-[var(--neo-text-secondary)]">
+                                    <p className="text-xs text-[var(--hh-text-secondary)]">
                                       Preview unavailable
                                     </p>
                                   </div>
@@ -2009,7 +2008,7 @@ export function ExpenseInboxPreviewModal({
                           <li key={`${item.url}-${idx}`}>
                             <button
                               type="button"
-                              className="block w-full max-w-full overflow-hidden rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]"
+                              className="block w-full max-w-full overflow-hidden rounded-lg border border-[var(--hh-border)] bg-[var(--hh-l3-hover)] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)]"
                               onClick={() => void openReceiptItemPreview(item)}
                               aria-label={ariaPreview}
                             >
@@ -2045,19 +2044,19 @@ export function ExpenseInboxPreviewModal({
               <section data-expense-inline-identity aria-label="Editing expense identity">
                 <p
                   data-expense-inline-amount
-                  className="financial-nums text-[34px] font-semibold leading-[1.1] tracking-normal text-[var(--eo-text-primary,var(--neo-text-primary))] sm:text-[40px]"
+                  className="financial-nums text-hh-financial-total font-semibold leading-[1.1] tracking-normal text-[var(--hh-text-primary)] sm:text-hh-financial-total"
                 >
                   {formatCurrency(-getExpenseTotal(expense))}
                 </p>
                 <h2
                   data-expense-inline-merchant
-                  className="mt-3 text-xl font-semibold leading-6 tracking-normal text-[var(--eo-text-primary,var(--neo-text-primary))]"
+                  className="mt-3 text-xl font-semibold leading-6 tracking-normal text-[var(--hh-text-primary)]"
                 >
                   {(expense.vendorName ?? "").trim() || "Needs Review"}
                 </h2>
                 <p
                   data-expense-inline-project
-                  className="mt-1 text-[13px] font-medium leading-[18px] text-[var(--eo-text-secondary,var(--neo-text-secondary))]"
+                  className="mt-1 text-hh-table-cell font-medium leading-[18px] text-[var(--hh-text-secondary)]"
                 >
                   {projectLabelFromExpense(expense, projectNameById)}
                 </p>
@@ -2205,7 +2204,7 @@ export function ExpenseInboxPreviewModal({
                     <Link
                       href="/settings/expenses"
                       tabIndex={inlineReviewWorkspace ? -1 : undefined}
-                      className="text-[11px] text-muted-foreground underline-offset-4 hover:underline"
+                      className="text-hh-status text-muted-foreground underline-offset-4 hover:underline"
                     >
                       Manage
                     </Link>
@@ -2255,7 +2254,7 @@ export function ExpenseInboxPreviewModal({
                       <Link
                         href="/settings/expenses"
                         tabIndex={-1}
-                        className="text-[11px] text-muted-foreground underline-offset-4 hover:underline"
+                        className="text-hh-status text-muted-foreground underline-offset-4 hover:underline"
                       >
                         Manage
                       </Link>
@@ -2424,7 +2423,7 @@ export function ExpenseInboxPreviewModal({
                       </label>
                       <Link
                         href="/settings/expenses"
-                        className="text-[11px] text-muted-foreground underline-offset-4 hover:underline"
+                        className="text-hh-status text-muted-foreground underline-offset-4 hover:underline"
                       >
                         Manage
                       </Link>
@@ -2445,7 +2444,7 @@ export function ExpenseInboxPreviewModal({
                         </label>
                         <Link
                           href="/settings/expenses"
-                          className="text-[11px] text-muted-foreground underline-offset-4 hover:underline"
+                          className="text-hh-status text-muted-foreground underline-offset-4 hover:underline"
                         >
                           Manage
                         </Link>
@@ -2490,11 +2489,11 @@ export function ExpenseInboxPreviewModal({
       {inlineReviewWorkspace ? (
         <div
           data-expense-inline-review-actions
-          className="expense-detail-actions flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-[var(--eo-border,var(--neo-border))] bg-[var(--eo-surface-elevated,var(--neo-surface-raised))] px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+          className="expense-detail-actions flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
         >
           <div className="flex flex-wrap items-center gap-1">
             {previewNav?.queuePosition ? (
-              <span className="mr-1 text-[11px] font-medium tabular-nums text-[var(--eo-text-secondary,var(--neo-text-secondary))]">
+              <span className="mr-1 text-hh-status font-medium tabular-nums text-[var(--hh-text-secondary)]">
                 {previewNav.queuePosition}
               </span>
             ) : null}
@@ -2528,10 +2527,10 @@ export function ExpenseInboxPreviewModal({
             role={reviewFeedback?.kind === "error" ? "alert" : "status"}
             aria-live={reviewFeedback?.kind === "error" ? "assertive" : "polite"}
             className={cn(
-              "min-w-0 flex-1 px-2 text-center text-[11px] leading-4",
+              "min-w-0 flex-1 px-2 text-center text-hh-status leading-4",
               reviewFeedback?.kind === "error"
-                ? "text-[var(--eo-danger)]"
-                : "text-[var(--eo-text-tertiary,var(--neo-text-tertiary))]"
+                ? "text-[var(--hh-danger)]"
+                : "text-[var(--hh-text-tertiary)]"
             )}
           >
             {reviewStatusMessage}
@@ -2554,7 +2553,7 @@ export function ExpenseInboxPreviewModal({
                 type="button"
                 size="sm"
                 data-expense-approval-action
-                className="h-11 min-h-11 min-w-[132px] rounded-md border border-[var(--eo-success-border)] bg-[var(--eo-success-soft)] px-5 text-[var(--eo-success)] shadow-none hover:bg-[var(--eo-success-soft)] hover:brightness-[0.96] focus-visible:ring-[var(--eo-focus-ring)]"
+                className="h-11 min-h-11 min-w-[132px] rounded-md border border-[var(--hh-success-border)] bg-[var(--hh-success-soft-fill)] px-5 text-[var(--hh-success)] shadow-none hover:bg-[var(--hh-success-soft-fill)] hover:brightness-[0.96] focus-visible:ring-[var(--hh-focus-ring)]"
                 disabled={saving || markBusy}
                 onClick={() => void handleInlineReviewComplete()}
                 aria-keyshortcuts="Meta+Enter Control+Enter"
@@ -2585,12 +2584,12 @@ export function ExpenseInboxPreviewModal({
           </div>
         </div>
       ) : mode === "preview" ? (
-        <div className="expense-detail-actions flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-[var(--eo-border,var(--neo-border))] bg-[var(--eo-surface-elevated,var(--neo-surface-raised))] px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+        <div className="expense-detail-actions flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           <div className="flex flex-wrap gap-1">
             {previewNav ? (
               <>
                 {previewNav.queuePosition ? (
-                  <span className="mr-1 self-center text-[11px] text-[var(--eo-text-tertiary,var(--neo-text-tertiary))]">
+                  <span className="mr-1 self-center text-hh-status text-[var(--hh-text-tertiary)]">
                     {previewNav.queuePosition}
                   </span>
                 ) : null}
@@ -2645,7 +2644,7 @@ export function ExpenseInboxPreviewModal({
                 variant="outline"
                 size="sm"
                 data-expense-approval-action
-                className="h-9 min-w-[108px] rounded-md border-[var(--eo-success-border)] bg-[var(--eo-success-soft)] text-[var(--eo-success)] shadow-none hover:bg-[var(--eo-success-soft)] hover:brightness-[0.96] focus-visible:ring-[var(--eo-focus-ring)]"
+                className="h-9 min-w-[108px] rounded-md border-[var(--hh-success-border)] bg-[var(--hh-success-soft-fill)] text-[var(--hh-success)] shadow-none hover:bg-[var(--hh-success-soft-fill)] hover:brightness-[0.96] focus-visible:ring-[var(--hh-focus-ring)]"
                 disabled={markBusy}
                 onClick={() => void handleMarkReviewed()}
               >
@@ -2660,7 +2659,7 @@ export function ExpenseInboxPreviewModal({
           </div>
         </div>
       ) : (
-        <div className="expense-detail-actions flex shrink-0 items-center justify-end gap-2 border-t border-[var(--eo-border,var(--neo-border))] bg-[var(--eo-surface-elevated,var(--neo-surface-raised))] px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+        <div className="expense-detail-actions flex shrink-0 items-center justify-end gap-2 border-t border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           <Button
             type="button"
             variant="outline"
@@ -2720,7 +2719,7 @@ export function ExpenseInboxPreviewModal({
                 ? "Edit receipt details"
                 : "Edit expense"
         }
-        className="expense-detail-panel expenses-ui-dialog flex min-h-0 min-w-0 flex-col overflow-hidden rounded-[10px] border border-[var(--eo-border,var(--neo-border))] bg-[var(--eo-surface-elevated,var(--neo-surface-raised))] text-[var(--eo-text-primary,var(--neo-text-primary))]"
+        className="expense-detail-panel expenses-ui-dialog flex min-h-0 min-w-0 flex-col overflow-hidden rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)]"
         onKeyDown={handlePanelKeyDown}
       >
         {evidenceFirst ? (
@@ -2750,7 +2749,7 @@ export function ExpenseInboxPreviewModal({
         onInteractOutside={(event) => {
           if (eventTargetsAttachmentPreviewModal(event)) event.preventDefault();
         }}
-        className="expenses-ui-dialog flex max-h-[min(92vh,820px)] w-full max-w-[560px] flex-col gap-0 overflow-hidden rounded-[12px] border-[var(--eo-border-floating)] bg-[var(--eo-depth-l5)] p-0 text-[var(--eo-text-primary)] shadow-[var(--eo-shadow-task)]"
+        className="expenses-ui-dialog flex max-h-[min(92vh,820px)] w-full max-w-[560px] flex-col gap-0 overflow-hidden rounded-hh-task border-[var(--hh-border-floating)] bg-[var(--hh-l5-task-surface)] p-0 text-[var(--hh-text-primary)] shadow-task"
       >
         {detailSurface}
       </DialogContent>

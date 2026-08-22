@@ -26,7 +26,7 @@ export function EstimateSuccessBanner({ created, saved }: { created?: string; sa
   return (
     <div
       role="status"
-      className="mb-4 rounded-lg border border-[#DCFCE7] bg-[#DCFCE7] px-4 py-2 text-sm font-medium text-[#166534] dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200"
+      className="mb-4 rounded-hh-standard border border-[var(--hh-success-border)] bg-[var(--hh-success-soft-fill)] px-4 py-2 text-hh-label text-[var(--hh-success)]"
     >
       {message}
     </div>

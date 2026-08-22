@@ -29,22 +29,22 @@ export function RecentExpenseLines({ rows }: { rows: RecentExpenseLineRow[] }) {
     <>
       <div className="airtable-table-wrap airtable-table-wrap--ruled">
         <div className="airtable-table-scroll">
-          <table className="w-full text-sm">
+          <table className="w-full text-hh-body">
             <thead>
               <tr>
-                <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                   Date
                 </th>
-                <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                   Vendor
                 </th>
-                <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                   Category
                 </th>
-                <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                   Memo
                 </th>
-                <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
                   Amount
                 </th>
               </tr>
@@ -54,7 +54,7 @@ export function RecentExpenseLines({ rows }: { rows: RecentExpenseLineRow[] }) {
                 <tr>
                   <td
                     colSpan={5}
-                    className="h-11 min-h-[44px] px-3 py-0 text-center text-muted-foreground"
+                    className="h-11 min-h-[44px] px-3 py-0 text-center text-[var(--hh-text-secondary)]"
                   >
                     No expense lines.
                   </td>
@@ -75,22 +75,22 @@ export function RecentExpenseLines({ rows }: { rows: RecentExpenseLineRow[] }) {
                     tabIndex={0}
                     aria-label={`Open expense line ${row.vendorName}`}
                   >
-                    <td className="h-11 min-h-[44px] px-3 py-0 align-middle font-mono text-[13px] tabular-nums text-foreground">
+                    <td className="h-11 min-h-[44px] px-3 py-0 align-middle hh-fin text-hh-table-cell tabular-nums text-[var(--hh-text-primary)]">
                       {row.date}
                     </td>
-                    <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] font-medium text-foreground">
+                    <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell font-medium text-[var(--hh-text-primary)]">
                       {row.vendorName}
                     </td>
-                    <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] text-muted-foreground">
+                    <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell text-[var(--hh-text-secondary)]">
                       {row.category}
                     </td>
-                    <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] text-muted-foreground">
+                    <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell text-[var(--hh-text-secondary)]">
                       {row.memo ?? "—"}
                     </td>
                     <td
                       className={cn(
-                        "h-11 min-h-[44px] px-3 py-0 text-right align-middle font-mono text-[13px] font-medium tabular-nums",
-                        row.amount > 0 ? "text-red-600/90 dark:text-red-400/90" : "text-foreground"
+                        "h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell font-medium tabular-nums",
+                        row.amount > 0 ? "text-[var(--hh-danger)]" : "text-[var(--hh-text-primary)]"
                       )}
                     >
                       −${Math.abs(row.amount).toLocaleString()}
@@ -109,46 +109,48 @@ export function RecentExpenseLines({ rows }: { rows: RecentExpenseLineRow[] }) {
             <SheetTitle>Expense line</SheetTitle>
           </SheetHeader>
           {selected ? (
-            <div className="mt-4 space-y-4 text-sm">
+            <div className="mt-4 space-y-4 text-hh-body">
               <div className="space-y-1">
-                <div className="text-xs uppercase tracking-[0.08em] text-muted-foreground">
+                <div className="text-hh-metadata uppercase tracking-normal text-[var(--hh-text-secondary)]">
                   Vendor
                 </div>
-                <div className="font-medium text-foreground">{selected.vendorName}</div>
+                <div className="font-medium text-[var(--hh-text-primary)]">
+                  {selected.vendorName}
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <div className="text-xs uppercase tracking-[0.08em] text-muted-foreground">
+                  <div className="text-hh-metadata uppercase tracking-normal text-[var(--hh-text-secondary)]">
                     Date
                   </div>
-                  <div className="tabular-nums text-foreground">{selected.date}</div>
+                  <div className="tabular-nums text-[var(--hh-text-primary)]">{selected.date}</div>
                 </div>
                 <div className="space-y-1">
-                  <div className="text-xs uppercase tracking-[0.08em] text-muted-foreground">
+                  <div className="text-hh-metadata uppercase tracking-normal text-[var(--hh-text-secondary)]">
                     Amount
                   </div>
-                  <div className="tabular-nums font-medium text-red-600/90 dark:text-red-400/90">
+                  <div className="tabular-nums font-medium text-[var(--hh-danger)]">
                     −${Math.abs(selected.amount).toLocaleString()}
                   </div>
                 </div>
               </div>
               <div className="space-y-1">
-                <div className="text-xs uppercase tracking-[0.08em] text-muted-foreground">
+                <div className="text-hh-metadata uppercase tracking-normal text-[var(--hh-text-secondary)]">
                   Category
                 </div>
-                <div className="text-foreground">{selected.category}</div>
+                <div className="text-[var(--hh-text-primary)]">{selected.category}</div>
               </div>
               <div className="space-y-1">
-                <div className="text-xs uppercase tracking-[0.08em] text-muted-foreground">
+                <div className="text-hh-metadata uppercase tracking-normal text-[var(--hh-text-secondary)]">
                   Memo
                 </div>
-                <div className="text-foreground">{selected.memo ?? "—"}</div>
+                <div className="text-[var(--hh-text-primary)]">{selected.memo ?? "—"}</div>
               </div>
 
-              <div className="pt-2 border-t border-zinc-200/70 dark:border-border">
+              <div className="pt-2 border-t border-[var(--hh-border)] ">
                 <Link
                   href={`/financial/expenses/${selected.expenseId}`}
-                  className="text-sm text-muted-foreground hover:text-foreground"
+                  className="text-hh-body text-[var(--hh-text-secondary)] hover:text-[var(--hh-text-primary)]"
                 >
                   Open expense
                 </Link>

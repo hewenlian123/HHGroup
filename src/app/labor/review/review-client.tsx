@@ -183,7 +183,7 @@ export default function LaborReviewClient() {
 
       {error ? (
         <Card className="p-5">
-          <p className="text-sm text-red-600">{error}</p>
+          <p className="text-sm text-[var(--hh-danger)]">{error}</p>
         </Card>
       ) : null}
 
@@ -197,7 +197,7 @@ export default function LaborReviewClient() {
         <select
           value={workerFilter}
           onChange={(e) => setWorkerFilter(e.target.value)}
-          className="h-10 rounded-[10px] border border-input bg-white px-3 text-sm"
+          className="h-10 rounded-hh-task border border-input bg-white px-3 text-sm"
         >
           <option value="">All workers</option>
           {workerOptions.map((w) => (
@@ -209,7 +209,7 @@ export default function LaborReviewClient() {
         <select
           value={projectFilter}
           onChange={(e) => setProjectFilter(e.target.value)}
-          className="h-10 rounded-[10px] border border-input bg-white px-3 text-sm"
+          className="h-10 rounded-hh-task border border-input bg-white px-3 text-sm"
         >
           <option value="">All projects</option>
           {projectOptions.map((p) => (
@@ -221,7 +221,7 @@ export default function LaborReviewClient() {
       </div>
 
       {message ? (
-        <div className="rounded-lg border border-zinc-200/60 dark:border-border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
+        <div className="rounded-hh-standard border border-zinc-200/60 dark:border-border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
           {message}
         </div>
       ) : null}
@@ -232,25 +232,25 @@ export default function LaborReviewClient() {
             <table className="w-full min-w-[560px] text-sm md:min-w-0">
               <thead>
                 <tr className="border-b border-zinc-200/40 dark:border-border/60 bg-muted/30">
-                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                  <th className="text-left py-3 px-4 text-xs uppercase tracking-normalr text-muted-foreground font-medium">
                     Date
                   </th>
-                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                  <th className="text-left py-3 px-4 text-xs uppercase tracking-normalr text-muted-foreground font-medium">
                     Worker
                   </th>
-                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                  <th className="text-left py-3 px-4 text-xs uppercase tracking-normalr text-muted-foreground font-medium">
                     Project
                   </th>
-                  <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                  <th className="text-right py-3 px-4 text-xs uppercase tracking-normalr text-muted-foreground font-medium">
                     Hours
                   </th>
-                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                  <th className="text-left py-3 px-4 text-xs uppercase tracking-normalr text-muted-foreground font-medium">
                     Cost Code
                   </th>
-                  <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                  <th className="text-right py-3 px-4 text-xs uppercase tracking-normalr text-muted-foreground font-medium">
                     Total
                   </th>
-                  <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                  <th className="text-right py-3 px-4 text-xs uppercase tracking-normalr text-muted-foreground font-medium">
                     Actions
                   </th>
                 </tr>
@@ -273,7 +273,7 @@ export default function LaborReviewClient() {
                 ) : (
                   filteredRows.map((row) => (
                     <tr key={row.id} className="border-b border-zinc-100/50 dark:border-border/30">
-                      <td className="py-3 px-4 font-mono tabular-nums tracking-tight text-zinc-500">
+                      <td className="py-3 px-4 hh-fin tracking-normal text-zinc-500">
                         {formatDate(row.date)}
                       </td>
                       <td className="py-3 px-4">{workers.get(row.workerId) ?? "—"}</td>
@@ -282,7 +282,7 @@ export default function LaborReviewClient() {
                       </td>
                       <td className="py-3 px-4 text-right tabular-nums">{row.hours ?? 0}</td>
                       <td className="py-3 px-4">{row.costCode ?? "—"}</td>
-                      <td className="py-3 px-4 text-right font-semibold tabular-nums tracking-tight text-zinc-950">
+                      <td className="py-3 px-4 text-right font-semibold tabular-nums tracking-normal text-zinc-950">
                         {formatCurrency(computeTotal(row))}
                       </td>
                       <td className="py-3 px-4">
@@ -328,7 +328,7 @@ export default function LaborReviewClient() {
                   onChange={(e) =>
                     setSelected((prev) => (prev ? { ...prev, projectId: e.target.value } : prev))
                   }
-                  className="h-10 rounded-[10px] border border-input bg-white px-3 text-sm"
+                  className="h-10 rounded-hh-task border border-input bg-white px-3 text-sm"
                 >
                   <option value="">Select project</option>
                   {projectOptions.map((p) => (
@@ -370,7 +370,7 @@ export default function LaborReviewClient() {
                 />
                 <p className="text-sm">
                   Total:{" "}
-                  <span className="font-semibold tabular-nums tracking-tight text-zinc-950">
+                  <span className="font-semibold tabular-nums tracking-normal text-zinc-950">
                     {formatCurrency(computeTotal(selected))}
                   </span>
                 </p>

@@ -103,7 +103,7 @@ export default async function SubcontractDetailPage({ params }: Props) {
             <div className="flex flex-wrap items-center gap-3">
               <Link
                 href={`/projects/${projectId}/subcontracts`}
-                className="text-sm text-muted-foreground hover:text-foreground"
+                className="text-hh-body text-[var(--hh-text-secondary)] hover:text-[var(--hh-text-primary)]"
               >
                 Back to Project Subcontracts
               </Link>
@@ -116,7 +116,7 @@ export default async function SubcontractDetailPage({ params }: Props) {
       <SetBreadcrumbEntityTitle label={subcontract.subcontractor_name} />
       {dataLoadWarning ? (
         <p
-          className="rounded-lg border border-[rgb(184_137_45_/_0.24)] bg-[rgb(184_137_45_/_0.10)] px-3 py-2 text-sm text-[var(--neo-text-secondary)]"
+          className="rounded-hh-standard border border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] px-3 py-2 text-hh-body text-[var(--hh-text-secondary)]"
           role="status"
         >
           {dataLoadWarning}
@@ -143,10 +143,10 @@ export default async function SubcontractDetailPage({ params }: Props) {
           },
         ].map((item) => (
           <div key={item.label} className="min-w-0">
-            <p className="text-[11px] font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]">
+            <p className="text-hh-status font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
               {item.label}
             </p>
-            <p className="mt-1 text-lg">
+            <p className="mt-1 text-hh-section-title">
               <NeoAmount tone={item.tone}>${fmtUsd(item.value)}</NeoAmount>
             </p>
           </div>
@@ -154,13 +154,13 @@ export default async function SubcontractDetailPage({ params }: Props) {
       </NeoPanel>
       <SectionHeader label="Contract" />
       <Divider />
-      <div className="grid grid-cols-1 gap-y-3 py-4 text-sm max-w-2xl">
+      <div className="grid grid-cols-1 gap-y-3 py-4 text-hh-body max-w-2xl">
         <div className="flex flex-wrap gap-x-6 gap-y-1">
-          <span className="text-muted-foreground">Cost code</span>
+          <span className="text-[var(--hh-text-secondary)]">Cost code</span>
           <span>{subcontract.cost_code ?? "—"}</span>
         </div>
         <div className="flex flex-wrap gap-x-6 gap-y-1">
-          <span className="text-muted-foreground">Contract amount</span>
+          <span className="text-[var(--hh-text-secondary)]">Contract amount</span>
           <span className="tabular-nums">
             $
             {subcontract.contract_amount.toLocaleString("en-US", {
@@ -170,16 +170,16 @@ export default async function SubcontractDetailPage({ params }: Props) {
           </span>
         </div>
         <div className="flex flex-wrap gap-x-6 gap-y-1">
-          <span className="text-muted-foreground">Start</span>
+          <span className="text-[var(--hh-text-secondary)]">Start</span>
           <span className="tabular-nums">{subcontract.start_date ?? "—"}</span>
         </div>
         <div className="flex flex-wrap gap-x-6 gap-y-1">
-          <span className="text-muted-foreground">End</span>
+          <span className="text-[var(--hh-text-secondary)]">End</span>
           <span className="tabular-nums">{subcontract.end_date ?? "—"}</span>
         </div>
         {subcontract.description ? (
           <div className="flex flex-wrap gap-x-6 gap-y-1">
-            <span className="text-muted-foreground">Description</span>
+            <span className="text-[var(--hh-text-secondary)]">Description</span>
             <span>{subcontract.description}</span>
           </div>
         ) : null}
@@ -192,7 +192,7 @@ export default async function SubcontractDetailPage({ params }: Props) {
       />
       <NeoPanel title="Linked AP Bills" bodyClassName="p-0">
         {linkedApBills.length === 0 ? (
-          <p className="px-4 py-6 text-sm text-[var(--neo-text-secondary)]">
+          <p className="px-4 py-6 text-hh-body text-[var(--hh-text-secondary)]">
             No linked AP bills yet.
           </p>
         ) : (
@@ -210,12 +210,12 @@ export default async function SubcontractDetailPage({ params }: Props) {
             </thead>
             <tbody>
               {linkedApBills.map((bill) => (
-                <tr key={bill.id} className="border-b border-[var(--neo-border)] last:border-b-0">
+                <tr key={bill.id} className="border-b border-[var(--hh-border)] last:border-b-0">
                   <td className={tableRawTdClass}>
                     <Link href={`/bills/${bill.id}`} className="font-medium hover:underline">
                       {bill.bill_no ?? "Bill"}
                     </Link>
-                    <span className="mt-0.5 block text-xs text-[var(--neo-text-tertiary)]">
+                    <span className="mt-0.5 block text-hh-metadata text-[var(--hh-text-tertiary)]">
                       Due {formatDate(bill.due_date)}
                     </span>
                   </td>

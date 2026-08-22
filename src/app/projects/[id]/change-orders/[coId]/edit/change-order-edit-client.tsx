@@ -111,54 +111,64 @@ export function ChangeOrderEditClient({
         className="mb-6 grid gap-3 rounded border border-border/60 p-4 sm:grid-cols-2 lg:grid-cols-4"
       >
         <div>
-          <label className="mb-1 block text-xs text-muted-foreground">Title</label>
+          <label className="mb-1 block text-hh-metadata text-[var(--hh-text-secondary)]">
+            Title
+          </label>
           <Input
             name="title"
             defaultValue={changeOrder.title ?? ""}
             placeholder="Title"
-            className="h-8 text-sm"
+            className="h-8 text-hh-body"
           />
         </div>
         <div className="sm:col-span-2">
-          <label className="mb-1 block text-xs text-muted-foreground">Description</label>
+          <label className="mb-1 block text-hh-metadata text-[var(--hh-text-secondary)]">
+            Description
+          </label>
           <Input
             name="description"
             defaultValue={changeOrder.description ?? ""}
             placeholder="Description"
-            className="h-8 text-sm"
+            className="h-8 text-hh-body"
           />
         </div>
         <div>
-          <label className="mb-1 block text-xs text-muted-foreground">Amount (revenue)</label>
+          <label className="mb-1 block text-hh-metadata text-[var(--hh-text-secondary)]">
+            Amount (revenue)
+          </label>
           <Input
             name="amount"
             type="number"
             step="0.01"
             defaultValue={changeOrder.amount ?? ""}
             placeholder="0"
-            className="h-8 text-sm"
+            className="h-8 text-hh-body"
           />
         </div>
         <div>
-          <label className="mb-1 block text-xs text-muted-foreground">Cost impact</label>
+          <label className="mb-1 block text-hh-metadata text-[var(--hh-text-secondary)]">
+            Cost impact
+          </label>
           <Input
             name="costImpact"
             type="number"
             step="0.01"
             defaultValue={changeOrder.costImpact ?? ""}
             placeholder="0"
-            className="h-8 text-sm"
+            className="h-8 text-hh-body"
           />
         </div>
         <div>
-          <label className="mb-1 block text-xs text-muted-foreground">Schedule impact (days)</label>
+          <label className="mb-1 block text-hh-metadata text-[var(--hh-text-secondary)]">
+            Schedule impact (days)
+          </label>
           <Input
             name="scheduleImpactDays"
             type="number"
             step="1"
             defaultValue={changeOrder.scheduleImpactDays ?? ""}
             placeholder="0"
-            className="h-8 text-sm"
+            className="h-8 text-hh-body"
           />
         </div>
         <div className="flex items-end">
@@ -172,38 +182,47 @@ export function ChangeOrderEditClient({
         label="Line items"
         action={
           <form onSubmit={handleAdd} className="flex flex-wrap items-center gap-2">
-            <Input name="costCode" placeholder="Cost code" className="h-8 w-24 text-xs" />
+            <Input name="costCode" placeholder="Cost code" className="h-8 w-24 text-hh-metadata" />
             <Input
               name="description"
               placeholder="Description"
-              className="h-8 min-w-[120px] text-xs"
+              className="h-8 min-w-[120px] text-hh-metadata"
             />
             <Input
               name="qty"
               type="number"
               step="any"
               placeholder="Qty"
-              className="h-8 w-16 text-xs"
+              className="h-8 w-16 text-hh-metadata"
               defaultValue={1}
             />
-            <Input name="unit" placeholder="Unit" className="h-8 w-14 text-xs" defaultValue="EA" />
+            <Input
+              name="unit"
+              placeholder="Unit"
+              className="h-8 w-14 text-hh-metadata"
+              defaultValue="EA"
+            />
             <Input
               name="unitPrice"
               type="number"
               step="0.01"
               placeholder="Unit price"
-              className="h-8 w-24 text-xs"
+              className="h-8 w-24 text-hh-metadata"
             />
-            <Button type="submit" size="sm" className="h-8 text-xs" disabled={pending}>
+            <Button type="submit" size="sm" className="h-8 text-hh-metadata" disabled={pending}>
               Add
             </Button>
-            {validationError && <span className="text-xs text-destructive">{validationError}</span>}
+            {validationError && (
+              <span className="text-hh-metadata text-destructive">{validationError}</span>
+            )}
           </form>
         }
       />
       <Divider />
       {items.length === 0 ? (
-        <p className="py-6 text-sm text-muted-foreground">No line items. Add one above.</p>
+        <p className="py-6 text-hh-body text-[var(--hh-text-secondary)]">
+          No line items. Add one above.
+        </p>
       ) : (
         <DataTable<ChangeOrderItem>
           columns={lineColumns}
@@ -217,13 +236,13 @@ export function ChangeOrderEditClient({
           ]}
         />
       )}
-      <div className="mt-6 flex flex-col items-end gap-1 text-sm">
+      <div className="mt-6 flex flex-col items-end gap-1 text-hh-body">
         <div className="flex gap-8">
-          <span className="text-muted-foreground">Subtotal</span>
+          <span className="text-[var(--hh-text-secondary)]">Subtotal</span>
           <span className="num">${subtotal.toLocaleString()}</span>
         </div>
         <div className="flex gap-8 font-medium">
-          <span className="text-muted-foreground">Total</span>
+          <span className="text-[var(--hh-text-secondary)]">Total</span>
           <span className="num">${total.toLocaleString()}</span>
         </div>
       </div>

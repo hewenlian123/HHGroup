@@ -65,7 +65,7 @@ export async function DashboardKpiSection() {
         : `Could not load KPIs: ${msg}`;
     return (
       <p
-        className="border-b border-[var(--neo-border)] pb-3 text-sm text-[var(--neo-canvas-text-secondary)]"
+        className="border-b border-[var(--hh-border)] pb-3 text-hh-body text-[var(--hh-text-secondary)]"
         role="status"
       >
         {friendly}

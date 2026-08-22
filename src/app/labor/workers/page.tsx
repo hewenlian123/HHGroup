@@ -55,56 +55,38 @@ const EMPTY_FORM: WorkerForm = {
   status: "active",
 };
 
-const workersPageVars = {
-  "--workers-page": "var(--hh-l1-workspace)",
-  "--workers-panel": "var(--hh-l2-operational-surface)",
-  "--workers-elevated": "var(--hh-l2-operational-surface)",
-  "--workers-input": "var(--hh-l2-operational-surface)",
-  "--workers-row": "var(--hh-l2-operational-surface)",
-  "--workers-row-hover": "var(--neo-surface-hover)",
-  "--workers-border": "var(--neo-border)",
-  "--workers-border-soft": "var(--neo-border)",
-  "--workers-border-strong": "var(--neo-border-strong)",
-  "--workers-text": "var(--neo-text-primary)",
-  "--workers-secondary": "var(--neo-text-secondary)",
-  "--workers-muted": "var(--neo-text-tertiary)",
-  "--workers-faint": "var(--neo-text-tertiary)",
-  "--workers-amber": "#D8B46A",
-  "--workers-green": "#8BD7B1",
-} as React.CSSProperties;
-
 const workerShell =
-  "rounded-[18px] border border-[color:var(--workers-border)] bg-[var(--workers-elevated)] text-[color:var(--workers-text)] shadow-[0_1px_0_rgb(255_255_255_/_0.035)_inset,0_16px_34px_rgb(0_0_0_/_0.24)]";
+  "rounded-hh-task border border-[color:var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[color:var(--hh-text-primary)] shadow-operational";
 
 const workerKpiIcon =
-  "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[color:var(--workers-border)] bg-[var(--workers-panel)] text-[color:var(--workers-amber)] shadow-[0_1px_0_rgb(255_255_255_/_0.035)_inset] md:h-9 md:w-9";
+  "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[color:var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[color:var(--hh-information)] shadow-operational md:h-9 md:w-9";
 
 const workerKpiCardClass =
   "flex min-h-[72px] min-w-0 items-center gap-2.5 px-3 py-3 md:h-[82px] md:gap-3 md:px-4";
 
 const workerKpiLabelClass =
-  "text-[10px] font-semibold uppercase leading-none tracking-[0.06em] text-[color:var(--workers-muted)]";
+  "text-hh-status font-semibold uppercase leading-none tracking-normal text-[color:var(--hh-text-tertiary)]";
 
 const workerKpiValueClass =
-  "mt-1 truncate text-[20px] font-semibold tabular-nums leading-none tracking-normal text-[color:var(--workers-text)] md:text-[23px]";
+  "mt-1 truncate text-hh-financial-total font-semibold tabular-nums leading-none tracking-normal text-[color:var(--hh-text-primary)] ";
 
 const workerKpiMetaClass =
-  "mt-1 truncate text-[11px] leading-none text-[color:var(--workers-faint)]";
+  "mt-1 truncate text-hh-status leading-none text-[color:var(--hh-text-tertiary)]";
 
 const workerHeaderActionButton =
-  "h-9 rounded-full border-[color:rgb(216_180_106_/_0.30)] bg-[rgb(216_180_106_/_0.10)] px-3 text-[13px] font-semibold text-[color:var(--workers-amber)] shadow-[0_1px_0_rgb(255_255_255_/_0.035)_inset] transition-colors duration-150 hover:border-[color:rgb(216_180_106_/_0.42)] hover:bg-[rgb(216_180_106_/_0.15)] hover:text-[#F0D59A] active:bg-[rgb(216_180_106_/_0.18)] disabled:border-[color:var(--workers-border-soft)] disabled:bg-[var(--workers-input)] disabled:text-[color:var(--workers-faint)]";
+  "h-9 rounded-full border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 text-hh-control text-[var(--hh-text-secondary)] shadow-none transition-colors duration-150 hover:border-[var(--hh-border-strong)] hover:bg-[var(--hh-l3-hover)] hover:text-[var(--hh-text-primary)] disabled:text-[var(--hh-text-tertiary)]";
 
 const workerSecondaryButton =
-  "rounded-full border-[color:var(--workers-border)] bg-[var(--workers-panel)] text-[color:var(--workers-secondary)] shadow-[0_1px_0_rgb(255_255_255_/_0.03)_inset] transition-colors duration-150 hover:border-[color:var(--workers-border-strong)] hover:bg-[var(--workers-row-hover)] hover:text-[color:var(--workers-text)]";
+  "rounded-full border-[color:var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[color:var(--hh-text-secondary)] shadow-operational transition-colors duration-150 hover:border-[color:var(--hh-border-strong)] hover:bg-[var(--hh-l3-hover)] hover:text-[color:var(--hh-text-primary)]";
 
 const workerInputClass =
-  "h-10 rounded-full border-[color:var(--workers-border)] bg-[var(--workers-input)] text-[color:var(--workers-text)] placeholder:text-[color:var(--workers-faint)] shadow-none hover:bg-[var(--workers-panel)] focus-visible:border-[color:rgb(216_180_106_/_0.42)] focus-visible:ring-[rgb(216_180_106_/_0.18)]";
+  "h-10 rounded-full border-[color:var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[color:var(--hh-text-primary)] placeholder:text-[color:var(--hh-text-tertiary)] shadow-none hover:bg-[var(--hh-l3-hover)] focus-visible:border-[var(--hh-border-strong)] focus-visible:ring-[var(--hh-focus-ring)]";
 
 const workerFieldClass =
-  "h-10 rounded-lg border-[color:var(--workers-border)] bg-[var(--workers-input)] text-[color:var(--workers-text)] placeholder:text-[color:var(--workers-faint)] shadow-none hover:bg-[var(--workers-panel)] focus-visible:border-[color:rgb(216_180_106_/_0.42)] focus-visible:ring-[rgb(216_180_106_/_0.18)]";
+  "h-10 rounded-hh-standard border-[color:var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[color:var(--hh-text-primary)] placeholder:text-[color:var(--hh-text-tertiary)] shadow-none hover:bg-[var(--hh-l3-hover)] focus-visible:border-[var(--hh-border-strong)] focus-visible:ring-[var(--hh-focus-ring)]";
 
 const workerLabelClass =
-  "text-[10px] font-semibold uppercase leading-none tracking-[0.06em] text-[color:var(--workers-muted)]";
+  "text-hh-status font-semibold uppercase leading-none tracking-normal text-[color:var(--hh-text-tertiary)]";
 
 function workerInitials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -123,16 +105,16 @@ function WorkerStatusPill({ status }: { status: WorkerRow["status"] }) {
   return (
     <span
       className={cn(
-        "inline-flex h-6 items-center gap-1.5 rounded-full border bg-[var(--workers-panel)] px-2.5 text-[11px] font-semibold leading-none shadow-[0_1px_0_rgb(255_255_255_/_0.03)_inset]",
+        "inline-flex h-6 items-center gap-1.5 rounded-full border bg-[var(--hh-l2-operational-surface)] px-2.5 text-hh-status font-semibold leading-none shadow-operational",
         active
-          ? "border-[color:rgb(139_215_177_/_0.28)] text-[color:var(--workers-green)]"
-          : "border-[color:var(--workers-border)] text-[color:var(--workers-muted)]"
+          ? "border-[color:rgb(139_215_177_/_0.28)] text-[color:var(--hh-success)]"
+          : "border-[color:var(--hh-border)] text-[color:var(--hh-text-tertiary)]"
       )}
     >
       <span
         className={cn(
           "h-1.5 w-1.5 shrink-0 rounded-full",
-          active ? "bg-[var(--workers-green)]" : "bg-[var(--workers-faint)]"
+          active ? "bg-[var(--hh-success)]" : "bg-[var(--hh-text-tertiary)]"
         )}
         aria-hidden
       />
@@ -366,10 +348,7 @@ export default function LaborWorkersPage() {
   );
 
   return (
-    <div
-      style={workersPageVars}
-      className="neo-page-on-graphite min-w-0 overflow-x-hidden bg-[var(--workers-page)] pb-[max(1rem,env(safe-area-inset-bottom,0px))] pt-[max(0.35rem,env(safe-area-inset-top,0px))] text-[color:var(--workers-secondary)]"
-    >
+    <div className="min-w-0 overflow-x-hidden bg-[var(--hh-l0-canvas)] pb-[max(1rem,env(safe-area-inset-bottom,0px))] pt-[max(0.35rem,env(safe-area-inset-top,0px))] text-[color:var(--hh-text-secondary)]">
       <div
         className={cn(
           "page-container page-shell-wide flex min-w-0 flex-col gap-2 pb-4 pt-2 md:gap-3 md:pb-6 md:pt-3",
@@ -379,7 +358,7 @@ export default function LaborWorkersPage() {
       >
         <div className="hidden md:block">
           <PageHeader
-            className="gap-2 border-b border-[color:var(--workers-border-soft)] pb-4 lg:items-end lg:gap-x-5 [&_h1]:!text-[25px] [&_h1]:!font-semibold [&_h1]:!leading-none [&_h1]:!tracking-normal [&_h1]:!text-[color:var(--workers-text)] [&_p]:!mt-1.5 [&_p]:!max-w-xl [&_p]:!text-[14px] [&_p]:!leading-snug [&_p]:!text-[color:var(--workers-secondary)]"
+            className="gap-2 border-b border-[color:var(--hh-border)] pb-4 lg:items-end lg:gap-x-5 [&_h1]:!text-hh-page-title [&_h1]:!font-semibold [&_h1]:!leading-none [&_h1]:!tracking-normal [&_h1]:!text-[color:var(--hh-text-primary)] [&_p]:!mt-1.5 [&_p]:!max-w-xl [&_p]:!text-hh-body [&_p]:!leading-snug [&_p]:!text-[color:var(--hh-text-secondary)]"
             title="Workers"
             subtitle="Manage workers: trades, daily rate, default OT rate, and status."
             actions={
@@ -404,7 +383,7 @@ export default function LaborWorkersPage() {
             <MobileFabButton
               ariaLabel="+ New Worker"
               onClick={openCreate}
-              className="h-11 w-11 min-h-[44px] min-w-[44px] border-[color:rgb(216_180_106_/_0.30)] bg-[rgb(216_180_106_/_0.14)] text-[color:var(--workers-amber)]"
+              className="h-11 w-11 min-h-[44px] min-w-[44px] border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-information)]"
             />
           }
         />
@@ -452,12 +431,12 @@ export default function LaborWorkersPage() {
           </div>
         </div>
 
-        <NeoToolbar className="border-[color:var(--workers-border)] bg-[var(--workers-panel)] p-2.5 shadow-[0_1px_0_rgb(255_255_255_/_0.03)_inset,0_12px_30px_rgb(0_0_0_/_0.22)]">
+        <NeoToolbar className="border-[color:var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-2.5 shadow-operational">
           <div className="min-w-0 flex-1 space-y-1.5">
             <p className={workerKpiLabelClass}>Search</p>
             <div className="relative">
               <Search
-                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[color:var(--workers-muted)]"
+                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[color:var(--hh-text-tertiary)]"
                 aria-hidden
               />
               <Input
@@ -472,17 +451,17 @@ export default function LaborWorkersPage() {
         </NeoToolbar>
 
         {message ? (
-          <p className="rounded-lg border border-[color:var(--workers-border)] bg-[var(--workers-panel)] px-3 py-2 text-sm text-[color:var(--workers-secondary)]">
+          <p className="rounded-hh-standard border border-[color:var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 py-2 text-sm text-[color:var(--hh-text-secondary)]">
             {message}
           </p>
         ) : null}
         {editorOpen ? (
           <section className={cn(workerShell, "p-4")}>
-            <div className="mb-4 flex flex-col gap-1 border-b border-[color:var(--workers-border-soft)] pb-3">
-              <h2 className="text-[15px] font-semibold leading-none text-[color:var(--workers-text)]">
+            <div className="mb-4 flex flex-col gap-1 border-b border-[color:var(--hh-border)] pb-3">
+              <h2 className="text-hh-section-title font-semibold leading-none text-[color:var(--hh-text-primary)]">
                 {editorMode === "create" ? "Add Worker" : "Edit Worker"}
               </h2>
-              <p className="text-[12px] leading-snug text-[color:var(--workers-secondary)]">
+              <p className="text-hh-metadata leading-snug text-[color:var(--hh-text-secondary)]">
                 Update worker profile details without changing labor calculations.
               </p>
             </div>
@@ -541,14 +520,14 @@ export default function LaborWorkersPage() {
                     }))
                   }
                   disabled={submitting}
-                  className={cn(workerFieldClass, "rounded-lg")}
+                  className={cn(workerFieldClass, "rounded-hh-standard")}
                 >
                   <option value="active">Active</option>
                   <option value="inactive">Inactive</option>
                 </Select>
               </div>
             </div>
-            <div className="mt-4 flex flex-col-reverse items-stretch justify-end gap-2 border-t border-[color:var(--workers-border-soft)] pt-3 sm:flex-row sm:items-center">
+            <div className="mt-4 flex flex-col-reverse items-stretch justify-end gap-2 border-t border-[color:var(--hh-border)] pt-3 sm:flex-row sm:items-center">
               <Button
                 variant="outline"
                 size="sm"
@@ -582,7 +561,7 @@ export default function LaborWorkersPage() {
               {Array.from({ length: 5 }).map((_, i) => (
                 <NeoMobileCard
                   key={i}
-                  className="space-y-3 rounded-[18px] border-[color:var(--workers-border)] bg-[var(--workers-elevated)] p-3"
+                  className="space-y-3 rounded-hh-task border-[color:var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-3"
                 >
                   <div className="flex items-start gap-3">
                     <Skeleton className="h-10 w-10 shrink-0 rounded-full" />
@@ -600,12 +579,12 @@ export default function LaborWorkersPage() {
               ))}
             </div>
           ) : rows.length === 0 ? (
-            <NeoMobileCard className="flex flex-col items-center rounded-[18px] border-dashed border-[color:var(--workers-border)] bg-[var(--workers-panel)] px-4 py-10 text-center">
-              <Briefcase className="h-8 w-8 text-[color:var(--workers-muted)]" aria-hidden />
-              <p className="mt-3 text-sm font-medium text-[color:var(--workers-secondary)]">
+            <NeoMobileCard className="flex flex-col items-center rounded-hh-task border-dashed border-[color:var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-4 py-10 text-center">
+              <Briefcase className="h-8 w-8 text-[color:var(--hh-text-tertiary)]" aria-hidden />
+              <p className="mt-3 text-sm font-medium text-[color:var(--hh-text-secondary)]">
                 No workers yet
               </p>
-              <p className="mt-1 max-w-[260px] text-xs leading-snug text-[color:var(--workers-muted)]">
+              <p className="mt-1 max-w-[260px] text-xs leading-snug text-[color:var(--hh-text-tertiary)]">
                 Add a worker to start managing crew rates, trades, and labor status.
               </p>
               <Button
@@ -620,9 +599,9 @@ export default function LaborWorkersPage() {
               </Button>
             </NeoMobileCard>
           ) : filtered.length === 0 ? (
-            <NeoMobileCard className="flex flex-col items-center rounded-[18px] border-dashed border-[color:var(--workers-border)] bg-[var(--workers-panel)] px-4 py-10 text-center">
-              <Search className="h-8 w-8 text-[color:var(--workers-muted)]" aria-hidden />
-              <p className="mt-3 text-sm font-medium text-[color:var(--workers-secondary)]">
+            <NeoMobileCard className="flex flex-col items-center rounded-hh-task border-dashed border-[color:var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-4 py-10 text-center">
+              <Search className="h-8 w-8 text-[color:var(--hh-text-tertiary)]" aria-hidden />
+              <p className="mt-3 text-sm font-medium text-[color:var(--hh-text-secondary)]">
                 No workers match your search
               </p>
             </NeoMobileCard>
@@ -631,7 +610,7 @@ export default function LaborWorkersPage() {
               {filtered.map((w) => (
                 <NeoMobileCard
                   key={w.id}
-                  className="space-y-3 rounded-[18px] border-[color:var(--workers-border)] bg-[var(--workers-elevated)] p-3 shadow-[0_1px_0_rgb(255_255_255_/_0.03)_inset,0_12px_30px_rgb(0_0_0_/_0.22)]"
+                  className="space-y-3 rounded-hh-task border-[color:var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-3 shadow-operational"
                 >
                   <div className="flex items-start gap-3">
                     <button
@@ -640,16 +619,16 @@ export default function LaborWorkersPage() {
                       onClick={() => openEdit(w)}
                     >
                       <span
-                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[color:var(--workers-border)] bg-[var(--workers-panel)] text-[12px] font-semibold leading-none text-[color:var(--workers-secondary)] shadow-[0_1px_0_rgb(255_255_255_/_0.03)_inset]"
+                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[color:var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-hh-metadata font-semibold leading-none text-[color:var(--hh-text-secondary)] shadow-operational"
                         aria-hidden
                       >
                         {workerInitials(w.name || "Worker")}
                       </span>
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-[15px] font-semibold leading-snug text-[color:var(--workers-text)]">
+                        <span className="block truncate text-hh-section-title font-semibold leading-snug text-[color:var(--hh-text-primary)]">
                           {w.name || "—"}
                         </span>
-                        <span className="mt-0.5 block truncate text-[12px] leading-snug text-[color:var(--workers-secondary)]">
+                        <span className="mt-0.5 block truncate text-hh-metadata leading-snug text-[color:var(--hh-text-secondary)]">
                           {w.role?.trim() || "Trade not set"}
                         </span>
                       </span>
@@ -657,16 +636,16 @@ export default function LaborWorkersPage() {
                     <WorkerStatusPill status={w.status === "active" ? "active" : "inactive"} />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2 border-y border-[color:var(--workers-border-soft)] py-2 text-xs">
+                  <div className="grid grid-cols-2 gap-2 border-y border-[color:var(--hh-border)] py-2 text-xs">
                     <div className="min-w-0">
                       <p className={workerKpiLabelClass}>Daily Rate</p>
-                      <NeoAmount className="mt-1 block truncate text-[14px]">
+                      <NeoAmount className="mt-1 block truncate text-hh-body">
                         {formatDailyRate(w.half_day_rate)}
                       </NeoAmount>
                     </div>
                     <div className="min-w-0">
                       <p className={workerKpiLabelClass}>Default OT</p>
-                      <p className="mt-1 truncate text-[13px] font-medium tabular-nums text-[color:var(--workers-faint)]">
+                      <p className="mt-1 truncate text-hh-table-cell font-medium tabular-nums text-[color:var(--hh-text-tertiary)]">
                         —
                       </p>
                     </div>
@@ -674,10 +653,10 @@ export default function LaborWorkersPage() {
                       <p className={workerKpiLabelClass}>Phone</p>
                       <p
                         className={cn(
-                          "mt-1 truncate text-[13px] leading-snug",
+                          "mt-1 truncate text-hh-table-cell leading-snug",
                           w.phone?.trim()
-                            ? "text-[color:var(--workers-secondary)]"
-                            : "text-[color:var(--workers-faint)]"
+                            ? "text-[color:var(--hh-text-secondary)]"
+                            : "text-[color:var(--hh-text-tertiary)]"
                         )}
                       >
                         {w.phone?.trim() || "Phone not set"}
@@ -703,7 +682,7 @@ export default function LaborWorkersPage() {
                       size="sm"
                       className={cn(
                         workerSecondaryButton,
-                        "h-11 min-h-[44px] flex-1 text-rose-300 hover:border-rose-400/30 hover:bg-rose-400/[0.08] hover:text-rose-200"
+                        "h-11 min-h-[44px] flex-1 text-[var(--hh-danger)] hover:border-[var(--hh-danger-border)] hover:bg-[var(--hh-danger-soft-fill)] hover:text-[var(--hh-danger)]"
                       )}
                       onClick={() => void handleDelete(w)}
                       disabled={submitting || deletingId === w.id}
@@ -719,31 +698,31 @@ export default function LaborWorkersPage() {
         </div>
 
         <NeoTable
-          className="hidden border-[color:var(--workers-border)] bg-[var(--workers-panel)] shadow-[0_1px_0_rgb(255_255_255_/_0.03)_inset,0_18px_42px_rgb(0_0_0_/_0.24)] md:block"
+          className="hidden border-[color:var(--hh-border)] bg-[var(--hh-l2-operational-surface)] shadow-operational md:block"
           tableClassName="min-w-[860px] lg:min-w-0"
           busy={loading}
         >
           <thead>
-            <tr className="border-b border-[color:var(--workers-border)] bg-[var(--workers-elevated)]">
-              <th className="min-w-[180px] px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[color:var(--workers-muted)]">
+            <tr className="border-b border-[color:var(--hh-border)] bg-[var(--hh-l2-operational-surface)]">
+              <th className="min-w-[180px] px-3 py-2 text-left text-hh-status font-semibold uppercase tracking-normal text-[color:var(--hh-text-tertiary)]">
                 Name
               </th>
-              <th className="min-w-[128px] px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[color:var(--workers-muted)]">
+              <th className="min-w-[128px] px-3 py-2 text-left text-hh-status font-semibold uppercase tracking-normal text-[color:var(--hh-text-tertiary)]">
                 Trade
               </th>
-              <th className="min-w-[132px] px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[color:var(--workers-muted)]">
+              <th className="min-w-[132px] px-3 py-2 text-left text-hh-status font-semibold uppercase tracking-normal text-[color:var(--hh-text-tertiary)]">
                 Phone
               </th>
-              <th className="min-w-[132px] whitespace-nowrap px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-[0.06em] text-[color:var(--workers-muted)] tabular-nums">
+              <th className="min-w-[132px] whitespace-nowrap px-3 py-2 text-right text-hh-status font-semibold uppercase tracking-normal text-[color:var(--hh-text-tertiary)] tabular-nums">
                 Daily Rate
               </th>
-              <th className="min-w-[128px] whitespace-nowrap px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-[0.06em] text-[color:var(--workers-muted)] tabular-nums">
+              <th className="min-w-[128px] whitespace-nowrap px-3 py-2 text-right text-hh-status font-semibold uppercase tracking-normal text-[color:var(--hh-text-tertiary)] tabular-nums">
                 Default OT
               </th>
-              <th className="w-[108px] whitespace-nowrap px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[color:var(--workers-muted)]">
+              <th className="w-[108px] whitespace-nowrap px-3 py-2 text-left text-hh-status font-semibold uppercase tracking-normal text-[color:var(--hh-text-tertiary)]">
                 Status
               </th>
-              <th className="w-[150px] px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-[0.06em] text-[color:var(--workers-muted)]">
+              <th className="w-[150px] px-3 py-2 text-right text-hh-status font-semibold uppercase tracking-normal text-[color:var(--hh-text-tertiary)]">
                 Actions
               </th>
             </tr>
@@ -759,7 +738,7 @@ export default function LaborWorkersPage() {
                       <td key={j} className="px-3 py-2.5 align-middle">
                         <Skeleton
                           className={cn(
-                            "h-4 rounded-md",
+                            "h-4 rounded-hh-compact",
                             j === 5 ? "w-16" : j === 6 ? "ml-auto w-24" : "max-w-[10rem]"
                           )}
                         />
@@ -774,51 +753,51 @@ export default function LaborWorkersPage() {
                   key={w.id}
                   className={cn(
                     listTableRowClassName,
-                    "border-b border-[color:var(--workers-border-soft)] bg-[var(--workers-row)] hover:!bg-[var(--workers-row-hover)] focus-within:!bg-[var(--workers-row-hover)]"
+                    "border-b border-[color:var(--hh-border)] bg-[var(--hh-l2-operational-surface)] hover:!bg-[var(--hh-l3-hover)] focus-within:!bg-[var(--hh-l3-hover)]"
                   )}
                   onClick={() => openEdit(w)}
                 >
                   <td className="px-3 py-2.5 align-middle">
                     <div className="flex min-w-0 items-center gap-2.5">
                       <span
-                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[color:var(--workers-border)] bg-[var(--workers-elevated)] text-[11px] font-semibold leading-none text-[color:var(--workers-secondary)] shadow-[0_1px_0_rgb(255_255_255_/_0.03)_inset]"
+                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[color:var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-hh-status font-semibold leading-none text-[color:var(--hh-text-secondary)] shadow-operational"
                         aria-hidden
                       >
                         {workerInitials(w.name || "Worker")}
                       </span>
-                      <span className="line-clamp-2 text-[14px] font-semibold leading-snug text-[color:var(--workers-text)]">
+                      <span className="line-clamp-2 text-hh-body font-semibold leading-snug text-[color:var(--hh-text-primary)]">
                         {w.name || "—"}
                       </span>
                     </div>
                   </td>
-                  <td className="px-3 py-2.5 align-middle text-[13px] text-[color:var(--workers-secondary)]">
+                  <td className="px-3 py-2.5 align-middle text-hh-table-cell text-[color:var(--hh-text-secondary)]">
                     {w.role?.trim() ? (
                       <span className="line-clamp-2">{w.role}</span>
                     ) : (
-                      <span className="text-[color:var(--workers-faint)]">—</span>
+                      <span className="text-[color:var(--hh-text-tertiary)]">—</span>
                     )}
                   </td>
-                  <td className="px-3 py-2.5 align-middle text-[13px] text-[color:var(--workers-secondary)]">
+                  <td className="px-3 py-2.5 align-middle text-hh-table-cell text-[color:var(--hh-text-secondary)]">
                     {w.phone?.trim() ? (
                       <span className="line-clamp-2">{w.phone}</span>
                     ) : (
-                      <span className="text-[color:var(--workers-faint)]">—</span>
+                      <span className="text-[color:var(--hh-text-tertiary)]">—</span>
                     )}
                   </td>
                   <td className="px-3 py-2.5 text-right align-middle">
-                    <NeoAmount className="text-[13px]">
+                    <NeoAmount className="text-hh-table-cell">
                       {formatDailyRate(w.half_day_rate)}
                     </NeoAmount>
                   </td>
                   <td className="px-3 py-2.5 text-right align-middle">
-                    <span className="text-[13px] font-medium tabular-nums text-[color:var(--workers-faint)]">
+                    <span className="text-hh-table-cell font-medium tabular-nums text-[color:var(--hh-text-tertiary)]">
                       —
                     </span>
                   </td>
-                  <td className="px-3 py-2.5 align-middle text-[13px]">
+                  <td className="px-3 py-2.5 align-middle text-hh-table-cell">
                     <WorkerStatusPill status={w.status === "active" ? "active" : "inactive"} />
                   </td>
-                  <td className="px-3 py-2.5 align-middle text-[13px]">
+                  <td className="px-3 py-2.5 align-middle text-hh-table-cell">
                     <div className="flex items-center justify-end gap-2">
                       <Button
                         variant="outline"
@@ -838,7 +817,7 @@ export default function LaborWorkersPage() {
                         size="sm"
                         className={cn(
                           workerSecondaryButton,
-                          "h-8 min-h-8 rounded-full px-3 text-rose-300 hover:border-rose-400/30 hover:bg-rose-400/[0.08] hover:text-rose-200"
+                          "h-8 min-h-8 rounded-full px-3 text-[var(--hh-danger)] hover:border-[var(--hh-danger-border)] hover:bg-[var(--hh-danger-soft-fill)] hover:text-[var(--hh-danger)]"
                         )}
                         onClick={(e) => {
                           e.stopPropagation();
@@ -855,23 +834,23 @@ export default function LaborWorkersPage() {
               );
             })}
             {!loading && filtered.length === 0 ? (
-              <tr className="border-b border-[color:var(--workers-border-soft)] bg-[var(--workers-input)]">
+              <tr className="border-b border-[color:var(--hh-border)] bg-[var(--hh-l2-operational-surface)]">
                 <td
-                  className="px-3 py-10 text-center text-[color:var(--workers-secondary)]"
+                  className="px-3 py-10 text-center text-[color:var(--hh-text-secondary)]"
                   colSpan={7}
                 >
                   <div className="mx-auto flex max-w-[360px] flex-col items-center">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-full border border-[color:var(--workers-border)] bg-[var(--workers-panel)] text-[color:var(--workers-muted)] shadow-[0_1px_0_rgb(255_255_255_/_0.03)_inset]">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-full border border-[color:var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[color:var(--hh-text-tertiary)] shadow-operational">
                       {rows.length === 0 ? (
                         <Briefcase className="h-4 w-4" strokeWidth={1.75} aria-hidden />
                       ) : (
                         <Search className="h-4 w-4" strokeWidth={1.75} aria-hidden />
                       )}
                     </div>
-                    <p className="mt-3 text-[13px] font-medium text-[color:var(--workers-secondary)]">
+                    <p className="mt-3 text-hh-table-cell font-medium text-[color:var(--hh-text-secondary)]">
                       {rows.length === 0 ? "No workers yet" : "No workers match your search"}
                     </p>
-                    <p className="mt-1 text-[12px] leading-snug text-[color:var(--workers-muted)]">
+                    <p className="mt-1 text-hh-metadata leading-snug text-[color:var(--hh-text-tertiary)]">
                       {rows.length === 0
                         ? "Add a worker to start managing crew rates, trades, and labor status."
                         : "Try searching by worker, trade, or phone."}

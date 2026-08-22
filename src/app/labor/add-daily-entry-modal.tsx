@@ -24,12 +24,12 @@ const WORKER_ROW_ESTIMATE_PX = 54;
 const rdp = getDefaultClassNames();
 
 const modalScrollbar =
-  "[scrollbar-width:thin] [scrollbar-color:rgba(190,198,210,0.22)_transparent] [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[rgba(190,198,210,0.22)] [&::-webkit-scrollbar-thumb:hover]:bg-[rgba(190,198,210,0.34)]";
+  "[scrollbar-width:thin] [scrollbar-color:var(--hh-border-strong)_transparent] [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[var(--hh-border)] [&::-webkit-scrollbar-thumb:hover]:bg-[var(--hh-border-strong)]";
 
 const labelClass =
-  "text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]";
+  "text-hh-status font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]";
 const fieldClass =
-  "h-10 rounded-lg border-white/[0.09] bg-[#0d0f14] text-sm text-[var(--neo-text-primary)] shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] placeholder:text-[var(--neo-text-tertiary)] hover:border-white/[0.14] hover:bg-[#111318] focus-visible:border-[var(--neo-gold)] focus-visible:ring-[var(--neo-gold-ring)] max-md:min-h-[44px]";
+  "hh-type-text-entry h-10 rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-none placeholder:text-[var(--hh-text-tertiary)] hover:bg-[var(--hh-l3-hover)] focus-visible:border-[var(--hh-border-strong)] focus-visible:ring-[var(--hh-focus-ring)] max-md:min-h-[44px]";
 const workerGridClass =
   "grid grid-cols-[minmax(8.5rem,1.75fr)_4.4rem_3.35rem_3.35rem_3.45rem_5.6rem_5.7rem] items-center gap-2";
 
@@ -325,7 +325,7 @@ function AddDailyEntryDateField({
             aria-expanded={open}
             data-testid="add-daily-entry-date-button"
             onClick={() => setOpen(true)}
-            className="absolute right-1.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md border border-white/[0.08] bg-white/[0.035] text-[var(--neo-text-secondary)] transition-colors hover:border-white/[0.14] hover:bg-white/[0.07] hover:text-[var(--neo-text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)] max-md:h-9 max-md:w-9"
+            className="absolute right-1.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-hh-compact border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-secondary)] transition-colors hover:bg-[var(--hh-l3-hover)] hover:text-[var(--hh-text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)] max-md:h-9 max-md:w-9"
           >
             <CalendarDays className="h-4 w-4" aria-hidden />
           </button>
@@ -336,7 +336,7 @@ function AddDailyEntryDateField({
         sideOffset={8}
         collisionPadding={12}
         data-testid="add-daily-entry-date-popover"
-        className="z-[140] w-[min(300px,calc(100vw-24px))] rounded-2xl border border-[rgba(190,198,210,0.16)] bg-[#111318] p-3 text-[#F6F7FA] shadow-[0_24px_58px_rgba(0,0,0,0.46),inset_0_1px_0_rgba(255,255,255,0.055)]"
+        className="z-[140] w-[min(300px,calc(100vw-24px))] rounded-hh-task border border-[var(--hh-border-floating)] bg-[var(--hh-l4-floating-surface)] p-3 text-[var(--hh-text-primary)] shadow-floating"
         onCloseAutoFocus={(e) => e.preventDefault()}
       >
         <DayPicker
@@ -364,48 +364,51 @@ function AddDailyEntryDateField({
             ),
             caption_label: cn(
               rdp.caption_label,
-              "flex items-center justify-center text-sm font-semibold leading-none text-[#F6F7FA]"
+              "flex items-center justify-center text-sm font-semibold leading-none text-[var(--hh-text-primary)]"
             ),
             nav: cn(rdp.nav, "absolute right-0 top-0 z-10 flex h-8 items-center gap-1"),
             button_previous: cn(
               rdp.button_previous,
-              "flex h-8 w-8 items-center justify-center rounded-md border-0 bg-transparent text-[#BAC2CA] transition-colors hover:bg-white/[0.07] hover:text-white"
+              "flex h-8 w-8 items-center justify-center rounded-hh-compact border-0 bg-transparent text-[var(--hh-text-secondary)] transition-colors hover:bg-[var(--hh-l3-hover)] hover:text-[var(--hh-text-primary)]"
             ),
             button_next: cn(
               rdp.button_next,
-              "flex h-8 w-8 items-center justify-center rounded-md border-0 bg-transparent text-[#BAC2CA] transition-colors hover:bg-white/[0.07] hover:text-white"
+              "flex h-8 w-8 items-center justify-center rounded-hh-compact border-0 bg-transparent text-[var(--hh-text-secondary)] transition-colors hover:bg-[var(--hh-l3-hover)] hover:text-[var(--hh-text-primary)]"
             ),
-            weekdays: cn(rdp.weekdays, "text-[10px] font-semibold uppercase tracking-[0.06em]"),
-            weekday: cn(rdp.weekday, "w-8 text-center text-[#737C8C]"),
+            weekdays: cn(rdp.weekdays, "text-hh-status font-semibold uppercase tracking-normal"),
+            weekday: cn(rdp.weekday, "w-8 text-center text-[var(--hh-text-tertiary)]"),
             week: cn(rdp.week, "gap-1"),
-            day: cn(rdp.day, "h-8 w-8 rounded-md text-sm transition-colors hover:bg-white/[0.07]"),
+            day: cn(rdp.day, "h-8 w-8 rounded-hh-compact text-hh-body transition-colors"),
             day_button: cn(
               (rdp as unknown as Record<string, string>).day_button ?? "",
-              "flex h-8 w-8 items-center justify-center rounded-md text-sm font-medium leading-none text-[#E7EAEE]"
+              "flex h-8 w-8 items-center justify-center rounded-hh-compact text-sm font-medium leading-none text-[var(--hh-text-primary)]"
             ),
             today: cn(
               rdp.today,
-              "ring-1 ring-inset ring-[rgba(184,147,90,0.42)] [&_button]:text-[#F2D49B]"
+              "ring-1 ring-inset ring-[var(--hh-focus-ring)] [&_button]:text-[var(--hh-information)]"
             ),
             selected: cn(
               rdp.selected,
-              "bg-[rgba(184,147,90,0.22)] ring-0 hover:bg-[rgba(184,147,90,0.26)] [&_button]:border [&_button]:border-[rgba(184,147,90,0.46)] [&_button]:bg-[rgba(184,147,90,0.18)] [&_button]:text-[#FFE7B2]"
+              "bg-[var(--hh-l3-selected)] ring-0 [&_button]:border [&_button]:border-[var(--hh-border-strong)] [&_button]:bg-[var(--hh-action-primary)] [&_button]:text-[var(--hh-action-primary-foreground)]"
             ),
-            outside: cn(rdp.outside, "text-[#737C8C] opacity-55 [&_button]:text-[#737C8C]"),
+            outside: cn(
+              rdp.outside,
+              "text-[var(--hh-text-tertiary)] opacity-55 [&_button]:text-[var(--hh-text-tertiary)]"
+            ),
           }}
           components={{
             Chevron: (props) =>
               props.orientation === "left" ? (
-                <ChevronLeft className="h-4 w-4 text-[#BAC2CA]" aria-hidden />
+                <ChevronLeft className="h-4 w-4 text-[var(--hh-text-secondary)]" aria-hidden />
               ) : (
-                <ChevronRight className="h-4 w-4 text-[#BAC2CA]" aria-hidden />
+                <ChevronRight className="h-4 w-4 text-[var(--hh-text-secondary)]" aria-hidden />
               ),
           }}
           footer={
-            <div className="mt-2 flex items-center justify-between border-t border-white/[0.08] pt-2">
+            <div className="mt-2 flex items-center justify-between border-t border-[var(--hh-border)] pt-2">
               <button
                 type="button"
-                className="text-xs font-semibold text-[#D2B77F] transition-colors hover:text-[#FFE0A3] disabled:pointer-events-none disabled:opacity-45"
+                className="text-hh-control text-[var(--hh-text-secondary)] transition-colors hover:text-[var(--hh-text-primary)] disabled:pointer-events-none disabled:opacity-45"
                 disabled={!value}
                 onClick={() => {
                   onChange("");
@@ -417,7 +420,7 @@ function AddDailyEntryDateField({
               </button>
               <button
                 type="button"
-                className="text-xs font-semibold text-[#D2B77F] transition-colors hover:text-[#FFE0A3]"
+                className="text-hh-control text-[var(--hh-text-secondary)] transition-colors hover:text-[var(--hh-text-primary)]"
                 onClick={chooseToday}
               >
                 Today
@@ -521,31 +524,31 @@ const AddDailyEntryWorkerRow = React.memo(function AddDailyEntryWorkerRow({
     <div
       className={cn(
         workerGridClass,
-        "min-h-[54px] border-b border-white/[0.065] px-3 text-sm transition-colors last:border-b-0 hover:bg-white/[0.035] [&>div]:min-w-0",
-        fullyBlocked && "bg-white/[0.018] opacity-70 hover:bg-white/[0.018]"
+        "min-h-[54px] border-b border-[var(--hh-border)] px-3 text-sm transition-colors last:border-b-0 bg-[var(--hh-l3-hover)] [&>div]:min-w-0",
+        fullyBlocked && "bg-[var(--hh-l3-hover)] opacity-70 bg-[var(--hh-l3-hover)]"
       )}
       role="row"
     >
       <div className="pr-1">
         <span
-          className="block truncate text-[13px] font-semibold text-[var(--neo-text-primary)]"
+          className="block truncate text-hh-table-cell font-semibold text-[var(--hh-text-primary)]"
           title={worker.name}
         >
           {worker.name}
         </span>
         {existingLabel ? (
-          <span className="mt-0.5 flex min-w-0 items-center gap-1 text-[11px] font-medium text-[var(--neo-text-tertiary)]">
+          <span className="mt-0.5 flex min-w-0 items-center gap-1 text-hh-status font-medium text-[var(--hh-text-tertiary)]">
             <span className="truncate">{existingLabel}</span>
             <a
               href={existingHref}
-              className="shrink-0 text-[#D2B77F] underline-offset-4 hover:text-[#FFE0A3] hover:underline"
+              className="shrink-0 text-[var(--hh-warning)] underline-offset-4 hover:text-[var(--hh-warning)] hover:underline"
             >
               View
             </a>
           </span>
         ) : null}
       </div>
-      <div className="whitespace-nowrap text-right text-xs font-medium tabular-nums text-[var(--neo-text-secondary)]">
+      <div className="whitespace-nowrap text-right text-xs font-medium tabular-nums text-[var(--hh-text-secondary)]">
         {formatDailyRate(worker)}
       </div>
       <div className="flex justify-center">
@@ -554,9 +557,9 @@ const AddDailyEntryWorkerRow = React.memo(function AddDailyEntryWorkerRow({
           size="sm"
           variant="outline"
           className={cn(
-            "h-8 min-h-8 w-full rounded-md border-white/[0.09] bg-white/[0.035] px-0 text-[11px] font-semibold tracking-[0.04em] text-[var(--neo-text-secondary)] shadow-none hover:border-white/[0.14] hover:bg-white/[0.065] hover:text-[var(--neo-text-primary)] max-md:min-h-[44px]",
+            "h-8 min-h-8 w-full rounded-hh-compact border-[var(--hh-border)] bg-[var(--hh-l3-hover)] px-0 text-hh-status font-semibold tracking-normal text-[var(--hh-text-secondary)] shadow-none border-[var(--hh-border)] bg-[var(--hh-l3-hover)] hover:text-[var(--hh-text-primary)] max-md:min-h-[44px]",
             morning &&
-              "border-[rgba(184,147,90,0.5)] bg-[rgba(184,147,90,0.18)] text-[#F4D89E] hover:border-[rgba(184,147,90,0.6)] hover:bg-[rgba(184,147,90,0.22)] hover:text-[#FFE0A3]"
+              "border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] text-[var(--hh-warning)] border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] hover:text-[var(--hh-warning)]"
           )}
           onClick={onAm}
           disabled={morningDisabled}
@@ -570,9 +573,9 @@ const AddDailyEntryWorkerRow = React.memo(function AddDailyEntryWorkerRow({
           size="sm"
           variant="outline"
           className={cn(
-            "h-8 min-h-8 w-full rounded-md border-white/[0.09] bg-white/[0.035] px-0 text-[11px] font-semibold tracking-[0.04em] text-[var(--neo-text-secondary)] shadow-none hover:border-white/[0.14] hover:bg-white/[0.065] hover:text-[var(--neo-text-primary)] max-md:min-h-[44px]",
+            "h-8 min-h-8 w-full rounded-hh-compact border-[var(--hh-border)] bg-[var(--hh-l3-hover)] px-0 text-hh-status font-semibold tracking-normal text-[var(--hh-text-secondary)] shadow-none border-[var(--hh-border)] bg-[var(--hh-l3-hover)] hover:text-[var(--hh-text-primary)] max-md:min-h-[44px]",
             afternoon &&
-              "border-[rgba(184,147,90,0.5)] bg-[rgba(184,147,90,0.18)] text-[#F4D89E] hover:border-[rgba(184,147,90,0.6)] hover:bg-[rgba(184,147,90,0.22)] hover:text-[#FFE0A3]"
+              "border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] text-[var(--hh-warning)] border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] hover:text-[var(--hh-warning)]"
           )}
           onClick={onPm}
           disabled={afternoonDisabled}
@@ -603,7 +606,7 @@ const AddDailyEntryWorkerRow = React.memo(function AddDailyEntryWorkerRow({
             setOtDraft(v === 0 ? "" : String(v));
           }}
           disabled={fullyBlocked}
-          className="h-8 min-h-8 w-full min-w-0 rounded-md border-white/[0.09] bg-white/[0.035] px-1 text-center text-sm tabular-nums text-[var(--neo-text-primary)] hover:border-white/[0.14] hover:bg-white/[0.065] focus-visible:border-[var(--neo-gold)] focus-visible:ring-[var(--neo-gold-ring)] max-md:min-h-[44px] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+          className="h-8 min-h-8 w-full min-w-0 rounded-hh-compact border-[var(--hh-border)] bg-[var(--hh-l3-hover)] px-1 text-center text-sm tabular-nums text-[var(--hh-text-primary)] border-[var(--hh-border)] bg-[var(--hh-l3-hover)] focus-visible:border-[var(--hh-action-primary)] focus-visible:ring-[var(--hh-focus-ring)] max-md:min-h-[44px] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
         />
       </div>
       <div>
@@ -629,10 +632,10 @@ const AddDailyEntryWorkerRow = React.memo(function AddDailyEntryWorkerRow({
             setOtAmountDraft(v === 0 ? "" : String(v));
           }}
           disabled={fullyBlocked}
-          className="h-8 min-h-8 w-full min-w-0 rounded-md border-white/[0.09] bg-white/[0.035] px-1 text-center text-sm tabular-nums text-[var(--neo-text-primary)] hover:border-white/[0.14] hover:bg-white/[0.065] focus-visible:border-[var(--neo-gold)] focus-visible:ring-[var(--neo-gold-ring)] max-md:min-h-[44px] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+          className="h-8 min-h-8 w-full min-w-0 rounded-hh-compact border-[var(--hh-border)] bg-[var(--hh-l3-hover)] px-1 text-center text-sm tabular-nums text-[var(--hh-text-primary)] border-[var(--hh-border)] bg-[var(--hh-l3-hover)] focus-visible:border-[var(--hh-action-primary)] focus-visible:ring-[var(--hh-focus-ring)] max-md:min-h-[44px] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
         />
       </div>
-      <div className="pr-1 text-right text-xs font-semibold tabular-nums text-[var(--neo-text-secondary)]">
+      <div className="pr-1 text-right text-xs font-semibold tabular-nums text-[var(--hh-text-secondary)]">
         {morning || afternoon ? `$${total.toFixed(2)}` : "—"}
       </div>
     </div>
@@ -874,14 +877,14 @@ export function AddDailyEntryModal({ open, onOpenChange, onSuccess }: Props) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className={cn(
-          "w-[min(740px,calc(100vw-24px))] max-w-[740px] max-h-[calc(100vh-48px)] overflow-hidden rounded-[1.5rem] border-white/[0.11] bg-[#101318] p-0 text-[var(--neo-text-primary)] shadow-[0_34px_92px_rgba(0,0,0,0.52),0_8px_24px_rgba(0,0,0,0.32),inset_0_1px_0_rgba(255,255,255,0.055)]",
+          "w-[min(740px,calc(100vw-24px))] max-w-[740px] max-h-[calc(100vh-48px)] overflow-hidden rounded-hh-task border border-[var(--hh-border-floating)] bg-[var(--hh-l5-task-surface)] p-0 text-[var(--hh-text-primary)] shadow-task",
           "flex flex-col gap-0",
-          "max-md:!bottom-auto max-md:!left-1/2 max-md:!right-auto max-md:!top-1/2 max-md:!w-[calc(100vw-24px)] max-md:!max-w-[calc(100vw-24px)] max-md:!-translate-x-1/2 max-md:!-translate-y-1/2 max-md:!rounded-[1.5rem] max-md:!border-b max-md:!max-h-[calc(100dvh-24px)]",
-          "[&>button.absolute]:right-4 [&>button.absolute]:top-4 [&>button.absolute]:h-9 [&>button.absolute]:w-9 [&>button.absolute]:rounded-lg [&>button.absolute]:border [&>button.absolute]:border-white/[0.08] [&>button.absolute]:bg-white/[0.035] [&>button.absolute]:text-[var(--neo-text-secondary)] [&>button.absolute]:opacity-100 [&>button.absolute]:hover:border-white/[0.16] [&>button.absolute]:hover:bg-white/[0.08] [&>button.absolute]:hover:text-white"
+          "max-md:!bottom-auto max-md:!left-1/2 max-md:!right-auto max-md:!top-1/2 max-md:!w-[calc(100vw-24px)] max-md:!max-w-[calc(100vw-24px)] max-md:!-translate-x-1/2 max-md:!-translate-y-1/2 max-md:!rounded-hh-task max-md:!border-b max-md:!max-h-[calc(100dvh-24px)]",
+          "[&>button.absolute]:right-4 [&>button.absolute]:top-4 [&>button.absolute]:h-9 [&>button.absolute]:w-9 [&>button.absolute]:rounded-hh-standard [&>button.absolute]:border [&>button.absolute]:border-[var(--hh-border)] [&>button.absolute]:bg-[var(--hh-l2-operational-surface)] [&>button.absolute]:text-[var(--hh-text-secondary)] [&>button.absolute]:opacity-100 [&>button.absolute]:hover:bg-[var(--hh-l3-hover)] [&>button.absolute]:hover:text-[var(--hh-text-primary)]"
         )}
       >
-        <DialogHeader className="sticky top-0 z-20 shrink-0 space-y-0 border-b border-white/[0.08] bg-[#101318]/95 px-5 py-4 pr-16 backdrop-blur">
-          <DialogTitle className="text-[17px] font-semibold tracking-normal text-[#F6F7FA]">
+        <DialogHeader className="sticky top-0 z-20 shrink-0 space-y-0 border-b border-[var(--hh-border)] bg-[var(--hh-l5-task-surface)] px-5 py-4 pr-16">
+          <DialogTitle className="text-hh-section-title font-semibold tracking-normal text-[var(--hh-text-primary)]">
             Add Daily Entry
           </DialogTitle>
         </DialogHeader>
@@ -902,10 +905,7 @@ export function AddDailyEntryModal({ open, onOpenChange, onSuccess }: Props) {
                 <select
                   value={projectId}
                   onChange={(e) => setProjectId(e.target.value)}
-                  className={cn(
-                    fieldClass,
-                    "w-full px-3 [color-scheme:dark] focus-visible:outline-none"
-                  )}
+                  className={cn(fieldClass, "w-full px-3  focus-visible:outline-none")}
                   required
                 >
                   <option value="">Select project</option>
@@ -921,19 +921,19 @@ export function AddDailyEntryModal({ open, onOpenChange, onSuccess }: Props) {
                 <AddDailyEntryDateField value={workDate} onChange={handleWorkDateChange} />
               </div>
             </div>
-            <div className="rounded-xl border border-white/[0.07] bg-white/[0.025] px-3 py-2">
-              <p className="text-[11px] leading-5 text-[var(--neo-text-tertiary)]">
+            <div className="rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l3-hover)] px-3 py-2">
+              <p className="text-hh-status leading-5 text-[var(--hh-text-tertiary)]">
                 Existing visible entries only block the matching AM/PM session. Cancelled, deleted,
                 or hidden rows do not block new time.
               </p>
             </div>
-            <div className="min-w-0 overflow-hidden rounded-xl border border-white/[0.08] bg-[#0d0f14] shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]">
-              <div className="flex flex-col gap-2 border-b border-white/[0.08] bg-[#11151c] px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0 overflow-hidden rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] shadow-operational">
+              <div className="flex flex-col gap-2 border-b border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0 space-y-1">
                   <label className={labelClass} htmlFor="add-daily-worker-search">
                     Search workers
                   </label>
-                  <p className="text-[11px] text-[var(--neo-text-tertiary)]">
+                  <p className="text-hh-status text-[var(--hh-text-tertiary)]">
                     {pluralizeWorkers(displayedWorkers.length)}
                   </p>
                 </div>
@@ -951,7 +951,7 @@ export function AddDailyEntryModal({ open, onOpenChange, onSuccess }: Props) {
                   <div
                     className={cn(
                       workerGridClass,
-                      "border-b border-white/[0.08] bg-[#11151c] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]"
+                      "border-b border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 py-2 text-hh-status font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]"
                     )}
                     role="row"
                   >
@@ -966,7 +966,7 @@ export function AddDailyEntryModal({ open, onOpenChange, onSuccess }: Props) {
                     <div className="pr-1 text-right">Total</div>
                   </div>
                   {displayedWorkers.length === 0 ? (
-                    <div className="px-3 py-8 text-center text-sm font-medium text-[var(--neo-text-tertiary)]">
+                    <div className="px-3 py-8 text-center text-sm font-medium text-[var(--hh-text-tertiary)]">
                       No workers found
                     </div>
                   ) : displayedWorkers.length > WORKER_LIST_VIRTUAL_THRESHOLD ? (
@@ -1033,7 +1033,7 @@ export function AddDailyEntryModal({ open, onOpenChange, onSuccess }: Props) {
                 </div>
               </div>
             </div>
-            <div className="rounded-xl border border-white/[0.08] bg-[#0d0f14] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]">
+            <div className="rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-3 shadow-operational">
               <div className="grid gap-3 sm:grid-cols-[0.85fr_1.4fr]">
                 <div className="space-y-1.5">
                   <label className={labelClass}>Cost code</label>
@@ -1056,9 +1056,9 @@ export function AddDailyEntryModal({ open, onOpenChange, onSuccess }: Props) {
               </div>
             </div>
           </div>
-          <DialogFooter className="m-0 shrink-0 border-t border-white/[0.08] bg-[#111318]/95 px-5 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-[0_-14px_34px_rgba(0,0,0,0.18)] backdrop-blur sm:flex-row sm:items-center sm:justify-end">
+          <DialogFooter className="m-0 shrink-0 border-t border-[var(--hh-border)] bg-[var(--hh-l5-task-surface)] px-5 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:flex-row sm:items-center sm:justify-end">
             {error ? (
-              <p className="min-w-0 text-left text-sm font-medium text-red-300 sm:mr-auto">
+              <p className="min-w-0 text-left text-sm font-medium text-[var(--hh-danger)] sm:mr-auto">
                 {error}
               </p>
             ) : null}
@@ -1067,7 +1067,7 @@ export function AddDailyEntryModal({ open, onOpenChange, onSuccess }: Props) {
               variant="ghost"
               size="sm"
               onClick={() => onOpenChange(false)}
-              className="h-9 rounded-lg px-4 text-[var(--neo-text-secondary)] hover:bg-white/[0.06] hover:text-[var(--neo-text-primary)] max-lg:min-h-[44px]"
+              className="h-9 rounded-hh-standard px-4 text-[var(--hh-text-secondary)] hover:bg-[var(--hh-l3-hover)] hover:text-[var(--hh-text-primary)] max-lg:min-h-[44px]"
             >
               Cancel
             </Button>
@@ -1075,7 +1075,7 @@ export function AddDailyEntryModal({ open, onOpenChange, onSuccess }: Props) {
               type="submit"
               size="sm"
               disabled={busy}
-              className="h-9 rounded-lg border-transparent bg-[var(--neo-gold)] px-4 text-zinc-950 shadow-[0_10px_24px_rgba(184,147,90,0.18)] hover:bg-[var(--neo-gold-soft)] max-lg:min-h-[44px]"
+              className="h-9 rounded-hh-standard border-transparent bg-[var(--hh-action-primary)] px-4 text-[var(--hh-action-primary-foreground)] shadow-none hover:opacity-90 max-lg:min-h-[44px]"
             >
               <SubmitSpinner loading={busy} className="mr-2" />
               {busy ? "Saving…" : "Save"}

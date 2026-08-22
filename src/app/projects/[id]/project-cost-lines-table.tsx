@@ -52,7 +52,7 @@ export function ProjectCostLinesTable({
             </Button>
             <Link
               href={`/financial/expenses?project_id=${encodeURIComponent(projectId)}`}
-              className="text-[11px] font-medium text-[var(--neo-text-secondary)] underline-offset-2 hover:text-[var(--neo-text-primary)] hover:underline"
+              className="text-hh-status font-medium text-[var(--hh-text-secondary)] underline-offset-2 hover:text-[var(--hh-text-primary)] hover:underline"
             >
               Open expenses for this project
             </Link>
@@ -65,7 +65,7 @@ export function ProjectCostLinesTable({
   return (
     <>
       {hint ? (
-        <p className="mb-2 rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-3 py-2 text-[12px] leading-snug text-[var(--neo-text-secondary)]">
+        <p className="mb-2 rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 py-2 text-hh-metadata leading-snug text-[var(--hh-text-secondary)]">
           {hint}
         </p>
       ) : null}
@@ -78,17 +78,17 @@ export function ProjectCostLinesTable({
               onClick={() => openRow(row)}
             >
               <div className="flex items-start justify-between gap-2">
-                <span className="font-mono text-[13px] tabular-nums text-[var(--neo-text-secondary)]">
+                <span className="hh-fin text-hh-table-cell tabular-nums text-[var(--hh-text-secondary)]">
                   {row.date}
                 </span>
-                <NeoAmount tone="expense" className="text-[13px]">
+                <NeoAmount tone="expense" className="text-hh-table-cell">
                   −${Math.abs(row.amount).toLocaleString()}
                 </NeoAmount>
               </div>
-              <div className="text-[13px] font-medium text-[var(--neo-text-primary)]">
+              <div className="text-hh-table-cell font-medium text-[var(--hh-text-primary)]">
                 {vendorDescription(row)}
               </div>
-              <div className="flex flex-wrap gap-x-2 text-[12px] text-[var(--neo-text-secondary)]">
+              <div className="flex flex-wrap gap-x-2 text-hh-metadata text-[var(--hh-text-secondary)]">
                 <span>{row.category}</span>
                 <span aria-hidden>·</span>
                 <span>{row.paymentSource || "—"}</span>
@@ -98,7 +98,7 @@ export function ProjectCostLinesTable({
         ))}
       </div>
 
-      <NeoTable className="hidden md:block" tableClassName="min-w-[640px] text-sm">
+      <NeoTable className="hidden md:block" tableClassName="min-w-[640px] text-hh-body">
         <thead>
           <tr>
             <th className={tableRawThClass}>Date</th>
@@ -124,22 +124,32 @@ export function ProjectCostLinesTable({
               tabIndex={0}
               aria-label={`Open cost line ${row.vendorName}`}
             >
-              <td className={cn(tableRawTdClass, "font-mono text-[13px] tabular-nums")}>
+              <td className={cn(tableRawTdClass, "hh-fin text-hh-table-cell tabular-nums")}>
                 {row.date}
               </td>
-              <td className={cn(tableRawTdClass, "text-[13px] font-medium")}>
+              <td className={cn(tableRawTdClass, "text-hh-table-cell font-medium")}>
                 {vendorDescription(row)}
               </td>
-              <td className={cn(tableRawTdClass, "text-[13px] text-[var(--neo-text-secondary)]")}>
+              <td
+                className={cn(
+                  tableRawTdClass,
+                  "text-hh-table-cell text-[var(--hh-text-secondary)]"
+                )}
+              >
                 {row.category}
               </td>
-              <td className={cn(tableRawTdClass, "text-[13px] text-[var(--neo-text-secondary)]")}>
+              <td
+                className={cn(
+                  tableRawTdClass,
+                  "text-hh-table-cell text-[var(--hh-text-secondary)]"
+                )}
+              >
                 {row.paymentSource || "—"}
               </td>
               <td
                 className={cn(
                   tableRawTdClass,
-                  "text-right font-mono text-[13px] font-medium tabular-nums"
+                  "text-right hh-fin text-hh-table-cell font-medium tabular-nums"
                 )}
               >
                 <NeoAmount tone="expense">−${Math.abs(row.amount).toLocaleString()}</NeoAmount>
@@ -152,30 +162,30 @@ export function ProjectCostLinesTable({
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent
           side="right"
-          className="dark flex w-full flex-col gap-0 border-[var(--neo-border)] bg-[var(--neo-surface-raised)] p-0 text-[var(--neo-text-primary)] sm:max-w-[480px] sm:p-6"
+          className="flex w-full flex-col gap-0 border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-0 text-[var(--hh-text-primary)] sm:max-w-[480px] sm:p-6"
         >
-          <SheetHeader className="border-b border-[var(--neo-border)] px-4 py-3 sm:border-0 sm:px-0 sm:py-0">
-            <SheetTitle className="text-base">Cost line</SheetTitle>
+          <SheetHeader className="border-b border-[var(--hh-border)] px-4 py-3 sm:border-0 sm:px-0 sm:py-0">
+            <SheetTitle className="text-hh-body">Cost line</SheetTitle>
           </SheetHeader>
           {selected ? (
-            <div className="flex min-h-0 flex-1 flex-col space-y-4 overflow-y-auto px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 text-sm sm:px-0 sm:pb-0">
+            <div className="flex min-h-0 flex-1 flex-col space-y-4 overflow-y-auto px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 text-hh-body sm:px-0 sm:pb-0">
               <div className="space-y-1">
-                <div className="text-xs uppercase tracking-normal text-[var(--neo-text-tertiary)]">
+                <div className="text-hh-metadata uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                   Vendor / description
                 </div>
-                <div className="font-medium text-[var(--neo-text-primary)]">
+                <div className="font-medium text-[var(--hh-text-primary)]">
                   {vendorDescription(selected)}
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <div className="text-xs uppercase tracking-normal text-[var(--neo-text-tertiary)]">
+                  <div className="text-hh-metadata uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                     Date
                   </div>
-                  <div className="tabular-nums text-[var(--neo-text-primary)]">{selected.date}</div>
+                  <div className="tabular-nums text-[var(--hh-text-primary)]">{selected.date}</div>
                 </div>
                 <div className="space-y-1">
-                  <div className="text-xs uppercase tracking-normal text-[var(--neo-text-tertiary)]">
+                  <div className="text-hh-metadata uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                     Amount
                   </div>
                   <NeoAmount tone="expense" className="block">
@@ -184,24 +194,22 @@ export function ProjectCostLinesTable({
                 </div>
               </div>
               <div className="space-y-1">
-                <div className="text-xs uppercase tracking-normal text-[var(--neo-text-tertiary)]">
+                <div className="text-hh-metadata uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                   Category
                 </div>
-                <div className="text-[var(--neo-text-primary)]">{selected.category}</div>
+                <div className="text-[var(--hh-text-primary)]">{selected.category}</div>
               </div>
               <div className="space-y-1">
-                <div className="text-xs uppercase tracking-normal text-[var(--neo-text-tertiary)]">
+                <div className="text-hh-metadata uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                   Source / payment
                 </div>
-                <div className="text-[var(--neo-text-primary)]">
-                  {selected.paymentSource || "—"}
-                </div>
+                <div className="text-[var(--hh-text-primary)]">{selected.paymentSource || "—"}</div>
               </div>
 
-              <div className="border-t border-[var(--neo-border)] pt-2">
+              <div className="border-t border-[var(--hh-border)] pt-2">
                 <Link
                   href={`/financial/expenses/${selected.expenseId}`}
-                  className="text-sm font-medium text-[var(--neo-text-secondary)] hover:text-[var(--neo-text-primary)]"
+                  className="text-hh-body font-medium text-[var(--hh-text-secondary)] hover:text-[var(--hh-text-primary)]"
                 >
                   Open expense
                 </Link>

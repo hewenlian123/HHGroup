@@ -137,13 +137,18 @@ export function EditProjectModal({ open, onOpenChange, project, onSave }: Props)
             <Button
               type="button"
               variant="outline"
-              className="h-10 rounded-md"
+              className="h-10 rounded-hh-standard"
               onClick={() => onOpenChange(false)}
               disabled={saving}
             >
               Cancel
             </Button>
-            <Button type="submit" className="h-10 rounded-md" disabled={saving} aria-busy={saving}>
+            <Button
+              type="submit"
+              className="h-10 rounded-hh-standard"
+              disabled={saving}
+              aria-busy={saving}
+            >
               <SubmitSpinner loading={saving} className="mr-2" />
               {saving ? "Saving…" : "Save"}
             </Button>

@@ -182,7 +182,7 @@ export function EditEntryModal(props: {
             <select
               value={projectId}
               onChange={(e) => setProjectId(e.target.value)}
-              className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+              className="h-9 w-full rounded-hh-compact border border-input bg-transparent px-3 text-sm"
             >
               <option value="">—</option>
               {projects.map((p) => (
@@ -211,17 +211,17 @@ export function EditEntryModal(props: {
                 setSession(nextSession);
                 setCostAmount(String(basePayForSession(nextSession, dailyRate, basePay)));
               }}
-              className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+              className="h-9 w-full rounded-hh-compact border border-input bg-transparent px-3 text-sm"
             >
               <option value="full_day">Full Day</option>
               <option value="morning">Morning</option>
               <option value="afternoon">Afternoon</option>
             </select>
           </div>
-          <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-3">
+          <div className="rounded-hh-standard border border-border/60 bg-muted/20 px-3 py-3">
             <div className="grid grid-cols-3 gap-3">
               <div>
-                <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+                <p className="text-hh-status font-medium uppercase tracking-normal text-muted-foreground">
                   Base Pay
                 </p>
                 <p className="mt-1 text-sm font-semibold tabular-nums text-foreground">
@@ -229,7 +229,7 @@ export function EditEntryModal(props: {
                 </p>
               </div>
               <div className="text-center">
-                <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+                <p className="text-hh-status font-medium uppercase tracking-normal text-muted-foreground">
                   Overtime
                 </p>
                 <p className="mt-1 text-sm font-semibold tabular-nums text-foreground">
@@ -237,7 +237,7 @@ export function EditEntryModal(props: {
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+                <p className="text-hh-status font-medium uppercase tracking-normal text-muted-foreground">
                   Total
                 </p>
                 <p className="mt-1 text-sm font-semibold tabular-nums text-foreground">
@@ -245,11 +245,11 @@ export function EditEntryModal(props: {
                 </p>
               </div>
             </div>
-            <p className="mt-2 text-[11px] leading-4 text-muted-foreground">
+            <p className="mt-2 text-hh-status leading-4 text-muted-foreground">
               Daily rate: {rateSummary}. Overtime is added on top of the base session pay.
             </p>
           </div>
-          <div className="grid grid-cols-1 gap-3 rounded-lg border border-border/60 bg-muted/10 p-3 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 rounded-hh-standard border border-border/60 bg-muted/10 p-3 sm:grid-cols-2">
             <div className="space-y-2">
               <label className="text-xs font-medium text-muted-foreground">Overtime Hours</label>
               <Input
@@ -272,7 +272,7 @@ export function EditEntryModal(props: {
                 inputMode="decimal"
               />
             </div>
-            <p className="text-[11px] leading-4 text-muted-foreground sm:col-span-2">
+            <p className="text-hh-status leading-4 text-muted-foreground sm:col-span-2">
               Overtime is tracked separately. Fixed amount is entered manually.
             </p>
           </div>
@@ -285,7 +285,7 @@ export function EditEntryModal(props: {
               placeholder="Optional"
             />
           </div>
-          <div className="rounded-lg border border-border/60">
+          <div className="rounded-hh-standard border border-border/60">
             <button
               type="button"
               data-testid="labor-edit-advanced-toggle"
@@ -334,7 +334,7 @@ export function EditEntryModal(props: {
           <Button
             variant="outline"
             size="sm"
-            className="rounded-sm"
+            className="rounded-hh-compact"
             onClick={() => onOpenChange(false)}
             disabled={busy}
           >
@@ -342,7 +342,7 @@ export function EditEntryModal(props: {
           </Button>
           <Button
             size="sm"
-            className="rounded-sm bg-[#111111] text-white hover:bg-[#111111]/90"
+            className="rounded-hh-compact bg-[var(--hh-action-primary)] text-[var(--hh-action-primary-foreground)] hover:bg-[var(--hh-action-primary)]"
             onClick={handleSave}
             disabled={busy}
           >

@@ -142,8 +142,8 @@ export function ProjectMaterialsTab({
       {message && (
         <p
           className={cn(
-            "text-sm",
-            message.includes("saved") ? "text-hh-profit-positive" : "text-red-600"
+            "text-hh-body",
+            message.includes("saved") ? "text-hh-profit-positive" : "text-[var(--hh-danger)]"
           )}
         >
           {message}
@@ -155,7 +155,7 @@ export function ProjectMaterialsTab({
           <Button
             size="sm"
             variant="outline"
-            className="rounded-sm"
+            className="rounded-hh-compact"
             onClick={handleGeneratePdf}
             disabled={generating}
           >
@@ -163,7 +163,7 @@ export function ProjectMaterialsTab({
           </Button>
           <Button
             size="sm"
-            className="rounded-sm bg-[#111111] text-white hover:bg-[#111111]/90"
+            className="rounded-hh-compact bg-[var(--hh-action-primary)] text-[var(--hh-action-primary-foreground)] hover:bg-[var(--hh-action-primary)]/90"
             onClick={openModal}
           >
             + Add Selection
@@ -173,28 +173,28 @@ export function ProjectMaterialsTab({
 
       <div className="airtable-table-wrap airtable-table-wrap--ruled">
         {rows.length === 0 ? (
-          <div className="py-10 text-center text-sm text-muted-foreground">
+          <div className="py-10 text-center text-hh-body text-[var(--hh-text-secondary)]">
             No selections yet. Add one for this project.
           </div>
         ) : (
           <div className="airtable-table-scroll">
-            <table className="w-full text-sm">
+            <table className="w-full text-hh-body">
               <thead>
                 <tr>
                   <th className="h-8 w-10 px-2" aria-label="Photo" />
-                  <th className="h-8 px-2 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] sm:px-3">
+                  <th className="h-8 px-2 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] sm:px-3">
                     Item
                   </th>
-                  <th className="h-8 px-2 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] sm:px-3">
+                  <th className="h-8 px-2 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] sm:px-3">
                     Category
                   </th>
-                  <th className="h-8 px-2 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] sm:px-3">
+                  <th className="h-8 px-2 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] sm:px-3">
                     Material
                   </th>
-                  <th className="hidden h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] sm:table-cell">
+                  <th className="hidden h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] sm:table-cell">
                     Supplier
                   </th>
-                  <th className="h-8 px-2 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] sm:px-3">
+                  <th className="h-8 px-2 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] sm:px-3">
                     Status
                   </th>
                 </tr>
@@ -208,7 +208,7 @@ export function ProjectMaterialsTab({
                           href={photoUrl(row.material_photo_url)}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="block w-9 h-9 rounded-sm border border-border/60 overflow-hidden bg-muted/30"
+                          className="block w-9 h-9 rounded-hh-compact border border-border/60 overflow-hidden bg-muted/30"
                         >
                           <img
                             src={photoUrl(row.material_photo_url)}
@@ -218,32 +218,32 @@ export function ProjectMaterialsTab({
                         </a>
                       ) : (
                         <span
-                          className="block w-9 h-9 rounded-sm border border-border/60 bg-muted/30"
+                          className="block w-9 h-9 rounded-hh-compact border border-border/60 bg-muted/30"
                           aria-hidden
                         />
                       )}
                     </td>
-                    <td className="h-11 min-h-[44px] px-2 py-0 align-middle text-[13px] font-medium sm:px-3">
+                    <td className="h-11 min-h-[44px] px-2 py-0 align-middle text-hh-table-cell font-medium sm:px-3">
                       {row.item || "—"}
                     </td>
-                    <td className="h-11 min-h-[44px] px-2 py-0 align-middle text-[13px] text-muted-foreground sm:px-3">
+                    <td className="h-11 min-h-[44px] px-2 py-0 align-middle text-hh-table-cell text-[var(--hh-text-secondary)] sm:px-3">
                       {row.category || "—"}
                     </td>
-                    <td className="h-11 min-h-[44px] px-2 py-0 align-middle text-[13px] text-muted-foreground sm:px-3">
+                    <td className="h-11 min-h-[44px] px-2 py-0 align-middle text-hh-table-cell text-[var(--hh-text-secondary)] sm:px-3">
                       {row.material_name || "—"}
                     </td>
-                    <td className="hidden h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] text-muted-foreground sm:table-cell">
+                    <td className="hidden h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell text-[var(--hh-text-secondary)] sm:table-cell">
                       {row.supplier ?? "—"}
                     </td>
-                    <td className="h-11 min-h-[44px] px-2 py-0 align-middle text-[13px] sm:px-3">
+                    <td className="h-11 min-h-[44px] px-2 py-0 align-middle text-hh-table-cell sm:px-3">
                       <span
                         className={cn(
-                          "inline-flex rounded-sm px-1.5 py-0.5 text-xs font-medium",
+                          "inline-flex rounded-hh-compact px-1.5 py-0.5 text-hh-metadata font-medium",
                           row.status === "Ordered" &&
-                            "bg-[#DCFCE7] text-[#166534] dark:bg-green-950 dark:text-green-300",
+                            "bg-[var(--hh-success-soft-fill)] text-[var(--hh-success)] dark:bg-[var(--hh-success-soft-fill)] dark:text-[var(--hh-success)]",
                           row.status === "Selected" &&
-                            "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300",
-                          row.status === "Pending" && "bg-muted text-muted-foreground"
+                            "bg-[var(--hh-information-soft-fill)] text-[var(--hh-information)] dark:bg-[var(--hh-information-soft-fill)] dark:text-[var(--hh-information)]",
+                          row.status === "Pending" && "bg-muted text-[var(--hh-text-secondary)]"
                         )}
                       >
                         {row.status}
@@ -258,23 +258,27 @@ export function ProjectMaterialsTab({
       </div>
 
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="max-w-lg rounded-sm border-border/60 p-6">
+        <DialogContent className="max-w-lg rounded-hh-compact border-border/60 p-6">
           <DialogHeader>
-            <DialogTitle className="text-base font-semibold">Add Selection</DialogTitle>
+            <DialogTitle className="text-hh-body font-semibold">Add Selection</DialogTitle>
             <DialogDescription>Select a saved material or enter details.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div>
-              <label className="text-xs font-medium text-muted-foreground">Item</label>
+              <label className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]">
+                Item
+              </label>
               <Input
                 value={form.item}
                 onChange={(e) => setForm((p) => ({ ...p, item: e.target.value }))}
                 placeholder="e.g. Kitchen flooring"
-                className="mt-1 h-9 rounded-sm border-border/60"
+                className="mt-1 h-9 rounded-hh-compact border-border/60"
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground">Saved material</label>
+              <label className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]">
+                Saved material
+              </label>
               <select
                 value={form.material_id}
                 onChange={(e) => {
@@ -282,7 +286,7 @@ export function ProjectMaterialsTab({
                   if (m) handleMaterialSelect(m);
                   else setForm((p) => ({ ...p, material_id: "", material_name: "", supplier: "" }));
                 }}
-                className="mt-1 h-9 w-full rounded-sm border border-border/60 bg-background px-2.5 text-sm"
+                className="mt-1 h-9 w-full rounded-hh-compact border border-border/60 bg-[var(--hh-l1-workspace)] px-2.5 text-hh-body"
               >
                 <option value="">— Select or leave blank —</option>
                 {catalog.map((m) => (
@@ -293,34 +297,42 @@ export function ProjectMaterialsTab({
               </select>
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground">Category</label>
+              <label className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]">
+                Category
+              </label>
               <Input
                 value={form.category}
                 onChange={(e) => setForm((p) => ({ ...p, category: e.target.value }))}
                 placeholder="Optional"
-                className="mt-1 h-9 rounded-sm border-border/60"
+                className="mt-1 h-9 rounded-hh-compact border-border/60"
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground">Material name</label>
+              <label className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]">
+                Material name
+              </label>
               <Input
                 value={form.material_name}
                 onChange={(e) => setForm((p) => ({ ...p, material_name: e.target.value }))}
                 placeholder="Filled from saved material or type"
-                className="mt-1 h-9 rounded-sm border-border/60"
+                className="mt-1 h-9 rounded-hh-compact border-border/60"
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground">Supplier</label>
+              <label className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]">
+                Supplier
+              </label>
               <Input
                 value={form.supplier}
                 onChange={(e) => setForm((p) => ({ ...p, supplier: e.target.value }))}
                 placeholder="Optional"
-                className="mt-1 h-9 rounded-sm border-border/60"
+                className="mt-1 h-9 rounded-hh-compact border-border/60"
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground">Status</label>
+              <label className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]">
+                Status
+              </label>
               <select
                 value={form.status}
                 onChange={(e) =>
@@ -329,7 +341,7 @@ export function ProjectMaterialsTab({
                     status: e.target.value as "Selected" | "Pending" | "Ordered",
                   }))
                 }
-                className="mt-1 h-9 w-full rounded-sm border border-border/60 bg-background px-2.5 text-sm"
+                className="mt-1 h-9 w-full rounded-hh-compact border border-border/60 bg-[var(--hh-l1-workspace)] px-2.5 text-hh-body"
               >
                 {STATUS_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>
@@ -339,29 +351,31 @@ export function ProjectMaterialsTab({
               </select>
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground">Notes</label>
+              <label className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]">
+                Notes
+              </label>
               <textarea
                 value={form.notes}
                 onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))}
                 placeholder="Optional"
                 rows={2}
-                className="mt-1 w-full rounded-sm border border-border/60 px-2.5 py-2 text-sm"
+                className="mt-1 w-full rounded-hh-compact border border-border/60 px-2.5 py-2 text-hh-body"
               />
             </div>
-            {message && <p className="text-sm text-destructive">{message}</p>}
+            {message && <p className="text-hh-body text-destructive">{message}</p>}
           </div>
           <DialogFooter className="border-t border-border/60 pt-4">
             <Button
               variant="outline"
               size="sm"
-              className="rounded-sm"
+              className="rounded-hh-compact"
               onClick={() => setModalOpen(false)}
             >
               Cancel
             </Button>
             <Button
               size="sm"
-              className="rounded-sm bg-[#111111] text-white hover:bg-[#111111]/90"
+              className="rounded-hh-compact bg-[var(--hh-action-primary)] text-[var(--hh-action-primary-foreground)] hover:bg-[var(--hh-action-primary)]/90"
               onClick={handleSave}
               disabled={submitting}
             >
