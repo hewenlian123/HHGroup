@@ -56,5 +56,4 @@ export {
   neoFormErrorClassName,
   neoFormFieldClassName,
   neoFormNoticeClassName,
-  neoFormPanelClassName,
 } from "./neo-form";

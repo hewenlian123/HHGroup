@@ -27,7 +27,7 @@ export const Panel = React.forwardRef<HTMLElement, PanelProps>(
               {eyebrow ? <p className={TYPO.sectionLabel}>{eyebrow}</p> : null}
               {title ? <h2 className={TYPO.panelTitle}>{title}</h2> : null}
               {description ? (
-                <p className={cn("mt-hh-1 text-[var(--neo-text-secondary)]", TYPO.body)}>
+                <p className={cn("mt-hh-1 text-[var(--hh-text-secondary)]", TYPO.body)}>
                   {description}
                 </p>
               ) : null}

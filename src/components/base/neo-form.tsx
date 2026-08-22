@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { NativeSelect, type NativeSelectProps } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
 import { TaskFooter } from "@/components/ui/task-footer";
-import { NEO, TYPO } from "@/lib/typography";
+import { TYPO } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 
 export function NeoFieldLabel({
@@ -25,7 +25,7 @@ export function NeoFieldLabel({
 }: React.LabelHTMLAttributes<HTMLLabelElement> & { required?: boolean }) {
   return (
     <Label
-      className={cn("block uppercase text-[var(--neo-text-tertiary)]", TYPO.label, className)}
+      className={cn("block uppercase text-[var(--hh-text-tertiary)]", TYPO.label, className)}
       {...props}
     >
       {children}
@@ -179,4 +179,3 @@ export const neoFormErrorClassName = cn(
   "rounded-hh-standard border border-[var(--hh-danger-border)] bg-[var(--hh-danger-soft-fill)] px-hh-3 py-hh-2 text-[var(--hh-danger)]",
   TYPO.error
 );
-export const neoFormPanelClassName = cn(NEO.surface, "p-5");

@@ -51,16 +51,16 @@
   }
 
   .neo-sidebar {
-    border: 1px solid var(--neo-sidebar-border);
-    border-radius: var(--neo-radius-panel);
+    border: 1px solid var(--hh-border);
+    border-radius: var(--hh-radius-standard);
     background: var(--hh-l0-canvas);
-    box-shadow: var(--neo-shadow-sidebar);
+    box-shadow: var(--hh-shadow-operational);
   }
 
   .neo-command-bar {
-    border: 1px solid var(--neo-command-border);
+    border: 1px solid var(--hh-border-floating);
     background: var(--hh-l0-canvas);
-    box-shadow: var(--neo-shadow-command);
+    box-shadow: var(--hh-shadow-floating);
   }
 
   html.dark .neo-command-bar {
@@ -68,34 +68,34 @@
   }
 
   [data-app-topbar].neo-command-bar {
-    border-color: var(--neo-command-border);
+    border-color: var(--hh-border-floating);
     background: var(--hh-l0-canvas);
-    box-shadow: var(--neo-shadow-command);
-    color: var(--neo-canvas-text-secondary);
+    box-shadow: var(--hh-shadow-floating);
+    color: var(--hh-text-secondary);
   }
 
   .neo-topbar-command-input {
-    border-color: var(--neo-border);
+    border-color: var(--hh-border);
     background: var(--hh-l2-operational-surface);
-    box-shadow: var(--neo-shadow-control);
+    box-shadow: var(--hh-shadow-operational);
   }
 
   .neo-topbar-command-input:hover {
     border-color: var(--hh-border-strong);
-    background: var(--neo-surface-hover);
+    background: var(--hh-l3-hover);
   }
 
   [data-app-topbar] .btn-outline-ghost {
-    border: 1px solid var(--neo-border) !important;
+    border: 1px solid var(--hh-border) !important;
     background: var(--hh-l2-operational-surface) !important;
-    color: var(--neo-canvas-text-secondary);
-    box-shadow: var(--neo-shadow-control) !important;
+    color: var(--hh-text-secondary);
+    box-shadow: var(--hh-shadow-operational) !important;
   }
 
   [data-app-topbar] .btn-outline-ghost:hover {
     border-color: var(--hh-border-strong) !important;
-    background: var(--neo-surface-hover) !important;
-    color: var(--neo-canvas-text-primary);
+    background: var(--hh-l3-hover) !important;
+    color: var(--hh-text-primary);
   }
 
   .dashboard-command-hero {
@@ -469,57 +469,55 @@
 
   .neo-workspace-canvas {
     background: var(--hh-l1-workspace);
-    color: var(--neo-canvas-text-secondary);
+    color: var(--hh-text-secondary);
   }
 
   .neo-workspace-canvas :where(.neo-page-on-graphite > [data-neo-page-header="true"] h1) {
-    color: var(--neo-canvas-text-primary);
+    color: var(--hh-text-primary);
   }
 
   .neo-workspace-canvas :where(.neo-page-on-graphite > [data-neo-page-header="true"] p) {
-    color: var(--neo-canvas-text-secondary);
+    color: var(--hh-text-secondary);
   }
 
   .neo-workspace-canvas
     :where(.neo-page-on-graphite > .ui-divider, .neo-page-on-graphite .ui-divider) {
-    border-color: var(--neo-border);
+    border-color: var(--hh-border);
   }
 
   .neo-workspace-canvas :where([data-neo-mobile-list-header="canvas"] h1) {
-    color: var(--neo-canvas-text-primary);
+    color: var(--hh-text-primary);
   }
 
   .neo-on-canvas-primary {
-    color: var(--neo-canvas-text-primary);
+    color: var(--hh-text-primary);
   }
 
   .neo-on-canvas-secondary {
-    color: var(--neo-canvas-text-secondary);
+    color: var(--hh-text-secondary);
   }
 
   .neo-on-canvas-tertiary {
-    color: var(--neo-canvas-text-tertiary);
+    color: var(--hh-text-tertiary);
   }
 
   .neo-panel {
-    border: 1px solid var(--neo-border);
-    border-radius: var(--neo-radius-panel);
-    background: var(--neo-surface-raised);
-    box-shadow: var(--neo-shadow-panel);
+    border: 1px solid var(--hh-border);
+    border-radius: var(--hh-radius-standard);
+    background: var(--hh-l2-operational-surface);
+    box-shadow: var(--hh-shadow-operational);
   }
 
   .neo-toolbar {
-    border: 1px solid var(--neo-border);
-    border-radius: var(--neo-radius-control);
-    background:
-      linear-gradient(180deg, rgb(255 255 255 / 0.026), rgb(255 255 255 / 0.006)),
-      var(--neo-surface-muted);
+    border: 1px solid var(--hh-border);
+    border-radius: var(--hh-radius-standard);
+    background: var(--hh-l2-operational-surface);
   }
 
   .neo-input {
-    border-color: var(--neo-border);
-    background: var(--neo-surface-raised);
-    color: var(--neo-text-primary);
+    border-color: var(--hh-border);
+    background: var(--hh-l2-operational-surface);
+    color: var(--hh-text-primary);
   }
 
   .neo-input:focus-visible {
@@ -547,18 +545,18 @@
    */
   .btn-outline-ghost {
     @apply rounded-md !border-0 bg-transparent shadow-none transition-[background-color,border-color,color,opacity] duration-150 ease-out hover:!shadow-none active:!duration-100 dark:!border-transparent dark:bg-transparent;
-    color: var(--neo-text-secondary);
+    color: var(--hh-text-secondary);
   }
   .btn-outline-ghost:hover {
-    background: var(--neo-surface-muted) !important;
-    color: var(--neo-text-primary);
+    background: var(--hh-l2-operational-surface) !important;
+    color: var(--hh-text-primary);
   }
   /** Inline text controls (payment, date, etc.): subtle fill, no layout shift */
   .hh-inline-tap {
     @apply rounded-md transition-[background-color,border-color,color,opacity] duration-150 ease-out;
   }
   .hh-inline-tap:hover {
-    background-color: var(--neo-surface-hover);
+    background-color: var(--hh-l3-hover);
   }
   .hh-inline-tap:active {
     @apply duration-100;
@@ -685,7 +683,7 @@
   }
   .table-head-label {
     @apply text-hh-table-header uppercase;
-    color: var(--neo-text-tertiary);
+    color: var(--hh-text-tertiary);
   }
   .table-row-compact {
     height: var(--hh-row-height-standard);
@@ -715,25 +713,25 @@
     font-family: var(--hh-font-family-sans);
     font-variant-numeric: var(--hh-fin-variant);
     font-feature-settings: var(--hh-fin-features);
-    color: var(--neo-text-secondary);
+    color: var(--hh-text-secondary);
   }
   /* Summary / KPI — dense on mobile (muted tint), card on md+ */
   .kpi-metric {
-    @apply rounded-xl border px-3 py-2 md:px-4 md:py-3;
-    border-color: var(--neo-border);
-    background: var(--neo-surface-raised);
-    box-shadow: var(--neo-shadow-panel);
+    @apply rounded-hh-standard border px-3 py-2 md:px-4 md:py-3;
+    border-color: var(--hh-border);
+    background: var(--hh-l2-operational-surface);
+    box-shadow: var(--hh-shadow-operational);
   }
   .kpi-metric-label {
     @apply text-hh-label uppercase;
-    color: var(--neo-text-tertiary);
+    color: var(--hh-text-tertiary);
   }
   .kpi-metric-value {
     @apply text-hh-financial;
     font-family: var(--hh-font-family-sans);
     font-variant-numeric: var(--hh-fin-variant);
     font-feature-settings: var(--hh-fin-features);
-    color: var(--neo-text-primary);
+    color: var(--hh-text-primary);
   }
   /** Filter bar: native inputs / selects */
   .filter-field {
@@ -743,9 +741,9 @@
     font-weight: var(--hh-type-control-font-weight);
     line-height: var(--hh-type-text-entry-line-height-mobile);
     letter-spacing: var(--hh-type-control-letter-spacing);
-    border-color: var(--neo-border);
-    background: var(--neo-surface-raised);
-    color: var(--neo-text-primary);
+    border-color: var(--hh-border);
+    background: var(--hh-l2-operational-surface);
+    color: var(--hh-text-primary);
   }
   .filter-field:focus-visible {
     border-color: var(--hh-border-strong);
@@ -779,9 +777,9 @@
   }
   .hh-pill-neutral {
     @apply text-hh-status inline-flex items-center rounded-full border px-2 py-0.5;
-    border-color: var(--neo-border);
-    background-color: var(--neo-surface-muted);
-    color: var(--neo-text-secondary);
+    border-color: var(--hh-border);
+    background-color: var(--hh-l2-operational-surface);
+    color: var(--hh-text-secondary);
   }
   .hh-pill-danger {
     @apply text-hh-status inline-flex items-center rounded-full border px-2 py-0.5;
@@ -804,21 +802,21 @@
   }
   @media (hover: hover) and (pointer: fine) {
     .hh-row-interactive:hover {
-      background-color: var(--neo-surface-hover);
+      background-color: var(--hh-l3-hover);
     }
   }
   @media (max-width: 767px) {
     .hh-row-interactive:active {
-      background-color: var(--neo-surface-hover);
+      background-color: var(--hh-l3-hover);
     }
   }
   .hh-modal-shell {
     @apply w-full max-w-[480px] border;
     border-radius: var(--hh-radius-task);
     padding: var(--hh-task-padding-desktop);
-    border-color: var(--neo-border);
-    background: var(--neo-surface-raised);
-    box-shadow: var(--neo-shadow-panel);
+    border-color: var(--hh-border);
+    background: var(--hh-l2-operational-surface);
+    box-shadow: var(--hh-shadow-operational);
   }
   /* Add-on: touch-friendly forms only when <1024px; desktop unchanged */
   .form-mobile-friendly input,
@@ -852,7 +850,7 @@
   }
   .mobile-safe-action-bar {
     @apply sticky bottom-0 border-t px-4 py-3;
-    border-color: var(--neo-border);
+    border-color: var(--hh-border);
     background: var(--hh-l5-task-surface);
     padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
   }
@@ -891,7 +889,7 @@
     touch-action: pan-x;
   }
   .ui-divider {
-    border-bottom: 1px solid var(--neo-border);
+    border-bottom: 1px solid var(--hh-border);
   }
   .ui-section {
     @apply py-2;
@@ -931,10 +929,10 @@
    * Do not use --ruled together with tableRawThClass / tableRawTdClass (borders would double).
    */
   .airtable-table-wrap {
-    @apply relative w-full overflow-hidden rounded-[10px] border-[0.5px] border-solid;
-    border-color: var(--neo-border);
-    background: var(--neo-surface-raised);
-    box-shadow: var(--neo-shadow-panel);
+    @apply relative w-full overflow-hidden rounded-hh-standard border-[0.5px] border-solid;
+    border-color: var(--hh-border);
+    background: var(--hh-l2-operational-surface);
+    box-shadow: var(--hh-shadow-operational);
   }
   .airtable-table-scroll {
     @apply max-w-full overflow-x-auto;
@@ -944,15 +942,15 @@
   }
   .airtable-table-wrap--ruled > .airtable-table-scroll > table th,
   .airtable-table-wrap--ruled > .airtable-table-scroll > table td {
-    border-bottom: 0.5px solid var(--neo-border);
-    border-right: 0.5px solid var(--neo-border);
+    border-bottom: 0.5px solid var(--hh-border);
+    border-right: 0.5px solid var(--hh-border);
   }
   .airtable-table-wrap--ruled > .airtable-table-scroll > table th:last-child,
   .airtable-table-wrap--ruled > .airtable-table-scroll > table td:last-child {
     border-right-width: 0;
   }
   .airtable-table-wrap--ruled > .airtable-table-scroll > table thead th {
-    background: var(--neo-surface-muted);
+    background: var(--hh-l2-operational-surface);
   }
   .airtable-table-wrap--ruled > .airtable-table-scroll > table tbody tr:last-child > th,
   .airtable-table-wrap--ruled > .airtable-table-scroll > table tbody tr:last-child > td {
@@ -962,34 +960,6 @@
 
 @layer base {
   :root {
-    /* ---- Legacy Neo compatibility aliases; HH tokens remain authoritative ---- */
-    --neo-graphite-950: #07090d;
-    --neo-graphite-900: #0b0f15;
-    --neo-surface-raised: var(--hh-l2-operational-surface);
-    --neo-surface-muted: var(--hh-l2-operational-surface);
-    --neo-surface-hover: var(--hh-l3-hover);
-    --neo-text-primary: var(--hh-text-primary);
-    --neo-text-secondary: var(--hh-text-secondary);
-    --neo-text-tertiary: var(--hh-text-tertiary);
-    --neo-canvas-text-primary: var(--neo-text-primary);
-    --neo-canvas-text-secondary: var(--neo-text-secondary);
-    --neo-canvas-text-tertiary: var(--neo-text-tertiary);
-    --neo-border: var(--hh-border);
-    --neo-border-strong: var(--hh-border-strong);
-    --neo-command-border: var(--hh-border-floating);
-    --neo-sidebar-border: var(--neo-border);
-    --neo-gold: #b8935a;
-    --neo-gold-soft: #d2b77f;
-    --neo-gold-ring: var(--hh-focus-ring);
-    --neo-emerald: var(--hh-success);
-    --neo-emerald-soft: var(--hh-success-soft-fill);
-    --neo-radius-control: var(--hh-radius-standard);
-    --neo-radius-panel: var(--hh-radius-standard);
-    --neo-shadow-panel: var(--hh-shadow-operational);
-    --neo-shadow-control: var(--hh-shadow-operational);
-    --neo-shadow-command: var(--hh-shadow-floating);
-    --neo-shadow-sidebar: var(--hh-shadow-operational);
-
     /* ---- HH Group color tokens (HSL components for hsl()) ---- */
     /* Legacy shadcn aliases: workspace and operational surfaces, not the outer canvas. */
     --background: 0 0% 100%;
@@ -1031,20 +1001,6 @@
     --radius: var(--hh-radius-standard);
   }
   html.dark {
-    --neo-surface-raised: var(--hh-l2-operational-surface);
-    --neo-surface-muted: var(--hh-l2-operational-surface);
-    --neo-surface-hover: var(--hh-l3-hover);
-    --neo-text-primary: var(--hh-text-primary);
-    --neo-text-secondary: var(--hh-text-secondary);
-    --neo-text-tertiary: var(--hh-text-tertiary);
-    --neo-border: var(--hh-border);
-    --neo-border-strong: var(--hh-border-strong);
-    --neo-command-border: var(--hh-border-floating);
-    --neo-gold-ring: var(--hh-focus-ring);
-    --neo-shadow-panel: var(--hh-shadow-operational);
-    --neo-shadow-control: var(--hh-shadow-operational);
-    --neo-shadow-command: var(--hh-shadow-floating);
-
     --background: 0 0% 6.7%;
     --foreground: 0 0% 98%;
     --card: 0 0% 9.4%;

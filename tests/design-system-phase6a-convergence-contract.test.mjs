@@ -146,12 +146,10 @@ test("Phase 6A shared application chrome no longer consumes graphite or gold vis
   assert.doesNotMatch(source("src/components/command/neo-command-palette.tsx"), /"dark fixed/);
 });
 
-test("Phase 6A retains only direct semantic compatibility aliases where ownership is unambiguous", () => {
+test("Phase 6D removes the final Neo compatibility aliases after consumer migration", () => {
   const css = source("src/app/globals.css");
 
-  assert.match(css, /--neo-emerald:\s*var\(--hh-success\);/);
-  assert.match(css, /--neo-emerald-soft:\s*var\(--hh-success-soft-fill\);/);
-  assert.match(css, /--neo-gold-ring:\s*var\(--hh-focus-ring\);/);
+  assert.doesNotMatch(css, /--neo-[a-z0-9-]+\s*:/);
 });
 
 test("Phase 6A retains no Neo compatibility alias without a runtime consumer", () => {

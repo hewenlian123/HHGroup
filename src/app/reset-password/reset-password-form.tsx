@@ -4,6 +4,14 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 
+import {
+  AUTH_BODY_CLASS,
+  AUTH_ERROR_CLASS,
+  AUTH_INPUT_CLASS,
+  AUTH_LABEL_CLASS,
+  AUTH_PANEL_CLASS,
+  AUTH_TITLE_CLASS,
+} from "@/components/auth/auth-ui";
 import { Button } from "@/components/ui/button";
 
 export function ResetPasswordForm() {
@@ -44,22 +52,19 @@ export function ResetPasswordForm() {
   }
 
   return (
-    <section className="w-full max-w-[430px] rounded-2xl border border-white/[0.09] bg-[rgb(28_28_29_/_0.96)] p-6 shadow-[0_28px_80px_rgb(0_0_0_/_0.38)] sm:p-7">
-      <h1 className="text-2xl font-semibold text-white">Choose a new password</h1>
-      <p className="mt-2 text-sm leading-6 text-zinc-400">
+    <section className={AUTH_PANEL_CLASS}>
+      <h1 className={AUTH_TITLE_CLASS}>Choose a new password</h1>
+      <p className={`mt-hh-2 ${AUTH_BODY_CLASS}`}>
         Use 12–128 characters with uppercase, lowercase, a number, and a symbol.
       </p>
-      <form className="mt-6 space-y-4" onSubmit={onSubmit}>
+      <form className="mt-hh-6 space-y-hh-4" onSubmit={onSubmit}>
         {error ? (
-          <div
-            role="alert"
-            className="rounded-lg border border-rose-400/20 bg-rose-400/10 px-3 py-2.5 text-sm text-rose-100"
-          >
+          <div role="alert" className={AUTH_ERROR_CLASS}>
             {error}
           </div>
         ) : null}
-        <div className="space-y-1.5">
-          <label htmlFor="reset-password" className="block text-xs font-medium text-zinc-300">
+        <div className="space-y-hh-1">
+          <label htmlFor="reset-password" className={AUTH_LABEL_CLASS}>
             New password
           </label>
           <input
@@ -67,17 +72,14 @@ export function ResetPasswordForm() {
             autoComplete="new-password"
             required
             type="password"
-            className="min-h-11 w-full rounded-lg border border-white/10 bg-black/20 px-3 text-sm text-white outline-none focus-visible:border-[var(--neo-gold)] focus-visible:ring-2 focus-visible:ring-[rgb(184_147_90_/_0.22)]"
+            className={AUTH_INPUT_CLASS}
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             disabled={pending}
           />
         </div>
-        <div className="space-y-1.5">
-          <label
-            htmlFor="reset-password-confirm"
-            className="block text-xs font-medium text-zinc-300"
-          >
+        <div className="space-y-hh-1">
+          <label htmlFor="reset-password-confirm" className={AUTH_LABEL_CLASS}>
             Confirm new password
           </label>
           <input
@@ -85,7 +87,7 @@ export function ResetPasswordForm() {
             autoComplete="new-password"
             required
             type="password"
-            className="min-h-11 w-full rounded-lg border border-white/10 bg-black/20 px-3 text-sm text-white outline-none focus-visible:border-[var(--neo-gold)] focus-visible:ring-2 focus-visible:ring-[rgb(184_147_90_/_0.22)]"
+            className={AUTH_INPUT_CLASS}
             value={confirmation}
             onChange={(event) => setConfirmation(event.target.value)}
             disabled={pending}

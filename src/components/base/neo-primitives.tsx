@@ -218,7 +218,7 @@ export function NeoBulkActions({
     <div
       data-neo-bulk-actions="true"
       className={cn(
-        "flex flex-col gap-hh-3 rounded-hh-standard border border-[var(--hh-border-strong)] bg-[var(--hh-l3-selected)] px-hh-3 py-hh-2 text-[var(--neo-text-primary)] shadow-operational",
+        "flex flex-col gap-hh-3 rounded-hh-standard border border-[var(--hh-border-strong)] bg-[var(--hh-l3-selected)] px-hh-3 py-hh-2 text-[var(--hh-text-primary)] shadow-operational",
         "sm:flex-row sm:items-center sm:justify-between",
         className
       )}

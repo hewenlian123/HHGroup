@@ -143,7 +143,7 @@ export function ReceiptViewerDialog({
                     <motion.section
                       data-receipt-viewer-shell
                       className={cn(
-                        "dark relative flex h-[100dvh] w-screen flex-col overflow-hidden rounded-none border-y-0 border-white/10 bg-[var(--neo-graphite-900)] text-[var(--neo-canvas-text-primary)] shadow-[0_28px_90px_rgb(0_0_0_/_0.58),inset_0_1px_0_rgb(255_255_255_/_0.04)]",
+                        "dark relative flex h-[100dvh] w-screen flex-col overflow-hidden rounded-none border-y-0 border-white/10 bg-[#0b0f15] text-[var(--hh-text-primary)] shadow-[0_28px_90px_rgb(0_0_0_/_0.58),inset_0_1px_0_rgb(255_255_255_/_0.04)]",
                         "sm:h-[calc(100dvh-24px)] sm:w-[calc(100vw-24px)] sm:rounded-[18px] sm:border",
                         "lg:h-[min(860px,calc(100dvh-48px))] lg:w-[min(1180px,calc(100vw-48px))] lg:rounded-[20px]"
                       )}
@@ -157,11 +157,11 @@ export function ReceiptViewerDialog({
                     >
                       <header className="flex min-h-[60px] shrink-0 items-center gap-3 border-b border-white/10 bg-[rgb(24_27_30_/_0.96)] px-4 py-2 pt-[max(0.5rem,env(safe-area-inset-top))] sm:px-5">
                         <div className="min-w-0 flex-1">
-                          <DialogPrimitive.Title className="text-base font-semibold tracking-[-0.01em] text-[var(--neo-canvas-text-primary)]">
+                          <DialogPrimitive.Title className="text-base font-semibold tracking-[-0.01em] text-[var(--hh-text-primary)]">
                             Receipt preview
                           </DialogPrimitive.Title>
                           <p
-                            className="truncate text-xs text-[var(--neo-canvas-text-tertiary)]"
+                            className="truncate text-xs text-[var(--hh-text-tertiary)]"
                             title={fileName}
                           >
                             {fileName}
@@ -188,7 +188,7 @@ export function ReceiptViewerDialog({
                               size="icon"
                               aria-label="Previous attachment"
                               onClick={onPrevious}
-                              className="absolute left-3 top-1/2 z-20 h-11 w-11 -translate-y-1/2 touch-manipulation border-white/10 bg-[rgb(24_27_30_/_0.82)] text-[var(--neo-canvas-text-primary)] shadow-lg backdrop-blur-sm hover:bg-white/10"
+                              className="absolute left-3 top-1/2 z-20 h-11 w-11 -translate-y-1/2 touch-manipulation border-white/10 bg-[rgb(24_27_30_/_0.82)] text-[var(--hh-text-primary)] shadow-lg backdrop-blur-sm hover:bg-white/10"
                             >
                               <ChevronLeft className="h-5 w-5" aria-hidden />
                             </Button>
@@ -201,7 +201,7 @@ export function ReceiptViewerDialog({
                               size="icon"
                               aria-label="Next attachment"
                               onClick={onNext}
-                              className="absolute right-3 top-1/2 z-20 h-11 w-11 -translate-y-1/2 touch-manipulation border-white/10 bg-[rgb(24_27_30_/_0.82)] text-[var(--neo-canvas-text-primary)] shadow-lg backdrop-blur-sm hover:bg-white/10"
+                              className="absolute right-3 top-1/2 z-20 h-11 w-11 -translate-y-1/2 touch-manipulation border-white/10 bg-[rgb(24_27_30_/_0.82)] text-[var(--hh-text-primary)] shadow-lg backdrop-blur-sm hover:bg-white/10"
                             >
                               <ChevronRight className="h-5 w-5" aria-hidden />
                             </Button>

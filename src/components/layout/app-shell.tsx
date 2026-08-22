@@ -104,7 +104,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   side="left"
                   className={cn(
                     "w-[210px] max-w-[85vw] p-0 shadow-none transition-transform duration-200 data-[state=open]:slide-in-from-left data-[state=closed]:slide-out-to-left",
-                    "border-r border-[var(--neo-border)] bg-canvas"
+                    "border-r border-[var(--hh-border)] bg-canvas"
                   )}
                 >
                   <SheetTitle className="sr-only">Navigation menu</SheetTitle>

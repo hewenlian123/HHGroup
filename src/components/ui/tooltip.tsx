@@ -144,7 +144,7 @@ export function TooltipContent({
       id={contentId}
       role="tooltip"
       className={cn(
-        "pointer-events-none fixed z-[200] max-w-64 rounded-hh-compact border border-[var(--hh-border-floating)] bg-[var(--hh-l4-floating-surface)] px-hh-2 py-hh-1 text-[var(--neo-text-primary)] shadow-floating",
+        "pointer-events-none fixed z-[200] max-w-64 rounded-hh-compact border border-[var(--hh-border-floating)] bg-[var(--hh-l4-floating-surface)] px-hh-2 py-hh-1 text-[var(--hh-text-primary)] shadow-floating",
         TYPO.metadata,
         className
       )}

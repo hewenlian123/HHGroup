@@ -1,3 +1,4 @@
+import { AUTH_PAGE_CLASS } from "@/components/auth/auth-ui";
 import { ForgotPasswordForm } from "./forgot-password-form";
 
 type ForgotPasswordPageProps = {
@@ -8,7 +9,7 @@ export default function ForgotPasswordPage({ searchParams }: ForgotPasswordPageP
   const mode = searchParams?.mode === "verify" ? "verify" : "request";
 
   return (
-    <main className="flex min-h-[100dvh] items-center justify-center bg-[#151516] px-4 py-8">
+    <main className={AUTH_PAGE_CLASS}>
       <ForgotPasswordForm mode={mode} />
     </main>
   );

@@ -7,7 +7,7 @@ import { TYPO } from "@/lib/typography";
 export type KpiTone = "neutral" | "positive" | "negative" | "warning";
 
 const kpiToneClass: Record<KpiTone, string> = {
-  neutral: "text-[var(--neo-text-primary)]",
+  neutral: "text-[var(--hh-text-primary)]",
   positive: "text-[var(--hh-success)]",
   negative: "text-[var(--hh-danger)]",
   warning: "text-[var(--hh-warning)]",

@@ -98,7 +98,7 @@ const BottomNavItem = React.memo(function BottomNavItem({
         "transition-[background-color,color,opacity] duration-100 active:bg-[var(--hh-l3-pressed)] active:opacity-80",
         active
           ? "font-medium text-[var(--hh-text-primary)]"
-          : "text-sm text-[var(--neo-text-secondary)]"
+          : "text-sm text-[var(--hh-text-secondary)]"
       )}
       aria-current={active ? "page" : undefined}
     >

@@ -26,7 +26,7 @@ function logVariant(type: string) {
 }
 
 const logColumns: DataTableColumn<LogEntry>[] = [
-  { key: "time", header: "Time", className: "w-[90px] text-[var(--neo-text-secondary)]" },
+  { key: "time", header: "Time", className: "w-[90px] text-[var(--hh-text-secondary)]" },
   { key: "module", header: "Module", className: "w-[140px]" },
   {
     key: "type",
@@ -37,7 +37,7 @@ const logColumns: DataTableColumn<LogEntry>[] = [
   {
     key: "message",
     header: "Message",
-    className: "break-words text-[var(--neo-text-secondary)]",
+    className: "break-words text-[var(--hh-text-secondary)]",
   },
 ];
 
@@ -76,7 +76,6 @@ export default function SystemLogsPage() {
 
   return (
     <PageLayout
-      className="dark"
       header={
         <PageHeader
           title="System Logs"
@@ -91,7 +90,7 @@ export default function SystemLogsPage() {
     >
       {error ? (
         <NeoPanel bodyClassName="px-4 py-3">
-          <p className="text-sm font-medium text-rose-300">{error}</p>
+          <p className="text-hh-body font-medium text-[var(--hh-danger)]">{error}</p>
         </NeoPanel>
       ) : null}
 

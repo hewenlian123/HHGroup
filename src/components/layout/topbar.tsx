@@ -22,6 +22,7 @@ import { useSystemHealth } from "@/contexts/system-health-context";
 import { useBreadcrumbOverrides } from "@/contexts/breadcrumb-override-context";
 import { NeoKeyboardHint } from "@/components/command/neo-command-palette";
 import { UPLOAD_RECEIPT_ACTION } from "@/lib/navigation/actions";
+import { TYPO } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 
 /** Map path segments to breadcrumb display labels (for last segment, or section names). */
@@ -228,7 +229,7 @@ export function Topbar({
     <header
       data-app-topbar
       className={cn(
-        "neo-command-bar sticky top-0 z-40 flex h-[52px] min-h-[52px] shrink-0 items-center px-3 sm:min-h-0 sm:rounded-xl sm:px-4",
+        "neo-command-bar sticky top-0 z-40 flex h-[52px] min-h-[52px] shrink-0 items-center px-3 sm:min-h-0 sm:rounded-hh-standard sm:px-4",
         "flex-row gap-3 sm:gap-4"
       )}
     >
@@ -256,11 +257,11 @@ export function Topbar({
 
         {/* Breadcrumbs — hidden on mobile, visible tablet+ */}
         <nav
-          className="hidden min-w-0 text-[13px] sm:block"
+          className={cn("hidden min-w-0 sm:block", TYPO.tableCell)}
           aria-label="Breadcrumb"
           title={breadcrumbs.join(" › ")}
         >
-          <span className="truncate text-[var(--neo-canvas-text-primary)]">{breadcrumbLine}</span>
+          <span className="truncate text-[var(--hh-text-primary)]">{breadcrumbLine}</span>
         </nav>
       </div>
 
@@ -274,22 +275,23 @@ export function Topbar({
           aria-label="Open command palette"
           onClick={onOpenCommandPalette}
         >
-          <Search className="h-4 w-4 text-[var(--neo-text-secondary)]" strokeWidth={1.75} />
+          <Search className="h-4 w-4 text-[var(--hh-text-secondary)]" strokeWidth={1.75} />
         </Button>
         <button
           type="button"
-          className="hh-focus-ring group relative hidden h-8 min-w-0 items-center rounded-[10px] outline-none sm:flex sm:w-[210px] md:w-[260px]"
+          className="hh-focus-ring group relative hidden h-8 min-w-0 items-center rounded-hh-standard outline-none sm:flex sm:w-[210px] md:w-[260px]"
           aria-label="Open command palette"
           onClick={onOpenCommandPalette}
         >
           <Search
-            className="absolute left-2.5 top-1/2 h-[15px] w-[15px] -translate-y-1/2 shrink-0 text-[var(--neo-canvas-text-tertiary)] transition-colors duration-150 group-hover:text-[var(--hh-text-primary)]"
+            className="absolute left-2.5 top-1/2 h-[15px] w-[15px] -translate-y-1/2 shrink-0 text-[var(--hh-text-tertiary)] transition-colors duration-150 group-hover:text-[var(--hh-text-primary)]"
             strokeWidth={1.75}
             aria-hidden
           />
           <span
             className={cn(
-              "neo-topbar-command-input flex h-8 w-full min-w-0 items-center justify-between rounded-[10px] border-[0.5px] pl-8 pr-1.5 text-[13px] text-[var(--neo-canvas-text-tertiary)]",
+              "neo-topbar-command-input flex h-8 w-full min-w-0 items-center justify-between rounded-hh-standard border-[0.5px] pl-8 pr-1.5 text-[var(--hh-text-tertiary)]",
+              TYPO.tableCell,
               "transition-[background,border-color,box-shadow] duration-150"
             )}
           >
@@ -304,11 +306,11 @@ export function Topbar({
             className="btn-outline-ghost flex h-11 w-11 min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-md shadow-none sm:h-[30px] sm:w-[30px] sm:min-h-0 sm:min-w-0"
             aria-label="Notifications"
           >
-            <Bell className="h-4 w-4 text-[var(--neo-text-secondary)]" />
+            <Bell className="h-4 w-4 text-[var(--hh-text-secondary)]" />
           </Button>
           {systemHealth.status === "warning" && (
             <span
-              className="absolute right-0.5 top-0.5 h-2 w-2 rounded-full bg-red-500"
+              className="absolute right-0.5 top-0.5 h-2 w-2 rounded-full bg-[var(--hh-danger)]"
               aria-hidden
             />
           )}
@@ -322,16 +324,17 @@ export function Topbar({
             <Button
               variant="outline"
               size="sm"
-              className="h-9 min-h-[44px] rounded-[10px] border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3.5 py-2.5 text-sm font-medium text-[var(--hh-text-primary)] shadow-operational transition-[background-color,border-color,box-shadow,color] duration-150 ease-out hover:border-[var(--hh-border-strong)] hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)] active:duration-100 sm:min-h-0"
+              className={cn(
+                "h-9 min-h-[44px] rounded-hh-standard border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3.5 py-2.5 text-[var(--hh-text-primary)] shadow-operational transition-[background-color,border-color,box-shadow,color] duration-150 ease-out hover:border-[var(--hh-border-strong)] hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)] active:duration-100 sm:min-h-0",
+                TYPO.button
+              )}
             >
               <Plus className="mr-2 h-4 w-4" />
               New
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel className="text-[11px] font-medium uppercase tracking-[0.08em] text-[var(--hh-text-tertiary)]">
-              Projects
-            </DropdownMenuLabel>
+            <DropdownMenuLabel className={TYPO.tableHeader}>Projects</DropdownMenuLabel>
             <DropdownMenuItem asChild>
               <Link href="/projects/new">New Project</Link>
             </DropdownMenuItem>
@@ -339,9 +342,7 @@ export function Topbar({
               <Link href="/estimates/new">New Estimate</Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuLabel className="text-[11px] font-medium uppercase tracking-[0.08em] text-[var(--hh-text-tertiary)]">
-              Work
-            </DropdownMenuLabel>
+            <DropdownMenuLabel className={TYPO.tableHeader}>Work</DropdownMenuLabel>
             <DropdownMenuItem asChild>
               <Link href="/tasks/new">New Task</Link>
             </DropdownMenuItem>
@@ -352,9 +353,7 @@ export function Topbar({
               <Link href="/site-photos/upload">Upload Site Photo</Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuLabel className="text-[11px] font-medium uppercase tracking-[0.08em] text-[var(--hh-text-tertiary)]">
-              Finance
-            </DropdownMenuLabel>
+            <DropdownMenuLabel className={TYPO.tableHeader}>Finance</DropdownMenuLabel>
             <DropdownMenuItem asChild>
               <Link href="/financial/invoices/new">New Invoice</Link>
             </DropdownMenuItem>
@@ -371,9 +370,7 @@ export function Topbar({
               <Link href="/financial/payments">Record Payment</Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuLabel className="text-[11px] font-medium uppercase tracking-[0.08em] text-[#9ca3af]">
-              Labor
-            </DropdownMenuLabel>
+            <DropdownMenuLabel className={TYPO.tableHeader}>Labor</DropdownMenuLabel>
             <DropdownMenuItem asChild>
               <Link href="/labor/daily">Add Daily Entry</Link>
             </DropdownMenuItem>
@@ -394,7 +391,12 @@ export function Topbar({
                 {logoUrl ? (
                   <AvatarImage src={logoUrl} alt={orgName} className="object-contain" />
                 ) : null}
-                <AvatarFallback className="border border-[var(--hh-border)] bg-[var(--hh-l3-selected)] text-[13px] font-medium text-[var(--hh-text-primary)]">
+                <AvatarFallback
+                  className={cn(
+                    "border border-[var(--hh-border)] bg-[var(--hh-l3-selected)] text-[var(--hh-text-primary)]",
+                    TYPO.bodyStrong
+                  )}
+                >
                   {getCompanyInitials(orgName)}
                 </AvatarFallback>
               </Avatar>

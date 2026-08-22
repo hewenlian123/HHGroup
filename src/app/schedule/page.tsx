@@ -62,12 +62,14 @@ const STATUS_VARIANT: Record<string, StatusBadgeVariant> = {
 
 const CALENDAR_STATUS_CLASS: Record<string, string> = {
   planned:
-    "border-[var(--neo-border)] bg-[var(--neo-surface-muted)] text-[var(--neo-text-secondary)]",
+    "border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-secondary)]",
   scheduled:
-    "border-[var(--neo-border)] bg-[var(--neo-surface-muted)] text-[var(--neo-text-secondary)]",
-  in_progress: "border-[rgb(184_137_45_/_0.26)] bg-[rgb(184_137_45_/_0.12)] text-[var(--neo-gold)]",
-  done: "border-emerald-500/20 bg-[var(--neo-emerald-soft)] text-[var(--neo-emerald)]",
-  delayed: "border-rose-500/20 bg-rose-500/10 text-rose-300",
+    "border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-secondary)]",
+  in_progress:
+    "border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] text-[var(--hh-warning)]",
+  done: "border-[var(--hh-success-border)] bg-[var(--hh-success-soft-fill)] text-[var(--hh-success)]",
+  delayed:
+    "border-[var(--hh-danger-border)] bg-[var(--hh-danger-soft-fill)] text-[var(--hh-danger)]",
 };
 
 function formatDateRange(start: string | null, end: string | null): string {
@@ -132,24 +134,24 @@ function ScheduleCalendarGrid({
         <button
           type="button"
           onClick={prevMonth}
-          className="rounded-md px-2 py-1 text-sm font-medium text-[var(--neo-text-secondary)] transition-colors hover:bg-[var(--neo-surface-muted)] hover:text-[var(--neo-text-primary)]"
+          className="rounded-md px-2 py-1 text-sm font-medium text-[var(--hh-text-secondary)] transition-colors hover:bg-[var(--hh-l2-operational-surface)] hover:text-[var(--hh-text-primary)]"
         >
           ←
         </button>
-        <span className="text-sm font-semibold text-[var(--neo-text-primary)]">{monthLabel}</span>
+        <span className="text-sm font-semibold text-[var(--hh-text-primary)]">{monthLabel}</span>
         <button
           type="button"
           onClick={nextMonth}
-          className="rounded-md px-2 py-1 text-sm font-medium text-[var(--neo-text-secondary)] transition-colors hover:bg-[var(--neo-surface-muted)] hover:text-[var(--neo-text-primary)]"
+          className="rounded-md px-2 py-1 text-sm font-medium text-[var(--hh-text-secondary)] transition-colors hover:bg-[var(--hh-l2-operational-surface)] hover:text-[var(--hh-text-primary)]"
         >
           →
         </button>
       </div>
-      <div className="grid grid-cols-7 gap-px overflow-hidden rounded-lg border border-[var(--neo-border)] bg-[var(--neo-border)]">
+      <div className="grid grid-cols-7 gap-px overflow-hidden rounded-lg border border-[var(--hh-border)] bg-[var(--hh-border)]">
         {weekDays.map((w) => (
           <div
             key={w}
-            className="bg-[var(--neo-surface-muted)] py-1.5 text-center text-xs font-medium text-[var(--neo-text-secondary)]"
+            className="bg-[var(--hh-l2-operational-surface)] py-1.5 text-center text-xs font-medium text-[var(--hh-text-secondary)]"
           >
             {w}
           </div>
@@ -158,15 +160,13 @@ function ScheduleCalendarGrid({
           <div
             key={i}
             className={cn(
-              "min-h-[72px] bg-[var(--neo-surface-raised)] p-1.5 text-left",
-              c.day == null && "bg-[var(--neo-surface-muted)]"
+              "min-h-[72px] bg-[var(--hh-l2-operational-surface)] p-1.5 text-left",
+              c.day == null && "bg-[var(--hh-l2-operational-surface)]"
             )}
           >
             {c.day != null && (
               <>
-                <span className="text-xs font-medium text-[var(--neo-text-secondary)]">
-                  {c.day}
-                </span>
+                <span className="text-xs font-medium text-[var(--hh-text-secondary)]">{c.day}</span>
                 <div className="mt-1 space-y-1">
                   {(itemsByDate.get(c.dateKey) ?? []).map((s) => (
                     <div
@@ -201,16 +201,16 @@ const ScheduleTableRow = React.memo(function ScheduleTableRow({
 }) {
   return (
     <tr className={listTableRowStaticClassName}>
-      <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] font-medium text-[var(--neo-text-primary)]">
+      <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell font-medium text-[var(--hh-text-primary)]">
         {item.title || "—"}
       </td>
-      <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] text-[var(--neo-text-secondary)]">
+      <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell text-[var(--hh-text-secondary)]">
         {item.project_name ?? "—"}
       </td>
-      <td className="h-11 min-h-[44px] px-3 py-0 align-middle font-mono text-[13px] tabular-nums text-[var(--neo-text-secondary)]">
+      <td className="hh-fin h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell text-[var(--hh-text-secondary)]">
         {formatDateRange(item.start_date, item.end_date)}
       </td>
-      <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px]">
+      <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell">
         <NeoStatus label={statusLabel(item.status)} variant={statusVariant(item.status)} />
       </td>
     </tr>
@@ -324,7 +324,7 @@ export default function SchedulePage() {
   return (
     <PageLayout
       divider={false}
-      className={cn("dark md:max-w-5xl", mobileListPagePaddingClass, "max-md:!gap-3")}
+      className={cn("md:max-w-5xl", mobileListPagePaddingClass, "max-md:!gap-3")}
       header={
         <>
           <div className="hidden md:block">
@@ -356,6 +356,7 @@ export default function SchedulePage() {
             <div className="relative w-full">
               <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <NeoInput
+                aria-label="Search schedule"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search schedule…"
@@ -365,15 +366,15 @@ export default function SchedulePage() {
           }
         />
         <MobileFilterSheet open={filtersOpen} onOpenChange={setFiltersOpen} title="View">
-          <div className="flex gap-1 rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] p-1">
+          <div className="flex gap-1 rounded-lg border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-1">
             <button
               type="button"
               onClick={() => setViewMode("list")}
               className={cn(
                 "min-h-11 flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors",
                 viewMode === "list"
-                  ? "bg-[var(--neo-gold)] text-zinc-950"
-                  : "text-[var(--neo-text-secondary)] hover:text-[var(--neo-text-primary)]"
+                  ? "bg-[var(--hh-l3-selected)] text-[var(--hh-text-primary)]"
+                  : "text-[var(--hh-text-secondary)] hover:text-[var(--hh-text-primary)]"
               )}
             >
               List
@@ -384,28 +385,32 @@ export default function SchedulePage() {
               className={cn(
                 "min-h-11 flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors",
                 viewMode === "calendar"
-                  ? "bg-[var(--neo-gold)] text-zinc-950"
-                  : "text-[var(--neo-text-secondary)] hover:text-[var(--neo-text-primary)]"
+                  ? "bg-[var(--hh-l3-selected)] text-[var(--hh-text-primary)]"
+                  : "text-[var(--hh-text-secondary)] hover:text-[var(--hh-text-primary)]"
               )}
             >
               Calendar
             </button>
           </div>
-          <Button type="button" className="w-full rounded-sm" onClick={() => setFiltersOpen(false)}>
+          <Button
+            type="button"
+            className="w-full rounded-hh-compact"
+            onClick={() => setFiltersOpen(false)}
+          >
             Done
           </Button>
         </MobileFilterSheet>
 
         <NeoToolbar className="hidden justify-between md:flex">
-          <div className="flex items-center gap-1 rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] p-1">
+          <div className="flex items-center gap-1 rounded-lg border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-1">
             <button
               type="button"
               onClick={() => setViewMode("list")}
               className={cn(
                 "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
                 viewMode === "list"
-                  ? "bg-[var(--neo-gold)] text-zinc-950"
-                  : "text-[var(--neo-text-secondary)] hover:text-[var(--neo-text-primary)]"
+                  ? "bg-[var(--hh-l3-selected)] text-[var(--hh-text-primary)]"
+                  : "text-[var(--hh-text-secondary)] hover:text-[var(--hh-text-primary)]"
               )}
             >
               List
@@ -416,8 +421,8 @@ export default function SchedulePage() {
               className={cn(
                 "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
                 viewMode === "calendar"
-                  ? "bg-[var(--neo-gold)] text-zinc-950"
-                  : "text-[var(--neo-text-secondary)] hover:text-[var(--neo-text-primary)]"
+                  ? "bg-[var(--hh-l3-selected)] text-[var(--hh-text-primary)]"
+                  : "text-[var(--hh-text-secondary)] hover:text-[var(--hh-text-primary)]"
               )}
             >
               Calendar
@@ -426,6 +431,7 @@ export default function SchedulePage() {
           <div className="relative min-w-0 flex-1 md:max-w-md">
             <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <NeoInput
+              aria-label="Search schedule"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search schedule…"
@@ -460,10 +466,10 @@ export default function SchedulePage() {
                     <NeoMobileCard key={s.id} className="flex min-h-[64px] flex-col gap-2 p-3">
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium text-[var(--neo-text-primary)]">
+                          <p className="text-sm font-medium text-[var(--hh-text-primary)]">
                             {s.title || "—"}
                           </p>
-                          <p className="truncate text-xs text-[var(--neo-text-secondary)]">
+                          <p className="truncate text-xs text-[var(--hh-text-secondary)]">
                             {s.project_name ?? "—"}
                           </p>
                         </div>
@@ -472,7 +478,7 @@ export default function SchedulePage() {
                           variant={statusVariant(s.status)}
                         />
                       </div>
-                      <p className="font-mono text-sm font-medium tabular-nums text-[var(--neo-text-secondary)]">
+                      <p className="hh-fin text-hh-metadata font-medium text-[var(--hh-text-secondary)]">
                         {formatDateRange(s.start_date, s.end_date)}
                       </p>
                     </NeoMobileCard>
@@ -537,10 +543,10 @@ export default function SchedulePage() {
                     <NeoMobileCard key={s.id} className="flex min-h-[64px] flex-col gap-2 p-3">
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium text-[var(--neo-text-primary)]">
+                          <p className="text-sm font-medium text-[var(--hh-text-primary)]">
                             {s.title || "—"}
                           </p>
-                          <p className="truncate text-xs text-[var(--neo-text-secondary)]">
+                          <p className="truncate text-xs text-[var(--hh-text-secondary)]">
                             {s.project_name ?? "—"}
                           </p>
                         </div>
@@ -549,7 +555,7 @@ export default function SchedulePage() {
                           variant={statusVariant(s.status)}
                         />
                       </div>
-                      <p className="font-mono text-sm font-medium tabular-nums text-[var(--neo-text-secondary)]">
+                      <p className="hh-fin text-hh-metadata font-medium text-[var(--hh-text-secondary)]">
                         {formatDateRange(s.start_date, s.end_date)}
                       </p>
                     </NeoMobileCard>

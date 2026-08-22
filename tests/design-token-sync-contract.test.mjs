@@ -516,7 +516,7 @@ test("generated artifacts exactly equal the authoritative model", async () => {
   );
 });
 
-test("globals and Tailwind consume canonical tokens while compatibility aliases remain wired", async () => {
+test("globals and Tailwind consume canonical tokens after compatibility aliases are removed", async () => {
   const { validateRepositoryWiring } = await loadContract();
 
   assert.doesNotThrow(() =>

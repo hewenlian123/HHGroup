@@ -46,7 +46,7 @@ const DialogContent = React.forwardRef<
         "fixed left-[50%] top-[50%] z-50 grid max-h-[min(90vh,calc(100dvh-2rem))] w-full max-w-[480px] translate-x-[-50%] translate-y-[-50%] gap-hh-section overflow-y-auto overscroll-y-contain rounded-hh-task p-hh-task-mobile outline-none ease-out [-webkit-overflow-scrolling:touch] md:p-hh-task-desktop",
         TYPO.body,
         className,
-        "border border-[var(--hh-border-strong)] bg-[var(--hh-l5-task-surface)] text-[var(--neo-text-primary)] shadow-task",
+        "border border-[var(--hh-border-strong)] bg-[var(--hh-l5-task-surface)] text-[var(--hh-text-primary)] shadow-task",
         "max-md:fixed max-md:inset-x-2 max-md:bottom-0 max-md:left-2 max-md:right-2 max-md:top-auto max-md:max-h-[calc(100dvh-0.75rem)] max-md:w-auto max-md:max-w-none max-md:translate-x-0 max-md:translate-y-0 max-md:rounded-b-none max-md:rounded-t-hh-task max-md:border-b-0",
         hhNeoFocusRevealDialog,
         hhNeoFocusRevealMobileSheet
@@ -106,7 +106,7 @@ const DialogDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Description
     ref={ref}
-    className={cn(TYPO.helper, "text-[var(--neo-text-tertiary)]", className)}
+    className={cn(TYPO.helper, "text-[var(--hh-text-tertiary)]", className)}
     {...props}
   />
 ));

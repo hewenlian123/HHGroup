@@ -18,9 +18,9 @@ import { cn } from "@/lib/utils";
 import { saveEstimateAsTemplateAction } from "./actions";
 
 const FIELD =
-  "h-10 rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[14px] text-[var(--neo-text-primary)] shadow-none placeholder:text-[var(--neo-text-tertiary)] focus-visible:border-[var(--neo-gold)] focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]";
+  "hh-focus-ring hh-type-text-entry h-hh-control-comfortable rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-none placeholder:text-[var(--hh-text-tertiary)] focus-visible:border-[var(--hh-border-strong)]";
 const PRIMARY_ACTION =
-  "rounded-md border border-[rgb(198_165_106_/_0.28)] bg-[var(--neo-gold)] text-zinc-950 shadow-sm hover:bg-[var(--neo-gold-soft)] focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]";
+  "hh-focus-ring rounded-hh-compact border border-transparent bg-[var(--hh-action-primary)] text-[var(--hh-action-primary-foreground)] shadow-none hover:opacity-90";
 
 export function SaveEstimateAsTemplateDialog({
   open,
@@ -88,7 +88,7 @@ export function SaveEstimateAsTemplateDialog({
         </DialogHeader>
 
         <div className="space-y-3">
-          <label className="block text-xs font-medium text-[var(--neo-text-secondary)]">
+          <label className="block text-xs font-medium text-[var(--hh-text-secondary)]">
             Template Name
             <Input
               value={name}
@@ -97,7 +97,7 @@ export function SaveEstimateAsTemplateDialog({
               data-testid="save-template-name"
             />
           </label>
-          <label className="block text-xs font-medium text-[var(--neo-text-secondary)]">
+          <label className="block text-xs font-medium text-[var(--hh-text-secondary)]">
             Description
             <EstimateAutoResizeTextarea
               value={description}
@@ -109,7 +109,7 @@ export function SaveEstimateAsTemplateDialog({
             />
           </label>
           <div className="grid gap-3 sm:grid-cols-2">
-            <label className="block text-xs font-medium text-[var(--neo-text-secondary)]">
+            <label className="block text-xs font-medium text-[var(--hh-text-secondary)]">
               Category
               <Input
                 value={category}
@@ -117,7 +117,7 @@ export function SaveEstimateAsTemplateDialog({
                 className={cn(FIELD, "mt-1")}
               />
             </label>
-            <label className="block text-xs font-medium text-[var(--neo-text-secondary)]">
+            <label className="block text-xs font-medium text-[var(--hh-text-secondary)]">
               Default Tax Rate
               <Input
                 value={defaultTaxRate}
@@ -130,7 +130,7 @@ export function SaveEstimateAsTemplateDialog({
               />
             </label>
           </div>
-          <label className="block text-xs font-medium text-[var(--neo-text-secondary)]">
+          <label className="block text-xs font-medium text-[var(--hh-text-secondary)]">
             Default Terms
             <EstimateAutoResizeTextarea
               value={defaultTerms}

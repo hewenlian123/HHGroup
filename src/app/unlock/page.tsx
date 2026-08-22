@@ -1,3 +1,4 @@
+import { AUTH_PAGE_CLASS } from "@/components/auth/auth-ui";
 import { normalizeAuthRedirect } from "@/lib/auth-redirect";
 import { UnlockForm } from "./unlock-form";
 
@@ -8,7 +9,7 @@ type UnlockPageProps = {
 export default function UnlockPage({ searchParams }: UnlockPageProps) {
   const redirectTo = normalizeAuthRedirect(searchParams?.redirect);
   return (
-    <main className="flex min-h-[100dvh] items-center justify-center bg-[#151516] px-4 py-8">
+    <main className={AUTH_PAGE_CLASS}>
       <UnlockForm redirectTo={redirectTo} />
     </main>
   );

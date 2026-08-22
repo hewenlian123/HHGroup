@@ -41,13 +41,13 @@ function ToolButton({ label, onClick, disabled = false, children }: ToolButtonPr
         title={label}
         disabled={disabled}
         onClick={onClick}
-        className="h-11 w-11 min-w-11 touch-manipulation rounded-lg border border-transparent text-[var(--neo-canvas-text-secondary)] hover:border-white/10 hover:bg-white/[0.07] hover:text-[var(--neo-canvas-text-primary)] active:bg-white/10 focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)] disabled:opacity-35 lg:h-9 lg:w-9 lg:min-w-9 [&_svg]:h-4 [&_svg]:w-4 [&_svg]:stroke-[1.8]"
+        className="h-11 w-11 min-w-11 touch-manipulation rounded-lg border border-transparent text-[var(--hh-text-secondary)] hover:border-white/10 hover:bg-white/[0.07] hover:text-[var(--hh-text-primary)] active:bg-white/10 focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)] disabled:opacity-35 lg:h-9 lg:w-9 lg:min-w-9 [&_svg]:h-4 [&_svg]:w-4 [&_svg]:stroke-[1.8]"
       >
         {children}
       </Button>
       <span
         role="tooltip"
-        className="pointer-events-none absolute bottom-[calc(100%+0.45rem)] left-1/2 z-20 hidden -translate-x-1/2 whitespace-nowrap rounded-md border border-white/10 bg-[var(--neo-graphite-950)] px-2 py-1 text-[10px] font-medium text-[var(--neo-canvas-text-primary)] opacity-0 shadow-lg transition-opacity duration-150 group-hover/tool:opacity-100 group-focus-within/tool:opacity-100 lg:block"
+        className="pointer-events-none absolute bottom-[calc(100%+0.45rem)] left-1/2 z-20 hidden -translate-x-1/2 whitespace-nowrap rounded-md border border-white/10 bg-[#07090d] px-2 py-1 text-[10px] font-medium text-[var(--hh-text-primary)] opacity-0 shadow-lg transition-opacity duration-150 group-hover/tool:opacity-100 group-focus-within/tool:opacity-100 lg:block"
       >
         {label}
       </span>
@@ -67,7 +67,7 @@ export function ReceiptViewerHeaderActions({
   downloadDisabled: boolean;
 }) {
   const headerAction =
-    "min-h-11 touch-manipulation rounded-lg border border-transparent px-2.5 text-[var(--neo-canvas-text-secondary)] hover:border-white/10 hover:bg-white/[0.07] hover:text-[var(--neo-canvas-text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)] lg:min-h-9 lg:px-3";
+    "min-h-11 touch-manipulation rounded-lg border border-transparent px-2.5 text-[var(--hh-text-secondary)] hover:border-white/10 hover:bg-white/[0.07] hover:text-[var(--hh-text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)] lg:min-h-9 lg:px-3";
 
   return (
     <div className="flex shrink-0 items-center gap-1">
@@ -154,7 +154,7 @@ export function ReceiptViewerToolbar({
           </ToolButton>
           <output
             aria-label={`Current zoom ${state.zoomPercent}%`}
-            className="w-11 shrink-0 text-center text-xs font-medium tabular-nums text-[var(--neo-canvas-text-secondary)] sm:w-12"
+            className="w-11 shrink-0 text-center text-xs font-medium tabular-nums text-[var(--hh-text-secondary)] sm:w-12"
           >
             {state.zoomPercent}%
           </output>
@@ -201,7 +201,7 @@ export function ReceiptViewerToolbar({
                 variant="ghost"
                 size="icon"
                 aria-label="More receipt tools"
-                className="h-11 w-11 min-w-11 touch-manipulation rounded-lg border border-transparent text-[var(--neo-canvas-text-secondary)] hover:border-white/10 hover:bg-white/[0.07] hover:text-[var(--neo-canvas-text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)] [&_svg]:h-4 [&_svg]:w-4 [&_svg]:stroke-[1.8]"
+                className="h-11 w-11 min-w-11 touch-manipulation rounded-lg border border-transparent text-[var(--hh-text-secondary)] hover:border-white/10 hover:bg-white/[0.07] hover:text-[var(--hh-text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)] [&_svg]:h-4 [&_svg]:w-4 [&_svg]:stroke-[1.8]"
               >
                 <MoreHorizontal aria-hidden />
               </Button>
@@ -210,7 +210,7 @@ export function ReceiptViewerToolbar({
               side="top"
               align="end"
               sideOffset={8}
-              className="z-[10001] min-w-48 border-white/10 bg-[var(--neo-graphite-900)]"
+              className="z-[10001] min-w-48 border-white/10 bg-[#0b0f15]"
             >
               <DropdownMenuItem
                 disabled={disabled}

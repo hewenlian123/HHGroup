@@ -103,7 +103,7 @@ export function DataTable<T>({
               <TableRow className="pointer-events-none hover:!bg-transparent">
                 <TableCell
                   colSpan={columns.length + (rowActions ? 1 : 0)}
-                  className="py-hh-8 text-center text-[var(--neo-text-secondary)]"
+                  className="py-hh-8 text-center text-[var(--hh-text-secondary)]"
                 >
                   {loadingText}
                 </TableCell>
@@ -113,7 +113,7 @@ export function DataTable<T>({
               <TableRow className="pointer-events-none hover:!bg-transparent">
                 <TableCell
                   colSpan={columns.length + (rowActions ? 1 : 0)}
-                  className="py-hh-8 text-center text-[var(--neo-text-secondary)]"
+                  className="py-hh-8 text-center text-[var(--hh-text-secondary)]"
                 >
                   {emptyState}
                 </TableCell>
@@ -223,7 +223,7 @@ export function DataTable<T>({
                         <dt className={TYPO.tableHeader}>{column.header}</dt>
                         <dd
                           className={cn(
-                            "text-right text-[var(--neo-text-primary)]",
+                            "text-right text-[var(--hh-text-primary)]",
                             column.numeric && TYPO.amount
                           )}
                         >

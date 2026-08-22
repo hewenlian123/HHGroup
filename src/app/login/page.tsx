@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 
+import { AUTH_META_CLASS, AUTH_PAGE_CLASS } from "@/components/auth/auth-ui";
 import { LoginPanel } from "@/components/auth/login-panel";
 import { authorizedAppRole } from "@/lib/auth-role";
 import { normalizeAuthRedirect } from "@/lib/auth-redirect";
@@ -45,34 +46,17 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   const initialMessage = messageCode ? (SAFE_MESSAGES[messageCode] ?? null) : null;
 
   return (
-    <div className="relative flex min-h-[100dvh] items-center justify-center overflow-hidden bg-[#151516] px-4 py-8 sm:px-6">
-      <div
-        className="pointer-events-none absolute inset-0 opacity-60"
-        aria-hidden="true"
-        style={{
-          background:
-            "radial-gradient(circle at 18% 12%, rgb(184 147 90 / 0.11), transparent 34%), radial-gradient(circle at 84% 86%, rgb(255 255 255 / 0.035), transparent 32%)",
-        }}
-      />
-      <div
-        className="pointer-events-none absolute inset-0 opacity-[0.035]"
-        aria-hidden="true"
-        style={{
-          backgroundImage:
-            "linear-gradient(rgb(255 255 255) 1px, transparent 1px), linear-gradient(90deg, rgb(255 255 255) 1px, transparent 1px)",
-          backgroundSize: "42px 42px",
-        }}
-      />
-      <div className="relative z-10 w-full max-w-[430px]">
+    <main className={AUTH_PAGE_CLASS}>
+      <div className="w-full max-w-[430px]">
         <LoginPanel
           redirectTo={redirectTo}
           initialError={initialError}
           initialMessage={initialMessage}
         />
-        <p className="mt-5 text-center text-[11px] text-zinc-600">
-          Secure access · HH Neo Operations OS
+        <p className={`mt-hh-5 text-center ${AUTH_META_CLASS}`}>
+          Secure access · HH Group Operations
         </p>
       </div>
-    </div>
+    </main>
   );
 }

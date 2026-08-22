@@ -44,13 +44,13 @@ export function SystemState({
       {...props}
     >
       {icon ? (
-        <div className="mx-auto mb-hh-3 flex h-hh-touch w-hh-touch items-center justify-center rounded-full border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--neo-text-secondary)]">
+        <div className="mx-auto mb-hh-3 flex h-hh-touch w-hh-touch items-center justify-center rounded-full border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-secondary)]">
           {icon}
         </div>
       ) : null}
-      <p className={cn(TYPO.panelTitle, "text-[var(--neo-text-primary)]")}>{title}</p>
+      <p className={cn(TYPO.panelTitle, "text-[var(--hh-text-primary)]")}>{title}</p>
       {description ? (
-        <p className={cn("mx-auto mt-hh-1 max-w-md text-[var(--neo-text-secondary)]", TYPO.body)}>
+        <p className={cn("mx-auto mt-hh-1 max-w-md text-[var(--hh-text-secondary)]", TYPO.body)}>
           {description}
         </p>
       ) : null}

@@ -48,7 +48,7 @@ const CardDescription = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HT
   ({ className, ...props }, ref) => (
     <div
       ref={ref}
-      className={cn(TYPO.body, "text-[var(--neo-text-secondary)]", className)}
+      className={cn(TYPO.body, "text-[var(--hh-text-secondary)]", className)}
       {...props}
     />
   )

@@ -92,7 +92,7 @@ export function RowActionsMenu({
           variant="quiet"
           size="icon"
           className={cn(
-            "h-hh-control-compact w-hh-8 shrink-0 text-[var(--neo-text-secondary)] hover:text-[var(--neo-text-primary)]",
+            "h-hh-control-compact w-hh-8 shrink-0 text-[var(--hh-text-secondary)] hover:text-[var(--hh-text-primary)]",
             touchFriendly && "min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0 md:h-8 md:w-8",
             appearance === "list" && listRowActionsTriggerClassName,
             className

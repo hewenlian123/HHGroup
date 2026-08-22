@@ -15,7 +15,7 @@ const TabsList = React.forwardRef<
   <TabsPrimitive.List
     ref={ref}
     className={cn(
-      "hh-touch-min inline-flex h-hh-control-standard items-center gap-hh-1 rounded-hh-compact border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-hh-1 text-[var(--neo-text-secondary)]",
+      "hh-touch-min inline-flex h-hh-control-standard items-center gap-hh-1 rounded-hh-compact border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-hh-1 text-[var(--hh-text-secondary)]",
       className
     )}
     {...props}
@@ -30,7 +30,7 @@ const TabsTrigger = React.forwardRef<
   <TabsPrimitive.Trigger
     ref={ref}
     className={cn(
-      "hh-touch-min inline-flex items-center justify-center whitespace-nowrap rounded-hh-compact px-hh-3 py-1.5 touch-manipulation transition-colors duration-150 ease-out disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-[var(--hh-l3-selected)] data-[state=active]:text-[var(--neo-text-primary)] data-[state=inactive]:hover:bg-[var(--hh-l3-hover)] data-[state=inactive]:hover:text-[var(--neo-text-primary)] active:bg-[var(--hh-l3-pressed)] active:duration-100",
+      "hh-touch-min inline-flex items-center justify-center whitespace-nowrap rounded-hh-compact px-hh-3 py-1.5 touch-manipulation transition-colors duration-150 ease-out disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-[var(--hh-l3-selected)] data-[state=active]:text-[var(--hh-text-primary)] data-[state=inactive]:hover:bg-[var(--hh-l3-hover)] data-[state=inactive]:hover:text-[var(--hh-text-primary)] active:bg-[var(--hh-l3-pressed)] active:duration-100",
       TYPO.button,
       motionInputFocus,
       className

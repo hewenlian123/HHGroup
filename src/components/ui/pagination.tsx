@@ -32,7 +32,7 @@ export function Pagination({
       aria-busy={loading || undefined}
       className={cn("flex flex-wrap items-center justify-between gap-hh-2 py-hh-3", className)}
     >
-      <div className="hh-fin text-hh-metadata text-[var(--neo-text-secondary)]" aria-live="polite">
+      <div className="hh-fin text-hh-metadata text-[var(--hh-text-secondary)]" aria-live="polite">
         {safeTotal === 0 ? "0 results" : `${start}–${end} of ${safeTotal}`}
       </div>
       <div className="flex items-center gap-2">
@@ -46,7 +46,7 @@ export function Pagination({
           Previous
         </Button>
         <div
-          className="hh-fin text-hh-metadata text-[var(--neo-text-secondary)]"
+          className="hh-fin text-hh-metadata text-[var(--hh-text-secondary)]"
           aria-current="page"
         >
           Page {cur} / {totalPages}

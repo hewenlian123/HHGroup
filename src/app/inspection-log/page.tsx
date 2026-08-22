@@ -229,7 +229,7 @@ export default function InspectionLogPage() {
   return (
     <PageLayout
       divider={false}
-      className={cn("dark md:max-w-5xl", mobileListPagePaddingClass, "max-md:!gap-3")}
+      className={cn("md:max-w-5xl", mobileListPagePaddingClass, "max-md:!gap-3")}
       header={
         <>
           <div className="hidden md:block">
@@ -261,6 +261,7 @@ export default function InspectionLogPage() {
             <div className="relative w-full">
               <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <NeoInput
+                aria-label="Search inspections"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search inspections…"
@@ -273,6 +274,7 @@ export default function InspectionLogPage() {
           <div className="space-y-2">
             <NeoFieldLabel>Project</NeoFieldLabel>
             <NeoSelect
+              aria-label="Filter inspections by project"
               value={projectFilter}
               onChange={(e) => setProjectFilter(e.target.value)}
               className="w-full"
@@ -288,6 +290,7 @@ export default function InspectionLogPage() {
           <div className="space-y-2">
             <NeoFieldLabel>Status</NeoFieldLabel>
             <NeoSelect
+              aria-label="Filter inspections by status"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
               className="w-full"
@@ -300,7 +303,11 @@ export default function InspectionLogPage() {
               ))}
             </NeoSelect>
           </div>
-          <Button type="button" className="w-full rounded-sm" onClick={() => setFiltersOpen(false)}>
+          <Button
+            type="button"
+            className="w-full rounded-hh-compact"
+            onClick={() => setFiltersOpen(false)}
+          >
             Done
           </Button>
         </MobileFilterSheet>
@@ -309,6 +316,7 @@ export default function InspectionLogPage() {
           <div className="relative min-w-[200px] flex-1 max-w-md">
             <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <NeoInput
+              aria-label="Search inspections"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search inspections…"
@@ -318,6 +326,7 @@ export default function InspectionLogPage() {
           <div className="space-y-1">
             <NeoFieldLabel>Project</NeoFieldLabel>
             <NeoSelect
+              aria-label="Filter inspections by project"
               value={projectFilter}
               onChange={(e) => setProjectFilter(e.target.value)}
               className="h-9 min-w-[160px]"
@@ -333,6 +342,7 @@ export default function InspectionLogPage() {
           <div className="space-y-1">
             <NeoFieldLabel>Status</NeoFieldLabel>
             <NeoSelect
+              aria-label="Filter inspections by status"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
               className="h-9 min-w-[120px]"
@@ -388,10 +398,10 @@ export default function InspectionLogPage() {
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-medium text-[var(--neo-text-primary)]">
+                          <p className="truncate text-sm font-medium text-[var(--hh-text-primary)]">
                             {row.inspection_type || "—"}
                           </p>
-                          <p className="truncate text-xs text-[var(--neo-text-secondary)]">
+                          <p className="truncate text-xs text-[var(--hh-text-secondary)]">
                             {(row.project_name ?? "—") +
                               " · " +
                               (row.inspection_date
@@ -405,7 +415,7 @@ export default function InspectionLogPage() {
                         />
                       </div>
                       {row.inspector ? (
-                        <p className="text-xs text-[var(--neo-text-secondary)]">{row.inspector}</p>
+                        <p className="text-xs text-[var(--hh-text-secondary)]">{row.inspector}</p>
                       ) : null}
                     </button>
                   </NeoMobileCard>
@@ -443,24 +453,24 @@ export default function InspectionLogPage() {
                       onClick={() => openDrawer(row)}
                       className={listTableRowClassName}
                     >
-                      <td className="h-11 px-3 py-0 align-middle font-mono text-[13px] tabular-nums text-[var(--neo-text-secondary)]">
+                      <td className="hh-fin h-11 px-3 py-0 align-middle text-hh-table-cell text-[var(--hh-text-secondary)]">
                         {row.inspection_date
                           ? new Date(row.inspection_date).toLocaleDateString()
                           : "—"}
                       </td>
-                      <td className="h-11 px-3 py-0 align-middle text-[13px] text-[var(--neo-text-secondary)]">
+                      <td className="h-11 px-3 py-0 align-middle text-hh-table-cell text-[var(--hh-text-secondary)]">
                         {row.project_name ?? "—"}
                       </td>
                       <td
                         className={cn(
-                          "h-11 px-3 py-0 align-middle text-[13px] font-medium text-[var(--neo-text-primary)]",
+                          "h-11 px-3 py-0 align-middle text-hh-table-cell font-medium text-[var(--hh-text-primary)]",
                           listTablePrimaryCellClassName,
                           "hover:underline"
                         )}
                       >
                         {row.inspection_type || "—"}
                       </td>
-                      <td className="hidden h-11 px-3 py-0 align-middle text-[13px] text-[var(--neo-text-secondary)] md:table-cell">
+                      <td className="hidden h-11 px-3 py-0 align-middle text-hh-table-cell text-[var(--hh-text-secondary)] md:table-cell">
                         {row.inspector ?? "—"}
                       </td>
                       <td className="h-11 px-3 py-0 align-middle">

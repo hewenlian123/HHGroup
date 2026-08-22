@@ -121,10 +121,10 @@ export function ChangeOrdersView({
           </DropdownMenuTrigger>
           <DropdownMenuContent
             align="end"
-            className="min-w-[220px] rounded-lg border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)]"
+            className="min-w-[220px] rounded-hh-standard border-[var(--hh-border-floating)] bg-[var(--hh-l4-floating-surface)] text-[var(--hh-text-primary)] shadow-floating"
           >
             {projects.length === 0 ? (
-              <DropdownMenuItem disabled className="text-[var(--neo-text-secondary)]">
+              <DropdownMenuItem disabled className="text-[var(--hh-text-secondary)]">
                 No projects
               </DropdownMenuItem>
             ) : (
@@ -132,7 +132,7 @@ export function ChangeOrdersView({
                 <DropdownMenuItem
                   key={p.id}
                   asChild
-                  className="hover:bg-[var(--neo-surface-muted)] focus:bg-[var(--neo-surface-muted)]"
+                  className="hover:bg-[var(--hh-l2-operational-surface)] focus:bg-[var(--hh-l2-operational-surface)]"
                 >
                   <Link href={`/projects/${p.id}/change-orders/new`}>{p.name}</Link>
                 </DropdownMenuItem>
@@ -147,7 +147,7 @@ export function ChangeOrdersView({
   return (
     <PageLayout
       divider={false}
-      className={cn("dark", mobileListPagePaddingClass, "max-md:!gap-3")}
+      className={cn(mobileListPagePaddingClass, "max-md:!gap-3")}
       header={
         <>
           <div className="hidden w-full md:block">{desktopHeader}</div>
@@ -216,7 +216,7 @@ export function ChangeOrdersView({
 
         {dataLoadWarning ? (
           <p
-            className="rounded-lg border border-[rgb(184_137_45_/_0.24)] bg-[rgb(184_137_45_/_0.10)] px-3 py-2 text-sm text-[var(--neo-text-secondary)]"
+            className="rounded-hh-standard border border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] px-hh-3 py-hh-2 text-hh-body text-[var(--hh-warning)]"
             role="status"
           >
             {dataLoadWarning}
@@ -269,7 +269,7 @@ export function ChangeOrdersView({
               <NeoPanel
                 key={project.id}
                 title={project.name}
-                bodyClassName="divide-y divide-[var(--neo-border)]"
+                bodyClassName="divide-y divide-[var(--hh-border)]"
               >
                 {changeOrders.map((co) => (
                   <Link
@@ -281,10 +281,10 @@ export function ChangeOrdersView({
                     )}
                   >
                     <div className="min-w-0 flex-1">
-                      <div className="text-sm font-medium text-[var(--neo-text-primary)]">
+                      <div className="text-sm font-medium text-[var(--hh-text-primary)]">
                         {co.number}
                       </div>
-                      <div className="mt-0.5 truncate text-xs text-[var(--neo-text-secondary)]">
+                      <div className="mt-0.5 truncate text-xs text-[var(--hh-text-secondary)]">
                         {co.title || "Untitled"}
                       </div>
                     </div>

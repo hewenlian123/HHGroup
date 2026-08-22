@@ -68,13 +68,11 @@ test("generates the approved Phase 5 focus and semantic soft-state tokens", () =
   }
 });
 
-test("maps Phase 2 tokens through global compatibility aliases and Tailwind", () => {
+test("maps Phase 2 tokens through canonical Tailwind roles without Neo aliases", () => {
   const css = source("src/app/globals.css");
   const tailwind = source("tailwind.config.ts");
 
-  assert.match(css, /--neo-surface-hover:\s*var\(--hh-l3-hover\);/);
-  assert.match(css, /--neo-shadow-panel:\s*var\(--hh-shadow-operational\);/);
-  assert.match(css, /--neo-shadow-command:\s*var\(--hh-shadow-floating\);/);
+  assert.doesNotMatch(css, /--neo-[a-z0-9-]+\s*:/);
   assert.doesNotMatch(css, /--shadow-popover:/);
 
   for (const variable of [

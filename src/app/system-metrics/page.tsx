@@ -61,14 +61,13 @@ export default function SystemMetricsPage() {
 
   return (
     <PageLayout
-      className="dark"
       header={
         <PageHeader title="System Metrics" description="Database row counts for core tables." />
       }
     >
       {error ? (
         <NeoPanel bodyClassName="px-4 py-3">
-          <p className="text-sm font-medium text-rose-300">{error}</p>
+          <p className="text-hh-body font-medium text-[var(--hh-danger)]">{error}</p>
         </NeoPanel>
       ) : null}
 
@@ -85,7 +84,7 @@ export default function SystemMetricsPage() {
               label={label}
               value={
                 loading ? (
-                  <span className="block h-7 w-16 animate-pulse rounded-md bg-[var(--neo-surface-muted)]" />
+                  <span className="block h-7 w-16 animate-pulse rounded-md bg-[var(--hh-l2-operational-surface)]" />
                 ) : (
                   <span>{(metrics?.[key] ?? 0).toLocaleString("en-US")}</span>
                 )

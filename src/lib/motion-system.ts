@@ -28,7 +28,7 @@ export const motionRowPress = "active:bg-[var(--hh-l3-pressed)] active:duration-
 export const motionListTableRow = cn(
   "group",
   motionTransition,
-  "hover:bg-[var(--neo-surface-hover)]",
+  "hover:bg-[var(--hh-l3-hover)]",
   motionRowPress
 );
 
@@ -53,7 +53,7 @@ export const motionPopoverLayer = cn(
 
 /** HH Neo Focus Reveal: shared modal overlay. */
 export const hhNeoFocusRevealOverlay = cn(
-  "bg-neutral-950/45",
+  "bg-[color-mix(in_srgb,var(--hh-l0-canvas)_55%,transparent)]",
   "data-[state=open]:animate-hh-modal-fade-in data-[state=closed]:animate-hh-modal-fade-out",
   "motion-reduce:data-[state=open]:animate-hh-modal-fade-in motion-reduce:data-[state=closed]:animate-hh-modal-fade-out",
   "data-[state=closed]:pointer-events-none"

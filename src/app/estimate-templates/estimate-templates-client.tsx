@@ -83,11 +83,11 @@ type TemplateDraft = {
 };
 
 const FIELD =
-  "h-10 rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[14px] text-[var(--neo-text-primary)] shadow-none placeholder:text-[var(--neo-text-tertiary)] focus-visible:border-[var(--neo-gold)] focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]";
+  "hh-focus-ring hh-type-text-entry h-hh-control-comfortable rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-none placeholder:text-[var(--hh-text-tertiary)] focus-visible:border-[var(--hh-border-strong)]";
 const PRIMARY_ACTION =
-  "rounded-md border border-[rgb(198_165_106_/_0.28)] bg-[var(--neo-gold)] text-zinc-950 shadow-sm hover:bg-[var(--neo-gold-soft)] focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]";
+  "hh-focus-ring rounded-hh-compact border border-transparent bg-[var(--hh-action-primary)] text-[var(--hh-action-primary-foreground)] shadow-none hover:opacity-90";
 const SECONDARY_ACTION =
-  "rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-none hover:border-[var(--neo-border-strong)] hover:bg-[var(--neo-surface-muted)]";
+  "rounded-md border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-none hover:border-[var(--hh-border-strong)] hover:bg-[var(--hh-l2-operational-surface)]";
 
 function makeId(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -380,11 +380,12 @@ export function EstimateTemplatesClient({ templates }: { templates: EstimateTemp
       <FilterToolbar className="items-stretch gap-2 md:items-center md:justify-between">
         <div className="relative min-w-[220px] flex-1">
           <Search
-            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--neo-text-tertiary)]"
+            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--hh-text-tertiary)]"
             aria-hidden
           />
           <Input
             data-testid="estimate-template-search"
+            aria-label="Search estimate templates"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search templates…"
@@ -418,41 +419,44 @@ export function EstimateTemplatesClient({ templates }: { templates: EstimateTemp
         {activeTemplates.slice(0, 6).map((template) => (
           <NeoPanel
             key={template.id}
-            className="transition-colors hover:border-[rgb(184_137_45_/_0.32)]"
+            className="transition-colors hover:border-[var(--hh-border-strong)]"
             bodyClassName="p-4"
           >
             <div className="flex min-h-[188px] flex-col gap-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-[11px] font-medium text-[var(--neo-text-tertiary)]">
+                  <p className="text-hh-status text-[var(--hh-text-tertiary)]">
                     {template.category}
                   </p>
-                  <h2 className="mt-1 truncate text-base font-semibold text-[var(--neo-text-primary)]">
+                  <h2 className="mt-1 truncate text-base font-semibold text-[var(--hh-text-primary)]">
                     {template.name}
                   </h2>
                   {template.description ? (
-                    <p className="mt-1 line-clamp-2 text-sm text-[var(--neo-text-secondary)]">
+                    <p className="mt-1 line-clamp-2 text-sm text-[var(--hh-text-secondary)]">
                       {template.description}
                     </p>
                   ) : null}
                 </div>
-                <FileText className="h-5 w-5 shrink-0 text-[var(--neo-gold-soft)]" aria-hidden />
+                <FileText
+                  className="h-5 w-5 shrink-0 text-[var(--hh-text-secondary)]"
+                  aria-hidden
+                />
               </div>
-              <div className="mt-auto grid grid-cols-3 gap-2 text-xs text-[var(--neo-text-tertiary)]">
+              <div className="mt-auto grid grid-cols-3 gap-2 text-xs text-[var(--hh-text-tertiary)]">
                 <span>
-                  <strong className="block text-sm text-[var(--neo-text-primary)]">
+                  <strong className="block text-sm text-[var(--hh-text-primary)]">
                     {template.templateData.sections.length}
                   </strong>
                   sections
                 </span>
                 <span>
-                  <strong className="block text-sm text-[var(--neo-text-primary)]">
+                  <strong className="block text-sm text-[var(--hh-text-primary)]">
                     {templateItemCount(template)}
                   </strong>
                   items
                 </span>
                 <span>
-                  <strong className="block text-sm text-[var(--neo-text-primary)] tabular-nums">
+                  <strong className="block text-sm text-[var(--hh-text-primary)] tabular-nums">
                     {formatEstimateCurrency(templateSubtotal(template))}
                   </strong>
                   base
@@ -502,32 +506,32 @@ export function EstimateTemplatesClient({ templates }: { templates: EstimateTemp
             {visibleTemplates.map((template) => (
               <tr
                 key={template.id}
-                className="border-t border-[var(--neo-border)] hover:bg-[var(--neo-surface-muted)]"
+                className="border-t border-[var(--hh-border)] hover:bg-[var(--hh-l2-operational-surface)]"
                 data-testid="estimate-template-row"
               >
                 <td className="px-3 py-3">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="font-medium text-[var(--neo-text-primary)]">
+                      <span className="font-medium text-[var(--hh-text-primary)]">
                         {template.name}
                       </span>
                       {template.isArchived ? (
-                        <NeoStatus label="Archived" variant="muted" className="h-5 text-[10px]" />
+                        <NeoStatus label="Archived" variant="muted" className="h-5" />
                       ) : null}
                     </div>
                     {template.description ? (
-                      <p className="mt-0.5 max-w-xl text-xs text-[var(--neo-text-tertiary)]">
+                      <p className="mt-0.5 max-w-xl text-xs text-[var(--hh-text-tertiary)]">
                         {template.description}
                       </p>
                     ) : null}
                   </div>
                 </td>
-                <td className="px-3 py-3 text-[var(--neo-text-secondary)]">{template.category}</td>
-                <td className="px-3 py-3 text-[var(--neo-text-secondary)]">
+                <td className="px-3 py-3 text-[var(--hh-text-secondary)]">{template.category}</td>
+                <td className="px-3 py-3 text-[var(--hh-text-secondary)]">
                   {template.templateData.sections.length} sections · {templateItemCount(template)}{" "}
                   items
                 </td>
-                <td className="px-3 py-3 text-[var(--neo-text-secondary)] tabular-nums">
+                <td className="px-3 py-3 text-[var(--hh-text-secondary)] tabular-nums">
                   {template.defaultTaxRate == null ? "—" : `${template.defaultTaxRate}%`}
                 </td>
                 <td className="px-3 py-3 text-right">
@@ -549,7 +553,7 @@ export function EstimateTemplatesClient({ templates }: { templates: EstimateTemp
                       </DropdownMenuTrigger>
                       <DropdownMenuContent
                         align="end"
-                        className="min-w-[210px] rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] p-1 text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)]"
+                        className="min-w-[210px] rounded-hh-standard border border-[var(--hh-border-floating)] bg-[var(--hh-l4-floating-surface)] p-hh-1 text-[var(--hh-text-primary)] shadow-floating"
                       >
                         <DropdownMenuItem onSelect={() => openEdit(template)}>
                           <Edit3 className="mr-2 h-4 w-4" />
@@ -581,7 +585,7 @@ export function EstimateTemplatesClient({ templates }: { templates: EstimateTemp
                           {template.isArchived ? "Restore" : "Archive"}
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                          className="text-rose-300 focus:text-rose-300"
+                          className="text-[var(--hh-danger)] focus:text-[var(--hh-danger)]"
                           onSelect={() => {
                             if (!window.confirm(`Delete ${template.name}?`)) return;
                             runTemplateAction("Template deleted", () =>
@@ -602,7 +606,7 @@ export function EstimateTemplatesClient({ templates }: { templates: EstimateTemp
               <tr>
                 <td
                   colSpan={5}
-                  className="px-3 py-10 text-center text-sm text-[var(--neo-text-tertiary)]"
+                  className="px-3 py-10 text-center text-sm text-[var(--hh-text-tertiary)]"
                 >
                   No matching templates.
                 </td>
@@ -622,7 +626,7 @@ export function EstimateTemplatesClient({ templates }: { templates: EstimateTemp
               <DialogTitle className={EB.pageTitle}>
                 {draft.id ? "Edit Template" : "Create Template"}
               </DialogTitle>
-              <DialogDescription className="mt-1 text-[13px] leading-snug text-[#929CAF]">
+              <DialogDescription className="mt-hh-1 text-hh-body text-[var(--hh-text-secondary)]">
                 Build reusable proposal sections and line items. Customer, project, payments, and
                 invoices are never stored in templates.
               </DialogDescription>
@@ -633,7 +637,7 @@ export function EstimateTemplatesClient({ templates }: { templates: EstimateTemp
             <div className="estimate-builder estimate-builder-new grid gap-4 lg:grid-cols-[minmax(16rem,0.78fr)_minmax(0,1.72fr)]">
               <div className="space-y-3">
                 <div className={ebGlassPanel("space-y-3")}>
-                  <label className="block text-xs font-medium text-[var(--neo-text-secondary)]">
+                  <label className="block text-xs font-medium text-[var(--hh-text-secondary)]">
                     Template Name
                     <Input
                       data-testid="estimate-template-name"
@@ -643,7 +647,7 @@ export function EstimateTemplatesClient({ templates }: { templates: EstimateTemp
                       placeholder="Kitchen Remodel"
                     />
                   </label>
-                  <label className="block text-xs font-medium text-[var(--neo-text-secondary)]">
+                  <label className="block text-xs font-medium text-[var(--hh-text-secondary)]">
                     Description
                     <EstimateAutoResizeTextarea
                       value={draft.description}
@@ -656,7 +660,7 @@ export function EstimateTemplatesClient({ templates }: { templates: EstimateTemp
                       maxHeight={220}
                     />
                   </label>
-                  <label className="block text-xs font-medium text-[var(--neo-text-secondary)]">
+                  <label className="block text-xs font-medium text-[var(--hh-text-secondary)]">
                     Category
                     <Input
                       value={draft.category}
@@ -667,7 +671,7 @@ export function EstimateTemplatesClient({ templates }: { templates: EstimateTemp
                       placeholder="Remodel"
                     />
                   </label>
-                  <label className="block text-xs font-medium text-[var(--neo-text-secondary)]">
+                  <label className="block text-xs font-medium text-[var(--hh-text-secondary)]">
                     Default Tax Rate
                     <Input
                       value={draft.defaultTaxRate}
@@ -681,7 +685,7 @@ export function EstimateTemplatesClient({ templates }: { templates: EstimateTemp
                       placeholder="Optional"
                     />
                   </label>
-                  <label className="block text-xs font-medium text-[var(--neo-text-secondary)]">
+                  <label className="block text-xs font-medium text-[var(--hh-text-secondary)]">
                     Default Terms
                     <EstimateAutoResizeTextarea
                       value={draft.defaultTerms}
@@ -768,7 +772,7 @@ export function EstimateTemplatesClient({ templates }: { templates: EstimateTemp
                                   onClick={(event) => event.stopPropagation()}
                                   onKeyDown={(event) => event.stopPropagation()}
                                   className={ebInput(
-                                    "h-7 min-h-7 min-w-[8rem] border-0 bg-transparent px-0 text-[15px] font-semibold tracking-tight text-zinc-50 shadow-none focus-visible:ring-0"
+                                    "hh-focus-ring h-7 min-h-7 min-w-[8rem] border-0 bg-transparent px-0 text-hh-panel-title text-[var(--hh-text-primary)] shadow-none"
                                   )}
                                   placeholder={`Section ${sectionIndex + 1}`}
                                   aria-label={`Template section ${sectionIndex + 1} title`}
@@ -779,7 +783,7 @@ export function EstimateTemplatesClient({ templates }: { templates: EstimateTemp
                                   size="icon"
                                   className={cn(
                                     EB.lineItemMoreTrigger,
-                                    "h-7 min-h-7 w-7 min-w-7 text-rose-200/70 hover:text-rose-100"
+                                    "h-7 min-h-7 w-7 min-w-7 text-[var(--hh-danger)] opacity-75 hover:opacity-100"
                                   )}
                                   onClick={(event) => {
                                     event.stopPropagation();
@@ -928,7 +932,7 @@ export function EstimateTemplatesClient({ templates }: { templates: EstimateTemp
             </div>
           </div>
 
-          <DialogFooter className="border-t border-white/[0.06] bg-[#0B0D12]/95 px-5 py-4 sm:px-6">
+          <DialogFooter className="border-t border-[var(--hh-border)] bg-[var(--hh-l5-task-surface)] px-hh-5 py-hh-4 sm:px-hh-6">
             <Button
               type="button"
               variant="ghost"

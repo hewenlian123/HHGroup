@@ -612,16 +612,6 @@ export function renderGeneratedCss(contract) {
 export function validateRepositoryWiring({ globalsCss, tailwindConfig }) {
   const requiredGlobalSnippets = [
     '@import "../styles/design-tokens.generated.css";',
-    "--neo-surface-raised: var(--hh-l2-operational-surface);",
-    "--neo-surface-hover: var(--hh-l3-hover);",
-    "--neo-text-primary: var(--hh-text-primary);",
-    "--neo-text-secondary: var(--hh-text-secondary);",
-    "--neo-text-tertiary: var(--hh-text-tertiary);",
-    "--neo-border: var(--hh-border);",
-    "--neo-border-strong: var(--hh-border-strong);",
-    "--neo-shadow-panel: var(--hh-shadow-operational);",
-    "--neo-shadow-command: var(--hh-shadow-floating);",
-    "--neo-gold-ring: var(--hh-focus-ring);",
     "--space-1: var(--hh-space-1);",
     "--space-2: var(--hh-space-2);",
     "--space-3: var(--hh-space-3);",

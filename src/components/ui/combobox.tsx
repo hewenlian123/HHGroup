@@ -205,7 +205,7 @@ export function Combobox({
           <div
             ref={contentRef}
             className={cn(
-              "fixed z-[200] max-h-[min(22rem,calc(100dvh-1rem))] overflow-hidden rounded-hh-standard border border-[var(--hh-border-floating)] bg-[var(--hh-l4-floating-surface)] text-[var(--neo-text-primary)] shadow-floating",
+              "fixed z-[200] max-h-[min(22rem,calc(100dvh-1rem))] overflow-hidden rounded-hh-standard border border-[var(--hh-border-floating)] bg-[var(--hh-l4-floating-surface)] text-[var(--hh-text-primary)] shadow-floating",
               contentClassName
             )}
             style={{
@@ -233,7 +233,7 @@ export function Combobox({
             ) : null}
             <div id={listboxId} role="listbox" className="max-h-64 overflow-y-auto py-hh-1">
               {entryCount === 0 ? (
-                <p className={cn("px-hh-3 py-hh-3", TYPO.body, "text-[var(--neo-text-secondary)]")}>
+                <p className={cn("px-hh-3 py-hh-3", TYPO.body, "text-[var(--hh-text-secondary)]")}>
                   {emptyText}
                 </p>
               ) : null}
@@ -254,7 +254,7 @@ export function Combobox({
                       active && "bg-[var(--hh-l3-hover)]",
                       selectedOption &&
                         (selectedOptionClassName ??
-                          "bg-[var(--hh-l3-selected)] text-[var(--neo-text-primary)]")
+                          "bg-[var(--hh-l3-selected)] text-[var(--hh-text-primary)]")
                     )}
                     onMouseEnter={() => setActiveIndex(index)}
                     onMouseDown={(event) => event.preventDefault()}
@@ -275,7 +275,7 @@ export function Combobox({
                   aria-selected={false}
                   disabled={creating}
                   className={cn(
-                    "hh-touch-row flex min-h-hh-row-dense w-full items-center px-hh-3 py-hh-2 text-left text-[var(--neo-text-secondary)] transition-colors",
+                    "hh-touch-row flex min-h-hh-row-dense w-full items-center px-hh-3 py-hh-2 text-left text-[var(--hh-text-secondary)] transition-colors",
                     TYPO.body,
                     activeIndex === filtered.length && "bg-[var(--hh-l3-hover)]"
                   )}
@@ -309,11 +309,11 @@ export function Combobox({
           onClick={openCombobox}
           onKeyDown={handleKeyDown}
           className={cn(
-            "hh-focus-ring hh-type-text-entry hh-touch-min flex h-hh-control-standard w-full min-w-[140px] items-center justify-between rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-hh-3 text-left text-[var(--neo-text-primary)] transition-colors hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)] disabled:cursor-not-allowed disabled:opacity-50",
+            "hh-focus-ring hh-type-text-entry hh-touch-min flex h-hh-control-standard w-full min-w-[140px] items-center justify-between rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-hh-3 text-left text-[var(--hh-text-primary)] transition-colors hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)] disabled:cursor-not-allowed disabled:opacity-50",
             controlClassName
           )}
         >
-          <span className={cn("truncate", !selected && "text-[var(--neo-text-tertiary)]")}>
+          <span className={cn("truncate", !selected && "text-[var(--hh-text-tertiary)]")}>
             {selected?.label ?? placeholder}
           </span>
           <ChevronDown className="h-4 w-4 shrink-0" aria-hidden="true" />

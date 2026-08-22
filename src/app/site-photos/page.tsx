@@ -433,7 +433,7 @@ export default function SitePhotosPage() {
     <PageLayout
       divider={false}
       className={cn(
-        "dark md:max-w-5xl text-[var(--neo-canvas-text-secondary)]",
+        "md:max-w-5xl text-[var(--hh-text-secondary)]",
         mobileListPagePaddingClass,
         "max-md:!gap-3"
       )}
@@ -512,6 +512,7 @@ export default function SitePhotosPage() {
             <div className="relative w-full">
               <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
+                aria-label="Search site photos"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search photos…"
@@ -524,6 +525,7 @@ export default function SitePhotosPage() {
           <div className="space-y-2">
             <p className="text-xs font-medium text-muted-foreground">Project</p>
             <Select
+              aria-label="Filter site photos by project"
               value={projectFilter}
               onChange={(e) => setProjectFilter(e.target.value)}
               className="min-h-10 w-full"
@@ -593,10 +595,11 @@ export default function SitePhotosPage() {
 
         <FilterBar className="hidden flex-col items-stretch sm:items-stretch md:flex">
           <div className="w-full max-w-md space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
+            <p className="text-hh-status uppercase tracking-normal text-[var(--hh-text-tertiary)]">
               Project
             </p>
             <Select
+              aria-label="Filter site photos by project"
               value={projectFilter}
               onChange={(e) => setProjectFilter(e.target.value)}
               className="min-w-[160px]"
@@ -636,7 +639,7 @@ export default function SitePhotosPage() {
           </p>
         ) : (
           <>
-            <div className="divide-y divide-[var(--neo-border)] md:hidden">
+            <div className="divide-y divide-[var(--hh-border)] md:hidden">
               {filteredPhotos.map((p) => (
                 <div key={p.id} className="flex min-h-[48px] gap-3 py-2.5">
                   <button
@@ -653,14 +656,14 @@ export default function SitePhotosPage() {
                     }}
                     className="flex min-w-0 flex-1 items-center gap-3 text-left"
                   >
-                    <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-sm border border-[var(--neo-border)] bg-[var(--neo-surface-muted)]">
+                    <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-sm border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)]">
                       {editMode && (
-                        <span className="absolute left-1 top-1 z-10 flex h-5 w-5 items-center justify-center rounded-sm border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-xs text-[var(--neo-gold-soft)]">
+                        <span className="absolute left-1 top-1 z-10 flex h-5 w-5 items-center justify-center rounded-hh-compact border border-[var(--hh-border-strong)] bg-[var(--hh-l3-selected)] text-hh-status text-[var(--hh-text-primary)]">
                           {selectedIds.has(p.id) ? "✓" : ""}
                         </span>
                       )}
                       {failedPhotoIds.has(p.id) ? (
-                        <span className="flex h-full w-full items-center justify-center text-[10px] text-muted-foreground">
+                        <span className="flex h-full w-full items-center justify-center text-hh-status text-[var(--hh-text-tertiary)]">
                           —
                         </span>
                       ) : (
@@ -676,7 +679,7 @@ export default function SitePhotosPage() {
                       <p className="truncate text-sm font-medium text-foreground">
                         {p.project_name ?? "—"}
                       </p>
-                      <p className="truncate text-xs text-[var(--neo-text-secondary)]">
+                      <p className="truncate text-xs text-[var(--hh-text-secondary)]">
                         {p.description || "—"}
                       </p>
                     </div>
@@ -690,7 +693,7 @@ export default function SitePhotosPage() {
                         appearance="list"
                         ariaLabel="Photo actions"
                         touchFriendly={false}
-                        className="h-8 w-8 rounded-sm bg-[var(--neo-surface-raised)] hover:bg-[var(--neo-surface-muted)]"
+                        className="h-8 w-8 rounded-sm bg-[var(--hh-l2-operational-surface)] hover:bg-[var(--hh-l2-operational-surface)]"
                         actions={[
                           { label: "View", onClick: () => openViewer(p) },
                           { label: "Edit", onClick: () => openDetail(p) },
@@ -728,7 +731,7 @@ export default function SitePhotosPage() {
                   className={`group relative text-left rounded-sm border overflow-hidden transition-colors focus-within:ring-2 focus-within:ring-ring ${
                     editMode && selectedIds.has(p.id)
                       ? "border-foreground/80 ring-1 ring-foreground/20"
-                      : "border-[var(--neo-border)] bg-[var(--neo-surface-raised)] hover:bg-[var(--neo-surface-muted)]"
+                      : "border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] hover:bg-[var(--hh-l2-operational-surface)]"
                   }`}
                 >
                   <div
@@ -760,7 +763,7 @@ export default function SitePhotosPage() {
                     }}
                     className="block w-full text-left cursor-pointer focus:outline-none"
                   >
-                    <div className="aspect-square bg-[var(--neo-surface-muted)] relative">
+                    <div className="aspect-square bg-[var(--hh-l2-operational-surface)] relative">
                       {editMode && (
                         <div
                           role="button"
@@ -775,12 +778,10 @@ export default function SitePhotosPage() {
                               togglePhotoSelection(e as unknown as React.MouseEvent, p.id);
                             }
                           }}
-                          className="absolute top-1.5 left-1.5 z-10 flex h-5 w-5 items-center justify-center rounded-sm border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] shadow-sm"
+                          className="absolute top-1.5 left-1.5 z-10 flex h-5 w-5 items-center justify-center rounded-sm border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] shadow-sm"
                         >
                           {selectedIds.has(p.id) ? (
-                            <span className="text-xs font-medium text-[var(--neo-gold-soft)]">
-                              ✓
-                            </span>
+                            <span className="text-hh-label text-[var(--hh-text-secondary)]">✓</span>
                           ) : null}
                         </div>
                       )}
@@ -793,7 +794,7 @@ export default function SitePhotosPage() {
                             appearance="list"
                             ariaLabel={`Actions for photo`}
                             touchFriendly={false}
-                            className="h-8 w-8 bg-[var(--neo-surface-raised)] hover:bg-[var(--neo-surface-muted)] rounded-sm"
+                            className="h-8 w-8 bg-[var(--hh-l2-operational-surface)] hover:bg-[var(--hh-l2-operational-surface)] rounded-sm"
                             actions={[
                               { label: "View", onClick: () => openViewer(p) },
                               { label: "Edit", onClick: () => openDetail(p) },
@@ -1091,7 +1092,7 @@ export default function SitePhotosPage() {
       >
         {selectedPhoto && (
           <div className="space-y-4">
-            <div className="rounded-sm border border-[var(--neo-border)] overflow-hidden bg-[var(--neo-surface-muted)] min-h-[8rem] flex items-center justify-center">
+            <div className="rounded-sm border border-[var(--hh-border)] overflow-hidden bg-[var(--hh-l2-operational-surface)] min-h-[8rem] flex items-center justify-center">
               {failedPhotoIds.has(selectedPhoto.id) ? (
                 <span className="text-sm text-muted-foreground">Photo unavailable</span>
               ) : (
@@ -1166,11 +1167,11 @@ export default function SitePhotosPage() {
       />
       {uploadOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-hh-4"
           onClick={() => setUploadOpen(false)}
         >
           <div
-            className="dark bg-[var(--neo-surface-raised)] border border-[var(--neo-border)] rounded-sm p-4 w-full max-w-sm space-y-3 text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)]"
+            className="w-full max-w-sm space-y-hh-3 rounded-hh-task border border-[var(--hh-border-strong)] bg-[var(--hh-l5-task-surface)] p-hh-task-mobile text-[var(--hh-text-primary)] shadow-task md:p-hh-task-desktop"
             onClick={(e) => e.stopPropagation()}
           >
             <p className="text-sm font-medium">Upload Photo</p>

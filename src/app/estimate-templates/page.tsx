@@ -12,7 +12,6 @@ export default async function EstimateTemplatesPage() {
 
   return (
     <PageLayout
-      className="dark"
       header={
         <PageHeader
           title="Estimate Templates"

@@ -29,7 +29,7 @@ export function MobileListHeader({
       <h1
         className={cn(
           "text-base font-medium leading-6 tracking-normal",
-          tone === "canvas" ? "text-[var(--neo-canvas-text-primary)]" : "text-text-primary"
+          tone === "canvas" ? "text-[var(--hh-text-primary)]" : "text-text-primary"
         )}
       >
         {title}
@@ -151,8 +151,8 @@ export function MobileEmptyState({
 }) {
   return (
     <div className={cn(OS.emptyState, "flex flex-col items-center px-4 py-10 md:hidden")}>
-      <div className="text-[var(--neo-text-secondary)]">{icon}</div>
-      <p className={cn("mt-3 text-center", TYPO.body, "text-[var(--neo-text-secondary)]")}>
+      <div className="text-[var(--hh-text-secondary)]">{icon}</div>
+      <p className={cn("mt-3 text-center", TYPO.body, "text-[var(--hh-text-secondary)]")}>
         {message}
       </p>
       {action ? <div className="mt-4">{action}</div> : null}

@@ -98,7 +98,7 @@ export function ConfirmDialog({
       <DialogContent
         closeDisabled={isBusy}
         className={cn(
-          "max-w-sm border-[var(--hh-border-strong)] bg-[var(--hh-l5-task-surface)] text-[var(--neo-text-primary)] shadow-task",
+          "max-w-sm border-[var(--hh-border-strong)] bg-[var(--hh-l5-task-surface)] text-[var(--hh-text-primary)] shadow-task",
           destructive && "border-[var(--hh-danger-border)]",
           className
         )}

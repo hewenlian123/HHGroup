@@ -77,12 +77,12 @@ export default function SystemBackupsPage() {
         key: "filename",
         header: "Filename",
         cell: (backup) => (
-          <span className="text-xs font-medium text-[var(--neo-text-primary)]">
+          <span className="text-xs font-medium text-[var(--hh-text-primary)]">
             {backup.filename}
           </span>
         ),
       },
-      { key: "date", header: "Date", className: "text-[var(--neo-text-secondary)]" },
+      { key: "date", header: "Date", className: "text-[var(--hh-text-secondary)]" },
       {
         key: "sizeBytes",
         header: "Size",
@@ -92,7 +92,7 @@ export default function SystemBackupsPage() {
       {
         key: "createdAt",
         header: "Created",
-        className: "text-[var(--neo-text-secondary)]",
+        className: "text-[var(--hh-text-secondary)]",
         cell: (backup) => formatDate(backup.createdAt),
       },
     ],
@@ -157,7 +157,6 @@ export default function SystemBackupsPage() {
 
   return (
     <PageLayout
-      className="dark"
       header={
         <PageHeader
           title="System Backups"
@@ -178,13 +177,13 @@ export default function SystemBackupsPage() {
     >
       {confirmingCreate ? (
         <NeoPanel
-          className="border-[rgb(184_137_45_/_0.24)] bg-[rgb(184_137_45_/_0.10)]"
-          bodyClassName="px-4 py-3 text-sm text-[var(--neo-text-primary)]"
+          className="border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)]"
+          bodyClassName="px-4 py-3 text-sm text-[var(--hh-text-primary)]"
         >
           <p className="font-medium">Confirm backup export</p>
-          <p className="mt-1 text-xs text-[var(--neo-text-secondary)]">
+          <p className="mt-1 text-xs text-[var(--hh-text-secondary)]">
             This creates a database JSON export for the owner account. Type{" "}
-            <span className="font-semibold text-[var(--neo-gold)]">BACKUP</span> to continue.
+            <span className="font-semibold text-[var(--hh-warning)]">BACKUP</span> to continue.
           </p>
           <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
             <Input
@@ -227,8 +226,8 @@ export default function SystemBackupsPage() {
           bodyClassName="flex flex-col gap-1 px-4 py-3 text-sm"
           className={cn(
             createResult.ok
-              ? "border-emerald-500/20 bg-[var(--neo-emerald-soft)] text-[var(--neo-emerald)] dark:bg-emerald-500/15 dark:text-emerald-300"
-              : "border-[rgb(184_137_45_/_0.24)] bg-[rgb(184_137_45_/_0.12)] text-[var(--neo-gold)] dark:text-[var(--neo-gold-soft)]"
+              ? "border-[var(--hh-success-border)] bg-[var(--hh-success-soft-fill)] text-[var(--hh-success)]"
+              : "border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] text-[var(--hh-warning)]"
           )}
         >
           <p className="font-medium">{createResult.message}</p>
@@ -258,9 +257,9 @@ export default function SystemBackupsPage() {
       {/* Backup list */}
       <div className="flex flex-col gap-1">
         <SectionHeader label="Saved Backups" />
-        <p className="-mt-0.5 text-xs leading-relaxed text-[var(--neo-canvas-text-secondary)]">
+        <p className="-mt-0.5 text-xs leading-relaxed text-[var(--hh-text-secondary)]">
           Files are saved to{" "}
-          <code className="rounded border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-1 py-0.5 text-[var(--neo-canvas-text-primary)]">
+          <code className="rounded border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-1 py-0.5 text-[var(--hh-text-primary)]">
             backups/database/
           </code>{" "}
           in the project root. Only available in local or self-hosted environments.
@@ -268,7 +267,7 @@ export default function SystemBackupsPage() {
       </div>
 
       {listError ? (
-        <p className="text-sm text-amber-600 dark:text-amber-400">{listError}</p>
+        <p className="text-hh-body text-[var(--hh-warning)]">{listError}</p>
       ) : (
         <DataTable<BackupListItem>
           columns={backupColumns}
@@ -281,9 +280,9 @@ export default function SystemBackupsPage() {
 
       {/* Info note */}
       <NeoPanel bodyClassName="px-4 py-3">
-        <p className="text-xs leading-relaxed text-[var(--neo-canvas-text-secondary)]">
+        <p className="text-xs leading-relaxed text-[var(--hh-text-secondary)]">
           Backups export all rows from:{" "}
-          <span className="font-medium text-[var(--neo-canvas-text-primary)]">
+          <span className="font-medium text-[var(--hh-text-primary)]">
             projects, workers, worker_receipts, worker_reimbursements, labor_entries, expenses,
             expense_lines, invoices, payments_received
           </span>

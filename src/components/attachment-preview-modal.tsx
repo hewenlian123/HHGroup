@@ -1663,7 +1663,7 @@ export function AttachmentPreviewModal({
       </div>
     ) : unsupported ? (
       <div className="flex h-full w-full items-center justify-center px-5 text-center">
-        <p className="text-sm text-[var(--neo-canvas-text-tertiary)]">
+        <p className="text-sm text-[var(--hh-text-tertiary)]">
           Preview is not available for this file type.
         </p>
       </div>
@@ -1678,13 +1678,13 @@ export function AttachmentPreviewModal({
       </div>
     ) : !fileUrl && signedUrlResolveFailed ? (
       <div className="flex h-full w-full flex-col items-center justify-center gap-4 px-5 text-center">
-        <p className="text-sm text-[var(--neo-canvas-text-tertiary)]">Unable to load receipt</p>
+        <p className="text-sm text-[var(--hh-text-tertiary)]">Unable to load receipt</p>
         {onRetrySignedUrlResolve ? (
           <Button
             type="button"
             size="sm"
             variant="outline"
-            className="min-h-11 touch-manipulation border-white/15 bg-white/5 text-[var(--neo-canvas-text-primary)] hover:bg-white/10"
+            className="min-h-11 touch-manipulation border-white/15 bg-white/5 text-[var(--hh-text-primary)] hover:bg-white/10"
             onClick={onRetrySignedUrlResolve}
           >
             <RefreshCw className="mr-2 h-4 w-4" aria-hidden />
@@ -1694,7 +1694,7 @@ export function AttachmentPreviewModal({
       </div>
     ) : !fileUrl ? (
       <div className="flex h-full w-full items-center justify-center px-5 text-center">
-        <p className="text-sm text-[var(--neo-canvas-text-tertiary)]">Receipt not available.</p>
+        <p className="text-sm text-[var(--hh-text-tertiary)]">Receipt not available.</p>
       </div>
     ) : fileType === "pdf" ? (
       <PdfPreviewFrame src={fileUrl} title={fileName} viewerMode />
@@ -1731,7 +1731,7 @@ export function AttachmentPreviewModal({
             type="button"
             variant="outline"
             size="sm"
-            className="min-h-11 touch-manipulation border-white/15 bg-white/5 text-[var(--neo-canvas-text-primary)] hover:bg-white/10 lg:min-h-9"
+            className="min-h-11 touch-manipulation border-white/15 bg-white/5 text-[var(--hh-text-primary)] hover:bg-white/10 lg:min-h-9"
             disabled={replaceBusy}
             onClick={onReplaceClick}
           >
@@ -1780,10 +1780,10 @@ export function AttachmentPreviewModal({
     Boolean(showReplace && replaceInputRef && onReplaceClick && onReplaceInputChange);
 
   const navBtnClass =
-    "h-12 w-12 shrink-0 touch-manipulation rounded-lg border border-white/15 bg-[rgb(10_13_16_/_0.72)] text-[var(--neo-canvas-text-primary)] shadow-[0_2px_12px_rgba(0,0,0,0.35)] backdrop-blur-sm hover:border-[rgb(184_137_45_/_0.35)] hover:bg-[rgb(184_137_45_/_0.12)] max-md:h-[3.35rem] max-md:w-[3.35rem]";
+    "h-12 w-12 shrink-0 touch-manipulation rounded-lg border border-white/15 bg-[rgb(10_13_16_/_0.72)] text-[var(--hh-text-primary)] shadow-[0_2px_12px_rgba(0,0,0,0.35)] backdrop-blur-sm hover:border-[rgb(184_137_45_/_0.35)] hover:bg-[rgb(184_137_45_/_0.12)] max-md:h-[3.35rem] max-md:w-[3.35rem]";
 
   const toolbarIconBtn =
-    "h-12 w-12 min-h-12 min-w-12 touch-manipulation text-[var(--neo-canvas-text-primary)] hover:bg-white/10 hover:text-[var(--neo-gold-soft)] max-md:h-[3.35rem] max-md:w-[3.35rem] max-md:min-h-[3.35rem] max-md:min-w-[3.35rem]";
+    "h-12 w-12 min-h-12 min-w-12 touch-manipulation text-[var(--hh-text-primary)] hover:bg-white/10 hover:text-[#d2b77f] max-md:h-[3.35rem] max-md:w-[3.35rem] max-md:min-h-[3.35rem] max-md:min-w-[3.35rem]";
 
   return createPortal(
     <AnimatePresence>
@@ -1794,7 +1794,7 @@ export function AttachmentPreviewModal({
           aria-modal="true"
           aria-labelledby="attachment-preview-title"
           data-attachment-preview-modal
-          className="fixed inset-0 z-[201] flex min-h-0 flex-col bg-[var(--neo-graphite-950)] text-[var(--neo-canvas-text-primary)]"
+          className="fixed inset-0 z-[201] flex min-h-0 flex-col bg-[#07090d] text-[var(--hh-text-primary)]"
           style={{ zIndex: 10000, pointerEvents: "auto" }}
           initial={fastPreviewMotion ? { opacity: 1 } : { opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -1807,11 +1807,11 @@ export function AttachmentPreviewModal({
             fastPreviewMotion ? { duration: 0 } : { duration: 0.18, ease: [0.22, 1, 0.36, 1] }
           }
         >
-          <header className="relative z-10 flex shrink-0 items-center gap-3 border-b border-white/10 bg-[var(--neo-graphite-900)]/70 px-3 py-3 pt-[max(0.5rem,env(safe-area-inset-top))] backdrop-blur-md">
+          <header className="relative z-10 flex shrink-0 items-center gap-3 border-b border-white/10 bg-[#0b0f15]/70 px-3 py-3 pt-[max(0.5rem,env(safe-area-inset-top))] backdrop-blur-md">
             <div className="min-w-0 flex-1">
               <h2
                 id="attachment-preview-title"
-                className="truncate text-base font-semibold tracking-normal text-[var(--neo-canvas-text-primary)] md:text-[1.05rem]"
+                className="truncate text-base font-semibold tracking-normal text-[var(--hh-text-primary)] md:text-[1.05rem]"
                 title={headerTitleAttr}
               >
                 <span className="sr-only">Receipt preview — </span>
@@ -1819,7 +1819,7 @@ export function AttachmentPreviewModal({
               </h2>
               {attachmentMeta ? (
                 <p
-                  className="mt-0.5 tabular-nums text-xs font-medium text-[var(--neo-canvas-text-tertiary)]"
+                  className="mt-0.5 tabular-nums text-xs font-medium text-[var(--hh-text-tertiary)]"
                   aria-live="polite"
                 >
                   {attachmentMeta}
@@ -1937,7 +1937,7 @@ export function AttachmentPreviewModal({
                       type="button"
                       size="sm"
                       variant="outline"
-                      className="touch-manipulation border-white/15 bg-white/5 text-[var(--neo-canvas-text-primary)] hover:bg-[rgb(184_137_45_/_0.12)]"
+                      className="touch-manipulation border-white/15 bg-white/5 text-[var(--hh-text-primary)] hover:bg-[rgb(184_137_45_/_0.12)]"
                       onClick={() => onRetrySignedUrlResolve()}
                     >
                       <RefreshCw className="mr-2 h-3.5 w-3.5" />
@@ -1993,7 +1993,7 @@ export function AttachmentPreviewModal({
           </div>
 
           {showFooter ? (
-            <footer className="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-white/10 bg-[var(--neo-graphite-900)]/70 px-3 py-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] backdrop-blur-md">
+            <footer className="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-white/10 bg-[#0b0f15]/70 px-3 py-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] backdrop-blur-md">
               {extraFooter}
               {showReplace && replaceInputRef && onReplaceClick && onReplaceInputChange ? (
                 <>
@@ -2009,7 +2009,7 @@ export function AttachmentPreviewModal({
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="h-9 touch-manipulation border-white/15 bg-white/5 text-[var(--neo-canvas-text-primary)] hover:bg-[rgb(184_137_45_/_0.12)] max-md:min-h-11"
+                    className="h-9 touch-manipulation border-white/15 bg-white/5 text-[var(--hh-text-primary)] hover:bg-[rgb(184_137_45_/_0.12)] max-md:min-h-11"
                     disabled={replaceBusy}
                     onClick={onReplaceClick}
                   >

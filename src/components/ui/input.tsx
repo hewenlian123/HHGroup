@@ -9,7 +9,7 @@ const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
       <input
         type={type}
         className={cn(
-          "hh-type-text-entry hh-touch-min flex h-hh-control-standard w-full rounded-hh-standard border px-hh-3 py-hh-2 shadow-none touch-manipulation transition-[background-color,border-color,box-shadow,color] duration-150 ease-out placeholder:text-[var(--neo-text-tertiary)] hover:bg-[var(--hh-l3-hover)] focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50",
+          "hh-type-text-entry hh-touch-min flex h-hh-control-standard w-full rounded-hh-standard border px-hh-3 py-hh-2 shadow-none touch-manipulation transition-[background-color,border-color,box-shadow,color] duration-150 ease-out placeholder:text-[var(--hh-text-tertiary)] hover:bg-[var(--hh-l3-hover)] focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50",
           NEO.input,
           className
         )}

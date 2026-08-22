@@ -17,7 +17,7 @@ test("defines the approved L0, L1, and L2 background tokens for both themes", ()
   assert.match(css, /html\.dark\s*\{[\s\S]*?--hh-l2-operational-surface:\s*#181818;/i);
 });
 
-test("maps semantic backgrounds through Tailwind, the shared shell, and Neo compatibility aliases", () => {
+test("maps semantic backgrounds through Tailwind and the shared shell without Neo aliases", () => {
   const css = source("src/app/globals.css");
   const tailwind = source("tailwind.config.ts");
   const shell = source("src/components/layout/app-shell.tsx");
@@ -34,8 +34,7 @@ test("maps semantic backgrounds through Tailwind, the shared shell, and Neo comp
   assert.match(shell, /hh-app-shell[^"\n]*bg-canvas/);
   assert.match(shell, /neo-workspace-canvas[^"\n]*bg-workspace/);
   assert.match(pageLayout, /neo-page-on-graphite[^"\n]*bg-workspace/);
-  assert.doesNotMatch(css, /--neo-surface-base:/);
-  assert.match(css, /--neo-surface-raised:\s*var\(--hh-l2-operational-surface\);/);
+  assert.doesNotMatch(css, /--neo-[a-z0-9-]+\s*:/);
 });
 
 test("reuses global depth tokens in Expense Operations and removes forced-dark route shells", () => {

@@ -25,14 +25,10 @@ export function PageHeader({
     <header data-neo-page-header="true" className={cn("flex flex-col gap-1", className)}>
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between lg:gap-4">
         <div className="min-w-0">
-          <h1 className={cn(TYPO.pageTitle, "text-[var(--neo-canvas-text-primary)]")}>{title}</h1>
+          <h1 className={cn(TYPO.pageTitle, "text-[var(--hh-text-primary)]")}>{title}</h1>
           {description ? (
             <p
-              className={cn(
-                "mt-1 max-w-2xl",
-                TYPO.pageSubtitle,
-                "text-[var(--neo-canvas-text-secondary)]"
-              )}
+              className={cn("mt-1 max-w-2xl", TYPO.pageSubtitle, "text-[var(--hh-text-secondary)]")}
             >
               {description}
             </p>

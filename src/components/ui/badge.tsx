@@ -10,14 +10,14 @@ const badgeVariants = cva(
     variants: {
       variant: {
         default:
-          "border-[var(--hh-border)] bg-[var(--hh-l3-hover)] text-[var(--neo-text-secondary)]",
+          "border-[var(--hh-border)] bg-[var(--hh-l3-hover)] text-[var(--hh-text-secondary)]",
         secondary:
-          "border-[var(--hh-border)] bg-[var(--hh-l3-hover)] text-[var(--neo-text-secondary)]",
+          "border-[var(--hh-border)] bg-[var(--hh-l3-hover)] text-[var(--hh-text-secondary)]",
         destructive:
           "border-[var(--hh-danger-border)] bg-[var(--hh-danger-soft-fill)] text-[var(--hh-danger)]",
-        outline: "border-[var(--hh-border-strong)] bg-transparent text-[var(--neo-text-primary)]",
+        outline: "border-[var(--hh-border-strong)] bg-transparent text-[var(--hh-text-primary)]",
         neutral:
-          "border-[var(--hh-border)] bg-[var(--hh-l3-hover)] text-[var(--neo-text-secondary)]",
+          "border-[var(--hh-border)] bg-[var(--hh-l3-hover)] text-[var(--hh-text-secondary)]",
         success:
           "border-[var(--hh-success-border)] bg-[var(--hh-success-soft-fill)] text-[var(--hh-success)]",
         warning:

@@ -1,28 +1,28 @@
 export const TYPO = {
-  pageTitle: "text-hh-page-title text-[var(--neo-text-primary)]",
-  pageSubtitle: "text-hh-body text-[var(--neo-text-secondary)]",
-  sectionTitle: "text-hh-section-title text-[var(--neo-text-primary)]",
-  panelTitle: "text-hh-panel-title text-[var(--neo-text-primary)]",
-  body: "text-hh-body text-[var(--neo-text-primary)]",
-  bodyStrong: "text-hh-body-strong text-[var(--neo-text-primary)]",
-  label: "text-hh-label text-[var(--neo-text-secondary)]",
-  metadata: "text-hh-metadata text-[var(--neo-text-secondary)]",
-  helper: "text-hh-helper text-[var(--neo-text-secondary)]",
+  pageTitle: "text-hh-page-title text-[var(--hh-text-primary)]",
+  pageSubtitle: "text-hh-body text-[var(--hh-text-secondary)]",
+  sectionTitle: "text-hh-section-title text-[var(--hh-text-primary)]",
+  panelTitle: "text-hh-panel-title text-[var(--hh-text-primary)]",
+  body: "text-hh-body text-[var(--hh-text-primary)]",
+  bodyStrong: "text-hh-body-strong text-[var(--hh-text-primary)]",
+  label: "text-hh-label text-[var(--hh-text-secondary)]",
+  metadata: "text-hh-metadata text-[var(--hh-text-secondary)]",
+  helper: "text-hh-helper text-[var(--hh-text-secondary)]",
   error: "text-hh-error text-[var(--hh-danger)]",
-  sectionLabel: "text-hh-label uppercase text-[var(--neo-text-tertiary)]",
-  kpiValue: "hh-fin text-hh-financial text-[var(--neo-text-primary)]",
-  kpiTotal: "hh-fin text-hh-financial-total text-[var(--neo-text-primary)]",
-  kpiSubtitle: "text-hh-metadata text-[var(--neo-text-secondary)]",
-  kpiLabel: "text-hh-label uppercase text-[var(--neo-text-tertiary)]",
-  tableHeader: "text-hh-table-header uppercase text-[var(--neo-text-tertiary)]",
-  tableCell: "text-hh-table-cell text-[var(--neo-text-primary)]",
-  primaryName: "text-hh-body-strong text-[var(--neo-text-primary)]",
-  secondaryId: "hh-fin text-hh-metadata text-[var(--neo-text-tertiary)]",
-  amount: "hh-fin text-hh-financial text-[var(--neo-text-primary)]",
-  date: "hh-fin text-hh-metadata text-[var(--neo-text-secondary)]",
+  sectionLabel: "text-hh-label uppercase text-[var(--hh-text-tertiary)]",
+  kpiValue: "hh-fin text-hh-financial text-[var(--hh-text-primary)]",
+  kpiTotal: "hh-fin text-hh-financial-total text-[var(--hh-text-primary)]",
+  kpiSubtitle: "text-hh-metadata text-[var(--hh-text-secondary)]",
+  kpiLabel: "text-hh-label uppercase text-[var(--hh-text-tertiary)]",
+  tableHeader: "text-hh-table-header uppercase text-[var(--hh-text-tertiary)]",
+  tableCell: "text-hh-table-cell text-[var(--hh-text-primary)]",
+  primaryName: "text-hh-body-strong text-[var(--hh-text-primary)]",
+  secondaryId: "hh-fin text-hh-metadata text-[var(--hh-text-tertiary)]",
+  amount: "hh-fin text-hh-financial text-[var(--hh-text-primary)]",
+  date: "hh-fin text-hh-metadata text-[var(--hh-text-secondary)]",
   chip: "text-hh-status",
   button: "text-hh-control",
-  mutedText: "text-hh-body text-[var(--neo-text-secondary)]",
+  mutedText: "text-hh-body text-[var(--hh-text-secondary)]",
 } as const;
 
 export const NEO = {
@@ -35,15 +35,15 @@ export const NEO = {
   input: "neo-input",
   amount: "neo-amount",
   surface:
-    "rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--neo-text-primary)] shadow-operational",
+    "rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-operational",
   surfaceMuted:
-    "rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--neo-text-primary)]",
+    "rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)]",
   buttonPrimary:
     "border-transparent bg-[var(--hh-action-primary)] text-[var(--hh-action-primary-foreground)] hover:opacity-90 active:bg-[var(--hh-action-primary)]",
   buttonSecondary:
-    "border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--neo-text-primary)] hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)]",
+    "border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)]",
   buttonGhost:
-    "border-0 bg-transparent text-[var(--neo-text-secondary)] hover:bg-[var(--hh-l3-hover)] hover:text-[var(--neo-text-primary)] active:bg-[var(--hh-l3-pressed)]",
+    "border-0 bg-transparent text-[var(--hh-text-secondary)] hover:bg-[var(--hh-l3-hover)] hover:text-[var(--hh-text-primary)] active:bg-[var(--hh-l3-pressed)]",
   focusRing: "hh-focus-ring",
   status: {
     success: "hh-pill-success",
@@ -60,9 +60,9 @@ export const OS = {
   cardHover:
     "transition-[border-color,box-shadow] duration-200 ease-out hover:border-[var(--hh-border-strong)] hover:shadow-operational",
   iconWell:
-    "rounded-hh-compact border border-[var(--hh-border)] bg-[var(--hh-l3-hover)] p-hh-2 text-[var(--neo-text-secondary)]",
+    "rounded-hh-compact border border-[var(--hh-border)] bg-[var(--hh-l3-hover)] p-hh-2 text-[var(--hh-text-secondary)]",
   tableShell: `relative w-full overflow-hidden ${NEO.surface}`,
-  tableDivider: "border-[var(--neo-border)]",
+  tableDivider: "border-[var(--hh-border)]",
   filterSurface: NEO.surface,
   emptyState:
     "rounded-hh-standard border border-dashed border-[var(--hh-border-strong)] bg-[var(--hh-l2-operational-surface)] px-hh-5 py-12 text-center shadow-operational",
@@ -70,7 +70,7 @@ export const OS = {
   secondaryButton: NEO.buttonSecondary,
   emeraldAccent: "text-[var(--hh-success)]",
   dangerAmount: "text-[var(--hh-danger)]",
-  neutralAmount: "text-[var(--neo-text-primary)]",
+  neutralAmount: "text-[var(--hh-text-primary)]",
 } as const;
 
 export type StatusTone = "success" | "warning" | "danger" | "neutral" | "info";
@@ -91,7 +91,7 @@ export type AmountTone = "neutral" | "muted" | "income" | "expense" | "danger";
 
 export const AMOUNT_TONE_CLASS: Record<AmountTone, string> = {
   neutral: OS.neutralAmount,
-  muted: "text-[var(--neo-text-secondary)]",
+  muted: "text-[var(--hh-text-secondary)]",
   income: "text-[var(--hh-success)]",
   expense: "text-[var(--hh-danger)]",
   danger: "text-[var(--hh-danger)]",

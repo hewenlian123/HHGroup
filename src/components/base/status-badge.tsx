@@ -15,11 +15,11 @@ const variantPillClass: Record<StatusBadgeVariant, ComponentProps<typeof Badge>[
 };
 
 const variantDotClass: Record<StatusBadgeVariant, string> = {
-  default: "bg-[var(--neo-text-tertiary)]",
+  default: "bg-[var(--hh-text-tertiary)]",
   success: "bg-[var(--hh-success)]",
   warning: "bg-[var(--hh-warning)]",
   danger: "bg-[var(--hh-danger)]",
-  muted: "bg-[var(--neo-text-tertiary)]",
+  muted: "bg-[var(--hh-text-tertiary)]",
   info: "bg-[var(--hh-information)]",
 };
 

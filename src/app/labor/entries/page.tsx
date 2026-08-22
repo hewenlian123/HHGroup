@@ -146,6 +146,7 @@ const LaborEntryTableRow = React.memo(function LaborEntryTableRow({
       <td className="py-1.5 px-1" onClick={(e) => e.stopPropagation()}>
         <input
           type="checkbox"
+          aria-label={`Select ${row.worker_name ?? "labor entry"} for ${formatDate(row.work_date)}`}
           checked={isSelected}
           onChange={() => onToggleSelect(row.id)}
           disabled={rowLocked}
@@ -489,7 +490,7 @@ function DailyEntriesPageInner() {
 
   return (
     <PageLayout
-      className={cn("dark", mobileListPagePaddingClass, "max-md:!gap-3")}
+      className={cn(mobileListPagePaddingClass, "max-md:!gap-3")}
       header={
         <div className="hidden md:block">
           <PageHeader
@@ -533,6 +534,7 @@ function DailyEntriesPageInner() {
           <p className="text-xs font-medium text-muted-foreground">From</p>
           <Input
             type="date"
+            aria-label="Filter labor entries from date"
             value={filters.date_from ?? ""}
             onChange={(e) => setFilters((f) => ({ ...f, date_from: e.target.value || undefined }))}
             max={new Date().toISOString().slice(0, 10)}
@@ -543,6 +545,7 @@ function DailyEntriesPageInner() {
           <p className="text-xs font-medium text-muted-foreground">To</p>
           <Input
             type="date"
+            aria-label="Filter labor entries to date"
             value={filters.date_to ?? ""}
             onChange={(e) => setFilters((f) => ({ ...f, date_to: e.target.value || undefined }))}
             max={new Date().toISOString().slice(0, 10)}
@@ -552,6 +555,7 @@ function DailyEntriesPageInner() {
         <div className="space-y-2">
           <p className="text-xs font-medium text-muted-foreground">Worker</p>
           <Select
+            aria-label="Filter labor entries by worker"
             value={filters.worker_id ?? ""}
             onChange={(e) => setFilters((f) => ({ ...f, worker_id: e.target.value || undefined }))}
             className="w-full"
@@ -567,6 +571,7 @@ function DailyEntriesPageInner() {
         <div className="space-y-2">
           <p className="text-xs font-medium text-muted-foreground">Project</p>
           <Select
+            aria-label="Filter labor entries by project"
             value={filters.project_id ?? ""}
             onChange={(e) => setFilters((f) => ({ ...f, project_id: e.target.value || undefined }))}
             className="w-full"
@@ -582,6 +587,7 @@ function DailyEntriesPageInner() {
         <div className="space-y-2">
           <p className="text-xs font-medium text-muted-foreground">Status</p>
           <Select
+            aria-label="Filter labor entries by status"
             value={filters.status ?? ""}
             onChange={(e) =>
               setFilters((f) => ({
@@ -615,6 +621,7 @@ function DailyEntriesPageInner() {
             </p>
             <Input
               type="date"
+              aria-label="Filter labor entries from date"
               value={filters.date_from ?? ""}
               onChange={(e) =>
                 setFilters((f) => ({ ...f, date_from: e.target.value || undefined }))
@@ -628,6 +635,7 @@ function DailyEntriesPageInner() {
             </p>
             <Input
               type="date"
+              aria-label="Filter labor entries to date"
               value={filters.date_to ?? ""}
               onChange={(e) => setFilters((f) => ({ ...f, date_to: e.target.value || undefined }))}
               max={new Date().toISOString().slice(0, 10)}
@@ -638,6 +646,7 @@ function DailyEntriesPageInner() {
               Worker
             </p>
             <Select
+              aria-label="Filter labor entries by worker"
               value={filters.worker_id ?? ""}
               onChange={(e) =>
                 setFilters((f) => ({ ...f, worker_id: e.target.value || undefined }))
@@ -656,6 +665,7 @@ function DailyEntriesPageInner() {
               Project
             </p>
             <Select
+              aria-label="Filter labor entries by project"
               value={filters.project_id ?? ""}
               onChange={(e) =>
                 setFilters((f) => ({ ...f, project_id: e.target.value || undefined }))
@@ -674,6 +684,7 @@ function DailyEntriesPageInner() {
               Status
             </p>
             <Select
+              aria-label="Filter labor entries by status"
               value={filters.status ?? ""}
               onChange={(e) =>
                 setFilters((f) => ({
@@ -695,6 +706,7 @@ function DailyEntriesPageInner() {
             </p>
             <Input
               type="text"
+              aria-label="Search labor entries"
               placeholder="Notes, code, worker, project…"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
@@ -791,14 +803,17 @@ function DailyEntriesPageInner() {
               return (
                 <div key={row.id} className="flex min-h-[48px] flex-col gap-2 py-2.5">
                   <div className="flex items-start gap-3">
-                    <input
-                      type="checkbox"
-                      checked={selectedIds.has(row.id)}
-                      onChange={() => toggleSelect(row.id)}
-                      disabled={rowLocked}
-                      className="mt-1 h-4 w-4 shrink-0 rounded border-input"
-                      onClick={(e) => e.stopPropagation()}
-                    />
+                    <label className="-my-1 flex min-h-hh-touch min-w-hh-touch shrink-0 items-center justify-center">
+                      <input
+                        type="checkbox"
+                        aria-label={`Select ${row.worker_name ?? "labor entry"} for ${formatDate(row.work_date)}`}
+                        checked={selectedIds.has(row.id)}
+                        onChange={() => toggleSelect(row.id)}
+                        disabled={rowLocked}
+                        className="h-4 w-4 rounded border-input"
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    </label>
                     <button
                       type="button"
                       className="min-w-0 flex-1 text-left disabled:opacity-60"
@@ -871,6 +886,7 @@ function DailyEntriesPageInner() {
               <th className="w-8 px-1">
                 <input
                   type="checkbox"
+                  aria-label="Select all labor entries"
                   checked={entries.length > 0 && selectedIds.size === entries.length}
                   onChange={toggleSelectAll}
                   className="h-4 w-4 rounded border-input"

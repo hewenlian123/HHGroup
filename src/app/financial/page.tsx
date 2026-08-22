@@ -77,7 +77,6 @@ const financeLinks = [
 export default function FinancialPage() {
   return (
     <PageLayout
-      className="dark"
       header={
         <PageHeader
           title="Financial"
@@ -96,19 +95,28 @@ export default function FinancialPage() {
       <FilterToolbar className="items-start gap-2 md:flex-wrap md:items-center">
         <Link
           href="/financial/owner"
-          className="rounded-md px-2.5 py-1.5 text-sm font-medium text-[var(--neo-text-secondary)] transition-colors hover:bg-[var(--neo-surface-muted)] hover:text-[var(--neo-text-primary)]"
+          className={cn(
+            "flex min-h-hh-touch items-center rounded-hh-compact px-2.5 py-1.5 text-[var(--hh-text-secondary)] transition-colors hover:bg-[var(--hh-l2-operational-surface)] hover:text-[var(--hh-text-primary)] sm:min-h-hh-control-compact",
+            TYPO.button
+          )}
         >
           Owner dashboard
         </Link>
         <Link
           href="/financial/accounts"
-          className="rounded-md px-2.5 py-1.5 text-sm font-medium text-[var(--neo-text-secondary)] transition-colors hover:bg-[var(--neo-surface-muted)] hover:text-[var(--neo-text-primary)]"
+          className={cn(
+            "flex min-h-hh-touch items-center rounded-hh-compact px-2.5 py-1.5 text-[var(--hh-text-secondary)] transition-colors hover:bg-[var(--hh-l2-operational-surface)] hover:text-[var(--hh-text-primary)] sm:min-h-hh-control-compact",
+            TYPO.button
+          )}
         >
           Accounts
         </Link>
         <Link
           href="/financial/dashboard"
-          className="rounded-md px-2.5 py-1.5 text-sm font-medium text-[var(--neo-text-secondary)] transition-colors hover:bg-[var(--neo-surface-muted)] hover:text-[var(--neo-text-primary)]"
+          className={cn(
+            "flex min-h-hh-touch items-center rounded-hh-compact px-2.5 py-1.5 text-[var(--hh-text-secondary)] transition-colors hover:bg-[var(--hh-l2-operational-surface)] hover:text-[var(--hh-text-primary)] sm:min-h-hh-control-compact",
+            TYPO.button
+          )}
         >
           Company Dashboard
         </Link>
@@ -126,8 +134,8 @@ export default function FinancialPage() {
               key={href}
               href={href}
               className={cn(
-                "group rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] p-4 text-[var(--neo-text-primary)]",
-                "transition-[border-color,background-color,transform] duration-200 ease-out hover:-translate-y-px hover:border-[rgb(184_137_45_/_0.32)] hover:bg-[rgb(184_137_45_/_0.08)]"
+                "group rounded-lg border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-4 text-[var(--hh-text-primary)]",
+                "transition-[border-color,background-color] duration-150 ease-out hover:border-[var(--hh-border-strong)] hover:bg-[var(--hh-l3-hover)]"
               )}
             >
               <div className="flex items-start gap-3">
@@ -135,7 +143,7 @@ export default function FinancialPage() {
                   <Icon className="h-4 w-4" aria-hidden />
                 </span>
                 <div className="min-w-0">
-                  <h3 className="text-sm font-semibold text-[var(--neo-text-primary)]">{title}</h3>
+                  <h3 className="text-sm font-semibold text-[var(--hh-text-primary)]">{title}</h3>
                   <p className={cn("mt-1", TYPO.mutedText)}>{description}</p>
                 </div>
               </div>

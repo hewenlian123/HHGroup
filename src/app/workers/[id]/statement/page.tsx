@@ -75,19 +75,19 @@ function SummaryCard({
   return (
     <div
       className={cn(
-        "min-h-[86px] rounded-2xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-4 py-3 text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)]",
+        "min-h-[86px] rounded-2xl border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-4 py-3 text-[var(--hh-text-primary)] shadow-operational",
         tone === "gold" && "border-[rgb(184_147_90_/_0.34)] bg-[rgb(184_147_90_/_0.12)]",
         tone === "success" && "border-emerald-400/20 bg-emerald-400/[0.055]",
         tone === "danger" && "border-rose-400/20 bg-rose-400/[0.055]"
       )}
     >
-      <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--hh-text-tertiary)]">
         {label}
       </p>
       <p
         className={cn(
-          "mt-2 text-[20px] font-semibold leading-none tabular-nums text-[var(--neo-text-primary)]",
-          tone === "gold" && "text-[var(--neo-gold-soft)]",
+          "mt-2 text-[20px] font-semibold leading-none tabular-nums text-[var(--hh-text-primary)]",
+          tone === "gold" && "text-[#d2b77f]",
           tone === "success" && "text-emerald-300",
           tone === "danger" && "text-rose-300"
         )}
@@ -95,7 +95,7 @@ function SummaryCard({
         {value}
       </p>
       {meta ? (
-        <p className="mt-2 truncate text-[11px] text-[var(--neo-text-secondary)]">{meta}</p>
+        <p className="mt-2 truncate text-[11px] text-[var(--hh-text-secondary)]">{meta}</p>
       ) : null}
     </div>
   );
@@ -103,7 +103,7 @@ function SummaryCard({
 
 function EmptyState({ children }: { children: React.ReactNode }) {
   return (
-    <div className="rounded-xl border border-dashed border-[var(--neo-border-strong)] bg-[var(--neo-surface-muted)] px-4 py-8 text-center text-sm text-[var(--neo-text-secondary)]">
+    <div className="rounded-xl border border-dashed border-[var(--hh-border-strong)] bg-[var(--hh-l2-operational-surface)] px-4 py-8 text-center text-sm text-[var(--hh-text-secondary)]">
       {children}
     </div>
   );
@@ -196,7 +196,7 @@ export default async function WorkerStatementPage({ params, searchParams }: Prop
   return (
     <PageLayout
       divider={false}
-      className="dark financial-nums min-w-0 overflow-x-hidden px-4 py-4 text-[var(--neo-canvas-text-secondary)] sm:px-5 md:px-6 md:py-6"
+      className="dark financial-nums min-w-0 overflow-x-hidden px-4 py-4 text-[var(--hh-text-secondary)] sm:px-5 md:px-6 md:py-6"
       header={
         <PageHeader
           title="Worker Statement"
@@ -211,7 +211,7 @@ export default async function WorkerStatementPage({ params, searchParams }: Prop
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-11 min-h-[44px] rounded-lg border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-4 text-[13px] font-semibold text-[var(--neo-text-primary)] shadow-none hover:bg-[var(--neo-surface-muted)] md:h-10 md:min-h-10"
+                  className="h-11 min-h-[44px] rounded-lg border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-4 text-[13px] font-semibold text-[var(--hh-text-primary)] shadow-none hover:bg-[var(--hh-l2-operational-surface)] md:h-10 md:min-h-10"
                 >
                   Back to Worker
                 </Button>
@@ -220,7 +220,7 @@ export default async function WorkerStatementPage({ params, searchParams }: Prop
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-11 min-h-[44px] rounded-lg border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-4 text-[13px] font-semibold text-[var(--neo-text-primary)] shadow-none hover:bg-[var(--neo-surface-muted)] md:h-10 md:min-h-10"
+                  className="h-11 min-h-[44px] rounded-lg border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-4 text-[13px] font-semibold text-[var(--hh-text-primary)] shadow-none hover:bg-[var(--hh-l2-operational-surface)] md:h-10 md:min-h-10"
                 >
                   All workers
                 </Button>
@@ -232,16 +232,16 @@ export default async function WorkerStatementPage({ params, searchParams }: Prop
     >
       <SetBreadcrumbEntityTitle label={worker.name} />
 
-      <section className="rounded-2xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-4 py-4 text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)] md:px-5">
+      <section className="rounded-2xl border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-4 py-4 text-[var(--hh-text-primary)] shadow-operational md:px-5">
         <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
           <div className="min-w-0">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--hh-text-tertiary)]">
               Statement
             </p>
-            <h2 className="mt-1 truncate text-[22px] font-semibold leading-tight text-[var(--neo-text-primary)]">
+            <h2 className="mt-1 truncate text-[22px] font-semibold leading-tight text-[var(--hh-text-primary)]">
               {worker.name}
             </h2>
-            <p className="mt-1 text-[13px] leading-snug text-[var(--neo-text-secondary)]">
+            <p className="mt-1 text-[13px] leading-snug text-[var(--hh-text-secondary)]">
               Snapshot-based labor, reimbursements, advance deductions, and cash payments.
             </p>
           </div>
@@ -253,7 +253,7 @@ export default async function WorkerStatementPage({ params, searchParams }: Prop
                 : "border-rose-400/20 bg-rose-400/[0.055]"
             )}
           >
-            <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--hh-text-tertiary)]">
               Balance
             </p>
             <p
@@ -285,29 +285,29 @@ export default async function WorkerStatementPage({ params, searchParams }: Prop
         />
       </section>
 
-      <section className="overflow-hidden rounded-2xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)]">
-        <header className="border-b border-[var(--neo-border)] px-4 py-3 md:px-5">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+      <section className="overflow-hidden rounded-2xl border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-operational">
+        <header className="border-b border-[var(--hh-border)] px-4 py-3 md:px-5">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--hh-text-tertiary)]">
             Earnings
           </p>
-          <p className="mt-1 text-[13px] text-[var(--neo-text-secondary)]">
+          <p className="mt-1 text-[13px] text-[var(--hh-text-secondary)]">
             Labor rows show saved snapshot amounts as recorded.
           </p>
         </header>
         <div className="hidden md:block">
           <table className="w-full border-collapse text-sm">
             <thead>
-              <tr className="border-b border-[var(--neo-border)] bg-[var(--neo-surface-muted)]">
-                <th className="px-4 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+              <tr className="border-b border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)]">
+                <th className="px-4 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--hh-text-tertiary)]">
                   Date
                 </th>
-                <th className="px-4 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+                <th className="px-4 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--hh-text-tertiary)]">
                   Project
                 </th>
-                <th className="px-4 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+                <th className="px-4 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--hh-text-tertiary)]">
                   Cost Code
                 </th>
-                <th className="px-4 py-2 text-right text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)] tabular-nums">
+                <th className="px-4 py-2 text-right text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--hh-text-tertiary)] tabular-nums">
                   Amount
                 </th>
               </tr>
@@ -323,18 +323,18 @@ export default async function WorkerStatementPage({ params, searchParams }: Prop
                 entries.map((entry) => (
                   <tr
                     key={entry.id}
-                    className="border-b border-[var(--neo-border)] transition-colors duration-150 last:border-b-0 hover:bg-[var(--neo-surface-hover)]"
+                    className="border-b border-[var(--hh-border)] transition-colors duration-150 last:border-b-0 hover:bg-[var(--hh-l3-hover)]"
                   >
-                    <td className="whitespace-nowrap px-4 py-2.5 font-mono text-[13px] tabular-nums text-[var(--neo-text-secondary)]">
+                    <td className="whitespace-nowrap px-4 py-2.5 font-mono text-[13px] tabular-nums text-[var(--hh-text-secondary)]">
                       {formatDateLabel(entry.work_date)}
                     </td>
-                    <td className="px-4 py-2.5 text-[13px] font-medium text-[var(--neo-text-primary)]">
+                    <td className="px-4 py-2.5 text-[13px] font-medium text-[var(--hh-text-primary)]">
                       {entry.project_name ?? "No project"}
                     </td>
-                    <td className="px-4 py-2.5 text-[13px] text-[var(--neo-text-secondary)]">
+                    <td className="px-4 py-2.5 text-[13px] text-[var(--hh-text-secondary)]">
                       {entry.cost_code ?? "—"}
                     </td>
-                    <td className="whitespace-nowrap px-4 py-2.5 text-right text-[13px] font-semibold tabular-nums text-[var(--neo-text-primary)]">
+                    <td className="whitespace-nowrap px-4 py-2.5 text-right text-[13px] font-semibold tabular-nums text-[var(--hh-text-primary)]">
                       {formatMoney(entryAmount(entry))}
                     </td>
                   </tr>
@@ -350,19 +350,19 @@ export default async function WorkerStatementPage({ params, searchParams }: Prop
             entries.map((entry) => (
               <article
                 key={entry.id}
-                className="rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] p-3"
+                className="rounded-xl border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-3"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="truncate text-[14px] font-semibold text-[var(--neo-text-primary)]">
+                    <p className="truncate text-[14px] font-semibold text-[var(--hh-text-primary)]">
                       {entry.project_name ?? "No project"}
                     </p>
-                    <p className="mt-1 text-[12px] text-[var(--neo-text-secondary)]">
+                    <p className="mt-1 text-[12px] text-[var(--hh-text-secondary)]">
                       {formatDateLabel(entry.work_date)}
                       {entry.cost_code ? ` · ${entry.cost_code}` : ""}
                     </p>
                   </div>
-                  <p className="shrink-0 text-[15px] font-semibold tabular-nums text-[var(--neo-text-primary)]">
+                  <p className="shrink-0 text-[15px] font-semibold tabular-nums text-[var(--hh-text-primary)]">
                     {formatMoney(entryAmount(entry))}
                   </p>
                 </div>
@@ -372,29 +372,29 @@ export default async function WorkerStatementPage({ params, searchParams }: Prop
         </div>
       </section>
 
-      <section className="overflow-hidden rounded-2xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)]">
-        <header className="border-b border-[var(--neo-border)] px-4 py-3 md:px-5">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+      <section className="overflow-hidden rounded-2xl border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-operational">
+        <header className="border-b border-[var(--hh-border)] px-4 py-3 md:px-5">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--hh-text-tertiary)]">
             Payments
           </p>
-          <p className="mt-1 text-[13px] text-[var(--neo-text-secondary)]">
+          <p className="mt-1 text-[13px] text-[var(--hh-text-secondary)]">
             Cash payments only; advance deductions are summarized above.
           </p>
         </header>
         <div className="hidden md:block">
           <table className="w-full border-collapse text-sm">
             <thead>
-              <tr className="border-b border-[var(--neo-border)] bg-[var(--neo-surface-muted)]">
-                <th className="px-4 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+              <tr className="border-b border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)]">
+                <th className="px-4 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--hh-text-tertiary)]">
                   Date
                 </th>
-                <th className="px-4 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+                <th className="px-4 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--hh-text-tertiary)]">
                   Method
                 </th>
-                <th className="px-4 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+                <th className="px-4 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--hh-text-tertiary)]">
                   Note
                 </th>
-                <th className="px-4 py-2 text-right text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)] tabular-nums">
+                <th className="px-4 py-2 text-right text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--hh-text-tertiary)] tabular-nums">
                   Amount
                 </th>
               </tr>
@@ -410,18 +410,18 @@ export default async function WorkerStatementPage({ params, searchParams }: Prop
                 paymentRows.map((payment) => (
                   <tr
                     key={payment.id}
-                    className="border-b border-[var(--neo-border)] transition-colors duration-150 last:border-b-0 hover:bg-[var(--neo-surface-hover)]"
+                    className="border-b border-[var(--hh-border)] transition-colors duration-150 last:border-b-0 hover:bg-[var(--hh-l3-hover)]"
                   >
-                    <td className="whitespace-nowrap px-4 py-2.5 font-mono text-[13px] tabular-nums text-[var(--neo-text-secondary)]">
+                    <td className="whitespace-nowrap px-4 py-2.5 font-mono text-[13px] tabular-nums text-[var(--hh-text-secondary)]">
                       {formatDateLabel(payment.paymentDate)}
                     </td>
-                    <td className="px-4 py-2.5 text-[13px] font-medium text-[var(--neo-text-primary)]">
+                    <td className="px-4 py-2.5 text-[13px] font-medium text-[var(--hh-text-primary)]">
                       {payment.method ?? "—"}
                     </td>
-                    <td className="px-4 py-2.5 text-[13px] text-[var(--neo-text-secondary)]">
+                    <td className="px-4 py-2.5 text-[13px] text-[var(--hh-text-secondary)]">
                       {payment.note ?? "—"}
                     </td>
-                    <td className="whitespace-nowrap px-4 py-2.5 text-right text-[13px] font-semibold tabular-nums text-[var(--neo-text-primary)]">
+                    <td className="whitespace-nowrap px-4 py-2.5 text-right text-[13px] font-semibold tabular-nums text-[var(--hh-text-primary)]">
                       {formatMoney(payment.amount)}
                     </td>
                   </tr>
@@ -437,23 +437,23 @@ export default async function WorkerStatementPage({ params, searchParams }: Prop
             paymentRows.map((payment) => (
               <article
                 key={payment.id}
-                className="rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] p-3"
+                className="rounded-xl border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-3"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="truncate text-[14px] font-semibold text-[var(--neo-text-primary)]">
+                    <p className="truncate text-[14px] font-semibold text-[var(--hh-text-primary)]">
                       {payment.method ?? "Payment"}
                     </p>
-                    <p className="mt-1 text-[12px] text-[var(--neo-text-secondary)]">
+                    <p className="mt-1 text-[12px] text-[var(--hh-text-secondary)]">
                       {formatDateLabel(payment.paymentDate)}
                     </p>
                     {payment.note ? (
-                      <p className="mt-1 line-clamp-2 text-[12px] text-[var(--neo-text-tertiary)]">
+                      <p className="mt-1 line-clamp-2 text-[12px] text-[var(--hh-text-tertiary)]">
                         {payment.note}
                       </p>
                     ) : null}
                   </div>
-                  <p className="shrink-0 text-[15px] font-semibold tabular-nums text-[var(--neo-text-primary)]">
+                  <p className="shrink-0 text-[15px] font-semibold tabular-nums text-[var(--hh-text-primary)]">
                     {formatMoney(payment.amount)}
                   </p>
                 </div>

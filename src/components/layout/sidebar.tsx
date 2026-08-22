@@ -40,6 +40,7 @@ import {
   UserCog,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { TYPO } from "@/lib/typography";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { createBrowserClient } from "@/lib/supabase";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -263,7 +264,8 @@ export function Sidebar({
   /** Nav row: inactive label always readable; hover adjusts background only. */
   const navRowClass = (active: boolean) =>
     cn(
-      "group relative flex items-center rounded-md text-[13px] transition-[background-color] duration-200 ease-out touch-manipulation",
+      "group relative flex touch-manipulation items-center rounded-md transition-[background-color] duration-200 ease-out",
+      TYPO.tableCell,
       collapsed
         ? "min-h-[44px] justify-center px-2 py-1.5 lg:min-h-0"
         : "max-lg:min-h-[44px] min-h-0 gap-2.5 px-2 py-1.5 lg:min-h-0",
@@ -273,13 +275,13 @@ export function Sidebar({
             "bg-[var(--hh-l3-selected)] hover:bg-[var(--hh-l3-hover)]",
             "before:absolute before:inset-y-2 before:left-0 before:w-px before:rounded-full before:bg-[var(--hh-action-primary)] before:content-['']"
           )
-        : "font-normal text-[var(--neo-text-secondary)] hover:bg-[var(--neo-surface-raised)] active:bg-[var(--neo-surface-hover)]"
+        : "font-normal text-[var(--hh-text-secondary)] hover:bg-[var(--hh-l2-operational-surface)] active:bg-[var(--hh-l3-hover)]"
     );
 
   const navIconClass = (active: boolean, extra?: string) =>
     cn(
       "h-[15px] w-[15px] shrink-0",
-      active ? "text-[var(--hh-text-primary)]" : "text-[var(--neo-text-secondary)]",
+      active ? "text-[var(--hh-text-primary)]" : "text-[var(--hh-text-secondary)]",
       extra
     );
 
@@ -324,7 +326,8 @@ export function Sidebar({
         aria-disabled="true"
         title={label}
         className={cn(
-          "group relative flex items-center rounded-md text-[13px] text-[var(--neo-text-tertiary)]",
+          "group relative flex items-center rounded-md text-[var(--hh-text-tertiary)]",
+          TYPO.tableCell,
           "cursor-default select-none",
           collapsed
             ? "min-h-[44px] justify-center px-2 py-1.5 lg:min-h-0"
@@ -332,14 +335,19 @@ export function Sidebar({
         )}
       >
         <Icon
-          className="h-[15px] w-[15px] shrink-0 text-[var(--neo-text-tertiary)]"
+          className="h-[15px] w-[15px] shrink-0 text-[var(--hh-text-tertiary)]"
           strokeWidth={1.75}
         />
         {!iconOnly && (
           <span className="flex min-w-0 flex-1 items-baseline justify-between gap-2">
             <span className="truncate">{item.label}</span>
             {item.note ? (
-              <span className="shrink-0 rounded-sm border border-[var(--neo-border)] px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]">
+              <span
+                className={cn(
+                  "shrink-0 rounded-hh-compact border border-[var(--hh-border)] px-1.5 py-0.5",
+                  TYPO.tableHeader
+                )}
+              >
                 Future
               </span>
             ) : null}
@@ -360,24 +368,25 @@ export function Sidebar({
     >
       <div
         className={cn(
-          "relative z-[1] flex h-12 items-center gap-2 border-b border-[var(--neo-border)] bg-[var(--hh-l0-canvas)]",
+          "relative z-[1] flex h-12 items-center gap-2 border-b border-[var(--hh-border)] bg-[var(--hh-l0-canvas)]",
           collapsed ? "px-3" : "px-3"
         )}
       >
-        <Avatar className="h-7 w-7 rounded-md ring-1 ring-inset ring-[var(--neo-border)]">
+        <Avatar className="h-7 w-7 rounded-md ring-1 ring-inset ring-[var(--hh-border)]">
           {logoUrl ? <AvatarImage src={logoUrl} alt={orgName} className="object-contain" /> : null}
-          <AvatarFallback className="rounded-md bg-[var(--neo-surface-raised)] text-[11px] font-semibold text-[var(--neo-text-primary)]">
+          <AvatarFallback
+            className={cn(
+              "rounded-md bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)]",
+              TYPO.tableHeader
+            )}
+          >
             {getCompanyInitials(orgName)}
           </AvatarFallback>
         </Avatar>
         {!collapsed && (
           <div className="min-w-0">
-            <p className="truncate text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--neo-text-tertiary)]">
-              HH Unified
-            </p>
-            <p className="truncate text-[13px] font-medium tracking-normal text-[var(--neo-text-primary)]">
-              {orgName}
-            </p>
+            <p className={cn("truncate", TYPO.tableHeader)}>HH Unified</p>
+            <p className={cn("truncate", TYPO.primaryName)}>{orgName}</p>
           </div>
         )}
       </div>
@@ -416,7 +425,10 @@ export function Sidebar({
                 <button
                   type="button"
                   onClick={() => setSectionOpen(section.key, !isOpen)}
-                  className="flex min-h-[44px] w-full items-center gap-2 rounded-md px-2 py-2 text-left text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--neo-text-secondary)] transition-[background-color] duration-150 ease-out hover:bg-[var(--neo-surface-raised)] active:bg-[var(--neo-surface-hover)] lg:min-h-0"
+                  className={cn(
+                    "flex min-h-[44px] w-full items-center gap-2 rounded-md px-2 py-2 text-left text-[var(--hh-text-secondary)] transition-[background-color] duration-150 ease-out hover:bg-[var(--hh-l2-operational-surface)] active:bg-[var(--hh-l3-hover)] lg:min-h-0",
+                    TYPO.tableHeader
+                  )}
                   aria-expanded={isOpen}
                 >
                   {isOpen ? (
@@ -445,10 +457,7 @@ export function Sidebar({
                         return (
                           <div
                             key={`${section.key}-${entry.label}`}
-                            className={cn(
-                              "px-2 pb-1 text-[10px] font-medium uppercase tracking-[0.14em] text-[var(--neo-text-tertiary)]",
-                              entryIndex > 0 && "pt-3"
-                            )}
+                            className={cn("px-2 pb-1", TYPO.tableHeader, entryIndex > 0 && "pt-3")}
                           >
                             {entry.label}
                           </div>
@@ -465,32 +474,34 @@ export function Sidebar({
 
       {/* User footer */}
       {!collapsed && (
-        <div className="relative z-[1] border-t border-[var(--neo-border)] px-3 py-3">
-          <div className="flex items-center gap-2.5 rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-2.5 py-2">
-            <Avatar className="h-8 w-8 shrink-0 rounded-md ring-1 ring-inset ring-[var(--neo-border)]">
-              <AvatarFallback className="rounded-md bg-[var(--neo-surface-muted)] text-[11px] font-medium text-[var(--neo-text-secondary)]">
+        <div className="relative z-[1] border-t border-[var(--hh-border)] px-3 py-3">
+          <div className="flex items-center gap-2.5 rounded-md border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-2.5 py-2">
+            <Avatar className="h-8 w-8 shrink-0 rounded-md ring-1 ring-inset ring-[var(--hh-border)]">
+              <AvatarFallback
+                className={cn(
+                  "rounded-md bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-secondary)]",
+                  TYPO.tableHeader
+                )}
+              >
                 U
               </AvatarFallback>
             </Avatar>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-[13px] font-medium leading-tight text-[var(--neo-text-primary)]">
-                User
-              </p>
-              <p className="truncate text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--neo-text-tertiary)]">
-                Admin
-              </p>
+              <p className={cn("truncate", TYPO.primaryName)}>User</p>
+              <p className={cn("truncate", TYPO.tableHeader)}>Admin</p>
             </div>
           </div>
         </div>
       )}
 
       {/* Collapse button at bottom */}
-      <div className="relative z-[1] border-t border-[var(--neo-border)] p-2">
+      <div className="relative z-[1] border-t border-[var(--hh-border)] p-2">
         <button
           type="button"
           onClick={onToggleCollapsed}
           className={cn(
-            "flex w-full items-center rounded-md text-sm font-medium text-[var(--neo-text-secondary)] transition-[background-color] duration-150 ease-out hover:bg-[var(--neo-surface-raised)]",
+            "flex w-full items-center rounded-md text-[var(--hh-text-secondary)] transition-[background-color] duration-150 ease-out hover:bg-[var(--hh-l2-operational-surface)]",
+            TYPO.button,
             collapsed ? "min-h-[44px] justify-center px-2 py-2 sm:min-h-8" : "gap-2 px-2 py-1.5"
           )}
           aria-label="Collapse sidebar"

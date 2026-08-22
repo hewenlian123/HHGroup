@@ -28,7 +28,7 @@ const Table = React.forwardRef<HTMLTableElement, React.HTMLAttributes<HTMLTableE
         <table
           ref={ref}
           className={cn(
-            "w-full caption-bottom border-collapse text-zinc-900 dark:text-foreground",
+            "w-full caption-bottom border-collapse text-[var(--hh-text-primary)]",
             TYPO.tableCell,
             className
           )}
@@ -144,7 +144,7 @@ const TableCaption = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <caption
     ref={ref}
-    className={cn("mt-3", TYPO.metadata, "text-[var(--neo-text-secondary)]", className)}
+    className={cn("mt-3", TYPO.metadata, "text-[var(--hh-text-secondary)]", className)}
     {...props}
   />
 ));

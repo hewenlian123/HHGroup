@@ -32,7 +32,7 @@ SheetOverlay.displayName = SheetPrimitive.Overlay.displayName;
 
 const sheetVariants = cva(
   cn(
-    "fixed z-50 gap-hh-section overflow-y-auto overscroll-y-contain border-[var(--hh-border-strong)] bg-[var(--hh-l5-task-surface)] p-hh-task-mobile text-[var(--neo-text-primary)] shadow-task outline-none [-webkit-overflow-scrolling:touch] motion-reduce:data-[state=open]:animate-hh-modal-fade-in motion-reduce:data-[state=closed]:animate-hh-modal-fade-out max-md:max-h-[100dvh] max-md:w-full max-md:max-w-none md:p-hh-task-desktop",
+    "fixed z-50 gap-hh-section overflow-y-auto overscroll-y-contain border-[var(--hh-border-strong)] bg-[var(--hh-l5-task-surface)] p-hh-task-mobile text-[var(--hh-text-primary)] shadow-task outline-none [-webkit-overflow-scrolling:touch] motion-reduce:data-[state=open]:animate-hh-modal-fade-in motion-reduce:data-[state=closed]:animate-hh-modal-fade-out max-md:max-h-[100dvh] max-md:w-full max-md:max-w-none md:p-hh-task-desktop",
     TYPO.body
   ),
   {
@@ -107,7 +107,7 @@ const SheetDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <SheetPrimitive.Description
     ref={ref}
-    className={cn(TYPO.body, "text-[var(--neo-text-secondary)]", className)}
+    className={cn(TYPO.body, "text-[var(--hh-text-secondary)]", className)}
     {...props}
   />
 ));

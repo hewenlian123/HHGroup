@@ -2,6 +2,13 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
+import {
+  AUTH_BODY_CLASS,
+  AUTH_LINK_CLASS,
+  AUTH_PAGE_CLASS,
+  AUTH_PANEL_CLASS,
+  AUTH_TITLE_CLASS,
+} from "@/components/auth/auth-ui";
 import { readRecoverySessionCookie, readRecoverySessionToken } from "@/lib/auth-recovery-session";
 import { authorizedAppRole } from "@/lib/auth-role";
 import { sessionIdFromAccessToken } from "@/lib/device-unlock-token";
@@ -20,15 +27,15 @@ function hasTokenLikeParam(searchParams: ResetPasswordPageProps["searchParams"])
 
 function InvalidRecoveryState() {
   return (
-    <section className="w-full max-w-[430px] rounded-2xl border border-white/[0.09] bg-[rgb(28_28_29_/_0.96)] p-6 shadow-[0_28px_80px_rgb(0_0_0_/_0.38)] sm:p-7">
-      <h1 className="text-2xl font-semibold text-white">Password reset link unavailable</h1>
-      <p className="mt-2 text-sm leading-6 text-zinc-400">
+    <section className={AUTH_PANEL_CLASS}>
+      <h1 className={AUTH_TITLE_CLASS}>Password reset link unavailable</h1>
+      <p className={`mt-hh-2 ${AUTH_BODY_CLASS}`}>
         This reset link is invalid, expired, or has already been used. Request a new link to
         continue securely.
       </p>
       <Link
         href="/forgot-password"
-        className="mt-6 inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-[var(--neo-gold)] px-4 text-sm font-semibold text-[#17130d] outline-none transition-colors hover:bg-[#c7a56f] focus-visible:ring-2 focus-visible:ring-[rgb(184_147_90_/_0.45)] focus-visible:ring-offset-2 focus-visible:ring-offset-[#1c1c1d]"
+        className={`${AUTH_LINK_CLASS} mt-hh-6 w-full justify-center bg-[var(--hh-action-primary)] px-hh-4 text-[var(--hh-action-primary-foreground)] hover:text-[var(--hh-action-primary-foreground)] hover:opacity-90`}
       >
         Request a new reset link
       </Link>
@@ -64,7 +71,7 @@ export default async function ResetPasswordPage({ searchParams }: ResetPasswordP
   );
 
   return (
-    <main className="flex min-h-[100dvh] items-center justify-center bg-[#151516] px-4 py-8">
+    <main className={AUTH_PAGE_CLASS}>
       {validRecovery ? <ResetPasswordForm /> : <InvalidRecoveryState />}
     </main>
   );

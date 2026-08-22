@@ -25,7 +25,7 @@ export default function GlobalError({
           </Button>
         }
       />
-      <details className="mt-hh-4 text-hh-metadata text-[var(--neo-text-secondary)]">
+      <details className="mt-hh-4 text-hh-metadata text-[var(--hh-text-secondary)]">
         <summary className="cursor-pointer">Error details</summary>
         <div className="mt-hh-2 whitespace-pre-wrap break-words">{message}</div>
         {error?.digest ? <div className="mt-hh-2">Digest: {error.digest}</div> : null}
