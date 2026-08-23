@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { getCostCodes, getEstimateById, getEstimateSnapshot } from "@/lib/data";
 import { EstimateEditor } from "@/app/estimates/_components/estimate-editor";
 import { SetBreadcrumbEntityTitle } from "@/components/layout/set-breadcrumb-entity-title";
+import { createServerSupabaseClient } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
 
@@ -13,11 +14,13 @@ export default async function EstimateSnapshotPage({
   const { id, version } = await params;
   const v = Number(version);
   if (!Number.isFinite(v) || v <= 0) notFound();
+  const readClient = await createServerSupabaseClient();
+  if (!readClient) notFound();
 
   const [snapshot, costCodes, estimate] = await Promise.all([
-    getEstimateSnapshot(id, v),
+    getEstimateSnapshot(id, v, readClient),
     getCostCodes(),
-    getEstimateById(id),
+    getEstimateById(id, readClient),
   ]);
   if (!snapshot || !snapshot.meta) notFound();
 

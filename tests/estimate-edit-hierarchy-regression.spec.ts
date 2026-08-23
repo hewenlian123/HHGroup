@@ -81,7 +81,10 @@ test("Existing Estimate Edit mode has one identity hierarchy and canonical detai
   await expect(commandHeader.getByRole("button", { name: "Edit details" })).toHaveCount(0);
 
   const editAction = commandHeader.getByRole("button", { name: "Edit", exact: true });
-  const sendAction = commandHeader.getByRole("button", { name: "Send", exact: true });
+  const sendAction = commandHeader.getByRole("button", {
+    name: "Mark as Sent",
+    exact: true,
+  });
   await expect
     .poll(async () => {
       const [edit, send] = await Promise.all(
@@ -104,7 +107,7 @@ test("Existing Estimate Edit mode has one identity hierarchy and canonical detai
   await expect(editDetails).toBeVisible();
   await expect(commandHeader.getByRole("button", { name: "Save", exact: true })).toBeVisible();
   await expect(commandHeader.getByRole("button", { name: "Save & Preview" })).toBeVisible();
-  await expect(commandHeader.getByRole("button", { name: "Cancel", exact: true })).toBeVisible();
+  await expect(commandHeader.getByRole("button", { name: "Done", exact: true })).toBeVisible();
 
   await editDetails.click();
   const detailsSheet = page.getByRole("dialog", {
@@ -150,7 +153,7 @@ test("editable Section titles use normal white and graphite control states", asy
     .not.toBe("none");
 });
 
-test("Existing Estimate Cancel restores View hierarchy and New Estimate remains unchanged", async ({
+test("Existing Estimate Done restores View hierarchy and New Estimate remains unchanged", async ({
   page,
 }) => {
   await loginAsE2EOwner(page, `/estimates/${E2E_PRESERVED_ESTIMATE_ID}`);
@@ -160,7 +163,7 @@ test("Existing Estimate Cancel restores View hierarchy and New Estimate remains 
   ).trim();
 
   await commandHeader.getByRole("button", { name: "Edit", exact: true }).click();
-  await commandHeader.getByRole("button", { name: "Cancel", exact: true }).click();
+  await commandHeader.getByRole("button", { name: "Done", exact: true }).click();
   await expect(commandHeader.getByRole("button", { name: "Edit", exact: true })).toBeVisible();
   await expect(page.getByText(estimateNumber, { exact: true })).toHaveCount(1);
 

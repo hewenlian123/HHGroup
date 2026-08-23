@@ -33,7 +33,7 @@ import {
   applyPaymentTemplateAction,
   createPaymentTemplateAction,
   reorderEstimateCategoriesAction,
-  moveEstimateItemsToCostCodeAction,
+  reorderEstimateItemsAction,
   saveEstimateDocumentNotesInlineAction,
   setLineItemStatusAction,
 } from "../[id]/actions";
@@ -72,6 +72,7 @@ import { EB, ebGlassPanel, ebInput } from "./estimate-builder-ui";
 import { EstimateLineItemPersistedMobile } from "./estimate-line-item-persisted-mobile";
 import { ScopeSectionCollapsibleBody, ScopeSectionHeader } from "./estimate-line-items-local";
 import { EstimateScopeSortableSection } from "./estimate-scope-section-sortable";
+import { EstimateItemSortableRow } from "./estimate-item-sortable-row";
 import { ProposalScopeWorkCard } from "./proposal-scope-work-card";
 import { EstimateLineItemMoreMenu } from "./estimate-line-item-more-menu";
 import { EstimateLineItemStatusPill } from "./estimate-line-item-status-pill";
@@ -84,6 +85,11 @@ import {
   shouldCommitEstimateLineFromPrice,
 } from "./estimate-builder-productivity";
 import { readEstimateBuilderReturnContext } from "./estimate-workflow-continuity";
+import {
+  buildEstimateItemMoveOrder,
+  persistedEstimateItemOrder,
+  type EstimateItemMoveTarget,
+} from "@/lib/estimate-item-reorder";
 
 function cssEscapeAttrSelector(value: string): string {
   const winCss =
@@ -665,32 +671,133 @@ export function EstimateEditor({
     [estimateId, isReadOnly, markUnsaved, toast, trackMutation]
   );
 
-  const moveLineToSection = React.useCallback(
-    async (itemId: string, currentCode: string, nextCode: string): Promise<void> => {
-      if (currentCode === nextCode || isReadOnly) return;
+  const [itemOrderBusy, setItemOrderBusy] = React.useState(false);
+  const [itemMoveAnnouncement, setItemMoveAnnouncement] = React.useState("");
+  const itemSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  const itemOrderSections = React.useMemo(
+    () =>
+      costBreakdownSections.map((section) => ({
+        costCode: section.categoryId,
+        itemIds: section.rows.map((row) => row.id),
+      })),
+    [costBreakdownSections]
+  );
+
+  const persistItemMove = React.useCallback(
+    async (itemId: string, target: EstimateItemMoveTarget): Promise<void> => {
+      if (isReadOnly || itemOrderBusy) return;
+      const orderedItems = buildEstimateItemMoveOrder(itemOrderSections, itemId, target);
+      if (!orderedItems) return;
+
+      const currentCostCode = localItems.find((item) => item.id === itemId)?.costCode;
+      const expectedItems = persistedEstimateItemOrder(localItems);
+      const expectedItemIds = expectedItems.map((item) => item.id);
+      const orderedItemIds = orderedItems.map((item) => item.id);
+      if (
+        currentCostCode === target.costCode &&
+        orderedItemIds.every((id, index) => id === expectedItemIds[index])
+      ) {
+        return;
+      }
+
       markUnsaved();
-      const result = await trackMutation(`line:move:${itemId}:${nextCode}`, () =>
-        moveEstimateItemsToCostCodeAction(
-          estimateId,
-          [itemId],
-          nextCode,
-          getCategoryDisplayNameHint(nextCode)
-        )
+      setItemOrderBusy(true);
+      setItemMoveAnnouncement("Saving item order…");
+      const result = await trackMutation(`items:order:${itemId}`, () =>
+        reorderEstimateItemsAction(estimateId, expectedItems, orderedItems)
       );
       if (!result.ok) {
+        setItemMoveAnnouncement(result.error ?? "Could not save item order.");
         toast({
-          title: "Could not move item",
+          title: result.stale ? "Item order changed" : "Could not move item",
           description: result.error ?? "Try again.",
           variant: "error",
         });
+        if (result.stale) router.refresh();
+        setItemOrderBusy(false);
         return;
       }
-      setLocalItems((previous) =>
-        previous.map((item) => (item.id === itemId ? { ...item, costCode: nextCode } : item))
+
+      const nextById = new Map(
+        orderedItems.map((item, sortOrder) => [item.id, { ...item, sortOrder }])
       );
+      setLocalItems((previous) =>
+        previous
+          .map((item) => {
+            const next = nextById.get(item.id);
+            return next ? { ...item, costCode: next.costCode, sortOrder: next.sortOrder } : item;
+          })
+          .sort((a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id))
+      );
+      const targetName = getCategoryDisplayNameHint(target.costCode);
+      setItemMoveAnnouncement(`Item moved. Order saved in ${targetName}.`);
+      toast({ title: "Item moved", description: `Order saved in ${targetName}.` });
+      setItemOrderBusy(false);
       syncRouterNonBlocking(router);
     },
-    [estimateId, getCategoryDisplayNameHint, isReadOnly, markUnsaved, router, toast, trackMutation]
+    [
+      estimateId,
+      getCategoryDisplayNameHint,
+      isReadOnly,
+      itemOrderBusy,
+      itemOrderSections,
+      localItems,
+      markUnsaved,
+      router,
+      toast,
+      trackMutation,
+    ]
+  );
+
+  const moveLineToSection = React.useCallback(
+    (itemId: string, currentCode: string, nextCode: string): void => {
+      if (currentCode === nextCode) return;
+      void persistItemMove(itemId, { costCode: nextCode, position: "end" });
+    },
+    [persistItemMove]
+  );
+
+  const moveLineByOffset = React.useCallback(
+    (itemId: string, categoryId: string, offset: -1 | 1): void => {
+      const section = costBreakdownSections.find(
+        (candidate) => candidate.categoryId === categoryId
+      );
+      const itemIndex = section?.rows.findIndex((row) => row.id === itemId) ?? -1;
+      const adjacent = itemIndex >= 0 ? section?.rows[itemIndex + offset] : null;
+      if (!adjacent) return;
+      void persistItemMove(itemId, {
+        costCode: categoryId,
+        position: offset < 0 ? "before" : "after",
+        itemId: adjacent.id,
+      });
+    },
+    [costBreakdownSections, persistItemMove]
+  );
+
+  const handleItemDragEnd = React.useCallback(
+    (categoryId: string, rows: EstimateItemRow[], event: DragEndEvent): void => {
+      const { active, over } = event;
+      if (!over || active.id === over.id) {
+        setItemMoveAnnouncement("");
+        return;
+      }
+      const oldIndex = rows.findIndex((row) => row.id === String(active.id));
+      const newIndex = rows.findIndex((row) => row.id === String(over.id));
+      if (oldIndex < 0 || newIndex < 0) {
+        setItemMoveAnnouncement("");
+        return;
+      }
+      void persistItemMove(String(active.id), {
+        costCode: categoryId,
+        position: oldIndex < newIndex ? "after" : "before",
+        itemId: String(over.id),
+      });
+    },
+    [persistItemMove]
   );
 
   const restoreContextualActionFocus = React.useCallback((ariaLabel: string): void => {
@@ -771,6 +878,9 @@ export function EstimateEditor({
 
   return (
     <React.Fragment>
+      <span id="estimate-item-move-status" className="sr-only" aria-live="polite">
+        {itemMoveAnnouncement}
+      </span>
       <div>
         <div className="min-w-0 space-y-4 pb-[calc(10rem+env(safe-area-inset-bottom))] lg:pb-0">
           <EstimateEditCustomerSection
@@ -928,6 +1038,11 @@ export function EstimateEditor({
                                     onMoveToSection={(nextCode) =>
                                       void moveLineToSection(row.id, categoryId, nextCode)
                                     }
+                                    canMoveUp={rows[0]?.id !== row.id}
+                                    canMoveDown={rows[rows.length - 1]?.id !== row.id}
+                                    onMoveUp={() => moveLineByOffset(row.id, categoryId, -1)}
+                                    onMoveDown={() => moveLineByOffset(row.id, categoryId, 1)}
+                                    reorderDisabled={itemOrderBusy}
                                     onDuplicated={(itemId) => setLineFocusTargetId(itemId)}
                                     onDeleted={() => {
                                       const rowIndex = rows.findIndex(
@@ -1045,76 +1160,126 @@ export function EstimateEditor({
                               <ScopeSectionCollapsibleBody collapsed={collapsed}>
                                 <div className="eb-scope-section-lines flex flex-col">
                                   <EstimateLineItemGridHeader />
-                                  {isReadOnly
-                                    ? rows.map((row) => {
-                                        const lineOrdinal =
-                                          flatPersistedRows.find((f) => f.row.id === row.id)
-                                            ?.rowIndex ?? 1;
-                                        return (
-                                          <LineItemRow
-                                            key={row.id}
-                                            row={row}
-                                            estimateId={estimateId}
-                                            categoryId={categoryId}
-                                            lineOrdinal={lineOrdinal}
-                                            isLocked
-                                            sectionOptions={estimateSectionMoveOptions}
-                                            onMoveToSection={(nextCode) =>
-                                              void moveLineToSection(row.id, categoryId, nextCode)
-                                            }
-                                            updateLineItemAction={updateLineItemInlineAction}
-                                            duplicateLineItemAction={duplicateLineItemInlineAction}
-                                            deleteLineItemAction={deleteLineItemInlineAction}
-                                          />
-                                        );
-                                      })
-                                    : rows.map((row) => {
-                                        const lineOrdinal =
-                                          flatPersistedRows.find((f) => f.row.id === row.id)
-                                            ?.rowIndex ?? 1;
-                                        return (
-                                          <LineItemRow
-                                            key={row.id}
-                                            row={row}
-                                            estimateId={estimateId}
-                                            categoryId={categoryId}
-                                            lineOrdinal={lineOrdinal}
-                                            isLocked={false}
-                                            sectionOptions={estimateSectionMoveOptions}
-                                            onMoveToSection={(nextCode) =>
-                                              void moveLineToSection(row.id, categoryId, nextCode)
-                                            }
-                                            onCommitFromPrice={() => {
-                                              const rowIndex = rows.findIndex(
-                                                (candidate) => candidate.id === row.id
-                                              );
-                                              const nextRow =
-                                                rowIndex >= 0 ? rows[rowIndex + 1] : null;
-                                              if (nextRow) {
-                                                setLineFocusTargetId(nextRow.id);
-                                                return;
-                                              }
-                                              void addLineToCategory(categoryId);
-                                            }}
-                                            onDuplicated={(itemId) => setLineFocusTargetId(itemId)}
-                                            onDeleted={() => {
-                                              const rowIndex = rows.findIndex(
-                                                (candidate) => candidate.id === row.id
-                                              );
-                                              const adjacentRow =
-                                                rows[rowIndex + 1] ?? rows[rowIndex - 1] ?? null;
-                                              if (adjacentRow) {
-                                                setLineFocusTargetId(adjacentRow.id);
-                                              } else {
-                                                setCategoryScrollTargetCode(categoryId);
-                                              }
-                                            }}
-                                            updateLineItemAction={updateLineItemInlineAction}
-                                            duplicateLineItemAction={duplicateLineItemInlineAction}
-                                            deleteLineItemAction={deleteLineItemInlineAction}
-                                          />
-                                        );
-                                      })}
+                                  {isReadOnly ? (
+                                    rows.map((row) => {
+                                      const lineOrdinal =
+                                        flatPersistedRows.find((f) => f.row.id === row.id)
+                                          ?.rowIndex ?? 1;
+                                      return (
+                                        <LineItemRow
+                                          key={row.id}
+                                          row={row}
+                                          estimateId={estimateId}
+                                          categoryId={categoryId}
+                                          lineOrdinal={lineOrdinal}
+                                          isLocked
+                                          sectionOptions={estimateSectionMoveOptions}
+                                          onMoveToSection={(nextCode) =>
+                                            void moveLineToSection(row.id, categoryId, nextCode)
+                                          }
+                                          updateLineItemAction={updateLineItemInlineAction}
+                                          duplicateLineItemAction={duplicateLineItemInlineAction}
+                                          deleteLineItemAction={deleteLineItemInlineAction}
+                                        />
+                                      );
+                                    })
+                                  ) : (
+                                    <DndContext
+                                      sensors={itemSensors}
+                                      collisionDetection={closestCenter}
+                                      onDragStart={() =>
+                                        setItemMoveAnnouncement(
+                                          "Moving item. Choose its new position."
+                                        )
+                                      }
+                                      onDragCancel={() => setItemMoveAnnouncement("")}
+                                      onDragEnd={(event) =>
+                                        handleItemDragEnd(categoryId, rows, event)
+                                      }
+                                    >
+                                      <SortableContext
+                                        items={rows.map((row) => row.id)}
+                                        strategy={verticalListSortingStrategy}
+                                      >
+                                        {rows.map((row) => {
+                                          const lineOrdinal =
+                                            flatPersistedRows.find(
+                                              (candidate) => candidate.row.id === row.id
+                                            )?.rowIndex ?? 1;
+                                          return (
+                                            <EstimateItemSortableRow
+                                              key={row.id}
+                                              id={row.id}
+                                              lineOrdinal={lineOrdinal}
+                                              disabled={itemOrderBusy}
+                                            >
+                                              {(itemDragHandle) => (
+                                                <LineItemRow
+                                                  row={row}
+                                                  estimateId={estimateId}
+                                                  categoryId={categoryId}
+                                                  lineOrdinal={lineOrdinal}
+                                                  isLocked={false}
+                                                  sectionOptions={estimateSectionMoveOptions}
+                                                  onMoveToSection={(nextCode) =>
+                                                    void moveLineToSection(
+                                                      row.id,
+                                                      categoryId,
+                                                      nextCode
+                                                    )
+                                                  }
+                                                  canMoveUp={rows[0]?.id !== row.id}
+                                                  canMoveDown={rows[rows.length - 1]?.id !== row.id}
+                                                  onMoveUp={() =>
+                                                    moveLineByOffset(row.id, categoryId, -1)
+                                                  }
+                                                  onMoveDown={() =>
+                                                    moveLineByOffset(row.id, categoryId, 1)
+                                                  }
+                                                  reorderDisabled={itemOrderBusy}
+                                                  dragHandle={itemDragHandle}
+                                                  onCommitFromPrice={() => {
+                                                    const rowIndex = rows.findIndex(
+                                                      (candidate) => candidate.id === row.id
+                                                    );
+                                                    const nextRow =
+                                                      rowIndex >= 0 ? rows[rowIndex + 1] : null;
+                                                    if (nextRow) {
+                                                      setLineFocusTargetId(nextRow.id);
+                                                      return;
+                                                    }
+                                                    void addLineToCategory(categoryId);
+                                                  }}
+                                                  onDuplicated={(itemId) =>
+                                                    setLineFocusTargetId(itemId)
+                                                  }
+                                                  onDeleted={() => {
+                                                    const rowIndex = rows.findIndex(
+                                                      (candidate) => candidate.id === row.id
+                                                    );
+                                                    const adjacentRow =
+                                                      rows[rowIndex + 1] ??
+                                                      rows[rowIndex - 1] ??
+                                                      null;
+                                                    if (adjacentRow) {
+                                                      setLineFocusTargetId(adjacentRow.id);
+                                                    } else {
+                                                      setCategoryScrollTargetCode(categoryId);
+                                                    }
+                                                  }}
+                                                  updateLineItemAction={updateLineItemInlineAction}
+                                                  duplicateLineItemAction={
+                                                    duplicateLineItemInlineAction
+                                                  }
+                                                  deleteLineItemAction={deleteLineItemInlineAction}
+                                                />
+                                              )}
+                                            </EstimateItemSortableRow>
+                                          );
+                                        })}
+                                      </SortableContext>
+                                    </DndContext>
+                                  )}
                                   {!isReadOnly ? (
                                     <div className="mt-2 inline-block px-1">
                                       <button
@@ -1237,6 +1402,7 @@ export function EstimateEditor({
               paymentSchedule={paymentSchedule}
               estimateTotal={summary?.grandTotal ?? 0}
               isLocked={isReadOnly}
+              canCreateMilestoneInvoices={status === "Approved" || status === "Converted"}
               invoiceProjectLink={invoiceProjectLink}
               invoiceSummaries={paymentInvoiceSummaries}
               invoiceContext={{
@@ -1281,6 +1447,12 @@ function LineItemRow({
   isLocked,
   sectionOptions,
   onMoveToSection,
+  canMoveUp,
+  canMoveDown,
+  onMoveUp,
+  onMoveDown,
+  reorderDisabled,
+  dragHandle,
   onCommitFromPrice,
   onDuplicated,
   onDeleted,
@@ -1295,6 +1467,12 @@ function LineItemRow({
   isLocked: boolean;
   sectionOptions: EstimateSectionOption[];
   onMoveToSection?: (costCode: string) => void;
+  canMoveUp?: boolean;
+  canMoveDown?: boolean;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
+  reorderDisabled?: boolean;
+  dragHandle?: React.ReactNode;
   onCommitFromPrice?: () => void;
   onDuplicated?: (itemId: string) => void;
   onDeleted?: () => void;
@@ -1448,6 +1626,11 @@ function LineItemRow({
         currentSectionCode={categoryId}
         moveSectionOptions={sectionOptions}
         onMoveToSection={onMoveToSection}
+        canMoveUp={canMoveUp}
+        canMoveDown={canMoveDown}
+        onMoveUp={onMoveUp}
+        onMoveDown={onMoveDown}
+        reorderDisabled={reorderDisabled}
       />
     </>
   ) : null;
@@ -1606,6 +1789,7 @@ function LineItemRow({
           </div>
         }
         inlinePricing={inlinePricing}
+        dragSlot={dragHandle}
         duplicateNode={undefined}
         deleteNode={undefined}
       />

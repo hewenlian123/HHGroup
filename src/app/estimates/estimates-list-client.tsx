@@ -26,6 +26,7 @@ import {
   runDeleteEstimateActionWithTimeout,
   type DeleteEstimateAction,
 } from "./delete-estimate-client";
+import { duplicateEstimateAsDraftAction } from "./actions";
 import {
   MobileEmptyState,
   MobileFabPlus,
@@ -64,6 +65,7 @@ export function EstimatesListClient({
   const [filtersOpen, setFiltersOpen] = React.useState(false);
   const [deleteTarget, setDeleteTarget] = React.useState<EstimateListItem | null>(null);
   const [deleteBusy, setDeleteBusy] = React.useState(false);
+  const [copyingEstimateId, setCopyingEstimateId] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     setRows(list);
@@ -120,6 +122,41 @@ export function EstimatesListClient({
       setDeleteBusy(false);
     }
   }, [deleteBusy, deleteEstimateAction, deleteTarget, router, toast]);
+
+  const handleCopyPrevious = React.useCallback(
+    async (source: EstimateListItem) => {
+      if (copyingEstimateId) return;
+      setCopyingEstimateId(source.id);
+      try {
+        const result = await duplicateEstimateAsDraftAction(source.id);
+        if (!result.ok || !result.estimateId) {
+          toast({
+            title: "Could not copy previous Estimate",
+            description: result.error ?? "Please try again.",
+            variant: "error",
+          });
+          return;
+        }
+        toast({
+          title: "Draft Estimate created",
+          description: result.estimateNumber
+            ? `${result.estimateNumber} was copied without downstream history.`
+            : "The copied Estimate is ready to edit.",
+          variant: "success",
+        });
+        router.push(`/estimates/${result.estimateId}`);
+      } catch (error) {
+        toast({
+          title: "Could not copy previous Estimate",
+          description: error instanceof Error ? error.message : "Please try again.",
+          variant: "error",
+        });
+      } finally {
+        setCopyingEstimateId(null);
+      }
+    },
+    [copyingEstimateId, router, toast]
+  );
 
   return (
     <div
@@ -335,7 +372,11 @@ export function EstimatesListClient({
           </>
         ) : (
           <>
-            <EstimateMobileList list={filtered} onRequestDelete={setDeleteTarget} />
+            <EstimateMobileList
+              list={filtered}
+              onRequestDelete={setDeleteTarget}
+              onCopyPrevious={(row) => void handleCopyPrevious(row)}
+            />
             <div className="hidden lg:block">
               <NeoTable
                 className="estimate-list-table-shell"
@@ -363,7 +404,12 @@ export function EstimatesListClient({
                 </thead>
                 <tbody>
                   {filtered.map((row) => (
-                    <EstimateListRow key={row.id} row={row} onRequestDelete={setDeleteTarget} />
+                    <EstimateListRow
+                      key={row.id}
+                      row={row}
+                      onRequestDelete={setDeleteTarget}
+                      onCopyPrevious={(source) => void handleCopyPrevious(source)}
+                    />
                   ))}
                 </tbody>
               </NeoTable>

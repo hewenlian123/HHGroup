@@ -44,6 +44,7 @@ import {
   type CanonicalProjectProfit,
 } from "../profit-engine";
 import type { EstimateListItem, EstimateItemRow } from "../estimates-db";
+import type { EstimateActivityActor } from "../estimate-activity";
 import type { Commitment } from "../commitments-db";
 import type {
   LaborInvoice,
@@ -3093,10 +3094,14 @@ export type {
   PaymentScheduleItem,
   PaymentScheduleTemplate,
   EstimateCategorySectionRow,
+  EstimateRevisionContext,
 } from "../estimates-db";
 export { groupEstimateItemsByCategoryId } from "../estimates-db";
 
-export function getEstimateSnapshots(estimateId: string): Promise<
+export function getEstimateSnapshots(
+  estimateId: string,
+  explicitClient?: SupabaseClient | null
+): Promise<
   {
     snapshotId: string;
     estimateId: string;
@@ -3106,7 +3111,7 @@ export function getEstimateSnapshots(estimateId: string): Promise<
     frozenPayload: unknown;
   }[]
 > {
-  return estDb.listEstimateSnapshots(estimateId).then((rows) =>
+  return estDb.listEstimateSnapshots(estimateId, explicitClient).then((rows) =>
     rows.map((s) => ({
       snapshotId: s.snapshotId,
       estimateId: s.estimateId,
@@ -3120,29 +3125,28 @@ export function getEstimateSnapshots(estimateId: string): Promise<
 
 export async function getEstimateSnapshot(
   estimateId: string,
-  version: number
+  version: number,
+  explicitClient?: SupabaseClient | null
 ): Promise<estDb.EstimateSnapshotRecord | null> {
-  return estDb.getEstimateSnapshotByVersion(estimateId, version);
+  return estDb.getEstimateSnapshotByVersion(estimateId, version, explicitClient);
 }
 
 export async function createEstimateSnapshot(estimateId: string): Promise<string | null> {
   return estDb.createEstimateSnapshot(estimateId);
 }
 
-export function createNewVersionFromSnapshot(estimateId: string): Promise<boolean> {
-  return estDb.createNewVersionFromSnapshot(estimateId);
-}
-
 export async function convertEstimateSnapshotToProject(
-  estimateId: string
+  estimateId: string,
+  actor: EstimateActivityActor,
+  explicitClient: SupabaseClient
 ): Promise<ProjectFromEstimate | null> {
-  const existing = await getProjectFromEstimate(estimateId);
+  const existing = await getProjectFromEstimate(estimateId, explicitClient);
   if (existing) return { ...existing };
 
   const [estimate, meta, items] = await Promise.all([
-    estDb.getEstimateById(estimateId),
-    estDb.getEstimateMeta(estimateId),
-    estDb.getEstimateItems(estimateId),
+    estDb.getEstimateById(estimateId, explicitClient),
+    estDb.getEstimateMeta(estimateId, explicitClient),
+    estDb.getEstimateItems(estimateId, explicitClient),
   ]);
   if (!estimate || !meta) return null;
   if (estimate.status !== "Approved") return null;
@@ -3150,15 +3154,12 @@ export async function convertEstimateSnapshotToProject(
   const s = estDb.computeSummary(items, meta, estimateCodeToType);
 
   // Canonical contract value: store in projects.budget so profit-engine and dashboard use it as revenue base.
-  // Lock estimate by moving to Converted (allowed only from Approved).
-  const locked = await estDb.setEstimateStatus(estimateId, "Converted");
-  if (!locked) return null;
-
   const clientFromEstimate = nonEmptyString(meta.client?.name);
-  const project = await projectsDb.createProject({
+  const project = await projectsDb.createProjectWithClient(explicitClient, {
     name: meta.project.name?.trim() || estimate.project?.trim() || `Project ${estimate.number}`,
     budget: s.total,
     status: "active",
+    customerId: estimate.customerId,
     ...(clientFromEstimate ? { client: clientFromEstimate } : {}),
     sourceEstimateId: estimateId,
     snapshotRevenue: s.total,
@@ -3170,6 +3171,13 @@ export async function convertEstimateSnapshotToProject(
       other: 0,
     },
   });
+  const converted = await markEstimateConvertedOrRollbackProject(
+    estimateId,
+    project.id,
+    actor,
+    explicitClient
+  );
+  if (!converted) return null;
 
   return {
     projectId: project.id,
@@ -3201,25 +3209,25 @@ export interface ConvertToProjectPayload {
 /**
  * Convert an Approved estimate to a project with editable setup fields.
  * Duplication: returns null if this estimate was already converted (getProjectFromEstimate).
- * Lock: sets estimate status to Converted first; only then creates project and copies budget.
+ * Atomicity contract: creates the project first, then marks the estimate Converted. If the
+ * lifecycle transition fails, the newly-created project is removed as compensation.
  */
 export async function convertEstimateToProjectWithSetup(
   estimateId: string,
-  payload: ConvertToProjectPayload
+  payload: ConvertToProjectPayload,
+  actor: EstimateActivityActor,
+  explicitClient: SupabaseClient
 ): Promise<ProjectFromEstimate | null> {
-  const existing = await getProjectFromEstimate(estimateId);
+  const existing = await getProjectFromEstimate(estimateId, explicitClient);
   if (existing) return null;
 
   const [estimate, meta, items] = await Promise.all([
-    estDb.getEstimateById(estimateId),
-    estDb.getEstimateMeta(estimateId),
-    estDb.getEstimateItems(estimateId),
+    estDb.getEstimateById(estimateId, explicitClient),
+    estDb.getEstimateMeta(estimateId, explicitClient),
+    estDb.getEstimateItems(estimateId, explicitClient),
   ]);
   if (!estimate || !meta) return null;
   if (estimate.status !== "Approved") return null;
-
-  const locked = await estDb.setEstimateStatus(estimateId, "Converted");
-  if (!locked) return null;
 
   const s = estDb.computeSummary(items, meta, estimateCodeToType);
   const name =
@@ -3229,10 +3237,11 @@ export async function convertEstimateToProjectWithSetup(
     `Project ${estimate.number}`;
 
   // Canonical contract value: store in projects.budget so profit-engine and dashboard use it as revenue base.
-  const project = await projectsDb.createProject({
+  const project = await projectsDb.createProjectWithClient(explicitClient, {
     name,
     budget: s.total,
     status: "active",
+    customerId: estimate.customerId,
     client: payload.client,
     address: payload.address,
     projectManager: payload.projectManager,
@@ -3250,6 +3259,13 @@ export async function convertEstimateToProjectWithSetup(
       other: 0,
     },
   });
+  const converted = await markEstimateConvertedOrRollbackProject(
+    estimateId,
+    project.id,
+    actor,
+    explicitClient
+  );
+  if (!converted) return null;
 
   return {
     projectId: project.id,
@@ -3267,24 +3283,62 @@ export async function convertEstimateToProjectWithSetup(
   };
 }
 
+async function markEstimateConvertedOrRollbackProject(
+  estimateId: string,
+  projectId: string,
+  actor: EstimateActivityActor,
+  explicitClient: SupabaseClient
+): Promise<boolean> {
+  try {
+    const converted = await estDb.setEstimateStatusWithClient(
+      estimateId,
+      "Converted",
+      explicitClient,
+      actor,
+      { type: "project", id: projectId }
+    );
+    if (converted) return true;
+  } catch (error) {
+    const rolledBack = await projectsDb.deleteProjectWithClient(explicitClient, projectId);
+    if (!rolledBack) {
+      throw new Error(
+        "Project was created but estimate conversion failed, and the project rollback also failed.",
+        { cause: error }
+      );
+    }
+    throw error;
+  }
+
+  const rolledBack = await projectsDb.deleteProjectWithClient(explicitClient, projectId);
+  if (!rolledBack) {
+    throw new Error(
+      "Project was created but estimate conversion failed, and the project rollback also failed."
+    );
+  }
+  return false;
+}
+
 export function setEstimateStatus(
   estimateId: string,
-  nextStatus: "Sent" | "Approved" | "Rejected" | "Converted"
+  nextStatus: "Sent" | "Approved" | "Rejected" | "Converted",
+  actor: EstimateActivityActor
 ): Promise<boolean> {
-  return estDb.setEstimateStatus(estimateId, nextStatus);
+  return estDb.setEstimateStatus(estimateId, nextStatus, actor);
 }
 
 export function updateEstimateStatus(
   estimateId: string,
-  newStatus: estDb.EstimateStatus
+  newStatus: estDb.EstimateStatus,
+  actor: EstimateActivityActor
 ): Promise<boolean> {
-  return estDb.updateEstimateStatus(estimateId, newStatus);
+  return estDb.updateEstimateStatus(estimateId, newStatus, actor);
 }
 
 export async function getProjectFromEstimate(
-  estimateId: string
+  estimateId: string,
+  explicitClient?: SupabaseClient
 ): Promise<ProjectFromEstimate | null> {
-  const project = await projectsDb.getProjectBySourceEstimateId(estimateId);
+  const project = await projectsDb.getProjectBySourceEstimateId(estimateId, explicitClient);
   if (!project || !project.sourceEstimateId) return null;
   const b = project.snapshotBudgetBreakdown;
   return {
@@ -3355,8 +3409,17 @@ export function getEstimateHeaderById(
   return estDb.getEstimateHeaderById(id, explicitClient);
 }
 
-export function getEstimateList(): Promise<EstimateListItem[]> {
-  return estDb.getEstimateList(estimateCodeToType);
+export function getEstimateRevisionContext(
+  estimateId: string,
+  explicitClient: SupabaseClient
+): Promise<estDb.EstimateRevisionContext | null> {
+  return estDb.getEstimateRevisionContextWithClient(explicitClient, estimateId);
+}
+
+export function getEstimateList(
+  explicitClient?: SupabaseClient | null
+): Promise<EstimateListItem[]> {
+  return estDb.getEstimateList(estimateCodeToType, explicitClient);
 }
 
 export function getEstimateItems(
@@ -3438,8 +3501,10 @@ export function paymentMilestoneAmount(
   return estDb.paymentMilestoneAmount(item, estimateTotal);
 }
 
-export function listPaymentTemplates(): Promise<estDb.PaymentScheduleTemplate[]> {
-  return estDb.listPaymentTemplates();
+export function listPaymentTemplates(
+  explicitClient?: SupabaseClient | null
+): Promise<estDb.PaymentScheduleTemplate[]> {
+  return estDb.listPaymentTemplates(explicitClient);
 }
 
 export function createPaymentTemplate(
@@ -3450,16 +3515,18 @@ export function createPaymentTemplate(
     value: number;
     dueRule: string;
     notes?: string | null;
-  }>
+  }>,
+  explicitClient?: SupabaseClient | null
 ): Promise<estDb.PaymentScheduleTemplate | null> {
-  return estDb.createPaymentTemplate(name, items);
+  return estDb.createPaymentTemplate(name, items, explicitClient);
 }
 
 export function applyPaymentTemplateToEstimate(
   estimateId: string,
-  templateId: string
-): Promise<boolean> {
-  return estDb.applyPaymentTemplateToEstimate(estimateId, templateId);
+  templateId: string,
+  mode: estDb.PaymentTemplateApplyMode
+): Promise<estDb.PaymentTemplateApplicationResult> {
+  return estDb.applyPaymentTemplateToEstimate(estimateId, templateId, mode);
 }
 
 export function updateEstimateMeta(

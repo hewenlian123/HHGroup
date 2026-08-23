@@ -584,7 +584,7 @@ test("60-line Estimate completes publication, continuity, revenue-readiness, and
 
     await capture(page, `builder-${viewport.name}`);
     await page
-      .getByRole("button", { name: "Cancel", exact: true })
+      .getByRole("button", { name: "Done", exact: true })
       .locator("visible=true")
       .first()
       .click();

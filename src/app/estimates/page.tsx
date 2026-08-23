@@ -1,5 +1,7 @@
 import { unstable_noStore } from "next/cache";
+import { redirect } from "next/navigation";
 import { getEstimateList } from "@/lib/data";
+import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
 import { deleteEstimateAction } from "./actions";
 import { EstimatesListClient } from "./estimates-list-client";
@@ -13,10 +15,12 @@ export default async function EstimatesListPage({
 }) {
   unstable_noStore();
   const { saved, error } = await searchParams;
+  const readClient = await createServerSupabaseClient();
+  if (!readClient) redirect("/login?next=%2Festimates");
   let list: Awaited<ReturnType<typeof getEstimateList>> = [];
   let loadWarning: string | null = null;
   try {
-    list = await getEstimateList();
+    list = await getEstimateList(readClient);
   } catch (e) {
     logServerPageDataError("estimates", e);
     loadWarning = serverDataLoadWarning(e, "estimates");

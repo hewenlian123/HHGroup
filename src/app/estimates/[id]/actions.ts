@@ -20,19 +20,28 @@ import {
   markPaymentMilestonePaidWithClient,
   reorderPaymentScheduleWithClient,
   updateEstimateMetaWithClient,
-  updateEstimateStatusWithClient,
   reorderEstimateCategoriesWithClient,
+  reorderEstimateItemsWithClient,
   moveEstimateItemsToCostCodeWithClient,
   updateEstimateCategoryDisplayNameWithClient,
+  applyPaymentTemplateToEstimateWithClient,
+  computeSummary,
+  getEstimateItems,
+  getEstimateMeta,
+  type PaymentTemplateApplyMode,
   type EstimateLineItemStatus,
 } from "@/lib/estimates-db";
 import { normalizeEstimateNoteBlocks } from "@/lib/estimate-notes";
+import { allocateTaxInclusiveMilestoneToInvoice } from "@/lib/estimate-milestone-invoice-allocation";
 import {
-  createNewVersionFromSnapshot,
+  estimateActivityActorFromAuth,
+  linkEstimateMilestoneInvoiceWithActivityWithClient,
+  type EstimateActivityActor,
+} from "@/lib/estimate-activity";
+import {
   convertEstimateSnapshotToProject,
   convertEstimateToProjectWithSetup,
   createPaymentTemplate,
-  applyPaymentTemplateToEstimate,
 } from "@/lib/data";
 
 export type EstimateStatus = "Draft" | "Sent" | "Approved" | "Rejected" | "Converted";
@@ -43,6 +52,17 @@ async function getEstimateWriteClient(): Promise<SupabaseClient | null> {
   return getServerSupabaseAdmin();
 }
 
+async function getEstimateWriteContext(): Promise<{
+  db: SupabaseClient;
+  actor: EstimateActivityActor;
+} | null> {
+  const guard = await requireSupabaseOwnerOrAdminServerAction();
+  if (!guard.ok) return null;
+  const db = getServerSupabaseAdmin();
+  if (!db) return null;
+  return { db, actor: estimateActivityActorFromAuth(guard.context) };
+}
+
 type ScheduleInvoiceActionResult = { ok: boolean; invoiceId?: string; error?: string };
 
 type EstimateInvoiceSourceRow = {
@@ -51,12 +71,20 @@ type EstimateInvoiceSourceRow = {
   client: string | null;
   project: string | null;
   customer_id: string | null;
+  status: string | null;
 };
 
 type EstimateInvoiceMetaRow = {
   client_name: string | null;
   client_email: string | null;
   project_name: string | null;
+  tax: number | string | null;
+  discount: number | string | null;
+};
+
+type EstimateInvoiceItemRow = {
+  qty: number | string | null;
+  unit_cost: number | string | null;
 };
 
 type EstimatePaymentScheduleSourceRow = {
@@ -140,8 +168,14 @@ function isQuantityColumnUnsupported(error: { message?: string } | null): boolea
 }
 
 async function deleteDraftInvoiceGraph(c: SupabaseClient, invoiceId: string): Promise<void> {
-  await c.from("invoice_items").delete().eq("invoice_id", invoiceId);
-  await c.from("invoices").delete().eq("id", invoiceId);
+  const itemsDelete = await c.from("invoice_items").delete().eq("invoice_id", invoiceId);
+  if (itemsDelete.error) {
+    throw new Error("Draft Invoice cleanup failed after Estimate linkage was rejected.");
+  }
+  const invoiceDelete = await c.from("invoices").delete().eq("id", invoiceId);
+  if (invoiceDelete.error) {
+    throw new Error("Draft Invoice cleanup failed after Estimate linkage was rejected.");
+  }
 }
 
 async function resolveProjectForScheduleInvoice(
@@ -230,7 +264,10 @@ async function insertScheduleInvoice(
     notes: string;
     issueDate: string;
     dueDate: string;
-    amount: number;
+    subtotal: number;
+    taxPct: number;
+    taxAmount: number;
+    total: number;
   }
 ): Promise<string> {
   let lastError: { message?: string } | null = null;
@@ -247,10 +284,10 @@ async function insertScheduleInvoice(
         due_date: payload.dueDate,
         status: "Draft",
         notes: payload.notes,
-        tax_pct: 0,
-        subtotal: payload.amount,
-        tax_amount: 0,
-        total: payload.amount,
+        tax_pct: payload.taxPct,
+        subtotal: payload.subtotal,
+        tax_amount: payload.taxAmount,
+        total: payload.total,
       })
       .select("id")
       .single();
@@ -293,26 +330,9 @@ export async function approveEstimateAction(formData: FormData) {
   const estimateId = formData.get("estimateId");
   if (typeof estimateId !== "string") return;
   try {
-    const db = await getEstimateWriteClient();
-    if (!db) return;
-    const ok = await setEstimateStatusWithClient(estimateId, "Approved", db);
-    if (!ok) return;
-    revalidateEstimatePaths(estimateId);
-    revalidatePath("/estimates");
-    redirect(`/estimates/${estimateId}`);
-  } catch {
-    // no-op
-  }
-}
-
-export async function createNewVersionAction(formData: FormData) {
-  const guard = await requireSupabaseOwnerOrAdminServerAction();
-  if (!guard.ok) return;
-
-  const estimateId = formData.get("estimateId");
-  if (typeof estimateId !== "string") return;
-  try {
-    const ok = await createNewVersionFromSnapshot(estimateId);
+    const context = await getEstimateWriteContext();
+    if (!context) return;
+    const ok = await setEstimateStatusWithClient(estimateId, "Approved", context.db, context.actor);
     if (!ok) return;
     revalidateEstimatePaths(estimateId);
     revalidatePath("/estimates");
@@ -329,7 +349,13 @@ export async function convertToProjectAction(formData: FormData) {
   const estimateId = formData.get("estimateId");
   if (typeof estimateId !== "string") return;
   try {
-    const record = await convertEstimateSnapshotToProject(estimateId);
+    const db = getServerSupabaseAdmin();
+    if (!db) return;
+    const record = await convertEstimateSnapshotToProject(
+      estimateId,
+      estimateActivityActorFromAuth(guard.context),
+      db
+    );
     if (!record) return;
     revalidateEstimatePaths(estimateId);
     revalidatePath("/estimates");
@@ -344,9 +370,9 @@ export async function sendEstimateAction(formData: FormData) {
   const estimateId = formData.get("estimateId");
   if (typeof estimateId !== "string") return;
   try {
-    const db = await getEstimateWriteClient();
-    if (!db) return;
-    const ok = await setEstimateStatusWithClient(estimateId, "Sent", db);
+    const context = await getEstimateWriteContext();
+    if (!context) return;
+    const ok = await setEstimateStatusWithClient(estimateId, "Sent", context.db, context.actor);
     if (!ok) return;
     revalidateEstimatePaths(estimateId);
     revalidatePath("/estimates");
@@ -360,9 +386,9 @@ export async function rejectEstimateAction(formData: FormData) {
   const estimateId = formData.get("estimateId");
   if (typeof estimateId !== "string") return;
   try {
-    const db = await getEstimateWriteClient();
-    if (!db) return;
-    const ok = await setEstimateStatusWithClient(estimateId, "Rejected", db);
+    const context = await getEstimateWriteContext();
+    if (!context) return;
+    const ok = await setEstimateStatusWithClient(estimateId, "Rejected", context.db, context.actor);
     if (!ok) return;
     revalidateEstimatePaths(estimateId);
     revalidatePath("/estimates");
@@ -379,12 +405,13 @@ export async function changeEstimateStatusAction(formData: FormData) {
   if (typeof estimateId !== "string" || typeof newStatus !== "string" || !valid.includes(newStatus))
     return;
   try {
-    const db = await getEstimateWriteClient();
-    if (!db) return;
-    const ok = await updateEstimateStatusWithClient(
-      db,
+    const context = await getEstimateWriteContext();
+    if (!context) return;
+    const ok = await setEstimateStatusWithClient(
       estimateId,
-      newStatus as "Draft" | "Sent" | "Approved" | "Rejected" | "Converted"
+      newStatus as "Draft" | "Sent" | "Approved" | "Rejected" | "Converted",
+      context.db,
+      context.actor
     );
     if (!ok) return;
     revalidateEstimatePaths(estimateId);
@@ -402,9 +429,9 @@ export async function changeEstimateStatusInlineAction(
   newStatus: EstimateStatus
 ): Promise<{ ok: boolean; error?: string }> {
   try {
-    const db = await getEstimateWriteClient();
-    if (!db) return { ok: false, error: "Database is not configured." };
-    const ok = await updateEstimateStatusWithClient(db, estimateId, newStatus);
+    const context = await getEstimateWriteContext();
+    if (!context) return { ok: false, error: "Database is not configured." };
+    const ok = await setEstimateStatusWithClient(estimateId, newStatus, context.db, context.actor);
     if (ok) {
       revalidateEstimatePaths(estimateId);
       revalidatePath("/estimates");
@@ -419,9 +446,9 @@ export async function sendEstimateInlineAction(
   estimateId: string
 ): Promise<{ ok: boolean; error?: string }> {
   try {
-    const db = await getEstimateWriteClient();
-    if (!db) return { ok: false, error: "Database is not configured." };
-    const ok = await setEstimateStatusWithClient(estimateId, "Sent", db);
+    const context = await getEstimateWriteContext();
+    if (!context) return { ok: false, error: "Database is not configured." };
+    const ok = await setEstimateStatusWithClient(estimateId, "Sent", context.db, context.actor);
     if (ok) {
       revalidateEstimatePaths(estimateId);
       revalidatePath("/estimates");
@@ -436,9 +463,9 @@ export async function approveEstimateInlineAction(
   estimateId: string
 ): Promise<{ ok: boolean; error?: string }> {
   try {
-    const db = await getEstimateWriteClient();
-    if (!db) return { ok: false, error: "Database is not configured." };
-    const ok = await setEstimateStatusWithClient(estimateId, "Approved", db);
+    const context = await getEstimateWriteContext();
+    if (!context) return { ok: false, error: "Database is not configured." };
+    const ok = await setEstimateStatusWithClient(estimateId, "Approved", context.db, context.actor);
     if (ok) {
       revalidateEstimatePaths(estimateId);
       revalidatePath("/estimates");
@@ -453,9 +480,9 @@ export async function rejectEstimateInlineAction(
   estimateId: string
 ): Promise<{ ok: boolean; error?: string }> {
   try {
-    const db = await getEstimateWriteClient();
-    if (!db) return { ok: false, error: "Database is not configured." };
-    const ok = await setEstimateStatusWithClient(estimateId, "Rejected", db);
+    const context = await getEstimateWriteContext();
+    if (!context) return { ok: false, error: "Database is not configured." };
+    const ok = await setEstimateStatusWithClient(estimateId, "Rejected", context.db, context.actor);
     if (ok) {
       revalidateEstimatePaths(estimateId);
       revalidatePath("/estimates");
@@ -473,7 +500,13 @@ export async function convertToProjectInlineAction(
   if (!guard.ok) return { ok: false, error: "Authentication required." };
 
   try {
-    const record = await convertEstimateSnapshotToProject(estimateId);
+    const db = getServerSupabaseAdmin();
+    if (!db) return { ok: false, error: "Database is not configured." };
+    const record = await convertEstimateSnapshotToProject(
+      estimateId,
+      estimateActivityActorFromAuth(guard.context),
+      db
+    );
     if (record) {
       revalidateEstimatePaths(estimateId);
       revalidatePath("/estimates");
@@ -496,16 +529,23 @@ export async function convertToProjectWithSetupAction(
   const estimateId = formData.get("estimateId");
   if (typeof estimateId !== "string") return { ok: false, error: "Missing estimate" };
   try {
-    const record = await convertEstimateToProjectWithSetup(estimateId, {
-      projectName: (formData.get("projectName") as string)?.trim() ?? "",
-      client: (formData.get("client") as string)?.trim() || undefined,
-      address: (formData.get("address") as string)?.trim() || undefined,
-      projectManager: (formData.get("projectManager") as string)?.trim() || undefined,
-      startDate: (formData.get("startDate") as string)?.trim() || undefined,
-      endDate: (formData.get("endDate") as string)?.trim() || undefined,
-      notes: (formData.get("notes") as string)?.trim() || undefined,
-      estimateRef: (formData.get("estimateRef") as string)?.trim() || undefined,
-    });
+    const db = getServerSupabaseAdmin();
+    if (!db) return { ok: false, error: "Database is not configured." };
+    const record = await convertEstimateToProjectWithSetup(
+      estimateId,
+      {
+        projectName: (formData.get("projectName") as string)?.trim() ?? "",
+        client: (formData.get("client") as string)?.trim() || undefined,
+        address: (formData.get("address") as string)?.trim() || undefined,
+        projectManager: (formData.get("projectManager") as string)?.trim() || undefined,
+        startDate: (formData.get("startDate") as string)?.trim() || undefined,
+        endDate: (formData.get("endDate") as string)?.trim() || undefined,
+        notes: (formData.get("notes") as string)?.trim() || undefined,
+        estimateRef: (formData.get("estimateRef") as string)?.trim() || undefined,
+      },
+      estimateActivityActorFromAuth(guard.context),
+      db
+    );
     if (record) {
       revalidateEstimatePaths(estimateId);
       revalidatePath("/estimates");
@@ -747,20 +787,22 @@ export async function createInvoiceFromPaymentScheduleItemAction(
   }
 
   try {
-    const db = await getEstimateWriteClient();
-    if (!db) return { ok: false, error: "Database is not configured." };
+    const context = await getEstimateWriteContext();
+    if (!context) return { ok: false, error: "Database is not configured." };
+    const { db, actor } = context;
 
-    const [estimateRes, metaRes, itemRes] = await Promise.all([
+    const [estimateRes, metaRes, estimateItemsRes, itemRes] = await Promise.all([
       db
         .from("estimates")
-        .select("id, number, client, project, customer_id")
+        .select("id, number, client, project, customer_id, status")
         .eq("id", safeEstimateId)
         .maybeSingle(),
       db
         .from("estimate_meta")
-        .select("client_name, client_email, project_name")
+        .select("client_name, client_email, project_name, tax, discount")
         .eq("estimate_id", safeEstimateId)
         .maybeSingle(),
+      db.from("estimate_items").select("qty, unit_cost").eq("estimate_id", safeEstimateId),
       db
         .from("estimate_payment_schedule_items")
         .select("id, estimate_id, title, description, amount, due_date, status, invoice_id")
@@ -781,6 +823,18 @@ export async function createInvoiceFromPaymentScheduleItemAction(
         error: safeSupabaseActionError(metaRes.error, "Could not load estimate details."),
       };
     }
+    if (!metaRes.data) {
+      return { ok: false, error: "Estimate financial details could not be loaded." };
+    }
+    if (estimateItemsRes.error) {
+      return {
+        ok: false,
+        error: safeSupabaseActionError(
+          estimateItemsRes.error,
+          "Could not load estimate line items."
+        ),
+      };
+    }
     if (itemRes.error) {
       return {
         ok: false,
@@ -791,13 +845,22 @@ export async function createInvoiceFromPaymentScheduleItemAction(
     if (!itemRes.data) return { ok: false, error: "Payment schedule item not found." };
 
     const estimate = estimateRes.data as EstimateInvoiceSourceRow;
-    const meta = (metaRes.data ?? null) as EstimateInvoiceMetaRow | null;
+    const meta = metaRes.data as EstimateInvoiceMetaRow;
     const item = itemRes.data as EstimatePaymentScheduleSourceRow;
     const existingInvoiceId = cleanText(item.invoice_id);
     if (existingInvoiceId) {
       revalidateEstimatePaths(safeEstimateId);
       revalidatePath(`/financial/invoices/${existingInvoiceId}`);
       return { ok: true, invoiceId: existingInvoiceId };
+    }
+    if (!["Approved", "Converted"].includes(String(estimate.status))) {
+      return {
+        ok: false,
+        error: "Only Approved or Converted estimates can create milestone invoices.",
+      };
+    }
+    if (String(item.status ?? "draft") !== "draft") {
+      return { ok: false, error: "This payment milestone is not eligible for a new invoice." };
     }
 
     const project = await resolveProjectForScheduleInvoice(db, safeEstimateId, estimate, meta);
@@ -809,6 +872,17 @@ export async function createInvoiceFromPaymentScheduleItemAction(
 
     const amount = roundMoney(item.amount);
     if (amount <= 0) return { ok: false, error: "Payment schedule amount must be greater than 0." };
+    const estimateSubtotal = ((estimateItemsRes.data ?? []) as EstimateInvoiceItemRow[]).reduce(
+      (sum, estimateItem) =>
+        sum + (Number(estimateItem.qty) || 0) * (Number(estimateItem.unit_cost) || 0),
+      0
+    );
+    const allocation = allocateTaxInclusiveMilestoneToInvoice({
+      milestoneAmount: amount,
+      estimateSubtotal,
+      estimateTax: meta.tax,
+      estimateDiscount: meta.discount,
+    });
 
     const scheduleTitle = cleanText(item.title) || "Payment";
     const estimateNumber = cleanText(estimate.number) || safeEstimateId;
@@ -830,31 +904,23 @@ export async function createInvoiceFromPaymentScheduleItemAction(
       notes,
       issueDate: today,
       dueDate: cleanText(item.due_date) || today,
-      amount,
+      subtotal: allocation.subtotal,
+      taxPct: allocation.taxPct,
+      taxAmount: allocation.taxAmount,
+      total: allocation.total,
     });
 
     try {
-      await insertScheduleInvoiceLine(db, invoiceId, invoiceTitle, amount);
-      const { data: linked, error: linkError } = await db
-        .from("estimate_payment_schedule_items")
-        .update({ invoice_id: invoiceId, status: "invoiced" })
-        .eq("id", safeScheduleItemId)
-        .eq("estimate_id", safeEstimateId)
-        .is("invoice_id", null)
-        .select("id, invoice_id")
-        .maybeSingle();
-      if (linkError) throw new Error(linkError.message);
-      if (!linked?.invoice_id) {
-        const { data: current } = await db
-          .from("estimate_payment_schedule_items")
-          .select("invoice_id")
-          .eq("id", safeScheduleItemId)
-          .eq("estimate_id", safeEstimateId)
-          .maybeSingle();
+      await insertScheduleInvoiceLine(db, invoiceId, invoiceTitle, allocation.subtotal);
+      const linked = await linkEstimateMilestoneInvoiceWithActivityWithClient(db, {
+        estimateId: safeEstimateId,
+        scheduleItemId: safeScheduleItemId,
+        invoiceId,
+        actor,
+      });
+      if (!linked.linked) {
         await deleteDraftInvoiceGraph(db, invoiceId);
-        const concurrentInvoiceId = cleanText(
-          (current as { invoice_id?: string | null } | null)?.invoice_id
-        );
+        const concurrentInvoiceId = cleanText(linked.invoiceId);
         if (concurrentInvoiceId) {
           revalidateEstimatePaths(safeEstimateId);
           revalidatePath(`/financial/invoices/${concurrentInvoiceId}`);
@@ -912,46 +978,98 @@ export async function reorderPaymentScheduleAction(formData: FormData) {
   }
 }
 
-export async function applyPaymentTemplateAction(formData: FormData) {
+export async function applyPaymentTemplateAction(
+  formData: FormData
+): Promise<{ ok: boolean; appliedCount?: number; error?: string }> {
   const guard = await requireSupabaseOwnerOrAdminServerAction();
-  if (!guard.ok) return;
+  if (!guard.ok) {
+    return {
+      ok: false,
+      error: guard.response.status === 403 ? "Admin access required." : "Authentication required.",
+    };
+  }
 
   const estimateId = formData.get("estimateId");
   const templateId = formData.get("templateId");
-  if (typeof estimateId !== "string" || typeof templateId !== "string") return;
+  const rawMode = formData.get("mode");
+  if (
+    typeof estimateId !== "string" ||
+    typeof templateId !== "string" ||
+    (rawMode !== "replace" && rawMode !== "merge")
+  ) {
+    return { ok: false, error: "Estimate, template, and Replace/Merge mode are required." };
+  }
   try {
-    const ok = await applyPaymentTemplateToEstimate(estimateId, templateId);
-    if (!ok) return;
+    const db = getServerSupabaseAdmin();
+    if (!db) return { ok: false, error: "Server database connection is unavailable." };
+    const result = await applyPaymentTemplateToEstimateWithClient(
+      db,
+      estimateId,
+      templateId,
+      rawMode as PaymentTemplateApplyMode
+    );
     revalidateEstimatePaths(estimateId);
-    redirect(`/estimates/${estimateId}`);
-  } catch {
-    // no-op
+    return { ok: true, appliedCount: result.appliedCount };
+  } catch (error) {
+    return {
+      ok: false,
+      error: safeEstimateActionError(error, "Could not apply payment template."),
+    };
   }
 }
 
-export async function createPaymentTemplateAction(formData: FormData) {
+export async function createPaymentTemplateAction(
+  formData: FormData
+): Promise<{ ok: boolean; templateId?: string; error?: string }> {
   const guard = await requireSupabaseOwnerOrAdminServerAction();
-  if (!guard.ok) return;
+  if (!guard.ok) {
+    return {
+      ok: false,
+      error: guard.response.status === 403 ? "Admin access required." : "Authentication required.",
+    };
+  }
 
   const name = (formData.get("templateName") as string)?.trim() || "Payment template";
   const estimateId = formData.get("estimateId");
-  if (typeof estimateId !== "string") return;
+  const amountType: "percent" | "fixed" =
+    formData.get("amountType") === "percent" ? "percent" : "fixed";
+  if (typeof estimateId !== "string") return { ok: false, error: "Estimate is required." };
   try {
+    const db = getServerSupabaseAdmin();
+    if (!db) return { ok: false, error: "Server database connection is unavailable." };
     const { getPaymentSchedule } = await import("@/lib/data");
-    const schedule = await getPaymentSchedule(estimateId);
-    if (schedule.length === 0) return;
+    const [schedule, meta, estimateItems] = await Promise.all([
+      getPaymentSchedule(estimateId, db),
+      getEstimateMeta(estimateId, db),
+      getEstimateItems(estimateId, db),
+    ]);
+    if (schedule.length === 0) {
+      return { ok: false, error: "Add at least one milestone before saving a template." };
+    }
+    if (!meta) return { ok: false, error: "Estimate pricing could not be loaded." };
+    const rawEstimateTotal = computeSummary(estimateItems, meta, () => undefined).total;
+    const estimateTotal = Math.round((Math.max(0, rawEstimateTotal) + Number.EPSILON) * 100) / 100;
+    if (amountType === "percent" && !(estimateTotal > 0)) {
+      return { ok: false, error: "A positive Estimate total is required for percentages." };
+    }
     const items = schedule.map((m) => ({
       title: m.title,
-      amountType: "fixed" as const,
-      value: m.amount,
+      amountType,
+      value:
+        amountType === "percent"
+          ? Math.round((m.amount / estimateTotal) * 100_000_000) / 1_000_000
+          : m.amount,
       dueRule: m.description ?? "",
     }));
-    const template = await createPaymentTemplate(name, items);
-    if (!template) return;
+    const template = await createPaymentTemplate(name, items, db);
+    if (!template) return { ok: false, error: "Could not create payment template." };
     revalidateEstimatePaths(estimateId);
-    redirect(`/estimates/${estimateId}`);
-  } catch {
-    // no-op
+    return { ok: true, templateId: template.id };
+  } catch (error) {
+    return {
+      ok: false,
+      error: safeEstimateActionError(error, "Could not create payment template."),
+    };
   }
 }
 
@@ -1339,6 +1457,29 @@ export async function reorderEstimateCategoriesAction(
     return { ok: true };
   } catch {
     return { ok: false, error: "Could not save section order." };
+  }
+}
+
+export async function reorderEstimateItemsAction(
+  estimateId: string,
+  expectedItems: Array<{ id: string; costCode: string }>,
+  orderedItems: Array<{ id: string; costCode: string }>
+): Promise<{ ok: boolean; stale?: boolean; error?: string }> {
+  try {
+    if (orderedItems.length === 0) return { ok: true };
+    const db = await getEstimateWriteClient();
+    if (!db) return { ok: false, error: "Database is not configured." };
+    const result = await reorderEstimateItemsWithClient(
+      db,
+      estimateId,
+      expectedItems,
+      orderedItems
+    );
+    if (!result.ok) return result;
+    revalidateEstimatePaths(estimateId);
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Could not save item order." };
   }
 }
 

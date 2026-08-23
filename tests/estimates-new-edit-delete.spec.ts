@@ -443,7 +443,7 @@ test("creates, edits, cancels, saves, and deletes a draft estimate", async ({ pa
   await expect(saveEstimate).toBeEnabled({ timeout: 15_000 });
   await saveEstimate.click();
   await expect(page).toHaveURL(/\/estimates\/(?!new(?:\/|$))[^/?#]+/, { timeout: 30_000 });
-  await expect(page.getByText(clientName, { exact: true }).first()).toBeVisible({
+  await expect(page.getByText(clientName, { exact: true }).locator("visible=true")).toBeVisible({
     timeout: 30_000,
   });
   await expect(page.getByText(lineTitle, { exact: true }).locator("visible=true")).toBeVisible({
@@ -468,7 +468,7 @@ test("creates, edits, cancels, saves, and deletes a draft estimate", async ({ pa
   const listSearch = page.locator('input[placeholder="Search estimates…"]:visible').first();
   await expect(listSearch).toBeVisible({ timeout: 30_000 });
   await listSearch.fill(clientName);
-  await expect(page.getByText(clientName, { exact: true }).first()).toBeVisible({
+  await expect(page.getByText(clientName, { exact: true }).locator("visible=true")).toBeVisible({
     timeout: 30_000,
   });
 
@@ -481,7 +481,7 @@ test("creates, edits, cancels, saves, and deletes a draft estimate", async ({ pa
     .getByPlaceholder("Client or company name")
     .fill(canceledClientName);
   await page.getByRole("dialog").getByRole("button", { name: "Cancel", exact: true }).click();
-  await page.locator("header").getByRole("button", { name: "Cancel" }).click();
+  await page.locator("header").getByRole("button", { name: "Done" }).click();
   await expect(page.getByText(clientName, { exact: true }).first()).toBeVisible({
     timeout: 10_000,
   });
@@ -708,7 +708,7 @@ test("opens approved estimate conversion without creating a project", async ({ p
 
   await createEstimate(page, { clientName, projectName, lineTitle });
 
-  await page.getByRole("button", { name: "Send" }).click();
+  await page.getByRole("button", { name: "Mark as Sent" }).click();
   await expect(page.locator("header").getByText("Sent", { exact: true })).toBeVisible({
     timeout: 30_000,
   });
@@ -775,7 +775,7 @@ test("formats fractional-cent estimate amounts as standard currency", async ({ p
     timeout: 30_000,
   });
   await expect(page.locator('input[name="unitCost"]').locator("visible=true")).toHaveValue("0.01");
-  await page.getByRole("button", { name: "Cancel" }).click();
+  await page.getByRole("button", { name: "Done" }).click();
 
   await page.goto("/estimates");
   await page.waitForLoadState("domcontentloaded");

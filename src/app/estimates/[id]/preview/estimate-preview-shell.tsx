@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -25,6 +24,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { EstimateDocumentStyle } from "@/lib/estimate-document-style";
+import type { EstimateRevisionContext } from "@/lib/estimates-db";
 import { appendEstimateReturnPath } from "@/app/estimates/_components/estimate-workflow-continuity";
 
 type Props = {
@@ -34,6 +34,7 @@ type Props = {
   hiddenAmountCount: number;
   returnHref: string;
   previewHref: string;
+  revisionContext: EstimateRevisionContext;
   children: React.ReactNode;
 };
 
@@ -48,10 +49,10 @@ export function EstimatePreviewShell({
   hiddenAmountCount,
   returnHref,
   previewHref,
+  revisionContext,
   children,
 }: Props) {
   const { toast } = useToast();
-  const router = useRouter();
   const [downloadingPdf, setDownloadingPdf] = React.useState(false);
   const [fitMode, setFitMode] = React.useState(true);
   const [scale, setScale] = React.useState(1);
@@ -61,8 +62,10 @@ export function EstimatePreviewShell({
   const pdfDownloadInFlightRef = React.useRef(false);
   const hasInitializedScaleRef = React.useRef(false);
   const mobileReadableScaleRef = React.useRef(false);
+  const overflowOpenRef = React.useRef(false);
   const pdfDownloadHref = `/api/estimates/${estimateId}/pdf`;
   const printHref = appendEstimateReturnPath(`/estimates/${estimateId}/print`, previewHref);
+  const revisionPreviewHref = (revisionId: string): string => `/estimates/${revisionId}/preview`;
   const documentModeLabel = documentStyle === "proposal" ? "Proposal" : "Itemized";
   const documentModeDescription =
     documentStyle === "proposal"
@@ -112,19 +115,13 @@ export function EstimatePreviewShell({
 
   React.useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent): void => {
-      if (event.key !== "Escape") return;
-      const activeElement = document.activeElement;
-      if (
-        event.defaultPrevented ||
-        activeElement?.closest('[role="menu"], [role="dialog"], [role="listbox"]')
-      ) {
-        return;
+      if (event.key === "Escape" && !overflowOpenRef.current) {
+        window.location.assign(returnHref);
       }
-      router.push(returnHref);
     };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [returnHref, router]);
+    window.addEventListener("keydown", handleKeyDown, { capture: true });
+    return () => window.removeEventListener("keydown", handleKeyDown, { capture: true });
+  }, [returnHref]);
 
   const setManualScale = (nextScale: number): void => {
     mobileReadableScaleRef.current = false;
@@ -205,7 +202,7 @@ export function EstimatePreviewShell({
         <Button
           variant="outline"
           size="sm"
-          className="estimate-preview-tool-button estimate-preview-back-button h-11"
+          className="estimate-preview-tool-button estimate-preview-back-button min-h-11"
           asChild
         >
           <Link
@@ -227,6 +224,12 @@ export function EstimatePreviewShell({
             <span className="estimate-preview-context-title">Preview</span>
             <span className="estimate-preview-context-identity tabular-nums">{estimateNumber}</span>
             <span
+              data-testid="estimate-revision-context"
+              className="estimate-preview-revision-badge rounded-full px-2 py-1 font-semibold"
+            >
+              {revisionContext.isCurrent ? "Current revision" : "Historical revision · Read-only"}
+            </span>
+            <span
               data-testid="estimate-preview-document-mode"
               className="estimate-preview-mode-badge rounded-full px-2 py-1 font-semibold"
             >
@@ -234,7 +237,26 @@ export function EstimatePreviewShell({
             </span>
             <span className="estimate-preview-context-format">Letter</span>
           </div>
-          <span className="estimate-preview-context-description">{documentModeDescription}</span>
+          <span className="estimate-preview-context-description">
+            {documentModeDescription}
+            <span className="estimate-preview-revision-navigation" aria-label="Revision navigation">
+              {revisionContext.previousRevisionId ? (
+                <Link href={revisionPreviewHref(revisionContext.previousRevisionId)}>
+                  Previous revision
+                </Link>
+              ) : null}
+              {revisionContext.nextRevisionId ? (
+                <Link href={revisionPreviewHref(revisionContext.nextRevisionId)}>
+                  Next revision
+                </Link>
+              ) : null}
+              {!revisionContext.isCurrent ? (
+                <Link href={revisionPreviewHref(revisionContext.currentRevisionId)}>
+                  Current revision
+                </Link>
+              ) : null}
+            </span>
+          </span>
         </div>
 
         <div
@@ -245,7 +267,7 @@ export function EstimatePreviewShell({
           <Button
             variant="outline"
             size="sm"
-            className="estimate-preview-tool-button estimate-preview-print-action h-11"
+            className="estimate-preview-tool-button estimate-preview-print-action min-h-11"
             asChild
           >
             <a
@@ -262,7 +284,7 @@ export function EstimatePreviewShell({
           <Button
             variant="outline"
             size="sm"
-            className="estimate-preview-tool-button estimate-preview-tool-button--primary h-11 justify-center"
+            className="estimate-preview-tool-button estimate-preview-tool-button--primary min-h-11 justify-center"
             asChild
           >
             <a
@@ -294,13 +316,17 @@ export function EstimatePreviewShell({
         </div>
 
         <div className="estimate-preview-overflow">
-          <DropdownMenu>
+          <DropdownMenu
+            onOpenChange={(open) => {
+              overflowOpenRef.current = open;
+            }}
+          >
             <DropdownMenuTrigger asChild>
               <Button
                 type="button"
                 variant="outline"
                 size="icon"
-                className="estimate-preview-tool-button h-11 w-11"
+                className="estimate-preview-tool-button min-h-11 w-11"
                 aria-label="More preview actions"
                 title="More preview actions"
               >
@@ -316,6 +342,32 @@ export function EstimatePreviewShell({
                 <span>Preview controls</span>
                 <span className="tabular-nums">{Math.round(scale * 100)}%</span>
               </DropdownMenuLabel>
+              {revisionContext.previousRevisionId ? (
+                <DropdownMenuItem asChild className="estimate-preview-overflow-item min-h-11">
+                  <Link href={revisionPreviewHref(revisionContext.previousRevisionId)}>
+                    Previous revision
+                  </Link>
+                </DropdownMenuItem>
+              ) : null}
+              {revisionContext.nextRevisionId ? (
+                <DropdownMenuItem asChild className="estimate-preview-overflow-item min-h-11">
+                  <Link href={revisionPreviewHref(revisionContext.nextRevisionId)}>
+                    Next revision
+                  </Link>
+                </DropdownMenuItem>
+              ) : null}
+              {!revisionContext.isCurrent ? (
+                <DropdownMenuItem asChild className="estimate-preview-overflow-item min-h-11">
+                  <Link href={revisionPreviewHref(revisionContext.currentRevisionId)}>
+                    Current revision
+                  </Link>
+                </DropdownMenuItem>
+              ) : null}
+              {revisionContext.previousRevisionId ||
+              revisionContext.nextRevisionId ||
+              !revisionContext.isCurrent ? (
+                <DropdownMenuSeparator className="estimate-preview-overflow-separator" />
+              ) : null}
               <DropdownMenuItem asChild className="estimate-preview-overflow-item min-h-11">
                 <a href={printHref} target="_blank" rel="noopener noreferrer">
                   <Printer className="h-4 w-4" />
@@ -359,7 +411,7 @@ export function EstimatePreviewShell({
             type="button"
             variant="outline"
             size="icon"
-            className="estimate-preview-tool-button h-11 w-11"
+            className="estimate-preview-tool-button min-h-11 w-11"
             onClick={() => setManualScale(scale - 0.1)}
             aria-label="Zoom out"
             disabled={scale <= MIN_PREVIEW_SCALE}
@@ -370,7 +422,7 @@ export function EstimatePreviewShell({
             type="button"
             variant="outline"
             size="sm"
-            className="estimate-preview-tool-button h-11 min-w-[5.75rem]"
+            className="estimate-preview-tool-button min-h-11 min-w-[5.75rem]"
             onClick={fitPreview}
             aria-label="Fit pages"
             aria-pressed={fitMode}
@@ -382,7 +434,7 @@ export function EstimatePreviewShell({
             type="button"
             variant="outline"
             size="icon"
-            className="estimate-preview-tool-button h-11 w-11"
+            className="estimate-preview-tool-button min-h-11 w-11"
             onClick={() => setManualScale(scale + 0.1)}
             aria-label="Zoom in"
             disabled={scale >= MAX_PREVIEW_SCALE}

@@ -309,7 +309,9 @@ test("estimate builder smoke: create, edit totals, preview, open existing edit",
   await expect(
     page.getByLabel("Line item unit", { exact: true }).locator("visible=true").first()
   ).toHaveValue("LF");
-  await expect(page.getByRole("button", { name: "Drag to reorder line item" })).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: /Drag to reorder line item/ }).first()
+  ).toBeVisible();
 
   const secondLineTitle = `PW second line ${suffix}`;
   await page.getByRole("button", { name: "Add line" }).first().click();

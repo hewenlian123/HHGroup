@@ -7,9 +7,15 @@ import {
   getEstimateSummaryFromRecords,
   getCostCodes,
   getPaymentSchedule,
+  getEstimateRevisionContext,
   listPaymentTemplates,
 } from "@/lib/data";
-import { getServerSupabaseAdmin } from "@/lib/supabase-server";
+import {
+  createServerSupabaseClient,
+  getServerSupabaseAdmin,
+  getServerSupabaseAdminNoStore,
+} from "@/lib/supabase-server";
+import { getEstimateActivityWithClient } from "@/lib/estimate-activity";
 import { EstimateDetailClient } from "./estimate-detail-client";
 import { EstimateSuccessBanner } from "./estimate-success-banner";
 
@@ -111,16 +117,31 @@ export default async function EstimateDetailPage({
   /** When the dynamic segment incorrectly receives `new`, avoid UUID queries and send the canonical route. */
   if (id === "new") redirect("/estimates/new");
   const { created, saved } = await searchParams;
-  const [estimate, meta, items, categories, costCodes, paymentSchedule, paymentTemplates] =
-    await Promise.all([
-      getEstimateHeaderById(id),
-      getEstimateMeta(id),
-      getEstimateItems(id),
-      getEstimateCategories(id),
-      getCostCodes(),
-      getPaymentSchedule(id),
-      listPaymentTemplates(),
-    ]);
+  const readClient = await createServerSupabaseClient();
+  if (!readClient) redirect(`/login?next=${encodeURIComponent(`/estimates/${id}`)}`);
+  const lineageClient = getServerSupabaseAdminNoStore();
+  const activityClient = getServerSupabaseAdminNoStore();
+  const [
+    estimate,
+    meta,
+    items,
+    categories,
+    costCodes,
+    paymentSchedule,
+    paymentTemplates,
+    revisionContext,
+    activityEvents,
+  ] = await Promise.all([
+    getEstimateHeaderById(id, readClient),
+    getEstimateMeta(id, readClient),
+    getEstimateItems(id, readClient),
+    getEstimateCategories(id, readClient),
+    getCostCodes(),
+    getPaymentSchedule(id, readClient),
+    listPaymentTemplates(getServerSupabaseAdminNoStore()).catch(() => []),
+    lineageClient ? getEstimateRevisionContext(id, lineageClient).catch(() => null) : null,
+    activityClient ? getEstimateActivityWithClient(activityClient, id).catch(() => null) : null,
+  ]);
 
   if (!estimate || !meta) redirect("/estimates");
   const resolvedSummary = getEstimateSummaryFromRecords(meta, items);
@@ -146,6 +167,7 @@ export default async function EstimateDetailPage({
       <EstimateDetailClient
         estimateId={id}
         estimateNumber={estimate.number}
+        revisionContext={revisionContext}
         estimateUpdatedAt={estimate.updatedAt}
         initialStatus={estimate.status}
         meta={meta}
@@ -158,6 +180,7 @@ export default async function EstimateDetailPage({
         paymentTemplates={paymentTemplates}
         invoiceProjectLink={invoiceProjectLink}
         paymentInvoiceSummaries={paymentInvoiceSummaries}
+        activityEvents={activityEvents}
       />
       <EstimateSuccessBanner created={created} saved={saved} />
     </div>

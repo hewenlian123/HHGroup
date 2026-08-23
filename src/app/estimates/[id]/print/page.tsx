@@ -7,6 +7,7 @@ import {
   getEstimateSummaryFromRecords,
   getPaymentSchedule,
   getCostCodes,
+  getEstimateRevisionContext,
 } from "@/lib/data";
 import { EstimatePrintDocument } from "../../_components/estimate-print-document";
 import { fetchDocumentCompanyProfile } from "@/lib/document-company-profile";
@@ -30,7 +31,7 @@ export default async function EstimatePrintPage({
   const pdfCapture = pdf === "1";
   const readClient = getServerSupabaseInternalNoStore();
 
-  const [estimate, meta, items, categories, paymentSchedule, costCodes, company] =
+  const [estimate, meta, items, categories, paymentSchedule, costCodes, company, revisionContext] =
     await Promise.all([
       getEstimateHeaderById(id, readClient),
       getEstimateMeta(id, readClient),
@@ -39,13 +40,15 @@ export default async function EstimatePrintPage({
       getPaymentSchedule(id, readClient),
       getCostCodes(),
       fetchDocumentCompanyProfile(),
+      readClient ? getEstimateRevisionContext(id, readClient).catch(() => null) : null,
     ]);
 
-  if (!estimate || !meta) redirect("/estimates");
+  if (!estimate || !meta || !revisionContext) redirect("/estimates");
   const resolvedSummary = getEstimateSummaryFromRecords(meta, items);
 
   const categoryList = categories;
   const catalogNameByCode = Object.fromEntries(costCodes.map((c) => [c.code, c.name]));
+  const revisionLabel = `${estimate.number} Rev ${revisionContext.revisionNumber}`;
 
   return (
     <div
@@ -55,14 +58,15 @@ export default async function EstimatePrintPage({
       role="document"
       aria-label="Estimate print view"
     >
-      {!pdfCapture ? <SetBreadcrumbEntityTitle label={estimate.number} /> : null}
+      {!pdfCapture ? <SetBreadcrumbEntityTitle label={revisionLabel} /> : null}
       {!pdfCapture ? <AutoprintTrigger enabled={autoprint === "1"} /> : null}
       {!pdfCapture ? (
         <PrintActionBar
           estimateId={id}
-          estimateNumber={estimate.number}
+          estimateNumber={revisionLabel}
           returnHref={safeEstimateReturnPath(returnTo)}
           documentStyle={meta.documentStyle}
+          revisionContext={revisionContext}
         />
       ) : null}
       <style
@@ -78,7 +82,7 @@ export default async function EstimatePrintPage({
       <EstimatePrintDocument
         company={company}
         estimate={{
-          number: estimate.number,
+          number: revisionLabel,
           status: estimate.status,
           updatedAt: estimate.updatedAt,
         }}

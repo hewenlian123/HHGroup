@@ -75,6 +75,18 @@ import {
   ESTIMATE_HEADER_PRIMARY_BUTTON,
   EstimateWorkspaceCommandHeader,
 } from "../_components/estimate-workspace-command-header";
+import {
+  ESTIMATE_NEW_DRAFT_STORAGE_KEY,
+  clearEstimateNewDraftRecovery,
+  isMeaningfulEstimateNewDraft,
+  parseEstimateNewDraftRecovery,
+  readEstimateNewDraftRecovery,
+  recoveryCandidateState,
+  writeEstimateNewDraftRecovery,
+  type EstimateDraftRecoveryState,
+  type EstimateNewDraftData,
+  type EstimateNewDraftReadResult,
+} from "@/lib/estimate-new-draft-recovery";
 
 type CostCodeType = "material" | "labor" | "subcontractor";
 
@@ -201,7 +213,7 @@ export function NewEstimateEditor({
   const [phone, setPhone] = React.useState("");
   const [email, setEmail] = React.useState("");
   const [selectedCustomer, setSelectedCustomer] = React.useState<CustomerOption | null>(null);
-  const [estimateDate] = React.useState(today);
+  const [estimateDate, setEstimateDate] = React.useState(today);
   const [validUntil, setValidUntil] = React.useState("");
   const [salesPerson, setSalesPerson] = React.useState("");
   const [tax, setTax] = React.useState(0);
@@ -237,6 +249,76 @@ export function NewEstimateEditor({
   const initialTemplateAppliedRef = React.useRef<string | null>(null);
   const dirtyTrackingReadyRef = React.useRef(false);
   const saveInFlightRef = React.useRef(false);
+  const lastEditedAtRef = React.useRef(0);
+  const lastPersistedAtRef = React.useRef(0);
+  const [recoveryInitialized, setRecoveryInitialized] = React.useState(false);
+  const [recoveryNotice, setRecoveryNotice] = React.useState<EstimateNewDraftReadResult>({
+    state: "empty",
+  });
+  const [recoveryState, setRecoveryState] = React.useState<EstimateDraftRecoveryState>("unsaved");
+
+  const recoveryDraft = React.useMemo<EstimateNewDraftData>(
+    () => ({
+      clientName,
+      projectName,
+      address,
+      phone,
+      email,
+      selectedCustomer,
+      estimateDate,
+      validUntil,
+      salesPerson,
+      tax,
+      taxTouched,
+      templateDefaultTaxPct,
+      discount,
+      documentStyle,
+      categoryNames,
+      sectionOrder,
+      lineItems,
+      estimateNotes,
+      paymentMilestones,
+      selectedTemplateId,
+    }),
+    [
+      address,
+      categoryNames,
+      clientName,
+      discount,
+      documentStyle,
+      email,
+      estimateDate,
+      estimateNotes,
+      lineItems,
+      paymentMilestones,
+      phone,
+      projectName,
+      salesPerson,
+      sectionOrder,
+      selectedCustomer,
+      selectedTemplateId,
+      tax,
+      taxTouched,
+      templateDefaultTaxPct,
+      validUntil,
+    ]
+  );
+  const hasMeaningfulDraft = React.useMemo(
+    () => isMeaningfulEstimateNewDraft(recoveryDraft),
+    [recoveryDraft]
+  );
+
+  React.useEffect(() => {
+    const stored = readEstimateNewDraftRecovery();
+    if (stored.state === "recoverable") {
+      lastPersistedAtRef.current = stored.envelope.updatedAt;
+      setRecoveryState("recoverable");
+    } else if (stored.state === "stale") {
+      setRecoveryState("stale");
+    }
+    setRecoveryNotice(stored);
+    setRecoveryInitialized(true);
+  }, []);
 
   React.useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
@@ -247,7 +329,9 @@ export function NewEstimateEditor({
 
   React.useEffect(() => {
     if (!dirtyTrackingReadyRef.current) return;
+    lastEditedAtRef.current = Date.now();
     setDirty(true);
+    setRecoveryState("unsaved");
     setSaveStatus((current) => (current === "saving" ? current : "unsaved"));
   }, [
     address,
@@ -269,7 +353,100 @@ export function NewEstimateEditor({
     validUntil,
   ]);
 
-  useEstimateUnsavedWarning(dirty && !saving);
+  React.useEffect(() => {
+    if (!recoveryInitialized || recoveryNotice.state !== "empty" || !dirty) return;
+    if (!hasMeaningfulDraft) {
+      clearEstimateNewDraftRecovery();
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      const envelope = writeEstimateNewDraftRecovery(recoveryDraft);
+      if (!envelope) {
+        setRecoveryState("unsaved");
+        return;
+      }
+      lastPersistedAtRef.current = envelope.updatedAt;
+      setRecoveryState("recoverable");
+    }, 400);
+    return () => window.clearTimeout(timeout);
+  }, [dirty, hasMeaningfulDraft, recoveryDraft, recoveryInitialized, recoveryNotice.state]);
+
+  React.useEffect(() => {
+    const handleStorage = (event: StorageEvent): void => {
+      if (event.key !== ESTIMATE_NEW_DRAFT_STORAGE_KEY) return;
+      const next = parseEstimateNewDraftRecovery(event.newValue);
+      if (next.state === "empty") return;
+      if (next.state === "recoverable" && next.envelope.updatedAt <= lastPersistedAtRef.current) {
+        return;
+      }
+      setRecoveryNotice(next);
+      if (next.state === "stale") {
+        setRecoveryState("stale");
+        return;
+      }
+      setRecoveryState(
+        dirty ? "stale" : recoveryCandidateState(next.envelope.updatedAt, lastEditedAtRef.current)
+      );
+    };
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, [dirty]);
+
+  useEstimateUnsavedWarning(
+    dirty && hasMeaningfulDraft && recoveryState !== "recoverable" && !saving
+  );
+
+  const applyRecoveredDraft = React.useCallback((): void => {
+    if (recoveryNotice.state !== "recoverable") return;
+    const recovered = recoveryNotice.envelope.draft;
+    setClientName(recovered.clientName);
+    setProjectName(recovered.projectName);
+    setAddress(recovered.address);
+    setPhone(recovered.phone);
+    setEmail(recovered.email);
+    setSelectedCustomer(recovered.selectedCustomer);
+    setEstimateDate(recovered.estimateDate || today);
+    setValidUntil(recovered.validUntil);
+    setSalesPerson(recovered.salesPerson);
+    setTax(recovered.tax);
+    setTaxTouched(recovered.taxTouched);
+    setTemplateDefaultTaxPct(recovered.templateDefaultTaxPct);
+    setDiscount(recovered.discount);
+    setDocumentStyle(recovered.documentStyle);
+    setCategoryNames(recovered.categoryNames);
+    setSectionOrder(recovered.sectionOrder);
+    setLineItems(recovered.lineItems);
+    setEstimateNotes(recovered.estimateNotes);
+    setPaymentMilestones(recovered.paymentMilestones);
+    setSelectedTemplateId(recovered.selectedTemplateId);
+    setRecoveryNotice({ state: "empty" });
+    lastEditedAtRef.current = Date.now();
+    setDirty(true);
+    setSaveStatus("unsaved");
+    setRecoveryState("unsaved");
+  }, [recoveryNotice, today]);
+
+  const discardRecoveredDraft = React.useCallback((): void => {
+    clearEstimateNewDraftRecovery();
+    lastPersistedAtRef.current = 0;
+    setRecoveryNotice({ state: "empty" });
+    setRecoveryState("unsaved");
+  }, []);
+
+  const handleCancelNavigation = React.useCallback(
+    (event: React.MouseEvent<HTMLAnchorElement>): void => {
+      const hasDiscardableWork = hasMeaningfulDraft || recoveryNotice.state !== "empty";
+      if (hasDiscardableWork && !window.confirm("Discard this unsaved Estimate draft?")) {
+        event.preventDefault();
+        return;
+      }
+      clearEstimateNewDraftRecovery();
+      setDirty(false);
+      setRecoveryState("saved");
+    },
+    [hasMeaningfulDraft, recoveryNotice.state]
+  );
 
   const codeToType = React.useMemo(() => {
     const m = new Map<string, CostCodeType>();
@@ -552,6 +729,10 @@ export function NewEstimateEditor({
         toast({ title: "Create failed", description: msg, variant: "error" });
         return;
       }
+      clearEstimateNewDraftRecovery();
+      lastPersistedAtRef.current = 0;
+      setRecoveryNotice({ state: "empty" });
+      setRecoveryState("saved");
       setDirty(false);
       setSaveStatus("saved");
       toast({ title: "Created", description: "Estimate created.", variant: "success" });
@@ -748,7 +929,13 @@ export function NewEstimateEditor({
                     ESTIMATE_HEADER_BUTTON
                   )}
                 >
-                  <Link href="/estimates">Cancel</Link>
+                  <Link
+                    href="/estimates"
+                    data-ignore-unsaved-warning="true"
+                    onClick={handleCancelNavigation}
+                  >
+                    Cancel
+                  </Link>
                 </Button>
               </div>
             </div>
@@ -761,6 +948,58 @@ export function NewEstimateEditor({
             >
               {formError}
             </div>
+          ) : null}
+
+          {recoveryNotice.state !== "empty" ? (
+            <div
+              className="flex flex-col gap-3 rounded-hh-standard border border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] p-3 text-sm sm:flex-row sm:items-center sm:justify-between"
+              data-testid="estimate-recovery-notice"
+              data-recovery-state={recoveryState}
+              role="status"
+            >
+              <div className="min-w-0">
+                <p className="font-medium text-foreground">
+                  {recoveryState === "stale" ? "Local draft needs review" : "Local draft available"}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {recoveryNotice.state === "recoverable"
+                    ? `${recoveryNotice.envelope.draft.clientName || "Untitled Estimate"} · ${recoveryNotice.envelope.draft.lineItems.length} item${recoveryNotice.envelope.draft.lineItems.length === 1 ? "" : "s"} · saved locally ${new Date(recoveryNotice.envelope.updatedAt).toLocaleString()}. It will not replace this page unless you recover it.`
+                    : `${recoveryNotice.reason} Discard it to continue with a clean recovery state.`}
+                </p>
+              </div>
+              <div className="flex shrink-0 flex-wrap gap-2">
+                {recoveryNotice.state === "recoverable" ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    className={EB.btnPrimary}
+                    onClick={applyRecoveredDraft}
+                  >
+                    {recoveryState === "stale" ? "Replace with recovered draft" : "Recover"}
+                  </Button>
+                ) : null}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className={EB.btnGhost}
+                  onClick={discardRecoveredDraft}
+                >
+                  Discard local draft
+                </Button>
+              </div>
+            </div>
+          ) : dirty && hasMeaningfulDraft ? (
+            <p
+              className="text-xs font-medium text-muted-foreground"
+              data-testid="estimate-recovery-state"
+              data-recovery-state={recoveryState}
+              role="status"
+            >
+              {recoveryState === "recoverable"
+                ? "Recoverable locally — authoritative Estimate is created only when you save."
+                : "Unsaved — preparing local recovery."}
+            </p>
           ) : null}
 
           <div className="space-y-0">
@@ -1127,7 +1366,13 @@ export function NewEstimateEditor({
             asChild
             className={cn("min-h-11 min-w-[44px] flex-1", EB.btnGhost)}
           >
-            <Link href="/estimates">Cancel</Link>
+            <Link
+              href="/estimates"
+              data-ignore-unsaved-warning="true"
+              onClick={handleCancelNavigation}
+            >
+              Cancel
+            </Link>
           </Button>
           <Button
             onClick={() => void handleSave("detail")}

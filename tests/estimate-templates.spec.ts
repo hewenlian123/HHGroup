@@ -80,6 +80,7 @@ async function fillTemplateDialog(
     item: string;
     itemDescription: string;
     qty: string;
+    unit: string;
     unitPrice: string;
   }
 ): Promise<void> {
@@ -96,6 +97,7 @@ async function fillTemplateDialog(
   await dialog.getByLabel("Template section 1 title").fill(params.section);
   await dialog.getByLabel("Template item 1 title").fill(params.item);
   await dialog.getByLabel("Template item 1 quantity").fill(params.qty);
+  await dialog.getByLabel("Template item 1 unit", { exact: true }).fill(params.unit);
   await dialog.getByLabel("Template item 1 unit price").fill(params.unitPrice);
   await dialog.getByLabel("Template item 1 description").fill(params.itemDescription);
 }
@@ -157,6 +159,7 @@ test("estimate templates CRUD, save-as-template, and create estimate from templa
     item: lineTitle,
     itemDescription: "Remove existing flooring and prepare area.",
     qty: "2",
+    unit: "SF",
     unitPrice: "1250",
   });
   await page.getByTestId("estimate-template-save").click();
@@ -193,11 +196,14 @@ test("estimate templates CRUD, save-as-template, and create estimate from templa
 
   await templateRow(page, templateName).getByRole("link", { name: "Use" }).click();
   await expect(page).toHaveURL(/\/estimates\/new\?templateId=/, { timeout: 30_000 });
-  await expect(page.getByTestId("estimate-template-selector")).toContainText("Estimate template");
+  await expect(page.getByTestId("estimate-template-selector")).toContainText(templateName);
   await expect(page.getByLabel("Line item 1 title").locator("visible=true")).toHaveValue(
     lineTitle,
     { timeout: 30_000 }
   );
+  await expect(
+    page.getByLabel("Line item 1 unit", { exact: true }).locator("visible=true")
+  ).toHaveValue("SF");
   await expect(page.getByText("$2,500.00").locator("visible=true").first()).toBeVisible({
     timeout: 30_000,
   });
@@ -211,7 +217,7 @@ test("estimate templates CRUD, save-as-template, and create estimate from templa
   await expect(page.locator("body")).toContainText(lineTitle);
   await expect(page.locator("body")).toContainText("$2,500.00");
 
-  await page.getByLabel("Estimate actions").click();
+  await page.getByLabel("Estimate actions", { exact: true }).click();
   await page.getByTestId("save-estimate-as-template-action").click();
   const saveAsDialog = page.getByTestId("save-estimate-as-template-dialog");
   await expect(saveAsDialog).toBeVisible({ timeout: 10_000 });

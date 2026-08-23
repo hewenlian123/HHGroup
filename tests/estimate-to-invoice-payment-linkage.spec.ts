@@ -210,6 +210,18 @@ async function createEstimateWithDeposit(
   return page.url().replace(/\?.*$/, "");
 }
 
+async function approveSavedEstimate(page: Page): Promise<void> {
+  await page.getByRole("button", { name: "Mark as Sent", exact: true }).click();
+  await expect(page.getByText("Sent", { exact: true }).locator("visible=true")).toBeVisible({
+    timeout: 15_000,
+  });
+  await page.getByRole("button", { name: /^Status/ }).click();
+  await page.getByRole("menuitem", { name: "Mark accepted", exact: true }).click();
+  await expect(page.getByText("Approved", { exact: true }).locator("visible=true")).toBeVisible({
+    timeout: 15_000,
+  });
+}
+
 test.afterEach(async () => {
   await cleanupCreatedRows();
   createdCustomerNames.clear();
@@ -237,6 +249,7 @@ test("linked project payment milestone generates an invoice for the milestone am
   });
 
   await createEstimateWithDeposit(page, { customerName, projectName });
+  await approveSavedEstimate(page);
   await page.getByRole("link", { name: /^Create Draft Invoice$/i }).click();
   await expect(page).toHaveURL(/\/financial\/invoices\/new\?/, { timeout: 30_000 });
   await expect(page.getByTestId("invoice-new-project-select")).toHaveValue(projectId);
@@ -262,6 +275,73 @@ test("linked project payment milestone generates an invoice for the milestone am
   expect(Number((invoice as { total: string | number }).total)).toBe(500);
 });
 
+test("tax-inclusive milestone generates an invoice whose final total remains the milestone", async ({
+  page,
+}) => {
+  test.setTimeout(180_000);
+  const supabase = db();
+  if (!supabase) {
+    test.skip(true, "Supabase env is required for payment schedule invoice E2E.");
+    return;
+  }
+
+  const suffix = Date.now();
+  const customerName = `PW Tax Inclusive Estimate Customer ${suffix}`;
+  const projectName = `PW Tax Inclusive Estimate Project ${suffix}`;
+  createdCustomerNames.add(customerName);
+  createdProjectNames.add(projectName);
+  const { customerId, projectId } = await createCustomerAndProject(supabase, {
+    customerName,
+    projectName,
+  });
+
+  const estimateUrl = await createEstimateWithDeposit(page, { customerName, projectName });
+  const estimateId = estimateUrl.match(/\/estimates\/([^/?#]+)/)?.[1];
+  expect(estimateId).toBeTruthy();
+  const { error: metaUpdateError } = await supabase
+    .from("estimate_meta")
+    .update({ tax: 125, discount: 250 })
+    .eq("estimate_id", estimateId!);
+  expect(metaUpdateError).toBeNull();
+
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await approveSavedEstimate(page);
+  await page.getByRole("link", { name: /^Create Draft Invoice$/i }).click();
+  await expect(page).toHaveURL(/\/financial\/invoices\/new\?/, { timeout: 30_000 });
+  await expect(page.getByTestId("invoice-new-project-select")).toHaveValue(projectId);
+  await expect(page.getByTestId("invoice-new-client-input")).toHaveValue(customerName);
+  await expect(page.getByTestId("invoice-new-line-1-rate-input")).toHaveValue("476.19");
+  await expect(page.getByTestId("invoice-new-tax-input")).toHaveValue("5");
+  await expect(page.getByText("$500.00", { exact: true }).last()).toBeVisible();
+
+  await page.getByRole("button", { name: "Create draft invoice" }).click();
+  await expect(page).toHaveURL(/\/financial\/invoices\/[^/?#]+\/preview/, { timeout: 30_000 });
+  const invoiceId = invoiceIdFromUrl(page.url());
+
+  const { data: invoice } = await supabase
+    .from("invoices")
+    .select("id, project_id, customer_id, status, subtotal, tax_pct, tax_amount, total")
+    .eq("id", invoiceId)
+    .maybeSingle();
+  expect(invoice).toMatchObject({
+    id: invoiceId,
+    project_id: projectId,
+    customer_id: customerId,
+    status: "Draft",
+  });
+  expect(Number(invoice?.subtotal ?? 0)).toBe(476.19);
+  expect(Number(invoice?.tax_pct ?? 0)).toBe(5);
+  expect(Number(invoice?.tax_amount ?? 0)).toBe(23.81);
+  expect(Number(invoice?.total ?? 0)).toBe(500);
+
+  const { data: invoiceItems } = await supabase
+    .from("invoice_items")
+    .select("amount")
+    .eq("invoice_id", invoiceId);
+  expect(invoiceItems ?? []).toHaveLength(1);
+  expect(Number(invoiceItems![0].amount)).toBe(476.19);
+});
+
 test("missing linked project shows a clear blocker and does not create an invoice", async ({
   page,
 }) => {
@@ -279,6 +359,7 @@ test("missing linked project shows a clear blocker and does not create an invoic
   createdProjectNames.add(projectName);
 
   await createEstimateWithDeposit(page, { customerName, projectName });
+  await approveSavedEstimate(page);
   await expect(page.getByText(/Invoice generation requires a linked project/i)).toBeVisible({
     timeout: 30_000,
   });

@@ -226,7 +226,7 @@ export async function duplicateEstimateTemplate(
   );
 }
 
-function rowToTemplateLineItem(row: EstimateItemRow): EstimateTemplateLineItem {
+export function estimateItemToTemplateLineItem(row: EstimateItemRow): EstimateTemplateLineItem {
   const { title, description } = splitEstimateTemplateItemDescription(row.desc ?? "");
   return {
     title: title || "Line item",
@@ -234,7 +234,7 @@ function rowToTemplateLineItem(row: EstimateItemRow): EstimateTemplateLineItem {
     qty: row.qty,
     unit: row.unit || "EA",
     unitPrice: row.unitCost,
-    status: "included",
+    status: row.status,
     hideAmountOnPdf: Boolean(row.hideAmountOnPdf),
   };
 }
@@ -263,7 +263,7 @@ export async function createEstimateTemplateFromEstimate(
       items: section.rows
         .slice()
         .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
-        .map(rowToTemplateLineItem),
+        .map(estimateItemToTemplateLineItem),
     })),
     notes: normalizeEstimateNoteBlocks(meta.documentNotes),
   };

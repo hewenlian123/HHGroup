@@ -14,18 +14,23 @@ import type {
   EstimateSummaryResult,
   PaymentScheduleItem,
   PaymentScheduleTemplate,
+  EstimateRevisionContext,
 } from "@/lib/data";
+import type { EstimateActivityEvent } from "@/lib/estimate-activity";
 import { useToast } from "@/components/toast/toast-provider";
 import { ConfirmDialog } from "@/components/base";
 import {
   approveEstimateInlineAction,
-  changeEstimateStatusInlineAction,
   rejectEstimateInlineAction,
   saveEstimateMetaInlineAction,
   sendEstimateInlineAction,
   type EstimateStatus,
 } from "./actions";
-import { deleteEstimateAction } from "../actions";
+import {
+  createEstimateRevisionAction,
+  deleteEstimateAction,
+  duplicateEstimateAsDraftAction,
+} from "../actions";
 import { runDeleteEstimateActionWithTimeout } from "../delete-estimate-client";
 import { EstimateDetailHeader } from "./estimate-detail-header";
 import { EstimateBuilderSaveStatus } from "../_components/estimate-builder-save-status";
@@ -50,10 +55,12 @@ import {
   buildEstimatePreviewHref,
   captureEstimateBuilderReturnContext,
 } from "../_components/estimate-workflow-continuity";
+import { EstimateActivityTimeline } from "../_components/estimate-activity-timeline";
 
 type EstimateDetailClientProps = {
   estimateId: string;
   estimateNumber: string;
+  revisionContext?: EstimateRevisionContext | null;
   estimateUpdatedAt: string;
   initialStatus: EstimateStatus | string;
   meta: EstimateMetaRecord;
@@ -69,6 +76,7 @@ type EstimateDetailClientProps = {
     message?: string;
   };
   paymentInvoiceSummaries?: Record<string, EstimatePaymentScheduleInvoiceSummary>;
+  activityEvents: EstimateActivityEvent[] | null;
 };
 
 export function EstimateDetailClient(props: EstimateDetailClientProps): React.ReactElement {
@@ -82,6 +90,7 @@ export function EstimateDetailClient(props: EstimateDetailClientProps): React.Re
 function EstimateDetailClientContent({
   estimateId,
   estimateNumber,
+  revisionContext,
   estimateUpdatedAt,
   initialStatus,
   meta,
@@ -94,14 +103,17 @@ function EstimateDetailClientContent({
   paymentTemplates,
   invoiceProjectLink,
   paymentInvoiceSummaries,
+  activityEvents,
 }: EstimateDetailClientProps) {
   const { toast } = useToast();
   const router = useRouter();
-  useBreadcrumbEntityLabel(estimateNumber);
+  const revisionLabel = revisionContext
+    ? `${estimateNumber} Rev ${revisionContext.revisionNumber}`
+    : estimateNumber;
+  useBreadcrumbEntityLabel(revisionLabel);
   const [status, setStatus] = React.useState<string>(initialStatus);
   const [editing, setEditing] = React.useState(false);
   const [detailsOpen, setDetailsOpen] = React.useState(false);
-  const [resetNonce, setResetNonce] = React.useState(0);
   const [convertDrawerOpen, setConvertDrawerOpen] = React.useState(false);
   const [saveTemplateOpen, setSaveTemplateOpen] = React.useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = React.useState(false);
@@ -140,14 +152,6 @@ function EstimateDetailClientContent({
     }, [router]),
     [router]
   );
-
-  const onCancelEditing = () => {
-    if (documentHasUnsavedWork && !window.confirm("Discard unsaved Estimate changes?")) return;
-    setDetailsOpen(false);
-    setEditing(false);
-    setResetNonce((n) => n + 1);
-    resetSaveState();
-  };
 
   const persistWholeDocument = async (): Promise<boolean> => {
     if (saveInFlightRef.current) return false;
@@ -288,11 +292,54 @@ function EstimateDetailClientContent({
     router.push(`/projects/${projectId}`);
   };
 
+  const onDuplicate = (): void => {
+    startTransition(async () => {
+      const result = await duplicateEstimateAsDraftAction(estimateId);
+      if (!result.ok || !result.estimateId) {
+        toast({
+          title: "Could not duplicate Estimate",
+          description: result.error ?? "Please try again.",
+          variant: "error",
+        });
+        return;
+      }
+      toast({
+        title: "Draft Estimate created",
+        description: result.estimateNumber
+          ? `${result.estimateNumber} was copied without downstream history.`
+          : "The copied Estimate is ready to edit.",
+        variant: "success",
+      });
+      router.push(`/estimates/${result.estimateId}`);
+    });
+  };
+
+  const onCreateRevision = (): void => {
+    startTransition(async () => {
+      const result = await createEstimateRevisionAction(estimateId);
+      if (!result.ok || !result.estimateId || result.revisionNumber == null) {
+        toast({
+          title: "Could not create revision",
+          description: result.error ?? "Please try again.",
+          variant: "error",
+        });
+        return;
+      }
+      toast({
+        title: "Revision created",
+        description: `${result.estimateNumber} Rev ${result.revisionNumber} is ready to edit.`,
+        variant: "success",
+      });
+      router.push(`/estimates/${result.estimateId}`);
+    });
+  };
+
   return (
     <EstimateBuilderShell className="estimate-builder-new">
       <EstimateDetailHeader
         estimateId={estimateId}
         estimateNumber={estimateNumber}
+        revisionContext={revisionContext}
         clientName={meta.client.name}
         projectName={meta.project.name}
         siteAddress={meta.project.siteAddress ?? meta.client.address}
@@ -310,14 +357,13 @@ function EstimateDetailClientContent({
         onSave={() => void onSave()}
         onSaveAndPreview={() => void onSaveAndPreview()}
         onPreview={onPreview}
-        onCancel={onCancelEditing}
-        onMarkDraft={() =>
-          runStatusChange("Draft", () => changeEstimateStatusInlineAction(estimateId, "Draft"))
-        }
+        onDone={() => void onSave()}
         onSend={() => runStatusChange("Sent", () => sendEstimateInlineAction(estimateId))}
         onApprove={() => runStatusChange("Approved", () => approveEstimateInlineAction(estimateId))}
         onReject={() => runStatusChange("Rejected", () => rejectEstimateInlineAction(estimateId))}
         onConvertClick={() => setConvertDrawerOpen(true)}
+        onCreateRevision={onCreateRevision}
+        onDuplicateClick={onDuplicate}
         onSaveAsTemplateClick={() => setSaveTemplateOpen(true)}
         onDeleteClick={() => setDeleteConfirmOpen(true)}
       />
@@ -326,7 +372,7 @@ function EstimateDetailClientContent({
         open={saveTemplateOpen}
         onOpenChange={setSaveTemplateOpen}
         estimateId={estimateId}
-        estimateNumber={estimateNumber}
+        estimateNumber={revisionLabel}
       />
 
       <ConvertToProjectDrawer
@@ -339,7 +385,7 @@ function EstimateDetailClientContent({
       />
 
       <EstimateEditor
-        key={`${estimateId}-${resetNonce}-${estimateUpdatedAt}`}
+        key={`${estimateId}-${estimateUpdatedAt}`}
         estimateId={estimateId}
         estimateNumber={estimateNumber}
         status={status}
@@ -359,6 +405,11 @@ function EstimateDetailClientContent({
         onSaveDetails={() => void onSave()}
       />
 
+      <EstimateActivityTimeline
+        events={activityEvents}
+        revisionNumber={revisionContext?.revisionNumber ?? 0}
+      />
+
       {editing && !isLocked ? (
         <div
           className={cn(
@@ -375,9 +426,9 @@ function EstimateDetailClientContent({
               variant="ghost"
               className={cn("min-h-11 min-w-[44px] flex-1", EB.btnGhost)}
               disabled={pending || wholeDocumentSaving}
-              onClick={onCancelEditing}
+              onClick={() => void onSave()}
             >
-              Cancel
+              Done
             </Button>
             <Button
               type="button"

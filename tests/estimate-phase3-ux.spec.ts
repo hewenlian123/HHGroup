@@ -144,10 +144,10 @@ test("mobile number fields and saved Edit actions remain touch-safe", async ({ p
   await expect(editActions.getByRole("button", { name: "Save", exact: true })).toBeVisible();
   const headerActions = page.getByTestId("estimate-detail-header-actions");
   await expect(headerActions.getByRole("button", { name: "Save", exact: true })).toBeHidden();
-  await expect(headerActions.getByRole("button", { name: "Cancel", exact: true })).toBeHidden();
+  await expect(headerActions.getByRole("button", { name: "Done", exact: true })).toBeHidden();
   const actionBox = await editActions.boundingBox();
   expect(actionBox?.y ?? Number.POSITIVE_INFINITY).toBeLessThan(844 - 56);
-  await editActions.getByRole("button", { name: "Cancel", exact: true }).click();
+  await editActions.getByRole("button", { name: "Done", exact: true }).click();
 });
 
 test("iPad portrait keeps saved Edit total and actions persistently reachable", async ({
@@ -183,7 +183,7 @@ test("iPad portrait keeps saved Edit total and actions persistently reachable", 
   expect(geometry.bottom).toBeLessThanOrEqual(geometry.viewportHeight);
   expect(geometry.overflow).toBe(0);
 
-  await editActions.getByRole("button", { name: "Cancel", exact: true }).click();
+  await editActions.getByRole("button", { name: "Done", exact: true }).click();
 });
 
 test("iPad landscape keeps line title readable beside stacked pricing", async ({ page }) => {

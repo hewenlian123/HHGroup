@@ -14,6 +14,15 @@ import {
 } from "@/lib/estimate-document-style";
 import { normalizeEstimateNoteBlocks, type EstimateNoteBlock } from "@/lib/estimate-notes";
 import { resolveDuplicateEstimateLineSortOrder } from "@/lib/estimate-line-order";
+import {
+  linkEstimateMilestoneInvoiceWithActivityWithClient,
+  recordEstimateCreatedActivityWithClient,
+  transitionEstimateStatusWithActivityWithClient,
+  type EstimateActivityActor,
+} from "@/lib/estimate-activity";
+
+export { linkEstimateMilestoneInvoiceWithActivityWithClient };
+export type { EstimateActivityActor };
 
 // —— Types ——
 
@@ -27,6 +36,7 @@ export type EstimateLineItemStatus =
 
 export type EstimateListItem = {
   id: string;
+  customerId?: string | null;
   number: string;
   client: string;
   project: string;
@@ -34,6 +44,9 @@ export type EstimateListItem = {
   updatedAt: string;
   total: number;
   approvedAt?: string;
+  revisionRootId?: string;
+  revisionNumber?: number;
+  isCurrentRevision?: boolean;
 };
 
 export type EstimateHeaderRecord = Omit<EstimateListItem, "total">;
@@ -117,6 +130,28 @@ export type PaymentScheduleWriteInput = {
   dueDate?: string | null;
   status?: "draft" | "invoiced" | "paid";
   invoiceId?: string | null;
+};
+
+export type DuplicateEstimateResult = {
+  estimateId: string;
+  estimateNumber: string;
+};
+
+export type CreateEstimateRevisionResult = DuplicateEstimateResult & {
+  revisionNumber: number;
+};
+
+export type EstimateRevisionContext = {
+  revisionRootId: string;
+  estimateNumber: string;
+  revisionNumber: number;
+  previousRevisionId: string | null;
+  previousRevisionNumber: number | null;
+  nextRevisionId: string | null;
+  nextRevisionNumber: number | null;
+  currentRevisionId: string;
+  currentRevisionNumber: number;
+  isCurrent: boolean;
 };
 
 // —— Helpers ——
@@ -454,6 +489,7 @@ export async function createEstimateWithItemsWithClient(
       amount: number;
       dueDate?: string | null;
     }>;
+    activityActor?: EstimateActivityActor;
   }
 ): Promise<string> {
   assertValidEstimateItemAmounts(payload.items);
@@ -480,22 +516,17 @@ export async function createEstimateWithItemsWithClient(
       payload.categoryNames,
       payload.items
     );
-    const writeOperations: Promise<void>[] = [];
     if (categoryEntries.length > 0) {
-      writeOperations.push(
-        (async () => {
-          const result = await upsertEstimateCategoriesWithOrderFallback(
-            c,
-            categoryEntries.map(([cost_code, display_name], order_index) => ({
-              estimate_id: id,
-              cost_code,
-              display_name,
-              order_index,
-            }))
-          );
-          if (!result.ok) throw new Error(result.error);
-        })()
+      const result = await upsertEstimateCategoriesWithOrderFallback(
+        c,
+        categoryEntries.map(([cost_code, display_name], order_index) => ({
+          estimate_id: id,
+          cost_code,
+          display_name,
+          order_index,
+        }))
       );
+      if (!result.ok) throw new Error(result.error);
     }
     const itemRows = payload.items.map((it, idx) => ({
       estimate_id: id,
@@ -510,14 +541,10 @@ export async function createEstimateWithItemsWithClient(
       sort_order: Number.isFinite(it.sortOrder) ? Number(it.sortOrder) : idx,
     }));
     if (itemRows.length > 0) {
-      writeOperations.push(
-        (async () => {
-          const itemsResult = await insertEstimateItemRowsWithAdvancedFallback(c, itemRows);
-          if (!itemsResult.ok) {
-            throw new Error(itemsResult.error ?? "Failed to create estimate items.");
-          }
-        })()
-      );
+      const itemsResult = await insertEstimateItemRowsWithAdvancedFallback(c, itemRows);
+      if (!itemsResult.ok) {
+        throw new Error(itemsResult.error ?? "Failed to create estimate items.");
+      }
     }
     if (payload.paymentSchedule && payload.paymentSchedule.length > 0) {
       const paymentRows = payload.paymentSchedule.map((ps, idx) => ({
@@ -529,18 +556,22 @@ export async function createEstimateWithItemsWithClient(
         due_date: ps.dueDate ?? null,
         status: "draft",
       }));
-      writeOperations.push(
-        (async () => {
-          const { error } = await c.from("estimate_payment_schedule_items").insert(paymentRows);
-          if (error) {
-            throw new Error(error.message ?? "Failed to create payment schedule.");
-          }
-        })()
+      const { error } = await c.from("estimate_payment_schedule_items").insert(paymentRows);
+      if (error) {
+        throw new Error(error.message ?? "Failed to create payment schedule.");
+      }
+    }
+    if (payload.activityActor) {
+      await recordEstimateCreatedActivityWithClient(c, id, payload.activityActor);
+    }
+  } catch (error) {
+    const cleanup = await c.from("estimates").delete().eq("id", id);
+    if (cleanup.error) {
+      throw new Error(
+        "Estimate creation failed and the incomplete Draft could not be removed. Review the server logs before retrying.",
+        { cause: error }
       );
     }
-    await Promise.all(writeOperations);
-  } catch (error) {
-    await c.from("estimates").delete().eq("id", id);
     throw error;
   }
   return id;
@@ -584,15 +615,115 @@ export async function createEstimateWithItems(payload: {
   return createEstimateWithItemsWithClient(client(), payload);
 }
 
+/**
+ * One atomic, server-authoritative Estimate deep-copy contract.
+ * Both Duplicate and Copy Previous workflows must call this same RPC.
+ */
+export async function duplicateEstimateAsDraftWithClient(
+  c: SupabaseClient,
+  sourceEstimateId: string,
+  actor: EstimateActivityActor
+): Promise<DuplicateEstimateResult> {
+  const { data, error } = await c.rpc("duplicate_estimate_as_draft", {
+    p_source_estimate_id: sourceEstimateId,
+    p_actor_user_id: actor.userId,
+    p_actor_label: actor.label,
+  });
+  if (error) throw new Error(error.message ?? "Could not duplicate Estimate.");
+
+  const row = Array.isArray(data) ? data[0] : data;
+  const estimateId = String((row as { estimate_id?: unknown } | null)?.estimate_id ?? "").trim();
+  const estimateNumber = String(
+    (row as { estimate_number?: unknown } | null)?.estimate_number ?? ""
+  ).trim();
+  if (!estimateId || !estimateNumber) {
+    throw new Error("Estimate duplicate did not return a new record.");
+  }
+  return { estimateId, estimateNumber };
+}
+
+/** Create the next Draft in an Estimate family through the atomic lineage RPC. */
+export async function createEstimateRevisionWithClient(
+  c: SupabaseClient,
+  sourceEstimateId: string,
+  actor: EstimateActivityActor
+): Promise<CreateEstimateRevisionResult> {
+  const { data, error } = await c.rpc("create_estimate_revision", {
+    p_source_estimate_id: sourceEstimateId,
+    p_actor_user_id: actor.userId,
+    p_actor_label: actor.label,
+  });
+  if (error) throw new Error(error.message ?? "Could not create Estimate revision.");
+
+  const row = Array.isArray(data) ? data[0] : data;
+  const result = row as {
+    estimate_id?: unknown;
+    estimate_number?: unknown;
+    revision_number?: unknown;
+  } | null;
+  const estimateId = String(result?.estimate_id ?? "").trim();
+  const estimateNumber = String(result?.estimate_number ?? "").trim();
+  const revisionNumber = Number(result?.revision_number);
+  if (!estimateId || !estimateNumber || !Number.isInteger(revisionNumber) || revisionNumber < 1) {
+    throw new Error("Estimate revision did not return a new record.");
+  }
+  return { estimateId, estimateNumber, revisionNumber };
+}
+
+/** Read lineage by canonical IDs; Estimate numbers are labels, never join keys. */
+export async function getEstimateRevisionContextWithClient(
+  c: SupabaseClient,
+  estimateId: string
+): Promise<EstimateRevisionContext | null> {
+  const { data: source, error: sourceError } = await c
+    .from("estimates")
+    .select("id, number, revision_root_id, revision_number, previous_revision_id")
+    .eq("id", estimateId)
+    .single();
+  if (sourceError || !source) return null;
+
+  const { data: family, error: familyError } = await c
+    .from("estimates")
+    .select("id, revision_number, status")
+    .eq("revision_root_id", source.revision_root_id)
+    .order("revision_number", { ascending: false });
+  if (familyError || !family?.length) return null;
+
+  const current = family[0];
+  const previousRevisionId = source.previous_revision_id
+    ? String(source.previous_revision_id)
+    : null;
+  const previous = previousRevisionId
+    ? family.find((row) => String(row.id) === previousRevisionId)
+    : null;
+  const sourceRevisionNumber = Number(source.revision_number);
+  const next = family.find((row) => Number(row.revision_number) === sourceRevisionNumber + 1);
+  return {
+    revisionRootId: String(source.revision_root_id),
+    estimateNumber: String(source.number),
+    revisionNumber: sourceRevisionNumber,
+    previousRevisionId,
+    previousRevisionNumber: previous ? Number(previous.revision_number) : null,
+    nextRevisionId: next ? String(next.id) : null,
+    nextRevisionNumber: next ? Number(next.revision_number) : null,
+    currentRevisionId: String(current.id),
+    currentRevisionNumber: Number(current.revision_number),
+    isCurrent: String(current.id) === String(source.id),
+  };
+}
+
 // —— Read ——
 
 export async function getEstimateList(
-  codeToType: (code: string) => "material" | "labor" | "subcontractor" | undefined
+  codeToType: (code: string) => "material" | "labor" | "subcontractor" | undefined,
+  explicitClient?: SupabaseClient | null
 ): Promise<EstimateListItem[]> {
-  const c = client();
+  const c = client(explicitClient);
   const { data: rows, error } = await c
     .from("estimates")
-    .select("id, number, client, project, status, updated_at, approved_at")
+    .select(
+      "id, customer_id, number, client, project, status, updated_at, approved_at, revision_root_id, revision_number"
+    )
     .order("updated_at", { ascending: false });
   if (error) {
     if (isMissingTable(error)) return [];
@@ -602,6 +733,15 @@ export async function getEstimateList(
   const estimateRows = rows ?? [];
   if (estimateRows.length === 0) return [];
   const estimateIds = estimateRows.map((row) => row.id);
+  const latestRevisionByRoot = new Map<string, number>();
+  for (const row of estimateRows) {
+    const rootId = String(row.revision_root_id ?? row.id);
+    const revisionNumber = Number(row.revision_number ?? 0);
+    latestRevisionByRoot.set(
+      rootId,
+      Math.max(latestRevisionByRoot.get(rootId) ?? 0, revisionNumber)
+    );
+  }
   const [metaResult, initialItemsResult] = await Promise.all([
     c.from("estimate_meta").select("*").in("estimate_id", estimateIds),
     c
@@ -652,12 +792,18 @@ export async function getEstimateList(
       const total = await grandTotalForList(r.id, meta, items, codeToType);
       return {
         id: r.id,
+        customerId: r.customer_id ?? null,
         number: r.number,
         client: r.client,
         project: r.project,
         status: r.status as EstimateStatus,
         updatedAt: r.updated_at,
         total,
+        revisionRootId: String(r.revision_root_id ?? r.id),
+        revisionNumber: Number(r.revision_number ?? 0),
+        isCurrentRevision:
+          Number(r.revision_number ?? 0) ===
+          (latestRevisionByRoot.get(String(r.revision_root_id ?? r.id)) ?? 0),
         ...(r.approved_at ? { approvedAt: r.approved_at } : {}),
       };
     })
@@ -686,7 +832,7 @@ export async function getEstimateHeaderById(
   const c = client(explicitClient);
   const { data: r, error } = await c
     .from("estimates")
-    .select("id, number, client, project, status, updated_at, approved_at")
+    .select("id, customer_id, number, client, project, status, updated_at, approved_at")
     .eq("id", id)
     .single();
   if (error || !r) {
@@ -695,6 +841,7 @@ export async function getEstimateHeaderById(
   }
   return {
     id: r.id,
+    customerId: r.customer_id ?? null,
     number: r.number,
     client: r.client,
     project: r.project,
@@ -1026,8 +1173,11 @@ function toSnapshotRecord(r: Record<string, unknown>): EstimateSnapshotRecord {
   };
 }
 
-export async function listEstimateSnapshots(estimateId: string): Promise<EstimateSnapshotRecord[]> {
-  const c = client();
+export async function listEstimateSnapshots(
+  estimateId: string,
+  explicitClient?: SupabaseClient | null
+): Promise<EstimateSnapshotRecord[]> {
+  const c = client(explicitClient);
   const { data: rows, error } = await c
     .from("estimate_snapshots")
     .select(
@@ -1044,9 +1194,10 @@ export async function listEstimateSnapshots(estimateId: string): Promise<Estimat
 
 export async function getEstimateSnapshotByVersion(
   estimateId: string,
-  version: number
+  version: number,
+  explicitClient?: SupabaseClient | null
 ): Promise<EstimateSnapshotRecord | null> {
-  const c = client();
+  const c = client(explicitClient);
   const { data: row, error } = await c
     .from("estimate_snapshots")
     .select(
@@ -1124,88 +1275,6 @@ export async function createEstimateSnapshot(estimateId: string): Promise<string
     throw new Error(error.message ?? "Failed to create snapshot.");
   }
   return (inserted as { id?: string } | null)?.id ?? null;
-}
-
-export async function createNewVersionFromSnapshot(estimateId: string): Promise<boolean> {
-  const c = client();
-  const latest = (await listEstimateSnapshots(estimateId)).sort((a, b) => b.version - a.version)[0];
-  if (!latest?.meta) return false;
-
-  // Create next snapshot version (copy frozen payload).
-  const nextVersion = (latest.version || 0) + 1;
-  await c.from("estimate_snapshots").insert({
-    estimate_id: estimateId,
-    version: nextVersion,
-    status_at_snapshot: "Draft",
-    meta_json: latest.meta,
-    items_json: latest.items,
-    summary_json: latest.summary ?? {},
-    frozen_payload: latest.frozenPayload,
-  });
-
-  // Unlock estimate for editing by moving back to Draft, then restore meta/items.
-  await c
-    .from("estimates")
-    .update({ status: "Draft", updated_at: new Date().toISOString().slice(0, 10) })
-    .eq("id", estimateId);
-
-  // Restore meta (bypass updateEstimateMeta restrictions by updating directly).
-  const m = latest.meta;
-  await c
-    .from("estimate_meta")
-    .update({
-      client_name: m.client.name,
-      client_address: m.client.address,
-      project_name: m.project.name,
-      project_site_address: m.project.siteAddress,
-      tax: m.tax,
-      discount: m.discount,
-      overhead_pct: m.overheadPct,
-      profit_pct: m.profitPct,
-      estimate_date: m.estimateDate,
-      valid_until: m.validUntil,
-      notes: m.notes,
-      document_notes: normalizeEstimateNoteBlocks(m.documentNotes),
-      sales_person: m.salesPerson,
-    })
-    .eq("estimate_id", estimateId);
-
-  // Restore categories (stable order from meta keys)
-  const categoryNames = (m as { categoryNames?: Record<string, string> }).categoryNames ?? {};
-  const catEntries = orderedCategoryEntriesForEstimateSave(categoryNames, latest.items);
-  for (let i = 0; i < catEntries.length; i++) {
-    const [cost_code, display_name] = catEntries[i];
-    const result = await upsertEstimateCategoryWithOrderFallback(c, {
-      estimate_id: estimateId,
-      cost_code,
-      display_name,
-      order_index: i,
-    });
-    if (!result.ok) throw new Error(result.error);
-  }
-
-  // Restore items: replace all
-  await c.from("estimate_items").delete().eq("estimate_id", estimateId);
-  if (latest.items.length > 0) {
-    for (let idx = 0; idx < latest.items.length; idx++) {
-      const it = latest.items[idx];
-      const { error } = await insertEstimateItemRowWithAdvancedFallback(c, {
-        estimate_id: estimateId,
-        cost_code: it.costCode,
-        desc: it.desc,
-        qty: it.qty,
-        unit: it.unit,
-        unit_cost: it.unitCost,
-        markup_pct: it.markupPct,
-        hide_amount_on_pdf: Boolean(it.hideAmountOnPdf),
-        status: normalizeLineItemStatus(it.status),
-        sort_order: Number.isFinite(it.sortOrder) ? it.sortOrder : idx,
-      });
-      if (error) throw new Error(error.message ?? "Failed to restore estimate item.");
-    }
-  }
-
-  return true;
 }
 
 // —— Update ——
@@ -1895,6 +1964,69 @@ export async function updateLineItem(
   return updateLineItemWithClient(client(), estimateId, itemId, payload);
 }
 
+export type EstimateItemReorderResult = {
+  ok: boolean;
+  stale?: boolean;
+  error?: string;
+};
+
+/** Atomically normalize the complete Estimate item order and optional Section moves. */
+export async function reorderEstimateItemsWithClient(
+  c: SupabaseClient,
+  estimateId: string,
+  expectedItems: Array<{ id: string; costCode: string }>,
+  orderedItems: Array<{ id: string; costCode: string }>
+): Promise<EstimateItemReorderResult> {
+  const normalizedEstimateId = estimateId.trim();
+  const normalizedExpectedItems = expectedItems.map((item) => ({
+    id: item.id.trim(),
+    costCode: item.costCode.trim(),
+  }));
+  const normalizedItems = orderedItems.map((item) => ({
+    id: item.id.trim(),
+    costCode: item.costCode.trim(),
+  }));
+  if (
+    !normalizedEstimateId ||
+    normalizedExpectedItems.some((item) => !item.id || !item.costCode) ||
+    normalizedItems.some((item) => !item.id || !item.costCode) ||
+    new Set(normalizedExpectedItems.map((item) => item.id)).size !==
+      normalizedExpectedItems.length ||
+    new Set(normalizedItems.map((item) => item.id)).size !== normalizedItems.length ||
+    normalizedExpectedItems.length !== normalizedItems.length
+  ) {
+    return { ok: false, error: "Invalid Estimate item order." };
+  }
+
+  const { data, error } = await c.rpc("reorder_estimate_items", {
+    p_estimate_id: normalizedEstimateId,
+    p_expected_items: normalizedExpectedItems,
+    p_ordered_items: normalizedItems,
+  });
+  if (error) {
+    const stale = error.code === "40001" || /items changed|reload/i.test(error.message ?? "");
+    return {
+      ok: false,
+      stale,
+      error: stale
+        ? "Estimate items changed. Reloaded the latest order; try again."
+        : "Could not save item order.",
+    };
+  }
+  if (Number(data) !== normalizedItems.length) {
+    return { ok: false, error: "Could not save item order." };
+  }
+  return { ok: true };
+}
+
+export async function reorderEstimateItems(
+  estimateId: string,
+  expectedItems: Array<{ id: string; costCode: string }>,
+  orderedItems: Array<{ id: string; costCode: string }>
+): Promise<EstimateItemReorderResult> {
+  return reorderEstimateItemsWithClient(client(), estimateId, expectedItems, orderedItems);
+}
+
 /** Move line items to another cost code (category). Creates `estimate_categories` row if missing. */
 export async function moveEstimateItemsToCostCodeWithClient(
   c: SupabaseClient,
@@ -2032,6 +2164,55 @@ function normalizePaymentAmount(amount: number): number {
   return value;
 }
 
+function roundPaymentMoney(value: number): number {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
+export function validatePaymentScheduleAllocation({
+  estimateTotal,
+  scheduledAmounts,
+  proposedAmount,
+}: {
+  estimateTotal: number;
+  scheduledAmounts: number[];
+  proposedAmount: number;
+}): { scheduled: number; remaining: number } {
+  const safeTotal = roundPaymentMoney(Math.max(0, Number(estimateTotal) || 0));
+  const proposed = roundPaymentMoney(normalizePaymentAmount(proposedAmount));
+  const scheduled = roundPaymentMoney(
+    scheduledAmounts.reduce((sum, amount) => sum + normalizePaymentAmount(amount), 0) + proposed
+  );
+  if (scheduled > safeTotal) {
+    throw new Error(
+      `Payment schedule cannot exceed the ${safeTotal.toLocaleString("en-US", {
+        style: "currency",
+        currency: "USD",
+      })} estimate total.`
+    );
+  }
+  return { scheduled, remaining: roundPaymentMoney(safeTotal - scheduled) };
+}
+
+async function assertPaymentScheduleAllocation(
+  c: SupabaseClient,
+  estimateId: string,
+  proposedAmount: number,
+  excludedItemId?: string
+): Promise<void> {
+  const [meta, items, scheduleResult] = await Promise.all([
+    getEstimateMeta(estimateId, c),
+    getEstimateItems(estimateId, c),
+    c.from("estimate_payment_schedule_items").select("id, amount").eq("estimate_id", estimateId),
+  ]);
+  if (!meta) throw new Error("Estimate pricing could not be loaded.");
+  if (scheduleResult.error) throw new Error("Payment schedule could not be loaded.");
+  const estimateTotal = computeSummary(items, meta, () => undefined).total;
+  const scheduledAmounts = (scheduleResult.data ?? [])
+    .filter((row) => String(row.id) !== excludedItemId)
+    .map((row) => Number(row.amount ?? 0));
+  validatePaymentScheduleAllocation({ estimateTotal, scheduledAmounts, proposedAmount });
+}
+
 function normalizePaymentStatus(status: unknown): PaymentScheduleItem["status"] {
   if (status === "invoiced" || status === "paid") return status;
   return "draft";
@@ -2094,6 +2275,8 @@ export async function addPaymentMilestoneWithClient(
   item: PaymentScheduleWriteInput
 ): Promise<PaymentScheduleItem | null> {
   if (!(await canWritePaymentSchedule(c, estimateId))) return null;
+  const amount = normalizePaymentAmount(item.amount);
+  await assertPaymentScheduleAllocation(c, estimateId, amount);
   const { data: maxRows } = await c
     .from("estimate_payment_schedule_items")
     .select("sort_order")
@@ -2102,7 +2285,6 @@ export async function addPaymentMilestoneWithClient(
     .limit(1);
   const max = Array.isArray(maxRows) ? maxRows[0] : null;
   const sortOrder = max?.sort_order != null ? Number(max.sort_order) + 1 : 0;
-  const amount = normalizePaymentAmount(item.amount);
   const { data: inserted, error } = await c
     .from("estimate_payment_schedule_items")
     .insert({
@@ -2138,7 +2320,11 @@ export async function updatePaymentMilestoneWithClient(
   const up: Record<string, unknown> = {};
   if (payload.title != null) up.title = payload.title.trim() || "Payment";
   if (payload.description !== undefined) up.description = payload.description?.trim() || null;
-  if (payload.amount != null) up.amount = normalizePaymentAmount(payload.amount);
+  if (payload.amount != null) {
+    const amount = normalizePaymentAmount(payload.amount);
+    await assertPaymentScheduleAllocation(c, estimateId, amount, itemId);
+    up.amount = amount;
+  }
   if (payload.dueDate !== undefined) up.due_date = payload.dueDate ?? null;
   if (payload.status != null) up.status = payload.status;
   if (payload.invoiceId !== undefined) up.invoice_id = payload.invoiceId ?? null;
@@ -2213,11 +2399,33 @@ export async function markPaymentMilestonePaidWithClient(
   estimateId: string,
   itemId: string
 ): Promise<boolean> {
+  const { data: milestone, error: milestoneError } = await c
+    .from("estimate_payment_schedule_items")
+    .select("id, invoice_id")
+    .eq("id", itemId)
+    .eq("estimate_id", estimateId)
+    .maybeSingle();
+  const invoiceId = String(milestone?.invoice_id ?? "").trim();
+  if (milestoneError || !invoiceId) return false;
+  const { data: invoice, error: invoiceError } = await c
+    .from("invoices")
+    .select("id, status, balance_due")
+    .eq("id", invoiceId)
+    .maybeSingle();
+  if (
+    invoiceError ||
+    !invoice?.id ||
+    String(invoice.status).toLowerCase() !== "paid" ||
+    Number(invoice.balance_due ?? 0) > 0
+  ) {
+    return false;
+  }
   const { data, error } = await c
     .from("estimate_payment_schedule_items")
     .update({ status: "paid" })
     .eq("id", itemId)
     .eq("estimate_id", estimateId)
+    .eq("invoice_id", invoiceId)
     .select("id")
     .maybeSingle();
   return !error && Boolean(data?.id);
@@ -2254,8 +2462,18 @@ export type PaymentScheduleTemplateItem = {
   notes: string | null;
 };
 
-export async function listPaymentTemplates(): Promise<PaymentScheduleTemplate[]> {
-  const c = client();
+export type PaymentTemplateApplyMode = "replace" | "merge";
+
+export type PaymentTemplateApplicationResult = {
+  appliedCount: number;
+  scheduledTotal: number;
+  remainingTotal: number;
+};
+
+export async function listPaymentTemplates(
+  explicitClient?: SupabaseClient | null
+): Promise<PaymentScheduleTemplate[]> {
+  const c = client(explicitClient);
   const { data: rows, error } = await c
     .from("payment_schedule_templates")
     .select("id, name")
@@ -2271,9 +2489,10 @@ export async function listPaymentTemplates(): Promise<PaymentScheduleTemplate[]>
 }
 
 export async function getPaymentTemplateWithItems(
-  templateId: string
+  templateId: string,
+  explicitClient?: SupabaseClient | null
 ): Promise<{ template: PaymentScheduleTemplate; items: PaymentScheduleTemplateItem[] } | null> {
-  const c = client();
+  const c = client(explicitClient);
   const { data: templateRow, error: tErr } = await c
     .from("payment_schedule_templates")
     .select("*")
@@ -2317,9 +2536,11 @@ export async function createPaymentTemplate(
     value: number;
     dueRule: string;
     notes?: string | null;
-  }>
+  }>,
+  explicitClient?: SupabaseClient | null
 ): Promise<PaymentScheduleTemplate | null> {
-  const c = client();
+  if (items.length === 0) return null;
+  const c = client(explicitClient);
   const { data: inserted, error: tErr } = await c
     .from("payment_schedule_templates")
     .insert({ name: name.trim() || "Payment template" })
@@ -2332,127 +2553,109 @@ export async function createPaymentTemplate(
   if (!inserted) return null;
   const t = inserted as Record<string, unknown>;
   const templateId = t.id as string;
-  for (let i = 0; i < items.length; i++) {
-    const it = items[i];
-    const { error: iErr } = await c.from("payment_schedule_template_items").insert({
-      template_id: templateId,
-      sort_order: i,
-      title: it.title,
-      amount_type: it.amountType,
-      value: it.value,
-      due_rule: it.dueRule ?? "",
-      notes: it.notes ?? null,
-    });
-    if (iErr && isMissingTable(iErr)) return null;
+  const rows = items.map((it, i) => ({
+    template_id: templateId,
+    sort_order: i,
+    title: it.title.trim() || "Payment",
+    amount_type: it.amountType,
+    value: it.value,
+    due_rule: it.dueRule ?? "",
+    notes: it.notes ?? null,
+  }));
+  const { error: itemError } = await c.from("payment_schedule_template_items").insert(rows);
+  if (itemError) {
+    await c.from("payment_schedule_templates").delete().eq("id", templateId);
+    if (isMissingTable(itemError)) return null;
+    throw new Error(itemError.message || "Could not create payment template milestones.");
   }
   return { id: templateId, name: (t.name as string) ?? "" };
 }
 
+export async function applyPaymentTemplateToEstimateWithClient(
+  c: SupabaseClient,
+  estimateId: string,
+  templateId: string,
+  mode: PaymentTemplateApplyMode
+): Promise<PaymentTemplateApplicationResult> {
+  const safeEstimateId = estimateId.trim();
+  const safeTemplateId = templateId.trim();
+  if (!safeEstimateId || !safeTemplateId) throw new Error("Estimate and template are required.");
+  if (mode !== "replace" && mode !== "merge") {
+    throw new Error("Payment template mode must be replace or merge.");
+  }
+
+  // Do not accept amounts or percentages from the browser. The database function
+  // locks and re-reads the Estimate, template, and current schedule atomically.
+  const { data, error } = await c.rpc("apply_payment_schedule_template", {
+    p_estimate_id: safeEstimateId,
+    p_template_id: safeTemplateId,
+    p_mode: mode,
+  });
+  if (error) throw new Error(error.message || "Could not apply payment template.");
+  const first = Array.isArray(data) ? data[0] : data;
+  if (!first) throw new Error("Could not apply payment template.");
+  return {
+    appliedCount: Number(first.applied_count ?? 0),
+    scheduledTotal: Number(first.scheduled_total ?? 0),
+    remainingTotal: Number(first.remaining_total ?? 0),
+  };
+}
+
 export async function applyPaymentTemplateToEstimate(
   estimateId: string,
-  templateId: string
-): Promise<boolean> {
-  const data = await getPaymentTemplateWithItems(templateId);
-  if (!data || data.items.length === 0) return false;
-  const c = client();
-  const { data: est } = await c.from("estimates").select("status").eq("id", estimateId).single();
-  if (!est || !["Draft", "Sent"].includes(est.status as string)) return false;
-  for (let i = 0; i < data.items.length; i++) {
-    const it = data.items[i];
-    await addPaymentMilestone(estimateId, {
-      title: it.title,
-      description: it.dueRule || it.notes || null,
-      amount: it.amountType === "fixed" ? it.value : 0,
-    });
-  }
-  return true;
+  templateId: string,
+  mode: PaymentTemplateApplyMode
+): Promise<PaymentTemplateApplicationResult> {
+  return applyPaymentTemplateToEstimateWithClient(client(), estimateId, templateId, mode);
 }
 
 // —— Status workflow ——
 
-const ALLOWED_TRANSITIONS: Record<EstimateStatus, EstimateStatus[]> = {
-  Draft: ["Sent"],
-  Sent: ["Approved", "Rejected"],
-  Approved: ["Converted"],
-  Rejected: [],
-  Converted: [],
-};
-
 export async function setEstimateStatus(
   estimateId: string,
-  nextStatus: EstimateStatus
+  nextStatus: EstimateStatus,
+  actor: EstimateActivityActor,
+  related?: { type: "project"; id: string } | null
 ): Promise<boolean> {
-  return applyEstimateStatusTransition(estimateId, nextStatus, client());
+  return applyEstimateStatusTransition(estimateId, nextStatus, client(), actor, related);
 }
 
 export async function setEstimateStatusWithClient(
   estimateId: string,
   nextStatus: EstimateStatus,
-  db: SupabaseClient
+  db: SupabaseClient,
+  actor: EstimateActivityActor,
+  related?: { type: "project"; id: string } | null
 ): Promise<boolean> {
-  return applyEstimateStatusTransition(estimateId, nextStatus, db);
+  return applyEstimateStatusTransition(estimateId, nextStatus, db, actor, related);
 }
 
 async function applyEstimateStatusTransition(
   estimateId: string,
   nextStatus: EstimateStatus,
-  c: SupabaseClient
+  c: SupabaseClient,
+  actor: EstimateActivityActor,
+  related?: { type: "project"; id: string } | null
 ): Promise<boolean> {
-  const { data: est, error: fetchErr } = await c
-    .from("estimates")
-    .select("status")
-    .eq("id", estimateId)
-    .single();
-  if (fetchErr || !est) return false;
-  const current = est.status as EstimateStatus;
-  const allowed = ALLOWED_TRANSITIONS[current];
-  if (!allowed?.includes(nextStatus)) return false;
-
-  const now = new Date().toISOString().slice(0, 10);
-  const updates: Record<string, unknown> = { status: nextStatus, updated_at: now };
-  if (nextStatus === "Approved") updates.approved_at = now;
-
-  const { data: updatedRow, error: updateErr } = await c
-    .from("estimates")
-    .update(updates)
-    .eq("id", estimateId)
-    .select("id")
-    .maybeSingle();
-  return !updateErr && Boolean(updatedRow?.id);
+  return transitionEstimateStatusWithActivityWithClient(c, estimateId, nextStatus, actor, related);
 }
 
-/** Allow changing status to any value (e.g. correct a misclick). Sets/clears approved_at when switching to/from Approved. */
+/** Legacy compatibility wrapper. All callers still use the authoritative transition policy. */
 export async function updateEstimateStatus(
   estimateId: string,
-  newStatus: EstimateStatus
+  newStatus: EstimateStatus,
+  actor: EstimateActivityActor
 ): Promise<boolean> {
-  return updateEstimateStatusWithClient(client(), estimateId, newStatus);
+  return updateEstimateStatusWithClient(client(), estimateId, newStatus, actor);
 }
 
 export async function updateEstimateStatusWithClient(
   c: SupabaseClient,
   estimateId: string,
-  newStatus: EstimateStatus
+  newStatus: EstimateStatus,
+  actor: EstimateActivityActor
 ): Promise<boolean> {
-  const { data: est, error: fetchErr } = await c
-    .from("estimates")
-    .select("status")
-    .eq("id", estimateId)
-    .single();
-  if (fetchErr || !est) return false;
-
-  const now = new Date().toISOString().slice(0, 10);
-  const updates: Record<string, unknown> = { status: newStatus, updated_at: now };
-  if (newStatus === "Approved") updates.approved_at = now;
-  else if (est.status === "Approved") updates.approved_at = null;
-
-  const { data: updatedRow, error: updateErr } = await c
-    .from("estimates")
-    .update(updates)
-    .eq("id", estimateId)
-    .select("id")
-    .maybeSingle();
-  return !updateErr && Boolean(updatedRow?.id);
+  return applyEstimateStatusTransition(estimateId, newStatus, c, actor);
 }
 
 // —— Delete ——

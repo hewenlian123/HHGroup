@@ -288,7 +288,10 @@ async function run(): Promise<void> {
     });
     const read = await data.getEstimateById(estimateId);
     if (!read || read.client !== "Test Client") throw new Error("Read back failed");
-    await data.updateEstimateStatus(estimateId, "Sent");
+    await data.updateEstimateStatus(estimateId, "Sent", {
+      userId: "00000000-0000-4000-8000-000000000001",
+      label: "System feature test",
+    });
     const afterUpdate = await data.getEstimateById(estimateId);
     if (!afterUpdate || afterUpdate.status !== "Sent") throw new Error("Update/read failed");
     const ok = await data.deleteEstimate(estimateId);

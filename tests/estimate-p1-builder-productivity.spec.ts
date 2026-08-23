@@ -418,6 +418,8 @@ test("existing Estimate exposes the same Scope toolbar without changing save or 
   await expect(page.getByRole("navigation", { name: "Estimate sections" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Save", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Save & Preview" }).first()).toBeVisible();
-  await expect(page.getByRole("button", { name: "Drag to reorder line item" })).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: /Drag to reorder line item/ }).first()
+  ).toBeVisible();
   await capture(page, testInfo, "estimate-p1-existing-desktop");
 });

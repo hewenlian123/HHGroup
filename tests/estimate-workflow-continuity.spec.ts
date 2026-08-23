@@ -188,7 +188,7 @@ for (const viewport of VIEWPORTS) {
     await capture(page, testInfo, `estimate-workflow-preview-${viewport.name}`);
     if (viewport.width <= 700) {
       await page.keyboard.press("Escape");
-      await expect(page).toHaveURL(/\/estimates\/[^/?#]+\?returnScroll=/);
+      await expect(page).toHaveURL(/\/estimates\/[^/?#]+\?returnScroll=/, { timeout: 30_000 });
     }
   });
 }

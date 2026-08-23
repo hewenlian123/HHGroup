@@ -4,6 +4,11 @@ import { revalidatePath } from "next/cache";
 import { revalidateEstimatePaths } from "./revalidate-estimate-paths";
 import { requireSupabaseOwnerOrAdminServerAction } from "@/lib/auth-boundary";
 import { getServerSupabaseAdmin } from "@/lib/supabase-server";
+import {
+  createEstimateRevisionWithClient,
+  duplicateEstimateAsDraftWithClient,
+} from "@/lib/estimates-db";
+import { estimateActivityActorFromAuth } from "@/lib/estimate-activity";
 
 type SupabaseActionError = {
   code?: string;
@@ -11,6 +16,119 @@ type SupabaseActionError = {
   details?: string;
   hint?: string;
 };
+
+export type DuplicateEstimateActionResult = {
+  ok: boolean;
+  estimateId?: string;
+  estimateNumber?: string;
+  error?: string;
+};
+
+export type CreateEstimateRevisionActionResult = DuplicateEstimateActionResult & {
+  revisionNumber?: number;
+};
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function safeDuplicateEstimateError(error: unknown): string {
+  const message = error instanceof Error ? error.message : "";
+  if (/not found/i.test(message)) return "Source Estimate not found.";
+  if (/details are incomplete/i.test(message)) {
+    return "Source Estimate details are incomplete and cannot be copied.";
+  }
+  if (/customer relationship is no longer valid/i.test(message)) {
+    return "The source customer relationship is no longer valid. Reselect the customer first.";
+  }
+  if (/payment schedule total.*cannot exceed Estimate final total/i.test(message)) {
+    return "The source Payment Schedule exceeds the Estimate final total and cannot be copied.";
+  }
+  return "Could not copy Estimate.";
+}
+
+export async function duplicateEstimateAsDraftAction(
+  sourceEstimateId: string
+): Promise<DuplicateEstimateActionResult> {
+  const auth = await requireSupabaseOwnerOrAdminServerAction();
+  if (!auth.ok) return { ok: false, error: "Authentication required." };
+
+  const canonicalSourceId = sourceEstimateId.trim();
+  if (!UUID_PATTERN.test(canonicalSourceId)) {
+    return { ok: false, error: "Source Estimate not found." };
+  }
+
+  const admin = getServerSupabaseAdmin();
+  if (!admin) return { ok: false, error: "Database is not configured." };
+
+  try {
+    const duplicated = await duplicateEstimateAsDraftWithClient(
+      admin,
+      canonicalSourceId,
+      estimateActivityActorFromAuth(auth.context)
+    );
+    revalidateEstimatePaths(canonicalSourceId);
+    revalidateEstimatePaths(duplicated.estimateId);
+    revalidatePath("/estimates");
+    return {
+      ok: true,
+      estimateId: duplicated.estimateId,
+      estimateNumber: duplicated.estimateNumber,
+    };
+  } catch (error) {
+    return { ok: false, error: safeDuplicateEstimateError(error) };
+  }
+}
+
+function safeCreateRevisionError(error: unknown): string {
+  const message = error instanceof Error ? error.message : "";
+  if (/not found/i.test(message)) return "Source Estimate not found.";
+  if (/only be created from an Approved, Rejected, or Converted/i.test(message)) {
+    return "Create Revision is available only for an Approved, Rejected, or Converted Estimate.";
+  }
+  if (/latest revision/i.test(message)) {
+    return "A newer revision already exists. Open the latest revision to continue.";
+  }
+  if (/customer relationship is no longer valid/i.test(message)) {
+    return "The source customer relationship is no longer valid. Reselect the customer first.";
+  }
+  if (/payment schedule total.*cannot exceed Estimate final total/i.test(message)) {
+    return "The source Payment Schedule exceeds the Estimate final total and cannot be revised.";
+  }
+  return "Could not create Estimate revision.";
+}
+
+export async function createEstimateRevisionAction(
+  sourceEstimateId: string
+): Promise<CreateEstimateRevisionActionResult> {
+  const auth = await requireSupabaseOwnerOrAdminServerAction();
+  if (!auth.ok) return { ok: false, error: "Authentication required." };
+
+  const canonicalSourceId = sourceEstimateId.trim();
+  if (!UUID_PATTERN.test(canonicalSourceId)) {
+    return { ok: false, error: "Source Estimate not found." };
+  }
+
+  const admin = getServerSupabaseAdmin();
+  if (!admin) return { ok: false, error: "Database is not configured." };
+
+  try {
+    const revision = await createEstimateRevisionWithClient(
+      admin,
+      canonicalSourceId,
+      estimateActivityActorFromAuth(auth.context)
+    );
+    revalidateEstimatePaths(canonicalSourceId);
+    revalidateEstimatePaths(revision.estimateId);
+    revalidatePath("/estimates");
+    return {
+      ok: true,
+      estimateId: revision.estimateId,
+      estimateNumber: revision.estimateNumber,
+      revisionNumber: revision.revisionNumber,
+    };
+  } catch (error) {
+    return { ok: false, error: safeCreateRevisionError(error) };
+  }
+}
 
 type DeleteEstimateStepName =
   | "paymentScheduleItems"
@@ -131,6 +249,78 @@ export async function deleteEstimateAction(
   const admin = getServerSupabaseAdmin();
   if (!admin) {
     return { ok: false, error: "Database is not configured." };
+  }
+
+  const estimatePreflight = await runTimedSupabaseQuery<Record<string, unknown> | null>(
+    "Checking estimate delete eligibility",
+    (signal) =>
+      admin
+        .from("estimates")
+        .select("id, status")
+        .eq("id", estimateId)
+        .abortSignal(signal)
+        .maybeSingle()
+  );
+  if (estimatePreflight.error) {
+    return { ok: false, error: "Could not verify estimate delete eligibility." };
+  }
+  const estimateStatus = String(estimatePreflight.data?.status ?? "");
+  if (!estimatePreflight.data?.id) return { ok: false, error: "Estimate not found." };
+  if (estimateStatus !== "Draft") {
+    return {
+      ok: false,
+      error: `${estimateStatus || "Non-draft"} estimates cannot be deleted. Only disposable Draft estimates may be permanently deleted.`,
+    };
+  }
+
+  const [projectDependency, snapshotDependency, scheduleDependencies] = await Promise.all([
+    runTimedSupabaseQuery<Array<Record<string, unknown>>>("Checking linked projects", (signal) =>
+      admin
+        .from("projects")
+        .select("id")
+        .eq("source_estimate_id", estimateId)
+        .limit(1)
+        .abortSignal(signal)
+    ),
+    runTimedSupabaseQuery<Array<Record<string, unknown>>>("Checking estimate history", (signal) =>
+      admin
+        .from("estimate_snapshots")
+        .select("id")
+        .eq("estimate_id", estimateId)
+        .limit(1)
+        .abortSignal(signal)
+    ),
+    runTimedSupabaseQuery<Array<Record<string, unknown>>>(
+      "Checking payment milestone dependencies",
+      (signal) =>
+        admin
+          .from("estimate_payment_schedule_items")
+          .select("id, status, invoice_id")
+          .eq("estimate_id", estimateId)
+          .abortSignal(signal)
+    ),
+  ]);
+  if (projectDependency.error || snapshotDependency.error || scheduleDependencies.error) {
+    return { ok: false, error: "Could not verify estimate dependencies." };
+  }
+  if ((projectDependency.data ?? []).length > 0) {
+    return { ok: false, error: "This estimate is linked to a project and cannot be deleted." };
+  }
+  if ((snapshotDependency.data ?? []).length > 0) {
+    return {
+      ok: false,
+      error: "This estimate has protected version history and cannot be deleted.",
+    };
+  }
+  const protectedMilestone = (scheduleDependencies.data ?? []).find((row) => {
+    const status = String(row.status ?? "draft");
+    return Boolean(row.invoice_id) || status === "invoiced" || status === "paid";
+  });
+  if (protectedMilestone) {
+    return {
+      ok: false,
+      error: "This estimate has an invoiced or paid payment milestone and cannot be deleted.",
+    };
   }
 
   const diagnostic: DeleteEstimateDiagnostic = {

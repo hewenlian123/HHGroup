@@ -233,7 +233,7 @@ export default async function ProjectDetailPage({
     safe(() => getCloseoutCompletion(id), null),
     safe(() => getProjectSchedule(id), []),
     safe(() => getInvoicesWithDerived({ projectId: id }), []),
-    safe(() => getEstimateList(), []),
+    safe(() => getEstimateList(projectSupabase), []),
   ]);
 
   const recentExpenseLines: RecentExpenseLineRow[] = costDashboard.recentDoneRows.map((r) => ({

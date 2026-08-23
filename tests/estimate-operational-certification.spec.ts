@@ -69,6 +69,9 @@ const metrics: CertificationMetrics = {
 
 let estimateId = "";
 let estimateNumber = "";
+let revisionId = "";
+let convertedProjectId = "";
+let milestoneInvoiceId = "";
 let expectedPersistedSectionOrder: string[] = [];
 
 const sections: ScopeSection[] = [
@@ -489,6 +492,19 @@ test.describe.serial("Estimate operational certification", () => {
 
   test.afterAll(async () => {
     await cleanupTemplates();
+    const admin = localAdmin();
+    if (milestoneInvoiceId) {
+      await admin
+        .from("estimate_payment_schedule_items")
+        .update({ invoice_id: null, status: "draft" })
+        .eq("invoice_id", milestoneInvoiceId);
+      await admin.from("invoice_items").delete().eq("invoice_id", milestoneInvoiceId);
+      await admin.from("invoices").delete().eq("id", milestoneInvoiceId);
+    }
+    if (convertedProjectId) {
+      await admin.from("projects").delete().eq("id", convertedProjectId);
+    }
+    if (revisionId) await cleanupEstimateGraph(revisionId);
     if (estimateId) await cleanupEstimateGraph(estimateId);
     await writeFile(
       join(tmpdir(), "hh-estimate-operational-certification.json"),
@@ -837,7 +853,7 @@ test.describe.serial("Estimate operational certification", () => {
     expect(estimateId).toBeTruthy();
 
     const heading = page.getByTestId("estimate-detail-header").getByRole("heading");
-    estimateNumber = (await heading.textContent())?.trim() ?? "";
+    estimateNumber = ((await heading.textContent())?.trim() ?? "").replace(/\s+Rev\s+0$/, "");
     expect(estimateNumber).toMatch(/^EST-/);
     await expect(page.locator("body")).toContainText("Preconstruction & Mobilization");
     await expect(page.locator("body")).toContainText("Final completion");
@@ -918,7 +934,7 @@ test.describe.serial("Estimate operational certification", () => {
     await expect(persistedMobilizationRow.locator('input[aria-label$="unit price"]')).toHaveValue(
       "3800"
     );
-    await click(page, page.getByRole("button", { name: "Cancel", exact: true }).first());
+    await click(page, page.getByRole("button", { name: "Done", exact: true }).first());
     await expect(page.locator("main")).toContainText(
       `$${expectedTotal.toLocaleString("en-US", {
         minimumFractionDigits: 2,
@@ -928,14 +944,21 @@ test.describe.serial("Estimate operational certification", () => {
 
     await page.goto("/estimates", { waitUntil: "domcontentloaded" });
     const search = page.getByPlaceholder("Search estimates…").locator("visible=true");
+    const revisionQualifiedEstimateNumber = `${estimateNumber} Rev 0`;
     await search.fill(estimateNumber);
     await expect(
-      page.getByText(estimateNumber, { exact: true }).locator("visible=true").first()
+      page
+        .getByText(revisionQualifiedEstimateNumber, { exact: true })
+        .locator("visible=true")
+        .first()
     ).toBeVisible();
     const statusFilter = page.locator("select:visible").first();
     await statusFilter.selectOption("Draft");
     await expect(
-      page.getByText(estimateNumber, { exact: true }).locator("visible=true").first()
+      page
+        .getByText(revisionQualifiedEstimateNumber, { exact: true })
+        .locator("visible=true")
+        .first()
     ).toBeVisible();
     await statusFilter.selectOption("all");
     await search.fill("No estimate should match this certification search");
@@ -948,7 +971,10 @@ test.describe.serial("Estimate operational certification", () => {
     await search.fill(estimateNumber);
     await click(
       page,
-      page.getByText(estimateNumber, { exact: true }).locator("visible=true").first()
+      page
+        .getByText(revisionQualifiedEstimateNumber, { exact: true })
+        .locator("visible=true")
+        .first()
     );
 
     const previewStarted = performance.now();
@@ -1023,7 +1049,9 @@ test.describe.serial("Estimate operational certification", () => {
     expect(pdfResponse.status()).toBe(200);
     const pdf = await pdfResponse.body();
     expect(pdf.subarray(0, 4).toString()).toBe("%PDF");
-    expect(pdfResponse.headers()["content-disposition"]).toMatch(/Estimate-EST-\d+\.pdf/i);
+    expect(pdfResponse.headers()["content-disposition"]).toContain(
+      `Estimate-${estimateNumber}_Rev_0.pdf`
+    );
     const pdfPageCount = pdf.toString("latin1").match(/\/Type\s*\/Page\b/g)?.length ?? 0;
     expect(pdfPageCount).toBe(previewPageCount);
     await writeFile(join(tmpdir(), "hh-estimate-operational-certification.pdf"), pdf);
@@ -1075,7 +1103,7 @@ test.describe.serial("Estimate operational certification", () => {
       expect(box!.height).toBeGreaterThanOrEqual(viewport.width <= 820 ? 44 : 30);
       await click(
         page,
-        page.getByRole("button", { name: "Cancel", exact: true }).locator("visible=true").first()
+        page.getByRole("button", { name: "Done", exact: true }).locator("visible=true").first()
       );
       await page.goto(`/estimates/${estimateId}/preview`, { waitUntil: "domcontentloaded" });
       await expect(page.getByTestId("estimate-document")).toBeVisible({ timeout: 60_000 });
@@ -1105,11 +1133,12 @@ test.describe.serial("Estimate operational certification", () => {
 
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto(`/estimates/${estimateId}`, { waitUntil: "domcontentloaded" });
-    await click(page, page.getByRole("button", { name: "Send", exact: true }));
+    await click(page, page.getByRole("button", { name: "Mark as Sent", exact: true }));
     await expect(page.getByText("Sent", { exact: true }).first()).toBeVisible();
     await click(page, page.getByRole("button", { name: /Status/ }));
-    await click(page, page.getByRole("menuitem", { name: "Mark as Draft" }));
-    await expect(page.getByText("Draft", { exact: true }).first()).toBeVisible();
+    await expect(page.getByRole("menuitem", { name: "Mark as Draft" })).toHaveCount(0);
+    await expect(page.getByRole("menuitem", { name: "Mark accepted" })).toBeVisible();
+    await page.keyboard.press("Escape");
 
     expect(consoleErrors).toEqual([]);
   });
@@ -1247,5 +1276,147 @@ test.describe.serial("Estimate operational certification", () => {
     await expect(row).toBeHidden({ timeout: 30_000 });
     await page.goto(`/estimates/${estimateId}/preview`, { waitUntil: "domcontentloaded" });
     await expect(page.getByTestId("estimate-document")).toBeVisible({ timeout: 60_000 });
+  });
+
+  test("completes one revision-aware Estimate to Project, Invoice, document, and Activity flow", async ({
+    page,
+  }) => {
+    test.setTimeout(360_000);
+    const admin = localAdmin();
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await loginAsE2EOwner(page, `/estimates/${estimateId}`);
+
+    await expect(page.getByText("Sent", { exact: true }).locator("visible=true")).toBeVisible();
+    await click(page, page.getByRole("button", { name: /^Status/ }));
+    await click(page, page.getByRole("menuitem", { name: "Mark accepted", exact: true }));
+    await expect(page.getByText("Approved", { exact: true }).locator("visible=true")).toBeVisible();
+
+    await click(page, page.getByTestId("create-estimate-revision-action"));
+    await page.waitForURL(
+      (url) =>
+        /^\/estimates\/[0-9a-f-]+$/i.test(url.pathname) &&
+        url.pathname !== `/estimates/${estimateId}`,
+      { timeout: 30_000 }
+    );
+    revisionId = new URL(page.url()).pathname.split("/").pop() ?? "";
+    expect(revisionId).toBeTruthy();
+    expect(revisionId).not.toBe(estimateId);
+    await expect(page.getByTestId("estimate-detail-header")).toContainText(
+      `${estimateNumber} Rev 1`
+    );
+    await expect(page.getByTestId("estimate-detail-header")).toContainText("Draft");
+
+    const revisionSchedule = await admin
+      .from("estimate_payment_schedule_items")
+      .select("title, amount, due_date, status, invoice_id, sort_order")
+      .eq("estimate_id", revisionId)
+      .order("sort_order");
+    expect(revisionSchedule.error).toBeNull();
+    expect(revisionSchedule.data).toHaveLength(5);
+    expect(revisionSchedule.data?.every((row) => row.due_date === null)).toBe(true);
+    expect(revisionSchedule.data?.every((row) => row.status === "draft")).toBe(true);
+    expect(revisionSchedule.data?.every((row) => row.invoice_id === null)).toBe(true);
+
+    await click(page, page.getByRole("link", { name: "Previous revision", exact: true }));
+    await expect(page).toHaveURL(new RegExp(`/estimates/${estimateId}$`));
+    await expect(page.getByRole("button", { name: "Edit", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Current revision", exact: true })).toBeVisible();
+
+    // Milestone invoices require a canonical Project id. Convert first so the
+    // invoice links to the Project created from this exact Estimate revision.
+    await click(page, page.getByRole("button", { name: "Convert to Project", exact: true }));
+    const projectDrawer = page.getByRole("dialog", { name: "Set up project" });
+    await expect(projectDrawer).toBeVisible();
+    await projectDrawer
+      .getByLabel("Project name")
+      .fill(`LOCAL Estimate Certification Project ${suffix}`);
+    await click(page, projectDrawer.getByRole("button", { name: "Create project", exact: true }));
+    await expect(page).toHaveURL(/\/projects\/[0-9a-f-]+$/, { timeout: 30_000 });
+    convertedProjectId = new URL(page.url()).pathname.split("/").pop() ?? "";
+    expect(convertedProjectId).toBeTruthy();
+
+    const projects = await admin
+      .from("projects")
+      .select("id, source_estimate_id, customer_id, budget, snapshot_revenue")
+      .eq("source_estimate_id", estimateId);
+    expect(projects.error).toBeNull();
+    expect(projects.data).toHaveLength(1);
+    expect(projects.data?.[0]?.id).toBe(convertedProjectId);
+    expect(projects.data?.[0]?.customer_id).toBe("33333333-3333-3333-3333-333333333333");
+    expect(Number(projects.data?.[0]?.budget)).toBe(expectedTotal);
+    expect(Number(projects.data?.[0]?.snapshot_revenue)).toBe(expectedTotal);
+
+    await page.goto(`/estimates/${estimateId}`, { waitUntil: "domcontentloaded" });
+    await expect(page.getByTestId("estimate-detail-header")).toContainText("Converted to Project");
+    const sourceMilestones = await admin
+      .from("estimate_payment_schedule_items")
+      .select("id, amount, invoice_id")
+      .eq("estimate_id", estimateId)
+      .order("sort_order");
+    expect(sourceMilestones.error).toBeNull();
+    const firstMilestone = sourceMilestones.data?.[0];
+    expect(firstMilestone?.id).toBeTruthy();
+    const milestoneAmount = Number(firstMilestone?.amount ?? 0);
+
+    await click(page, page.getByRole("link", { name: "Create Draft Invoice" }).first());
+    await expect(page).toHaveURL(/\/financial\/invoices\/new\?/, { timeout: 30_000 });
+    await expect(page.getByTestId("invoice-new-project-select")).toHaveValue(convertedProjectId);
+    await click(page, page.getByRole("button", { name: "Create draft invoice" }));
+    await expect(page).toHaveURL(/\/financial\/invoices\/[0-9a-f-]+\/preview/, {
+      timeout: 30_000,
+    });
+    milestoneInvoiceId = page.url().match(/\/financial\/invoices\/([^/?#]+)/)?.[1] ?? "";
+    expect(milestoneInvoiceId).toBeTruthy();
+
+    const invoice = await admin
+      .from("invoices")
+      .select("id, project_id, customer_id, status, subtotal, tax_amount, total")
+      .eq("id", milestoneInvoiceId)
+      .single();
+    expect(invoice.error).toBeNull();
+    expect(invoice.data?.project_id).toBe(convertedProjectId);
+    expect(invoice.data?.customer_id).toBe("33333333-3333-3333-3333-333333333333");
+    expect(invoice.data?.status).toBe("Draft");
+    expect(Number(invoice.data?.total)).toBe(milestoneAmount);
+    expect(Number(invoice.data?.subtotal) + Number(invoice.data?.tax_amount)).toBeCloseTo(
+      milestoneAmount,
+      2
+    );
+
+    await page.goto(`/estimates/${estimateId}`, { waitUntil: "domcontentloaded" });
+    const activity = page.getByTestId("estimate-activity-timeline");
+    for (const event of [
+      "Estimate Created",
+      "Marked as Sent",
+      "Approved",
+      "Revision Created",
+      "Converted to Project",
+      "Draft Invoice Created",
+    ]) {
+      await expect(activity).toContainText(event);
+    }
+
+    await page.goto(`/estimates/${estimateId}/preview`, { waitUntil: "domcontentloaded" });
+    await expect(page.getByTestId("estimate-preview-context")).toContainText(
+      `${estimateNumber} Rev 0`
+    );
+    await expect(page.getByTestId("estimate-revision-context")).toContainText(
+      "Historical revision · Read-only"
+    );
+    await page.goto(`/estimates/${estimateId}/print`, { waitUntil: "domcontentloaded" });
+    await expect(page.locator(".estimate-print-context-identity")).toHaveText(
+      `${estimateNumber} Rev 0`
+    );
+
+    const pdfResponse = await page.request.get(`/api/estimates/${estimateId}/pdf`);
+    expect(pdfResponse.status()).toBe(200);
+    expect(pdfResponse.headers()["content-disposition"]).toContain(`${estimateNumber}_Rev_0.pdf`);
+    expect((await pdfResponse.body()).subarray(0, 4).toString("utf8")).toBe("%PDF");
+
+    await page.goto(`/estimates/${revisionId}/preview`, { waitUntil: "domcontentloaded" });
+    await expect(page.getByTestId("estimate-preview-context")).toContainText(
+      `${estimateNumber} Rev 1`
+    );
+    await expect(page.getByTestId("estimate-revision-context")).toContainText("Current revision");
   });
 });

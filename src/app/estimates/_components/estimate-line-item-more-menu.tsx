@@ -1,7 +1,18 @@
 "use client";
 
 import * as React from "react";
-import { Bookmark, Check, Copy, Eye, EyeOff, MoreVertical, MoveRight, Trash2 } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  Bookmark,
+  Check,
+  Copy,
+  Eye,
+  EyeOff,
+  MoreVertical,
+  MoveRight,
+  Trash2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -37,6 +48,11 @@ export type EstimateLineItemMoreMenuProps = {
   currentSectionCode?: string;
   moveSectionOptions?: Array<{ code: string; label: string }>;
   onMoveToSection?: (costCode: string) => void;
+  canMoveUp?: boolean;
+  canMoveDown?: boolean;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
+  reorderDisabled?: boolean;
 };
 
 export function EstimateLineItemMoreMenu({
@@ -56,6 +72,11 @@ export function EstimateLineItemMoreMenu({
   currentSectionCode,
   moveSectionOptions = [],
   onMoveToSection,
+  canMoveUp = false,
+  canMoveDown = false,
+  onMoveUp,
+  onMoveDown,
+  reorderDisabled = false,
 }: EstimateLineItemMoreMenuProps): React.ReactElement | null {
   const [open, setOpen] = React.useState(false);
   const [statusOpen, setStatusOpen] = React.useState(false);
@@ -73,8 +94,19 @@ export function EstimateLineItemMoreMenu({
   const hasSave = showSaveAsReusable && Boolean(onSaveAsReusable);
   const moveTargets = moveSectionOptions.filter((option) => option.code !== currentSectionCode);
   const hasMove = Boolean(onMoveToSection) && moveTargets.length > 0;
-  if (!showDuplicate && !showDelete && !hasHide && !hasStatus && !hasSave && !hasMove) return null;
-  if (!onDuplicate && !onDelete && !hasHide && !hasStatus && !hasSave && !hasMove) return null;
+  const hasReorder = Boolean(onMoveUp) || Boolean(onMoveDown);
+  if (
+    !showDuplicate &&
+    !showDelete &&
+    !hasHide &&
+    !hasStatus &&
+    !hasSave &&
+    !hasMove &&
+    !hasReorder
+  )
+    return null;
+  if (!onDuplicate && !onDelete && !hasHide && !hasStatus && !hasSave && !hasMove && !hasReorder)
+    return null;
 
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
@@ -100,6 +132,34 @@ export function EstimateLineItemMoreMenu({
           suppressCloseAutoFocusRef.current = false;
         }}
       >
+        {onMoveUp ? (
+          <DropdownMenuItem
+            className={EB.lineItemMoreMenuItem}
+            disabled={disabled || reorderDisabled || !canMoveUp}
+            aria-label="Move line item up"
+            onSelect={() => {
+              onMoveUp();
+              closeMenu();
+            }}
+          >
+            <ArrowUp className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+            Move up
+          </DropdownMenuItem>
+        ) : null}
+        {onMoveDown ? (
+          <DropdownMenuItem
+            className={EB.lineItemMoreMenuItem}
+            disabled={disabled || reorderDisabled || !canMoveDown}
+            aria-label="Move line item down"
+            onSelect={() => {
+              onMoveDown();
+              closeMenu();
+            }}
+          >
+            <ArrowDown className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+            Move down
+          </DropdownMenuItem>
+        ) : null}
         {showDuplicate && onDuplicate ? (
           <DropdownMenuItem
             className={EB.lineItemMoreMenuItem}
@@ -133,7 +193,7 @@ export function EstimateLineItemMoreMenu({
           <DropdownMenuSub>
             <DropdownMenuSubTrigger
               className={EB.lineItemMoreMenuItem}
-              disabled={disabled}
+              disabled={disabled || reorderDisabled}
               aria-label="Move to section"
             >
               <MoveRight className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
@@ -144,7 +204,7 @@ export function EstimateLineItemMoreMenu({
                 <DropdownMenuItem
                   key={option.code}
                   className={EB.lineItemMoreMenuItem}
-                  disabled={disabled}
+                  disabled={disabled || reorderDisabled}
                   onSelect={() => {
                     onMoveToSection?.(option.code);
                     closeMenu();

@@ -44,10 +44,13 @@ import { FilterToolbar, NeoPanel, NeoStatus, NeoTable } from "@/components/base"
 import { tableRawThClass } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import {
-  normalizeEstimateTemplateData,
+  estimateTemplateDataFromDraft,
+  estimateTemplateDraftFromRecord,
   type EstimateTemplateData,
+  type EstimateTemplateDraft,
+  type EstimateTemplateDraftItem,
+  type EstimateTemplateDraftSection,
   type EstimateTemplateRecord,
-  type EstimateTemplateSection,
 } from "@/lib/estimate-templates";
 import {
   archiveEstimateTemplateAction,
@@ -57,30 +60,9 @@ import {
   updateEstimateTemplateAction,
 } from "./actions";
 
-type TemplateDraftItem = {
-  id: string;
-  title: string;
-  description: string;
-  qty: number;
-  unit: string;
-  unitPrice: number;
-};
-
-type TemplateDraftSection = {
-  id: string;
-  title: string;
-  items: TemplateDraftItem[];
-};
-
-type TemplateDraft = {
-  id?: string;
-  name: string;
-  description: string;
-  category: string;
-  defaultTaxRate: string;
-  defaultTerms: string;
-  sections: TemplateDraftSection[];
-};
+type TemplateDraftItem = EstimateTemplateDraftItem;
+type TemplateDraftSection = EstimateTemplateDraftSection;
+type TemplateDraft = EstimateTemplateDraft;
 
 const FIELD =
   "hh-focus-ring hh-type-text-entry h-hh-control-comfortable rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-none placeholder:text-[var(--hh-text-tertiary)] focus-visible:border-[var(--hh-border-strong)]";
@@ -101,6 +83,8 @@ function emptyItem(): TemplateDraftItem {
     qty: 1,
     unit: "EA",
     unitPrice: 0,
+    status: "included",
+    hideAmountOnPdf: false,
   };
 }
 
@@ -111,6 +95,7 @@ function emptyDraft(): TemplateDraft {
     category: "General",
     defaultTaxRate: "",
     defaultTerms: "",
+    notes: [],
     sections: [
       {
         id: makeId("template-section"),
@@ -122,64 +107,20 @@ function emptyDraft(): TemplateDraft {
 }
 
 function draftFromTemplate(template: EstimateTemplateRecord): TemplateDraft {
+  const draft = estimateTemplateDraftFromRecord(template, makeId);
   return {
-    id: template.id,
-    name: template.name,
-    description: template.description,
-    category: template.category,
-    defaultTaxRate: template.defaultTaxRate == null ? "" : String(template.defaultTaxRate),
-    defaultTerms: template.defaultTerms ?? "",
-    sections: template.templateData.sections.length
-      ? template.templateData.sections.map((section) => ({
-          id: makeId("template-section"),
-          title: section.title,
-          items: section.items.length
-            ? section.items.map((item) => ({
-                id: makeId("template-item"),
-                title: item.title,
-                description: item.description,
-                qty: item.qty,
-                unit: item.unit,
-                unitPrice: item.unitPrice,
-              }))
-            : [emptyItem()],
+    ...draft,
+    sections: draft.sections.length
+      ? draft.sections.map((section) => ({
+          ...section,
+          items: section.items.length ? section.items : [emptyItem()],
         }))
       : emptyDraft().sections,
   };
 }
 
 function draftToTemplateData(draft: TemplateDraft): EstimateTemplateData {
-  const sections: EstimateTemplateSection[] = draft.sections
-    .map((section) => ({
-      title: section.title.trim(),
-      items: section.items
-        .map((item) => ({
-          title: item.title.trim() || "Line item",
-          description: item.description.trim(),
-          qty: Number.isFinite(item.qty) ? item.qty : 0,
-          unit: item.unit.trim() || "EA",
-          unitPrice: Number.isFinite(item.unitPrice) ? item.unitPrice : 0,
-          status: "included",
-          hideAmountOnPdf: false,
-        }))
-        .filter((item) => item.title || item.description),
-    }))
-    .filter((section) => section.title && section.items.length > 0);
-
-  return normalizeEstimateTemplateData({
-    version: 1,
-    sections,
-    notes: draft.defaultTerms.trim()
-      ? [
-          {
-            id: "template-default-terms",
-            type: "payment_terms",
-            title: "Payment Terms",
-            body: draft.defaultTerms.trim(),
-          },
-        ]
-      : [],
-  });
+  return estimateTemplateDataFromDraft(draft);
 }
 
 function templateSubtotal(template: EstimateTemplateRecord): number {
@@ -845,6 +786,19 @@ export function EstimateTemplatesClient({ templates }: { templates: EstimateTemp
                                             aria-label={`Template item ${
                                               lineNumberByItemId.get(item.id) ?? itemIndex + 1
                                             } quantity`}
+                                          />
+                                          <Input
+                                            value={item.unit}
+                                            onChange={(event) =>
+                                              updateItem(section.id, item.id, {
+                                                unit: event.target.value,
+                                              })
+                                            }
+                                            className={ebInput("mt-1 h-8 min-h-8 w-full px-2")}
+                                            aria-label={`Template item ${
+                                              lineNumberByItemId.get(item.id) ?? itemIndex + 1
+                                            } unit`}
+                                            placeholder="Unit"
                                           />
                                         </div>
                                         <div

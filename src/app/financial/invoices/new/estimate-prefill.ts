@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { allocateTaxInclusiveMilestoneToInvoice } from "@/lib/estimate-milestone-invoice-allocation";
 import { getServerSupabaseAdmin } from "@/lib/supabase-server";
 
 type EstimateRow = {
@@ -8,12 +9,20 @@ type EstimateRow = {
   client: string | null;
   project: string | null;
   customer_id: string | null;
+  status: string | null;
 };
 
 type EstimateMetaRow = {
   client_name: string | null;
   client_email: string | null;
   project_name: string | null;
+  tax: number | string | null;
+  discount: number | string | null;
+};
+
+type EstimateItemRow = {
+  qty: number | string | null;
+  unit_cost: number | string | null;
 };
 
 type ScheduleRow = {
@@ -24,6 +33,7 @@ type ScheduleRow = {
   amount: number | string | null;
   due_date: string | null;
   invoice_id: string | null;
+  status: string | null;
 };
 
 type ProjectRow = {
@@ -46,6 +56,10 @@ export type EstimateInvoicePrefill = {
   milestoneTitle: string;
   milestoneDescription: string;
   amount: number;
+  invoiceSubtotal: number;
+  invoiceTaxPct: number;
+  invoiceTaxAmount: number;
+  invoiceTotal: number;
   notes: string;
 };
 
@@ -151,39 +165,45 @@ async function resolveCustomerId(
 
 export async function getEstimateInvoicePrefill(
   estimateId: string,
-  paymentScheduleItemId: string
+  paymentScheduleItemId: string,
+  explicitClient?: SupabaseClient | null
 ): Promise<EstimateInvoicePrefillResult> {
   const safeEstimateId = estimateId.trim();
   const safeItemId = paymentScheduleItemId.trim();
   if (!safeEstimateId || !safeItemId) return { ok: false, error: "Missing estimate milestone." };
-  const db = getServerSupabaseAdmin();
+  const db = explicitClient ?? getServerSupabaseAdmin();
   if (!db) return { ok: false, error: "Server database connection is not configured." };
 
-  const [estimateRes, metaRes, scheduleRes] = await Promise.all([
+  const [estimateRes, metaRes, itemsRes, scheduleRes] = await Promise.all([
     db
       .from("estimates")
-      .select("id, number, client, project, customer_id")
+      .select("id, number, client, project, customer_id, status")
       .eq("id", safeEstimateId)
       .maybeSingle(),
     db
       .from("estimate_meta")
-      .select("client_name, client_email, project_name")
+      .select("client_name, client_email, project_name, tax, discount")
       .eq("estimate_id", safeEstimateId)
       .maybeSingle(),
+    db.from("estimate_items").select("qty, unit_cost").eq("estimate_id", safeEstimateId),
     db
       .from("estimate_payment_schedule_items")
-      .select("id, estimate_id, title, description, amount, due_date, invoice_id")
+      .select("id, estimate_id, title, description, amount, due_date, invoice_id, status")
       .eq("id", safeItemId)
       .eq("estimate_id", safeEstimateId)
       .maybeSingle(),
   ]);
 
   if (estimateRes.error || !estimateRes.data) return { ok: false, error: "Estimate not found." };
+  if (metaRes.error || !metaRes.data) {
+    return { ok: false, error: "Estimate financial details could not be loaded." };
+  }
+  if (itemsRes.error) return { ok: false, error: "Estimate line items could not be loaded." };
   if (scheduleRes.error || !scheduleRes.data)
     return { ok: false, error: "Payment milestone not found." };
 
   const estimate = estimateRes.data as EstimateRow;
-  const meta = (metaRes.data ?? null) as EstimateMetaRow | null;
+  const meta = metaRes.data as EstimateMetaRow;
   const schedule = scheduleRes.data as ScheduleRow;
   const existingInvoiceId = cleanText(schedule.invoice_id);
   if (existingInvoiceId) {
@@ -192,6 +212,15 @@ export async function getEstimateInvoicePrefill(
       error: "This payment milestone already has an invoice.",
       existingInvoiceId,
     };
+  }
+  if (!["Approved", "Converted"].includes(String(estimate.status))) {
+    return {
+      ok: false,
+      error: "Only Approved or Converted estimates can create milestone invoices.",
+    };
+  }
+  if (String(schedule.status ?? "draft") !== "draft") {
+    return { ok: false, error: "This payment milestone is not eligible for a new invoice." };
   }
 
   const project = await resolveProject(db, safeEstimateId, estimate, meta);
@@ -204,6 +233,25 @@ export async function getEstimateInvoicePrefill(
   const milestoneDescription = cleanText(schedule.description);
   const amount = roundMoney(schedule.amount);
   if (amount <= 0) return { ok: false, error: "Payment milestone amount must be greater than 0." };
+  const estimateSubtotal = ((itemsRes.data ?? []) as EstimateItemRow[]).reduce(
+    (sum, item) => sum + (Number(item.qty) || 0) * (Number(item.unit_cost) || 0),
+    0
+  );
+  let allocation;
+  try {
+    allocation = allocateTaxInclusiveMilestoneToInvoice({
+      milestoneAmount: amount,
+      estimateSubtotal,
+      estimateTax: meta.tax,
+      estimateDiscount: meta.discount,
+    });
+  } catch (error) {
+    return {
+      ok: false,
+      error:
+        error instanceof Error ? error.message : "Could not allocate milestone Invoice totals.",
+    };
+  }
 
   const estimateNumber = cleanText(estimate.number) || safeEstimateId;
   const customerName =
@@ -227,6 +275,10 @@ export async function getEstimateInvoicePrefill(
       milestoneTitle,
       milestoneDescription,
       amount,
+      invoiceSubtotal: allocation.subtotal,
+      invoiceTaxPct: allocation.taxPct,
+      invoiceTaxAmount: allocation.taxAmount,
+      invoiceTotal: allocation.total,
       notes: `Generated from Estimate ${estimateNumber}, Payment Schedule ${milestoneTitle}.`,
     },
   };

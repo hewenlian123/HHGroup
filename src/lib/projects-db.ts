@@ -328,8 +328,11 @@ export async function getProjectById(
 }
 
 /** Used to prevent duplicate convert-from-estimate: one estimate → one project. */
-export async function getProjectBySourceEstimateId(estimateId: string): Promise<Project | null> {
-  const c = client();
+export async function getProjectBySourceEstimateId(
+  estimateId: string,
+  explicitClient?: SupabaseClient
+): Promise<Project | null> {
+  const c = client(explicitClient);
   let r: ProjectRow | null = null;
   let error: { message?: string } | null = null;
   for (const cols of [COLS_WITH_CUSTOMER, COLS, COLS_BASE]) {

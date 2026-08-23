@@ -11,8 +11,18 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ChevronDown, FilePlus2, MoreVertical, Pencil, Trash2 } from "lucide-react";
+import {
+  ArrowLeft,
+  ChevronDown,
+  Copy,
+  FileClock,
+  FilePlus2,
+  MoreVertical,
+  Pencil,
+  Trash2,
+} from "lucide-react";
 import type { EstimateSaveStatus } from "../_components/estimate-builder-save-status";
+import type { EstimateRevisionContext } from "@/lib/estimates-db";
 import { cn } from "@/lib/utils";
 import {
   ESTIMATE_HEADER_BUTTON,
@@ -23,6 +33,7 @@ import {
 export function EstimateDetailHeader({
   estimateId,
   estimateNumber,
+  revisionContext,
   clientName,
   projectName,
   siteAddress,
@@ -36,17 +47,19 @@ export function EstimateDetailHeader({
   onSave,
   onSaveAndPreview,
   onPreview,
-  onCancel,
-  onMarkDraft,
+  onDone,
   onSend,
   onApprove,
   onReject,
   onConvertClick,
+  onCreateRevision,
+  onDuplicateClick,
   onSaveAsTemplateClick,
   onDeleteClick,
 }: {
   estimateId: string;
   estimateNumber: string;
+  revisionContext?: EstimateRevisionContext | null;
   clientName?: string;
   projectName?: string;
   siteAddress?: string;
@@ -60,39 +73,47 @@ export function EstimateDetailHeader({
   onSave: () => void;
   onSaveAndPreview: () => void;
   onPreview?: () => void;
-  onCancel: () => void;
-  onMarkDraft: () => void;
+  onDone: () => void;
   onSend: () => void;
   onApprove: () => void;
   onReject: () => void;
   /** Opens the Convert-to-Project setup drawer (no immediate convert). */
   onConvertClick?: () => void;
+  onCreateRevision?: () => void;
+  onDuplicateClick?: () => void;
   onSaveAsTemplateClick?: () => void;
   onDeleteClick: () => void;
 }): React.ReactElement {
   const canConvert = status === "Approved";
   const canSend = status === "Draft" && !editing;
+  const canDelete = status === "Draft";
+  const canCreateRevision =
+    Boolean(revisionContext?.isCurrent) &&
+    ["Approved", "Rejected", "Converted"].includes(status) &&
+    Boolean(onCreateRevision);
+  const revisionLabel = revisionContext
+    ? `${estimateNumber} Rev ${revisionContext.revisionNumber}`
+    : estimateNumber;
   const statusActions =
-    status === "Draft"
-      ? [{ label: "Mark as Draft", action: onMarkDraft, destructive: false }]
-      : status === "Sent"
-        ? [
-            { label: "Mark accepted", action: onApprove, destructive: false },
-            { label: "Mark declined", action: onReject, destructive: true },
-            { label: "Mark as Draft", action: onMarkDraft, destructive: false },
-          ]
-        : status === "Approved" || status === "Rejected"
-          ? [{ label: "Mark as Draft", action: onMarkDraft, destructive: false }]
-          : [];
+    status === "Sent"
+      ? [
+          { label: "Mark accepted", action: onApprove, destructive: false },
+          { label: "Mark declined", action: onReject, destructive: true },
+        ]
+      : [];
   const hasMobileSecondaryActions =
     canSend ||
     statusActions.length > 0 ||
     (canConvert && Boolean(onConvertClick)) ||
+    canCreateRevision ||
+    Boolean(revisionContext?.previousRevisionId) ||
+    Boolean(revisionContext && !revisionContext.isCurrent) ||
+    Boolean(onDuplicateClick) ||
     Boolean(onSaveAsTemplateClick);
 
   return (
     <EstimateWorkspaceCommandHeader
-      title={estimateNumber}
+      title={revisionLabel}
       status={status}
       context={[clientName, projectName, siteAddress]}
       saveStatus={editing ? saveStatus : "idle"}
@@ -138,10 +159,7 @@ export function EstimateDetailHeader({
             type="button"
             variant="outline"
             size="sm"
-            className={cn(
-              "min-h-11 whitespace-nowrap px-4 max-md:flex-1 lg:min-h-8",
-              ESTIMATE_HEADER_BUTTON
-            )}
+            className={cn("min-h-11 whitespace-nowrap px-4 max-md:flex-1", ESTIMATE_HEADER_BUTTON)}
             disabled={pending}
             asChild
           >
@@ -157,6 +175,37 @@ export function EstimateDetailHeader({
             </Link>
           </Button>
         )}
+        {!editing && revisionContext?.previousRevisionId ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className={cn(
+              "hidden min-h-11 whitespace-nowrap px-3 md:inline-flex lg:min-h-8",
+              ESTIMATE_HEADER_BUTTON
+            )}
+            asChild
+          >
+            <Link href={`/estimates/${revisionContext.previousRevisionId}`}>
+              <ArrowLeft className="mr-2 h-4 w-4" aria-hidden />
+              Previous revision
+            </Link>
+          </Button>
+        ) : null}
+        {!editing && revisionContext && !revisionContext.isCurrent ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className={cn(
+              "hidden min-h-11 whitespace-nowrap px-3 md:inline-flex lg:min-h-8",
+              ESTIMATE_HEADER_BUTTON
+            )}
+            asChild
+          >
+            <Link href={`/estimates/${revisionContext.currentRevisionId}`}>Current revision</Link>
+          </Button>
+        ) : null}
         {!editing ? (
           <>
             {!isLocked ? (
@@ -186,7 +235,7 @@ export function EstimateDetailHeader({
                 disabled={pending}
                 onClick={onSend}
               >
-                Send
+                Mark as Sent
               </Button>
             ) : null}
           </>
@@ -211,9 +260,9 @@ export function EstimateDetailHeader({
               size="sm"
               className={cn("min-h-11 whitespace-nowrap px-4 lg:min-h-8", ESTIMATE_HEADER_BUTTON)}
               disabled={pending}
-              onClick={onCancel}
+              onClick={onDone}
             >
-              Cancel
+              Done
             </Button>
           </div>
         )}
@@ -254,6 +303,24 @@ export function EstimateDetailHeader({
           </DropdownMenu>
         ) : null}
 
+        {!editing && canCreateRevision && onCreateRevision ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className={cn(
+              "hidden min-h-11 whitespace-nowrap px-4 md:inline-flex lg:min-h-8",
+              ESTIMATE_HEADER_BUTTON
+            )}
+            disabled={pending}
+            onClick={onCreateRevision}
+            data-testid="create-estimate-revision-action"
+          >
+            <FileClock className="mr-2 h-4 w-4" aria-hidden />
+            Create Revision
+          </Button>
+        ) : null}
+
         {!editing && canConvert && onConvertClick ? (
           <Button
             type="button"
@@ -270,7 +337,7 @@ export function EstimateDetailHeader({
           </Button>
         ) : null}
 
-        {!editing && onSaveAsTemplateClick ? (
+        {!editing && (onDuplicateClick || onSaveAsTemplateClick) ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -291,19 +358,31 @@ export function EstimateDetailHeader({
               align="end"
               className="min-w-[220px] rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md"
             >
-              <DropdownMenuItem
-                onSelect={onSaveAsTemplateClick}
-                className="rounded-sm focus:bg-muted focus:text-foreground"
-                data-testid="save-estimate-as-template-action"
-              >
-                <FilePlus2 className="mr-2 h-4 w-4" />
-                Save as Template
-              </DropdownMenuItem>
+              {onDuplicateClick ? (
+                <DropdownMenuItem
+                  onSelect={onDuplicateClick}
+                  className="rounded-sm focus:bg-muted focus:text-foreground"
+                  data-testid="duplicate-estimate-action"
+                >
+                  <Copy className="mr-2 h-4 w-4" />
+                  Duplicate as Draft
+                </DropdownMenuItem>
+              ) : null}
+              {onSaveAsTemplateClick ? (
+                <DropdownMenuItem
+                  onSelect={onSaveAsTemplateClick}
+                  className="rounded-sm focus:bg-muted focus:text-foreground"
+                  data-testid="save-estimate-as-template-action"
+                >
+                  <FilePlus2 className="mr-2 h-4 w-4" />
+                  Save as Template
+                </DropdownMenuItem>
+              ) : null}
             </DropdownMenuContent>
           </DropdownMenu>
         ) : null}
 
-        {!editing ? (
+        {!editing && canDelete ? (
           <Button
             type="button"
             variant="ghost"
@@ -344,7 +423,7 @@ export function EstimateDetailHeader({
                   onSelect={onSend}
                   className="min-h-11 rounded-sm focus:bg-muted focus:text-foreground"
                 >
-                  Send
+                  Mark as Sent
                 </DropdownMenuItem>
               ) : null}
               {statusActions.map((item) => (
@@ -367,6 +446,41 @@ export function EstimateDetailHeader({
                   Convert to Project
                 </DropdownMenuItem>
               ) : null}
+              {canCreateRevision && onCreateRevision ? (
+                <DropdownMenuItem
+                  onSelect={onCreateRevision}
+                  className="min-h-11 rounded-sm focus:bg-muted focus:text-foreground"
+                  data-testid="create-estimate-revision-action-mobile"
+                >
+                  <FileClock className="mr-2 h-4 w-4" aria-hidden />
+                  Create Revision
+                </DropdownMenuItem>
+              ) : null}
+              {revisionContext?.previousRevisionId ? (
+                <DropdownMenuItem asChild className="min-h-11 rounded-sm">
+                  <Link href={`/estimates/${revisionContext.previousRevisionId}`}>
+                    <ArrowLeft className="mr-2 h-4 w-4" aria-hidden />
+                    Previous revision
+                  </Link>
+                </DropdownMenuItem>
+              ) : null}
+              {revisionContext && !revisionContext.isCurrent ? (
+                <DropdownMenuItem asChild className="min-h-11 rounded-sm">
+                  <Link href={`/estimates/${revisionContext.currentRevisionId}`}>
+                    Current revision
+                  </Link>
+                </DropdownMenuItem>
+              ) : null}
+              {onDuplicateClick ? (
+                <DropdownMenuItem
+                  onSelect={onDuplicateClick}
+                  className="min-h-11 rounded-sm focus:bg-muted focus:text-foreground"
+                  data-testid="duplicate-estimate-action-mobile"
+                >
+                  <Copy className="mr-2 h-4 w-4" aria-hidden />
+                  Duplicate as Draft
+                </DropdownMenuItem>
+              ) : null}
               {onSaveAsTemplateClick ? (
                 <DropdownMenuItem
                   onSelect={onSaveAsTemplateClick}
@@ -377,14 +491,16 @@ export function EstimateDetailHeader({
                   Save as Template
                 </DropdownMenuItem>
               ) : null}
-              {hasMobileSecondaryActions ? <DropdownMenuSeparator /> : null}
-              <DropdownMenuItem
-                onSelect={onDeleteClick}
-                className="min-h-11 rounded-sm text-destructive focus:bg-muted focus:text-destructive"
-              >
-                <Trash2 className="mr-2 h-4 w-4" aria-hidden />
-                Delete estimate
-              </DropdownMenuItem>
+              {hasMobileSecondaryActions && canDelete ? <DropdownMenuSeparator /> : null}
+              {canDelete ? (
+                <DropdownMenuItem
+                  onSelect={onDeleteClick}
+                  className="min-h-11 rounded-sm text-destructive focus:bg-muted focus:text-destructive"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" aria-hidden />
+                  Delete estimate
+                </DropdownMenuItem>
+              ) : null}
             </DropdownMenuContent>
           </DropdownMenu>
         ) : null}

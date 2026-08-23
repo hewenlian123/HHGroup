@@ -407,7 +407,10 @@ function paginateScopeSections(
   const nextPage = () => {
     if (currentPage.length > 0) pages.push(currentPage);
     currentPage = [];
-    remaining = 50;
+    // Itemized rows include a Qty / Unit / Rate block beneath each amount. When the financial
+    // summary follows the final scope page, keep a small continuation-page reserve so the summary
+    // cannot encroach on the shared footer clearance at the exact 50-unit boundary.
+    remaining = preserveFinalSummarySpace ? 48 : 50;
   };
 
   for (const section of sections) {

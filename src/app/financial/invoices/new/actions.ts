@@ -3,6 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { requireSupabaseOwnerOrAdminServerActionWithClient } from "@/lib/auth-boundary";
 import { createServerSupabaseClient, getServerSupabaseAdmin } from "@/lib/supabase-server";
+import { getEstimateInvoicePrefill } from "./estimate-prefill";
+import {
+  estimateActivityActorFromAuth,
+  linkEstimateMilestoneInvoiceWithActivityWithClient,
+} from "@/lib/estimate-activity";
 
 function toNum(v: unknown): number {
   const n = typeof v === "number" ? v : Number(v);
@@ -12,6 +17,21 @@ function toNum(v: unknown): number {
 function isQuantityColumnUnsupported(error: { message?: string } | null): boolean {
   const message = error?.message ?? "";
   return /quantity/i.test(message) && /column|generated|schema cache|could not find/i.test(message);
+}
+
+async function removeRejectedEstimateInvoice(
+  db: Awaited<ReturnType<typeof createServerSupabaseClient>>,
+  invoiceId: string
+): Promise<void> {
+  if (!db) throw new Error("Draft Invoice cleanup is unavailable.");
+  const itemsDelete = await db.from("invoice_items").delete().eq("invoice_id", invoiceId);
+  if (itemsDelete.error) {
+    throw new Error("Draft Invoice cleanup failed after Estimate linkage was rejected.");
+  }
+  const invoiceDelete = await db.from("invoices").delete().eq("id", invoiceId);
+  if (invoiceDelete.error) {
+    throw new Error("Draft Invoice cleanup failed after Estimate linkage was rejected.");
+  }
 }
 
 export async function createInvoiceDraftAction(payload: {
@@ -53,16 +73,62 @@ export async function createInvoiceDraftAction(payload: {
     const admin = clientGuard.client;
     const supabase = admin ?? (await createServerSupabaseClient());
     if (!supabase) return { ok: false, error: "Supabase is not configured." };
+    const activityActor = estimateActivityActorFromAuth(clientGuard.context);
 
     const safeIssueDate = String(payload.issueDate ?? "").slice(0, 10);
     const safeDueDate = String(payload.dueDate ?? "").slice(0, 10);
     const customerId = payload.customerId?.trim() || null;
     const sourceEstimateId = payload.sourceEstimateId?.trim() || "";
     const paymentScheduleItemId = payload.paymentScheduleItemId?.trim() || "";
-    const subtotal = items.reduce((s, l) => s + Math.max(0, l.qty) * Math.max(0, l.unitPrice), 0);
-    const taxPct = toNum(payload.taxPct ?? 0);
-    const taxAmount = Math.round(subtotal * (taxPct / 100) * 100) / 100;
-    const total = subtotal + taxAmount;
+    let subtotal = items.reduce((s, l) => s + Math.max(0, l.qty) * Math.max(0, l.unitPrice), 0);
+    let taxPct = toNum(payload.taxPct ?? 0);
+    let taxAmount = Math.round(subtotal * (taxPct / 100) * 100) / 100;
+    let total = subtotal + taxAmount;
+
+    if (Boolean(sourceEstimateId) !== Boolean(paymentScheduleItemId)) {
+      return { ok: false, error: "Both source estimate and payment milestone are required." };
+    }
+    if (sourceEstimateId && paymentScheduleItemId) {
+      const source = await getEstimateInvoicePrefill(
+        sourceEstimateId,
+        paymentScheduleItemId,
+        supabase
+      );
+      if (!source.ok) {
+        if (source.existingInvoiceId) {
+          return { ok: true, invoiceId: source.existingInvoiceId };
+        }
+        return { ok: false, error: source.error };
+      }
+      if (projectId !== source.prefill.projectId) {
+        return { ok: false, error: "Invoice project must match the estimate milestone project." };
+      }
+      if (!customerId || customerId !== source.prefill.customerId) {
+        return { ok: false, error: "Invoice customer must match the estimate milestone customer." };
+      }
+      const roundedSubtotal = Math.round(subtotal * 100) / 100;
+      const roundedTotal = Math.round(total * 100) / 100;
+      if (
+        roundedSubtotal !== source.prefill.invoiceSubtotal ||
+        Math.abs(taxPct - source.prefill.invoiceTaxPct) > 0.000001 ||
+        roundedTotal !== source.prefill.invoiceTotal
+      ) {
+        return {
+          ok: false,
+          error: `Invoice financial breakdown must match the authoritative ${source.prefill.amount.toLocaleString(
+            "en-US",
+            {
+              style: "currency",
+              currency: "USD",
+            }
+          )} milestone total.`,
+        };
+      }
+      subtotal = source.prefill.invoiceSubtotal;
+      taxPct = source.prefill.invoiceTaxPct;
+      taxAmount = source.prefill.invoiceTaxAmount;
+      total = source.prefill.invoiceTotal;
+    }
 
     const customInvoiceNo = payload.invoiceNo?.trim();
     let invoiceNo = customInvoiceNo ?? "";
@@ -126,31 +192,34 @@ export async function createInvoiceDraftAction(payload: {
     }
 
     if (sourceEstimateId && paymentScheduleItemId) {
-      const { data: linked, error: linkErr } = await supabase
-        .from("estimate_payment_schedule_items")
-        .update({ invoice_id: invoiceId, status: "invoiced" })
-        .eq("id", paymentScheduleItemId)
-        .eq("estimate_id", sourceEstimateId)
-        .is("invoice_id", null)
-        .select("id, invoice_id")
-        .maybeSingle();
-      if (linkErr) {
-        await supabase.from("invoice_items").delete().eq("invoice_id", invoiceId);
-        await supabase.from("invoices").delete().eq("id", invoiceId);
-        return { ok: false, error: linkErr.message ?? "Failed to link estimate milestone." };
+      let linked: { invoiceId: string; linked: boolean };
+      try {
+        linked = await linkEstimateMilestoneInvoiceWithActivityWithClient(supabase, {
+          estimateId: sourceEstimateId,
+          scheduleItemId: paymentScheduleItemId,
+          invoiceId,
+          actor: activityActor,
+        });
+      } catch (error) {
+        try {
+          await removeRejectedEstimateInvoice(supabase, invoiceId);
+        } catch (cleanupError) {
+          return {
+            ok: false,
+            error:
+              cleanupError instanceof Error
+                ? cleanupError.message
+                : "Draft Invoice cleanup failed after Estimate linkage was rejected.",
+          };
+        }
+        return {
+          ok: false,
+          error: error instanceof Error ? error.message : "Failed to link estimate milestone.",
+        };
       }
-      if (!linked?.invoice_id) {
-        const { data: current } = await supabase
-          .from("estimate_payment_schedule_items")
-          .select("invoice_id")
-          .eq("id", paymentScheduleItemId)
-          .eq("estimate_id", sourceEstimateId)
-          .maybeSingle();
-        await supabase.from("invoice_items").delete().eq("invoice_id", invoiceId);
-        await supabase.from("invoices").delete().eq("id", invoiceId);
-        const existingInvoiceId = String(
-          (current as { invoice_id?: string | null } | null)?.invoice_id ?? ""
-        ).trim();
+      if (!linked.linked) {
+        await removeRejectedEstimateInvoice(supabase, invoiceId);
+        const existingInvoiceId = linked.invoiceId.trim();
         if (existingInvoiceId) {
           revalidatePath(`/estimates/${sourceEstimateId}`);
           revalidatePath(`/financial/invoices/${existingInvoiceId}`);

@@ -7,6 +7,7 @@ import {
   getEstimateSummaryFromRecords,
   getPaymentSchedule,
   getCostCodes,
+  getEstimateRevisionContext,
 } from "@/lib/data";
 import { EstimatePreviewContent } from "./estimate-preview-content";
 import { EstimatePreviewShell } from "./estimate-preview-shell";
@@ -32,7 +33,7 @@ export default async function EstimatePreviewPage({
   const previewSearchParams = await searchParams;
   const readClient = getServerSupabaseInternalNoStore();
 
-  const [estimate, meta, items, categories, paymentSchedule, costCodes, company] =
+  const [estimate, meta, items, categories, paymentSchedule, costCodes, company, revisionContext] =
     await Promise.all([
       getEstimateHeaderById(id, readClient),
       getEstimateMeta(id, readClient),
@@ -41,9 +42,10 @@ export default async function EstimatePreviewPage({
       getPaymentSchedule(id, readClient),
       getCostCodes(),
       fetchDocumentCompanyProfile(),
+      readClient ? getEstimateRevisionContext(id, readClient).catch(() => null) : null,
     ]);
 
-  if (!estimate || !meta) redirect("/estimates");
+  if (!estimate || !meta || !revisionContext) redirect("/estimates");
   const resolvedSummary = getEstimateSummaryFromRecords(meta, items);
 
   const categoryList = categories;
@@ -61,22 +63,24 @@ export default async function EstimatePreviewPage({
   const returnHref = buildEstimateDetailReturnHref(id, returnContext);
   const previewHref = buildEstimatePreviewHref(id, returnContext);
   const hiddenAmountCount = items.filter((item) => item.hideAmountOnPdf).length;
+  const revisionLabel = `${estimate.number} Rev ${revisionContext.revisionNumber}`;
 
   return (
     <div className="page-container page-shell-document estimate-preview-page-shell py-0">
-      <SetBreadcrumbEntityTitle label={estimate.number} />
+      <SetBreadcrumbEntityTitle label={revisionLabel} />
       <EstimatePreviewShell
         estimateId={id}
-        estimateNumber={estimate.number}
+        estimateNumber={revisionLabel}
         documentStyle={meta.documentStyle}
         hiddenAmountCount={hiddenAmountCount}
         returnHref={returnHref}
         previewHref={previewHref}
+        revisionContext={revisionContext}
       >
         <EstimatePreviewContent
           company={company}
           estimate={{
-            number: estimate.number,
+            number: revisionLabel,
             status: estimate.status,
             updatedAt: estimate.updatedAt,
           }}

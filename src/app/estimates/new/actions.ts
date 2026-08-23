@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { revalidateEstimatePaths } from "@/app/estimates/revalidate-estimate-paths";
 import { requireSupabaseOwnerOrAdminServerAction } from "@/lib/auth-boundary";
 import { createEstimateWithItemsWithClient, type EstimateLineItemStatus } from "@/lib/estimates-db";
+import { estimateActivityActorFromAuth } from "@/lib/estimate-activity";
 import { getServerSupabaseAdmin } from "@/lib/supabase-server";
 import type { EstimateNoteBlock } from "@/lib/estimate-notes";
 
@@ -129,6 +130,7 @@ export async function createEstimateWithItemsAction(
         sortOrder: i.sortOrder,
       })),
       paymentSchedule: payload.paymentSchedule?.length ? payload.paymentSchedule : undefined,
+      activityActor: estimateActivityActorFromAuth(auth.context),
     });
 
     revalidatePath("/estimates");

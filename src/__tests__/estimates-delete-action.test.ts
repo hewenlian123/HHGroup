@@ -29,15 +29,25 @@ describe("deleteEstimateAction", () => {
     postDeleteData,
     postDeleteError = null,
     childDeleteErrors = {},
+    status = "Draft",
+    projectDependencies = [],
+    snapshotDependencies = [],
+    scheduleDependencies = [],
   }: {
     deleteData: Array<{ id: string }> | null;
     deleteError?: { message: string; code?: string } | null;
     postDeleteData: { id: string } | null;
     postDeleteError?: { message: string; code?: string } | null;
     childDeleteErrors?: Record<string, { message: string; code?: string }>;
+    status?: string;
+    projectDependencies?: Array<Record<string, unknown>>;
+    snapshotDependencies?: Array<Record<string, unknown>>;
+    scheduleDependencies?: Array<Record<string, unknown>>;
   }) {
-    const buildDeleteResult = (table: string) => ({
-      delete: vi.fn(() => ({
+    const estimateId = deleteData?.[0]?.id ?? postDeleteData?.id ?? "estimate-test";
+    const deleteByTable: Record<string, ReturnType<typeof vi.fn>> = {};
+    const buildDeleteResult = (table: string) => {
+      const deleteFn = vi.fn(() => ({
         eq: vi.fn(() => ({
           select: vi.fn(() => ({
             abortSignal: vi
@@ -49,25 +59,51 @@ describe("deleteEstimateAction", () => {
               ),
           })),
         })),
-      })),
-    });
+      }));
+      deleteByTable[table] = deleteFn;
+      return { delete: deleteFn };
+    };
     const buildEstimateResult = () => ({
       ...buildDeleteResult("estimates"),
-      select: vi.fn(() => ({
+      select: vi.fn((columns: string) => ({
         eq: vi.fn(() => ({
           abortSignal: vi.fn(() => ({
             maybeSingle: vi
               .fn()
-              .mockResolvedValue({ data: postDeleteData, error: postDeleteError }),
+              .mockResolvedValue(
+                columns.includes("status")
+                  ? { data: { id: estimateId, status }, error: null }
+                  : { data: postDeleteData, error: postDeleteError }
+              ),
           })),
         })),
       })),
     });
-    const from = vi.fn((table: string) =>
-      table === "estimates" ? buildEstimateResult() : buildDeleteResult(table)
-    );
+    const from = vi.fn((table: string) => {
+      if (table === "estimates") return buildEstimateResult();
+      const deleteResult = buildDeleteResult(table);
+      const dependencyData =
+        table === "projects"
+          ? projectDependencies
+          : table === "estimate_snapshots"
+            ? snapshotDependencies
+            : table === "estimate_payment_schedule_items"
+              ? scheduleDependencies
+              : [];
+      return {
+        ...deleteResult,
+        select: vi.fn(() => ({
+          eq: vi.fn(() => ({
+            limit: vi.fn(() => ({
+              abortSignal: vi.fn().mockResolvedValue({ data: dependencyData, error: null }),
+            })),
+            abortSignal: vi.fn().mockResolvedValue({ data: dependencyData, error: null }),
+          })),
+        })),
+      };
+    });
     getServerSupabaseAdminMock.mockReturnValue({ from });
-    return { from };
+    return { from, deleteByTable };
   }
 
   it("does not report success when no estimate row was deleted", async () => {
@@ -137,7 +173,7 @@ describe("deleteEstimateAction", () => {
 
   it("does not delete the estimate when related row cleanup fails", async () => {
     const estimateId = "33333333-3333-3333-3333-333333333333";
-    const { from } = mockDeleteFlow({
+    const { deleteByTable } = mockDeleteFlow({
       deleteData: [{ id: estimateId }],
       postDeleteData: null,
       childDeleteErrors: {
@@ -153,7 +189,84 @@ describe("deleteEstimateAction", () => {
 
     expect(result.ok).toBe(false);
     expect(result.error).toBe("Database operation failed.");
-    expect(from).not.toHaveBeenCalledWith("estimates");
+    expect(deleteByTable.estimates).not.toHaveBeenCalled();
     expect(revalidatePathMock).not.toHaveBeenCalled();
+  });
+
+  it("does not delete any rows when the estimate is Approved", async () => {
+    const { deleteByTable } = mockDeleteFlow({
+      deleteData: [{ id: "approved-1" }],
+      postDeleteData: { id: "approved-1" },
+      status: "Approved",
+    });
+
+    const { deleteEstimateAction } = await import("@/app/estimates/actions");
+    const formData = new FormData();
+    formData.set("estimateId", "approved-1");
+
+    const result = await deleteEstimateAction(formData);
+
+    expect(result.ok).toBe(false);
+    expect(result.error).toMatch(/approved estimates.*cannot be deleted/i);
+    expect(Object.values(deleteByTable).every((deleteFn) => !deleteFn.mock.calls.length)).toBe(
+      true
+    );
+  });
+
+  it.each(["Sent", "Rejected", "Converted"])(
+    "blocks hard delete for a %s estimate",
+    async (status) => {
+      const { deleteByTable } = mockDeleteFlow({
+        deleteData: [{ id: "protected-1" }],
+        postDeleteData: { id: "protected-1" },
+        status,
+      });
+      const { deleteEstimateAction } = await import("@/app/estimates/actions");
+      const formData = new FormData();
+      formData.set("estimateId", "protected-1");
+
+      const result = await deleteEstimateAction(formData);
+
+      expect(result.error).toContain(`${status} estimates cannot be deleted`);
+      expect(Object.values(deleteByTable).every((deleteFn) => !deleteFn.mock.calls.length)).toBe(
+        true
+      );
+    }
+  );
+
+  it.each([
+    {
+      label: "linked project",
+      options: { projectDependencies: [{ id: "project-1" }] },
+      message: /linked to a project/i,
+    },
+    {
+      label: "protected snapshot history",
+      options: { snapshotDependencies: [{ id: "snapshot-1" }] },
+      message: /protected version history/i,
+    },
+    {
+      label: "invoiced payment milestone",
+      options: {
+        scheduleDependencies: [{ id: "milestone-1", status: "invoiced", invoice_id: "invoice-1" }],
+      },
+      message: /invoiced or paid payment milestone/i,
+    },
+  ])("blocks a Draft estimate with $label", async ({ options, message }) => {
+    const { deleteByTable } = mockDeleteFlow({
+      deleteData: [{ id: "draft-protected-1" }],
+      postDeleteData: { id: "draft-protected-1" },
+      ...options,
+    });
+    const { deleteEstimateAction } = await import("@/app/estimates/actions");
+    const formData = new FormData();
+    formData.set("estimateId", "draft-protected-1");
+
+    const result = await deleteEstimateAction(formData);
+
+    expect(result.error).toMatch(message);
+    expect(Object.values(deleteByTable).every((deleteFn) => !deleteFn.mock.calls.length)).toBe(
+      true
+    );
   });
 });

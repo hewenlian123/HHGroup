@@ -148,7 +148,7 @@ test("New Estimate is the unsaved state of the Existing Estimate workspace", asy
     await expect(existingHeader.getByRole("button", { name: "Edit details" })).toBeVisible();
     await expect(existingHeader.getByRole("button", { name: "Save & Preview" })).toBeVisible();
     await expect(existingHeader.getByRole("button", { name: "Save", exact: true })).toBeVisible();
-    await expect(existingHeader.getByRole("button", { name: "Cancel", exact: true })).toBeVisible();
+    await expect(existingHeader.getByRole("button", { name: "Done", exact: true })).toBeVisible();
     const savedDescription = page.getByLabel("Line item description").locator("visible=true");
     await expect(savedDescription).toContainText(lineDescription);
     await expect

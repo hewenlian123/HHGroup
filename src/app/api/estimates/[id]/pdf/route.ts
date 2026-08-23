@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
 import { estimatePrintPdfFilename, generateEstimatePrintPdfBuffer } from "@/lib/estimate-print-pdf";
 import { resolveServerAppOrigin } from "@/lib/server-app-origin";
-import { getEstimateHeaderById } from "@/lib/data";
+import { getEstimateHeaderById, getEstimateRevisionContext } from "@/lib/data";
 import { getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
@@ -24,9 +24,18 @@ export async function GET(
   }
 
   const readClient = getServerSupabaseInternalNoStore();
-  const estimate = await getEstimateHeaderById(estimateId, readClient);
+  const [estimate, revisionContext] = await Promise.all([
+    getEstimateHeaderById(estimateId, readClient),
+    readClient ? getEstimateRevisionContext(estimateId, readClient).catch(() => null) : null,
+  ]);
   if (!estimate) {
     return NextResponse.json({ ok: false, message: "Estimate not found" }, { status: 404 });
+  }
+  if (!revisionContext) {
+    return NextResponse.json(
+      { ok: false, message: "Estimate revision identity is unavailable." },
+      { status: 409 }
+    );
   }
 
   try {
@@ -38,7 +47,9 @@ export async function GET(
       cookieHeader,
     });
 
-    const filename = estimatePrintPdfFilename(estimate.number);
+    const filename = estimatePrintPdfFilename(
+      `${estimate.number} Rev ${revisionContext.revisionNumber}`
+    );
 
     return new NextResponse(new Uint8Array(pdfBuffer), {
       status: 200,

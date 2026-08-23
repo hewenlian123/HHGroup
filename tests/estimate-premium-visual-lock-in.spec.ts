@@ -397,8 +397,8 @@ for (const viewport of [
       }
 
       await more.click();
-      await expect(page.getByRole("menuitem", { name: "Send", exact: true })).toBeVisible();
-      await expect(page.getByRole("menuitem", { name: "Mark as Draft" })).toBeVisible();
+      await expect(page.getByRole("menuitem", { name: "Mark as Sent", exact: true })).toBeVisible();
+      await expect(page.getByRole("menuitem", { name: "Mark as Draft" })).toHaveCount(0);
       await expect(page.getByRole("menuitem", { name: "Save as Template" })).toBeVisible();
       await expect(page.getByRole("menuitem", { name: "Delete estimate" })).toBeVisible();
       await page.keyboard.press("Escape");

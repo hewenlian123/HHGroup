@@ -13,6 +13,7 @@ import { DocumentCompanyHeader } from "@/components/documents/document-company-h
 import { ServerDataLoadFallback } from "@/components/server-data-load-fallback";
 import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
 import { SetBreadcrumbEntityTitle } from "@/components/layout/set-breadcrumb-entity-title";
+import { createServerSupabaseClient } from "@/lib/supabase-server";
 
 export default async function EstimateSnapshotPage({
   params,
@@ -20,9 +21,11 @@ export default async function EstimateSnapshotPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const readClient = await createServerSupabaseClient();
+  if (!readClient) notFound();
   let estimate: Awaited<ReturnType<typeof getEstimateById>> | null = null;
   try {
-    estimate = await getEstimateById(id);
+    estimate = await getEstimateById(id, readClient);
   } catch (e) {
     logServerPageDataError(`estimates/${id}/snapshot`, e);
     return (
@@ -41,9 +44,9 @@ export default async function EstimateSnapshotPage({
   let company: Awaited<ReturnType<typeof fetchDocumentCompanyProfile>>;
   try {
     [meta, items, categories, company] = await Promise.all([
-      getEstimateMeta(id),
-      getEstimateItems(id),
-      getEstimateCategories(id),
+      getEstimateMeta(id, readClient),
+      getEstimateItems(id, readClient),
+      getEstimateCategories(id, readClient),
       fetchDocumentCompanyProfile(),
     ]);
   } catch (e) {

@@ -39,6 +39,24 @@ export type EstimateTemplateRecord = {
   updatedAt: string;
 };
 
+export type EstimateTemplateDraftItem = EstimateTemplateLineItem & { id: string };
+
+export type EstimateTemplateDraftSection = Omit<EstimateTemplateSection, "items"> & {
+  id: string;
+  items: EstimateTemplateDraftItem[];
+};
+
+export type EstimateTemplateDraft = {
+  id?: string;
+  name: string;
+  description: string;
+  category: string;
+  defaultTaxRate: string;
+  defaultTerms: string;
+  sections: EstimateTemplateDraftSection[];
+  notes: EstimateNoteBlock[];
+};
+
 const NOTE_TYPES = new Set<EstimateNoteType>([
   "exclusions",
   "assumptions",
@@ -100,6 +118,56 @@ export function normalizeEstimateTemplateData(input: unknown): EstimateTemplateD
     sections,
     ...(notes.length ? { notes } : {}),
   };
+}
+
+export function estimateTemplateDraftFromRecord(
+  template: EstimateTemplateRecord,
+  makeId: (prefix: string) => string
+): EstimateTemplateDraft {
+  return {
+    id: template.id,
+    name: template.name,
+    description: template.description,
+    category: template.category,
+    defaultTaxRate: template.defaultTaxRate == null ? "" : String(template.defaultTaxRate),
+    defaultTerms: template.defaultTerms ?? "",
+    sections: template.templateData.sections.map((section) => ({
+      id: makeId("template-section"),
+      title: section.title,
+      costCode: section.costCode,
+      items: section.items.map((item) => ({
+        id: makeId("template-item"),
+        ...item,
+      })),
+    })),
+    notes: template.templateData.notes?.map((note) => ({ ...note })) ?? [],
+  };
+}
+
+export function estimateTemplateDataFromDraft(
+  draft: Pick<EstimateTemplateDraft, "sections" | "notes">
+): EstimateTemplateData {
+  return normalizeEstimateTemplateData({
+    version: 1,
+    sections: draft.sections
+      .map((section) => ({
+        title: section.title.trim(),
+        costCode: section.costCode,
+        items: section.items
+          .map((item) => ({
+            title: item.title.trim() || "Line item",
+            description: item.description.trim(),
+            qty: Number.isFinite(item.qty) ? item.qty : 0,
+            unit: item.unit.trim() || "EA",
+            unitPrice: Number.isFinite(item.unitPrice) ? item.unitPrice : 0,
+            status: item.status,
+            hideAmountOnPdf: Boolean(item.hideAmountOnPdf),
+          }))
+          .filter((item) => item.title || item.description),
+      }))
+      .filter((section) => section.title && section.items.length > 0),
+    notes: draft.notes,
+  });
 }
 
 export function splitEstimateTemplateItemDescription(desc: string): {

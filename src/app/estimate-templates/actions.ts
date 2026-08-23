@@ -10,6 +10,8 @@ import {
   updateEstimateTemplate,
 } from "@/lib/estimate-templates-db";
 import { normalizeEstimateTemplateData } from "@/lib/estimate-templates";
+import { requireSupabaseOwnerOrAdminServerActionWithClient } from "@/lib/auth-boundary";
+import { getServerSupabaseAdmin } from "@/lib/supabase-server";
 
 export type EstimateTemplateActionResult = {
   ok: boolean;
@@ -62,7 +64,9 @@ export async function createEstimateTemplateAction(
   formData: FormData
 ): Promise<EstimateTemplateActionResult> {
   try {
-    const created = await createEstimateTemplate(templateInputFromForm(formData));
+    const guard = await requireSupabaseOwnerOrAdminServerActionWithClient(getServerSupabaseAdmin);
+    if (!guard.ok) return { ok: false, error: guard.error };
+    const created = await createEstimateTemplate(templateInputFromForm(formData), guard.client);
     revalidateTemplates();
     return { ok: true, id: created.id };
   } catch (error) {
@@ -74,8 +78,10 @@ export async function updateEstimateTemplateAction(
   formData: FormData
 ): Promise<EstimateTemplateActionResult> {
   try {
+    const guard = await requireSupabaseOwnerOrAdminServerActionWithClient(getServerSupabaseAdmin);
+    if (!guard.ok) return { ok: false, error: guard.error };
     const id = String(formData.get("templateId") ?? "");
-    const updated = await updateEstimateTemplate(id, templateInputFromForm(formData));
+    const updated = await updateEstimateTemplate(id, templateInputFromForm(formData), guard.client);
     revalidateTemplates();
     return { ok: true, id: updated.id };
   } catch (error) {
@@ -87,7 +93,9 @@ export async function duplicateEstimateTemplateAction(
   templateId: string
 ): Promise<EstimateTemplateActionResult> {
   try {
-    const duplicated = await duplicateEstimateTemplate(templateId);
+    const guard = await requireSupabaseOwnerOrAdminServerActionWithClient(getServerSupabaseAdmin);
+    if (!guard.ok) return { ok: false, error: guard.error };
+    const duplicated = await duplicateEstimateTemplate(templateId, guard.client);
     revalidateTemplates();
     return { ok: true, id: duplicated.id };
   } catch (error) {
@@ -100,7 +108,9 @@ export async function archiveEstimateTemplateAction(
   archived: boolean
 ): Promise<EstimateTemplateActionResult> {
   try {
-    await archiveEstimateTemplate(templateId, archived);
+    const guard = await requireSupabaseOwnerOrAdminServerActionWithClient(getServerSupabaseAdmin);
+    if (!guard.ok) return { ok: false, error: guard.error };
+    await archiveEstimateTemplate(templateId, archived, guard.client);
     revalidateTemplates();
     return { ok: true, id: templateId };
   } catch (error) {
@@ -112,7 +122,9 @@ export async function deleteEstimateTemplateAction(
   templateId: string
 ): Promise<EstimateTemplateActionResult> {
   try {
-    await deleteEstimateTemplate(templateId);
+    const guard = await requireSupabaseOwnerOrAdminServerActionWithClient(getServerSupabaseAdmin);
+    if (!guard.ok) return { ok: false, error: guard.error };
+    await deleteEstimateTemplate(templateId, guard.client);
     revalidateTemplates();
     return { ok: true, id: templateId };
   } catch (error) {
@@ -124,14 +136,20 @@ export async function saveEstimateAsTemplateAction(
   formData: FormData
 ): Promise<EstimateTemplateActionResult> {
   try {
+    const guard = await requireSupabaseOwnerOrAdminServerActionWithClient(getServerSupabaseAdmin);
+    if (!guard.ok) return { ok: false, error: guard.error };
     const estimateId = String(formData.get("estimateId") ?? "");
-    const created = await createEstimateTemplateFromEstimate(estimateId, {
-      name: String(formData.get("name") ?? ""),
-      description: String(formData.get("description") ?? ""),
-      category: String(formData.get("category") ?? ""),
-      defaultTaxRate: optionalNumber(formData.get("defaultTaxRate")),
-      defaultTerms: String(formData.get("defaultTerms") ?? ""),
-    });
+    const created = await createEstimateTemplateFromEstimate(
+      estimateId,
+      {
+        name: String(formData.get("name") ?? ""),
+        description: String(formData.get("description") ?? ""),
+        category: String(formData.get("category") ?? ""),
+        defaultTaxRate: optionalNumber(formData.get("defaultTaxRate")),
+        defaultTerms: String(formData.get("defaultTerms") ?? ""),
+      },
+      guard.client
+    );
     revalidateTemplates();
     return { ok: true, id: created.id };
   } catch (error) {

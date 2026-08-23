@@ -25,6 +25,10 @@ function estimateStatusMeta(status: string): { label: string; variant: StatusBad
   return { label: status || "Unknown", variant: "default" };
 }
 
+function estimateRevisionLabel(row: EstimateListItem): string {
+  return `${row.number} Rev ${row.revisionNumber ?? 0}`;
+}
+
 function EstimateListStatus({ status }: { status: string }) {
   const meta = estimateStatusMeta(status);
   return (
@@ -39,9 +43,11 @@ function EstimateListStatus({ status }: { status: string }) {
 export function EstimateMobileList({
   list,
   onRequestDelete,
+  onCopyPrevious,
 }: {
   list: EstimateListItem[];
   onRequestDelete: (row: EstimateListItem) => void;
+  onCopyPrevious: (row: EstimateListItem) => void;
 }) {
   return (
     <div
@@ -49,7 +55,12 @@ export function EstimateMobileList({
       className="estimate-list-mobile-grid grid gap-2 lg:hidden"
     >
       {list.map((row) => (
-        <EstimateListRowMobile key={row.id} row={row} onRequestDelete={onRequestDelete} />
+        <EstimateListRowMobile
+          key={row.id}
+          row={row}
+          onRequestDelete={onRequestDelete}
+          onCopyPrevious={onCopyPrevious}
+        />
       ))}
     </div>
   );
@@ -58,11 +69,14 @@ export function EstimateMobileList({
 const EstimateListRowMobile = memo(function EstimateListRowMobile({
   row,
   onRequestDelete,
+  onCopyPrevious,
 }: {
   row: EstimateListItem;
   onRequestDelete: (row: EstimateListItem) => void;
+  onCopyPrevious: (row: EstimateListItem) => void;
 }) {
   const href = `/estimates/${row.id}`;
+  const revisionLabel = estimateRevisionLabel(row);
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -73,7 +87,9 @@ const EstimateListRowMobile = memo(function EstimateListRowMobile({
         className="estimate-list-mobile-link min-w-0 flex-1 rounded-hh-compact text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)]"
       >
         <div className="flex min-w-0 items-baseline justify-between gap-3">
-          <p className="text-hh-body-strong truncate text-[var(--hh-text-primary)]">{row.number}</p>
+          <p className="text-hh-body-strong truncate text-[var(--hh-text-primary)]">
+            {revisionLabel}
+          </p>
           <NeoAmount className="hh-fin shrink-0">{formatEstimateCurrency(row.total)}</NeoAmount>
         </div>
         <div className="mt-1.5 min-w-0">
@@ -101,11 +117,20 @@ const EstimateListRowMobile = memo(function EstimateListRowMobile({
         actions={[
           { label: "View", onClick: () => startTransition(() => router.push(href)) },
           {
-            label: "Delete",
-            onClick: () => onRequestDelete(row),
-            destructive: true,
+            label: "Copy Previous as Draft",
+            onClick: () => onCopyPrevious(row),
             disabled: isPending,
           },
+          ...(row.status === "Draft"
+            ? [
+                {
+                  label: "Delete",
+                  onClick: () => onRequestDelete(row),
+                  destructive: true,
+                  disabled: isPending,
+                },
+              ]
+            : []),
         ]}
       />
     </NeoMobileCard>
@@ -115,11 +140,14 @@ const EstimateListRowMobile = memo(function EstimateListRowMobile({
 export const EstimateListRow = memo(function EstimateListRow({
   row,
   onRequestDelete,
+  onCopyPrevious,
 }: {
   row: EstimateListItem;
   onRequestDelete: (row: EstimateListItem) => void;
+  onCopyPrevious: (row: EstimateListItem) => void;
 }) {
   const href = `/estimates/${row.id}`;
+  const revisionLabel = estimateRevisionLabel(row);
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -134,7 +162,12 @@ export const EstimateListRow = memo(function EstimateListRow({
           className="estimate-list-number-link block w-full text-[var(--hh-text-primary)] transition-colors duration-150 hover:text-[var(--hh-text-strong)] focus:text-[var(--hh-text-strong)] focus:outline-none focus-visible:underline focus-visible:underline-offset-2"
           onClick={(e) => e.stopPropagation()}
         >
-          {row.number}
+          {revisionLabel}
+          {row.isCurrentRevision === false ? (
+            <span className="ml-2 text-hh-status font-normal text-[var(--hh-text-tertiary)]">
+              Historical
+            </span>
+          ) : null}
         </Link>
       </td>
       <td className={cn(tableRawTdClass, "estimate-list-col-client")}>
@@ -181,11 +214,20 @@ export const EstimateListRow = memo(function EstimateListRow({
           actions={[
             { label: "View", onClick: () => startTransition(() => router.push(href)) },
             {
-              label: "Delete",
-              onClick: () => onRequestDelete(row),
-              destructive: true,
+              label: "Copy Previous as Draft",
+              onClick: () => onCopyPrevious(row),
               disabled: isPending,
             },
+            ...(row.status === "Draft"
+              ? [
+                  {
+                    label: "Delete",
+                    onClick: () => onRequestDelete(row),
+                    destructive: true,
+                    disabled: isPending,
+                  },
+                ]
+              : []),
           ]}
         />
       </td>

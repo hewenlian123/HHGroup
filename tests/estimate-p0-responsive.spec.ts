@@ -102,7 +102,13 @@ for (const viewport of VIEWPORTS) {
     await expect(page.getByTestId("estimate-detail-header")).toBeVisible({ timeout: 30_000 });
     await page.getByRole("button", { name: "Edit", exact: true }).click();
     await expect(page.getByRole("button", { name: "Save & Preview" }).first()).toBeVisible();
-    await expect(page.getByRole("button", { name: "Drag to reorder line item" })).toHaveCount(0);
+    if (viewport.width >= 1024) {
+      await expect(
+        page.getByRole("button", { name: /Drag to reorder line item/ }).first()
+      ).toBeVisible();
+    } else {
+      await expect(page.getByRole("button", { name: /Drag to reorder line item/ })).toHaveCount(0);
+    }
     await expectNoHorizontalOverflow(page);
     await capture(page, testInfo, `${viewport.name}-existing-estimate`);
   });

@@ -102,6 +102,6 @@ test.describe("Estimate wide-screen layout", () => {
     expect(boxes[0]?.width ?? 0).toBeGreaterThan(400);
     expect(boxes[1]?.width ?? 0).toBeLessThanOrEqual(224);
 
-    await page.getByRole("button", { name: "Cancel", exact: true }).first().click();
+    await page.getByRole("button", { name: "Done", exact: true }).first().click();
   });
 });

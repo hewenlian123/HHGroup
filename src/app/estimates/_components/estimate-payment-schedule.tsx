@@ -7,6 +7,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/toast/toast-provider";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Sheet,
   SheetContent,
   SheetDescription,
@@ -43,8 +51,12 @@ type UpdateAction = (formData: FormData) => Promise<MutationResult>;
 type DeleteAction = (formData: FormData) => Promise<MutationResult>;
 type MarkPaidAction = (formData: FormData) => Promise<void>;
 type ReorderAction = (formData: FormData) => Promise<void>;
-type ApplyTemplateAction = (formData: FormData) => Promise<void>;
-type CreateTemplateAction = (formData: FormData) => Promise<void>;
+type ApplyTemplateAction = (
+  formData: FormData
+) => Promise<{ ok: boolean; appliedCount?: number; error?: string }>;
+type CreateTemplateAction = (
+  formData: FormData
+) => Promise<{ ok: boolean; templateId?: string; error?: string }>;
 
 const fmt = formatEstimateCurrency;
 const PAYMENT_MILESTONE_FORM_ID = "estimate-payment-milestone-form";
@@ -75,6 +87,7 @@ export function EstimatePaymentSchedule(props: {
     customerName?: string | null;
     projectName?: string | null;
   };
+  canCreateMilestoneInvoices?: boolean;
   nested?: boolean;
   paymentTemplates?: PaymentScheduleTemplate[];
   addPaymentMilestoneAction: AddAction;
@@ -93,10 +106,14 @@ export function EstimatePaymentSchedule(props: {
     invoiceProjectLink,
     invoiceSummaries = {},
     invoiceContext,
+    canCreateMilestoneInvoices = false,
     nested = false,
+    paymentTemplates = [],
     addPaymentMilestoneAction,
     updatePaymentMilestoneAction,
     deletePaymentMilestoneAction,
+    applyPaymentTemplateAction,
+    createPaymentTemplateAction,
   } = props;
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -107,6 +124,24 @@ export function EstimatePaymentSchedule(props: {
   const [paymentDescriptionDraft, setPaymentDescriptionDraft] = React.useState("");
   const [amountDraft, setAmountDraft] = React.useState("");
   const [percentDraft, setPercentDraft] = React.useState("");
+  const [saveTemplateOpen, setSaveTemplateOpen] = React.useState(false);
+  const [templateNameDraft, setTemplateNameDraft] = React.useState("");
+  const [templateAmountType, setTemplateAmountType] = React.useState<"percent" | "fixed">(
+    "percent"
+  );
+  const [selectedTemplateId, setSelectedTemplateId] = React.useState(
+    () => paymentTemplates[0]?.id ?? ""
+  );
+
+  React.useEffect(() => {
+    if (
+      selectedTemplateId &&
+      paymentTemplates.some((template) => template.id === selectedTemplateId)
+    ) {
+      return;
+    }
+    setSelectedTemplateId(paymentTemplates[0]?.id ?? "");
+  }, [paymentTemplates, selectedTemplateId]);
 
   React.useEffect(() => {
     if (!scheduleOpen) return;
@@ -167,6 +202,62 @@ export function EstimatePaymentSchedule(props: {
       description: result.error ?? "Could not delete this payment milestone.",
       variant: "error",
     });
+  };
+
+  const applyPaymentTemplate = async (mode: "replace" | "merge"): Promise<void> => {
+    if (!selectedTemplateId) return;
+    if (
+      mode === "replace" &&
+      paymentSchedule.length > 0 &&
+      !window.confirm("Replace the current draft payment schedule with this template?")
+    ) {
+      return;
+    }
+
+    markUnsaved();
+    const formData = new FormData();
+    formData.set("estimateId", estimateId);
+    formData.set("templateId", selectedTemplateId);
+    formData.set("mode", mode);
+    const result = await trackMutation(`payment:template:${mode}`, () =>
+      applyPaymentTemplateAction(formData)
+    );
+    if (!result.ok) {
+      toast({
+        title: "Template application failed",
+        description: result.error ?? "Could not apply this payment template.",
+        variant: "error",
+      });
+      return;
+    }
+    toast({
+      title: mode === "replace" ? "Payment schedule replaced" : "Payment schedule merged",
+      description: `${result.appliedCount ?? 0} milestone${result.appliedCount === 1 ? "" : "s"} added as fixed-dollar amounts.`,
+      variant: "success",
+    });
+    router.refresh();
+  };
+
+  const savePaymentTemplate = async (): Promise<void> => {
+    const formData = new FormData();
+    formData.set("estimateId", estimateId);
+    formData.set("templateName", templateNameDraft);
+    formData.set("amountType", templateAmountType);
+    const result = await trackMutation("payment:template:save", () =>
+      createPaymentTemplateAction(formData)
+    );
+    if (!result.ok) {
+      toast({
+        title: "Template save failed",
+        description: result.error ?? "Could not save this payment template.",
+        variant: "error",
+      });
+      return;
+    }
+    setSaveTemplateOpen(false);
+    setTemplateNameDraft("");
+    toast({ title: "Payment template saved", variant: "success" });
+    router.refresh();
   };
 
   const totalScheduled = paymentSchedule.reduce(
@@ -244,11 +335,76 @@ export function EstimatePaymentSchedule(props: {
             Scheduled <span className={EB.paymentStatValue}>{fmt(totalScheduled)}</span>
           </span>
           <span className={EB.paymentStatLabel}>
-            Remaining <span className={EB.paymentStatValue}>{fmt(remaining)}</span>
+            Remaining unscheduled <span className={EB.paymentStatValue}>{fmt(remaining)}</span>
           </span>
         </div>
 
-        {isLocked && paymentSchedule.length > 0 && invoiceContext ? (
+        {!isLocked && (paymentTemplates.length > 0 || paymentSchedule.length > 0) ? (
+          <div
+            className="mb-3 flex flex-wrap items-end gap-2 rounded-md border border-border bg-muted/25 px-3 py-2.5"
+            data-testid="payment-template-controls"
+          >
+            {paymentTemplates.length > 0 ? (
+              <label className="min-w-[12rem] flex-1 text-xs font-medium text-muted-foreground">
+                Payment template
+                <select
+                  aria-label="Payment template"
+                  value={selectedTemplateId}
+                  onChange={(event) => setSelectedTemplateId(event.target.value)}
+                  className="mt-1 h-9 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground"
+                >
+                  {paymentTemplates.map((template) => (
+                    <option key={template.id} value={template.id}>
+                      {template.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : (
+              <p className="min-w-[12rem] flex-1 text-xs text-muted-foreground">
+                Save this schedule as a reusable fixed-dollar or percentage template.
+              </p>
+            )}
+            {paymentTemplates.length > 0 ? (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className={EB.actionSecondary}
+                  onClick={() => void applyPaymentTemplate("replace")}
+                  data-testid="payment-template-replace"
+                >
+                  Replace
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className={EB.actionSecondary}
+                  onClick={() => void applyPaymentTemplate("merge")}
+                  data-testid="payment-template-merge"
+                >
+                  Merge
+                </Button>
+              </>
+            ) : null}
+            {paymentSchedule.length > 0 ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className={EB.actionSecondary}
+                onClick={() => setSaveTemplateOpen(true)}
+                data-testid="payment-template-save-open"
+              >
+                Save template
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
+
+        {isLocked && canCreateMilestoneInvoices && paymentSchedule.length > 0 && invoiceContext ? (
           <div
             className="mb-2 rounded-md border border-border bg-muted/35 px-3 py-2.5"
             data-testid="estimate-invoice-readiness"
@@ -316,7 +472,8 @@ export function EstimatePaymentSchedule(props: {
                 );
               }
 
-              const canCreate = invoiceProjectLink?.canCreateInvoice !== false;
+              const canCreate =
+                canCreateMilestoneInvoices && invoiceProjectLink?.canCreateInvoice !== false;
               const estimateReturnHref = buildEstimateMilestoneReturnHref(estimateId, item.id);
               return (
                 <Button
@@ -325,7 +482,13 @@ export function EstimatePaymentSchedule(props: {
                   size="sm"
                   asChild={canCreate}
                   disabled={!canCreate}
-                  title={!canCreate ? invoiceProjectLink?.message : undefined}
+                  title={
+                    !canCreate
+                      ? canCreateMilestoneInvoices
+                        ? invoiceProjectLink?.message
+                        : "Only Approved or Converted estimates can create milestone invoices."
+                      : undefined
+                  }
                   className={cn("min-h-11 px-3 text-hh-metadata", EB.actionSecondary)}
                 >
                   {canCreate ? (
@@ -375,14 +538,16 @@ export function EstimatePaymentSchedule(props: {
           }}
         />
         {paymentSchedule.length > 0 &&
-        invoiceProjectLink &&
-        !invoiceProjectLink.canCreateInvoice ? (
+        ((!canCreateMilestoneInvoices && isLocked) ||
+          (invoiceProjectLink && !invoiceProjectLink.canCreateInvoice)) ? (
           <div
             className="estimate-payment-link-warning mt-3 rounded-hh-compact border border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] px-3 py-2 text-hh-table-cell text-[var(--hh-warning)]"
             role="note"
           >
-            {invoiceProjectLink.message ??
-              "Invoice generation requires a linked project before creating invoices from payment milestones."}
+            {!canCreateMilestoneInvoices
+              ? "Only Approved or Converted estimates can create milestone invoices."
+              : (invoiceProjectLink?.message ??
+                "Invoice generation requires a linked project before creating invoices from payment milestones.")}
           </div>
         ) : null}
 
@@ -527,6 +692,57 @@ export function EstimatePaymentSchedule(props: {
             </SheetFooter>
           </SheetContent>
         </Sheet>
+
+        <Dialog open={saveTemplateOpen} onOpenChange={setSaveTemplateOpen}>
+          <DialogContent data-testid="payment-template-save-dialog">
+            <DialogHeader>
+              <DialogTitle>Save payment template</DialogTitle>
+              <DialogDescription>
+                Percentage templates are reusable helpers. Applying one always stores fixed-dollar,
+                tax-inclusive milestone amounts from the current Estimate total.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3 py-2">
+              <label className="block text-xs font-medium text-muted-foreground">
+                Template name
+                <Input
+                  value={templateNameDraft}
+                  onChange={(event) => setTemplateNameDraft(event.target.value)}
+                  placeholder="e.g. 30 / 40 / 30"
+                  className="mt-1"
+                  data-testid="payment-template-name"
+                />
+              </label>
+              <label className="block text-xs font-medium text-muted-foreground">
+                Reuse amounts as
+                <select
+                  value={templateAmountType}
+                  onChange={(event) =>
+                    setTemplateAmountType(event.target.value === "fixed" ? "fixed" : "percent")
+                  }
+                  className="mt-1 h-10 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground"
+                  aria-label="Payment template amount type"
+                >
+                  <option value="percent">Percentages of Estimate total</option>
+                  <option value="fixed">Fixed-dollar amounts</option>
+                </select>
+              </label>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="ghost" onClick={() => setSaveTemplateOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={() => void savePaymentTemplate()}
+                disabled={!templateNameDraft.trim()}
+                data-testid="payment-template-save"
+              >
+                Save template
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </section>
   );

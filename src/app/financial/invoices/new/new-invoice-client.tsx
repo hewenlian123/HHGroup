@@ -183,7 +183,7 @@ export default function NewInvoiceClient({
   const today = new Date().toISOString().slice(0, 10);
   const [issueDate, setIssueDate] = React.useState<string>(today);
   const [dueDate, setDueDate] = React.useState<string>(prefill?.dueDate || today);
-  const [taxPct, setTaxPct] = React.useState<number>(0);
+  const [taxPct, setTaxPct] = React.useState<number>(prefill?.invoiceTaxPct ?? 0);
   const [taxTouched, setTaxTouched] = React.useState(Boolean(prefill));
   const [notes, setNotes] = React.useState<string>(prefill?.notes ?? "");
 
@@ -193,7 +193,7 @@ export default function NewInvoiceClient({
         ? {
             itemName: prefill.milestoneTitle,
             description: prefill.milestoneDescription,
-            unitPrice: prefill.amount,
+            unitPrice: prefill.invoiceSubtotal,
           }
         : undefined
     ),

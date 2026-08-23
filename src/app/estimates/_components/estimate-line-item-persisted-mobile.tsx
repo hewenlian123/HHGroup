@@ -32,6 +32,11 @@ export function EstimateLineItemPersistedMobile({
   onEnterAddNext,
   sectionOptions,
   onMoveToSection,
+  canMoveUp,
+  canMoveDown,
+  onMoveUp,
+  onMoveDown,
+  reorderDisabled,
   onDuplicated,
   onDeleted,
 }: {
@@ -47,6 +52,11 @@ export function EstimateLineItemPersistedMobile({
   onEnterAddNext?: () => void;
   sectionOptions: Array<{ code: string; label: string }>;
   onMoveToSection?: (costCode: string) => void;
+  canMoveUp?: boolean;
+  canMoveDown?: boolean;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
+  reorderDisabled?: boolean;
   onDuplicated?: (itemId: string) => void;
   onDeleted?: () => void;
 }): React.ReactElement {
@@ -162,6 +172,11 @@ export function EstimateLineItemPersistedMobile({
         currentSectionCode={categoryId}
         moveSectionOptions={sectionOptions}
         onMoveToSection={onMoveToSection}
+        canMoveUp={canMoveUp}
+        canMoveDown={canMoveDown}
+        onMoveUp={onMoveUp}
+        onMoveDown={onMoveDown}
+        reorderDisabled={reorderDisabled}
         onDuplicate={() => {
           void runLineAction(
             duplicateLineItemAction,
