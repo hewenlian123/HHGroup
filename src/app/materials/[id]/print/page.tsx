@@ -27,7 +27,11 @@ export default async function MaterialSelectionPrintPage({
   if (!selection) notFound();
 
   return (
-    <div className="material-selection-a4-shell min-h-screen bg-white px-3 py-5 text-black sm:px-6 print:p-0">
+    <div
+      className="material-selection-a4-shell min-h-screen bg-white px-3 py-5 text-black sm:px-6 print:p-0"
+      data-hh-context="document-route"
+      data-hh-theme="document-light"
+    >
       {!pdfCapture ? <SetBreadcrumbEntityTitle label={`${selection.title} Print`} /> : null}
       <MaterialSelectionDocument company={company} selection={selection} />
       {!pdfCapture ? (

@@ -27,6 +27,7 @@ import { UPLOAD_RECEIPT_ACTION } from "@/lib/navigation/actions";
 import { HH_PROJECT_OS_COMMAND_ITEMS, type HhProjectOsIconKey } from "@/lib/navigation/ia";
 import { TYPO } from "@/lib/typography";
 import { cn } from "@/lib/utils";
+import { useHhPortalContainer, useHhTheme } from "@/contexts/hh-theme-context";
 
 type CommandGroup = "Navigate" | "Create";
 
@@ -313,6 +314,8 @@ export function NeoCommandPalette({
   onOpenChange: (open: boolean) => void;
 }) {
   const router = useRouter();
+  const portalContainer = useHhPortalContainer();
+  const { context, theme } = useHhTheme();
   const pathname = usePathname();
   const [query, setQuery] = React.useState("");
   const [activeIndex, setActiveIndex] = React.useState(0);
@@ -411,10 +414,12 @@ export function NeoCommandPalette({
 
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
-      <DialogPrimitive.Portal>
+      <DialogPrimitive.Portal container={portalContainer ?? undefined}>
         <DialogPrimitive.Overlay className={cn("fixed inset-0 z-[90]", hhNeoFocusRevealOverlay)} />
         <DialogPrimitive.Content
           data-command-dialog
+          data-hh-context={context}
+          data-hh-theme={theme}
           className={cn(
             "fixed top-[max(5rem,env(safe-area-inset-top))] z-[91] w-[min(640px,calc(100vw-2rem))] overflow-hidden rounded-hh-task border border-[var(--hh-border-strong)] bg-[var(--hh-l5-task-surface)] text-[var(--hh-text-primary)] shadow-task outline-none sm:left-1/2 sm:-translate-x-1/2",
             hhNeoFocusRevealCommand,

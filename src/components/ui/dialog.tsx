@@ -11,11 +11,26 @@ import {
 import { cn } from "@/lib/utils";
 import { TYPO } from "@/lib/typography";
 import { TaskFooter } from "@/components/ui/task-footer";
+import { useHhPortalContainer, useHhTheme } from "@/contexts/hh-theme-context";
 
 const Dialog = DialogPrimitive.Root;
 const DialogTrigger = DialogPrimitive.Trigger;
 const DialogClose = DialogPrimitive.Close;
-const DialogPortal = DialogPrimitive.Portal;
+function DialogPortal({
+  children,
+  container,
+  ...props
+}: React.ComponentPropsWithoutRef<typeof DialogPrimitive.Portal>) {
+  const portalContainer = useHhPortalContainer();
+  const { context, theme } = useHhTheme();
+  return (
+    <DialogPrimitive.Portal container={container ?? portalContainer ?? undefined} {...props}>
+      <div className="contents" data-hh-context={context} data-hh-theme={theme}>
+        {children}
+      </div>
+    </DialogPrimitive.Portal>
+  );
+}
 
 const DialogOverlay = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Overlay>,

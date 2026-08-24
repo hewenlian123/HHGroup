@@ -8,7 +8,7 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, React.ComponentProps<"tex
     return (
       <textarea
         className={cn(
-          "hh-type-text-entry flex min-h-[80px] w-full rounded-hh-standard border px-hh-3 py-hh-2 shadow-none touch-manipulation transition-[background-color,border-color,box-shadow,color] duration-150 ease-out placeholder:text-[var(--hh-text-tertiary)] hover:bg-[var(--hh-l3-hover)] focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 max-md:min-h-[104px]",
+          "hh-type-text-entry hh-focus-ring flex min-h-[80px] w-full rounded-hh-standard border px-hh-3 py-hh-2 shadow-none touch-manipulation transition-[background-color,border-color,box-shadow,color] duration-150 ease-out placeholder:text-[var(--hh-text-tertiary)] hover:bg-[var(--hh-l3-hover)] aria-[invalid=true]:border-[var(--hh-danger)] aria-[invalid=true]:focus-visible:border-[var(--hh-danger)] disabled:cursor-not-allowed disabled:opacity-50 max-md:min-h-[104px]",
           NEO.input,
           className
         )}

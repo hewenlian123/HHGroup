@@ -12,9 +12,12 @@ test("defines the approved L0, L1, and L2 background tokens for both themes", ()
   assert.match(css, /--hh-l0-canvas:\s*#F7F7F6;/i);
   assert.match(css, /--hh-l1-workspace:\s*#FFFFFF;/i);
   assert.match(css, /--hh-l2-operational-surface:\s*#FFFFFF;/i);
-  assert.match(css, /html\.dark\s*\{[\s\S]*?--hh-l0-canvas:\s*#0A0A0A;/i);
-  assert.match(css, /html\.dark\s*\{[\s\S]*?--hh-l1-workspace:\s*#111111;/i);
-  assert.match(css, /html\.dark\s*\{[\s\S]*?--hh-l2-operational-surface:\s*#181818;/i);
+  assert.match(css, /\[data-hh-theme="neo-dark"\]\s*\{[\s\S]*?--hh-l0-canvas:\s*#0B0D12;/i);
+  assert.match(css, /\[data-hh-theme="neo-dark"\]\s*\{[\s\S]*?--hh-l1-workspace:\s*#11141B;/i);
+  assert.match(
+    css,
+    /\[data-hh-theme="neo-dark"\]\s*\{[\s\S]*?--hh-l2-operational-surface:\s*#171B24;/i
+  );
 });
 
 test("maps semantic backgrounds through Tailwind and the shared shell without Neo aliases", () => {
@@ -23,7 +26,9 @@ test("maps semantic backgrounds through Tailwind and the shared shell without Ne
   const shell = source("src/components/layout/app-shell.tsx");
   const pageLayout = source("src/components/base/page-layout.tsx");
 
-  assert.match(tailwind, /darkMode:\s*\["selector",\s*"html\.dark"\]/);
+  assert.match(tailwind, /darkMode:\s*\[\s*"variant"/);
+  assert.match(tailwind, /data-hh-theme="neo-dark"/);
+  assert.match(tailwind, /explicitLightThemeBoundary/);
   assert.match(tailwind, /canvas:\s*"var\(--hh-l0-canvas\)"/);
   assert.match(tailwind, /workspace:\s*"var\(--hh-l1-workspace\)"/);
   assert.match(tailwind, /surface:\s*"var\(--hh-l2-operational-surface\)"/);
@@ -32,8 +37,8 @@ test("maps semantic backgrounds through Tailwind and the shared shell without Ne
   assert.match(tailwind, /raised:\s*"var\(--hh-l2-operational-surface\)"/);
   assert.match(tailwind, /muted:\s*"var\(--hh-l2-operational-surface\)"/);
   assert.match(shell, /hh-app-shell[^"\n]*bg-canvas/);
-  assert.match(shell, /neo-workspace-canvas[^"\n]*bg-workspace/);
-  assert.match(pageLayout, /neo-page-on-graphite[^"\n]*bg-workspace/);
+  assert.match(shell, /neo-workspace-canvas[^"\n]*bg-canvas/);
+  assert.match(pageLayout, /neo-page-on-graphite[^"\n]*bg-canvas/);
   assert.doesNotMatch(css, /--neo-[a-z0-9-]+\s*:/);
 });
 

@@ -6,6 +6,7 @@ import { Slot } from "@radix-ui/react-slot";
 
 import { cn } from "@/lib/utils";
 import { TYPO } from "@/lib/typography";
+import { useHhPortalContainer, useHhTheme } from "@/contexts/hh-theme-context";
 
 type TooltipContextValue = {
   contentId: string;
@@ -115,6 +116,8 @@ export function TooltipContent({
   sideOffset?: number;
 }) {
   const { contentId, open, triggerRef } = useTooltip();
+  const portalContainer = useHhPortalContainer();
+  const { context, theme } = useHhTheme();
   const [mounted, setMounted] = React.useState(false);
   const [position, setPosition] = React.useState({ left: 0, top: 0 });
 
@@ -143,6 +146,8 @@ export function TooltipContent({
     <div
       id={contentId}
       role="tooltip"
+      data-hh-context={context}
+      data-hh-theme={theme}
       className={cn(
         "pointer-events-none fixed z-[200] max-w-64 rounded-hh-compact border border-[var(--hh-border-floating)] bg-[var(--hh-l4-floating-surface)] px-hh-2 py-hh-1 text-[var(--hh-text-primary)] shadow-floating",
         TYPO.metadata,
@@ -156,6 +161,6 @@ export function TooltipContent({
     >
       {children}
     </div>,
-    document.body
+    portalContainer ?? document.body
   );
 }

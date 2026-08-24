@@ -101,6 +101,8 @@ export default async function WorkerPaymentReceiptPrintPage({
     <div
       className="receipt-print-route"
       data-worker-payment-receipt-pdf-capture={pdfCapture ? "true" : undefined}
+      data-hh-context="document-route"
+      data-hh-theme="document-light"
       role="document"
       aria-label="Worker payment receipt print view"
     >

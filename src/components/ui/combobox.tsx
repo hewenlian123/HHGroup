@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { TYPO } from "@/lib/typography";
+import { useHhPortalContainer, useHhTheme } from "@/contexts/hh-theme-context";
 
 export interface ComboboxOption {
   disabled?: boolean;
@@ -55,6 +56,8 @@ export function Combobox({
   selectedOptionClassName,
   value,
 }: ComboboxProps) {
+  const portalContainer = useHhPortalContainer();
+  const { context, theme } = useHhTheme();
   const baseId = React.useId();
   const listboxId = `${baseId}-listbox`;
   const inputId = `${baseId}-input`;
@@ -204,6 +207,8 @@ export function Combobox({
       ? createPortal(
           <div
             ref={contentRef}
+            data-hh-context={context}
+            data-hh-theme={theme}
             className={cn(
               "fixed z-[200] max-h-[min(22rem,calc(100dvh-1rem))] overflow-hidden rounded-hh-standard border border-[var(--hh-border-floating)] bg-[var(--hh-l4-floating-surface)] text-[var(--hh-text-primary)] shadow-floating",
               contentClassName
@@ -288,7 +293,7 @@ export function Combobox({
               ) : null}
             </div>
           </div>,
-          document.body
+          portalContainer ?? document.body
         )
       : null;
 

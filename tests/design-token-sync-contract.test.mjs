@@ -19,9 +19,9 @@ test("parses the current Design System v1 color, state, geometry, and typography
   const markdown = readFileSync(defaultDesignSystemSourcePath(), "utf8");
   const contract = parseDesignSystemTokens(markdown);
 
-  assert.equal(contract.schemaVersion, 5);
-  assert.equal(contract.tokens.length, 33);
-  assert.equal(contract.dimensions.length, 30);
+  assert.equal(contract.schemaVersion, 6);
+  assert.equal(contract.tokens.length, 48);
+  assert.equal(contract.dimensions.length, 44);
   assert.equal(contract.typography.length, 15);
   assert.equal(contract.typographyContracts.length, 7);
   assert.deepEqual(contract.tokens[0], {
@@ -29,7 +29,7 @@ test("parses the current Design System v1 color, state, geometry, and typography
     name: "l0-canvas",
     cssVariable: "--hh-l0-canvas",
     light: "#F7F7F6",
-    dark: "#0A0A0A",
+    dark: "#0B0D12",
   });
   assert.deepEqual(
     contract.tokens.find(({ name }) => name === "action-primary-foreground"),
@@ -38,17 +38,17 @@ test("parses the current Design System v1 color, state, geometry, and typography
       name: "action-primary-foreground",
       cssVariable: "--hh-action-primary-foreground",
       light: "#FFFFFF",
-      dark: "#161616",
+      dark: "#0B0D12",
     }
   );
   assert.deepEqual(
     contract.tokens.find(({ name }) => name === "focus-ring"),
     {
-      role: "Focus Ring",
+      role: "Focus / ring",
       name: "focus-ring",
       cssVariable: "--hh-focus-ring",
-      light: "rgb(23 23 23 / 32%)",
-      dark: "rgb(242 242 239 / 38%)",
+      light: "#C6A56A",
+      dark: "#C6A56A",
     }
   );
   assert.deepEqual(
@@ -58,15 +58,15 @@ test("parses the current Design System v1 color, state, geometry, and typography
         role: "Success soft fill",
         name: "success-soft-fill",
         cssVariable: "--hh-success-soft-fill",
-        light: "rgb(22 129 91 / 8%)",
-        dark: "rgb(76 175 124 / 8%)",
+        light: "rgb(22 129 91 / 10%)",
+        dark: "rgb(79 175 124 / 10%)",
       },
       {
         role: "Success semantic border",
         name: "success-border",
         cssVariable: "--hh-success-border",
-        light: "rgb(22 129 91 / 22%)",
-        dark: "rgb(76 175 124 / 22%)",
+        light: "rgb(22 129 91 / 20%)",
+        dark: "rgb(79 175 124 / 20%)",
       },
     ]
   );
@@ -76,7 +76,7 @@ test("parses the current Design System v1 color, state, geometry, and typography
   );
   assert.equal(
     contract.tokens.find(({ name }) => name === "border-strong").dark,
-    "rgb(255 255 255 / 17%)"
+    "rgb(229 231 235 / 12%)"
   );
   assert.deepEqual(
     contract.tokens.filter(({ name }) => name.startsWith("l3-")),
@@ -86,21 +86,21 @@ test("parses the current Design System v1 color, state, geometry, and typography
         name: "l3-hover",
         cssVariable: "--hh-l3-hover",
         light: "#F4F4F2",
-        dark: "#222222",
+        dark: "#1C2029",
       },
       {
         role: "L3 Interactive Surface",
         name: "l3-selected",
         cssVariable: "--hh-l3-selected",
         light: "#ECECEA",
-        dark: "#2C2C2C",
+        dark: "rgb(198 165 106 / 10%)",
       },
       {
         role: "L3 Interactive Surface",
         name: "l3-pressed",
         cssVariable: "--hh-l3-pressed",
         light: "#E7E7E4",
-        dark: "#323232",
+        dark: "rgb(198 165 106 / 20%)",
       },
     ]
   );
@@ -111,7 +111,7 @@ test("parses the current Design System v1 color, state, geometry, and typography
       name: "l4-floating-surface",
       cssVariable: "--hh-l4-floating-surface",
       light: "#FFFFFF",
-      dark: "#252525",
+      dark: "#171B24",
     }
   );
   assert.deepEqual(
@@ -121,7 +121,7 @@ test("parses the current Design System v1 color, state, geometry, and typography
       name: "l5-task-surface",
       cssVariable: "--hh-l5-task-surface",
       light: "#FFFFFF",
-      dark: "#292929",
+      dark: "#171B24",
     }
   );
   assert.deepEqual(
@@ -130,8 +130,8 @@ test("parses the current Design System v1 color, state, geometry, and typography
       role: "Operational Shadow",
       name: "shadow-operational",
       cssVariable: "--hh-shadow-operational",
-      light: "0 1px 2px rgb(0 0 0 / 0.04), 0 14px 32px -26px rgb(0 0 0 / 0.24)",
-      dark: "0 1px 0 rgb(255 255 255 / 0.025), 0 14px 34px -26px rgb(0 0 0 / 0.84)",
+      light: "0 1px 2px rgb(0 0 0 / 0.04)",
+      dark: "0 1px 2px rgb(0 0 0 / 0.2)",
     }
   );
   assert.deepEqual(
@@ -141,7 +141,7 @@ test("parses the current Design System v1 color, state, geometry, and typography
       name: "shadow-floating",
       cssVariable: "--hh-shadow-floating",
       light: "0 2px 8px -3px rgb(0 0 0 / 0.10), 0 22px 48px -18px rgb(0 0 0 / 0.22)",
-      dark: "0 1px 0 rgb(255 255 255 / 0.055), 0 20px 46px -14px rgb(0 0 0 / 0.76)",
+      dark: "0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -1px rgb(0 0 0 / 0.2)",
     }
   );
   assert.deepEqual(
@@ -151,9 +151,38 @@ test("parses the current Design System v1 color, state, geometry, and typography
       name: "shadow-task",
       cssVariable: "--hh-shadow-task",
       light: "0 4px 12px -5px rgb(0 0 0 / 0.12), 0 34px 72px -26px rgb(0 0 0 / 0.28)",
-      dark: "0 1px 0 rgb(255 255 255 / 0.065), 0 32px 76px -20px rgb(0 0 0 / 0.92)",
+      dark: "0 10px 15px -3px rgb(0 0 0 / 0.4), 0 4px 6px -2px rgb(0 0 0 / 0.3)",
     }
   );
+  assert.equal(
+    contract.tokens.find(({ name }) => name === "shadow-overlay").dark,
+    "0 20px 25px -5px rgb(0 0 0 / 0.5), 0 10px 10px -5px rgb(0 0 0 / 0.3)"
+  );
+  assert.equal(
+    contract.tokens.find(({ name }) => name === "shadow-sidebar").dark,
+    "0 8px 16px rgb(0 0 0 / 0.4)"
+  );
+  assert.deepEqual(
+    Object.fromEntries(
+      contract.tokens
+        .filter(({ name }) => ["gold", "gold-hover", "gold-muted", "gold-border"].includes(name))
+        .map(({ name, dark }) => [name, dark])
+    ),
+    {
+      gold: "#C6A56A",
+      "gold-hover": "#D4B67F",
+      "gold-muted": "rgb(198 165 106 / 10%)",
+      "gold-border": "rgb(198 165 106 / 20%)",
+    }
+  );
+  assert.equal(contract.tokens.find(({ name }) => name === "emerald").dark, "#4FAF7C");
+  assert.equal(contract.tokens.find(({ name }) => name === "text-dim").dark, "#4B5563");
+  assert.equal(
+    contract.tokens.find(({ name }) => name === "border-subtle").dark,
+    "rgb(229 231 235 / 4%)"
+  );
+  assert.equal(contract.tokens.find(({ name }) => name === "input").dark, "rgb(229 231 235 / 8%)");
+  assert.equal(contract.tokens.find(({ name }) => name === "input-background").dark, "transparent");
   assert.deepEqual(contract.dimensions.slice(0, 3), [
     {
       role: "Space 1",
@@ -184,19 +213,55 @@ test("parses the current Design System v1 color, state, geometry, and typography
     }
   );
   assert.deepEqual(contract.dimensions.at(-1), {
-    role: "Major-region gap",
-    name: "gap-region",
-    cssVariable: "--hh-gap-region",
-    value: "24px",
+    role: "Table cell block padding",
+    name: "table-cell-padding-block",
+    cssVariable: "--hh-table-cell-padding-block",
+    value: "10px",
   });
+  assert.deepEqual(
+    Object.fromEntries(
+      contract.dimensions
+        .filter(({ name }) =>
+          [
+            "space-12",
+            "space-16",
+            "radius-panel",
+            "sidebar-width-expanded",
+            "sidebar-width-collapsed",
+            "sidebar-inset",
+            "content-start-desktop",
+            "topbar-height-mobile",
+            "topbar-height-desktop",
+            "content-width-max",
+            "content-width-narrow",
+            "content-width-document",
+          ].includes(name)
+        )
+        .map(({ name, value }) => [name, value])
+    ),
+    {
+      "space-12": "48px",
+      "space-16": "64px",
+      "radius-panel": "10px",
+      "sidebar-width-expanded": "220px",
+      "sidebar-width-collapsed": "72px",
+      "sidebar-inset": "12px",
+      "content-start-desktop": "232px",
+      "topbar-height-mobile": "48px",
+      "topbar-height-desktop": "52px",
+      "content-width-max": "1600px",
+      "content-width-narrow": "1120px",
+      "content-width-document": "960px",
+    }
+  );
   assert.deepEqual(contract.typography[0], {
     role: "Page Title",
     name: "page-title",
     cssVariablePrefix: "--hh-type-page-title",
-    mobile: { fontSize: "20px", lineHeight: "26px" },
-    desktop: { fontSize: "24px", lineHeight: "30px" },
+    mobile: { fontSize: "22px", lineHeight: "26.4px" },
+    desktop: { fontSize: "22px", lineHeight: "26.4px" },
     fontWeight: "600",
-    letterSpacing: "0",
+    letterSpacing: "-0.02em",
     numericContract: "none",
   });
   assert.deepEqual(
@@ -205,10 +270,10 @@ test("parses the current Design System v1 color, state, geometry, and typography
       role: "Financial Total",
       name: "financial-total",
       cssVariablePrefix: "--hh-type-financial-total",
-      mobile: { fontSize: "20px", lineHeight: "24px" },
-      desktop: { fontSize: "20px", lineHeight: "24px" },
+      mobile: { fontSize: "24px", lineHeight: "36px" },
+      desktop: { fontSize: "24px", lineHeight: "36px" },
       fontWeight: "600",
-      letterSpacing: "0",
+      letterSpacing: "-0.02em",
       numericContract: "FIN",
     }
   );
@@ -218,7 +283,7 @@ test("parses the current Design System v1 color, state, geometry, and typography
       name: "font-family-sans",
       cssVariable: "--hh-font-family-sans",
       value:
-        'var(--font-geist-sans), var(--font-inter), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+        '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
     },
     {
       contract: "FIN variant",
@@ -295,15 +360,38 @@ test("fails closed for missing, duplicate, malformed, and incomplete authority r
     /malformed Light value for Task Shadow/i
   );
 
-  const focusRow = markdown.match(/^\| Focus Ring \|.*$/m)?.[0];
-  assert.ok(focusRow, "expected the authority Focus Ring row fixture");
+  const focusRow = markdown.match(/^\| Focus \/ ring \|.*$/m)?.[0];
+  assert.ok(focusRow, "expected the authority Focus / ring row fixture");
   assert.throws(
     () => parseDesignSystemTokens(markdown.replace(`${focusRow}\n`, "")),
-    /missing required token role: Focus Ring/i
+    /missing required token role: Focus \/ ring/i
   );
   assert.throws(
-    () => parseDesignSystemTokens(markdown.replace("rgb(23 23 23 / 32%)", "rgb(23 23 / 32%)")),
-    /malformed Light value for Focus Ring/i
+    () => parseDesignSystemTokens(markdown.replace(focusRow, focusRow.replace("#C6A56A", "#BAD"))),
+    /malformed Light value for Focus \/ ring/i
+  );
+});
+
+test("fails closed for malformed or missing HH Neo Version 18 accent and depth roles", async () => {
+  const { defaultDesignSystemSourcePath, parseDesignSystemTokens } = await loadContract();
+  const markdown = readFileSync(defaultDesignSystemSourcePath(), "utf8");
+  const goldRow = markdown.match(/^\| Gold accent \|.*$/m)?.[0];
+  const overlayRow = markdown.match(/^\| Overlay Shadow \|.*$/m)?.[0];
+  const inputRow = markdown.match(/^\| Input surface \/ background \|.*$/m)?.[0];
+
+  assert.ok(goldRow && overlayRow && inputRow, "expected active Version 18 token fixtures");
+  assert.throws(
+    () => parseDesignSystemTokens(markdown.replace(goldRow, goldRow.replace("#D4B67F", "#BAD"))),
+    /malformed Light value for Gold accent/i
+  );
+  assert.throws(
+    () => parseDesignSystemTokens(markdown.replace(`${overlayRow}\n`, "")),
+    /missing required token role: Overlay Shadow/i
+  );
+  assert.throws(
+    () =>
+      parseDesignSystemTokens(markdown.replace(inputRow, inputRow.replace("transparent", "none"))),
+    /malformed Dark value for Input surface \/ background/i
   );
 });
 
@@ -322,7 +410,7 @@ test("fails closed for missing, duplicate, malformed, unknown, and mismatched se
     /duplicate semantic state role: Success/i
   );
   assert.throws(
-    () => parseDesignSystemTokens(markdown.replace(row, row.replace("`8%`", "`10%`"))),
+    () => parseDesignSystemTokens(markdown.replace(row, row.replace("`10%`", "`12%`"))),
     /malformed semantic soft fill alpha for Success/i
   );
   assert.throws(
@@ -330,7 +418,7 @@ test("fails closed for missing, duplicate, malformed, unknown, and mismatched se
       parseDesignSystemTokens(
         markdown.replace(
           row,
-          `${row}\n| Decorative | \`--hh-decorative\` | \`--hh-decorative-soft-fill\` | \`--hh-decorative-border\` | \`8%\` | \`22%\` | Not approved. |`
+          `${row}\n| Decorative | \`--hh-decorative\` | \`--hh-decorative-soft-fill\` | \`--hh-decorative-border\` | \`10%\` | \`20%\` | Not approved. |`
         )
       ),
     /unknown semantic state role: Decorative/i
@@ -401,7 +489,7 @@ test("fails closed for missing, duplicate, malformed, unknown, and mismatched ty
   assert.throws(
     () =>
       parseDesignSystemTokens(
-        markdown.replace(row, row.replace("13px / 18px", "0.8125rem / 18px"))
+        markdown.replace(row, row.replace("13px / 19.5px", "0.8125rem / 19.5px"))
       ),
     /malformed mobile typography value for Table Cell/i
   );
@@ -410,7 +498,7 @@ test("fails closed for missing, duplicate, malformed, unknown, and mismatched ty
     /malformed typography weight for Table Cell/i
   );
   assert.throws(
-    () => parseDesignSystemTokens(markdown.replace(row, row.replace("`0`", "`0.02em`"))),
+    () => parseDesignSystemTokens(markdown.replace(row, row.replace("`0`", "`decorative`"))),
     /malformed typography letter spacing for Table Cell/i
   );
   assert.throws(
@@ -502,10 +590,8 @@ test("generated artifacts exactly equal the authoritative model", async () => {
       `${cssVariable} must be emitted exactly once`
     );
   }
-  assert.match(
-    css,
-    /@media \(min-width: 768px\) \{[\s\S]*--hh-type-page-title-font-size: 24px;[\s\S]*--hh-type-page-title-line-height: 30px;/
-  );
+  assert.match(css, /--hh-type-page-title-font-size: 22px;/);
+  assert.match(css, /--hh-type-page-title-line-height: 26\.4px;/);
   assert.doesNotMatch(
     css.slice(css.indexOf("html.dark")),
     /--hh-(?:space|radius|touch|control|row|panel|task-padding|page-gutter|gap)-/

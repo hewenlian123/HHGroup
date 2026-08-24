@@ -13,6 +13,7 @@ import type {
   ReceiptViewerTransformState,
 } from "./types";
 import { cn } from "@/lib/utils";
+import { useHhPortalContainer } from "@/contexts/hh-theme-context";
 
 const RECEIPT_VIEWER_DESCRIPTION =
   "Review the authorized receipt image and its existing expense details.";
@@ -52,6 +53,7 @@ export function ReceiptViewerDialog({
   onNext,
   footerTrailing,
 }: ReceiptViewerDialogProps) {
+  const portalContainer = useHhPortalContainer();
   const reducedMotion = useReducedMotion();
 
   const handleKeyDown = React.useCallback(
@@ -91,7 +93,7 @@ export function ReceiptViewerDialog({
         if (!nextOpen) onClose();
       }}
     >
-      <DialogPrimitive.Portal forceMount>
+      <DialogPrimitive.Portal container={portalContainer ?? undefined} forceMount>
         <div className="contents">
           <AnimatePresence>
             {isOpen ? (
@@ -125,6 +127,8 @@ export function ReceiptViewerDialog({
                     key="receipt-viewer-content"
                     data-attachment-preview-modal
                     data-receipt-viewer
+                    data-hh-context="viewer"
+                    data-hh-theme="neo-dark"
                     aria-modal="true"
                     data-reduced-motion={reducedMotion ? "true" : "false"}
                     className="pointer-events-auto fixed inset-0 z-[9999] flex items-center justify-center p-0 outline-none sm:p-3 lg:p-6"
@@ -143,7 +147,7 @@ export function ReceiptViewerDialog({
                     <motion.section
                       data-receipt-viewer-shell
                       className={cn(
-                        "dark relative flex h-[100dvh] w-screen flex-col overflow-hidden rounded-none border-y-0 border-white/10 bg-[#0b0f15] text-[var(--hh-text-primary)] shadow-[0_28px_90px_rgb(0_0_0_/_0.58),inset_0_1px_0_rgb(255_255_255_/_0.04)]",
+                        "relative flex h-[100dvh] w-screen flex-col overflow-hidden rounded-none border-y-0 border-white/10 bg-[#0b0f15] text-[var(--hh-text-primary)] shadow-[0_28px_90px_rgb(0_0_0_/_0.58),inset_0_1px_0_rgb(255_255_255_/_0.04)]",
                         "sm:h-[calc(100dvh-24px)] sm:w-[calc(100vw-24px)] sm:rounded-[18px] sm:border",
                         "lg:h-[min(860px,calc(100dvh-48px))] lg:w-[min(1180px,calc(100vw-48px))] lg:rounded-[20px]"
                       )}
@@ -180,7 +184,11 @@ export function ReceiptViewerDialog({
                       </header>
 
                       <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[minmax(0,1fr)_260px]">
-                        <div className="relative flex min-h-0 min-w-0 items-center justify-center overflow-hidden bg-[rgb(13_15_17)] p-2 sm:p-3">
+                        <div
+                          data-hh-context="evidence"
+                          data-hh-theme="document-light"
+                          className="relative flex min-h-0 min-w-0 items-center justify-center overflow-hidden bg-[rgb(13_15_17)] p-2 sm:p-3"
+                        >
                           {onPrevious ? (
                             <Button
                               type="button"

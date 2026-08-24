@@ -1932,6 +1932,8 @@ export function ExpenseInboxPreviewModal({
               <ModalSection title="Attachments">
                 <div
                   data-inbox-review-evidence
+                  data-hh-context="evidence"
+                  data-hh-theme="document-light"
                   className="rounded-lg border border-[var(--hh-border-floating)] bg-[var(--hh-l4-floating-surface)] p-3"
                   data-testid="expense-preview-attachments"
                 >
@@ -2743,6 +2745,8 @@ export function ExpenseInboxPreviewModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         data-expense-component-surface="receipt-review"
+        data-hh-context="viewer"
+        data-hh-theme="neo-dark"
         onPointerDownOutside={(event) => {
           if (eventTargetsAttachmentPreviewModal(event)) event.preventDefault();
         }}

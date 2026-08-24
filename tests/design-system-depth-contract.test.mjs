@@ -15,7 +15,7 @@ test("generates the approved Phase 2 depth, border, and shadow tokens", () => {
     "--hh-l3-pressed: #e7e7e4;",
     "--hh-l4-floating-surface: #ffffff;",
     "--hh-l5-task-surface: #ffffff;",
-    "--hh-shadow-operational: 0 1px 2px rgb(0 0 0 / 0.04), 0 14px 32px -26px rgb(0 0 0 / 0.24);",
+    "--hh-shadow-operational: 0 1px 2px rgb(0 0 0 / 0.04);",
     "--hh-shadow-floating: 0 2px 8px -3px rgb(0 0 0 / 0.10), 0 22px 48px -18px rgb(0 0 0 / 0.22);",
     "--hh-shadow-task: 0 4px 12px -5px rgb(0 0 0 / 0.12), 0 34px 72px -26px rgb(0 0 0 / 0.28);",
   ]) {
@@ -23,14 +23,14 @@ test("generates the approved Phase 2 depth, border, and shadow tokens", () => {
   }
 
   for (const declaration of [
-    "--hh-l3-hover: #222222;",
-    "--hh-l3-selected: #2c2c2c;",
-    "--hh-l3-pressed: #323232;",
-    "--hh-l4-floating-surface: #252525;",
-    "--hh-l5-task-surface: #292929;",
-    "--hh-shadow-operational: 0 1px 0 rgb(255 255 255 / 0.025), 0 14px 34px -26px rgb(0 0 0 / 0.84);",
-    "--hh-shadow-floating: 0 1px 0 rgb(255 255 255 / 0.055), 0 20px 46px -14px rgb(0 0 0 / 0.76);",
-    "--hh-shadow-task: 0 1px 0 rgb(255 255 255 / 0.065), 0 32px 76px -20px rgb(0 0 0 / 0.92);",
+    "--hh-l3-hover: #1c2029;",
+    "--hh-l3-selected: rgb(198 165 106 / 10%);",
+    "--hh-l3-pressed: rgb(198 165 106 / 20%);",
+    "--hh-l4-floating-surface: #171b24;",
+    "--hh-l5-task-surface: #171b24;",
+    "--hh-shadow-operational: 0 1px 2px rgb(0 0 0 / 0.2);",
+    "--hh-shadow-floating: 0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -1px rgb(0 0 0 / 0.2);",
+    "--hh-shadow-task: 0 10px 15px -3px rgb(0 0 0 / 0.4), 0 4px 6px -2px rgb(0 0 0 / 0.3);",
   ]) {
     assert.ok(css.includes(declaration), `missing dark declaration: ${declaration}`);
   }
@@ -40,29 +40,29 @@ test("generates the approved Phase 5 focus and semantic soft-state tokens", () =
   const css = source("src/styles/design-tokens.generated.css");
 
   for (const declaration of [
-    "--hh-focus-ring: rgb(23 23 23 / 32%);",
-    "--hh-success-soft-fill: rgb(22 129 91 / 8%);",
-    "--hh-success-border: rgb(22 129 91 / 22%);",
-    "--hh-warning-soft-fill: rgb(161 98 7 / 8%);",
-    "--hh-warning-border: rgb(161 98 7 / 22%);",
-    "--hh-information-soft-fill: rgb(37 99 168 / 8%);",
-    "--hh-information-border: rgb(37 99 168 / 22%);",
-    "--hh-danger-soft-fill: rgb(180 35 47 / 8%);",
-    "--hh-danger-border: rgb(180 35 47 / 22%);",
+    "--hh-focus-ring: #c6a56a;",
+    "--hh-success-soft-fill: rgb(22 129 91 / 10%);",
+    "--hh-success-border: rgb(22 129 91 / 20%);",
+    "--hh-warning-soft-fill: rgb(161 98 7 / 10%);",
+    "--hh-warning-border: rgb(161 98 7 / 20%);",
+    "--hh-information-soft-fill: rgb(37 99 168 / 10%);",
+    "--hh-information-border: rgb(37 99 168 / 20%);",
+    "--hh-danger-soft-fill: rgb(180 35 47 / 10%);",
+    "--hh-danger-border: rgb(180 35 47 / 20%);",
   ]) {
     assert.ok(css.includes(declaration), `missing light declaration: ${declaration}`);
   }
 
   for (const declaration of [
-    "--hh-focus-ring: rgb(242 242 239 / 38%);",
-    "--hh-success-soft-fill: rgb(76 175 124 / 8%);",
-    "--hh-success-border: rgb(76 175 124 / 22%);",
-    "--hh-warning-soft-fill: rgb(216 163 74 / 8%);",
-    "--hh-warning-border: rgb(216 163 74 / 22%);",
-    "--hh-information-soft-fill: rgb(110 159 209 / 8%);",
-    "--hh-information-border: rgb(110 159 209 / 22%);",
-    "--hh-danger-soft-fill: rgb(227 107 114 / 8%);",
-    "--hh-danger-border: rgb(227 107 114 / 22%);",
+    "--hh-focus-ring: #c6a56a;",
+    "--hh-success-soft-fill: rgb(79 175 124 / 10%);",
+    "--hh-success-border: rgb(79 175 124 / 20%);",
+    "--hh-warning-soft-fill: rgb(245 158 11 / 10%);",
+    "--hh-warning-border: rgb(245 158 11 / 20%);",
+    "--hh-information-soft-fill: rgb(59 130 246 / 10%);",
+    "--hh-information-border: rgb(59 130 246 / 20%);",
+    "--hh-danger-soft-fill: rgb(239 68 68 / 10%);",
+    "--hh-danger-border: rgb(239 68 68 / 20%);",
   ]) {
     assert.ok(css.includes(declaration), `missing dark declaration: ${declaration}`);
   }

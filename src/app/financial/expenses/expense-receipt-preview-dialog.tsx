@@ -7,6 +7,7 @@ import { Download, X } from "lucide-react";
 import { InlineLoading, Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useHhPortalContainer } from "@/contexts/hh-theme-context";
 
 export type ReceiptPreviewItem = { url: string; fileName: string };
 
@@ -66,6 +67,7 @@ export function ExpenseReceiptPreviewDialog({
   onReplaceInputChange,
   onReplaceButtonClick,
 }: ExpenseReceiptPreviewDialogProps) {
+  const portalContainer = useHhPortalContainer();
   const current = items[index];
   const url = current?.url ?? "";
   const displayName = current?.fileName ?? "Receipt";
@@ -119,9 +121,11 @@ export function ExpenseReceiptPreviewDialog({
 
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange} modal>
-      <DialogPrimitive.Portal>
+      <DialogPrimitive.Portal container={portalContainer ?? undefined}>
         <DialogPrimitive.Overlay asChild>
           <motion.div
+            data-hh-context="viewer"
+            data-hh-theme="neo-dark"
             className="fixed inset-0 z-50 bg-black/45 backdrop-blur-sm"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -163,7 +167,11 @@ export function ExpenseReceiptPreviewDialog({
               </DialogPrimitive.Close>
             </header>
 
-            <div className="relative min-h-[200px] max-h-[70vh] flex-1 overflow-y-auto bg-muted/20 dark:bg-muted/10">
+            <div
+              data-hh-context="evidence"
+              data-hh-theme="document-light"
+              className="relative min-h-[200px] max-h-[70vh] flex-1 overflow-y-auto bg-muted/20 dark:bg-muted/10"
+            >
               {!url ? (
                 <div className="flex min-h-[40vh] items-center justify-center px-4 text-sm text-muted-foreground">
                   Preview not available

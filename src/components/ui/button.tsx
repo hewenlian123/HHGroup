@@ -11,7 +11,7 @@ import {
 } from "@/lib/motion-system";
 
 const primaryActionClass =
-  "border-transparent bg-[var(--hh-action-primary)] text-[var(--hh-action-primary-foreground)] hover:opacity-90 active:bg-[var(--hh-action-primary)]";
+  "border-transparent bg-[var(--hh-action-primary)] text-[var(--hh-action-primary-foreground)] hover:opacity-90 active:bg-[var(--hh-action-primary)] dark:hover:bg-[var(--hh-gold-hover)] dark:hover:opacity-100 dark:active:bg-[var(--hh-gold-hover)]";
 
 /**
  * Canonical operational action primitive. Workflow components compose this

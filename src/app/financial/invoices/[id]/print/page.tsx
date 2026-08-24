@@ -58,6 +58,8 @@ export default async function InvoicePrintPage({ params }: { params: Promise<{ i
   return (
     <div
       className="invoice-a4-shell min-h-screen bg-white px-3 py-5 text-black sm:px-6 print:p-0"
+      data-hh-context="document-route"
+      data-hh-theme="document-light"
       style={{ maxWidth: "210mm", margin: "0 auto" }}
     >
       <SetBreadcrumbEntityTitle label={invoice.invoiceNo} />

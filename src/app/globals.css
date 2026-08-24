@@ -52,9 +52,9 @@
 
   .neo-sidebar {
     border: 1px solid var(--hh-border);
-    border-radius: var(--hh-radius-standard);
-    background: var(--hh-l0-canvas);
-    box-shadow: var(--hh-shadow-operational);
+    border-radius: var(--hh-radius-panel);
+    background: var(--hh-l1-workspace);
+    box-shadow: var(--hh-shadow-sidebar);
   }
 
   .neo-command-bar {
@@ -63,7 +63,8 @@
     box-shadow: var(--hh-shadow-floating);
   }
 
-  html.dark .neo-command-bar {
+  html.dark .neo-command-bar,
+  [data-hh-theme="neo-dark"] .neo-command-bar {
     background: var(--hh-l0-canvas);
   }
 
@@ -75,8 +76,8 @@
   }
 
   .neo-topbar-command-input {
-    border-color: var(--hh-border);
-    background: var(--hh-l2-operational-surface);
+    border-color: var(--hh-input);
+    background: var(--hh-input-background);
     box-shadow: var(--hh-shadow-operational);
   }
 
@@ -468,7 +469,7 @@
   }
 
   .neo-workspace-canvas {
-    background: var(--hh-l1-workspace);
+    background: var(--hh-l0-canvas);
     color: var(--hh-text-secondary);
   }
 
@@ -515,14 +516,18 @@
   }
 
   .neo-input {
-    border-color: var(--hh-border);
-    background: var(--hh-l2-operational-surface);
+    border-color: var(--hh-input);
+    background: var(--hh-input-background);
     color: var(--hh-text-primary);
   }
 
   .neo-input:focus-visible {
-    border-color: var(--hh-border-strong);
+    border-color: var(--hh-ring);
     box-shadow: none;
+  }
+
+  .neo-input[aria-invalid="true"] {
+    border-color: var(--hh-danger);
   }
 
   .neo-amount {
@@ -535,7 +540,8 @@
     animation: hh-row-flash-success 0.65s ease-out;
   }
 
-  html.dark .hh-motion-root .exp-row.hh-row-flash-success {
+  html.dark .hh-motion-root .exp-row.hh-row-flash-success,
+  [data-hh-theme="neo-dark"] .exp-row.hh-row-flash-success {
     animation: hh-row-flash-success-dark 0.65s ease-out;
   }
 
@@ -606,7 +612,7 @@
   .text-balance {
     text-wrap: balance;
   }
-  /* Page shell — mobile remains compact; desktop uses responsive Neo workspace widths. */
+  /* Page shell — mobile remains compact; desktop uses the Version 18 content contracts. */
   .page-container {
     width: 100%;
     max-width: 430px;
@@ -623,7 +629,7 @@
   @media (min-width: 768px) {
     .page-container,
     .page-shell-standard {
-      max-width: min(1536px, calc(100vw - 2rem));
+      max-width: min(var(--hh-content-width-max), calc(100vw - 2rem));
     }
     .page-container {
       padding-block: var(--hh-space-4) var(--hh-space-8);
@@ -650,19 +656,13 @@
   @media (min-width: 768px) {
     .page-shell-fluid,
     .page-shell-wide {
-      max-width: min(1680px, calc(100vw - 2rem)) !important;
+      max-width: min(var(--hh-content-width-max), calc(100vw - 2rem)) !important;
     }
     .page-shell-narrow {
-      max-width: min(1120px, calc(100vw - 2rem)) !important;
+      max-width: min(var(--hh-content-width-narrow), calc(100vw - 2rem)) !important;
     }
     .page-shell-document {
-      max-width: min(960px, calc(100vw - 2rem)) !important;
-    }
-  }
-  @media (min-width: 1536px) {
-    .page-shell-fluid,
-    .page-shell-wide {
-      max-width: min(1760px, calc(100vw - 2rem)) !important;
+      max-width: min(var(--hh-content-width-document), calc(100vw - 2rem)) !important;
     }
   }
   .section-padding {
@@ -759,7 +759,8 @@
   .text-hh-profit-positive {
     color: #047857;
   }
-  html.dark .text-hh-profit-positive {
+  html.dark .text-hh-profit-positive,
+  [data-hh-theme="neo-dark"] .text-hh-profit-positive {
     color: #10b981;
   }
   /* Unified status pills */
@@ -959,7 +960,10 @@
 }
 
 @layer base {
-  :root {
+  :root,
+  [data-hh-theme="auth"],
+  [data-hh-theme="public"],
+  [data-hh-theme="document-light"] {
     /* ---- HH Group color tokens (HSL components for hsl()) ---- */
     /* Legacy shadcn aliases: workspace and operational surfaces, not the outer canvas. */
     --background: 0 0% 100%;
@@ -1000,7 +1004,8 @@
     /* ---- Radius tokens ---- */
     --radius: var(--hh-radius-standard);
   }
-  html.dark {
+  html.dark,
+  [data-hh-theme="neo-dark"] {
     --background: 0 0% 6.7%;
     --foreground: 0 0% 98%;
     --card: 0 0% 9.4%;
@@ -1029,6 +1034,14 @@
 }
 
 @layer base {
+  [data-hh-theme="neo-dark"] {
+    color-scheme: dark;
+  }
+
+  :where([data-hh-theme="auth"], [data-hh-theme="public"], [data-hh-theme="document-light"]) {
+    color-scheme: light;
+  }
+
   body {
     @apply text-foreground overflow-x-hidden text-sm antialiased;
     background: var(--hh-l0-canvas);

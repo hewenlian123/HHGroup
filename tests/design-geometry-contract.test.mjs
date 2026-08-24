@@ -18,8 +18,11 @@ test("Tailwind exposes all approved semantic geometry aliases", () => {
     "--hh-space-6",
     "--hh-space-8",
     "--hh-space-10",
+    "--hh-space-12",
+    "--hh-space-16",
     "--hh-radius-compact",
     "--hh-radius-standard",
+    "--hh-radius-panel",
     "--hh-radius-task",
     "--hh-touch-min",
     "--hh-control-height-compact",
@@ -40,8 +43,41 @@ test("Tailwind exposes all approved semantic geometry aliases", () => {
     "--hh-gap-related",
     "--hh-gap-section",
     "--hh-gap-region",
+    "--hh-sidebar-width-expanded",
+    "--hh-sidebar-width-collapsed",
+    "--hh-sidebar-inset",
+    "--hh-content-start-desktop",
+    "--hh-topbar-height-mobile",
+    "--hh-topbar-height-desktop",
+    "--hh-content-width-max",
+    "--hh-content-width-narrow",
+    "--hh-content-width-document",
+    "--hh-table-cell-padding-inline",
+    "--hh-table-cell-padding-block",
   ]) {
     assert.match(config, new RegExp(`var\\(${variable}\\)`), `${variable} needs a Tailwind alias`);
+  }
+});
+
+test("generated geometry matches the Gate 0 Version 18 mapping", () => {
+  const css = source("src/styles/design-tokens.generated.css");
+  for (const [token, value] of Object.entries({
+    "--hh-space-12": "48px",
+    "--hh-space-16": "64px",
+    "--hh-radius-panel": "10px",
+    "--hh-sidebar-width-expanded": "220px",
+    "--hh-sidebar-width-collapsed": "72px",
+    "--hh-sidebar-inset": "12px",
+    "--hh-content-start-desktop": "232px",
+    "--hh-topbar-height-mobile": "48px",
+    "--hh-topbar-height-desktop": "52px",
+    "--hh-content-width-max": "1600px",
+    "--hh-content-width-narrow": "1120px",
+    "--hh-content-width-document": "960px",
+    "--hh-table-cell-padding-inline": "12px",
+    "--hh-table-cell-padding-block": "10px",
+  })) {
+    assert.match(css, new RegExp(`${token}:\\s*${value};`));
   }
 });
 

@@ -66,7 +66,11 @@ export default async function EstimatePreviewPage({
   const revisionLabel = `${estimate.number} Rev ${revisionContext.revisionNumber}`;
 
   return (
-    <div className="page-container page-shell-document estimate-preview-page-shell py-0">
+    <div
+      className="page-container page-shell-document estimate-preview-page-shell py-0"
+      data-hh-context="viewer"
+      data-hh-theme="neo-dark"
+    >
       <SetBreadcrumbEntityTitle label={revisionLabel} />
       <EstimatePreviewShell
         estimateId={id}

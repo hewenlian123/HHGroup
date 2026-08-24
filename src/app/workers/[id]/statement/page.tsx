@@ -196,7 +196,7 @@ export default async function WorkerStatementPage({ params, searchParams }: Prop
   return (
     <PageLayout
       divider={false}
-      className="dark financial-nums min-w-0 overflow-x-hidden px-4 py-4 text-[var(--hh-text-secondary)] sm:px-5 md:px-6 md:py-6"
+      className="financial-nums min-w-0 overflow-x-hidden px-4 py-4 text-[var(--hh-text-secondary)] sm:px-5 md:px-6 md:py-6"
       header={
         <PageHeader
           title="Worker Statement"

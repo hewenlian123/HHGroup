@@ -28,6 +28,7 @@ import {
 import { useReceiptViewer } from "@/components/receipt-viewer/use-receipt-viewer";
 import { cn } from "@/lib/utils";
 import { preflightPreviewUrl, type PreviewUrlPreflightResult } from "@/lib/preview-url-preflight";
+import { useHhPortalContainer } from "@/contexts/hh-theme-context";
 
 export type AttachmentPreviewFileType = "image" | "pdf";
 
@@ -914,6 +915,8 @@ const ReceiptImageCanvas = React.forwardRef<ReceiptViewerCanvasHandle, ReceiptIm
       <div
         ref={containerRef}
         data-testid={viewerMode ? "receipt-viewer-canvas" : "attachment-preview-viewport"}
+        data-hh-context="evidence"
+        data-hh-theme="document-light"
         data-zoom={viewerMode ? Math.round(scale * 100) : undefined}
         data-rotation={viewerMode ? rotation : undefined}
         data-overflow-x={viewerMode ? String(transformMetrics.overflowX) : undefined}
@@ -1089,6 +1092,8 @@ function PdfPreviewFrame({
   return (
     <div
       data-testid="attachment-preview-viewport"
+      data-hh-context="evidence"
+      data-hh-theme="document-light"
       className={cn(
         "relative flex shrink-0 flex-col rounded-sm bg-zinc-900/40 p-[1px] shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_22px_56px_-14px_rgba(0,0,0,0.72)] ring-1 ring-white/10",
         viewerMode ? "h-full min-h-0 w-full max-w-none" : PREVIEW_VIEWPORT_CLASS
@@ -1501,6 +1506,7 @@ export function AttachmentPreviewModal({
   presentation,
   returnFocusTarget,
 }: AttachmentPreviewModalProps) {
+  const portalContainer = useHhPortalContainer();
   const [mounted, setMounted] = React.useState(false);
   const [navDirection, setNavDirection] = React.useState(1);
   const [imageZoomed, setImageZoomed] = React.useState(false);
@@ -1794,6 +1800,8 @@ export function AttachmentPreviewModal({
           aria-modal="true"
           aria-labelledby="attachment-preview-title"
           data-attachment-preview-modal
+          data-hh-context="viewer"
+          data-hh-theme="neo-dark"
           className="fixed inset-0 z-[201] flex min-h-0 flex-col bg-[#07090d] text-[var(--hh-text-primary)]"
           style={{ zIndex: 10000, pointerEvents: "auto" }}
           initial={fastPreviewMotion ? { opacity: 1 } : { opacity: 0 }}
@@ -2023,6 +2031,6 @@ export function AttachmentPreviewModal({
         </motion.div>
       ) : null}
     </AnimatePresence>,
-    document.body
+    portalContainer ?? document.body
   );
 }

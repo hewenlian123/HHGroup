@@ -6,7 +6,7 @@ import test from "node:test";
 const ROOT = process.cwd();
 const source = (path) => readFileSync(resolve(ROOT, path), "utf8");
 
-test("Tailwind exposes every approved semantic typography alias and Geist-first ownership", () => {
+test("Tailwind exposes every approved semantic typography alias and system-stack ownership", () => {
   const config = source("tailwind.config.ts");
 
   assert.match(config, /fontFamily:\s*\{[\s\S]*sans:\s*\["var\(--hh-font-family-sans\)"\]/);
@@ -32,6 +32,16 @@ test("Tailwind exposes every approved semantic typography alias and Geist-first 
     assert.match(config, new RegExp(`--hh-type-${role}-font-weight`));
     assert.match(config, new RegExp(`--hh-type-${role}-letter-spacing`));
   }
+});
+
+test("generated operational typography uses the HH Neo system stack without Geist ownership", () => {
+  const css = source("src/styles/design-tokens.generated.css");
+
+  assert.match(
+    css,
+    /--hh-font-family-sans:\s*-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;/
+  );
+  assert.doesNotMatch(css, /--hh-font-family-sans:[^;]*(?:font-geist|font-inter)/);
 });
 
 test("global typography applies the generated sans, FIN, and responsive text-entry contracts", () => {

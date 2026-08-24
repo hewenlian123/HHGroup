@@ -271,9 +271,8 @@ export function Sidebar({
         : "max-lg:min-h-[44px] min-h-0 gap-2.5 px-2 py-1.5 lg:min-h-0",
       active
         ? cn(
-            "font-medium text-[var(--hh-text-primary)]",
-            "bg-[var(--hh-l3-selected)] hover:bg-[var(--hh-l3-hover)]",
-            "before:absolute before:inset-y-2 before:left-0 before:w-px before:rounded-full before:bg-[var(--hh-action-primary)] before:content-['']"
+            "bg-[var(--hh-l3-selected)] font-medium text-[var(--hh-text-primary)] hover:bg-[var(--hh-l3-hover)]",
+            "dark:bg-[var(--hh-action-primary)] dark:text-[var(--hh-action-primary-foreground)] dark:hover:bg-[var(--hh-gold-hover)]"
           )
         : "font-normal text-[var(--hh-text-secondary)] hover:bg-[var(--hh-l2-operational-surface)] active:bg-[var(--hh-l3-hover)]"
     );
@@ -281,7 +280,9 @@ export function Sidebar({
   const navIconClass = (active: boolean, extra?: string) =>
     cn(
       "h-[15px] w-[15px] shrink-0",
-      active ? "text-[var(--hh-text-primary)]" : "text-[var(--hh-text-secondary)]",
+      active
+        ? "text-[var(--hh-text-primary)] dark:text-[var(--hh-action-primary-foreground)]"
+        : "text-[var(--hh-text-secondary)]",
       extra
     );
 
@@ -362,13 +363,13 @@ export function Sidebar({
       data-app-sidebar
       className={cn(
         "neo-sidebar relative flex h-full shrink-0 flex-col overflow-hidden",
-        collapsed ? "w-[72px]" : "w-[210px]",
+        collapsed ? "w-hh-sidebar-collapsed" : "w-hh-sidebar-expanded",
         className
       )}
     >
       <div
         className={cn(
-          "relative z-[1] flex h-12 items-center gap-2 border-b border-[var(--hh-border)] bg-[var(--hh-l0-canvas)]",
+          "relative z-[1] flex h-12 items-center gap-2 border-b border-[var(--hh-border)] bg-[var(--hh-l1-workspace)]",
           collapsed ? "px-3" : "px-3"
         )}
       >
@@ -504,7 +505,7 @@ export function Sidebar({
             TYPO.button,
             collapsed ? "min-h-[44px] justify-center px-2 py-2 sm:min-h-8" : "gap-2 px-2 py-1.5"
           )}
-          aria-label="Collapse sidebar"
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
           {collapsed ? (

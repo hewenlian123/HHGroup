@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 import "@/styles/worker-payment-receipt-print.css";
 import "@/styles/payment-receipt-a4.css";
 import "./payment-receipt-preview-modal.css";
+import { useHhPortalContainer } from "@/contexts/hh-theme-context";
 
 type Props = {
   paymentId: string | null;
@@ -32,6 +33,7 @@ export function PaymentReceiptPreviewModal({
   onSendReceipt,
   autoAction,
 }: Props) {
+  const portalContainer = useHhPortalContainer();
   const [data, setData] = React.useState<PaymentReceiptPreviewDto | null>(null);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -133,11 +135,13 @@ export function PaymentReceiptPreviewModal({
 
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
-      <DialogPrimitive.Portal>
+      <DialogPrimitive.Portal container={portalContainer ?? undefined}>
         <DialogPrimitive.Overlay
           className={cn("receipt-preview-overlay fixed inset-0 z-50", hhNeoFocusRevealOverlay)}
         />
         <DialogPrimitive.Content
+          data-hh-context="viewer"
+          data-hh-theme="neo-dark"
           onEscapeKeyDown={() => onOpenChange(false)}
           onPointerDownOutside={() => onOpenChange(false)}
           className={cn(

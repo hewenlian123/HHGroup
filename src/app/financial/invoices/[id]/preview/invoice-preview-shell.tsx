@@ -124,7 +124,11 @@ export function InvoicePreviewShell({ invoiceId, invoiceNo, children }: InvoiceP
   }, [handleDownloadPdf, searchParams]);
 
   return (
-    <div className="invoice-a4-shell financial-nums mx-auto w-full max-w-[calc(210mm+3rem)] px-3 py-5 sm:px-6 print:px-0 print:py-0">
+    <div
+      className="invoice-a4-shell financial-nums mx-auto w-full max-w-[calc(210mm+3rem)] px-3 py-5 sm:px-6 print:px-0 print:py-0"
+      data-hh-context="viewer"
+      data-hh-theme="neo-dark"
+    >
       <div className="no-print mb-4 flex flex-wrap items-center justify-between gap-3 print:hidden">
         <div className="flex flex-wrap items-center gap-2">
           <Button
@@ -177,7 +181,13 @@ export function InvoicePreviewShell({ invoiceId, invoiceNo, children }: InvoiceP
       </div>
 
       <div className="flex justify-center shadow-[0_18px_55px_rgba(15,23,42,0.08)] print:shadow-none">
-        <div ref={invoiceDocumentRef} data-invoice-document-root className="inline-block bg-white">
+        <div
+          ref={invoiceDocumentRef}
+          data-invoice-document-root
+          data-hh-context="paper"
+          data-hh-theme="document-light"
+          className="inline-block bg-white"
+        >
           {children}
         </div>
       </div>

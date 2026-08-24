@@ -55,6 +55,8 @@ export default async function EstimatePrintPage({
       className={`estimate-print-workspace min-h-screen bg-white text-zinc-900 print:min-h-0${pdfCapture ? " estimate-print-pdf-capture" : ""}`}
       data-read-only="true"
       data-estimate-pdf-capture={pdfCapture ? "true" : undefined}
+      data-hh-context="document-route"
+      data-hh-theme="document-light"
       role="document"
       aria-label="Estimate print view"
     >

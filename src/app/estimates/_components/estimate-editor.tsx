@@ -4,6 +4,7 @@ import { syncRouterNonBlocking } from "@/components/perf/sync-router-non-blockin
 import * as React from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createPortal } from "react-dom";
+import { useHhPortalContainer, useHhTheme } from "@/contexts/hh-theme-context";
 import { InlineLoading } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -1839,6 +1840,8 @@ function AddCategoryBlock({
   onDismiss?: (reason: "escape" | "outside" | "selection") => void;
 }) {
   const router = useRouter();
+  const portalContainer = useHhPortalContainer();
+  const { context: hhContext, theme: hhTheme } = useHhTheme();
   const { toast } = useToast();
   const { markUnsaved, trackMutation } = useEstimateDocumentSave();
   const allCodesWithLabels = React.useMemo(
@@ -2268,6 +2271,8 @@ function AddCategoryBlock({
                   <ul
                     ref={listRef}
                     role="listbox"
+                    data-hh-context={hhContext}
+                    data-hh-theme={hhTheme}
                     style={{
                       position: "fixed",
                       top: menuPos.top,
@@ -2342,7 +2347,7 @@ function AddCategoryBlock({
                       </li>
                     )}
                   </ul>,
-                  document.body
+                  portalContainer ?? document.body
                 )
               : null}
           </div>

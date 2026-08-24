@@ -22,7 +22,11 @@ export function WorkerPayrollStatementPrint({ report }: { report: WorkerMonthlyR
   const { summary } = report;
 
   return (
-    <div className="payroll-statement-print-root hidden print:block text-black">
+    <div
+      className="payroll-statement-print-root hidden text-black print:block"
+      data-hh-context="paper"
+      data-hh-theme="document-light"
+    >
       <header className="mb-8 flex flex-col justify-between gap-6 border-b border-black pb-6 sm:flex-row sm:items-start">
         <div className="min-w-0">
           <div className="flex min-w-0 items-center gap-3">

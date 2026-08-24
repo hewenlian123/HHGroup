@@ -12,7 +12,11 @@ export function MaterialSelectionPreviewShell({
   children: React.ReactNode;
 }) {
   return (
-    <div className="material-selection-a4-shell mx-auto w-full max-w-[calc(210mm+3rem)] px-3 py-5 sm:px-6 print:px-0 print:py-0">
+    <div
+      className="material-selection-a4-shell mx-auto w-full max-w-[calc(210mm+3rem)] px-3 py-5 sm:px-6 print:px-0 print:py-0"
+      data-hh-context="viewer"
+      data-hh-theme="neo-dark"
+    >
       <div className="no-print mb-4 flex flex-wrap items-center justify-between gap-3 print:hidden">
         <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" size="sm" className="rounded-sm" asChild>
@@ -41,7 +45,13 @@ export function MaterialSelectionPreviewShell({
         <span className="text-xs text-muted-foreground">A4 print preview</span>
       </div>
       <div className="flex justify-center shadow-[0_18px_55px_rgba(15,23,42,0.12)] print:shadow-none">
-        <div className="inline-block bg-white">{children}</div>
+        <div
+          className="inline-block bg-white"
+          data-hh-context="paper"
+          data-hh-theme="document-light"
+        >
+          {children}
+        </div>
       </div>
     </div>
   );

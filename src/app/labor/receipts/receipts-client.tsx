@@ -111,6 +111,8 @@ function ReceiptEvidence({
     return (
       <div
         data-worker-receipt-evidence
+        data-hh-context="evidence"
+        data-hh-theme="document-light"
         className={cn(
           "flex min-h-[170px] flex-col items-center justify-center rounded-lg border px-5 py-8 text-center",
           prominent && "h-full min-h-[360px]"
@@ -133,6 +135,8 @@ function ReceiptEvidence({
     return (
       <div
         data-worker-receipt-evidence
+        data-hh-context="evidence"
+        data-hh-theme="document-light"
         className={cn(
           "flex min-h-[170px] flex-col items-center justify-center rounded-lg border px-5 py-8 text-center",
           prominent && "h-full min-h-[360px]"
@@ -168,6 +172,8 @@ function ReceiptEvidence({
   return (
     <div
       data-worker-receipt-evidence
+      data-hh-context="evidence"
+      data-hh-theme="document-light"
       className={cn(
         "group relative flex min-h-[190px] items-center justify-center overflow-hidden rounded-lg border bg-white",
         prominent && "h-full min-h-[360px]"

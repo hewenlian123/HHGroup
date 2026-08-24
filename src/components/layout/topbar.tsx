@@ -229,7 +229,7 @@ export function Topbar({
     <header
       data-app-topbar
       className={cn(
-        "neo-command-bar sticky top-0 z-40 flex h-[52px] min-h-[52px] shrink-0 items-center px-3 sm:min-h-0 sm:rounded-hh-standard sm:px-4",
+        "neo-command-bar sticky top-0 z-40 flex h-hh-topbar-mobile min-h-hh-topbar-mobile shrink-0 items-center px-3 sm:h-hh-topbar-desktop sm:min-h-hh-topbar-desktop sm:rounded-hh-panel sm:px-4",
         "flex-row gap-3 sm:gap-4"
       )}
     >
@@ -318,14 +318,13 @@ export function Topbar({
       </div>
 
       <div className="flex shrink-0 items-center gap-1">
-        {/* + New — outline, matches page primary actions */}
+        {/* + New — the global HH Neo OS primary action. */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
-              variant="outline"
               size="sm"
               className={cn(
-                "h-9 min-h-[44px] rounded-hh-standard border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3.5 py-2.5 text-[var(--hh-text-primary)] shadow-operational transition-[background-color,border-color,box-shadow,color] duration-150 ease-out hover:border-[var(--hh-border-strong)] hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)] active:duration-100 sm:min-h-0",
+                "h-9 min-h-[44px] rounded-hh-standard px-3.5 py-2.5 !text-[var(--hh-action-primary-foreground)] shadow-operational sm:min-h-0",
                 TYPO.button
               )}
             >

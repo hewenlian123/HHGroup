@@ -46,6 +46,8 @@ export default async function EstimatePaymentPreviewPage({
   return (
     <div
       className="min-h-screen bg-white text-zinc-900 print:min-h-0"
+      data-hh-context="document-route"
+      data-hh-theme="document-light"
       role="document"
       aria-label="Payment milestone preview"
     >

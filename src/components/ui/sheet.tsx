@@ -9,6 +9,7 @@ import { hhNeoFocusRevealOverlay } from "@/lib/motion-system";
 import { cn } from "@/lib/utils";
 import { TYPO } from "@/lib/typography";
 import { TaskFooter } from "@/components/ui/task-footer";
+import { useHhPortalContainer, useHhTheme } from "@/contexts/hh-theme-context";
 
 const Sheet = SheetPrimitive.Root;
 
@@ -16,7 +17,21 @@ const SheetTrigger = SheetPrimitive.Trigger;
 
 const SheetClose = SheetPrimitive.Close;
 
-const SheetPortal = SheetPrimitive.Portal;
+function SheetPortal({
+  children,
+  container,
+  ...props
+}: React.ComponentPropsWithoutRef<typeof SheetPrimitive.Portal>) {
+  const portalContainer = useHhPortalContainer();
+  const { context, theme } = useHhTheme();
+  return (
+    <SheetPrimitive.Portal container={container ?? portalContainer ?? undefined} {...props}>
+      <div className="contents" data-hh-context={context} data-hh-theme={theme}>
+        {children}
+      </div>
+    </SheetPrimitive.Portal>
+  );
+}
 
 const SheetOverlay = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Overlay>,

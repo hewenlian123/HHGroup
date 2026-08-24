@@ -63,7 +63,12 @@ export function WorkerPaymentReceiptBody({
   const advanceDeduction = Math.max(0, laborSubtotal + reimbSubtotal - amount);
 
   return (
-    <div className="receipt receipt-container" data-testid="worker-payment-receipt-document">
+    <div
+      className="receipt receipt-container"
+      data-testid="worker-payment-receipt-document"
+      data-hh-context="paper"
+      data-hh-theme="document-light"
+    >
       <div className="receipt-main">
         <DocumentCompanyHeader
           className="receipt-doc-header border-zinc-200 !mb-3 !pb-3"

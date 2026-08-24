@@ -39,7 +39,7 @@ export const NEO = {
   surfaceMuted:
     "rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)]",
   buttonPrimary:
-    "border-transparent bg-[var(--hh-action-primary)] text-[var(--hh-action-primary-foreground)] hover:opacity-90 active:bg-[var(--hh-action-primary)]",
+    "border-transparent bg-[var(--hh-action-primary)] text-[var(--hh-action-primary-foreground)] hover:opacity-90 active:bg-[var(--hh-action-primary)] dark:hover:bg-[var(--hh-gold-hover)] dark:hover:opacity-100 dark:active:bg-[var(--hh-gold-hover)]",
   buttonSecondary:
     "border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)]",
   buttonGhost:

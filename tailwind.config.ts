@@ -1,7 +1,16 @@
 import type { Config } from "tailwindcss";
 
+const explicitLightThemeBoundary =
+  ':where([data-hh-theme="auth"], [data-hh-theme="auth"] *, [data-hh-theme="public"], [data-hh-theme="public"] *, [data-hh-theme="document-light"], [data-hh-theme="document-light"] *)';
+
 const config: Config = {
-  darkMode: ["selector", "html.dark"],
+  // The nearest explicit light boundary wins, even when it is nested below the
+  // operational neo-dark shell. This keeps legacy `dark:*` utilities out of
+  // auth, public intake, paper, and evidence surfaces at every viewport size.
+  darkMode: [
+    "variant",
+    `&:where([data-hh-theme="neo-dark"], [data-hh-theme="neo-dark"] *):not(${explicitLightThemeBoundary})`,
+  ],
   content: [
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
@@ -31,6 +40,8 @@ const config: Config = {
         "hh-row-dense": "var(--hh-row-height-dense)",
         "hh-row-standard": "var(--hh-row-height-standard)",
         "hh-row-touch": "var(--hh-row-min-height-touch)",
+        "hh-topbar-mobile": "var(--hh-topbar-height-mobile)",
+        "hh-topbar-desktop": "var(--hh-topbar-height-desktop)",
       },
       spacing: {
         "hh-1": "var(--hh-space-1)",
@@ -41,6 +52,8 @@ const config: Config = {
         "hh-6": "var(--hh-space-6)",
         "hh-8": "var(--hh-space-8)",
         "hh-10": "var(--hh-space-10)",
+        "hh-12": "var(--hh-space-12)",
+        "hh-16": "var(--hh-space-16)",
         "hh-panel-compact": "var(--hh-panel-padding-compact)",
         "hh-panel-standard": "var(--hh-panel-padding-standard)",
         "hh-task-mobile": "var(--hh-task-padding-mobile)",
@@ -52,6 +65,10 @@ const config: Config = {
         "hh-gap-related": "var(--hh-gap-related)",
         "hh-gap-section": "var(--hh-gap-section)",
         "hh-gap-region": "var(--hh-gap-region)",
+        "hh-table-cell-inline": "var(--hh-table-cell-padding-inline)",
+        "hh-table-cell-block": "var(--hh-table-cell-padding-block)",
+        "hh-sidebar-inset": "var(--hh-sidebar-inset)",
+        "hh-content-start-desktop": "var(--hh-content-start-desktop)",
       },
       colors: {
         /** Semantic UI tokens — single source of truth. */
@@ -93,6 +110,8 @@ const config: Config = {
           "text-primary": "var(--hh-text-primary)",
           "text-secondary": "var(--hh-text-secondary)",
           "text-tertiary": "var(--hh-text-tertiary)",
+          "text-dim": "var(--hh-text-dim)",
+          "border-subtle": "var(--hh-border-subtle)",
           border: "var(--hh-border)",
           "border-floating": "var(--hh-border-floating)",
           "border-strong": "var(--hh-border-strong)",
@@ -100,6 +119,17 @@ const config: Config = {
           primary: "var(--hh-action-primary)",
           "primary-foreground": "var(--hh-action-primary-foreground)",
           "focus-ring": "var(--hh-focus-ring)",
+          ring: "var(--hh-ring)",
+          gold: "var(--hh-gold)",
+          "gold-hover": "var(--hh-gold-hover)",
+          "gold-muted": "var(--hh-gold-muted)",
+          "gold-border": "var(--hh-gold-border)",
+          emerald: "var(--hh-emerald)",
+          "emerald-hover": "var(--hh-emerald-hover)",
+          "emerald-muted": "var(--hh-emerald-muted)",
+          "emerald-border": "var(--hh-emerald-border)",
+          input: "var(--hh-input)",
+          "input-background": "var(--hh-input-background)",
           link: "#059669",
           success: "var(--hh-success)",
           "success-soft-fill": "var(--hh-success-soft-fill)",
@@ -163,7 +193,17 @@ const config: Config = {
         sm: "calc(var(--radius) - 4px)",
         "hh-compact": "var(--hh-radius-compact)",
         "hh-standard": "var(--hh-radius-standard)",
+        "hh-panel": "var(--hh-radius-panel)",
         "hh-task": "var(--hh-radius-task)",
+      },
+      width: {
+        "hh-sidebar-expanded": "var(--hh-sidebar-width-expanded)",
+        "hh-sidebar-collapsed": "var(--hh-sidebar-width-collapsed)",
+      },
+      maxWidth: {
+        "hh-content": "var(--hh-content-width-max)",
+        "hh-content-narrow": "var(--hh-content-width-narrow)",
+        "hh-document": "var(--hh-content-width-document)",
       },
       fontFamily: {
         sans: ["var(--hh-font-family-sans)"],
@@ -300,6 +340,8 @@ const config: Config = {
         operational: "var(--hh-shadow-operational)",
         floating: "var(--hh-shadow-floating)",
         task: "var(--hh-shadow-task)",
+        overlay: "var(--hh-shadow-overlay)",
+        sidebar: "var(--hh-shadow-sidebar)",
       },
       keyframes: {
         "receipt-queue-badge": {

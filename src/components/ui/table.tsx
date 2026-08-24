@@ -4,19 +4,19 @@ import { cn } from "@/lib/utils";
 import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
 import { OS, TYPO } from "@/lib/typography";
 
-const tableShellClass = OS.tableShell;
+const tableShellClass = cn(OS.tableShell, "rounded-hh-panel");
 
 /** Legacy raw table cell borders — light row dividers only (prefer `Table` primitives). */
 export const tableCellBorderClass = "border-b border-[var(--hh-border)] last:border-b-0";
 
 export const tableRawThClass = cn(
-  "h-hh-row-standard bg-[var(--hh-l2-operational-surface)] px-hh-3 text-left align-middle",
+  "bg-[var(--hh-l2-operational-surface)] px-hh-table-cell-inline py-hh-table-cell-block text-left align-middle",
   TYPO.tableHeader,
   "border-b border-[var(--hh-border)]"
 );
 
 export const tableRawTdClass = cn(
-  "hh-touch-table-cell h-hh-row-standard px-hh-3 py-0 align-middle",
+  "hh-touch-table-cell px-hh-table-cell-inline py-hh-table-cell-block align-middle",
   TYPO.tableCell,
   "border-b border-[var(--hh-border)] last:border-b-0"
 );
@@ -110,7 +110,7 @@ const TableHead = React.forwardRef<
     ref={ref}
     scope={scope ?? "col"}
     className={cn(
-      "h-hh-row-standard bg-[var(--hh-l2-operational-surface)] px-hh-3 text-left align-middle",
+      "bg-[var(--hh-l2-operational-surface)] px-hh-table-cell-inline py-hh-table-cell-block text-left align-middle",
       TYPO.tableHeader,
       "border-b border-[var(--hh-border)]",
       "[&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
@@ -128,7 +128,7 @@ const TableCell = React.forwardRef<
   <td
     ref={ref}
     className={cn(
-      "hh-touch-table-cell h-hh-row-standard px-hh-3 py-0 align-middle",
+      "hh-touch-table-cell px-hh-table-cell-inline py-hh-table-cell-block align-middle",
       TYPO.tableCell,
       "[&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
       className

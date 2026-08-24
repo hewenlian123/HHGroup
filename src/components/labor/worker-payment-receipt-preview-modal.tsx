@@ -15,6 +15,7 @@ import type { WorkerPaymentReceiptPreviewDto } from "@/lib/worker-payment-receip
 import { cn } from "@/lib/utils";
 import "@/styles/worker-payment-receipt-print.css";
 import "./worker-payment-receipt-preview-modal.css";
+import { useHhPortalContainer } from "@/contexts/hh-theme-context";
 
 type Props = {
   paymentId: string | null;
@@ -26,6 +27,7 @@ const receiptPreviewButtonClass =
   "min-h-[44px] rounded-lg border-white/[0.12] bg-white/[0.035] px-3 text-[var(--hh-text-secondary)] shadow-operational hover:border-white/[0.2] hover:bg-white/[0.08] hover:text-[var(--hh-text-primary)] sm:min-h-9";
 
 export function WorkerPaymentReceiptPreviewModal({ paymentId, open, onOpenChange }: Props) {
+  const portalContainer = useHhPortalContainer();
   const [data, setData] = React.useState<WorkerPaymentReceiptPreviewDto | null>(null);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -79,11 +81,13 @@ export function WorkerPaymentReceiptPreviewModal({ paymentId, open, onOpenChange
 
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
-      <DialogPrimitive.Portal>
+      <DialogPrimitive.Portal container={portalContainer ?? undefined}>
         <DialogPrimitive.Overlay
           className={cn("receipt-preview-overlay fixed inset-0 z-50", hhNeoFocusRevealOverlay)}
         />
         <DialogPrimitive.Content
+          data-hh-context="viewer"
+          data-hh-theme="neo-dark"
           onEscapeKeyDown={() => onOpenChange(false)}
           onPointerDownOutside={() => onOpenChange(false)}
           className={cn(

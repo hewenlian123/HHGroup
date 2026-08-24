@@ -102,7 +102,7 @@ const PAGE_BG = "bg-[var(--hh-l0-canvas)] text-[var(--hh-text-secondary)]";
 const FIELD =
   "h-10 rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-hh-body text-[var(--hh-text-primary)] shadow-none focus-visible:border-[var(--hh-action-primary)] focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)]";
 const MODAL =
-  "dark max-w-[480px] w-full gap-0 border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-8 shadow-operational rounded-hh-task sm:max-w-[480px]";
+  "max-w-[480px] w-full gap-0 border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-8 shadow-operational rounded-hh-task sm:max-w-[480px]";
 
 function fmtUsd0(n: number): string {
   const rounded = Math.round(Math.abs(n));

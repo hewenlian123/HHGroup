@@ -670,6 +670,8 @@ export function EstimatePreviewContent({
     <article
       data-testid="estimate-document"
       data-estimate-document-style={documentStyle}
+      data-hh-context="paper"
+      data-hh-theme="document-light"
       className="estimate-preview-paper-stack text-zinc-900 print:block"
     >
       {scopePages.map((pageSections, pageIndex) => {

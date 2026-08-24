@@ -7,6 +7,7 @@ import { Check, ChevronRight, Circle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motionPopoverLayer } from "@/lib/motion-system";
 import { TYPO } from "@/lib/typography";
+import { useHhPortalContainer, useHhTheme } from "@/contexts/hh-theme-context";
 
 const DropdownMenu = DropdownMenuPrimitive.Root;
 
@@ -14,7 +15,21 @@ const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger;
 
 const DropdownMenuGroup = DropdownMenuPrimitive.Group;
 
-const DropdownMenuPortal = DropdownMenuPrimitive.Portal;
+function DropdownMenuPortal({
+  children,
+  container,
+  ...props
+}: React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Portal>) {
+  const portalContainer = useHhPortalContainer();
+  const { context, theme } = useHhTheme();
+  return (
+    <DropdownMenuPrimitive.Portal container={container ?? portalContainer ?? undefined} {...props}>
+      <div className="contents" data-hh-context={context} data-hh-theme={theme}>
+        {children}
+      </div>
+    </DropdownMenuPrimitive.Portal>
+  );
+}
 
 const DropdownMenuSub = DropdownMenuPrimitive.Sub;
 
@@ -62,21 +77,27 @@ DropdownMenuSubContent.displayName = DropdownMenuPrimitive.SubContent.displayNam
 const DropdownMenuContent = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content>
->(({ className, sideOffset = 4, ...props }, ref) => (
-  <DropdownMenuPrimitive.Portal>
-    <DropdownMenuPrimitive.Content
-      ref={ref}
-      sideOffset={sideOffset}
-      className={cn(
-        "z-[100] max-h-[var(--radix-dropdown-menu-content-available-height)] min-w-[8rem] overflow-y-auto overflow-x-hidden rounded-hh-standard border border-[var(--hh-border-floating)] bg-[var(--hh-l4-floating-surface)] p-hh-1 py-hh-2 text-[var(--hh-text-primary)] shadow-floating origin-[--radix-dropdown-menu-content-transform-origin]",
-        motionPopoverLayer,
-        "data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
-        className
-      )}
-      {...props}
-    />
-  </DropdownMenuPrimitive.Portal>
-));
+>(({ className, sideOffset = 4, ...props }, ref) => {
+  const portalContainer = useHhPortalContainer();
+  const { context, theme } = useHhTheme();
+  return (
+    <DropdownMenuPrimitive.Portal container={portalContainer ?? undefined}>
+      <DropdownMenuPrimitive.Content
+        ref={ref}
+        sideOffset={sideOffset}
+        data-hh-context={context}
+        data-hh-theme={theme}
+        className={cn(
+          "z-[100] max-h-[var(--radix-dropdown-menu-content-available-height)] min-w-[8rem] overflow-y-auto overflow-x-hidden rounded-hh-standard border border-[var(--hh-border-floating)] bg-[var(--hh-l4-floating-surface)] p-hh-1 py-hh-2 text-[var(--hh-text-primary)] shadow-floating origin-[--radix-dropdown-menu-content-transform-origin]",
+          motionPopoverLayer,
+          "data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+          className
+        )}
+        {...props}
+      />
+    </DropdownMenuPrimitive.Portal>
+  );
+});
 DropdownMenuContent.displayName = DropdownMenuPrimitive.Content.displayName;
 
 const DropdownMenuItem = React.forwardRef<

@@ -31,6 +31,8 @@ export function PaymentReceiptBody({ data }: { data: PaymentReceiptPreviewDto })
     <div
       className="receipt receipt-container payment-receipt-paper"
       data-testid="payment-receipt-paper"
+      data-hh-context="paper"
+      data-hh-theme="document-light"
     >
       <DocumentCompanyHeader
         className="receipt-doc-header border-zinc-200 !mb-3 !pb-3"
