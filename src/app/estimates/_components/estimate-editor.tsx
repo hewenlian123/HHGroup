@@ -91,6 +91,20 @@ import {
   persistedEstimateItemOrder,
   type EstimateItemMoveTarget,
 } from "@/lib/estimate-item-reorder";
+import { EstimateSurfaceSheet } from "./estimate-surface-sheet";
+
+const ESTIMATE_UNIT_SUGGESTIONS = [
+  "LS",
+  "EA",
+  "HR",
+  "DAY",
+  "SF",
+  "LF",
+  "CY",
+  "LB",
+  "TON",
+  "ALLOW",
+] as const;
 
 function cssEscapeAttrSelector(value: string): string {
   const winCss =
@@ -124,8 +138,13 @@ export type EstimateEditorProps = {
   /** Controlled details-sheet state for the Existing Estimate command bar. */
   detailsOpen?: boolean;
   onDetailsOpenChange?: (open: boolean) => void;
+  detailsSurface?: "information" | "pricing";
   /** Persist the detail drawer through the parent edit flow when available. */
   onSaveDetails?: () => void;
+  notesOpen?: boolean;
+  onNotesOpenChange?: (open: boolean) => void;
+  paymentScheduleOpen?: boolean;
+  onPaymentScheduleOpenChange?: (open: boolean) => void;
 };
 
 export function EstimateEditor({
@@ -145,7 +164,12 @@ export function EstimateEditor({
   editing = false,
   detailsOpen,
   onDetailsOpenChange,
+  detailsSurface = "information",
   onSaveDetails,
+  notesOpen = false,
+  onNotesOpenChange,
+  paymentScheduleOpen = false,
+  onPaymentScheduleOpenChange,
 }: EstimateEditorProps) {
   const isLocked = !["Draft", "Sent"].includes(status);
   const isReadOnly = isLocked || !editing;
@@ -877,13 +901,47 @@ export function EstimateEditor({
     ]
   );
 
+  const notesSurface = (
+    <EstimateNotesClarifications
+      notes={localDocumentNotes}
+      onNotesChange={updateDocumentNotes}
+      disabled={isReadOnly}
+      defaultCollapsed={false}
+    />
+  );
+  const paymentScheduleSurface = (
+    <EstimatePaymentSchedule
+      estimateId={estimateId}
+      paymentSchedule={paymentSchedule}
+      estimateTotal={summary?.grandTotal ?? 0}
+      isLocked={isReadOnly}
+      canCreateMilestoneInvoices={status === "Approved" || status === "Converted"}
+      invoiceProjectLink={invoiceProjectLink}
+      invoiceSummaries={paymentInvoiceSummaries}
+      invoiceContext={{
+        estimateNumber,
+        customerName: meta.client.name,
+        projectName: meta.project.name,
+      }}
+      nested
+      paymentTemplates={paymentTemplates}
+      addPaymentMilestoneAction={addPaymentMilestoneInlineAction}
+      updatePaymentMilestoneAction={updatePaymentMilestoneInlineAction}
+      deletePaymentMilestoneAction={deletePaymentMilestoneInlineAction}
+      markPaymentMilestonePaidAction={markPaymentMilestonePaidAction}
+      reorderPaymentScheduleAction={reorderPaymentScheduleAction}
+      applyPaymentTemplateAction={applyPaymentTemplateAction}
+      createPaymentTemplateAction={createPaymentTemplateAction}
+    />
+  );
+
   return (
     <React.Fragment>
       <span id="estimate-item-move-status" className="sr-only" aria-live="polite">
         {itemMoveAnnouncement}
       </span>
       <div>
-        <div className="min-w-0 space-y-4 pb-[calc(10rem+env(safe-area-inset-bottom))] lg:pb-0">
+        <div className={cn(EB.workbench, "pb-[calc(10rem+env(safe-area-inset-bottom))] lg:pb-0")}>
           <EstimateEditCustomerSection
             meta={meta}
             estimateId={estimateId}
@@ -891,6 +949,7 @@ export function EstimateEditor({
             isReadOnly={isReadOnly}
             detailsOpen={detailsOpen}
             onDetailsOpenChange={onDetailsOpenChange}
+            detailsSurface={detailsSurface}
             tax={summary?.tax ?? 0}
             discount={summary?.discount ?? 0}
             estimateSubtotal={summary?.subtotal ?? 0}
@@ -1386,42 +1445,43 @@ export function EstimateEditor({
             </div>
           </section>
 
-          <EstimateNotesClarifications
-            notes={localDocumentNotes}
-            onNotesChange={updateDocumentNotes}
-            disabled={isReadOnly}
-            defaultCollapsed={localDocumentNotes.length === 0}
-          />
+          {onNotesOpenChange ? (
+            <EstimateSurfaceSheet
+              open={notesOpen}
+              onOpenChange={onNotesOpenChange}
+              surface="notes"
+              title="Customer Notes & Terms"
+              description="Customer-facing notes only. Internal notes remain isolated from this document."
+              contentClassName="overflow-y-auto p-3 sm:p-4"
+              testId="estimate-notes-sheet"
+            >
+              {notesSurface}
+            </EstimateSurfaceSheet>
+          ) : (
+            notesSurface
+          )}
 
-          <EstimateBuilderAdvanced
-            title="Payment schedule"
-            defaultOpen={paymentSchedule.length > 0}
-            className="mt-4"
-          >
-            <EstimatePaymentSchedule
-              estimateId={estimateId}
-              paymentSchedule={paymentSchedule}
-              estimateTotal={summary?.grandTotal ?? 0}
-              isLocked={isReadOnly}
-              canCreateMilestoneInvoices={status === "Approved" || status === "Converted"}
-              invoiceProjectLink={invoiceProjectLink}
-              invoiceSummaries={paymentInvoiceSummaries}
-              invoiceContext={{
-                estimateNumber,
-                customerName: meta.client.name,
-                projectName: meta.project.name,
-              }}
-              nested
-              paymentTemplates={paymentTemplates}
-              addPaymentMilestoneAction={addPaymentMilestoneInlineAction}
-              updatePaymentMilestoneAction={updatePaymentMilestoneInlineAction}
-              deletePaymentMilestoneAction={deletePaymentMilestoneInlineAction}
-              markPaymentMilestonePaidAction={markPaymentMilestonePaidAction}
-              reorderPaymentScheduleAction={reorderPaymentScheduleAction}
-              applyPaymentTemplateAction={applyPaymentTemplateAction}
-              createPaymentTemplateAction={createPaymentTemplateAction}
-            />
-          </EstimateBuilderAdvanced>
+          {onPaymentScheduleOpenChange ? (
+            <EstimateSurfaceSheet
+              open={paymentScheduleOpen}
+              onOpenChange={onPaymentScheduleOpenChange}
+              surface="payment"
+              title="Payment Schedule"
+              description="Allocate the authoritative estimate total across milestones."
+              contentClassName="overflow-y-auto p-3 sm:p-4"
+              testId="estimate-payment-schedule-sheet"
+            >
+              {paymentScheduleSurface}
+            </EstimateSurfaceSheet>
+          ) : (
+            <EstimateBuilderAdvanced
+              title="Payment schedule"
+              defaultOpen={paymentSchedule.length > 0}
+              className="mt-4"
+            >
+              {paymentScheduleSurface}
+            </EstimateBuilderAdvanced>
+          )}
         </div>
       </div>
 
@@ -1498,8 +1558,6 @@ function LineItemRow({
   const [unit, setUnit] = React.useState(row.unit);
   const [unitCost, setUnitCost] = React.useState(roundEstimateCurrencyValue(row.unitCost));
   const skipNextBlurRef = React.useRef(false);
-  const combinedDesc = desc.trim() ? `${title}\n${desc}` : title;
-
   React.useEffect(() => {
     const i = row.desc.indexOf("\n");
     setTitle(i < 0 ? row.desc : row.desc.slice(0, i));
@@ -1514,21 +1572,26 @@ function LineItemRow({
     return estimateLineTotal({ ...row, qty, unit, unitCost });
   }, [isLocked, row, qty, unit, unitCost]);
 
-  const lineItemFormData = React.useCallback((): FormData => {
-    const formData = new FormData();
-    formData.set("estimateId", estimateId);
-    formData.set("itemId", row.id);
-    formData.set("desc", combinedDesc);
-    formData.set("qty", String(qty));
-    formData.set("unit", unit);
-    formData.set("unitCost", String(unitCost));
-    return formData;
-  }, [combinedDesc, estimateId, qty, row.id, unit, unitCost]);
+  const lineItemFormData = React.useCallback(
+    (descriptionOverride?: string): FormData => {
+      const description = descriptionOverride ?? desc;
+      const combinedDesc = description.trim() ? `${title}\n${description}` : title;
+      const formData = new FormData();
+      formData.set("estimateId", estimateId);
+      formData.set("itemId", row.id);
+      formData.set("desc", combinedDesc);
+      formData.set("qty", String(qty));
+      formData.set("unit", unit);
+      formData.set("unitCost", String(unitCost));
+      return formData;
+    },
+    [desc, estimateId, qty, row.id, title, unit, unitCost]
+  );
 
-  const submitForm = async (): Promise<boolean> => {
+  const submitForm = async (descriptionOverride?: string): Promise<boolean> => {
     if (isLocked) return true;
     const result = await trackMutation(`line:update:${row.id}`, () =>
-      updateLineItemAction(lineItemFormData())
+      updateLineItemAction(lineItemFormData(descriptionOverride))
     );
     if (!result.ok) {
       toast({
@@ -1680,18 +1743,26 @@ function LineItemRow({
             {row.unit || "—"}
           </span>
         ) : (
-          <Input
-            type="text"
-            value={unit}
-            onChange={(e) => {
-              markUnsaved();
-              setUnit(e.target.value);
-            }}
-            onBlur={submitOnBlur}
-            className={ebInput(`h-8 min-h-8 w-full px-2 ${EB.lineMeasureInput}`)}
-            aria-label="Line item unit"
-            placeholder="EA"
-          />
+          <>
+            <Input
+              type="text"
+              value={unit}
+              list={`estimate-unit-options-${row.id}`}
+              onChange={(e) => {
+                markUnsaved();
+                setUnit(e.target.value);
+              }}
+              onBlur={submitOnBlur}
+              className={ebInput(`h-8 min-h-8 w-full px-2 ${EB.lineMeasureInput}`)}
+              aria-label="Line item unit"
+              placeholder="EA"
+            />
+            <datalist id={`estimate-unit-options-${row.id}`}>
+              {ESTIMATE_UNIT_SUGGESTIONS.map((suggestion) => (
+                <option key={suggestion} value={suggestion} />
+              ))}
+            </datalist>
+          </>
         )}
       </div>
       <div className={cn(EB.lineFieldStackContents, EB.linePricingUnit)}>
@@ -1770,7 +1841,13 @@ function LineItemRow({
               }
         }
         onTitleBlur={isLocked ? undefined : submitOnBlur}
-        onDescriptionBlur={isLocked ? undefined : submitOnBlur}
+        onDescriptionBlur={
+          isLocked
+            ? undefined
+            : (normalizedDescription) => {
+                void submitForm(normalizedDescription);
+              }
+        }
         titleInputAriaLabel={isLocked ? undefined : "Line item title"}
         descriptionEditorAriaLabel={isLocked ? undefined : "Line item description"}
         lineIndex={lineOrdinal}

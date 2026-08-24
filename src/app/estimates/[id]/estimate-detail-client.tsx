@@ -6,7 +6,9 @@ import {
 } from "@/components/perf/sync-router-non-blocking";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import * as React from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { FileClock } from "lucide-react";
 import type {
   CostCode,
   EstimateItemRow,
@@ -56,6 +58,7 @@ import {
   captureEstimateBuilderReturnContext,
 } from "../_components/estimate-workflow-continuity";
 import { EstimateActivityTimeline } from "../_components/estimate-activity-timeline";
+import { EstimateSurfaceSheet } from "../_components/estimate-surface-sheet";
 
 type EstimateDetailClientProps = {
   estimateId: string;
@@ -114,6 +117,13 @@ function EstimateDetailClientContent({
   const [status, setStatus] = React.useState<string>(initialStatus);
   const [editing, setEditing] = React.useState(false);
   const [detailsOpen, setDetailsOpen] = React.useState(false);
+  const [detailsSurface, setDetailsSurface] = React.useState<"information" | "pricing">(
+    "information"
+  );
+  const [notesOpen, setNotesOpen] = React.useState(false);
+  const [paymentScheduleOpen, setPaymentScheduleOpen] = React.useState(false);
+  const [activityOpen, setActivityOpen] = React.useState(false);
+  const [revisionHistoryOpen, setRevisionHistoryOpen] = React.useState(false);
   const [convertDrawerOpen, setConvertDrawerOpen] = React.useState(false);
   const [saveTemplateOpen, setSaveTemplateOpen] = React.useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = React.useState(false);
@@ -353,7 +363,38 @@ function EstimateDetailClientContent({
           setDetailsOpen(false);
           setEditing(true);
         }}
-        onEditDetails={() => setDetailsOpen(true)}
+        onEditDetails={() => {
+          setDetailsSurface("information");
+          setDetailsOpen(true);
+        }}
+        onInfoClick={
+          isLocked
+            ? undefined
+            : () => {
+                if (!editing) setEditing(true);
+                setDetailsSurface("information");
+                setDetailsOpen(true);
+              }
+        }
+        onPricingClick={
+          isLocked
+            ? undefined
+            : () => {
+                if (!editing) setEditing(true);
+                setDetailsSurface("pricing");
+                setDetailsOpen(true);
+              }
+        }
+        onNotesClick={() => {
+          if (!isLocked && !editing) setEditing(true);
+          setNotesOpen(true);
+        }}
+        onPaymentScheduleClick={() => {
+          if (!isLocked && !editing) setEditing(true);
+          setPaymentScheduleOpen(true);
+        }}
+        onActivityClick={() => setActivityOpen(true)}
+        onRevisionHistoryClick={revisionContext ? () => setRevisionHistoryOpen(true) : undefined}
         onSave={() => void onSave()}
         onSaveAndPreview={() => void onSaveAndPreview()}
         onPreview={onPreview}
@@ -384,6 +425,40 @@ function EstimateDetailClientContent({
         onSuccess={onConvertSuccess}
       />
 
+      {revisionContext && !revisionContext.isCurrent ? (
+        <section
+          className="flex flex-col gap-3 rounded-lg border border-[var(--hh-information-border)] bg-[var(--hh-information-soft-fill)] px-4 py-3 text-[var(--hh-text-primary)] sm:flex-row sm:items-center sm:justify-between"
+          aria-label="Historical revision"
+          data-testid="estimate-historical-revision-banner"
+        >
+          <div className="flex min-w-0 items-start gap-3">
+            <FileClock
+              className="mt-0.5 h-4 w-4 shrink-0 text-[var(--hh-information)]"
+              aria-hidden
+            />
+            <div className="min-w-0">
+              <p className="text-hh-table-header font-semibold uppercase tracking-[0.08em] text-[var(--hh-information)]">
+                Historical revision
+              </p>
+              <p className="mt-0.5 text-hh-body text-[var(--hh-text-secondary)]">
+                Rev {revisionContext.revisionNumber} · {status} · Read-only
+              </p>
+            </div>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="min-h-10 shrink-0 sm:min-h-8"
+            asChild
+          >
+            <Link href={`/estimates/${revisionContext.currentRevisionId}`}>
+              View current revision
+            </Link>
+          </Button>
+        </section>
+      ) : null}
+
       <EstimateEditor
         key={`${estimateId}-${estimateUpdatedAt}`}
         estimateId={estimateId}
@@ -402,13 +477,72 @@ function EstimateDetailClientContent({
         editing={editing && !isLocked}
         detailsOpen={detailsOpen}
         onDetailsOpenChange={setDetailsOpen}
+        detailsSurface={detailsSurface}
         onSaveDetails={() => void onSave()}
+        notesOpen={notesOpen}
+        onNotesOpenChange={setNotesOpen}
+        paymentScheduleOpen={paymentScheduleOpen}
+        onPaymentScheduleOpenChange={setPaymentScheduleOpen}
       />
 
-      <EstimateActivityTimeline
-        events={activityEvents}
-        revisionNumber={revisionContext?.revisionNumber ?? 0}
-      />
+      <EstimateSurfaceSheet
+        open={activityOpen}
+        onOpenChange={setActivityOpen}
+        surface="activity"
+        title="Activity"
+        description="Recorded lifecycle and related Estimate events."
+        contentClassName="overflow-y-auto p-0"
+        testId="estimate-activity-sheet"
+      >
+        <EstimateActivityTimeline
+          events={activityEvents}
+          revisionNumber={revisionContext?.revisionNumber ?? 0}
+          className="m-0 rounded-none border-0 bg-transparent shadow-none"
+        />
+      </EstimateSurfaceSheet>
+
+      {revisionContext ? (
+        <EstimateSurfaceSheet
+          open={revisionHistoryOpen}
+          onOpenChange={setRevisionHistoryOpen}
+          surface="revision"
+          title="Revision History"
+          description="Navigate the canonical revision lineage for this Estimate."
+          contentClassName="overflow-y-auto p-4"
+          testId="estimate-revision-history-sheet"
+        >
+          <div className="space-y-2">
+            <Link
+              href={`/estimates/${revisionContext.currentRevisionId}`}
+              className="flex min-h-12 items-center justify-between gap-3 rounded-lg border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 py-2 text-sm text-[var(--hh-text-primary)] transition-colors hover:bg-[var(--hh-l3-hover)]"
+            >
+              <span>
+                <span className="block font-semibold">Current revision</span>
+                <span className="block text-xs text-[var(--hh-text-tertiary)]">
+                  {revisionContext.isCurrent
+                    ? `Rev ${revisionContext.revisionNumber} · ${status}`
+                    : "Open the latest revision"}
+                </span>
+              </span>
+              <span className="text-xs text-[var(--hh-action-primary)]">Open</span>
+            </Link>
+            {revisionContext.previousRevisionId ? (
+              <Link
+                href={`/estimates/${revisionContext.previousRevisionId}`}
+                className="flex min-h-12 items-center justify-between gap-3 rounded-lg border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 py-2 text-sm text-[var(--hh-text-primary)] transition-colors hover:bg-[var(--hh-l3-hover)]"
+              >
+                <span>
+                  <span className="block font-semibold">Previous revision</span>
+                  <span className="block text-xs text-[var(--hh-text-tertiary)]">
+                    Historical · Read-only
+                  </span>
+                </span>
+                <span className="text-xs text-[var(--hh-action-primary)]">Open</span>
+              </Link>
+            ) : null}
+          </div>
+        </EstimateSurfaceSheet>
+      ) : null}
 
       {editing && !isLocked ? (
         <div

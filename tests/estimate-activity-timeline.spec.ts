@@ -176,7 +176,11 @@ test("Estimate Activity is revision-aware, linked, read-only, and responsive", a
     await page.setViewportSize({ width: 1440, height: 1000 });
     await page.goto(`/estimates/${sourceId}`, { waitUntil: "domcontentloaded" });
 
-    const timeline = page.getByTestId("estimate-activity-timeline");
+    await page.getByRole("button", { name: "Estimate actions" }).click();
+    await page.getByRole("menuitem", { name: "Activity", exact: true }).click();
+    const activitySheet = page.getByTestId("estimate-activity-sheet");
+    await expect(activitySheet).toBeVisible();
+    const timeline = activitySheet.getByTestId("estimate-activity-timeline");
     await expect(timeline).toBeVisible();
     await expect(timeline).toContainText("Activity");
     await expect(timeline).toContainText("Rev 0");
@@ -203,6 +207,8 @@ test("Estimate Activity is revision-aware, linked, read-only, and responsive", a
 
     await page.setViewportSize({ width: 390, height: 844 });
     await page.reload({ waitUntil: "domcontentloaded" });
+    await page.getByLabel("More estimate actions", { exact: true }).click();
+    await page.getByRole("menuitem", { name: "Activity", exact: true }).click();
     await expect(timeline).toBeVisible();
     await expect(timeline).toContainText("Draft Invoice Created");
     await expect(timeline).toContainText("Converted to Project");

@@ -147,7 +147,6 @@ export const EstimateListRow = memo(function EstimateListRow({
   onCopyPrevious: (row: EstimateListItem) => void;
 }) {
   const href = `/estimates/${row.id}`;
-  const revisionLabel = estimateRevisionLabel(row);
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -162,7 +161,7 @@ export const EstimateListRow = memo(function EstimateListRow({
           className="estimate-list-number-link block w-full text-[var(--hh-text-primary)] transition-colors duration-150 hover:text-[var(--hh-text-strong)] focus:text-[var(--hh-text-strong)] focus:outline-none focus-visible:underline focus-visible:underline-offset-2"
           onClick={(e) => e.stopPropagation()}
         >
-          {revisionLabel}
+          {row.number}
           {row.isCurrentRevision === false ? (
             <span className="ml-2 text-hh-status font-normal text-[var(--hh-text-tertiary)]">
               Historical
@@ -170,23 +169,26 @@ export const EstimateListRow = memo(function EstimateListRow({
           ) : null}
         </Link>
       </td>
-      <td className={cn(tableRawTdClass, "estimate-list-col-client")}>
-        <span
-          data-testid="estimate-row-client"
-          className="estimate-list-client-name"
-          title={row.client}
-        >
-          {row.client}
+      <td className={cn(tableRawTdClass, "estimate-list-col-customer-project")}>
+        <span className="estimate-list-customer-project">
+          <span
+            data-testid="estimate-row-client"
+            className="estimate-list-client-name"
+            title={row.client}
+          >
+            {row.client}
+          </span>
+          <span
+            data-testid="estimate-row-project"
+            className="estimate-list-project-name"
+            title={row.project}
+          >
+            {row.project}
+          </span>
         </span>
       </td>
-      <td className={cn(tableRawTdClass, "estimate-list-col-project")}>
-        <span
-          data-testid="estimate-row-project"
-          className="estimate-list-project-name"
-          title={row.project}
-        >
-          {row.project}
-        </span>
+      <td className={cn(tableRawTdClass, "estimate-list-col-revision")}>
+        <span className="estimate-list-revision-label">Rev {row.revisionNumber ?? 0}</span>
       </td>
       <td className={cn(tableRawTdClass, "estimate-list-col-status")}>
         <EstimateListStatus status={row.status} />

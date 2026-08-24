@@ -65,7 +65,9 @@ test("dense Builder preserves fast keyboard entry and visible lifecycle actions"
   await expect(gridHeader).toContainText("Actions");
 
   const title = page.getByLabel("Line item 1 title").locator("visible=true");
-  const description = page.getByLabel("Line item 1 description").locator("visible=true");
+  const descriptionSummary = page
+    .getByRole("button", { name: "Line item 1 description" })
+    .locator("visible=true");
   const quantity = page.getByLabel("Line item 1 quantity").locator("visible=true");
   const unit = page.getByLabel("Line item 1 unit", { exact: true }).locator("visible=true");
   const unitPrice = page
@@ -74,7 +76,7 @@ test("dense Builder preserves fast keyboard entry and visible lifecycle actions"
 
   await title.focus();
   await page.keyboard.press("Tab");
-  await expect(description).toBeFocused();
+  await expect(descriptionSummary).toBeFocused();
   await page.keyboard.press("Tab");
   await expect(quantity).toBeFocused();
   await page.keyboard.press("Tab");
@@ -87,7 +89,12 @@ test("dense Builder preserves fast keyboard entry and visible lifecycle actions"
   await expect(unitPrice).toBeFocused();
 
   await title.fill("Excavation");
-  await description.fill("Excavate footing trenches");
+  await descriptionSummary.click();
+  await page
+    .getByRole("textbox", { name: "Line item 1 description" })
+    .locator("visible=true")
+    .fill("Excavate footing trenches");
+  await page.getByTestId("estimate-description-done").click();
   await quantity.fill("4");
   await unit.fill("CY");
   await unitPrice.fill("125");
@@ -172,26 +179,31 @@ test("section-header Add line keeps long-estimate entry anchored in context", as
   await expect(firstSection.locator("[data-estimate-line-item-id]")).toHaveCount(2);
 });
 
-test("long descriptions stay directly editable with full content and compact formatting controls", async ({
-  page,
-}) => {
+test("descriptions stay compact until the focused rich editor is opened", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await loginAsE2EOwner(page, "/estimates/new");
   await addBlankSection(page);
 
-  const description = page.getByLabel("Line item 1 description").locator("visible=true");
+  const descriptionSummary = page
+    .getByRole("button", { name: "Line item 1 description" })
+    .locator("visible=true");
+  await expect(descriptionSummary).toHaveAttribute("aria-expanded", "false");
+  await expect(descriptionSummary).toContainText("Add description");
+  await expect(page.getByRole("button", { name: "Bold" })).toHaveCount(0);
+
+  await descriptionSummary.click();
+  const description = page
+    .getByRole("textbox", { name: "Line item 1 description" })
+    .locator("visible=true");
+  await expect(description).toBeFocused();
   await description.fill(
     "Protect adjacent occupied finishes, coordinate daily access with the owner, maintain dust control and safe egress, and include all temporary protection, cleanup, adjustments, and closeout documentation required for a complete scope."
-  );
-  await page.getByLabel("Line item 1 quantity").locator("visible=true").focus();
-
-  await expect(page.getByRole("button", { name: /(?:Expand|Collapse) description/ })).toHaveCount(
-    0
   );
   await expect(page.getByRole("button", { name: "Bold" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Italic" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Bullet list" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Numbered list" })).toBeVisible();
+  await expect(page.getByTestId("estimate-description-done")).toBeVisible();
   await expect
     .poll(() =>
       description.evaluate((element) => ({
@@ -219,8 +231,13 @@ test("long descriptions stay directly editable with full content and compact for
     clientHeight: element.clientHeight,
     scrollHeight: element.scrollHeight,
   }));
-  expect(editorMetrics.height).toBeGreaterThan(44);
+  expect(editorMetrics.height).toBeGreaterThanOrEqual(104);
   expect(editorMetrics.scrollHeight).toBeLessThanOrEqual(editorMetrics.clientHeight);
+
+  await page.keyboard.press("Escape");
+  await expect(description).toHaveCount(0);
+  await expect(descriptionSummary).toBeFocused();
+  await expect(descriptionSummary).toContainText("Protect adjacent occupied finishes");
 
   const topOffsets = await page.evaluate(() => {
     const row = document.querySelector<HTMLElement>(".eb-line-item-grid--pricing");
@@ -240,15 +257,9 @@ test("long descriptions stay directly editable with full content and compact for
       return Math.round(node.getBoundingClientRect().top - rowTop);
     });
   });
-  expect(Math.max(...topOffsets) - Math.min(...topOffsets)).toBeLessThanOrEqual(2);
+  expect(Math.max(...topOffsets) - Math.min(...topOffsets)).toBeLessThanOrEqual(4);
 
-  await description.fill("/n");
-  const slashCommands = page.getByRole("menu", { name: "Description commands" });
-  await expect(slashCommands).toBeVisible();
-  await slashCommands.getByRole("menuitem", { name: "Numbered list" }).click();
-  await expect(description).not.toContainText("/n");
-  await expect.poll(() => description.evaluate((element) => element.innerHTML)).toMatch(/<ol>/i);
-
+  await descriptionSummary.click();
   const richDescription = "Formatted estimate description";
   await description.fill(richDescription);
   await description.focus();
@@ -258,6 +269,7 @@ test("long descriptions stay directly editable with full content and compact for
     .toBe(richDescription);
   await page.getByRole("button", { name: "Numbered list" }).click();
   await expect.poll(() => description.evaluate((element) => element.innerHTML)).toMatch(/<ol>/i);
+  await page.getByTestId("estimate-description-done").click();
 
   await page.getByLabel("Line item 1 title").locator("visible=true").fill("PW Rich description");
   await page.getByLabel("Line item 1 quantity").locator("visible=true").fill("1");
@@ -277,16 +289,29 @@ test("long descriptions stay directly editable with full content and compact for
 
   await page.reload({ waitUntil: "domcontentloaded" });
   await page.getByRole("button", { name: "Edit", exact: true }).click();
-  const savedDescription = page.getByLabel("Line item description").locator("visible=true");
-  await expect(savedDescription).toContainText(richDescription);
+  const savedDescriptionSummary = page
+    .getByRole("button", { name: "Line item description" })
+    .locator("visible=true");
+  await expect(savedDescriptionSummary).toContainText(richDescription);
+  await savedDescriptionSummary.click();
+  const savedDescription = page
+    .getByRole("textbox", { name: "Line item description" })
+    .locator("visible=true");
   await expect
     .poll(() => savedDescription.evaluate((element) => element.innerHTML))
     .toMatch(/<ol>/i);
+  await expect(savedDescription.locator("ol > li")).toHaveCount(1);
+  await expect(savedDescription.locator(":scope > p")).toHaveCount(0);
+  await expect
+    .poll(() => savedDescription.evaluate((element) => element.innerHTML))
+    .not.toMatch(/<li(?:\s[^>]*)?>\s*(?:<p>\s*<\/p>\s*)?<\/li>/i);
+  await page.getByTestId("estimate-description-done").click();
 
   await page.goto(`${detailUrl}/preview`, { waitUntil: "domcontentloaded" });
   const preview = page.getByTestId("estimate-document");
   await expect(preview).toContainText(richDescription, { timeout: 30_000 });
   await expect(preview.locator("ol")).toHaveCount(1);
+  await expect(preview.locator("ol > li")).toHaveCount(1);
 
   await page.goto(`${detailUrl}/print`, { waitUntil: "domcontentloaded" });
   const printDocument = page.getByRole("document", { name: "Estimate print view" });

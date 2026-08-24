@@ -12,13 +12,19 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  Activity,
   ArrowLeft,
+  CalendarDays,
   ChevronDown,
+  CircleDollarSign,
   Copy,
   FileClock,
   FilePlus2,
+  History,
+  Info,
   MoreVertical,
   Pencil,
+  StickyNote,
   Trash2,
 } from "lucide-react";
 import type { EstimateSaveStatus } from "../_components/estimate-builder-save-status";
@@ -44,6 +50,12 @@ export function EstimateDetailHeader({
   isLocked,
   onEdit,
   onEditDetails,
+  onInfoClick,
+  onPricingClick,
+  onNotesClick,
+  onPaymentScheduleClick,
+  onActivityClick,
+  onRevisionHistoryClick,
   onSave,
   onSaveAndPreview,
   onPreview,
@@ -70,6 +82,12 @@ export function EstimateDetailHeader({
   isLocked: boolean;
   onEdit: () => void;
   onEditDetails?: () => void;
+  onInfoClick?: () => void;
+  onPricingClick?: () => void;
+  onNotesClick?: () => void;
+  onPaymentScheduleClick?: () => void;
+  onActivityClick?: () => void;
+  onRevisionHistoryClick?: () => void;
   onSave: () => void;
   onSaveAndPreview: () => void;
   onPreview?: () => void;
@@ -91,9 +109,7 @@ export function EstimateDetailHeader({
     Boolean(revisionContext?.isCurrent) &&
     ["Approved", "Rejected", "Converted"].includes(status) &&
     Boolean(onCreateRevision);
-  const revisionLabel = revisionContext
-    ? `${estimateNumber} Rev ${revisionContext.revisionNumber}`
-    : estimateNumber;
+  const revisionLabel = revisionContext ? `Rev ${revisionContext.revisionNumber}` : undefined;
   const statusActions =
     status === "Sent"
       ? [
@@ -101,7 +117,19 @@ export function EstimateDetailHeader({
           { label: "Mark declined", action: onReject, destructive: true },
         ]
       : [];
+  const headerUtilityActions = [
+    { label: "Info", action: onInfoClick, Icon: Info },
+    { label: "Pricing", action: onPricingClick, Icon: CircleDollarSign },
+    { label: "Notes", action: onNotesClick, Icon: StickyNote },
+  ].filter((item) => Boolean(item.action));
+  const overflowUtilityActions = [
+    { label: "Payment Schedule", action: onPaymentScheduleClick, Icon: CalendarDays },
+    { label: "Activity", action: onActivityClick, Icon: Activity },
+    { label: "Revision History", action: onRevisionHistoryClick, Icon: History },
+  ].filter((item) => Boolean(item.action));
   const hasMobileSecondaryActions =
+    headerUtilityActions.length > 0 ||
+    overflowUtilityActions.length > 0 ||
     canSend ||
     statusActions.length > 0 ||
     (canConvert && Boolean(onConvertClick)) ||
@@ -113,7 +141,8 @@ export function EstimateDetailHeader({
 
   return (
     <EstimateWorkspaceCommandHeader
-      title={revisionLabel}
+      title={estimateNumber}
+      revisionLabel={revisionLabel}
       status={status}
       context={[clientName, projectName, siteAddress]}
       saveStatus={editing ? saveStatus : "idle"}
@@ -121,9 +150,26 @@ export function EstimateDetailHeader({
       testId="estimate-detail-header"
     >
       <div
-        className="flex w-full shrink-0 flex-wrap items-center justify-start gap-2 max-md:flex-nowrap sm:w-auto sm:justify-end lg:max-w-[58%] lg:flex-nowrap"
+        className="flex w-full min-w-0 flex-wrap items-center justify-start gap-1.5 max-md:flex-nowrap sm:justify-end xl:w-auto xl:max-w-[68%] xl:flex-nowrap"
         data-testid="estimate-detail-header-actions"
       >
+        {headerUtilityActions.map(({ label, action, Icon }) => (
+          <Button
+            key={label}
+            type="button"
+            variant="outline"
+            size="sm"
+            className={cn(
+              "hidden min-h-8 whitespace-nowrap px-2.5 xl:inline-flex",
+              ESTIMATE_HEADER_BUTTON
+            )}
+            disabled={pending}
+            onClick={action}
+          >
+            <Icon className="mr-1.5 h-3.5 w-3.5" aria-hidden />
+            {label}
+          </Button>
+        ))}
         {editing && onEditDetails ? (
           <Button
             type="button"
@@ -337,7 +383,9 @@ export function EstimateDetailHeader({
           </Button>
         ) : null}
 
-        {!editing && (onDuplicateClick || onSaveAsTemplateClick) ? (
+        {overflowUtilityActions.length > 0 ||
+        headerUtilityActions.length > 0 ||
+        (!editing && (onDuplicateClick || onSaveAsTemplateClick)) ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -358,7 +406,32 @@ export function EstimateDetailHeader({
               align="end"
               className="min-w-[220px] rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md"
             >
-              {onDuplicateClick ? (
+              {headerUtilityActions.map(({ label, action, Icon }) => (
+                <DropdownMenuItem
+                  key={label}
+                  onSelect={action}
+                  className="rounded-sm focus:bg-muted focus:text-foreground xl:hidden"
+                >
+                  <Icon className="mr-2 h-4 w-4" aria-hidden />
+                  {label}
+                </DropdownMenuItem>
+              ))}
+              {overflowUtilityActions.map(({ label, action, Icon }) => (
+                <DropdownMenuItem
+                  key={label}
+                  onSelect={action}
+                  className="rounded-sm focus:bg-muted focus:text-foreground"
+                >
+                  <Icon className="mr-2 h-4 w-4" aria-hidden />
+                  {label}
+                </DropdownMenuItem>
+              ))}
+              {(headerUtilityActions.length > 0 || overflowUtilityActions.length > 0) &&
+              !editing &&
+              (onDuplicateClick || onSaveAsTemplateClick) ? (
+                <DropdownMenuSeparator />
+              ) : null}
+              {!editing && onDuplicateClick ? (
                 <DropdownMenuItem
                   onSelect={onDuplicateClick}
                   className="rounded-sm focus:bg-muted focus:text-foreground"
@@ -368,7 +441,7 @@ export function EstimateDetailHeader({
                   Duplicate as Draft
                 </DropdownMenuItem>
               ) : null}
-              {onSaveAsTemplateClick ? (
+              {!editing && onSaveAsTemplateClick ? (
                 <DropdownMenuItem
                   onSelect={onSaveAsTemplateClick}
                   className="rounded-sm focus:bg-muted focus:text-foreground"
@@ -418,6 +491,29 @@ export function EstimateDetailHeader({
               align="end"
               className="min-w-[220px] rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md"
             >
+              {headerUtilityActions.map(({ label, action, Icon }) => (
+                <DropdownMenuItem
+                  key={`mobile-${label}`}
+                  onSelect={action}
+                  className="min-h-11 rounded-sm focus:bg-muted focus:text-foreground"
+                >
+                  <Icon className="mr-2 h-4 w-4" aria-hidden />
+                  {label}
+                </DropdownMenuItem>
+              ))}
+              {overflowUtilityActions.map(({ label, action, Icon }) => (
+                <DropdownMenuItem
+                  key={`mobile-${label}`}
+                  onSelect={action}
+                  className="min-h-11 rounded-sm focus:bg-muted focus:text-foreground"
+                >
+                  <Icon className="mr-2 h-4 w-4" aria-hidden />
+                  {label}
+                </DropdownMenuItem>
+              ))}
+              {headerUtilityActions.length > 0 || overflowUtilityActions.length > 0 ? (
+                <DropdownMenuSeparator />
+              ) : null}
               {canSend ? (
                 <DropdownMenuItem
                   onSelect={onSend}

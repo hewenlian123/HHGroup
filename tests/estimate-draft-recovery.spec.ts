@@ -35,9 +35,14 @@ test("new Estimate recovery is explicit, stale-safe, faithful, and clears after 
     await page.getByRole("menuitem", { name: "Blank section", exact: true }).click();
     await page.getByLabel("Line item 1 title").locator("visible=true").fill(lineTitle);
     await page
-      .getByLabel("Line item 1 description")
+      .getByRole("button", { name: "Line item 1 description" })
+      .locator("visible=true")
+      .click();
+    await page
+      .getByRole("textbox", { name: "Line item 1 description" })
       .locator("visible=true")
       .fill("Recovery preserves the complete supported line item.");
+    await page.getByTestId("estimate-description-done").click();
     await page.getByLabel("Line item 1 quantity").locator("visible=true").fill("2");
     await page.getByLabel("Line item 1 unit", { exact: true }).locator("visible=true").fill("LS");
     await page

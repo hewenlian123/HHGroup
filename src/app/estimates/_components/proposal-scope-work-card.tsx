@@ -10,7 +10,6 @@ import {
   sanitizeLineItemDescriptionHtml,
 } from "@/lib/sanitize-line-item-html";
 import { EB, ebInput } from "./estimate-builder-ui";
-import { LineItemOrScopeBodyPreview } from "./proposal-scope-preview";
 
 function escapeHtmlText(s: string): string {
   return s
@@ -40,6 +39,60 @@ function bodyToEditorInnerHtml(body: string): string {
   return plainBodyToEditorHtml(body ?? "");
 }
 
+function normalizeEditorDescriptionHtml(raw: string): string {
+  let clean = sanitizeLineItemDescriptionHtml(raw);
+  const emptyInline = String.raw`(?:\s|&nbsp;|&#160;|<br>)*`;
+  const emptyParagraph = String.raw`<p>${emptyInline}<\/p>`;
+  const emptyListItem = new RegExp(
+    String.raw`<li(?: class="[^"]*")?>${emptyInline}(?:${emptyParagraph}${emptyInline})*<\/li>`,
+    "gi"
+  );
+  const edgeEmptyParagraph = new RegExp(
+    String.raw`^(?:${emptyParagraph})+|(?:${emptyParagraph})+$`,
+    "gi"
+  );
+  const emptyList = /<(ul|ol)(?: class="[^"]*")?>\s*<\/\1>/gi;
+
+  let previous = "";
+  while (clean !== previous) {
+    previous = clean;
+    clean = clean.replace(emptyListItem, "").replace(emptyList, "");
+  }
+  return clean.replace(edgeEmptyParagraph, "").trim();
+}
+
+function removeEmptyEditorBoundaryParagraphs(root: HTMLElement): void {
+  const isEmptyParagraph = (node: Element | null): node is HTMLParagraphElement => {
+    if (!(node instanceof HTMLParagraphElement)) return false;
+    const text = (node.textContent ?? "").replace(/\u00a0/g, "").trim();
+    return text.length === 0 && !node.querySelector("img,video,audio,iframe");
+  };
+
+  while (isEmptyParagraph(root.firstElementChild)) root.firstElementChild.remove();
+  while (isEmptyParagraph(root.lastElementChild)) root.lastElementChild.remove();
+}
+
+function descriptionSummaryText(body: string): string {
+  const source = lineItemBodyLooksLikeHtml(body)
+    ? sanitizeLineItemDescriptionHtml(body)
+        .replace(/<\s*li\b[^>]*>/gi, " • ")
+        .replace(/<\s*br\s*\/?\s*>/gi, " ")
+        .replace(/<\s*\/\s*(?:p|div|li|ul|ol)\s*>/gi, " ")
+        .replace(/<[^>]*>/g, " ")
+        .replace(/&nbsp;|&#160;/gi, " ")
+        .replace(/&amp;/gi, "&")
+        .replace(/&lt;/gi, "<")
+        .replace(/&gt;/gi, ">")
+        .replace(/&quot;/gi, '"')
+        .replace(/&#39;|&apos;/gi, "'")
+    : body;
+
+  return source
+    .replace(/[\r\n\t\u2028]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function execCommandSafe(cmd: string): void {
   try {
     document.execCommand(cmd, false);
@@ -65,7 +118,7 @@ export type ProposalScopeWorkCardProps = {
   onTitleChange?: (value: string) => void;
   onDescriptionChange?: (value: string) => void;
   onTitleBlur?: () => void;
-  onDescriptionBlur?: () => void;
+  onDescriptionBlur?: (normalizedValue: string) => void;
   /** When true, show validation hint under title */
   titleInvalid?: boolean;
   titlePlaceholder?: string;
@@ -118,9 +171,10 @@ export function ProposalScopeWorkCard({
   className,
 }: ProposalScopeWorkCardProps): React.ReactElement {
   const editorRef = React.useRef<HTMLDivElement>(null);
+  const descriptionSummaryRef = React.useRef<HTMLButtonElement>(null);
   const editorFocusedRef = React.useRef(false);
   const editorSelectionRef = React.useRef<Range | null>(null);
-  const [slashQuery, setSlashQuery] = React.useState<string | null>(null);
+  const [descriptionEditing, setDescriptionEditing] = React.useState(false);
 
   const showDragRow = Boolean(dragSlot);
   const showLineItemActions = !readOnly && (Boolean(duplicateNode) || Boolean(deleteNode));
@@ -129,18 +183,12 @@ export function ProposalScopeWorkCard({
     const el = editorRef.current;
     if (!el) return;
     el.style.height = "auto";
-    const minPx = lineItemGridLayout ? 44 : 52;
+    const minPx = 104;
     const sh = el.scrollHeight;
     const next = Math.max(sh, minPx);
     el.style.height = `${next}px`;
     el.style.overflowY = "hidden";
-  }, [lineItemGridLayout]);
-
-  const getTrailingSlashQuery = (): string | null => {
-    const text = editorRef.current?.textContent ?? "";
-    const match = text.match(/(?:^|\s)\/([a-z]*)$/i);
-    return match ? (match[1] ?? "") : null;
-  };
+  }, []);
 
   const captureEditorSelection = (): void => {
     const root = editorRef.current;
@@ -159,68 +207,57 @@ export function ProposalScopeWorkCard({
     selection?.addRange(range);
   };
 
-  const removeTrailingSlashCommand = (): void => {
-    const root = editorRef.current;
-    if (!root) return;
-    const text = root.textContent ?? "";
-    const match = text.match(/(?:^|\s)\/([a-z]*)$/i);
-    if (!match) return;
-
-    const tokenStart = text.length - (match[1]?.length ?? 0) - 1;
-    const tokenEnd = text.length;
-    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-    const points: Array<{ node: Text; start: number; end: number }> = [];
-    let offset = 0;
-    let node = walker.nextNode() as Text | null;
-    while (node) {
-      const end = offset + node.data.length;
-      points.push({ node, start: offset, end });
-      offset = end;
-      node = walker.nextNode() as Text | null;
-    }
-    const startPoint = points.find((point) => tokenStart >= point.start && tokenStart <= point.end);
-    const endPoint = points.find((point) => tokenEnd >= point.start && tokenEnd <= point.end);
-    if (!startPoint || !endPoint) return;
-
-    const range = document.createRange();
-    range.setStart(startPoint.node, tokenStart - startPoint.start);
-    range.setEnd(endPoint.node, tokenEnd - endPoint.start);
-    range.deleteContents();
-    range.collapse(true);
-    const selection = window.getSelection();
-    selection?.removeAllRanges();
-    selection?.addRange(range);
-    captureEditorSelection();
-  };
-
-  const pushDescriptionFromEditor = (): void => {
-    if (!onDescriptionChange) return;
+  const pushDescriptionFromEditor = (): string => {
     const raw = editorRef.current?.innerHTML ?? "";
-    onDescriptionChange(sanitizeLineItemDescriptionHtml(raw));
+    const normalized = normalizeEditorDescriptionHtml(raw);
+    onDescriptionChange?.(normalized);
+    return normalized;
   };
 
   const handleDescriptionInput = (): void => {
     pushDescriptionFromEditor();
     resizeEditorToContent();
-    setSlashQuery(getTrailingSlashQuery());
   };
 
-  const handleDescriptionBlur = (): void => {
+  const collapseDescriptionEditor = (focusSummary: boolean): void => {
     editorFocusedRef.current = false;
-    setSlashQuery(null);
-    pushDescriptionFromEditor();
-    resizeEditorToContent();
-    onDescriptionBlur?.();
+    const normalized = pushDescriptionFromEditor();
+    setDescriptionEditing(false);
+    onDescriptionBlur?.(normalized);
+    if (focusSummary) {
+      requestAnimationFrame(() => descriptionSummaryRef.current?.focus());
+    }
+  };
+
+  const handleDescriptionSurfaceBlur = (event: React.FocusEvent<HTMLDivElement>): void => {
+    const nextTarget = event.relatedTarget;
+    if (nextTarget instanceof Node && event.currentTarget.contains(nextTarget)) return;
+    collapseDescriptionEditor(false);
   };
 
   React.useLayoutEffect(() => {
-    if (readOnly) return;
+    if (readOnly || !descriptionEditing) return;
     const el = editorRef.current;
     if (!el) return;
     if (editorFocusedRef.current) return;
     el.innerHTML = bodyToEditorInnerHtml(description);
+    el.focus();
+    removeEmptyEditorBoundaryParagraphs(el);
     resizeEditorToContent();
-  }, [description, readOnly, resizeEditorToContent]);
+    const selection = window.getSelection();
+    const range = document.createRange();
+    const caretTarget =
+      el.querySelector<HTMLElement>(
+        "ol:last-child > li:last-child, ul:last-child > li:last-child"
+      ) ??
+      el.lastElementChild ??
+      el;
+    range.selectNodeContents(caretTarget);
+    range.collapse(false);
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+    captureEditorSelection();
+  }, [description, descriptionEditing, readOnly, resizeEditorToContent]);
 
   const handleToolbarMouseDown = (e: React.MouseEvent): void => {
     captureEditorSelection();
@@ -259,24 +296,23 @@ export function ProposalScopeWorkCard({
     captureEditorSelection();
   };
 
-  const runFormatCommand = (cmd: string, fromSlashCommand = false): void => {
-    if (fromSlashCommand) removeTrailingSlashCommand();
+  const runFormatCommand = (cmd: string): void => {
     focusEditor();
     restoreEditorSelection();
     const beforeHtml = editorRef.current?.innerHTML ?? "";
     execCommandSafe(cmd);
     ensureListFormatting(cmd, beforeHtml);
     pushDescriptionFromEditor();
-    setSlashQuery(null);
     requestAnimationFrame(() => {
       resizeEditorToContent();
     });
   };
 
   const handleDescriptionKeyDown = (event: React.KeyboardEvent<HTMLDivElement>): void => {
-    if (event.key === "Escape" && slashQuery !== null) {
+    if (event.key === "Escape") {
       event.preventDefault();
-      setSlashQuery(null);
+      event.stopPropagation();
+      collapseDescriptionEditor(true);
     }
   };
 
@@ -301,6 +337,7 @@ export function ProposalScopeWorkCard({
     />
   );
 
+  const descriptionSummary = descriptionSummaryText(description);
   const descriptionBlock = (
     <div className={cn(EB.lineItemDescriptionBlock, !useLineItemGrid && "pt-1.5")}>
       <span className={cn(EB.readLabel, "block pb-1")}>Description</span>
@@ -308,23 +345,43 @@ export function ProposalScopeWorkCard({
         <div className="eb-scope-description-readonly-wrap">
           <div
             className={cn(
-              "eb-scope-description-readonly min-w-0 px-0 py-0.5",
-              description.trim() ? "min-h-0" : "min-h-[2rem]"
+              "eb-scope-description-readonly min-w-0 truncate px-0 py-0.5 text-hh-body leading-[1.4] text-foreground",
+              descriptionSummary ? "min-h-0" : "min-h-[2rem] text-muted-foreground"
             )}
+            title={descriptionSummary || undefined}
           >
-            {description.trim() ? (
-              <LineItemOrScopeBodyPreview
-                body={description}
-                variant="default"
-                className="text-hh-body leading-[1.4] text-foreground"
-              />
-            ) : (
-              <p className="text-hh-body leading-snug text-muted-foreground">—</p>
-            )}
+            {descriptionSummary || "—"}
           </div>
         </div>
+      ) : !descriptionEditing ? (
+        <button
+          ref={descriptionSummaryRef}
+          type="button"
+          className="eb-description-summary-button flex h-8 min-h-8 w-full min-w-0 items-center rounded-hh-compact px-2 text-left text-hh-body text-foreground outline-none"
+          onClick={() => {
+            if (!disabled) setDescriptionEditing(true);
+          }}
+          disabled={disabled}
+          aria-label={descriptionEditorAriaLabel}
+          aria-expanded="false"
+          title={descriptionSummary || "Add description"}
+        >
+          <span
+            className={cn(
+              "eb-description-summary-text block min-w-0 flex-1 truncate",
+              !descriptionSummary && "text-muted-foreground"
+            )}
+          >
+            {descriptionSummary || "Add description…"}
+          </span>
+        </button>
       ) : (
-        <div className="eb-scope-editor-surface">
+        <div
+          className="eb-scope-editor-surface"
+          data-description-expanded="true"
+          onBlur={handleDescriptionSurfaceBlur}
+          onKeyDown={handleDescriptionKeyDown}
+        >
           <div
             ref={editorRef}
             role="textbox"
@@ -338,11 +395,9 @@ export function ProposalScopeWorkCard({
                 resizeEditorToContent();
               });
             }}
-            onBlur={handleDescriptionBlur}
             onInput={handleDescriptionInput}
-            onKeyDown={handleDescriptionKeyDown}
             className={cn(
-              "proposal-scope-inline-editor w-full px-2 py-1.5 text-hh-body leading-[1.4] text-foreground outline-none break-words",
+              "proposal-scope-inline-editor w-full break-words px-2 py-2 text-hh-body leading-[1.4] text-foreground outline-none",
               "[&_ul]:my-0 [&_ul]:list-disc [&_ul]:pl-3 [&_ol]:my-0 [&_ol]:list-decimal [&_ol]:pl-3",
               "[&_p]:my-0 [&_p]:min-h-[1.05em]",
               "[&_strong]:font-semibold [&_b]:font-semibold",
@@ -362,34 +417,8 @@ export function ProposalScopeWorkCard({
               });
             }}
           />
-          {slashQuery !== null ? (
-            <div
-              role="menu"
-              aria-label="Description commands"
-              className="eb-description-slash-menu absolute left-1 top-full z-20 mt-1 flex min-w-40 flex-col rounded-md border border-border bg-background p-1 shadow-md"
-              onMouseDown={handleToolbarMouseDown}
-            >
-              {DESCRIPTION_FORMAT_COMMANDS.filter((item) =>
-                item.label.toLowerCase().startsWith(slashQuery.toLowerCase())
-              ).map(({ label, command, Icon }) => (
-                <Button
-                  key={command}
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  role="menuitem"
-                  className="h-7 min-h-7 justify-start gap-2 px-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
-                  onMouseDown={handleToolbarMouseDown}
-                  onClick={() => runFormatCommand(command, true)}
-                >
-                  <Icon className="h-3 w-3" strokeWidth={1.75} aria-hidden />
-                  {label}
-                </Button>
-              ))}
-            </div>
-          ) : null}
           <div
-            className="eb-scope-editor-toolbar flex flex-wrap gap-0 px-0.5 py-0"
+            className="eb-scope-editor-toolbar flex min-h-8 items-center gap-0 border-t px-1 py-0.5"
             onMouseDown={handleToolbarMouseDown}
           >
             {DESCRIPTION_FORMAT_COMMANDS.map(({ label, command, Icon }) => (
@@ -398,7 +427,6 @@ export function ProposalScopeWorkCard({
                 type="button"
                 variant="ghost"
                 size="sm"
-                tabIndex={useLineItemGrid ? -1 : undefined}
                 className="eb-scope-editor-format-button h-6 w-6 min-h-6 min-w-6 shrink-0 px-0 text-muted-foreground hover:bg-muted hover:text-foreground"
                 aria-label={label}
                 disabled={disabled}
@@ -408,6 +436,17 @@ export function ProposalScopeWorkCard({
                 <Icon className="h-2.5 w-2.5" strokeWidth={2} />
               </Button>
             ))}
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="eb-scope-editor-done ml-auto h-6 min-h-6 px-2 text-xs font-medium"
+              data-testid="estimate-description-done"
+              onMouseDown={handleToolbarMouseDown}
+              onClick={() => collapseDescriptionEditor(true)}
+            >
+              Done
+            </Button>
           </div>
         </div>
       )}
@@ -421,7 +460,7 @@ export function ProposalScopeWorkCard({
         className
       )}
     >
-      {showDragRow ? (
+      {showDragRow && !useLineItemGrid ? (
         <div className={cn(EB.lineItemDragRow, "flex items-center px-1 pt-0.5")}>
           <div className="shrink-0">{dragSlot}</div>
         </div>
@@ -430,11 +469,14 @@ export function ProposalScopeWorkCard({
       {useLineItemGrid ? (
         <div className={cn(EB.lineItemGridPricing, showDragRow ? "pt-0" : "pt-1")}>
           <div className={EB.lineItemItemCell}>
-            {lineIndex != null ? (
-              <span className={EB.lineIndexBadge} aria-label={`Line ${lineIndex}`}>
-                #{lineIndex}
-              </span>
-            ) : null}
+            <div className="eb-line-item-index-control">
+              {lineIndex != null ? (
+                <span className={EB.lineIndexBadge} aria-label={`Line ${lineIndex}`}>
+                  #{lineIndex}
+                </span>
+              ) : null}
+              {showDragRow ? <span className="eb-line-item-inline-drag">{dragSlot}</span> : null}
+            </div>
             <span className={cn(EB.readLabel, EB.lineTitleLabel)}>Item</span>
             <div className={cn(EB.lineTitleInputWrap, EB.lineItemTitleField)}>
               <div className="eb-line-item-title-control flex min-w-0 flex-wrap items-center gap-2">

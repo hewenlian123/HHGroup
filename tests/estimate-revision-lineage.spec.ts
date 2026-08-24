@@ -118,9 +118,8 @@ test("Create Revision preserves immutable lineage on desktop and mobile", async 
 
     await page.setViewportSize({ width: 1440, height: 960 });
     await loginAsE2EOwner(page, `/estimates/${sourceId}`);
-    await expect(page.getByTestId("estimate-detail-header")).toContainText(
-      `${estimateNumber} Rev 0`
-    );
+    await expect(page.getByTestId("estimate-detail-header")).toContainText(estimateNumber);
+    await expect(page.getByTestId("estimate-detail-header")).toContainText("Rev 0");
     await expect(page.getByTestId("estimate-detail-header")).toContainText("Approved");
     await expect(page.getByRole("button", { name: "Edit", exact: true })).toHaveCount(0);
     await page.getByTestId("create-estimate-revision-action").click();
@@ -132,9 +131,8 @@ test("Create Revision preserves immutable lineage on desktop and mobile", async 
     expect(revisionOneId).not.toBe(sourceId);
     estimateIds.push(revisionOneId);
 
-    await expect(page.getByTestId("estimate-detail-header")).toContainText(
-      `${estimateNumber} Rev 1`
-    );
+    await expect(page.getByTestId("estimate-detail-header")).toContainText(estimateNumber);
+    await expect(page.getByTestId("estimate-detail-header")).toContainText("Rev 1");
     await expect(page.getByTestId("estimate-detail-header")).toContainText("Draft");
     await expect(page.locator("body")).toContainText("Revision fidelity fixture");
     await expect(page.getByRole("link", { name: "Previous revision" })).toBeVisible();
@@ -175,7 +173,7 @@ test("Create Revision preserves immutable lineage on desktop and mobile", async 
 
     await page.getByRole("link", { name: "Previous revision" }).click();
     await expect(page).toHaveURL(new RegExp(`/estimates/${sourceId}$`));
-    await expect(page.getByRole("link", { name: "Current revision" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Current revision", exact: true })).toBeVisible();
     await page.getByRole("link", { name: "Preview", exact: true }).click();
     await expect(page).toHaveURL(new RegExp(`/estimates/${sourceId}/preview`));
     await expect(page.locator("body")).toContainText(`${estimateNumber} Rev 0`);
@@ -188,9 +186,8 @@ test("Create Revision preserves immutable lineage on desktop and mobile", async 
 
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(`/estimates/${revisionOneId}`, { waitUntil: "domcontentloaded" });
-    await expect(page.getByTestId("estimate-detail-header")).toContainText(
-      `${estimateNumber} Rev 1`
-    );
+    await expect(page.getByTestId("estimate-detail-header")).toContainText(estimateNumber);
+    await expect(page.getByTestId("estimate-detail-header")).toContainText("Rev 1");
     await page.getByLabel("More estimate actions", { exact: true }).click();
     await page.getByTestId("create-estimate-revision-action-mobile").click();
     await expect
@@ -200,9 +197,8 @@ test("Create Revision preserves immutable lineage on desktop and mobile", async 
     const revisionTwoId = new URL(page.url()).pathname.split("/").pop() ?? "";
     expect(revisionTwoId).not.toBe(revisionOneId);
     estimateIds.push(revisionTwoId);
-    await expect(page.getByTestId("estimate-detail-header")).toContainText(
-      `${estimateNumber} Rev 2`
-    );
+    await expect(page.getByTestId("estimate-detail-header")).toContainText(estimateNumber);
+    await expect(page.getByTestId("estimate-detail-header")).toContainText("Rev 2");
     await expect(page.getByTestId("estimate-detail-header")).toContainText("Draft");
 
     const family = await db

@@ -10,15 +10,7 @@ import { Input } from "@/components/ui/input";
 import { EstimateListRow, EstimateMobileList } from "./estimate-list-row";
 import { EstimateSuccessBanner } from "./[id]/estimate-success-banner";
 import type { EstimateListItem, EstimateStatus } from "@/lib/estimates-db";
-import {
-  ConfirmDialog,
-  EmptyState,
-  KpiTile,
-  NeoAmount,
-  NeoTable,
-  NeoToolbar,
-  PageHeader,
-} from "@/components/base";
+import { ConfirmDialog, EmptyState, NeoTable, NeoToolbar, PageHeader } from "@/components/base";
 import { useToast } from "@/components/toast/toast-provider";
 import { syncRouterNonBlocking } from "@/components/perf/sync-router-non-blocking";
 import { formatEstimateCurrency } from "./_components/estimate-currency";
@@ -43,6 +35,18 @@ const FIELD =
   "estimate-list-search-field text-hh-control h-hh-control-standard rounded-hh-compact border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-none transition-[border-color,background-color,box-shadow] duration-150 placeholder:text-[var(--hh-text-tertiary)] hover:border-[var(--hh-border-strong)] hover:bg-[var(--hh-l3-hover)] focus-visible:border-[var(--hh-border-strong)] focus-visible:bg-[var(--hh-l2-operational-surface)] focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)]";
 const PRIMARY_ACTION =
   "rounded-hh-compact border border-[var(--hh-action-primary)] bg-[var(--hh-action-primary)] text-[var(--hh-action-primary-foreground)] shadow-none hover:opacity-90 focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)]";
+
+const STATUS_FILTERS: ReadonlyArray<{
+  value: EstimateStatus | "all";
+  label: string;
+}> = [
+  { value: "all", label: "All" },
+  { value: "Draft", label: "Draft" },
+  { value: "Sent", label: "Sent" },
+  { value: "Approved", label: "Approved" },
+  { value: "Rejected", label: "Rejected" },
+  { value: "Converted", label: "Converted" },
+];
 
 export function EstimatesListClient({
   list,
@@ -89,9 +93,14 @@ export function EstimatesListClient({
   }, [rows, search, statusFilter]);
 
   const totalEstimates = rows.length;
-  const draftCount = rows.filter((e) => e.status === "Draft").length;
-  const sentCount = rows.filter((e) => e.status === "Sent").length;
   const totalValue = rows.reduce((sum, e) => sum + (Number(e.total) || 0), 0);
+  const statusCounts = React.useMemo(() => {
+    const counts = new Map<EstimateStatus | "all", number>([["all", rows.length]]);
+    for (const row of rows) {
+      counts.set(row.status, (counts.get(row.status) ?? 0) + 1);
+    }
+    return counts;
+  }, [rows]);
 
   const handleConfirmDelete = React.useCallback(async () => {
     if (!deleteTarget || deleteBusy) return;
@@ -178,7 +187,7 @@ export function EstimatesListClient({
         <PageHeader
           className="estimate-list-page-header"
           title="Estimates"
-          description="Manage proposals, pricing, and estimate workflows."
+          description={`${totalEstimates} ${totalEstimates === 1 ? "estimate" : "estimates"} · ${formatEstimateCurrency(totalValue)} pipeline`}
           actions={
             <div className="flex items-center gap-2">
               <Button asChild size="sm" className={cn("min-h-10 px-3", PRIMARY_ACTION)}>
@@ -213,34 +222,24 @@ export function EstimatesListClient({
       {rows.length > 0 ? (
         <div
           data-testid="estimate-list-summary-rail"
-          className="estimate-list-summary-rail hidden md:grid md:grid-cols-4"
+          className="estimate-list-summary-rail hidden md:flex"
+          aria-label="Estimate status filters"
         >
-          <KpiTile
-            className="estimate-list-kpi"
-            label="Total Estimates"
-            value={totalEstimates}
-            meta="Active estimate records"
-          />
-          <KpiTile
-            className="estimate-list-kpi"
-            label="Draft"
-            value={draftCount}
-            meta="Still in preparation"
-          />
-          <KpiTile
-            className="estimate-list-kpi"
-            label="Sent"
-            value={sentCount}
-            tone="warning"
-            valueClassName="!text-[var(--hh-warning)]"
-            meta="Awaiting owner response"
-          />
-          <KpiTile
-            className="estimate-list-kpi"
-            label="Total Value"
-            value={<NeoAmount>{formatEstimateCurrency(totalValue)}</NeoAmount>}
-            meta="Current list value"
-          />
+          {STATUS_FILTERS.map((filter) => (
+            <button
+              key={filter.value}
+              type="button"
+              className="estimate-list-status-filter"
+              data-active={statusFilter === filter.value ? "true" : undefined}
+              aria-pressed={statusFilter === filter.value}
+              onClick={() => setStatusFilter(filter.value)}
+            >
+              <span>{filter.label}</span>
+              <span className="estimate-list-status-count">
+                {statusCounts.get(filter.value) ?? 0}
+              </span>
+            </button>
+          ))}
         </div>
       ) : null}
 
@@ -385,8 +384,10 @@ export function EstimatesListClient({
                 <thead>
                   <tr>
                     <th className={cn(tableRawThClass, "estimate-list-col-number")}>Estimate</th>
-                    <th className={cn(tableRawThClass, "estimate-list-col-client")}>Client</th>
-                    <th className={cn(tableRawThClass, "estimate-list-col-project")}>Project</th>
+                    <th className={cn(tableRawThClass, "estimate-list-col-customer-project")}>
+                      Customer / Project
+                    </th>
+                    <th className={cn(tableRawThClass, "estimate-list-col-revision")}>Revision</th>
                     <th className={cn(tableRawThClass, "estimate-list-col-status")}>Status</th>
                     <th
                       className={cn(

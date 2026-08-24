@@ -31,55 +31,66 @@
 }
 
 .estimate-list-summary-rail {
-  overflow: hidden;
-  border: 1px solid var(--hh-border);
-  border-radius: var(--hh-radius-standard);
-  background: var(--hh-l2-operational-surface);
-  box-shadow: var(--hh-shadow-operational);
+  min-height: var(--hh-control-height-standard);
+  align-items: center;
+  gap: var(--hh-space-1);
+  overflow-x: auto;
+  border-bottom: 1px solid var(--hh-border);
+  background: transparent;
+  scrollbar-width: none;
 }
 
-.estimate-list-workspace .estimate-list-kpi {
-  min-height: 78px;
-  padding: 10px 16px;
+.estimate-list-summary-rail::-webkit-scrollbar {
+  display: none;
+}
+
+.estimate-list-status-filter {
+  display: inline-flex;
+  min-height: var(--hh-control-height-standard);
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--hh-space-2);
   border: 0;
-  border-radius: 0;
+  border-bottom: 2px solid transparent;
   background: transparent;
-  box-shadow: none;
-  transform: none;
+  padding: 0 var(--hh-space-3);
+  color: var(--hh-text-tertiary);
+  font-size: var(--hh-type-control-font-size);
+  font-weight: var(--hh-type-control-font-weight);
+  line-height: var(--hh-type-control-line-height);
   transition:
+    border-color 120ms ease,
     background-color 120ms ease,
     color 120ms ease;
 }
 
-.estimate-list-workspace .estimate-list-kpi + .estimate-list-kpi {
-  border-left: 1px solid var(--hh-border);
-}
-
-.estimate-list-workspace .estimate-list-kpi > p:first-child {
-  font-size: var(--hh-type-table-header-font-size);
-  line-height: var(--hh-type-table-header-line-height);
-  letter-spacing: var(--hh-type-table-header-letter-spacing);
-}
-
-.estimate-list-workspace .estimate-list-kpi > p:nth-child(2) {
-  margin-top: 4px;
-  font-size: var(--hh-type-financial-font-size);
-  line-height: var(--hh-type-financial-line-height);
-}
-
-.estimate-list-workspace .estimate-list-kpi > p:last-child:not(:nth-child(2)) {
-  padding-top: 3px;
-  font-size: var(--hh-type-metadata-font-size);
-  line-height: var(--hh-type-metadata-line-height);
-  font-weight: var(--hh-type-metadata-font-weight);
-  color: var(--hh-text-tertiary);
-}
-
-.estimate-list-workspace .estimate-list-kpi:hover {
-  transform: none;
-  border-color: transparent;
+.estimate-list-status-filter:hover {
   background: var(--hh-l3-hover);
-  box-shadow: none;
+  color: var(--hh-text-primary);
+}
+
+.estimate-list-status-filter:focus-visible {
+  border-radius: var(--hh-radius-compact) var(--hh-radius-compact) 0 0;
+  outline: 2px solid var(--hh-focus-ring);
+  outline-offset: -2px;
+}
+
+.estimate-list-status-filter[data-active="true"] {
+  border-bottom-color: var(--hh-action-primary);
+  color: var(--hh-text-primary);
+}
+
+.estimate-list-status-count {
+  min-width: var(--hh-space-5);
+  border: 1px solid var(--hh-border);
+  border-radius: 999px;
+  background: var(--hh-l3-hover);
+  padding-inline: var(--hh-space-1);
+  text-align: center;
+  font-size: var(--hh-type-status-font-size);
+  font-variant-numeric: tabular-nums lining-nums;
+  line-height: var(--hh-space-5);
+  color: var(--hh-text-tertiary);
 }
 
 .estimate-list-records {
@@ -110,15 +121,15 @@
 }
 
 .estimate-list-table .estimate-list-col-number {
-  width: 100px;
+  width: 116px;
 }
 
-.estimate-list-table .estimate-list-col-client {
-  width: 26%;
-}
-
-.estimate-list-table .estimate-list-col-project {
+.estimate-list-table .estimate-list-col-customer-project {
   width: auto;
+}
+
+.estimate-list-table .estimate-list-col-revision {
+  width: 78px;
 }
 
 .estimate-list-table .estimate-list-col-status {
@@ -149,8 +160,8 @@
 }
 
 .estimate-list-table tbody td {
-  height: 52px;
-  padding: 7px 12px;
+  height: calc(var(--hh-control-height-standard) + var(--hh-space-3));
+  padding: var(--hh-space-1) var(--hh-table-cell-padding-inline);
   border-bottom-color: var(--hh-border);
   line-height: var(--hh-type-table-cell-line-height);
 }
@@ -174,6 +185,12 @@
   letter-spacing: 0;
 }
 
+.estimate-list-customer-project {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
 .estimate-list-client-name,
 .estimate-list-project-name {
   display: -webkit-box;
@@ -186,6 +203,13 @@
   color: var(--hh-text-primary);
   font-size: var(--hh-type-table-cell-font-size);
   font-weight: var(--hh-type-label-font-weight);
+}
+
+.estimate-list-revision-label {
+  white-space: nowrap;
+  color: var(--hh-text-secondary);
+  font-size: var(--hh-type-metadata-font-size);
+  font-variant-numeric: tabular-nums lining-nums;
 }
 
 .estimate-list-project-name {
@@ -235,15 +259,6 @@
   .estimate-list-page-header a,
   .estimate-list-page-header button {
     width: auto !important;
-  }
-
-  .estimate-list-workspace .estimate-list-kpi {
-    padding-inline: 8px;
-  }
-
-  .estimate-list-workspace .estimate-list-kpi > p:nth-child(2) {
-    white-space: nowrap;
-    font-size: var(--hh-type-financial-font-size);
   }
 
   .estimate-list-mobile-grid {

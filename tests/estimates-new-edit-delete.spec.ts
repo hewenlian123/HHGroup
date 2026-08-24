@@ -58,6 +58,48 @@ async function cleanupEstimateTestData(
   await supabase.from("estimates").delete().in("id", ids);
 }
 
+async function expectEstimateDeleted(estimateId: string): Promise<void> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  const key =
+    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
+  if (!url || !key) return;
+  assertE2ESupabaseUrlSafeForMutations(url);
+  const supabase = createClient(url, key);
+
+  await expect
+    .poll(
+      async () => {
+        const { data, error } = await supabase.from("estimates").select("id").eq("id", estimateId);
+        expect(error).toBeNull();
+        return data?.length ?? 0;
+      },
+      { timeout: 30_000 }
+    )
+    .toBe(0);
+
+  for (const table of [
+    "estimate_payment_schedule_items",
+    "estimate_items",
+    "estimate_categories",
+    "estimate_meta",
+  ]) {
+    await expect
+      .poll(
+        async () => {
+          const { data, error } = await supabase
+            .from(table)
+            .select("estimate_id")
+            .eq("estimate_id", estimateId);
+          expect(error).toBeNull();
+          return data?.length ?? 0;
+        },
+        { message: `${table} rows should be deleted`, timeout: 30_000 }
+      )
+      .toBe(0);
+  }
+}
+
 async function fillNewEstimateCustomerFields(
   page: Page,
   params: { clientName: string; projectName: string }
@@ -463,6 +505,8 @@ test("creates, edits, cancels, saves, and deletes a draft estimate", async ({ pa
   });
 
   const detailUrl = page.url();
+  const estimateId = new URL(detailUrl).pathname.split("/").filter(Boolean).pop();
+  expect(estimateId).toBeTruthy();
   await page.goto("/estimates");
   await page.waitForLoadState("domcontentloaded");
   const listSearch = page.locator('input[placeholder="Search estimates…"]:visible').first();
@@ -521,12 +565,20 @@ test("creates, edits, cancels, saves, and deletes a draft estimate", async ({ pa
   await expect(deleteDialog).toBeVisible({ timeout: 10_000 });
   await deleteDialog.getByRole("button", { name: "Delete", exact: true }).click();
   await expect(deleteDialog).toBeHidden({ timeout: 10_000 });
-  await expect(page).toHaveURL(isEstimatesListUrl, { timeout: 30_000 });
+  await expectEstimateDeleted(estimateId!);
+  await page.goto("/estimates", { waitUntil: "domcontentloaded" });
   await expect(
     page.getByRole("heading", { name: "Estimates", level: 1 }).locator("visible=true")
   ).toBeVisible({ timeout: 15_000 });
   await expect(page.locator("body")).not.toContainText("Something went wrong");
   await expectNoEstimateListRowForClient(page, savedClientName);
+
+  for (const deletedRoute of [detailUrl, `${detailUrl}/preview`, `${detailUrl}/print`]) {
+    await page.goto(`${deletedRoute}?deleted_check=${Date.now()}`, {
+      waitUntil: "domcontentloaded",
+    });
+    await expect(page.locator("body")).not.toContainText(savedClientName);
+  }
 });
 
 test("saved estimate details and section reorder preserve tax, project title, and payments", async ({

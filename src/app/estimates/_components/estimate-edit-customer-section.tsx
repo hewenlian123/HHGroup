@@ -13,7 +13,8 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { EB, ebSheetGlassWide, ebSheetInput } from "./estimate-builder-ui";
+import { EB, ebSheetInput } from "./estimate-builder-ui";
+import { estimateSurfaceSheetClassName } from "./estimate-surface-sheet-class";
 import {
   EstimateDiscountOptionsPopover,
   EstimateTaxPresetMenu,
@@ -142,6 +143,7 @@ export function EstimateEditCustomerSection({
   isReadOnly,
   detailsOpen: controlledDetailsOpen,
   onDetailsOpenChange,
+  detailsSurface = "information",
   tax,
   discount,
   estimateSubtotal,
@@ -154,6 +156,7 @@ export function EstimateEditCustomerSection({
   isReadOnly: boolean;
   detailsOpen?: boolean;
   onDetailsOpenChange?: (open: boolean) => void;
+  detailsSurface?: "information" | "pricing";
   tax: number;
   discount: number;
   estimateSubtotal: number;
@@ -231,15 +234,23 @@ export function EstimateEditCustomerSection({
 
       {!isReadOnly ? (
         <Sheet open={detailsOpen} onOpenChange={handleDetailsOpenChange}>
-          <SheetContent side="right" className={ebSheetGlassWide("eb-estimate-details-sheet")}>
+          <SheetContent
+            side="right"
+            className={estimateSurfaceSheetClassName(detailsSurface, "eb-estimate-details-sheet")}
+            data-estimate-surface={detailsSurface}
+          >
             <div className="flex max-h-[100dvh] min-h-0 flex-1 flex-col overflow-hidden">
               <SheetHeader className={EB.sheetHeader}>
                 <SheetTitle className={EB.sheetTitle}>
-                  <span aria-hidden>Estimate details</span>
+                  <span aria-hidden>
+                    {detailsSurface === "pricing" ? "Advanced Pricing" : "Estimate Information"}
+                  </span>
                   <span className="sr-only">Customer / project / pricing details</span>
                 </SheetTitle>
                 <SheetDescription className="eb-estimate-details-subtitle">
-                  Customer, project, document context, and commercial terms.
+                  {detailsSurface === "pricing"
+                    ? "Commercial terms, tax, discount, and validity."
+                    : "Customer, project, and document context."}
                 </SheetDescription>
               </SheetHeader>
 
@@ -255,7 +266,10 @@ export function EstimateEditCustomerSection({
                   <input type="hidden" name="estimateId" value={estimateId} />
                   <input type="hidden" name="notes" value={meta.notes ?? ""} />
                   <section
-                    className="eb-estimate-details-group eb-estimate-details-primary"
+                    className={cn(
+                      "eb-estimate-details-group eb-estimate-details-primary",
+                      detailsSurface === "pricing" && "!hidden"
+                    )}
                     data-testid="estimate-details-primary-relationships"
                     aria-label="Primary relationships"
                   >
@@ -303,7 +317,10 @@ export function EstimateEditCustomerSection({
                   </section>
 
                   <section
-                    className="eb-estimate-details-group eb-estimate-details-supporting"
+                    className={cn(
+                      "eb-estimate-details-group eb-estimate-details-supporting",
+                      detailsSurface === "pricing" && "!hidden"
+                    )}
                     data-testid="estimate-details-supporting-context"
                     aria-label="Supporting context"
                   >
@@ -345,7 +362,10 @@ export function EstimateEditCustomerSection({
                   </section>
 
                   <section
-                    className="eb-estimate-details-group eb-estimate-details-terms"
+                    className={cn(
+                      "eb-estimate-details-group eb-estimate-details-terms",
+                      detailsSurface === "information" && "!hidden"
+                    )}
                     data-testid="estimate-details-terms"
                     aria-label="Commercial terms"
                   >

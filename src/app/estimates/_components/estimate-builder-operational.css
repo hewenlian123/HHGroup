@@ -709,6 +709,14 @@
 }
 
 @media (min-width: 768px) {
+  .estimate-builder-new .eb-scope-section-collapse-btn,
+  .estimate-builder-new .eb-scope-section-drag-handle {
+    width: 1.75rem;
+    min-width: 1.75rem;
+    height: 1.75rem;
+    min-height: 1.75rem;
+  }
+
   .estimate-builder-new .eb-scope-section-header {
     position: sticky;
     top: 4.75rem;
@@ -763,7 +771,7 @@
     min-width: 0;
   }
 
-  .estimate-builder-new .eb-line-item-item-cell > .eb-line-index {
+  .estimate-builder-new .eb-line-item-item-cell > .eb-line-item-index-control {
     grid-column: 1;
     padding-top: 0.625rem;
   }
@@ -825,7 +833,7 @@
   }
 }
 
-@media (min-width: 1280px) {
+@media (min-width: 1024px) {
   .estimate-builder-new .eb-line-item-grid-header,
   .estimate-builder-new .eb-line-item-grid--pricing {
     grid-template-columns: var(--eb-estimate-line-grid);
@@ -861,13 +869,16 @@
     display: contents;
   }
 
-  .estimate-builder-new .eb-line-item-item-cell > .eb-line-index {
+  .estimate-builder-new .eb-line-item-item-cell > .eb-line-item-index-control {
     grid-column: 1;
     grid-row: 1;
     align-self: start;
     padding-top: 0;
-    font-size: var(--hh-type-table-header-font-size);
     justify-self: start;
+  }
+
+  .estimate-builder-new .eb-line-item-item-cell .eb-line-index {
+    font-size: var(--hh-type-table-header-font-size);
   }
 
   .estimate-builder-new .eb-line-item-item-cell > .eb-line-title-label,
@@ -1478,6 +1489,75 @@
   letter-spacing: 0;
 }
 
+/* Figma v18: Description stays a compact row until its explicit editor is active. */
+.estimate-builder-new .eb-description-summary-button {
+  border: 1px solid transparent;
+  background: var(--hh-l3-hover);
+  transition:
+    border-color 120ms ease-out,
+    background-color 120ms ease-out,
+    box-shadow 120ms ease-out;
+}
+
+.estimate-builder-new .eb-description-summary-button:hover {
+  border-color: var(--hh-border);
+  background: var(--hh-l2-operational-surface);
+}
+
+.estimate-builder-new .eb-description-summary-button:focus-visible {
+  border-color: var(--hh-focus-ring);
+  background: var(--hh-l2-operational-surface);
+  box-shadow: 0 0 0 2px var(--hh-focus-ring);
+}
+
+.estimate-builder-new .eb-description-summary-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.estimate-builder-new .eb-scope-editor-surface[data-description-expanded="true"] {
+  border-color: var(--hh-border-strong) !important;
+  background: var(--hh-l2-operational-surface) !important;
+  box-shadow: 0 0 0 2px var(--hh-focus-ring) !important;
+}
+
+.estimate-builder-new
+  .eb-scope-editor-surface[data-description-expanded="true"]
+  .proposal-scope-inline-editor {
+  min-height: 104px !important;
+  max-height: none;
+  overflow-y: hidden;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.estimate-builder-new
+  .eb-scope-editor-surface[data-description-expanded="true"]
+  .eb-scope-editor-toolbar {
+  border-top: 1px solid var(--hh-border) !important;
+  border-bottom: 0 !important;
+  background: transparent !important;
+  opacity: 1;
+}
+
+.estimate-builder-new .eb-scope-editor-done {
+  width: auto !important;
+  min-width: auto !important;
+  color: var(--hh-action-primary) !important;
+}
+
+@media (max-width: 767px) {
+  .estimate-builder-new .eb-description-summary-button {
+    height: 2.75rem;
+    min-height: 2.75rem;
+  }
+
+  .estimate-builder-new .eb-scope-editor-done {
+    width: auto !important;
+    min-width: 2.75rem !important;
+  }
+}
+
 /* Edit Details belongs to the same white/graphite Estimate workspace. */
 .estimate-builder.eb-sheet-glass.eb-estimate-details-sheet {
   border-color: var(--hh-border-floating) !important;
@@ -1693,6 +1773,95 @@
 }
 
 @media (max-width: 767px) {
+  .estimate-builder-new .eb-scope-work-panel,
+  .estimate-builder-new .eb-scope-workspace-grid,
+  .estimate-builder-new .eb-scope-toolbar,
+  .estimate-builder-new .eb-scope-sections-list,
+  .estimate-builder-new .eb-scope-section-sortable,
+  .estimate-builder-new .eb-scope-section-mobile {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .estimate-builder-new .eb-scope-work-panel {
+    width: calc(100vw - 2rem);
+    max-width: calc(100vw - 2rem);
+    contain: inline-size;
+  }
+
+  .estimate-builder-new .eb-scope-toolbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .estimate-builder-new .eb-scope-toolbar-search-wrap,
+  .estimate-builder-new .eb-scope-jump-wrap,
+  .estimate-builder-new .eb-scope-toolbar-display-controls,
+  .estimate-builder-new .eb-scope-toolbar-add {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .estimate-builder-new .eb-scope-toolbar-search-wrap {
+    flex-basis: auto;
+  }
+
+  .estimate-builder-new .eb-scope-toolbar-display-controls button {
+    min-width: 0;
+    flex: 1 1 0;
+  }
+
+  .estimate-builder-new .eb-scope-toolbar-add {
+    margin-left: 0;
+  }
+
+  .estimate-builder-new .eb-scope-toolbar-add .eb-add-section {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .estimate-builder-new .eb-scope-section-header,
+  .estimate-builder-new .eb-scope-section-header-row,
+  .estimate-builder-new .eb-section-header-chip,
+  .estimate-builder-new .eb-section-header-chip :where(input) {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .estimate-builder-new .eb-scope-section-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .estimate-builder-new .eb-scope-section-header-meta {
+    width: 100%;
+    min-width: 0;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .estimate-builder-new .eb-section-header-chip {
+    flex: 1 1 0;
+  }
+
+  .estimate-builder-new .eb-estimate-context-mobile,
+  .estimate-builder-new .eb-estimate-context-mobile dd,
+  .estimate-builder-new .eb-estimate-mobile-supporting-context,
+  .estimate-builder-new .eb-estimate-mobile-supporting-context summary {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .estimate-builder-new .eb-estimate-context-mobile dd {
+    overflow-wrap: anywhere;
+  }
+
+  .estimate-builder-new .eb-estimate-mobile-supporting-context summary > span:last-of-type {
+    min-width: 0;
+  }
+
   .estimate-builder-new .eb-estimate-command-bar {
     border: 0;
     border-bottom: 1px solid var(--hh-border);
@@ -1791,5 +1960,248 @@
 @media (prefers-reduced-motion: reduce) {
   .estimate-builder-new .eb-estimate-mobile-supporting-chevron {
     transition: none;
+  }
+}
+
+/* Estimate v18 detail composition: unboxed command header, workbench rail, and dense scope. */
+.estimate-builder-new .eb-estimate-command-bar {
+  border-width: 0 0 1px;
+  border-radius: 0;
+  background: transparent;
+  padding: 0 0 0.75rem;
+  box-shadow: none;
+}
+
+.estimate-builder-new .eb-estimate-command-bar > div {
+  min-width: 0;
+}
+
+@media (min-width: 768px) {
+  .estimate-builder-new .eb-scope-section-header {
+    min-height: 2.25rem;
+    margin-inline: 0;
+    border: 1px solid var(--hh-border);
+    border-radius: var(--hh-radius-standard) var(--hh-radius-standard) 0 0;
+    background: var(--hh-l3-hover);
+    padding: 0.25rem 0.5rem;
+  }
+
+  .estimate-builder-new .eb-scope-section-header--collapsed {
+    border-radius: var(--hh-radius-standard);
+  }
+
+  .estimate-builder-new .eb-scope-section-lines {
+    overflow: hidden;
+    border: 0 solid var(--hh-border);
+    border-width: 0 1px 1px;
+    border-radius: 0 0 var(--hh-radius-standard) var(--hh-radius-standard);
+    background: color-mix(in srgb, var(--hh-l2-operational-surface) 44%, transparent);
+  }
+
+  .estimate-builder-new .eb-scope-section-lines .eb-line-item-card {
+    min-height: 2rem;
+    padding: 0 0.5rem;
+  }
+
+  .estimate-builder-new .eb-scope-section-lines .eb-line-item-card:last-of-type {
+    border-bottom-color: var(--hh-border);
+  }
+
+  .estimate-builder-new .eb-scope-section-lines > .eb-add-line,
+  .estimate-builder-new .eb-scope-section-lines > div:has(> .eb-add-line) {
+    margin: 0;
+    padding: 0.25rem 0.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .estimate-builder-new .eb-estimate-workbench {
+    grid-template-columns: minmax(0, 1fr) 300px;
+    column-gap: 1.25rem;
+    align-items: start;
+  }
+
+  .estimate-builder-new .eb-estimate-workbench > .eb-estimate-context-panel {
+    grid-column: 1 / -1;
+  }
+
+  .estimate-builder-new .eb-estimate-workbench > .eb-pricing-summary-strip {
+    position: sticky;
+    top: 1.5rem;
+    grid-column: 2;
+    align-self: start;
+  }
+
+  .estimate-builder-new
+    .eb-estimate-workbench
+    > :not(.eb-estimate-context-panel):not(.eb-pricing-summary-strip) {
+    grid-column: 1;
+  }
+
+  .estimate-builder-new .eb-pricing-summary-strip {
+    border-radius: var(--hh-radius-standard);
+    background: var(--hh-l2-operational-surface);
+    box-shadow: none;
+  }
+
+  .estimate-builder-new .eb-pricing-summary-main {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .estimate-builder-new .eb-pricing-summary-cell {
+    min-height: 2.375rem;
+    border-right: 0;
+    border-bottom: 1px solid var(--hh-border);
+    padding: 0.5rem 0.75rem;
+  }
+
+  .estimate-builder-new .eb-pricing-summary-cell:last-child {
+    border-bottom: 0;
+  }
+
+  .estimate-builder-new .eb-pricing-summary-cell.is-total {
+    min-height: 3rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .estimate-builder-new {
+    --eb-estimate-line-grid: 1.5rem minmax(5rem, 0.8fr) minmax(6rem, 1fr) 3.25rem 3.25rem 6.75rem
+      7rem 2rem;
+    --eb-estimate-line-gap: 0.375rem;
+  }
+
+  .estimate-builder-new .eb-scope-section-header {
+    padding-block: 3px;
+  }
+
+  .estimate-builder-new .eb-section-header-chip {
+    min-height: 1.75rem;
+  }
+
+  .estimate-builder-new .eb-line-item-grid-header {
+    min-height: 1.75rem;
+    padding: 0.25rem 0.5rem;
+    background: transparent;
+  }
+
+  .estimate-builder-new .eb-scope-section-lines .eb-line-item-card {
+    min-height: 2rem;
+    padding-block: 0;
+  }
+
+  .estimate-builder-new .eb-line-item-grid--pricing {
+    min-height: 2rem;
+    align-items: center;
+    padding-inline: 0;
+  }
+
+  .estimate-builder-new .eb-line-item-item-cell > .eb-line-item-index-control,
+  .estimate-builder-new .eb-line-item-grid--pricing > .eb-line-item-description-block,
+  .estimate-builder-new .eb-line-item-grid--pricing .eb-line-pricing-qty,
+  .estimate-builder-new .eb-line-item-grid--pricing .eb-line-pricing-measure,
+  .estimate-builder-new .eb-line-item-grid--pricing .eb-line-pricing-unit,
+  .estimate-builder-new .eb-line-item-grid--pricing .eb-line-total-block,
+  .estimate-builder-new .eb-line-item-grid--pricing .eb-line-item-more-trigger {
+    align-self: center;
+  }
+
+  .estimate-builder-new .eb-line-item-description-block .eb-scope-editor-surface {
+    min-height: 2rem;
+  }
+
+  .estimate-builder-new
+    .eb-line-item-grid--pricing:has(
+      > .eb-line-item-description-block .eb-scope-editor-surface[data-description-expanded="true"]
+    )
+    > .eb-line-item-item-cell
+    > .eb-line-title-input-wrap {
+    visibility: hidden;
+  }
+
+  .estimate-builder-new
+    .eb-line-item-grid--pricing:has(
+      > .eb-line-item-description-block .eb-scope-editor-surface[data-description-expanded="true"]
+    )
+    > .eb-line-item-description-block {
+    grid-column: 2 / 4;
+    grid-row: 1;
+  }
+
+  .estimate-builder-new .eb-line-item-index-control {
+    position: relative;
+    display: flex;
+    width: 1.5rem;
+    height: 2rem;
+    min-width: 0;
+    align-items: center;
+    justify-content: flex-start;
+  }
+
+  .estimate-builder-new .eb-line-item-inline-drag {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    opacity: 0;
+    transition: opacity 120ms ease-out;
+  }
+
+  .estimate-builder-new .eb-line-item-inline-drag :where(button, [role="button"]) {
+    width: 1.5rem;
+    min-width: 1.5rem;
+    height: 2rem;
+    min-height: 2rem;
+  }
+
+  .estimate-builder-new .eb-line-item-card:hover .eb-line-item-inline-drag,
+  .estimate-builder-new .eb-line-item-card:focus-within .eb-line-item-inline-drag {
+    opacity: 1;
+  }
+
+  .estimate-builder-new .eb-line-item-card:hover .eb-line-item-index-control > .eb-line-index,
+  .estimate-builder-new
+    .eb-line-item-card:focus-within
+    .eb-line-item-index-control
+    > .eb-line-index {
+    opacity: 0;
+  }
+
+  /* Keep the collapsed workbench row genuinely compact under stress content. */
+  .estimate-builder-new .eb-line-item-title-control,
+  .estimate-builder-new .eb-line-item-title-control > div,
+  .estimate-builder-new .eb-line-item-title-control p,
+  .estimate-builder-new .eb-scope-description-readonly-wrap,
+  .estimate-builder-new .eb-scope-description-readonly,
+  .estimate-builder-new .eb-line-total-block,
+  .estimate-builder-new .eb-line-total-amount,
+  .estimate-builder-new .eb-line-total-amount > span {
+    min-width: 0;
+  }
+
+  .estimate-builder-new .eb-line-item-title-control p,
+  .estimate-builder-new .eb-scope-description-readonly {
+    display: block;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .estimate-builder-new .eb-scope-description-readonly {
+    height: 2rem;
+    line-height: 2rem;
+  }
+
+  .estimate-builder-new .eb-line-total-amount {
+    overflow: hidden;
+    white-space: nowrap;
+  }
+
+  .estimate-builder-new .eb-line-total-amount > span {
+    overflow: hidden;
+    text-overflow: clip;
+    white-space: nowrap;
+    font-size: var(--hh-type-table-cell-font-size);
   }
 }

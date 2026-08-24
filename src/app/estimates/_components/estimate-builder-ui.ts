@@ -12,6 +12,7 @@ export const EB = {
   glassSidebarFloat: "eb-glass-sidebar eb-glass-sidebar-float",
   overviewStickyAside: "eb-estimate-overview-sticky",
   overviewStickyFloating: "is-floating",
+  workbench: "eb-estimate-workbench grid min-w-0 gap-4",
   glassMobileBar: "eb-glass-mobile-bar",
   glassHeader: "eb-glass-header",
   glassCommand: "eb-glass-command",
@@ -139,7 +140,7 @@ export const EB = {
   paymentSubtitle: "eb-payment-subtitle mt-0.5 text-hh-metadata text-muted-foreground",
   paymentStatLabel: "eb-payment-stat-label text-hh-table-cell text-muted-foreground",
   paymentStatValue: "eb-payment-stat-value text-hh-financial hh-fin text-foreground",
-  categoryGroup: "mb-3 last:mb-0",
+  categoryGroup: "mb-2 last:mb-0",
   addNextSectionRow: "eb-add-next-section-row",
   addFinalSectionRow: "eb-add-final-section-row",
   scopeSectionInserted: "eb-scope-section-inserted",
@@ -149,7 +150,7 @@ export const EB = {
   scopeSectionHeaderRow: "eb-scope-section-header-row flex min-w-0 flex-1 items-center gap-1.5",
   scopeSectionCollapseBtn: "eb-scope-section-collapse-btn",
   scopeSectionHeaderCollapsed: "eb-scope-section-header--collapsed",
-  scopeSectionHeaderMeta: "eb-scope-section-header-meta flex shrink-0 items-center gap-3",
+  scopeSectionHeaderMeta: "eb-scope-section-header-meta flex shrink-0 items-center gap-2",
   scopeSectionAddLine:
     "eb-scope-section-add-line inline-flex min-h-11 items-center gap-1 rounded-hh-compact border border-border bg-background px-2.5 text-hh-control text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:h-8 md:min-h-8",
   scopeSectionItemCount:

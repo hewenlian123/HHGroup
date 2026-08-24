@@ -441,7 +441,11 @@ async function fillTemplateScope(page: Page): Promise<void> {
       await dialog.getByLabel(`Template item ${lineIndex} title`).fill(item.title);
       await dialog.getByLabel(`Template item ${lineIndex} quantity`).fill(String(item.qty));
       await dialog.getByLabel(`Template item ${lineIndex} unit price`).fill(String(item.unitPrice));
-      await dialog.getByLabel(`Template item ${lineIndex} description`).fill(item.description);
+      await dialog.getByRole("button", { name: `Template item ${lineIndex} description` }).click();
+      await dialog
+        .getByRole("textbox", { name: `Template item ${lineIndex} description` })
+        .fill(item.description);
+      await dialog.getByTestId("estimate-description-done").click();
       metrics.keyboardInteractions += 4;
     }
   }
@@ -856,9 +860,15 @@ test.describe.serial("Estimate operational certification", () => {
     estimateNumber = ((await heading.textContent())?.trim() ?? "").replace(/\s+Rev\s+0$/, "");
     expect(estimateNumber).toMatch(/^EST-/);
     await expect(page.locator("body")).toContainText("Preconstruction & Mobilization");
-    await expect(page.locator("body")).toContainText("Final completion");
-    await expect(page.locator("body")).toContainText("Due: Dec 15, 2026");
-    await expect(page.locator("body")).toContainText("承包商责任");
+    await page.getByRole("button", { name: "Estimate actions" }).click();
+    await page.getByRole("menuitem", { name: "Payment Schedule", exact: true }).click();
+    const paymentSheet = page.getByTestId("estimate-payment-schedule-sheet");
+    await expect(paymentSheet).toContainText("Final completion");
+    await expect(paymentSheet).toContainText("Due: Dec 15, 2026");
+    await page.keyboard.press("Escape");
+    await page.getByRole("button", { name: "Notes", exact: true }).click();
+    await expect(page.getByTestId("estimate-notes-sheet")).toContainText("承包商责任");
+    await page.keyboard.press("Escape");
 
     const admin = localAdmin();
     const { data: matching, error } = await admin
@@ -944,22 +954,14 @@ test.describe.serial("Estimate operational certification", () => {
 
     await page.goto("/estimates", { waitUntil: "domcontentloaded" });
     const search = page.getByPlaceholder("Search estimates…").locator("visible=true");
-    const revisionQualifiedEstimateNumber = `${estimateNumber} Rev 0`;
     await search.fill(estimateNumber);
-    await expect(
-      page
-        .getByText(revisionQualifiedEstimateNumber, { exact: true })
-        .locator("visible=true")
-        .first()
-    ).toBeVisible();
+    const estimateRecords = page.getByTestId("estimate-list-records");
+    await expect(estimateRecords.getByText(estimateNumber, { exact: true })).toBeVisible();
+    await expect(estimateRecords).toContainText("Rev 0");
     const statusFilter = page.locator("select:visible").first();
     await statusFilter.selectOption("Draft");
-    await expect(
-      page
-        .getByText(revisionQualifiedEstimateNumber, { exact: true })
-        .locator("visible=true")
-        .first()
-    ).toBeVisible();
+    await expect(estimateRecords.getByText(estimateNumber, { exact: true })).toBeVisible();
+    await expect(estimateRecords).toContainText("Rev 0");
     await statusFilter.selectOption("all");
     await search.fill("No estimate should match this certification search");
     await expect(
@@ -969,13 +971,7 @@ test.describe.serial("Estimate operational certification", () => {
         .first()
     ).toBeVisible();
     await search.fill(estimateNumber);
-    await click(
-      page,
-      page
-        .getByText(revisionQualifiedEstimateNumber, { exact: true })
-        .locator("visible=true")
-        .first()
-    );
+    await click(page, estimateRecords.getByText(estimateNumber, { exact: true }));
 
     const previewStarted = performance.now();
     await click(page, page.getByRole("link", { name: "Preview", exact: true }));
@@ -1301,9 +1297,8 @@ test.describe.serial("Estimate operational certification", () => {
     revisionId = new URL(page.url()).pathname.split("/").pop() ?? "";
     expect(revisionId).toBeTruthy();
     expect(revisionId).not.toBe(estimateId);
-    await expect(page.getByTestId("estimate-detail-header")).toContainText(
-      `${estimateNumber} Rev 1`
-    );
+    await expect(page.getByTestId("estimate-detail-header")).toContainText(estimateNumber);
+    await expect(page.getByTestId("estimate-detail-header")).toContainText("Rev 1");
     await expect(page.getByTestId("estimate-detail-header")).toContainText("Draft");
 
     const revisionSchedule = await admin
@@ -1358,7 +1353,14 @@ test.describe.serial("Estimate operational certification", () => {
     expect(firstMilestone?.id).toBeTruthy();
     const milestoneAmount = Number(firstMilestone?.amount ?? 0);
 
-    await click(page, page.getByRole("link", { name: "Create Draft Invoice" }).first());
+    await page.getByRole("button", { name: "Estimate actions" }).click();
+    await page.getByRole("menuitem", { name: "Payment Schedule", exact: true }).click();
+    const convertedPaymentSheet = page.getByTestId("estimate-payment-schedule-sheet");
+    await expect(convertedPaymentSheet).toBeVisible();
+    await click(
+      page,
+      convertedPaymentSheet.getByRole("link", { name: "Create Draft Invoice" }).first()
+    );
     await expect(page).toHaveURL(/\/financial\/invoices\/new\?/, { timeout: 30_000 });
     await expect(page.getByTestId("invoice-new-project-select")).toHaveValue(convertedProjectId);
     await click(page, page.getByRole("button", { name: "Create draft invoice" }));
@@ -1384,7 +1386,11 @@ test.describe.serial("Estimate operational certification", () => {
     );
 
     await page.goto(`/estimates/${estimateId}`, { waitUntil: "domcontentloaded" });
-    const activity = page.getByTestId("estimate-activity-timeline");
+    await page.getByRole("button", { name: "Estimate actions" }).click();
+    await page.getByRole("menuitem", { name: "Activity", exact: true }).click();
+    const activity = page
+      .getByTestId("estimate-activity-sheet")
+      .getByTestId("estimate-activity-timeline");
     for (const event of [
       "Estimate Created",
       "Marked as Sent",

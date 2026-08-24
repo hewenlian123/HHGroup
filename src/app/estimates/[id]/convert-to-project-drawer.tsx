@@ -59,7 +59,7 @@ export function ConvertToProjectDrawer({
       onOpenChange={onOpenChange}
       title="Set up project"
       description="Edit project details, then create the project from this estimate."
-      className="border-l border-border bg-background text-foreground shadow-lg"
+      className="estimate-builder eb-estimate-surface-sheet border-l border-[var(--hh-border-floating)] bg-[var(--hh-l5-task-surface)] text-[var(--hh-text-primary)] shadow-task max-md:!inset-0 max-md:!h-[100dvh] max-md:!max-h-[100dvh] max-md:!w-full max-md:!max-w-none max-md:!rounded-none md:!w-[480px] md:!max-w-[480px]"
     >
       <form id="convert-to-project-form" onSubmit={handleSubmit} className="flex flex-col gap-4">
         <input type="hidden" name="estimateId" value={estimateId} />

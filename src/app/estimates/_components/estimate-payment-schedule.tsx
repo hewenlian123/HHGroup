@@ -27,7 +27,8 @@ import { paymentMilestoneAmount } from "@/lib/data";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatEstimateCurrency } from "./estimate-currency";
-import { EB, ebSheetGlassNarrow, ebSheetInput } from "./estimate-builder-ui";
+import { EB, ebSheetInput } from "./estimate-builder-ui";
+import { estimateSurfaceSheetClassName } from "./estimate-surface-sheet-class";
 import { ProposalScopeEditor } from "./proposal-scope-editor";
 import {
   parsePaymentPercentInput,
@@ -559,7 +560,11 @@ export function EstimatePaymentSchedule(props: {
             if (!open) setEditingItem(null);
           }}
         >
-          <SheetContent side="right" className={ebSheetGlassNarrow()}>
+          <SheetContent
+            side="right"
+            className={estimateSurfaceSheetClassName("payment")}
+            data-estimate-surface="payment"
+          >
             <SheetHeader className={EB.sheetHeader}>
               <SheetTitle className={EB.sheetTitle}>
                 {editingItem ? "Edit Payment" : "Schedule Payment"}
