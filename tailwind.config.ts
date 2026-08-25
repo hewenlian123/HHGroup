@@ -1,7 +1,7 @@
 import type { Config } from "tailwindcss";
 
 const explicitLightThemeBoundary =
-  ':where([data-hh-theme="auth"], [data-hh-theme="auth"] *, [data-hh-theme="public"], [data-hh-theme="public"] *, [data-hh-theme="document-light"], [data-hh-theme="document-light"] *)';
+  ':where([data-hh-theme="operational-light"], [data-hh-theme="operational-light"] *, [data-hh-theme="auth"], [data-hh-theme="auth"] *, [data-hh-theme="public"], [data-hh-theme="public"] *, [data-hh-theme="document-light"], [data-hh-theme="document-light"] *)';
 
 const config: Config = {
   // The nearest explicit light boundary wins, even when it is nested below the
@@ -9,7 +9,7 @@ const config: Config = {
   // auth, public intake, paper, and evidence surfaces at every viewport size.
   darkMode: [
     "variant",
-    `&:where([data-hh-theme="neo-dark"], [data-hh-theme="neo-dark"] *):not(${explicitLightThemeBoundary})`,
+    `&:where([data-hh-theme="operational-dark"], [data-hh-theme="operational-dark"] *, [data-hh-theme="neo-dark"], [data-hh-theme="neo-dark"] *):not(${explicitLightThemeBoundary})`,
   ],
   content: [
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",

@@ -63,7 +63,7 @@
     box-shadow: var(--hh-shadow-floating);
   }
 
-  html.dark .neo-command-bar,
+  [data-hh-theme="operational-dark"] .neo-command-bar,
   [data-hh-theme="neo-dark"] .neo-command-bar {
     background: var(--hh-l0-canvas);
   }
@@ -540,7 +540,7 @@
     animation: hh-row-flash-success 0.65s ease-out;
   }
 
-  html.dark .hh-motion-root .exp-row.hh-row-flash-success,
+  [data-hh-theme="operational-dark"] .exp-row.hh-row-flash-success,
   [data-hh-theme="neo-dark"] .exp-row.hh-row-flash-success {
     animation: hh-row-flash-success-dark 0.65s ease-out;
   }
@@ -759,7 +759,7 @@
   .text-hh-profit-positive {
     color: #047857;
   }
-  html.dark .text-hh-profit-positive,
+  [data-hh-theme="operational-dark"] .text-hh-profit-positive,
   [data-hh-theme="neo-dark"] .text-hh-profit-positive {
     color: #10b981;
   }
@@ -1005,6 +1005,7 @@
     --radius: var(--hh-radius-standard);
   }
   html.dark,
+  [data-hh-theme="operational-dark"],
   [data-hh-theme="neo-dark"] {
     --background: 0 0% 6.7%;
     --foreground: 0 0% 98%;
@@ -1031,14 +1032,46 @@
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
   }
+
+  [data-hh-theme="operational-light"] {
+    --background: 220 27% 98%;
+    --foreground: 218 18% 13%;
+    --card: 0 0% 100%;
+    --card-foreground: 218 18% 13%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 218 18% 13%;
+    --primary: 36 33% 54%;
+    --primary-foreground: 225 24% 6%;
+    --secondary: 216 33% 96%;
+    --secondary-foreground: 218 18% 13%;
+    --muted: 216 33% 96%;
+    --muted-foreground: 215 16% 52%;
+    --accent: 220 24% 93%;
+    --accent-foreground: 218 18% 13%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 0% / 0.09;
+    --input: 0 0% 0% / 0.09;
+    --ring: 36 33% 54%;
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+  }
 }
 
 @layer base {
-  [data-hh-theme="neo-dark"] {
+  :where([data-hh-theme="operational-dark"], [data-hh-theme="neo-dark"]) {
     color-scheme: dark;
   }
 
-  :where([data-hh-theme="auth"], [data-hh-theme="public"], [data-hh-theme="document-light"]) {
+  :where(
+    [data-hh-theme="operational-light"],
+    [data-hh-theme="auth"],
+    [data-hh-theme="public"],
+    [data-hh-theme="document-light"]
+  ) {
     color-scheme: light;
   }
 

@@ -19,7 +19,7 @@ test("parses the current Design System v1 color, state, geometry, and typography
   const markdown = readFileSync(defaultDesignSystemSourcePath(), "utf8");
   const contract = parseDesignSystemTokens(markdown);
 
-  assert.equal(contract.schemaVersion, 6);
+  assert.equal(contract.schemaVersion, 7);
   assert.equal(contract.tokens.length, 48);
   assert.equal(contract.dimensions.length, 44);
   assert.equal(contract.typography.length, 15);
@@ -29,6 +29,7 @@ test("parses the current Design System v1 color, state, geometry, and typography
     name: "l0-canvas",
     cssVariable: "--hh-l0-canvas",
     light: "#F7F7F6",
+    operationalLight: "#F8F9FB",
     dark: "#0B0D12",
   });
   assert.deepEqual(
@@ -38,6 +39,7 @@ test("parses the current Design System v1 color, state, geometry, and typography
       name: "action-primary-foreground",
       cssVariable: "--hh-action-primary-foreground",
       light: "#FFFFFF",
+      operationalLight: "#0B0D12",
       dark: "#0B0D12",
     }
   );
@@ -48,6 +50,7 @@ test("parses the current Design System v1 color, state, geometry, and typography
       name: "focus-ring",
       cssVariable: "--hh-focus-ring",
       light: "#C6A56A",
+      operationalLight: "#C6A56A",
       dark: "#C6A56A",
     }
   );
@@ -59,6 +62,7 @@ test("parses the current Design System v1 color, state, geometry, and typography
         name: "success-soft-fill",
         cssVariable: "--hh-success-soft-fill",
         light: "rgb(22 129 91 / 10%)",
+        operationalLight: "rgb(79 175 124 / 10%)",
         dark: "rgb(79 175 124 / 10%)",
       },
       {
@@ -66,6 +70,7 @@ test("parses the current Design System v1 color, state, geometry, and typography
         name: "success-border",
         cssVariable: "--hh-success-border",
         light: "rgb(22 129 91 / 20%)",
+        operationalLight: "rgb(79 175 124 / 20%)",
         dark: "rgb(79 175 124 / 20%)",
       },
     ]
@@ -86,6 +91,7 @@ test("parses the current Design System v1 color, state, geometry, and typography
         name: "l3-hover",
         cssVariable: "--hh-l3-hover",
         light: "#F4F4F2",
+        operationalLight: "#E8ECF2",
         dark: "#1C2029",
       },
       {
@@ -93,6 +99,7 @@ test("parses the current Design System v1 color, state, geometry, and typography
         name: "l3-selected",
         cssVariable: "--hh-l3-selected",
         light: "#ECECEA",
+        operationalLight: "rgb(198 165 106 / 10%)",
         dark: "rgb(198 165 106 / 10%)",
       },
       {
@@ -100,6 +107,7 @@ test("parses the current Design System v1 color, state, geometry, and typography
         name: "l3-pressed",
         cssVariable: "--hh-l3-pressed",
         light: "#E7E7E4",
+        operationalLight: "rgb(198 165 106 / 20%)",
         dark: "rgb(198 165 106 / 20%)",
       },
     ]
@@ -111,6 +119,7 @@ test("parses the current Design System v1 color, state, geometry, and typography
       name: "l4-floating-surface",
       cssVariable: "--hh-l4-floating-surface",
       light: "#FFFFFF",
+      operationalLight: "#FFFFFF",
       dark: "#171B24",
     }
   );
@@ -121,6 +130,7 @@ test("parses the current Design System v1 color, state, geometry, and typography
       name: "l5-task-surface",
       cssVariable: "--hh-l5-task-surface",
       light: "#FFFFFF",
+      operationalLight: "#FFFFFF",
       dark: "#171B24",
     }
   );
@@ -131,6 +141,7 @@ test("parses the current Design System v1 color, state, geometry, and typography
       name: "shadow-operational",
       cssVariable: "--hh-shadow-operational",
       light: "0 1px 2px rgb(0 0 0 / 0.04)",
+      operationalLight: "0 1px 2px 0 rgb(0 0 0 / 0.05)",
       dark: "0 1px 2px rgb(0 0 0 / 0.2)",
     }
   );
@@ -141,6 +152,7 @@ test("parses the current Design System v1 color, state, geometry, and typography
       name: "shadow-floating",
       cssVariable: "--hh-shadow-floating",
       light: "0 2px 8px -3px rgb(0 0 0 / 0.10), 0 22px 48px -18px rgb(0 0 0 / 0.22)",
+      operationalLight: "0 4px 6px -1px rgb(0 0 0 / 0.08), 0 2px 4px -1px rgb(0 0 0 / 0.04)",
       dark: "0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -1px rgb(0 0 0 / 0.2)",
     }
   );
@@ -151,6 +163,7 @@ test("parses the current Design System v1 color, state, geometry, and typography
       name: "shadow-task",
       cssVariable: "--hh-shadow-task",
       light: "0 4px 12px -5px rgb(0 0 0 / 0.12), 0 34px 72px -26px rgb(0 0 0 / 0.28)",
+      operationalLight: "0 10px 15px -3px rgb(0 0 0 / 0.10), 0 4px 6px -2px rgb(0 0 0 / 0.05)",
       dark: "0 10px 15px -3px rgb(0 0 0 / 0.4), 0 4px 6px -2px rgb(0 0 0 / 0.3)",
     }
   );
@@ -369,6 +382,27 @@ test("fails closed for missing, duplicate, malformed, and incomplete authority r
   assert.throws(
     () => parseDesignSystemTokens(markdown.replace(focusRow, focusRow.replace("#C6A56A", "#BAD"))),
     /malformed Light value for Focus \/ ring/i
+  );
+});
+
+test("fails closed for missing, duplicate, and malformed Operational Light rows", async () => {
+  const { defaultDesignSystemSourcePath, parseDesignSystemTokens } = await loadContract();
+  const markdown = readFileSync(defaultDesignSystemSourcePath(), "utf8");
+  const operationalSection = markdown.slice(markdown.indexOf("### Operational light mappings"));
+  const row = operationalSection.match(/^\| L0 Canvas \|.*$/m)?.[0];
+
+  assert.ok(row, "expected the authority Operational Light L0 row fixture");
+  assert.throws(
+    () => parseDesignSystemTokens(markdown.replace(`${row}\n`, "")),
+    /missing required Operational Light token role: L0 Canvas/i
+  );
+  assert.throws(
+    () => parseDesignSystemTokens(markdown.replace(row, `${row}\n${row}`)),
+    /duplicate Operational Light token role: L0 Canvas/i
+  );
+  assert.throws(
+    () => parseDesignSystemTokens(markdown.replace(row, row.replace("#F8F9FB", "#BAD"))),
+    /malformed Operational Light value for L0 Canvas/i
   );
 });
 

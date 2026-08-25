@@ -6,7 +6,8 @@
   color-scheme: light;
 }
 
-html.dark .expenses-ui,
+[data-hh-theme="operational-dark"].expenses-ui,
+[data-hh-theme="operational-dark"] .expenses-ui,
 [data-hh-theme="neo-dark"].expenses-ui,
 [data-hh-theme="neo-dark"] .expenses-ui {
   color-scheme: dark;
@@ -430,7 +431,9 @@ html.dark .expenses-ui,
   font-weight: var(--hh-type-body-strong-font-weight);
 }
 
-html.dark .expenses-ui[data-expenses-list-page="expenses"] [data-expenses-kpi-strip],
+[data-hh-theme="operational-dark"]
+  .expenses-ui[data-expenses-list-page="expenses"]
+  [data-expenses-kpi-strip],
 [data-hh-theme="neo-dark"]
   .expenses-ui[data-expenses-list-page="expenses"]
   [data-expenses-kpi-strip] {
@@ -496,7 +499,8 @@ html.dark .expenses-ui[data-expenses-list-page="expenses"] [data-expenses-kpi-st
   color-scheme: light;
 }
 
-html.dark .expenses-ui-dialog,
+[data-hh-theme="operational-dark"].expenses-ui-dialog,
+[data-hh-theme="operational-dark"] .expenses-ui-dialog,
 [data-hh-theme="neo-dark"].expenses-ui-dialog,
 [data-hh-theme="neo-dark"] .expenses-ui-dialog {
   color-scheme: dark;
@@ -661,12 +665,10 @@ body:has(.expense-new-dialog[data-state="open"]) > [data-state="open"].fixed.ins
   backdrop-filter: none !important;
 }
 
-html.dark
-  body:has(.expense-new-dialog[data-state="open"])
-  > [data-state="open"].fixed.inset-0.z-50 {
-  background-color: rgb(0 0 0 / 0.58) !important;
-}
-
+body:has([data-hh-theme="operational-dark"].expense-new-dialog[data-state="open"])
+  > [data-state="open"].fixed.inset-0.z-50,
+body:has([data-hh-theme="operational-dark"] .expense-new-dialog[data-state="open"])
+  > [data-state="open"].fixed.inset-0.z-50,
 body:has([data-hh-theme="neo-dark"].expense-new-dialog[data-state="open"])
   > [data-state="open"].fixed.inset-0.z-50,
 body:has([data-hh-theme="neo-dark"] .expense-new-dialog[data-state="open"])
@@ -680,7 +682,8 @@ body:has([data-hh-theme="neo-dark"] .expense-new-dialog[data-state="open"])
   box-shadow: var(--hh-shadow-task) !important;
 }
 
-html.dark .expense-new-dialog,
+[data-hh-theme="operational-dark"].expense-new-dialog,
+[data-hh-theme="operational-dark"] .expense-new-dialog,
 [data-hh-theme="neo-dark"].expense-new-dialog,
 [data-hh-theme="neo-dark"] .expense-new-dialog {
   box-shadow: var(--hh-shadow-task) !important;
@@ -704,7 +707,8 @@ html.dark .expense-new-dialog,
   box-shadow: var(--hh-shadow-floating) !important;
 }
 
-html.dark .expense-new-component-surface,
+[data-hh-theme="operational-dark"].expense-new-component-surface,
+[data-hh-theme="operational-dark"] .expense-new-component-surface,
 [data-hh-theme="neo-dark"].expense-new-component-surface,
 [data-hh-theme="neo-dark"] .expense-new-component-surface {
   box-shadow: var(--hh-shadow-floating) !important;
@@ -724,7 +728,9 @@ html.dark .expense-new-component-surface,
   box-shadow: var(--hh-shadow-task) !important;
 }
 
-html.dark .expenses-ui-dialog[data-expense-component-surface="create-option"],
+[data-hh-theme="operational-dark"].expenses-ui-dialog[data-expense-component-surface="create-option"],
+[data-hh-theme="operational-dark"]
+  .expenses-ui-dialog[data-expense-component-surface="create-option"],
 [data-hh-theme="neo-dark"].expenses-ui-dialog[data-expense-component-surface="create-option"],
 [data-hh-theme="neo-dark"] .expenses-ui-dialog[data-expense-component-surface="create-option"] {
   box-shadow: var(--hh-shadow-task) !important;

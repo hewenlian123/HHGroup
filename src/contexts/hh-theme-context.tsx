@@ -2,7 +2,13 @@
 
 import * as React from "react";
 
-export type HhThemeName = "neo-dark" | "auth" | "public" | "document-light";
+export type HhThemeName =
+  | "operational-dark"
+  | "operational-light"
+  | "neo-dark"
+  | "auth"
+  | "public"
+  | "document-light";
 
 export type HhContextName =
   | "operational"
@@ -20,7 +26,7 @@ type HhThemeState = {
 
 const DEFAULT_THEME_STATE: HhThemeState = {
   context: "operational",
-  theme: "neo-dark",
+  theme: "operational-dark",
 };
 
 const HhThemeContext = React.createContext<HhThemeState>(DEFAULT_THEME_STATE);

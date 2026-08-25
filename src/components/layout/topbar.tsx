@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, PanelLeft, Plus, Search } from "lucide-react";
+import { Bell, Moon, PanelLeft, Plus, Search, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -24,6 +24,7 @@ import { NeoKeyboardHint } from "@/components/command/neo-command-palette";
 import { UPLOAD_RECEIPT_ACTION } from "@/lib/navigation/actions";
 import { TYPO } from "@/lib/typography";
 import { cn } from "@/lib/utils";
+import type { OperationalThemeMode } from "@/lib/operational-theme";
 
 /** Map path segments to breadcrumb display labels (for last segment, or section names). */
 const SEGMENT_LABELS: Record<string, string> = {
@@ -191,10 +192,16 @@ export function Topbar({
   onOpenSidebar,
   onToggleSidebar,
   onOpenCommandPalette,
+  operationalThemeMode,
+  showOperationalThemeToggle,
+  onToggleOperationalTheme,
 }: {
   onOpenSidebar?: () => void;
   onToggleSidebar?: () => void;
   onOpenCommandPalette?: () => void;
+  operationalThemeMode: OperationalThemeMode;
+  showOperationalThemeToggle: boolean;
+  onToggleOperationalTheme: () => void;
 }) {
   const pathname = usePathname();
   const brandingSupabase = React.useMemo(() => {
@@ -299,22 +306,6 @@ export function Topbar({
             <NeoKeyboardHint className="ml-2 hidden shrink-0 md:inline-flex" />
           </span>
         </button>
-        <div className="relative inline-flex shrink-0">
-          <Button
-            variant="outline"
-            size="icon"
-            className="btn-outline-ghost flex h-11 w-11 min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-md shadow-none sm:h-[30px] sm:w-[30px] sm:min-h-0 sm:min-w-0"
-            aria-label="Notifications"
-          >
-            <Bell className="h-4 w-4 text-[var(--hh-text-secondary)]" />
-          </Button>
-          {systemHealth.status === "warning" && (
-            <span
-              className="absolute right-0.5 top-0.5 h-2 w-2 rounded-full bg-[var(--hh-danger)]"
-              aria-hidden
-            />
-          )}
-        </div>
       </div>
 
       <div className="flex shrink-0 items-center gap-1">
@@ -378,6 +369,44 @@ export function Topbar({
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+
+        {showOperationalThemeToggle ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            data-operational-theme-toggle
+            className="btn-outline-ghost flex h-11 w-11 min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-hh-standard shadow-none sm:h-[30px] sm:w-[30px] sm:min-h-0 sm:min-w-0"
+            aria-label={
+              operationalThemeMode === "dark" ? "Switch to light mode" : "Switch to dark mode"
+            }
+            title={operationalThemeMode === "dark" ? "Neo Light" : "Neo Dark"}
+            onClick={onToggleOperationalTheme}
+          >
+            {operationalThemeMode === "dark" ? (
+              <Sun className="h-4 w-4 text-[var(--hh-text-secondary)]" aria-hidden />
+            ) : (
+              <Moon className="h-4 w-4 text-[var(--hh-text-secondary)]" aria-hidden />
+            )}
+          </Button>
+        ) : null}
+
+        <div className="relative inline-flex shrink-0">
+          <Button
+            variant="outline"
+            size="icon"
+            className="btn-outline-ghost flex h-11 w-11 min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-md shadow-none sm:h-[30px] sm:w-[30px] sm:min-h-0 sm:min-w-0"
+            aria-label="Notifications"
+          >
+            <Bell className="h-4 w-4 text-[var(--hh-text-secondary)]" />
+          </Button>
+          {systemHealth.status === "warning" ? (
+            <span
+              className="absolute right-0.5 top-0.5 h-2 w-2 rounded-full bg-[var(--hh-danger)]"
+              aria-hidden
+            />
+          ) : null}
+        </div>
 
         {/* User avatar + dropdown */}
         <DropdownMenu>

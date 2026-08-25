@@ -8,6 +8,7 @@ import { ensureConstructionSchema } from "@/lib/ensure-construction-schema";
 import { DevUnregisterServiceWorker } from "@/components/dev-unregister-service-worker";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Providers } from "./providers";
+import { OPERATIONAL_THEME_BOOTSTRAP_SCRIPT } from "@/lib/operational-theme";
 
 const AppShell = dynamic(() => import("@/components/layout/app-shell").then((m) => m.AppShell), {
   ssr: false,
@@ -70,10 +71,18 @@ export default async function RootLayout(
     // Schema ensure failed (e.g. DB URL missing or connection error); app still loads.
   }
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} ${inter.variable}`}>
+    <html
+      lang="en"
+      className={`${geistSans.variable} ${geistMono.variable} ${inter.variable}`}
+      suppressHydrationWarning
+    >
       <head>
         <link rel="icon" href="/favicon.png" type="image/png" sizes="32x32" />
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+        <script
+          id="hh-operational-theme"
+          dangerouslySetInnerHTML={{ __html: OPERATIONAL_THEME_BOOTSTRAP_SCRIPT }}
+        />
       </head>
       <body className="hh-motion-root antialiased">
         {process.env.NODE_ENV === "development" ? (

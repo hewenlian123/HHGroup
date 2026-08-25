@@ -302,7 +302,9 @@ export function parseDesignSystemTokens(markdown) {
   }
 
   const rows = extractMappingRows(markdown);
+  const operationalLightRows = extractOperationalLightRows(markdown);
   const requiredRows = new Map();
+  const requiredOperationalLightRows = new Map();
 
   for (const row of rows) {
     const definition = ROLE_LOOKUP.get(normalizeRole(row.role));
@@ -314,11 +316,25 @@ export function parseDesignSystemTokens(markdown) {
     requiredRows.set(definition.role, row);
   }
 
+  for (const row of operationalLightRows) {
+    const definition = ROLE_LOOKUP.get(normalizeRole(row.role));
+    if (!definition) continue;
+
+    if (requiredOperationalLightRows.has(definition.role)) {
+      throw new Error(`Duplicate Operational Light token role: ${definition.role}.`);
+    }
+    requiredOperationalLightRows.set(definition.role, row);
+  }
+
   const tokens = [];
   for (const definition of ROLE_DEFINITIONS) {
     const row = requiredRows.get(definition.role);
+    const operationalLightRow = requiredOperationalLightRows.get(definition.role);
     if (!row) {
       throw new Error(`Missing required token role: ${definition.role}.`);
+    }
+    if (!operationalLightRow) {
+      throw new Error(`Missing required Operational Light token role: ${definition.role}.`);
     }
     if (!row.light.trim() || !row.dark.trim()) {
       throw new Error(`Incomplete Light/Dark pair for ${definition.role}.`);
@@ -326,26 +342,37 @@ export function parseDesignSystemTokens(markdown) {
 
     const lightValues = parseRoleCell(definition, row.light, "Light");
     const darkValues = parseRoleCell(definition, row.dark, "Dark");
+    const operationalLightValues = parseRoleCell(
+      definition,
+      operationalLightRow.operationalLight,
+      "Operational Light"
+    );
     if (
       lightValues.length !== definition.names.length ||
-      darkValues.length !== definition.names.length
+      darkValues.length !== definition.names.length ||
+      operationalLightValues.length !== definition.names.length
     ) {
-      throw new Error(`Incomplete Light/Dark pair for ${definition.role}.`);
+      throw new Error(
+        `Incomplete protected Light, Operational Light, or Dark set for ${definition.role}.`
+      );
     }
 
     for (let index = 0; index < definition.names.length; index += 1) {
       const name = definition.names[index];
       const light = lightValues[index];
       const dark = darkValues[index];
+      const operationalLight = operationalLightValues[index];
       const validate = definition.validator ?? validateCssColor;
       validate(light, definition.role, "Light");
       validate(dark, definition.role, "Dark");
+      validate(operationalLight, definition.role, "Operational Light");
       tokens.push({
         role: definition.role,
         name,
         cssVariable: `--hh-${name}`,
         light,
         dark,
+        operationalLight,
       });
     }
   }
@@ -402,6 +429,7 @@ export function parseDesignSystemTokens(markdown) {
         cssVariable: definition.softFillToken,
         light: colorWithAlpha(foreground.light, definition.softFillAlpha),
         dark: colorWithAlpha(foreground.dark, definition.softFillAlpha),
+        operationalLight: colorWithAlpha(foreground.operationalLight, definition.softFillAlpha),
       },
       {
         role: `${definition.role} semantic border`,
@@ -409,6 +437,7 @@ export function parseDesignSystemTokens(markdown) {
         cssVariable: definition.borderToken,
         light: colorWithAlpha(foreground.light, definition.borderAlpha),
         dark: colorWithAlpha(foreground.dark, definition.borderAlpha),
+        operationalLight: colorWithAlpha(foreground.operationalLight, definition.borderAlpha),
       },
     ];
   });
@@ -558,7 +587,7 @@ export function parseDesignSystemTokens(markdown) {
   });
 
   return {
-    schemaVersion: 6,
+    schemaVersion: 7,
     authority: AUTHORITY_NAME,
     source: AUTHORITY_SOURCE_LABEL,
     tokens,
@@ -575,7 +604,10 @@ export function renderGeneratedJson(contract) {
     authority: contract.authority,
     source: contract.source,
     tokens: Object.fromEntries(
-      contract.tokens.map(({ cssVariable, light, dark }) => [cssVariable, { light, dark }])
+      contract.tokens.map(({ cssVariable, light, operationalLight, dark }) => [
+        cssVariable,
+        { light, operationalLight, dark },
+      ])
     ),
     dimensions: Object.fromEntries(
       contract.dimensions.map(({ cssVariable, value }) => [cssVariable, value])
@@ -604,6 +636,11 @@ export function renderGeneratedCss(contract) {
     .join("\n");
   const dark = contract.tokens
     .map(({ cssVariable, dark: value }) => `  ${cssVariable}: ${formatCssValue(value)};`)
+    .join("\n");
+  const operationalLight = contract.tokens
+    .map(
+      ({ cssVariable, operationalLight: value }) => `  ${cssVariable}: ${formatCssValue(value)};`
+    )
     .join("\n");
   const dimensions = contract.dimensions
     .map(({ cssVariable, value }) => `  ${cssVariable}: ${formatCssValue(value)};`)
@@ -644,7 +681,12 @@ export function renderGeneratedCss(contract) {
     typographyContracts,
     "}",
     "",
+    '[data-hh-theme="operational-light"] {',
+    operationalLight,
+    "}",
+    "",
     "html.dark,",
+    '[data-hh-theme="operational-dark"],',
     '[data-hh-theme="neo-dark"] {',
     dark,
     "}",
@@ -917,6 +959,35 @@ function extractMappingRows(markdown) {
       throw new Error(`Malformed token table row at line ${index + 1}.`);
     }
     rows.push({ role: cells[0], light: cells[1], dark: cells[2] });
+  }
+
+  return rows;
+}
+
+function extractOperationalLightRows(markdown) {
+  const lines = markdown.split(/\r?\n/);
+  const headingIndex = lines.findIndex((line) => line.trim() === "### Operational light mappings");
+  if (headingIndex === -1) {
+    throw new Error('Missing required "Operational light mappings" section.');
+  }
+
+  const headerIndex = lines.findIndex(
+    (line, index) =>
+      index > headingIndex && /^\|\s*Role\s*\|\s*Operational Light\s*\|\s*Use\s*\|\s*$/.test(line)
+  );
+  if (headerIndex === -1) {
+    throw new Error("Missing Operational Light token table header.");
+  }
+
+  const rows = [];
+  for (let index = headerIndex + 2; index < lines.length; index += 1) {
+    const line = lines[index];
+    if (!line.trim().startsWith("|")) break;
+    const cells = splitMarkdownRow(line);
+    if (cells.length !== 3) {
+      throw new Error(`Malformed Operational Light token row at line ${index + 1}.`);
+    }
+    rows.push({ role: cells[0], operationalLight: cells[1] });
   }
 
   return rows;

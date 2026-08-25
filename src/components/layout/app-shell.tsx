@@ -23,6 +23,12 @@ import {
   type HhContextName,
   type HhThemeName,
 } from "@/contexts/hh-theme-context";
+import {
+  applyOperationalThemeMode,
+  operationalThemeName,
+  readOperationalThemeMode,
+  type OperationalThemeMode,
+} from "@/lib/operational-theme";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -73,18 +79,26 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         : publicWorkerIntake
           ? "public-worker-intake"
           : "operational";
+  const [operationalThemeMode, setOperationalThemeMode] =
+    React.useState<OperationalThemeMode>(readOperationalThemeMode);
   const routeTheme: HhThemeName = documentRoute
     ? "document-light"
-    : authPage
-      ? "auth"
-      : publicWorkerIntake
-        ? "public"
-        : "neo-dark";
+    : viewerRoute
+      ? "neo-dark"
+      : authPage
+        ? "auth"
+        : publicWorkerIntake
+          ? "public"
+          : operationalThemeName(operationalThemeMode);
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const [collapsed, setCollapsed] = React.useState(false);
   const [commandOpen, setCommandOpen] = React.useState(false);
   /** When true on tablet, sidebar shows labels; when false, icon rail only. */
   const [tabletSidebarExpanded, setTabletSidebarExpanded] = React.useState(false);
+
+  React.useEffect(() => {
+    applyOperationalThemeMode(operationalThemeMode);
+  }, [operationalThemeMode]);
 
   React.useEffect(() => {
     try {
@@ -176,6 +190,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       onOpenSidebar={() => setMobileOpen(true)}
                       onToggleSidebar={handleToggleSidebar}
                       onOpenCommandPalette={() => setCommandOpen(true)}
+                      operationalThemeMode={operationalThemeMode}
+                      showOperationalThemeToggle={routeContext === "operational"}
+                      onToggleOperationalTheme={() =>
+                        setOperationalThemeMode((mode) => (mode === "dark" ? "light" : "dark"))
+                      }
                     />
                     <main
                       data-app-scroll-root

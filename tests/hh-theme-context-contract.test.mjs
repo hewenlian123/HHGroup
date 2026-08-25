@@ -59,7 +59,14 @@ test("route roots expose explicit contexts and a neutral sibling portal host", (
   ]) {
     assert.match(context, new RegExp(`"${value}"`));
   }
-  for (const value of ["neo-dark", "auth", "public", "document-light"]) {
+  for (const value of [
+    "operational-dark",
+    "operational-light",
+    "neo-dark",
+    "auth",
+    "public",
+    "document-light",
+  ]) {
     assert.match(context, new RegExp(`"${value}"`));
   }
   assert.match(context, /data-hh-portal-host="true"/);
@@ -77,6 +84,8 @@ test("route roots expose explicit contexts and a neutral sibling portal host", (
     assert.ok(shell.includes(routePattern), `missing explicit route pattern ${routePattern}`);
   }
   assert.match(shell, /<HhRouteThemeRoot context=\{routeContext\} theme=\{routeTheme\}>/);
+  assert.match(shell, /viewerRoute\s*\?\s*"neo-dark"/);
+  assert.match(shell, /operationalThemeName\(operationalThemeMode\)/);
 });
 
 test("all React and Radix portals use the themed portal contract", () => {
@@ -103,13 +112,20 @@ test("generated and compatibility tokens expose every explicit all-viewport them
   const globals = source("src/app/globals.css");
   const tailwind = source("tailwind.config.ts");
 
-  for (const theme of ["auth", "public", "document-light", "neo-dark"]) {
+  for (const theme of [
+    "operational-light",
+    "operational-dark",
+    "auth",
+    "public",
+    "document-light",
+    "neo-dark",
+  ]) {
     assert.match(generated, new RegExp(`data-hh-theme="${theme}"`));
     assert.match(globals, new RegExp(`data-hh-theme="${theme}"`));
   }
   assert.match(tailwind, /darkMode:\s*\[\s*"variant"/);
   assert.match(tailwind, /explicitLightThemeBoundary/);
-  for (const theme of ["auth", "public", "document-light"]) {
+  for (const theme of ["operational-light", "auth", "public", "document-light"]) {
     assert.match(tailwind, new RegExp(`data-hh-theme=\\"${theme}\\"`));
   }
 
@@ -123,7 +139,8 @@ test("generated and compatibility tokens expose every explicit all-viewport them
     }),
   ]).process("@tailwind utilities;", { from: undefined });
   assert.match(compiled.css, /data-hh-theme=.?neo-dark/);
-  for (const theme of ["auth", "public", "document-light"]) {
+  assert.match(compiled.css, /data-hh-theme=.?operational-dark/);
+  for (const theme of ["operational-light", "auth", "public", "document-light"]) {
     assert.match(
       compiled.css,
       new RegExp(`:not\\([^}]*data-hh-theme=.?${theme}`),
