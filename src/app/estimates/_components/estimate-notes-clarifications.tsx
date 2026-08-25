@@ -36,6 +36,11 @@ export type EstimateNotesClarificationsProps = {
   onNotesChange: (notes: EstimateNoteBlock[]) => void;
   disabled?: boolean;
   defaultCollapsed?: boolean;
+  allowedTypes?: readonly EstimateNoteType[];
+  title?: string;
+  subtitle?: string;
+  emptyMessage?: string;
+  addLabel?: string;
 };
 
 export function EstimateNotesClarifications({
@@ -43,6 +48,11 @@ export function EstimateNotesClarifications({
   onNotesChange,
   disabled = false,
   defaultCollapsed = true,
+  allowedTypes = ESTIMATE_NOTE_TYPES,
+  title = "Notes & Clarifications",
+  subtitle = "Client-facing scope notes",
+  emptyMessage = "No notes yet. Add a client-facing clarification when needed.",
+  addLabel = "Add note",
 }: EstimateNotesClarificationsProps): React.ReactElement {
   const [addOpen, setAddOpen] = React.useState(false);
   const [expanded, setExpanded] = React.useState(!defaultCollapsed || notes.length > 0);
@@ -90,8 +100,8 @@ export function EstimateNotesClarifications({
             <div className="flex min-w-0 items-center gap-1.5">
               <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
               <div className="min-w-0">
-                <h2 className={EB.scopeHeading}>Notes &amp; Clarifications</h2>
-                <p className={EB.scopeSubtitle}>Client-facing scope notes</p>
+                <h2 className={EB.scopeHeading}>{title}</h2>
+                <p className={EB.scopeSubtitle}>{subtitle}</p>
               </div>
             </div>
             <DropdownMenu open={addOpen} onOpenChange={setAddOpen}>
@@ -103,14 +113,14 @@ export function EstimateNotesClarifications({
                   className={cn("min-h-11 shrink-0 px-2.5 md:min-h-8", EB.actionSecondary)}
                   disabled={disabled}
                   onClick={(e) => e.preventDefault()}
-                  aria-label="Add note"
+                  aria-label={addLabel}
                 >
                   <Plus className="h-3.5 w-3.5 mr-1.5" aria-hidden />
-                  Add note
+                  {addLabel}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className={cn(EB.builderPickerMenu, EB.commandMenu)}>
-                {ESTIMATE_NOTE_TYPES.map((type) => (
+                {allowedTypes.map((type) => (
                   <DropdownMenuItem
                     key={type}
                     className={EB.commandMenuItem}
@@ -125,9 +135,7 @@ export function EstimateNotesClarifications({
           </summary>
           <div className="mt-3 space-y-3 border-t border-border pt-3">
             {notes.length === 0 ? (
-              <p className={EB.scopeEmptyMessage}>
-                No notes yet. Add a client-facing clarification when needed.
-              </p>
+              <p className={EB.scopeEmptyMessage}>{emptyMessage}</p>
             ) : (
               notes.map((note) => (
                 <div key={note.id} className={EB.noteBlock}>

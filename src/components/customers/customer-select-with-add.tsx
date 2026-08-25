@@ -25,6 +25,7 @@ export type CustomerOption = {
 type Props = {
   label?: string;
   value: string | null;
+  selectedOption?: CustomerOption | null;
   onChange: (customerId: string | null, customer?: CustomerOption | null) => void;
   triggerClassName?: string;
 };
@@ -32,6 +33,7 @@ type Props = {
 export function CustomerSelectWithAdd({
   label = "Customer",
   value,
+  selectedOption,
   onChange,
   triggerClassName,
 }: Props) {
@@ -114,7 +116,9 @@ export function CustomerSelectWithAdd({
     }
   };
 
-  const current = options.find((o) => o.id === value) ?? null;
+  const current =
+    options.find((o) => o.id === value) ??
+    (selectedOption && selectedOption.id === value ? selectedOption : null);
 
   return (
     <div className="flex flex-col gap-1">

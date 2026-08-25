@@ -85,8 +85,7 @@ test("Estimate transitions Draft to Sent to Rejected and becomes protected", asy
 
     await page.getByRole("button", { name: "Mark as Sent", exact: true }).click();
     await expect(header).toContainText("Sent");
-    await page.getByRole("button", { name: /^Status/ }).click();
-    await page.getByRole("menuitem", { name: "Mark declined", exact: true }).click();
+    await page.getByRole("button", { name: "Mark declined", exact: true }).click();
 
     await expect(header).toContainText("Rejected");
     await expect(page.getByRole("button", { name: "Edit", exact: true })).toHaveCount(0);

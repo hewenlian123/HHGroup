@@ -145,6 +145,14 @@ export type EstimateRevisionContext = {
   revisionRootId: string;
   estimateNumber: string;
   revisionNumber: number;
+  revisions: Array<{
+    id: string;
+    revisionNumber: number;
+    status: string;
+    createdAt: string | null;
+    createdBy: string | null;
+    total: number | null;
+  }>;
   previousRevisionId: string | null;
   previousRevisionNumber: number | null;
   nextRevisionId: string | null;
@@ -684,10 +692,41 @@ export async function getEstimateRevisionContextWithClient(
 
   const { data: family, error: familyError } = await c
     .from("estimates")
-    .select("id, revision_number, status")
+    .select("id, revision_number, status, created_at")
     .eq("revision_root_id", source.revision_root_id)
     .order("revision_number", { ascending: false });
   if (familyError || !family?.length) return null;
+
+  const familyIds = family.map((row) => String(row.id));
+  const [familyMetaResult, familyItemsResult, familyCreatorsResult] = await Promise.all([
+    c.from("estimate_meta").select("estimate_id, tax, discount").in("estimate_id", familyIds),
+    c.from("estimate_items").select("estimate_id, qty, unit_cost").in("estimate_id", familyIds),
+    c
+      .from("estimate_activity_events")
+      .select("estimate_id, actor_label, occurred_at")
+      .in("estimate_id", familyIds)
+      .eq("event_type", "estimate_created")
+      .order("occurred_at", { ascending: true }),
+  ]);
+  const metaByEstimateId = new Map(
+    (familyMetaResult.data ?? []).map((row) => [
+      String(row.estimate_id),
+      { tax: Number(row.tax ?? 0), discount: Number(row.discount ?? 0) },
+    ])
+  );
+  const itemSubtotalByEstimateId = new Map<string, number>();
+  for (const row of familyItemsResult.data ?? []) {
+    const id = String(row.estimate_id);
+    const next =
+      (itemSubtotalByEstimateId.get(id) ?? 0) + Number(row.qty ?? 0) * Number(row.unit_cost ?? 0);
+    itemSubtotalByEstimateId.set(id, next);
+  }
+  const creatorByEstimateId = new Map<string, string>();
+  for (const row of familyCreatorsResult.data ?? []) {
+    const id = String(row.estimate_id);
+    if (!creatorByEstimateId.has(id)) creatorByEstimateId.set(id, String(row.actor_label ?? ""));
+  }
+  const revisionTotalsAvailable = !familyMetaResult.error && !familyItemsResult.error;
 
   const current = family[0];
   const previousRevisionId = source.previous_revision_id
@@ -702,6 +741,19 @@ export async function getEstimateRevisionContextWithClient(
     revisionRootId: String(source.revision_root_id),
     estimateNumber: String(source.number),
     revisionNumber: sourceRevisionNumber,
+    revisions: family.map((row) => ({
+      id: String(row.id),
+      revisionNumber: Number(row.revision_number),
+      status: String(row.status ?? "Unknown"),
+      createdAt: row.created_at ? String(row.created_at) : null,
+      createdBy: creatorByEstimateId.get(String(row.id)) || null,
+      total:
+        revisionTotalsAvailable && metaByEstimateId.has(String(row.id))
+          ? (itemSubtotalByEstimateId.get(String(row.id)) ?? 0) +
+            (metaByEstimateId.get(String(row.id))?.tax ?? 0) -
+            (metaByEstimateId.get(String(row.id))?.discount ?? 0)
+          : null,
+    })),
     previousRevisionId,
     previousRevisionNumber: previous ? Number(previous.revision_number) : null,
     nextRevisionId: next ? String(next.id) : null,
@@ -1283,7 +1335,8 @@ export async function updateEstimateMetaWithClient(
   c: SupabaseClient,
   estimateId: string,
   payload: {
-    client?: { name?: string; address?: string };
+    customerId?: string | null;
+    client?: { name?: string; phone?: string; email?: string; address?: string };
     project?: { name?: string; siteAddress?: string };
     tax?: number;
     discount?: number;
@@ -1301,6 +1354,21 @@ export async function updateEstimateMetaWithClient(
   const { data: est } = await c.from("estimates").select("status").eq("id", estimateId).single();
   if (!est || !["Draft", "Sent"].includes(est.status as string)) return false;
 
+  const estimateUpdates: Record<string, unknown> = {};
+  if (payload.customerId !== undefined) {
+    estimateUpdates.customer_id = payload.customerId?.trim() || null;
+    estimateUpdates.updated_at = new Date().toISOString().slice(0, 10);
+  }
+  if (Object.keys(estimateUpdates).length > 0) {
+    const { data: estimateRow, error: estimateError } = await c
+      .from("estimates")
+      .update(estimateUpdates)
+      .eq("id", estimateId)
+      .select("id")
+      .maybeSingle();
+    if (estimateError || !estimateRow?.id) return false;
+  }
+
   const { data: existingMetaRow } = await c
     .from("estimate_meta")
     .select("cost_category_names")
@@ -1309,6 +1377,8 @@ export async function updateEstimateMetaWithClient(
 
   const updates: Record<string, unknown> = {};
   if (payload.client?.name != null) updates.client_name = payload.client.name;
+  if (payload.client?.phone != null) updates.client_phone = payload.client.phone;
+  if (payload.client?.email != null) updates.client_email = payload.client.email;
   if (payload.client?.address != null) {
     updates.client_address = payload.client.address;
     updates.project_site_address = payload.project?.siteAddress ?? payload.client.address;

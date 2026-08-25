@@ -1131,10 +1131,9 @@ test.describe.serial("Estimate operational certification", () => {
     await page.goto(`/estimates/${estimateId}`, { waitUntil: "domcontentloaded" });
     await click(page, page.getByRole("button", { name: "Mark as Sent", exact: true }));
     await expect(page.getByText("Sent", { exact: true }).first()).toBeVisible();
-    await click(page, page.getByRole("button", { name: /Status/ }));
-    await expect(page.getByRole("menuitem", { name: "Mark as Draft" })).toHaveCount(0);
-    await expect(page.getByRole("menuitem", { name: "Mark accepted" })).toBeVisible();
-    await page.keyboard.press("Escape");
+    await expect(page.getByRole("button", { name: "Mark as Draft", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Mark accepted", exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Mark declined", exact: true })).toBeVisible();
 
     expect(consoleErrors).toEqual([]);
   });
@@ -1283,8 +1282,7 @@ test.describe.serial("Estimate operational certification", () => {
     await loginAsE2EOwner(page, `/estimates/${estimateId}`);
 
     await expect(page.getByText("Sent", { exact: true }).locator("visible=true")).toBeVisible();
-    await click(page, page.getByRole("button", { name: /^Status/ }));
-    await click(page, page.getByRole("menuitem", { name: "Mark accepted", exact: true }));
+    await click(page, page.getByRole("button", { name: "Mark accepted", exact: true }));
     await expect(page.getByText("Approved", { exact: true }).locator("visible=true")).toBeVisible();
 
     await click(page, page.getByTestId("create-estimate-revision-action"));

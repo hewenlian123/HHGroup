@@ -15,7 +15,6 @@ import {
   Activity,
   ArrowLeft,
   CalendarDays,
-  ChevronDown,
   CircleDollarSign,
   Copy,
   FileClock,
@@ -35,6 +34,18 @@ import {
   ESTIMATE_HEADER_PRIMARY_BUTTON,
   EstimateWorkspaceCommandHeader,
 } from "../_components/estimate-workspace-command-header";
+import { formatEstimateCurrency } from "../_components/estimate-currency";
+
+function formatHeaderDate(value?: string | null): string | null {
+  if (!value) return null;
+  const date = new Date(`${value.slice(0, 10)}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(date);
+}
 
 export function EstimateDetailHeader({
   estimateId,
@@ -43,6 +54,9 @@ export function EstimateDetailHeader({
   clientName,
   projectName,
   siteAddress,
+  estimateDate,
+  validUntil,
+  grandTotal,
   status,
   editing,
   pending,
@@ -75,6 +89,9 @@ export function EstimateDetailHeader({
   clientName?: string;
   projectName?: string;
   siteAddress?: string;
+  estimateDate?: string | null;
+  validUntil?: string | null;
+  grandTotal?: number | null;
   status: string;
   editing: boolean;
   pending: boolean;
@@ -102,16 +119,17 @@ export function EstimateDetailHeader({
   onSaveAsTemplateClick?: () => void;
   onDeleteClick: () => void;
 }): React.ReactElement {
-  const canConvert = status === "Approved";
-  const canSend = status === "Draft" && !editing;
-  const canDelete = status === "Draft";
+  const isCurrentRevision = revisionContext?.isCurrent ?? true;
+  const canConvert = isCurrentRevision && status === "Approved";
+  const canSend = isCurrentRevision && status === "Draft" && !editing;
+  const canDelete = isCurrentRevision && status === "Draft";
   const canCreateRevision =
     Boolean(revisionContext?.isCurrent) &&
     ["Approved", "Rejected", "Converted"].includes(status) &&
     Boolean(onCreateRevision);
   const revisionLabel = revisionContext ? `Rev ${revisionContext.revisionNumber}` : undefined;
   const statusActions =
-    status === "Sent"
+    isCurrentRevision && status === "Sent"
       ? [
           { label: "Mark accepted", action: onApprove, destructive: false },
           { label: "Mark declined", action: onReject, destructive: true },
@@ -145,6 +163,11 @@ export function EstimateDetailHeader({
       revisionLabel={revisionLabel}
       status={status}
       context={[clientName, projectName, siteAddress]}
+      facts={[
+        { label: "Estimate date", value: formatHeaderDate(estimateDate) ?? "—" },
+        { label: "Valid until", value: formatHeaderDate(validUntil) ?? "—" },
+      ]}
+      amount={grandTotal == null ? undefined : formatEstimateCurrency(grandTotal)}
       saveStatus={editing ? saveStatus : "idle"}
       reserveSaveStatusSpace={editing}
       testId="estimate-detail-header"
@@ -254,14 +277,14 @@ export function EstimateDetailHeader({
         ) : null}
         {!editing ? (
           <>
-            {!isLocked ? (
+            {!isLocked && isCurrentRevision ? (
               <Button
                 type="button"
-                variant="default"
+                variant="outline"
                 size="sm"
                 className={cn(
                   "min-h-11 whitespace-nowrap px-4 max-md:flex-1 lg:min-h-8",
-                  ESTIMATE_HEADER_PRIMARY_BUTTON
+                  ESTIMATE_HEADER_BUTTON
                 )}
                 disabled={pending}
                 onClick={onEdit}
@@ -276,7 +299,7 @@ export function EstimateDetailHeader({
                 size="sm"
                 className={cn(
                   "hidden min-h-11 whitespace-nowrap px-4 md:inline-flex lg:min-h-8",
-                  ESTIMATE_HEADER_BUTTON
+                  ESTIMATE_HEADER_PRIMARY_BUTTON
                 )}
                 disabled={pending}
                 onClick={onSend}
@@ -314,39 +337,34 @@ export function EstimateDetailHeader({
         )}
 
         {!editing && statusActions.length > 0 ? (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className={cn(
-                  "hidden min-h-11 whitespace-nowrap px-3 md:inline-flex lg:min-h-8",
-                  ESTIMATE_HEADER_BUTTON
-                )}
-                disabled={pending}
-              >
-                Status <ChevronDown className="ml-2 h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="end"
-              className="min-w-[220px] rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md"
+          <>
+            <Button
+              type="button"
+              size="sm"
+              className={cn(
+                "hidden min-h-11 whitespace-nowrap px-4 md:inline-flex lg:min-h-8",
+                ESTIMATE_HEADER_PRIMARY_BUTTON
+              )}
+              disabled={pending}
+              onClick={onApprove}
             >
-              {statusActions.map((item) => (
-                <DropdownMenuItem
-                  key={item.label}
-                  onSelect={item.action}
-                  className={cn(
-                    "rounded-sm focus:bg-muted focus:text-foreground",
-                    item.destructive && "text-destructive focus:text-destructive"
-                  )}
-                >
-                  {item.label}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+              Mark accepted
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className={cn(
+                "hidden min-h-11 whitespace-nowrap px-4 lg:inline-flex lg:min-h-8",
+                ESTIMATE_HEADER_BUTTON,
+                "hover:border-destructive/30 hover:text-destructive"
+              )}
+              disabled={pending}
+              onClick={onReject}
+            >
+              Mark declined
+            </Button>
+          </>
         ) : null}
 
         {!editing && canCreateRevision && onCreateRevision ? (
@@ -356,7 +374,7 @@ export function EstimateDetailHeader({
             size="sm"
             className={cn(
               "hidden min-h-11 whitespace-nowrap px-4 md:inline-flex lg:min-h-8",
-              ESTIMATE_HEADER_BUTTON
+              canConvert ? ESTIMATE_HEADER_BUTTON : ESTIMATE_HEADER_PRIMARY_BUTTON
             )}
             disabled={pending}
             onClick={onCreateRevision}
@@ -374,7 +392,7 @@ export function EstimateDetailHeader({
             size="sm"
             className={cn(
               "hidden min-h-11 whitespace-nowrap px-4 md:inline-flex lg:min-h-8",
-              ESTIMATE_HEADER_BUTTON
+              ESTIMATE_HEADER_PRIMARY_BUTTON
             )}
             disabled={pending}
             onClick={onConvertClick}

@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/sheet";
 import type { PaymentScheduleItem, PaymentScheduleTemplate } from "@/lib/data";
 import { paymentMilestoneAmount } from "@/lib/data";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, CheckCircle2, Pencil, Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatEstimateCurrency } from "./estimate-currency";
 import { EB, ebSheetInput } from "./estimate-builder-ui";
@@ -113,6 +113,8 @@ export function EstimatePaymentSchedule(props: {
     addPaymentMilestoneAction,
     updatePaymentMilestoneAction,
     deletePaymentMilestoneAction,
+    markPaymentMilestonePaidAction,
+    reorderPaymentScheduleAction,
     applyPaymentTemplateAction,
     createPaymentTemplateAction,
   } = props;
@@ -205,6 +207,16 @@ export function EstimatePaymentSchedule(props: {
     });
   };
 
+  const orderedIdsForMove = (itemId: string, direction: "up" | "down"): string[] | null => {
+    const ids = paymentSchedule.map((item) => item.id);
+    const from = ids.indexOf(itemId);
+    const to = direction === "up" ? from - 1 : from + 1;
+    if (from < 0 || to < 0 || to >= ids.length) return null;
+    const next = [...ids];
+    [next[from], next[to]] = [next[to], next[from]];
+    return next;
+  };
+
   const applyPaymentTemplate = async (mode: "replace" | "merge"): Promise<void> => {
     if (!selectedTemplateId) return;
     if (
@@ -265,7 +277,10 @@ export function EstimatePaymentSchedule(props: {
     (sum, item) => sum + paymentMilestoneAmount(item, estimateTotal),
     0
   );
-  const remaining = Math.max(0, estimateTotal - totalScheduled);
+  const remaining = estimateTotal - totalScheduled;
+  const isOverallocated = remaining < -0.005;
+  const isReconciled = Math.abs(remaining) < 0.005;
+  const allocationPct = estimateTotal > 0 ? (totalScheduled / estimateTotal) * 100 : 0;
   const amountNumber = Number(amountDraft);
   const amountPercentDisplay = paymentPercentFromAmount(
     Number.isFinite(amountNumber) ? amountNumber : 0,
@@ -279,6 +294,10 @@ export function EstimatePaymentSchedule(props: {
           ? "Exceeds estimate total."
           : `${amountPercentDisplay}% of ${fmt(estimateTotal)}`
         : null;
+  const editingAmount = editingItem ? paymentMilestoneAmount(editingItem, estimateTotal) : 0;
+  const projectedAmount = Number.isFinite(amountNumber) ? amountNumber : 0;
+  const projectedRemaining = estimateTotal - (totalScheduled - editingAmount + projectedAmount);
+  const draftOverallocated = projectedRemaining < -0.005;
 
   const handleAmountChange = (value: string): void => {
     setAmountDraft(value);
@@ -336,9 +355,39 @@ export function EstimatePaymentSchedule(props: {
             Scheduled <span className={EB.paymentStatValue}>{fmt(totalScheduled)}</span>
           </span>
           <span className={EB.paymentStatLabel}>
-            Remaining unscheduled <span className={EB.paymentStatValue}>{fmt(remaining)}</span>
+            Allocated <span className={EB.paymentStatValue}>{allocationPct.toFixed(1)}%</span>
+          </span>
+          <span className={EB.paymentStatLabel}>
+            {isOverallocated ? "Over allocated" : "Remaining"}{" "}
+            <span
+              className={cn(EB.paymentStatValue, isOverallocated && "text-destructive")}
+              data-testid="payment-schedule-remaining"
+            >
+              {fmt(Math.abs(remaining))}
+            </span>
           </span>
         </div>
+
+        {paymentSchedule.length > 0 ? (
+          <div
+            className={cn(
+              "mb-3 rounded-md border px-3 py-2 text-xs",
+              isOverallocated
+                ? "border-destructive/50 bg-destructive/10 text-destructive"
+                : isReconciled
+                  ? "border-[var(--hh-success-border)] bg-[var(--hh-success-soft-fill)] text-[var(--hh-success)]"
+                  : "border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] text-[var(--hh-warning)]"
+            )}
+            role={isOverallocated ? "alert" : "status"}
+            data-testid="payment-schedule-reconciliation"
+          >
+            {isOverallocated
+              ? `Schedule exceeds the Estimate total by ${fmt(Math.abs(remaining))}. Reduce a milestone before adding more.`
+              : isReconciled
+                ? "Payment schedule is fully allocated."
+                : `${fmt(remaining)} remains unscheduled. Partial schedules are valid and may be saved.`}
+          </div>
+        ) : null}
 
         {!isLocked && (paymentTemplates.length > 0 || paymentSchedule.length > 0) ? (
           <div
@@ -453,6 +502,22 @@ export function EstimatePaymentSchedule(props: {
                       {invoiceNo}
                       {invoice?.status ? ` · ${invoice.status}` : ""}
                     </span>
+                    {item.status !== "paid" && invoice?.status?.toLowerCase() === "paid" ? (
+                      <form action={markPaymentMilestonePaidAction}>
+                        <input type="hidden" name="estimateId" value={estimateId} />
+                        <input type="hidden" name="itemId" value={item.id} />
+                        <Button
+                          type="submit"
+                          variant="outline"
+                          size="sm"
+                          className={cn("min-h-9 px-2.5 text-hh-metadata", EB.actionSecondary)}
+                          aria-label={`Sync paid status for ${item.title}`}
+                        >
+                          <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" aria-hidden />
+                          Sync paid status
+                        </Button>
+                      </form>
+                    ) : null}
                     <Button
                       type="button"
                       variant="outline"
@@ -506,6 +571,33 @@ export function EstimatePaymentSchedule(props: {
             }
             return (
               <div className="flex gap-1">
+                {(["up", "down"] as const).map((direction) => {
+                  const orderedItemIds = orderedIdsForMove(item.id, direction);
+                  const Icon = direction === "up" ? ArrowUp : ArrowDown;
+                  return (
+                    <form key={direction} action={reorderPaymentScheduleAction}>
+                      <input type="hidden" name="estimateId" value={estimateId} />
+                      <input
+                        type="hidden"
+                        name="orderedItemIds"
+                        value={JSON.stringify(orderedItemIds ?? [])}
+                      />
+                      <Button
+                        type="submit"
+                        variant="outline"
+                        size="icon"
+                        className={cn(
+                          "min-h-11 min-w-11 md:h-8 md:min-h-8 md:w-8 md:min-w-8",
+                          EB.btnGhost
+                        )}
+                        disabled={!orderedItemIds}
+                        aria-label={`Move ${item.title} ${direction}`}
+                      >
+                        <Icon className="h-4 w-4" aria-hidden />
+                      </Button>
+                    </form>
+                  );
+                })}
                 <Button
                   type="button"
                   variant="outline"
@@ -646,6 +738,12 @@ export function EstimatePaymentSchedule(props: {
                       {paymentPercentHelper}
                     </p>
                   ) : null}
+                  {draftOverallocated ? (
+                    <p className="text-xs text-destructive" role="alert">
+                      This amount would exceed the Estimate total by{" "}
+                      {fmt(Math.abs(projectedRemaining))}.
+                    </p>
+                  ) : null}
                 </div>
                 <input type="hidden" name="description" value={paymentDescriptionDraft} />
                 <div className={EB.sheetField}>
@@ -681,6 +779,7 @@ export function EstimatePaymentSchedule(props: {
                   form={PAYMENT_MILESTONE_FORM_ID}
                   size="sm"
                   className={EB.sheetPrimary}
+                  disabled={draftOverallocated}
                 >
                   Save
                 </Button>

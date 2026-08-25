@@ -36,6 +36,7 @@ import {
   reorderEstimateCategoriesAction,
   reorderEstimateItemsAction,
   saveEstimateDocumentNotesInlineAction,
+  saveEstimateInternalNotesInlineAction,
   setLineItemStatusAction,
 } from "../[id]/actions";
 import {
@@ -78,6 +79,7 @@ import { ProposalScopeWorkCard } from "./proposal-scope-work-card";
 import { EstimateLineItemMoreMenu } from "./estimate-line-item-more-menu";
 import { EstimateLineItemStatusPill } from "./estimate-line-item-status-pill";
 import { EstimateNotesClarifications } from "./estimate-notes-clarifications";
+import { EstimateAutoResizeTextarea } from "./estimate-auto-resize-textarea";
 import { useEstimateDocumentSave } from "./estimate-document-save-context";
 import { EstimateLineItemGridHeader } from "./estimate-line-item-grid-header";
 import { EstimateScopeToolbar } from "./estimate-scope-toolbar";
@@ -118,6 +120,7 @@ function cssEscapeAttrSelector(value: string): string {
 export type EstimateEditorProps = {
   estimateId: string;
   estimateNumber: string;
+  customerId?: string | null;
   status: string;
   meta: EstimateMetaRecord;
   items: EstimateItemRow[];
@@ -150,6 +153,7 @@ export type EstimateEditorProps = {
 export function EstimateEditor({
   estimateId,
   estimateNumber,
+  customerId,
   status,
   meta,
   items,
@@ -673,9 +677,19 @@ export function EstimateEditor({
   }, [paymentSchedule]);
 
   const [localDocumentNotes, setLocalDocumentNotes] = React.useState(meta.documentNotes ?? []);
+  const [activeNotesTab, setActiveNotesTab] = React.useState<"customer" | "terms" | "internal">(
+    "customer"
+  );
+  const [localInternalNotes, setLocalInternalNotes] = React.useState(meta.notes ?? "");
+  const lastSavedInternalNotesRef = React.useRef(meta.notes ?? "");
+  const internalNotesSaveQueueRef = React.useRef<Promise<void>>(Promise.resolve());
   React.useEffect(() => {
     setLocalDocumentNotes(meta.documentNotes ?? []);
   }, [meta.documentNotes]);
+  React.useEffect(() => {
+    setLocalInternalNotes(meta.notes ?? "");
+    lastSavedInternalNotesRef.current = meta.notes ?? "";
+  }, [meta.notes]);
   const updateDocumentNotes = React.useCallback(
     (nextNotes: typeof localDocumentNotes) => {
       setLocalDocumentNotes(nextNotes);
@@ -688,6 +702,55 @@ export function EstimateEditor({
           toast({
             title: "Could not save notes",
             description: res.error ?? "Try again.",
+            variant: "error",
+          });
+        }
+      });
+    },
+    [estimateId, isReadOnly, markUnsaved, toast, trackMutation]
+  );
+
+  const replaceDocumentNoteSubset = React.useCallback(
+    (kind: "customer" | "terms", replacement: typeof localDocumentNotes): void => {
+      const matches = (note: (typeof localDocumentNotes)[number]): boolean =>
+        kind === "terms" ? note.type === "payment_terms" : note.type !== "payment_terms";
+      let nextIndex = 0;
+      const merged = localDocumentNotes.flatMap((note) => {
+        if (!matches(note)) return [note];
+        const next = replacement[nextIndex];
+        nextIndex += 1;
+        return next ? [next] : [];
+      });
+      if (nextIndex < replacement.length) merged.push(...replacement.slice(nextIndex));
+      updateDocumentNotes(merged);
+    },
+    [localDocumentNotes, updateDocumentNotes]
+  );
+
+  const updateInternalNotes = React.useCallback((nextNotes: string): void => {
+    setLocalInternalNotes(nextNotes);
+  }, []);
+
+  const commitInternalNotes = React.useCallback(
+    (nextNotes: string): void => {
+      if (isReadOnly || nextNotes === lastSavedInternalNotesRef.current) return;
+      markUnsaved();
+      const savePromise = internalNotesSaveQueueRef.current.then(() =>
+        saveEstimateInternalNotesInlineAction(estimateId, nextNotes)
+      );
+      internalNotesSaveQueueRef.current = savePromise.then(
+        () => undefined,
+        () => undefined
+      );
+      void trackMutation("internal-notes", () => savePromise).then((result) => {
+        if (result.ok) {
+          lastSavedInternalNotesRef.current = nextNotes;
+          return;
+        }
+        if (!result.ok) {
+          toast({
+            title: "Could not save internal notes",
+            description: result.error ?? "Try again.",
             variant: "error",
           });
         }
@@ -902,12 +965,94 @@ export function EstimateEditor({
   );
 
   const notesSurface = (
-    <EstimateNotesClarifications
-      notes={localDocumentNotes}
-      onNotesChange={updateDocumentNotes}
-      disabled={isReadOnly}
-      defaultCollapsed={false}
-    />
+    <div className="space-y-4" data-testid="estimate-notes-tabs">
+      <div
+        className="grid grid-cols-3 rounded-md border border-border bg-muted/30 p-1"
+        role="tablist"
+        aria-label="Estimate notes"
+      >
+        {(
+          [
+            ["customer", "Customer Notes"],
+            ["terms", "Terms"],
+            ["internal", "Internal Notes"],
+          ] as const
+        ).map(([value, label]) => (
+          <button
+            key={value}
+            type="button"
+            role="tab"
+            aria-selected={activeNotesTab === value}
+            className={cn(
+              "min-h-10 rounded-sm px-2 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              activeNotesTab === value
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+            onClick={() => setActiveNotesTab(value)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {activeNotesTab === "customer" ? (
+        <div role="tabpanel" aria-label="Customer Notes">
+          <EstimateNotesClarifications
+            notes={localDocumentNotes.filter((note) => note.type !== "payment_terms")}
+            onNotesChange={(notes) => replaceDocumentNoteSubset("customer", notes)}
+            disabled={isReadOnly}
+            defaultCollapsed={false}
+            allowedTypes={["exclusions", "assumptions", "warranty", "schedule_note", "custom"]}
+            title="Customer Notes"
+            subtitle="Customer-facing scope notes and clarifications"
+            emptyMessage="No customer notes yet. Add a clarification when needed."
+            addLabel="Add customer note"
+          />
+        </div>
+      ) : null}
+      {activeNotesTab === "terms" ? (
+        <div role="tabpanel" aria-label="Terms">
+          <EstimateNotesClarifications
+            notes={localDocumentNotes.filter((note) => note.type === "payment_terms")}
+            onNotesChange={(notes) => replaceDocumentNoteSubset("terms", notes)}
+            disabled={isReadOnly}
+            defaultCollapsed={false}
+            allowedTypes={["payment_terms"]}
+            title="Terms"
+            subtitle="Customer-facing payment and proposal terms"
+            emptyMessage="No terms yet. Add the payment or proposal terms for this Estimate."
+            addLabel="Add term"
+          />
+        </div>
+      ) : null}
+      {activeNotesTab === "internal" ? (
+        <div className="space-y-2" role="tabpanel" aria-label="Internal Notes">
+          <Label htmlFor="estimate-internal-notes" className={EB.sheetLabel}>
+            Internal Notes
+          </Label>
+          <EstimateAutoResizeTextarea
+            id="estimate-internal-notes"
+            value={localInternalNotes}
+            onChange={(event) => updateInternalNotes(event.target.value)}
+            onBlur={(event) => commitInternalNotes(event.currentTarget.value)}
+            disabled={isReadOnly}
+            rows={6}
+            minHeight={132}
+            maxHeight={480}
+            className={cn(
+              EB.noteBlockTextarea,
+              ebInput("w-full px-3 py-2 text-hh-body leading-[1.5]")
+            )}
+            placeholder="Private team context, follow-ups, or approval notes…"
+            aria-describedby="estimate-internal-notes-help"
+          />
+          <p id="estimate-internal-notes-help" className="text-xs text-muted-foreground">
+            Internal notes never appear in customer Preview, Print, or PDF documents.
+          </p>
+        </div>
+      ) : null}
+    </div>
   );
   const paymentScheduleSurface = (
     <EstimatePaymentSchedule
@@ -945,6 +1090,7 @@ export function EstimateEditor({
           <EstimateEditCustomerSection
             meta={meta}
             estimateId={estimateId}
+            customerId={customerId}
             today={today}
             isReadOnly={isReadOnly}
             detailsOpen={detailsOpen}

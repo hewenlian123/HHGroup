@@ -171,8 +171,17 @@ test("section-header Add line keeps long-estimate entry anchored in context", as
     .toBe("rgba(0, 0, 0, 0)");
   await headerAddLine.hover();
   await expect
-    .poll(() => headerAddLine.evaluate((button) => getComputedStyle(button).backgroundColor))
-    .toBe("rgb(244, 244, 242)");
+    .poll(() =>
+      headerAddLine.evaluate((button) => {
+        const probe = document.createElement("span");
+        probe.style.backgroundColor = "var(--hh-l3-hover)";
+        document.body.appendChild(probe);
+        const expected = getComputedStyle(probe).backgroundColor;
+        probe.remove();
+        return getComputedStyle(button).backgroundColor === expected;
+      })
+    )
+    .toBe(true);
   await headerAddLine.click();
 
   await expect(page.getByLabel("Line item 2 title").locator("visible=true")).toBeFocused();

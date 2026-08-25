@@ -6,6 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FinanceDatePicker } from "@/components/ui/date-picker";
 import {
+  CustomerSelectWithAdd,
+  type CustomerOption,
+} from "@/components/customers/customer-select-with-add";
+import {
   Sheet,
   SheetContent,
   SheetDescription,
@@ -27,6 +31,7 @@ import {
 import type { EstimateDocumentStyle } from "@/lib/estimate-document-style";
 import { cn } from "@/lib/utils";
 import { ChevronDown } from "lucide-react";
+import { formatEstimateCurrency } from "./estimate-currency";
 
 const metaLabel =
   "eb-estimate-context-label mb-0.5 block text-hh-metadata font-medium leading-tight text-muted-foreground";
@@ -34,8 +39,10 @@ const metaPanel = cn(EB.draftPanel, "eb-estimate-context-panel px-3 py-3 sm:px-4
 const metaInput = ebSheetInput("text-sm");
 
 export type EstimateEditCustomerMeta = {
-  client: { name: string; address: string };
-  project: { name: string };
+  client: { name: string; phone: string; email: string; address: string };
+  project: { name: string; siteAddress: string };
+  overheadPct?: number;
+  profitPct?: number;
   estimateDate?: string | null;
   validUntil?: string | null;
   salesPerson?: string | null;
@@ -139,6 +146,7 @@ function ReadOnlyMetaRows({
 export function EstimateEditCustomerSection({
   meta,
   estimateId,
+  customerId,
   today,
   isReadOnly,
   detailsOpen: controlledDetailsOpen,
@@ -152,6 +160,7 @@ export function EstimateEditCustomerSection({
 }: {
   meta: EstimateEditCustomerMeta;
   estimateId: string;
+  customerId?: string | null;
   today: string;
   isReadOnly: boolean;
   detailsOpen?: boolean;
@@ -170,6 +179,24 @@ export function EstimateEditCustomerSection({
   const [validUntil, setValidUntil] = React.useState(meta.validUntil ?? "");
   const [taxDraft, setTaxDraft] = React.useState(tax);
   const [discountDraft, setDiscountDraft] = React.useState(discount);
+  const [overheadPctDraft, setOverheadPctDraft] = React.useState(meta.overheadPct ?? 0);
+  const [profitPctDraft, setProfitPctDraft] = React.useState(meta.profitPct ?? 0);
+  const [selectedCustomerId, setSelectedCustomerId] = React.useState<string | null>(
+    customerId ?? null
+  );
+  const [clientNameDraft, setClientNameDraft] = React.useState(meta.client.name);
+  const [clientPhoneDraft, setClientPhoneDraft] = React.useState(meta.client.phone);
+  const [clientEmailDraft, setClientEmailDraft] = React.useState(meta.client.email);
+  const [clientAddressDraft, setClientAddressDraft] = React.useState(meta.client.address);
+  const [projectNameDraft, setProjectNameDraft] = React.useState(meta.project.name);
+  const [projectAddressDraft, setProjectAddressDraft] = React.useState(meta.project.siteAddress);
+  const [projectOptions, setProjectOptions] = React.useState<
+    Array<{ id: string; name: string; address?: string }>
+  >([]);
+  const [selectedProjectId, setSelectedProjectId] = React.useState("");
+  const [projectsLoading, setProjectsLoading] = React.useState(false);
+  const projectedCustomerTotal = estimateSubtotal + taxDraft - discountDraft;
+  const discountExceedsPreDiscountTotal = projectedCustomerTotal < 0;
   const [documentStyleDraft, setDocumentStyleDraft] = React.useState<EstimateDocumentStyle>(
     meta.documentStyle ?? "proposal"
   );
@@ -180,8 +207,51 @@ export function EstimateEditCustomerSection({
     setValidUntil(meta.validUntil ?? "");
     setTaxDraft(tax);
     setDiscountDraft(discount);
+    setOverheadPctDraft(meta.overheadPct ?? 0);
+    setProfitPctDraft(meta.profitPct ?? 0);
+    setSelectedCustomerId(customerId ?? null);
+    setClientNameDraft(meta.client.name);
+    setClientPhoneDraft(meta.client.phone);
+    setClientEmailDraft(meta.client.email);
+    setClientAddressDraft(meta.client.address);
+    setProjectNameDraft(meta.project.name);
+    setProjectAddressDraft(meta.project.siteAddress);
     setDocumentStyleDraft(meta.documentStyle ?? "proposal");
-  }, [discount, meta.documentStyle, meta.estimateDate, meta.validUntil, tax, today]);
+  }, [customerId, discount, meta, tax, today]);
+
+  React.useEffect(() => {
+    if (!detailsOpen || detailsSurface !== "information" || projectOptions.length > 0) return;
+    let cancelled = false;
+    setProjectsLoading(true);
+    fetch("/api/projects", { cache: "no-store" })
+      .then((response) => response.json())
+      .then((payload: { projects?: Array<{ id: string; name: string; address?: string }> }) => {
+        if (cancelled) return;
+        const projects = Array.isArray(payload.projects) ? payload.projects : [];
+        setProjectOptions(projects);
+        const current = projects.find(
+          (project) =>
+            project.name.trim() === meta.project.name.trim() &&
+            (project.address ?? "").trim() === meta.project.siteAddress.trim()
+        );
+        setSelectedProjectId(current?.id ?? "");
+      })
+      .catch(() => {
+        if (!cancelled) setProjectOptions([]);
+      })
+      .finally(() => {
+        if (!cancelled) setProjectsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    detailsOpen,
+    detailsSurface,
+    meta.project.name,
+    meta.project.siteAddress,
+    projectOptions.length,
+  ]);
 
   const setDetailsOpen = React.useCallback(
     (open: boolean): void => {
@@ -202,6 +272,16 @@ export function EstimateEditCustomerSection({
     setValidUntil(meta.validUntil ?? "");
     setTaxDraft(tax);
     setDiscountDraft(discount);
+    setOverheadPctDraft(meta.overheadPct ?? 0);
+    setProfitPctDraft(meta.profitPct ?? 0);
+    setSelectedCustomerId(customerId ?? null);
+    setClientNameDraft(meta.client.name);
+    setClientPhoneDraft(meta.client.phone);
+    setClientEmailDraft(meta.client.email);
+    setClientAddressDraft(meta.client.address);
+    setProjectNameDraft(meta.project.name);
+    setProjectAddressDraft(meta.project.siteAddress);
+    setSelectedProjectId("");
     setDocumentStyleDraft(meta.documentStyle ?? "proposal");
     setFormResetKey((k) => k + 1);
   };
@@ -264,7 +344,7 @@ export function EstimateEditCustomerSection({
                   className={cn(EB.sheetContentInner, "eb-estimate-details-form")}
                 >
                   <input type="hidden" name="estimateId" value={estimateId} />
-                  <input type="hidden" name="notes" value={meta.notes ?? ""} />
+                  <input type="hidden" name="customerId" value={selectedCustomerId ?? ""} />
                   <section
                     className={cn(
                       "eb-estimate-details-group eb-estimate-details-primary",
@@ -284,6 +364,32 @@ export function EstimateEditCustomerSection({
                         The primary relationships for this estimate.
                       </p>
                     </div>
+                    <div className={EB.sheetField}>
+                      <CustomerSelectWithAdd
+                        label="Link customer"
+                        value={selectedCustomerId}
+                        selectedOption={
+                          selectedCustomerId
+                            ? {
+                                id: selectedCustomerId,
+                                name: clientNameDraft,
+                                phone: clientPhoneDraft,
+                                email: clientEmailDraft,
+                                address: clientAddressDraft,
+                              }
+                            : null
+                        }
+                        onChange={(nextCustomerId, customer?: CustomerOption | null) => {
+                          setSelectedCustomerId(nextCustomerId);
+                          if (!customer) return;
+                          setClientNameDraft(customer.name ?? "");
+                          setClientPhoneDraft(customer.phone ?? "");
+                          setClientEmailDraft(customer.email ?? "");
+                          setClientAddressDraft(customer.address ?? "");
+                        }}
+                        triggerClassName={cn(metaInput, "h-10 justify-between")}
+                      />
+                    </div>
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                       <div className={cn(EB.sheetField, "min-w-0")}>
                         <Label htmlFor="clientName" className={EB.sheetLabel}>
@@ -292,26 +398,97 @@ export function EstimateEditCustomerSection({
                         <Input
                           id="clientName"
                           name="clientName"
-                          defaultValue={meta.client.name}
+                          value={clientNameDraft}
+                          onChange={(event) => setClientNameDraft(event.target.value)}
                           placeholder="Client or company name"
                           className={metaInput}
                         />
                       </div>
                       <div className={cn(EB.sheetField, "min-w-0")}>
+                        <Label htmlFor="clientPhone" className={EB.sheetLabel}>
+                          Phone
+                        </Label>
+                        <Input
+                          id="clientPhone"
+                          name="clientPhone"
+                          type="tel"
+                          value={clientPhoneDraft}
+                          onChange={(event) => setClientPhoneDraft(event.target.value)}
+                          placeholder="Customer phone"
+                          className={metaInput}
+                        />
+                      </div>
+                      <div className={cn(EB.sheetField, "min-w-0 sm:col-span-2")}>
+                        <Label htmlFor="clientEmail" className={EB.sheetLabel}>
+                          Email
+                        </Label>
+                        <Input
+                          id="clientEmail"
+                          name="clientEmail"
+                          type="email"
+                          value={clientEmailDraft}
+                          onChange={(event) => setClientEmailDraft(event.target.value)}
+                          placeholder="Customer email"
+                          className={metaInput}
+                        />
+                      </div>
+                      <div className={cn(EB.sheetField, "min-w-0 sm:col-span-2")}>
+                        <Label htmlFor="clientAddress" className={EB.sheetLabel}>
+                          Billing address
+                        </Label>
+                        <Input
+                          id="clientAddress"
+                          name="clientAddress"
+                          value={clientAddressDraft}
+                          onChange={(event) => setClientAddressDraft(event.target.value)}
+                          placeholder="Customer billing address"
+                          className={metaInput}
+                        />
+                      </div>
+                      <div className={cn(EB.sheetField, "min-w-0 sm:col-span-2")}>
+                        <Label htmlFor="projectPicker" className={EB.sheetLabel}>
+                          Existing project
+                        </Label>
+                        <select
+                          id="projectPicker"
+                          value={selectedProjectId}
+                          onChange={(event) => {
+                            const id = event.target.value;
+                            setSelectedProjectId(id);
+                            const project = projectOptions.find((option) => option.id === id);
+                            if (!project) return;
+                            setProjectNameDraft(project.name);
+                            setProjectAddressDraft(project.address ?? "");
+                          }}
+                          className={cn(metaInput, "w-full")}
+                          disabled={projectsLoading}
+                        >
+                          <option value="">
+                            {projectsLoading ? "Loading projects…" : "Choose a project to copy"}
+                          </option>
+                          {projectOptions.map((project) => (
+                            <option key={project.id} value={project.id}>
+                              {project.name}
+                            </option>
+                          ))}
+                        </select>
+                        <p className="eb-estimate-details-helper text-xs leading-snug">
+                          Copies the canonical project name and site address. This Estimate does not
+                          persist a project ID relationship.
+                        </p>
+                      </div>
+                      <div className={cn(EB.sheetField, "min-w-0 sm:col-span-2")}>
                         <Label htmlFor="projectName" className={EB.sheetLabel}>
                           Project / reference
                         </Label>
                         <Input
                           id="projectName"
                           name="projectName"
-                          defaultValue={meta.project.name}
+                          value={projectNameDraft}
+                          onChange={(event) => setProjectNameDraft(event.target.value)}
                           placeholder="Project name"
                           className={metaInput}
                         />
-                        <p className="eb-estimate-details-helper text-xs leading-snug">
-                          Milestone invoices require this to match one existing HH project or be
-                          converted to a project after approval.
-                        </p>
                       </div>
                     </div>
                   </section>
@@ -329,13 +506,14 @@ export function EstimateEditCustomerSection({
                     </p>
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                       <div className={cn(EB.sheetField, "min-w-0 sm:col-span-2")}>
-                        <Label htmlFor="address" className={EB.sheetLabel}>
-                          Address
+                        <Label htmlFor="projectAddress" className={EB.sheetLabel}>
+                          Site address
                         </Label>
                         <Input
-                          id="address"
-                          name="address"
-                          defaultValue={meta.client.address}
+                          id="projectAddress"
+                          name="projectAddress"
+                          value={projectAddressDraft}
+                          onChange={(event) => setProjectAddressDraft(event.target.value)}
                           placeholder="Site or client address"
                           className={metaInput}
                         />
@@ -454,7 +632,78 @@ export function EstimateEditCustomerSection({
                           className={ebSheetInput(cn("text-sm text-foreground", EB.inputNumeric))}
                         />
                       </div>
+                      <div className={cn(EB.sheetField, "min-w-0")}>
+                        <Label htmlFor="overheadPct" className={EB.sheetLabel}>
+                          Internal overhead reference %
+                        </Label>
+                        <Input
+                          id="overheadPct"
+                          name="overheadPct"
+                          type="number"
+                          step="0.01"
+                          min={0}
+                          value={overheadPctDraft}
+                          onChange={(event) => {
+                            const next = Number(event.target.value);
+                            setOverheadPctDraft(Number.isFinite(next) ? Math.max(0, next) : 0);
+                          }}
+                          className={ebSheetInput(cn("text-sm text-foreground", EB.inputNumeric))}
+                        />
+                      </div>
+                      <div className={cn(EB.sheetField, "min-w-0")}>
+                        <Label htmlFor="profitPct" className={EB.sheetLabel}>
+                          Internal profit reference %
+                        </Label>
+                        <Input
+                          id="profitPct"
+                          name="profitPct"
+                          type="number"
+                          step="0.01"
+                          min={0}
+                          value={profitPctDraft}
+                          onChange={(event) => {
+                            const next = Number(event.target.value);
+                            setProfitPctDraft(Number.isFinite(next) ? Math.max(0, next) : 0);
+                          }}
+                          className={ebSheetInput(cn("text-sm text-foreground", EB.inputNumeric))}
+                        />
+                      </div>
                     </div>
+                    <div
+                      className="rounded-md border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-3"
+                      data-testid="estimate-pricing-live-summary"
+                    >
+                      <dl className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+                        <dt className="text-[var(--hh-text-tertiary)]">Subtotal</dt>
+                        <dd className="hh-fin text-right text-[var(--hh-text-secondary)]">
+                          {formatEstimateCurrency(estimateSubtotal)}
+                        </dd>
+                        <dt className="text-[var(--hh-text-tertiary)]">Tax</dt>
+                        <dd className="hh-fin text-right text-[var(--hh-text-secondary)]">
+                          {formatEstimateCurrency(taxDraft)}
+                        </dd>
+                        <dt className="text-[var(--hh-text-tertiary)]">Discount</dt>
+                        <dd className="hh-fin text-right text-[var(--hh-text-secondary)]">
+                          −{formatEstimateCurrency(discountDraft)}
+                        </dd>
+                        <dt className="border-t border-[var(--hh-border)] pt-1.5 font-medium text-[var(--hh-text-primary)]">
+                          Customer total
+                        </dt>
+                        <dd className="hh-fin border-t border-[var(--hh-border)] pt-1.5 text-right font-semibold text-[var(--hh-text-primary)]">
+                          {formatEstimateCurrency(projectedCustomerTotal)}
+                        </dd>
+                      </dl>
+                      {discountExceedsPreDiscountTotal ? (
+                        <p className="mt-2 text-xs text-destructive" role="alert">
+                          Discount exceeds subtotal plus tax. Review the customer total before
+                          saving.
+                        </p>
+                      ) : null}
+                    </div>
+                    <p className="eb-estimate-details-helper text-xs leading-snug">
+                      Internal overhead and profit references are stored for planning only. They do
+                      not change the customer subtotal, tax, discount, or total.
+                    </p>
                   </section>
                 </form>
               </div>

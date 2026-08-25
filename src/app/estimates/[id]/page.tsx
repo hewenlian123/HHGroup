@@ -167,6 +167,7 @@ export default async function EstimateDetailPage({
       <EstimateDetailClient
         estimateId={id}
         estimateNumber={estimate.number}
+        customerId={estimate.customerId}
         revisionContext={revisionContext}
         estimateUpdatedAt={estimate.updatedAt}
         initialStatus={estimate.status}

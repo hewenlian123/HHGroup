@@ -566,9 +566,22 @@ export async function saveEstimateMetaInlineAction(
   try {
     const clientName = (formData.get("clientName") as string)?.trim();
     const projectName = (formData.get("projectName") as string)?.trim();
-    const address = (formData.get("address") as string)?.trim();
+    const legacyAddress = (formData.get("address") as string)?.trim();
+    const clientAddress = formData.has("clientAddress")
+      ? ((formData.get("clientAddress") as string)?.trim() ?? "")
+      : legacyAddress;
+    const projectAddress = formData.has("projectAddress")
+      ? ((formData.get("projectAddress") as string)?.trim() ?? "")
+      : legacyAddress;
+    const clientPhone = (formData.get("clientPhone") as string)?.trim();
+    const clientEmail = (formData.get("clientEmail") as string)?.trim();
+    const customerId = formData.has("customerId")
+      ? (formData.get("customerId") as string)?.trim() || null
+      : undefined;
     const tax = formData.get("tax");
     const discount = formData.get("discount");
+    const overheadPct = formData.get("overheadPct");
+    const profitPct = formData.get("profitPct");
     const estimateDate = (formData.get("estimateDate") as string)?.trim();
     const validUntil = (formData.get("validUntil") as string)?.trim();
     const notes = (formData.get("notes") as string)?.trim();
@@ -587,21 +600,47 @@ export async function saveEstimateMetaInlineAction(
     const db = await getEstimateWriteClient();
     if (!db) return { ok: false, error: "Database is not configured." };
     const ok = await updateEstimateMetaWithClient(db, estimateId, {
+      ...(customerId !== undefined ? { customerId } : {}),
       ...(clientName != null
-        ? { client: { name: clientName, ...(address != null ? { address } : {}) } }
+        ? {
+            client: {
+              name: clientName,
+              ...(clientAddress != null ? { address: clientAddress } : {}),
+              ...(clientPhone != null ? { phone: clientPhone } : {}),
+              ...(clientEmail != null ? { email: clientEmail } : {}),
+            },
+          }
         : {}),
       ...(projectName != null
-        ? { project: { name: projectName, ...(address != null ? { siteAddress: address } : {}) } }
+        ? {
+            project: {
+              name: projectName,
+              ...(projectAddress != null ? { siteAddress: projectAddress } : {}),
+            },
+          }
         : {}),
-      ...(address != null && clientName == null && projectName == null
-        ? { client: { address }, project: { siteAddress: address } }
+      ...(clientAddress != null && clientName == null
+        ? {
+            client: {
+              address: clientAddress,
+              ...(clientPhone != null ? { phone: clientPhone } : {}),
+              ...(clientEmail != null ? { email: clientEmail } : {}),
+            },
+          }
+        : {}),
+      ...(projectAddress != null && projectName == null
+        ? { project: { siteAddress: projectAddress } }
         : {}),
       ...(tax != null && tax !== "" ? { tax: Number(tax) || 0 } : {}),
       ...(discount != null && discount !== "" ? { discount: Number(discount) || 0 } : {}),
+      ...(overheadPct != null && overheadPct !== ""
+        ? { overheadPct: Number(overheadPct) || 0 }
+        : {}),
+      ...(profitPct != null && profitPct !== "" ? { profitPct: Number(profitPct) || 0 } : {}),
       ...(estimateDate != null ? { estimateDate: estimateDate || undefined } : {}),
-      ...(validUntil != null ? { validUntil: validUntil || undefined } : {}),
-      ...(notes != null ? { notes: notes || undefined } : {}),
-      ...(salesPerson != null ? { salesPerson: salesPerson || undefined } : {}),
+      ...(validUntil != null ? { validUntil } : {}),
+      ...(formData.has("notes") ? { notes: notes ?? "" } : {}),
+      ...(salesPerson != null ? { salesPerson } : {}),
       ...(documentStyle != null ? { documentStyle } : {}),
     });
     if (ok) {
@@ -611,6 +650,27 @@ export async function saveEstimateMetaInlineAction(
     return { ok: Boolean(ok) };
   } catch (error) {
     return { ok: false, error: safeEstimateActionError(error, "操作失败") };
+  }
+}
+
+export async function saveEstimateInternalNotesInlineAction(
+  estimateId: string,
+  notes: string
+): Promise<{ ok: boolean; error?: string }> {
+  if (!estimateId.trim()) return { ok: false, error: "Missing estimate id" };
+  try {
+    const db = await getEstimateWriteClient();
+    if (!db) return { ok: false, error: "Database is not configured." };
+    const ok = await updateEstimateMetaWithClient(db, estimateId, { notes });
+    if (!ok) return { ok: false, error: "Could not save internal notes." };
+    revalidateEstimatePaths(estimateId);
+    revalidatePath("/estimates");
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      error: safeEstimateActionError(error, "Could not save internal notes."),
+    };
   }
 }
 
@@ -1378,9 +1438,22 @@ export async function saveEstimateMetaAction(formData: FormData) {
   try {
     const clientName = (formData.get("clientName") as string)?.trim();
     const projectName = (formData.get("projectName") as string)?.trim();
-    const address = (formData.get("address") as string)?.trim();
+    const legacyAddress = (formData.get("address") as string)?.trim();
+    const clientAddress = formData.has("clientAddress")
+      ? ((formData.get("clientAddress") as string)?.trim() ?? "")
+      : legacyAddress;
+    const projectAddress = formData.has("projectAddress")
+      ? ((formData.get("projectAddress") as string)?.trim() ?? "")
+      : legacyAddress;
+    const clientPhone = (formData.get("clientPhone") as string)?.trim();
+    const clientEmail = (formData.get("clientEmail") as string)?.trim();
+    const customerId = formData.has("customerId")
+      ? (formData.get("customerId") as string)?.trim() || null
+      : undefined;
     const tax = formData.get("tax");
     const discount = formData.get("discount");
+    const overheadPct = formData.get("overheadPct");
+    const profitPct = formData.get("profitPct");
     const estimateDate = (formData.get("estimateDate") as string)?.trim();
     const validUntil = (formData.get("validUntil") as string)?.trim();
     const notes = (formData.get("notes") as string)?.trim();
@@ -1393,21 +1466,47 @@ export async function saveEstimateMetaAction(formData: FormData) {
     const db = await getEstimateWriteClient();
     if (!db) return;
     const ok = await updateEstimateMetaWithClient(db, estimateId, {
+      ...(customerId !== undefined ? { customerId } : {}),
       ...(clientName != null
-        ? { client: { name: clientName, ...(address != null ? { address } : {}) } }
+        ? {
+            client: {
+              name: clientName,
+              ...(clientAddress != null ? { address: clientAddress } : {}),
+              ...(clientPhone != null ? { phone: clientPhone } : {}),
+              ...(clientEmail != null ? { email: clientEmail } : {}),
+            },
+          }
         : {}),
       ...(projectName != null
-        ? { project: { name: projectName, ...(address != null ? { siteAddress: address } : {}) } }
+        ? {
+            project: {
+              name: projectName,
+              ...(projectAddress != null ? { siteAddress: projectAddress } : {}),
+            },
+          }
         : {}),
-      ...(address != null && clientName == null && projectName == null
-        ? { client: { address }, project: { siteAddress: address } }
+      ...(clientAddress != null && clientName == null
+        ? {
+            client: {
+              address: clientAddress,
+              ...(clientPhone != null ? { phone: clientPhone } : {}),
+              ...(clientEmail != null ? { email: clientEmail } : {}),
+            },
+          }
+        : {}),
+      ...(projectAddress != null && projectName == null
+        ? { project: { siteAddress: projectAddress } }
         : {}),
       ...(tax != null && tax !== "" ? { tax: Number(tax) || 0 } : {}),
       ...(discount != null && discount !== "" ? { discount: Number(discount) || 0 } : {}),
+      ...(overheadPct != null && overheadPct !== ""
+        ? { overheadPct: Number(overheadPct) || 0 }
+        : {}),
+      ...(profitPct != null && profitPct !== "" ? { profitPct: Number(profitPct) || 0 } : {}),
       ...(estimateDate != null ? { estimateDate: estimateDate || undefined } : {}),
-      ...(validUntil != null ? { validUntil: validUntil || undefined } : {}),
-      ...(notes != null ? { notes: notes || undefined } : {}),
-      ...(salesPerson != null ? { salesPerson: salesPerson || undefined } : {}),
+      ...(validUntil != null ? { validUntil } : {}),
+      ...(formData.has("notes") ? { notes: notes ?? "" } : {}),
+      ...(salesPerson != null ? { salesPerson } : {}),
       ...(documentStyle != null ? { documentStyle } : {}),
     });
     revalidateEstimatePaths(estimateId);

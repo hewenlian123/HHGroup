@@ -215,11 +215,16 @@ async function approveSavedEstimate(page: Page): Promise<void> {
   await expect(page.getByText("Sent", { exact: true }).locator("visible=true")).toBeVisible({
     timeout: 15_000,
   });
-  await page.getByRole("button", { name: /^Status/ }).click();
-  await page.getByRole("menuitem", { name: "Mark accepted", exact: true }).click();
+  await page.getByRole("button", { name: "Mark accepted", exact: true }).click();
   await expect(page.getByText("Approved", { exact: true }).locator("visible=true")).toBeVisible({
     timeout: 15_000,
   });
+}
+
+async function openPaymentSchedule(page: Page): Promise<void> {
+  await page.getByRole("button", { name: "Estimate actions", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Payment Schedule", exact: true }).click();
+  await expect(page.getByTestId("estimate-payment-schedule-sheet")).toBeVisible();
 }
 
 test.afterEach(async () => {
@@ -250,6 +255,7 @@ test("linked project payment milestone generates an invoice for the milestone am
 
   await createEstimateWithDeposit(page, { customerName, projectName });
   await approveSavedEstimate(page);
+  await openPaymentSchedule(page);
   await page.getByRole("link", { name: /^Create Draft Invoice$/i }).click();
   await expect(page).toHaveURL(/\/financial\/invoices\/new\?/, { timeout: 30_000 });
   await expect(page.getByTestId("invoice-new-project-select")).toHaveValue(projectId);
@@ -306,6 +312,7 @@ test("tax-inclusive milestone generates an invoice whose final total remains the
 
   await page.reload({ waitUntil: "domcontentloaded" });
   await approveSavedEstimate(page);
+  await openPaymentSchedule(page);
   await page.getByRole("link", { name: /^Create Draft Invoice$/i }).click();
   await expect(page).toHaveURL(/\/financial\/invoices\/new\?/, { timeout: 30_000 });
   await expect(page.getByTestId("invoice-new-project-select")).toHaveValue(projectId);
@@ -360,6 +367,7 @@ test("missing linked project shows a clear blocker and does not create an invoic
 
   await createEstimateWithDeposit(page, { customerName, projectName });
   await approveSavedEstimate(page);
+  await openPaymentSchedule(page);
   await expect(page.getByText(/Invoice generation requires a linked project/i)).toBeVisible({
     timeout: 30_000,
   });

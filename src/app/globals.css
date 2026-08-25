@@ -1374,6 +1374,32 @@
   padding: 2.5rem 1rem 3rem;
 }
 
+/* Keep the browser print view readable on compact screens without changing
+   the fixed Letter geometry used by print media and server PDF capture. */
+@media screen and (max-width: 899px) {
+  .estimate-print-workspace:not(.estimate-print-pdf-capture) .estimate-preview-paper-stack {
+    zoom: 0.85;
+  }
+}
+
+@media screen and (max-width: 700px) {
+  .estimate-print-workspace:not(.estimate-print-pdf-capture) .estimate-preview-paper-stack {
+    zoom: 0.65;
+  }
+}
+
+@media screen and (max-width: 520px) {
+  .estimate-print-workspace:not(.estimate-print-pdf-capture) .estimate-preview-paper-stack {
+    zoom: 0.47;
+  }
+}
+
+@media screen and (max-width: 420px) {
+  .estimate-print-workspace:not(.estimate-print-pdf-capture) .estimate-preview-paper-stack {
+    zoom: 0.42;
+  }
+}
+
 .estimate-preview-viewport {
   width: 100%;
   overflow: auto;

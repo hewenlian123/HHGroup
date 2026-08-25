@@ -29,6 +29,7 @@ const MIGRATION = path.join(
   "supabase/migrations/20260822230000_estimate_revision_immutable_lineage.sql"
 );
 const DETAIL_HEADER = path.join(process.cwd(), "src/app/estimates/[id]/estimate-detail-header.tsx");
+const DETAIL_CLIENT = path.join(process.cwd(), "src/app/estimates/[id]/estimate-detail-client.tsx");
 const DETAIL_ACTIONS = path.join(process.cwd(), "src/app/estimates/[id]/actions.ts");
 
 describe("Estimate Phase 3A revision contract", () => {
@@ -143,11 +144,13 @@ describe("Estimate Phase 3A revision contract", () => {
           id: "22222222-2222-4222-8222-222222222222",
           revision_number: 1,
           status: "Draft",
+          created_at: "2026-08-24T10:00:00.000Z",
         },
         {
           id: "11111111-1111-4111-8111-111111111111",
           revision_number: 0,
           status: "Approved",
+          created_at: "2026-08-23T10:00:00.000Z",
         },
       ],
       error: null,
@@ -161,6 +164,62 @@ describe("Estimate Phase 3A revision contract", () => {
         select: vi.fn(() => ({
           eq: vi.fn(() => ({ order: familyOrder })),
         })),
+      })
+      .mockReturnValueOnce({
+        select: vi.fn(() => ({
+          in: vi.fn().mockResolvedValue({
+            data: [
+              {
+                estimate_id: "22222222-2222-4222-8222-222222222222",
+                tax: 50,
+                discount: 25,
+              },
+              {
+                estimate_id: "11111111-1111-4111-8111-111111111111",
+                tax: 0,
+                discount: 0,
+              },
+            ],
+            error: null,
+          }),
+        })),
+      })
+      .mockReturnValueOnce({
+        select: vi.fn(() => ({
+          in: vi.fn().mockResolvedValue({
+            data: [
+              {
+                estimate_id: "22222222-2222-4222-8222-222222222222",
+                qty: 2,
+                unit_cost: 500,
+              },
+              {
+                estimate_id: "11111111-1111-4111-8111-111111111111",
+                qty: 1,
+                unit_cost: 750,
+              },
+            ],
+            error: null,
+          }),
+        })),
+      })
+      .mockReturnValueOnce({
+        select: vi.fn(() => ({
+          in: vi.fn(() => ({
+            eq: vi.fn(() => ({
+              order: vi.fn().mockResolvedValue({
+                data: [
+                  {
+                    estimate_id: "22222222-2222-4222-8222-222222222222",
+                    actor_label: "Owner Example",
+                    occurred_at: "2026-08-24T10:00:00.000Z",
+                  },
+                ],
+                error: null,
+              }),
+            })),
+          })),
+        })),
       });
 
     const context = await getEstimateRevisionContextWithClient(
@@ -172,6 +231,24 @@ describe("Estimate Phase 3A revision contract", () => {
       revisionRootId: "11111111-1111-4111-8111-111111111111",
       estimateNumber: "EST-0053",
       revisionNumber: 0,
+      revisions: [
+        {
+          id: "22222222-2222-4222-8222-222222222222",
+          revisionNumber: 1,
+          status: "Draft",
+          createdAt: "2026-08-24T10:00:00.000Z",
+          createdBy: "Owner Example",
+          total: 1025,
+        },
+        {
+          id: "11111111-1111-4111-8111-111111111111",
+          revisionNumber: 0,
+          status: "Approved",
+          createdAt: "2026-08-23T10:00:00.000Z",
+          createdBy: null,
+          total: 750,
+        },
+      ],
       previousRevisionId: null,
       previousRevisionNumber: null,
       nextRevisionId: "22222222-2222-4222-8222-222222222222",
@@ -182,14 +259,91 @@ describe("Estimate Phase 3A revision contract", () => {
     });
   });
 
+  it("fails closed when revision total source rows cannot be read", async () => {
+    const id = "11111111-1111-4111-8111-111111111111";
+    const from = vi
+      .fn()
+      .mockReturnValueOnce({
+        select: vi.fn(() => ({
+          eq: vi.fn(() => ({
+            single: vi.fn().mockResolvedValue({
+              data: {
+                id,
+                number: "EST-0053",
+                revision_root_id: id,
+                revision_number: 0,
+                previous_revision_id: null,
+              },
+              error: null,
+            }),
+          })),
+        })),
+      })
+      .mockReturnValueOnce({
+        select: vi.fn(() => ({
+          eq: vi.fn(() => ({
+            order: vi.fn().mockResolvedValue({
+              data: [
+                {
+                  id,
+                  revision_number: 0,
+                  status: "Draft",
+                  created_at: "2026-08-24T10:00:00.000Z",
+                },
+              ],
+              error: null,
+            }),
+          })),
+        })),
+      })
+      .mockReturnValueOnce({
+        select: vi.fn(() => ({
+          in: vi.fn().mockResolvedValue({
+            data: [{ estimate_id: id, tax: 50, discount: 25 }],
+            error: null,
+          }),
+        })),
+      })
+      .mockReturnValueOnce({
+        select: vi.fn(() => ({
+          in: vi.fn().mockResolvedValue({
+            data: null,
+            error: { message: "items unavailable" },
+          }),
+        })),
+      })
+      .mockReturnValueOnce({
+        select: vi.fn(() => ({
+          in: vi.fn(() => ({
+            eq: vi.fn(() => ({
+              order: vi.fn().mockResolvedValue({ data: null, error: { message: "denied" } }),
+            })),
+          })),
+        })),
+      });
+
+    const context = await getEstimateRevisionContextWithClient({ from } as never, id);
+
+    expect(context?.revisions[0]).toMatchObject({ total: null, createdBy: null });
+  });
+
   it("exposes Create Revision navigation and removes the legacy reopen-in-place action", () => {
     const header = fs.readFileSync(DETAIL_HEADER, "utf8");
+    const detail = fs.readFileSync(DETAIL_CLIENT, "utf8");
     const actions = fs.readFileSync(DETAIL_ACTIONS, "utf8");
 
     expect(header).toContain("Create Revision");
     expect(header).toContain("Previous revision");
     expect(header).toContain("Current revision");
+    expect(header).toContain('label: "Estimate date"');
+    expect(header).toContain('label: "Valid until"');
+    expect(header).toContain("formatEstimateCurrency(grandTotal)");
     expect(header).toContain('data-testid="create-estimate-revision-action"');
+    expect(detail).toContain("revisionContext.revisions.map");
+    expect(detail).toContain('data-testid="estimate-revision-family-list"');
+    expect(detail).toContain("formatRevisionDate(revision.createdAt)");
+    expect(detail).toContain("revision.createdBy");
+    expect(detail).toContain("formatEstimateCurrency(revision.total)");
     expect(actions).not.toContain("createNewVersionAction");
     expect(actions).not.toContain("createNewVersionFromSnapshot");
   });

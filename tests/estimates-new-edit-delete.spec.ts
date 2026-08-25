@@ -765,10 +765,7 @@ test("opens approved estimate conversion without creating a project", async ({ p
     timeout: 30_000,
   });
 
-  const statusButton = page.getByRole("button", { name: /^Status/i });
-  await expect(statusButton).toBeEnabled({ timeout: 15_000 });
-  await statusButton.click();
-  const markAccepted = page.getByRole("menuitem", { name: /Mark accepted/i });
+  const markAccepted = page.getByRole("button", { name: /Mark accepted/i });
   await expect(markAccepted).toBeVisible({ timeout: 15_000 });
   await markAccepted.click();
   await expect(page.locator("header").getByText("Approved")).toBeVisible({ timeout: 30_000 });

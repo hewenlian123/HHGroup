@@ -25,6 +25,9 @@ export function EstimateWorkspaceCommandHeader({
   revisionLabel,
   status,
   context,
+  facts,
+  amount,
+  amountLabel = "Estimate total",
   contextFallback = "Estimate",
   saveStatus = "idle",
   reserveSaveStatusSpace = false,
@@ -35,6 +38,9 @@ export function EstimateWorkspaceCommandHeader({
   revisionLabel?: string;
   status: string;
   context?: Array<string | null | undefined>;
+  facts?: Array<{ label: string; value: string | null | undefined }>;
+  amount?: string;
+  amountLabel?: string;
   contextFallback?: string;
   saveStatus?: EstimateSaveStatus;
   reserveSaveStatusSpace?: boolean;
@@ -43,6 +49,7 @@ export function EstimateWorkspaceCommandHeader({
 }): React.ReactElement {
   const statusMeta = estimateStatusMeta(status);
   const contextLabel = context?.filter(Boolean).join(" · ") || contextFallback;
+  const visibleFacts = facts?.filter((fact) => Boolean(fact.value)) ?? [];
 
   return (
     <header
@@ -74,10 +81,30 @@ export function EstimateWorkspaceCommandHeader({
                 variant={statusMeta.variant}
                 className="h-5 px-2 text-hh-status"
               />
+              {amount ? (
+                <span
+                  className="hh-fin ml-1 text-base font-semibold leading-5 text-foreground"
+                  aria-label={`${amountLabel}: ${amount}`}
+                >
+                  {amount}
+                </span>
+              ) : null}
             </div>
             <p className="max-w-3xl overflow-hidden break-words text-hh-metadata leading-snug text-muted-foreground [overflow-wrap:anywhere]">
               {contextLabel}
             </p>
+            {visibleFacts.length > 0 ? (
+              <p className="flex flex-wrap gap-x-3 gap-y-0.5 text-hh-metadata leading-snug text-muted-foreground">
+                {visibleFacts.map((fact) => (
+                  <span key={fact.label}>
+                    <span className="text-[var(--hh-text-tertiary)]">{fact.label}</span>{" "}
+                    <span className="font-medium text-[var(--hh-text-secondary)]">
+                      {fact.value}
+                    </span>
+                  </span>
+                ))}
+              </p>
+            ) : null}
           </div>
           {reserveSaveStatusSpace || saveStatus !== "idle" ? (
             <div className="min-h-4 pt-0.5">

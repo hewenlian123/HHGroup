@@ -59,10 +59,23 @@ import {
 } from "../_components/estimate-workflow-continuity";
 import { EstimateActivityTimeline } from "../_components/estimate-activity-timeline";
 import { EstimateSurfaceSheet } from "../_components/estimate-surface-sheet";
+import { formatEstimateCurrency } from "../_components/estimate-currency";
+
+function formatRevisionDate(value: string | null): string {
+  if (!value) return "Date unavailable";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(date);
+}
 
 type EstimateDetailClientProps = {
   estimateId: string;
   estimateNumber: string;
+  customerId?: string | null;
   revisionContext?: EstimateRevisionContext | null;
   estimateUpdatedAt: string;
   initialStatus: EstimateStatus | string;
@@ -93,6 +106,7 @@ export function EstimateDetailClient(props: EstimateDetailClientProps): React.Re
 function EstimateDetailClientContent({
   estimateId,
   estimateNumber,
+  customerId,
   revisionContext,
   estimateUpdatedAt,
   initialStatus,
@@ -353,6 +367,9 @@ function EstimateDetailClientContent({
         clientName={meta.client.name}
         projectName={meta.project.name}
         siteAddress={meta.project.siteAddress ?? meta.client.address}
+        estimateDate={meta.estimateDate}
+        validUntil={meta.validUntil}
+        grandTotal={summary?.grandTotal}
         status={status}
         editing={editing}
         pending={pending || wholeDocumentSaving}
@@ -463,6 +480,7 @@ function EstimateDetailClientContent({
         key={`${estimateId}-${estimateUpdatedAt}`}
         estimateId={estimateId}
         estimateNumber={estimateNumber}
+        customerId={customerId}
         status={status}
         meta={meta}
         items={items}
@@ -511,35 +529,51 @@ function EstimateDetailClientContent({
           contentClassName="overflow-y-auto p-4"
           testId="estimate-revision-history-sheet"
         >
-          <div className="space-y-2">
-            <Link
-              href={`/estimates/${revisionContext.currentRevisionId}`}
-              className="flex min-h-12 items-center justify-between gap-3 rounded-lg border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 py-2 text-sm text-[var(--hh-text-primary)] transition-colors hover:bg-[var(--hh-l3-hover)]"
-            >
-              <span>
-                <span className="block font-semibold">Current revision</span>
-                <span className="block text-xs text-[var(--hh-text-tertiary)]">
-                  {revisionContext.isCurrent
-                    ? `Rev ${revisionContext.revisionNumber} · ${status}`
-                    : "Open the latest revision"}
-                </span>
-              </span>
-              <span className="text-xs text-[var(--hh-action-primary)]">Open</span>
-            </Link>
-            {revisionContext.previousRevisionId ? (
-              <Link
-                href={`/estimates/${revisionContext.previousRevisionId}`}
-                className="flex min-h-12 items-center justify-between gap-3 rounded-lg border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 py-2 text-sm text-[var(--hh-text-primary)] transition-colors hover:bg-[var(--hh-l3-hover)]"
-              >
-                <span>
-                  <span className="block font-semibold">Previous revision</span>
-                  <span className="block text-xs text-[var(--hh-text-tertiary)]">
-                    Historical · Read-only
+          <div className="space-y-2" data-testid="estimate-revision-family-list">
+            {revisionContext.revisions.map((revision) => {
+              const isCurrent = revision.id === revisionContext.currentRevisionId;
+              const isViewing = revision.id === estimateId;
+              return (
+                <Link
+                  key={revision.id}
+                  href={`/estimates/${revision.id}`}
+                  aria-current={isViewing ? "page" : undefined}
+                  className={cn(
+                    "flex min-h-14 items-center justify-between gap-3 rounded-lg border px-3 py-2.5 text-sm text-[var(--hh-text-primary)] transition-colors hover:bg-[var(--hh-l3-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)]",
+                    isViewing
+                      ? "border-[var(--hh-action-primary)] bg-[var(--hh-l3-selected)]"
+                      : "border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)]"
+                  )}
+                  data-testid={`estimate-revision-row-${revision.revisionNumber}`}
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate font-semibold">
+                      {revisionContext.estimateNumber} · Rev {revision.revisionNumber}
+                    </span>
+                    <span className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-xs text-[var(--hh-text-tertiary)]">
+                      <span>{revision.status}</span>
+                      {isCurrent ? <span>· Current</span> : <span>· Historical</span>}
+                      {isViewing ? <span>· Viewing</span> : null}
+                      {!isCurrent ? <span>· Read-only</span> : null}
+                    </span>
+                    <span className="mt-1 block text-xs text-[var(--hh-text-tertiary)]">
+                      {formatRevisionDate(revision.createdAt)}
+                      {revision.createdBy ? ` · ${revision.createdBy}` : " · Creator unavailable"}
+                    </span>
                   </span>
-                </span>
-                <span className="text-xs text-[var(--hh-action-primary)]">Open</span>
-              </Link>
-            ) : null}
+                  <span className="shrink-0 text-right">
+                    <span className="hh-fin block text-xs font-semibold text-[var(--hh-text-primary)]">
+                      {revision.total == null
+                        ? "Total unavailable"
+                        : formatEstimateCurrency(revision.total)}
+                    </span>
+                    <span className="mt-1 block text-xs font-medium text-[var(--hh-action-primary)]">
+                      {isViewing ? "Viewing" : "Open"}
+                    </span>
+                  </span>
+                </Link>
+              );
+            })}
           </div>
         </EstimateSurfaceSheet>
       ) : null}
