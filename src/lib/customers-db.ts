@@ -1,6 +1,7 @@
 "use server";
 
 import { getServerSupabaseAdmin } from "@/lib/supabase-server";
+import { requireSupabaseOwnerOrAdminServerActionWithClient } from "@/lib/auth-boundary";
 import { CUSTOMERS_DB_COLUMNS } from "@/lib/customers-columns";
 
 export type Customer = {
@@ -20,14 +21,15 @@ export type Customer = {
   updated_at?: string | null;
 };
 
-function admin() {
-  const c = getServerSupabaseAdmin();
-  if (!c) throw new Error("Supabase admin client is not configured.");
-  return c;
+async function authorizedAdmin() {
+  const guard = await requireSupabaseOwnerOrAdminServerActionWithClient(getServerSupabaseAdmin);
+  if (!guard.ok) throw new Error(guard.error);
+  if (!guard.client) throw new Error("Supabase admin client is not configured.");
+  return guard.client;
 }
 
 export async function getAllCustomers(): Promise<Customer[]> {
-  const c = admin();
+  const c = await authorizedAdmin();
   const { data, error } = await c.from("customers").select(CUSTOMERS_DB_COLUMNS);
   if (error) throw new Error(error.message ?? "Failed to load customers.");
   return [...((data ?? []) as Customer[])].sort((a, b) =>
@@ -38,7 +40,7 @@ export async function getAllCustomers(): Promise<Customer[]> {
 export async function getCustomerById(
   id: string
 ): Promise<(Customer & { projects_count: number }) | null> {
-  const c = admin();
+  const c = await authorizedAdmin();
   const { data, error } = await c
     .from("customers")
     .select(CUSTOMERS_DB_COLUMNS)
@@ -68,7 +70,7 @@ export type CustomerDraft = {
 };
 
 export async function createCustomer(draft: CustomerDraft): Promise<Customer> {
-  const c = admin();
+  const c = await authorizedAdmin();
   const payload = {
     name: draft.name.trim(),
     email: draft.email?.trim() || null,
@@ -92,7 +94,7 @@ export async function createCustomer(draft: CustomerDraft): Promise<Customer> {
 }
 
 export async function updateCustomer(id: string, patch: Partial<CustomerDraft>): Promise<Customer> {
-  const c = admin();
+  const c = await authorizedAdmin();
   const payload: Record<string, string | null> = {};
   if (patch.name !== undefined) payload.name = patch.name.trim();
   if (patch.email !== undefined) payload.email = patch.email?.trim() || null;
@@ -127,7 +129,7 @@ export async function updateCustomer(id: string, patch: Partial<CustomerDraft>):
 export async function deleteCustomer(
   id: string
 ): Promise<{ ok: true } | { ok: false; reason: string }> {
-  const c = admin();
+  const c = await authorizedAdmin();
   const { count } = await c
     .from("projects")
     .select("id", { count: "exact", head: true })

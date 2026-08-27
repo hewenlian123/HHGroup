@@ -70,9 +70,11 @@ function jsonError(status: number, message: string): NextResponse {
 
 export async function getRequestAuthContext(request: Request): Promise<AuthBoundaryContext> {
   const hasInternalAdminAccess = hasInternalAdminSecret(request);
-  const hasLocalTestBypass = hasLocalTestAuthBypass(request);
   const isProductionLocked = isProductionSafetyLocked(request);
   const hasOwnerInternalNoLoginAccess = isCompatibilityAccessEnabled();
+  // Request headers must never create an independent Auth bypass. They are honored only
+  // inside the same explicit local-development compatibility boundary.
+  const hasLocalTestBypass = hasOwnerInternalNoLoginAccess && hasLocalTestAuthBypass(request);
   const hasPinSession = false;
 
   const user = hasLocalTestBypass

@@ -21,6 +21,7 @@ vi.mock("@/lib/pin-auth", () => ({
 
 import { authorizedAppRole, isAuthorizedAppRole } from "@/lib/auth-role";
 import {
+  getRequestAuthContext,
   requireSupabaseOwnerOrAdmin,
   requireSupabaseOwnerOrAdminServerActionWithClient,
   requireSupabaseOwnerOrAdminWithClient,
@@ -137,6 +138,22 @@ describe("authenticated owner-access security primitives", () => {
     if (!result.ok) {
       expect(result.response.status).toBe(401);
     }
+  });
+
+  it("does not let the local test header bypass explicit strict mode", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    process.env.HH_REQUIRE_LOGIN = "true";
+    process.env.HH_ALLOW_LOCAL_NO_LOGIN = "1";
+
+    const context = await getRequestAuthContext(
+      new Request("http://localhost:3104/api/customers", {
+        headers: { "x-hh-test-auth-bypass": "1" },
+      })
+    );
+
+    expect(context.hasLocalTestBypass).toBe(false);
+    expect(context.isAuthenticated).toBe(false);
+    expect(context.isAdmin).toBe(false);
   });
 
   it("accepts a Supabase owner or admin in the strict guard", async () => {

@@ -46,6 +46,7 @@ describe("middleware Auth rollout behavior", () => {
   });
 
   afterEach(() => {
+    vi.unstubAllEnvs();
     process.env = { ...ORIGINAL_ENV };
   });
 
@@ -94,7 +95,7 @@ describe("middleware Auth rollout behavior", () => {
     ["explicit zero", "0"],
     ["unset", undefined],
     ["invalid", "invalid-test-value"],
-  ])("keeps existing pages available in production compatibility mode (%s)", async (_, value) => {
+  ])("fails closed for anonymous production pages (%s)", async (_, value) => {
     if (value === undefined) {
       delete process.env.HH_REQUIRE_LOGIN;
     } else {
@@ -103,11 +104,36 @@ describe("middleware Auth rollout behavior", () => {
 
     const response = await middleware(request("/dashboard"));
 
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toContain("/login?redirect=");
+  });
+
+  it("fails closed in preview when HH_REQUIRE_LOGIN is unset", async () => {
+    process.env.VERCEL_ENV = "preview";
+    vi.stubEnv("NODE_ENV", "production");
+    process.env.HH_ALLOW_LOCAL_NO_LOGIN = "1";
+
+    const response = await middleware(request("/dashboard"));
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toContain("/login?redirect=");
+  });
+
+  it("allows no-login only for explicit local development", async () => {
+    process.env.VERCEL_ENV = "development";
+    vi.stubEnv("NODE_ENV", "development");
+    process.env.HH_ALLOW_LOCAL_NO_LOGIN = "1";
+
+    const response = await middleware(request("/dashboard"));
+
     expect(response.status).toBe(200);
     expect(response.headers.get("x-middleware-next")).toBe("1");
   });
 
   it("redirects legacy worker receipts before the Labor App Router boundary and preserves only supported filters", async () => {
+    process.env.VERCEL_ENV = "development";
+    vi.stubEnv("NODE_ENV", "development");
+    process.env.HH_ALLOW_LOCAL_NO_LOGIN = "1";
     const response = await middleware(
       request(
         "/labor/receipts?project_id=project-a&workerId=worker-a&status=pending&date_from=2026-08-01&date_to=2026-08-15&search=discard-me"
@@ -188,8 +214,11 @@ describe("middleware Auth rollout behavior", () => {
     expect(response.headers.get("x-middleware-next")).toBe("1");
   });
 
-  it("keeps the non-receipt OCR writeback workflow available in compatibility mode", async () => {
+  it("keeps the non-receipt OCR writeback workflow available only in explicit local compatibility mode", async () => {
+    process.env.VERCEL_ENV = "development";
+    vi.stubEnv("NODE_ENV", "development");
     process.env.HH_REQUIRE_LOGIN = "false";
+    process.env.HH_ALLOW_LOCAL_NO_LOGIN = "1";
 
     const response = await middleware(
       request(`/api/financial/expenses/${EXPENSE_ID}/ocr-writeback`, { method: "POST" })

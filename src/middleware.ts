@@ -330,7 +330,8 @@ export async function middleware(request: NextRequest) {
 
   if (!publicPath) {
     const strict = requiresStrictSupabaseAuth(pathname);
-    if (!strict && isCompatibilityAccessEnabled()) {
+    const explicitLocalCompatibility = isCompatibilityAccessEnabled();
+    if (!strict && explicitLocalCompatibility) {
       authenticatedResponse = NextResponse.next();
     } else {
       const response = NextResponse.next();

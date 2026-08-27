@@ -32,43 +32,43 @@ export function resolveAuthRolloutConfig(options: AuthRolloutOptions = {}): Auth
   const runtime = resolvedRuntime(options.runtime);
   const rawRequireLogin = options.requireLogin ?? process.env.HH_REQUIRE_LOGIN;
   const requireLogin = rawRequireLogin?.trim().toLowerCase();
+  const rawAllowLocal = options.allowLocal ?? process.env.HH_ALLOW_LOCAL_NO_LOGIN;
+  const allowLocal = rawAllowLocal?.trim().toLowerCase();
+  const configurationState: AuthRolloutConfig["configurationState"] =
+    requireLogin === "1" || requireLogin === "true"
+      ? "enabled"
+      : requireLogin === "0" || requireLogin === "false"
+        ? "disabled"
+        : rawRequireLogin === undefined || requireLogin === ""
+          ? "unset"
+          : "invalid";
 
-  if (requireLogin === "1" || requireLogin === "true") {
+  // Authentication is the fail-closed default. The only compatibility path is an
+  // explicit local-development opt-in, and an explicit strict setting always wins.
+  const explicitLocalNoLogin = allowLocal === "1" || allowLocal === "true";
+  const localCompatibilityAllowed =
+    runtime === "development" &&
+    explicitLocalNoLogin &&
+    configurationState !== "enabled" &&
+    configurationState !== "invalid";
+
+  if (!localCompatibilityAllowed) {
     return {
       mode: "strict",
       runtime,
-      configurationState: "enabled",
-    };
-  }
-
-  if (requireLogin === "0" || requireLogin === "false") {
-    return {
-      mode: "compatibility",
-      runtime,
-      configurationState: "disabled",
+      configurationState,
     };
   }
 
   return {
     mode: "compatibility",
     runtime,
-    configurationState: rawRequireLogin === undefined || requireLogin === "" ? "unset" : "invalid",
+    configurationState,
   };
 }
 
 export function isCompatibilityAccessEnabled(options: AuthRolloutOptions = {}): boolean {
-  const config = resolveAuthRolloutConfig(options);
-  if (config.mode === "strict") return false;
-
-  const allowLocal = (options.allowLocal ?? process.env.HH_ALLOW_LOCAL_NO_LOGIN ?? "")
-    .trim()
-    .toLowerCase();
-
-  if (config.runtime === "production" || config.runtime === "preview") {
-    return true;
-  }
-
-  return allowLocal === "1" || allowLocal === "true";
+  return resolveAuthRolloutConfig(options).mode === "compatibility";
 }
 
 export function reportAuthRolloutConfig(

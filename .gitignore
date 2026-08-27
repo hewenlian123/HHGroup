@@ -68,6 +68,9 @@ next-env.d.ts
 # Local audit notes
 SYSTEM_MODULE_INVENTORY.md
 
+# Local database backup exports may contain customer, worker, and financial data.
+/backups/database/*.json
+
 # Stale PWA copies with spaces in the name (build glitches). Real worker: public/sw.js
 public/sw\ *.js
 public/* 2.js

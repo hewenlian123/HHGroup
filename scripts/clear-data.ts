@@ -3,17 +3,18 @@
  * Uses TRUNCATE via direct Postgres connection when SUPABASE_DATABASE_URL is set
  * (bypasses RLS and is reliable). Otherwise falls back to DELETE via Supabase client.
  *
- * Usage: npx tsx scripts/clear-data.ts
+ * Usage: HH_CLEAR_DATA_CONFIRM="DELETE ALL LOCAL HH GROUP DATA" npx tsx scripts/clear-data.ts
  * Requires: .env.local with SUPABASE_DATABASE_URL (for TRUNCATE) or
  *           NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY (for DELETE fallback).
- *
- * Alternatively run scripts/clear-data.sql in Supabase Dashboard → SQL Editor.
+ * Only the local Docker Supabase endpoints declared in supabase/config.toml are accepted.
+ * Direct execution of scripts/clear-data.sql is intentionally disabled.
  */
 
 import { createClient } from "@supabase/supabase-js";
 import postgres from "postgres";
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
+import { assertClearDataTargetSafe, CLEAR_DATA_CONFIRMATION_PHRASE } from "./test-write-guard";
 
 function loadEnvFile(filename: string) {
   const p = join(process.cwd(), filename);
@@ -27,7 +28,10 @@ function parseEnv(content: string) {
     if (m) {
       const key = m[1].trim();
       const val = m[2].trim().replace(/^["']|["']$/g, "");
-      process.env[key] = val;
+      // Confirmation must be supplied for the current command, never persisted in .env.local.
+      if (key !== "HH_CLEAR_DATA_CONFIRM" && process.env[key] === undefined) {
+        process.env[key] = val;
+      }
     }
   });
 }
@@ -69,8 +73,14 @@ const NIL_UUID = "00000000-0000-0000-0000-000000000000";
 async function main() {
   loadEnvFile(".env.local");
 
-  const dbUrl = process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL;
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const target = assertClearDataTargetSafe({
+    databaseUrl: process.env.SUPABASE_DATABASE_URL,
+    fallbackDatabaseUrl: process.env.DATABASE_URL,
+    supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    confirmation: process.env.HH_CLEAR_DATA_CONFIRM,
+  });
+  const dbUrl = target.databaseUrl;
+  const supabaseUrl = target.supabaseUrl;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const maskUrl = (u: string) =>
     u
@@ -178,4 +188,11 @@ async function main() {
   process.exit(errors.length > 0 ? 1 : 0);
 }
 
-main();
+main().catch((error: unknown) => {
+  const message = error instanceof Error ? error.message : String(error);
+  console.error(message);
+  console.error(
+    `This command is local-only and requires HH_CLEAR_DATA_CONFIRM="${CLEAR_DATA_CONFIRMATION_PHRASE}".`
+  );
+  process.exit(1);
+});
