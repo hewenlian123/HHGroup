@@ -10,8 +10,6 @@ export const QUICK_ACTION_ROUTES = [
   "/site-photos/upload",
   UPLOAD_RECEIPT_ACTION.href,
   "/projects/new",
-  "/tasks/new",
-  "/punch-list/new",
   "/change-orders",
   "/financial/expenses/new",
   "/labor",

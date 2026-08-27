@@ -53,10 +53,6 @@ const TRUNCATE_TABLES = [
   "project_change_order_items",
   "project_change_order_attachments",
   "project_change_orders",
-  "project_tasks",
-  "punch_list",
-  "project_material_selections",
-  "project_schedule",
   "inspection_log",
   "activity_logs",
   "estimate_meta",
@@ -64,20 +60,12 @@ const TRUNCATE_TABLES = [
   "estimate_categories",
   "estimate_snapshots",
   "estimates",
-  "material_catalog",
   "projects",
   "labor_workers",
   "workers",
 ];
 
-const VERIFY_TABLES = [
-  "project_tasks",
-  "punch_list",
-  "projects",
-  "workers",
-  "invoices",
-  "expenses",
-];
+const VERIFY_TABLES = ["projects", "workers", "invoices", "expenses"];
 const NIL_UUID = "00000000-0000-0000-0000-000000000000";
 
 async function main() {

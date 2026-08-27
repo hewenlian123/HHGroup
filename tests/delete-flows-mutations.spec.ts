@@ -13,7 +13,6 @@ import { allowDeleteMutations, e2eTargetOrigin } from "./e2e-env-helpers";
  */
 const BASE = e2eTargetOrigin();
 const ROW_REMOVED_MS = 15_000;
-const LIST_LOAD_MS = 55_000;
 
 test.describe("Delete mutations: create then delete", () => {
   test.describe.configure({ timeout: 150_000 });
@@ -198,59 +197,6 @@ test.describe("Delete mutations: create then delete", () => {
     });
     await page.getByRole("button", { name: /^Delete$/ }).click();
     await expect(row).toHaveCount(0, { timeout: ROW_REMOVED_MS });
-  });
-
-  test("tasks: create then delete (menu + confirm)", async ({ page }) => {
-    await page.setViewportSize({ width: 1400, height: 900 });
-    const title = `PW-TASK-${Date.now()}`;
-    await page.goto(`${BASE}/tasks`);
-    await page.waitForLoadState("domcontentloaded");
-    if (
-      await page
-        .getByText(/Failed to load tasks/i)
-        .isVisible()
-        .catch(() => false)
-    ) {
-      test.skip(true, "Tasks API unavailable.");
-    }
-    await expect(page.getByText(/Loading/i).first())
-      .not.toBeVisible({ timeout: LIST_LOAD_MS })
-      .catch(() => undefined);
-
-    await page.getByRole("button", { name: /\+ New Task/i }).click();
-    const taskDlg = page.getByRole("dialog", { name: /New Task/i });
-    await expect(taskDlg).toBeVisible({ timeout: 10_000 });
-    const projectSelect = taskDlg.locator("select").first();
-    await expect(projectSelect).toBeVisible({ timeout: 10_000 });
-    const optCount = await projectSelect.locator("option").count();
-    test.skip(optCount <= 1, "No project available to attach a task.");
-
-    await projectSelect.selectOption({ index: 1 });
-    await taskDlg.getByPlaceholder("Task title").fill(title);
-    await taskDlg.getByRole("button", { name: /^Save$/ }).click();
-    await expect(taskDlg).toBeHidden({ timeout: 25_000 });
-
-    try {
-      await expect(async () => {
-        const r = page.locator("tbody tr").filter({ hasText: title });
-        await expect(r).toBeVisible();
-        await expect(r.locator('[aria-label="Task actions"]').first()).toBeEnabled();
-      }).toPass({ timeout: 60_000 });
-    } catch {
-      test.skip(true, "Task row did not become actionable after create.");
-    }
-
-    const row = page.locator("tbody tr").filter({ hasText: title });
-    const taskActions = row.locator('[aria-label="Task actions"]').first();
-    try {
-      await taskActions.click();
-      const deleteItem = page.getByRole("menuitem", { name: /^Delete$/ }).last();
-      await expect(deleteItem).toBeVisible({ timeout: 20_000 });
-      await deleteItem.click();
-      await expect(row).toHaveCount(0, { timeout: ROW_REMOVED_MS });
-    } catch {
-      test.skip(true, "Task delete flow was not stable in this environment.");
-    }
   });
 
   test("bills draft: create then delete via trash + confirm", async ({ page }) => {

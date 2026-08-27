@@ -20,14 +20,7 @@ function loadEnvFile(filename: string) {
   });
 }
 
-const TABLES_TO_CHECK = [
-  "project_tasks",
-  "punch_list",
-  "projects",
-  "workers",
-  "invoices",
-  "expenses",
-];
+const TABLES_TO_CHECK = ["projects", "workers", "invoices", "expenses"];
 
 async function main() {
   loadEnvFile(".env.local");

@@ -5,14 +5,16 @@ import {
   addDocumentCompanyPdfHeader,
 } from "@/lib/document-company-pdf";
 import { fetchDocumentCompanyProfile } from "@/lib/document-company-profile";
-import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
-import { getServerSupabaseAdmin } from "@/lib/supabase-server";
+import { requireSupabaseOwnerOrAdminWithClient } from "@/lib/auth-boundary";
+import { getServerSupabaseAdminNoStore } from "@/lib/supabase-server";
 
 const BUCKET = "attachments";
 
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
-  const guard = await requireSupabaseOwnerOrAdmin(req);
+  const guard = await requireSupabaseOwnerOrAdminWithClient(req, getServerSupabaseAdminNoStore);
   if (!guard.ok) return guard.response;
+  if (!guard.client)
+    return NextResponse.json({ ok: false, message: "Supabase not configured" }, { status: 503 });
 
   const { id: projectId } = await ctx.params;
   if (!projectId)
@@ -24,8 +26,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     const contractorName = body.contractor_name ?? "";
     const clientName = body.client_name ?? "";
     const [completion, project, company] = await Promise.all([
-      getCloseoutCompletion(projectId),
-      getProjectById(projectId),
+      getCloseoutCompletion(projectId, guard.client),
+      getProjectById(projectId, guard.client),
       fetchDocumentCompanyProfile(),
     ]);
     const name = project?.name ?? projectName;
@@ -61,10 +63,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     const ts = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
     const fileName = `completion-certificate-${ts}.pdf`;
     const filePath = `projects/${projectId}/closeout/${fileName}`;
-    const supabase = getServerSupabaseAdmin();
-    if (!supabase)
-      return NextResponse.json({ ok: false, message: "Supabase not configured" }, { status: 500 });
-    const { error: uploadError } = await supabase.storage
+    const { error: uploadError } = await guard.client.storage
       .from(BUCKET)
       .upload(filePath, buf, { contentType: "application/pdf", upsert: true });
     if (uploadError)

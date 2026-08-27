@@ -3,13 +3,6 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import {
-  createProjectTask,
-  updateProjectTask,
-  deleteProjectTask,
-  deleteProjectTaskWithClient,
-  insertActivityLog,
-} from "@/lib/data";
-import {
   deleteProjectWithClient,
   forceDeleteProjectWithClient,
   getProjectUsageCountsWithClient,
@@ -24,7 +17,6 @@ import { requireSupabaseOwnerOrAdminServerAction } from "@/lib/auth-boundary";
 import { authorizedAppRole } from "@/lib/auth-role";
 import type { ProjectUsageCounts } from "@/lib/data";
 import type { DeleteBlockedPayload } from "@/lib/projects-db";
-import type { ProjectTask, ProjectTaskStatus } from "@/lib/project-tasks-db";
 
 async function getProjectActionClient() {
   const guard = await requireSupabaseOwnerOrAdminServerAction();
@@ -65,7 +57,6 @@ export async function getProjectUsageAction(
     if (!server) return { blocked: false };
     const counts = await getProjectUsageCountsWithClient(server, projectId);
     const hasAny =
-      (counts.project_tasks ?? 0) > 0 ||
       (counts.labor_entries ?? 0) > 0 ||
       (counts.expenses ?? 0) > 0 ||
       (counts.bills ?? 0) > 0 ||
@@ -73,9 +64,7 @@ export async function getProjectUsageAction(
       (counts.subcontracts ?? 0) > 0 ||
       (counts.project_change_orders ?? 0) > 0 ||
       (counts.worker_receipts ?? 0) > 0 ||
-      (counts.punch_list ?? 0) > 0 ||
-      (counts.site_photos ?? 0) > 0 ||
-      (counts.materials ?? 0) > 0;
+      (counts.site_photos ?? 0) > 0;
     if (hasAny) return { blocked: true, counts };
     return { blocked: false };
   } catch {
@@ -188,7 +177,6 @@ export async function deleteProjectAction(
     if (!server) return { error: "Server Supabase is not configured." };
     const usage = await getProjectUsageCountsWithClient(server, projectId);
     const hasAny =
-      (usage.project_tasks ?? 0) > 0 ||
       (usage.labor_entries ?? 0) > 0 ||
       (usage.expenses ?? 0) > 0 ||
       (usage.bills ?? 0) > 0 ||
@@ -196,9 +184,7 @@ export async function deleteProjectAction(
       (usage.subcontracts ?? 0) > 0 ||
       (usage.project_change_orders ?? 0) > 0 ||
       (usage.worker_receipts ?? 0) > 0 ||
-      (usage.punch_list ?? 0) > 0 ||
-      (usage.site_photos ?? 0) > 0 ||
-      (usage.materials ?? 0) > 0;
+      (usage.site_photos ?? 0) > 0;
     if (hasAny) {
       return { blocked: true, counts: usage };
     }
@@ -229,95 +215,6 @@ export async function forceDeleteProjectAction(projectId: string): Promise<{ err
     return {};
   } catch (e) {
     const message = e instanceof Error ? e.message : "Force delete failed.";
-    return { error: message };
-  }
-}
-
-export async function createProjectTaskAction(
-  projectId: string,
-  draft: {
-    title: string;
-    description?: string | null;
-    assigned_worker_id?: string | null;
-    due_date?: string | null;
-    priority?: "low" | "medium" | "high";
-    status?: ProjectTaskStatus;
-  }
-): Promise<{ error?: string; task?: ProjectTask }> {
-  const strictGuard = await requireSupabaseOwnerOrAdminServerAction();
-  if (!strictGuard.ok) return { error: "Authentication required." };
-
-  if (!projectId?.trim()) return { error: "Project ID is required." };
-  try {
-    const task = await createProjectTask({
-      project_id: projectId,
-      title: draft.title.trim() || "Untitled",
-      description: draft.description?.trim() || null,
-      assigned_worker_id: draft.assigned_worker_id ?? null,
-      due_date: draft.due_date?.slice(0, 10) ?? null,
-      priority: (draft.priority as "low" | "medium" | "high") ?? "medium",
-      status: draft.status ?? "todo",
-    });
-    revalidatePath(`/projects/${projectId}`);
-    revalidatePath("/tasks");
-    return { task };
-  } catch (e) {
-    const message = e instanceof Error ? e.message : "Failed to create task.";
-    return { error: message };
-  }
-}
-
-export async function updateProjectTaskAction(
-  projectId: string,
-  taskId: string,
-  patch: {
-    title?: string;
-    description?: string | null;
-    status?: ProjectTaskStatus;
-    assigned_worker_id?: string | null;
-    due_date?: string | null;
-    priority?: "low" | "medium" | "high";
-  }
-): Promise<{ error?: string; task?: ProjectTask | null }> {
-  const strictGuard = await requireSupabaseOwnerOrAdminServerAction();
-  if (!strictGuard.ok) return { error: "Authentication required." };
-
-  if (!projectId?.trim() || !taskId?.trim()) return { error: "Project and task ID are required." };
-  try {
-    const updated = await updateProjectTask(taskId, patch);
-    if (!updated) return { error: "Task not found or could not be updated.", task: null };
-    if (patch.status === "done" && updated.project_id) {
-      await insertActivityLog(updated.project_id, "task_completed", "Task completed");
-    }
-    revalidatePath(`/projects/${projectId}`);
-    revalidatePath("/tasks");
-    return { task: updated };
-  } catch (e) {
-    const message = e instanceof Error ? e.message : "Failed to update task.";
-    return { error: message };
-  }
-}
-
-export async function deleteProjectTaskAction(
-  projectId: string,
-  taskId: string
-): Promise<{ error?: string }> {
-  const strictGuard = await requireSupabaseOwnerOrAdminServerAction();
-  if (!strictGuard.ok) return { error: "Authentication required." };
-
-  if (!projectId?.trim() || !taskId?.trim()) return { error: "Project and task ID are required." };
-  try {
-    const server = await getProjectActionClient();
-    if (server) {
-      await deleteProjectTaskWithClient(server, taskId);
-    } else {
-      await deleteProjectTask(taskId);
-    }
-    revalidatePath(`/projects/${projectId}`);
-    revalidatePath("/tasks");
-    return {};
-  } catch (e) {
-    const message = e instanceof Error ? e.message : "Failed to delete task.";
     return { error: message };
   }
 }

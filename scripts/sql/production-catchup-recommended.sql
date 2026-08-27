@@ -21,9 +21,6 @@
 -- -----------------------------------------------------------------------------
 -- 202604161000_add_missing_columns
 -- -----------------------------------------------------------------------------
-ALTER TABLE public.punch_list
-  ADD COLUMN IF NOT EXISTS created_by uuid NULL REFERENCES public.workers(id) ON DELETE SET NULL;
-
 ALTER TABLE public.project_change_orders
   ADD COLUMN IF NOT EXISTS approved_by uuid NULL REFERENCES public.workers(id) ON DELETE SET NULL;
 
@@ -169,9 +166,6 @@ ALTER TABLE public.labor_entries
 
 ALTER TABLE public.project_change_orders
   ADD COLUMN IF NOT EXISTS amount numeric GENERATED ALWAYS AS (total) STORED;
-
-ALTER TABLE public.project_material_selections
-  ADD COLUMN IF NOT EXISTS photo_url text NULL;
 
 ALTER TABLE public.worker_payments
   ADD COLUMN IF NOT EXISTS amount numeric GENERATED ALWAYS AS (total_amount) STORED;

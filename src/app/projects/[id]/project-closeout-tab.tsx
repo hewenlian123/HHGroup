@@ -5,9 +5,8 @@ import { SectionHeader, Divider } from "@/components/base";
 import { Button } from "@/components/ui/button";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { Input } from "@/components/ui/input";
-import type { CloseoutPunch, CloseoutWarranty, CloseoutCompletion } from "@/lib/data";
+import type { CloseoutWarranty, CloseoutCompletion } from "@/lib/data";
 import { cn } from "@/lib/utils";
-import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
 
 const fmtUsd = (n: number) =>
   n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -17,7 +16,6 @@ export function ProjectCloseoutTab({
   projectName,
   billingSummary,
   contractValue,
-  punch,
   warranty,
   completion,
   onRefresh,
@@ -26,19 +24,10 @@ export function ProjectCloseoutTab({
   projectName: string;
   billingSummary: { invoicedTotal: number; paidTotal: number; arBalance: number };
   contractValue: number;
-  punch: CloseoutPunch | null;
   warranty: CloseoutWarranty | null;
   completion: CloseoutCompletion | null;
   onRefresh: () => void;
 }) {
-  const [punchForm, setPunchForm] = React.useState({
-    inspection_date: punch?.inspection_date ?? "",
-    inspector: punch?.inspector ?? "",
-    notes: punch?.notes ?? "",
-    contractor_signature: punch?.contractor_signature ?? "",
-    client_signature: punch?.client_signature ?? "",
-    items: punch?.items ?? ([] as { item: string; status: "pending" | "done" }[]),
-  });
   const [warrantyForm, setWarrantyForm] = React.useState({
     start_date: warranty?.start_date ?? "",
     period_months: warranty?.period_months ?? 12,
@@ -55,18 +44,6 @@ export function ProjectCloseoutTab({
   const [generating, setGenerating] = React.useState<string | null>(null);
   const [message, setMessage] = React.useState<string | null>(null);
 
-  React.useEffect(() => {
-    if (punch) {
-      setPunchForm({
-        inspection_date: punch.inspection_date ?? "",
-        inspector: punch.inspector ?? "",
-        notes: punch.notes ?? "",
-        contractor_signature: punch.contractor_signature ?? "",
-        client_signature: punch.client_signature ?? "",
-        items: punch.items ?? [],
-      });
-    }
-  }, [punch]);
   React.useEffect(() => {
     if (warranty) {
       setWarrantyForm({
@@ -94,32 +71,6 @@ export function ProjectCloseoutTab({
     d.setMonth(d.getMonth() + warrantyForm.period_months);
     return d.toISOString().slice(0, 10);
   }, [warrantyForm.start_date, warrantyForm.period_months]);
-
-  const savePunch = async () => {
-    setSaving("punch");
-    setMessage(null);
-    try {
-      const res = await fetch(`/api/projects/${projectId}/closeout/punch`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          inspection_date: punchForm.inspection_date || null,
-          inspector: punchForm.inspector || null,
-          notes: punchForm.notes || null,
-          contractor_signature: punchForm.contractor_signature || null,
-          client_signature: punchForm.client_signature || null,
-          items: punchForm.items,
-        }),
-      });
-      const data = await res.json();
-      if (!data.ok) throw new Error(data.message || "Save failed");
-      onRefresh();
-    } catch (e) {
-      setMessage(e instanceof Error ? e.message : "Save failed");
-    } finally {
-      setSaving(null);
-    }
-  };
 
   const saveWarranty = async () => {
     setSaving("warranty");
@@ -169,25 +120,6 @@ export function ProjectCloseoutTab({
     }
   };
 
-  const generatePunchPdf = async () => {
-    setGenerating("punch-pdf");
-    setMessage(null);
-    try {
-      await savePunch();
-      const res = await fetch(`/api/projects/${projectId}/closeout/generate-punch-pdf`, {
-        method: "POST",
-      });
-      const data = await res.json();
-      if (!data.ok) throw new Error(data.message || "PDF failed");
-      onRefresh();
-      setMessage("PDF saved to project documents.");
-    } catch (e) {
-      setMessage(e instanceof Error ? e.message : "PDF failed");
-    } finally {
-      setGenerating(null);
-    }
-  };
-
   const createFinalInvoicePdf = async () => {
     setGenerating("final-invoice");
     setMessage(null);
@@ -232,23 +164,6 @@ export function ProjectCloseoutTab({
     }
   };
 
-  const addPunchItem = () => {
-    setPunchForm((p) => ({ ...p, items: [...p.items, { item: "", status: "pending" }] }));
-  };
-  const updatePunchItem = (idx: number, field: "item" | "status", value: string) => {
-    setPunchForm((p) => ({
-      ...p,
-      items: p.items.map((x, i) =>
-        i === idx
-          ? { ...x, [field]: field === "status" ? (value as "pending" | "done") : value }
-          : x
-      ),
-    }));
-  };
-  const removePunchItem = (idx: number) => {
-    setPunchForm((p) => ({ ...p, items: p.items.filter((_, i) => i !== idx) }));
-  };
-
   const remainingBalance = Math.max(0, contractValue - billingSummary.paidTotal);
 
   return (
@@ -264,174 +179,7 @@ export function ProjectCloseoutTab({
         </p>
       )}
 
-      {/* 1. Final Punch List — printable form */}
-      <div className="final-punch-print border-b border-border/60 pb-6">
-        <SectionHeader label="Final Punch List" />
-        <div className="mt-3 space-y-4">
-          <div>
-            <label className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]">
-              Project
-            </label>
-            <p className="mt-1 text-hh-body font-medium text-[var(--hh-text-primary)]">
-              {projectName}
-            </p>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]">
-                Inspection date
-              </label>
-              <Input
-                type="date"
-                value={punchForm.inspection_date}
-                onChange={(e) => setPunchForm((p) => ({ ...p, inspection_date: e.target.value }))}
-                className="mt-1 h-9 rounded-hh-compact border-border/60"
-              />
-            </div>
-            <div>
-              <label className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]">
-                Inspector
-              </label>
-              <Input
-                value={punchForm.inspector}
-                onChange={(e) => setPunchForm((p) => ({ ...p, inspector: e.target.value }))}
-                placeholder="Inspector name"
-                className="mt-1 h-9 rounded-hh-compact border-border/60"
-              />
-            </div>
-          </div>
-          <div>
-            <label className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]">
-              Items checklist
-            </label>
-            <div className="mt-1 flex items-center justify-between gap-2">
-              <span className="text-hh-metadata text-[var(--hh-text-secondary)]">
-                Add and track items
-              </span>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="rounded-hh-compact no-print"
-                onClick={addPunchItem}
-              >
-                + Add item
-              </Button>
-            </div>
-            <div className="airtable-table-wrap airtable-table-wrap--ruled mt-2">
-              <div className="airtable-table-scroll">
-                <table className="w-full text-hh-body">
-                  <thead>
-                    <tr>
-                      <th className="h-8 px-2 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
-                        Item
-                      </th>
-                      <th className="h-8 w-24 px-2 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
-                        Status
-                      </th>
-                      <th className="h-8 w-16 no-print" />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {punchForm.items.map((row, idx) => (
-                      <tr key={idx} className={listTableRowStaticClassName}>
-                        <td className="min-h-[44px] px-2 py-1.5 align-middle">
-                          <Input
-                            value={row.item}
-                            onChange={(e) => updatePunchItem(idx, "item", e.target.value)}
-                            className="h-9 rounded-hh-compact border-border/60 text-hh-body"
-                          />
-                        </td>
-                        <td className="min-h-[44px] px-2 py-1.5 align-middle">
-                          <select
-                            value={row.status}
-                            onChange={(e) => updatePunchItem(idx, "status", e.target.value)}
-                            className="h-9 w-full rounded-hh-compact border border-border/60 bg-[var(--hh-l1-workspace)] text-hh-body"
-                          >
-                            <option value="pending">Pending</option>
-                            <option value="done">Done</option>
-                          </select>
-                        </td>
-                        <td className="min-h-[44px] px-2 py-1.5 align-middle no-print">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="btn-outline-ghost h-9 text-destructive"
-                            onClick={() => removePunchItem(idx)}
-                          >
-                            Remove
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-          <div>
-            <label className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]">
-              Notes
-            </label>
-            <textarea
-              value={punchForm.notes}
-              onChange={(e) => setPunchForm((p) => ({ ...p, notes: e.target.value }))}
-              placeholder="Notes"
-              rows={2}
-              className="mt-1 w-full rounded-hh-compact border border-border/60 px-2.5 py-2 text-hh-body"
-            />
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]">
-                Owner signature
-              </label>
-              <Input
-                value={punchForm.client_signature}
-                onChange={(e) => setPunchForm((p) => ({ ...p, client_signature: e.target.value }))}
-                placeholder="Name or signed"
-                className="mt-1 h-9 rounded-hh-compact border-border/60"
-              />
-            </div>
-            <div>
-              <label className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]">
-                Contractor signature
-              </label>
-              <Input
-                value={punchForm.contractor_signature}
-                onChange={(e) =>
-                  setPunchForm((p) => ({ ...p, contractor_signature: e.target.value }))
-                }
-                placeholder="Name or signed"
-                className="mt-1 h-9 rounded-hh-compact border-border/60"
-              />
-            </div>
-          </div>
-          <div className="flex gap-2 no-print">
-            <Button
-              size="sm"
-              variant="outline"
-              className="rounded-hh-compact"
-              onClick={savePunch}
-              disabled={saving === "punch"}
-            >
-              <SubmitSpinner loading={saving === "punch"} className="mr-2" />
-              {saving === "punch" ? "Saving…" : "Save"}
-            </Button>
-            <Button
-              size="sm"
-              className="rounded-hh-compact bg-[var(--hh-action-primary)] text-[var(--hh-action-primary-foreground)] hover:bg-[var(--hh-action-primary)]/90"
-              onClick={generatePunchPdf}
-              disabled={!!generating}
-            >
-              {generating === "punch-pdf" ? "Generating…" : "Generate PDF"}
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      {/* 2. Warranty Information */}
+      {/* Warranty Information */}
       <div className="rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] shadow-sm overflow-hidden">
         <div className="px-4 py-3 border-b border-[var(--hh-border)]">
           <SectionHeader label="Warranty Information" />
@@ -498,7 +246,7 @@ export function ProjectCloseoutTab({
         </div>
       </div>
 
-      {/* 3. Final Invoice */}
+      {/* Final Invoice */}
       <div className="rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] shadow-sm overflow-hidden">
         <div className="px-4 py-3 border-b border-[var(--hh-border)]">
           <SectionHeader label="Final Invoice" />
@@ -531,7 +279,7 @@ export function ProjectCloseoutTab({
         </div>
       </div>
 
-      {/* 4. Completion Certificate */}
+      {/* Completion Certificate */}
       <div className="rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] shadow-sm overflow-hidden">
         <div className="px-4 py-3 border-b border-[var(--hh-border)]">
           <SectionHeader label="Completion Certificate" />

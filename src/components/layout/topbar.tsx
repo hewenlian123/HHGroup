@@ -32,13 +32,8 @@ const SEGMENT_LABELS: Record<string, string> = {
   project: "Project",
   estimates: "Estimates",
   estimate: "Estimate",
-  tasks: "Tasks",
-  "punch-list": "Punch List",
-  schedule: "Schedule",
   "site-photos": "Site Photos",
   "inspection-log": "Inspection Log",
-  materials: "Material Selections",
-  catalog: "Material Selections",
   financial: "Financial",
   finance: "Financial",
   people: "Directory",
@@ -136,7 +131,6 @@ const LOGICAL_BREADCRUMB_RULES = [
   { prefix: "/labor/worker-balances", labels: ["Reports", "Workforce", "Balances"] },
   { prefix: "/labor/worker-invoices", labels: ["Reports", "Workforce", "Statements"] },
   { prefix: "/labor/receipts", labels: ["Financial", "AP", "Receipt Inbox"] },
-  { prefix: "/materials", labels: ["Projects", "Material Selections"] },
   { prefix: "/system/backups", labels: ["Settings", "Admin Center", "Backups"] },
   { prefix: "/settings/system-health", labels: ["Settings", "Admin Center", "System Health"] },
   { prefix: "/system-health", labels: ["Settings", "Admin Center", "System Health"] },
@@ -343,12 +337,6 @@ export function Topbar({
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuLabel className={TYPO.tableHeader}>Work</DropdownMenuLabel>
-            <DropdownMenuItem asChild>
-              <Link href="/tasks/new">New Task</Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link href="/punch-list/new">New Punch Issue</Link>
-            </DropdownMenuItem>
             <DropdownMenuItem asChild>
               <Link href="/site-photos/upload">Upload Site Photo</Link>
             </DropdownMenuItem>

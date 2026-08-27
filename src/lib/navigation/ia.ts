@@ -30,21 +30,17 @@ export type HhProjectOsIconKey =
   | "inspection"
   | "invoice"
   | "logs"
-  | "materials"
   | "metrics"
   | "payments"
   | "payroll"
   | "photos"
   | "preferences"
   | "projects"
-  | "punchList"
   | "receipts"
   | "reimbursements"
   | "roles"
-  | "schedule"
   | "settings"
   | "subcontractors"
-  | "tasks"
   | "users"
   | "vendors"
   | "workerAdvances"
@@ -124,15 +120,6 @@ export const HH_PROJECT_OS_NAV_SECTIONS = [
       { href: "/estimates", label: "Estimates", icon: "estimates" },
       { href: "/change-orders", label: "Change Orders", icon: "changeOrders" },
       { href: "/labor", label: "Time Entries", icon: "workers", exact: true },
-      { href: "/tasks", label: "Tasks", icon: "tasks" },
-      { href: "/punch-list", label: "Punch List", icon: "punchList" },
-      { href: "/schedule", label: "Schedule", icon: "schedule" },
-      {
-        href: "/materials",
-        label: "Material Selections",
-        icon: "materials",
-        aliases: ["/materials/catalog"],
-      },
     ],
   },
   {
@@ -411,10 +398,6 @@ const HH_PROJECT_OS_MOBILE_ROUTE_OWNERS = [
       "/projects",
       "/estimates",
       "/change-orders",
-      "/tasks",
-      "/punch-list",
-      "/schedule",
-      "/materials",
       { href: "/labor", exact: true },
       "/labor/entries",
       "/labor/daily",
@@ -480,38 +463,6 @@ export const HH_PROJECT_OS_COMMAND_ITEMS = [
     href: "/change-orders",
     keywords: ["projects", "change orders", "scope", "co"],
     icon: "changeOrders",
-  },
-  {
-    id: "go-tasks",
-    label: "Go to Tasks",
-    description: "Open project tasks and operations",
-    href: "/tasks",
-    keywords: ["projects", "tasks", "operations", "work"],
-    icon: "tasks",
-  },
-  {
-    id: "go-punch-list",
-    label: "Go to Punch List",
-    description: "Open punch items and closeout work",
-    href: "/punch-list",
-    keywords: ["projects", "punch", "punch list", "closeout", "tasks"],
-    icon: "punchList",
-  },
-  {
-    id: "go-schedule",
-    label: "Go to Schedule",
-    description: "Open project schedule",
-    href: "/schedule",
-    keywords: ["projects", "schedule", "calendar", "operations"],
-    icon: "schedule",
-  },
-  {
-    id: "go-material-selections",
-    label: "Go to Material Selections",
-    description: "Open customer/project material approval sheets",
-    href: "/materials",
-    keywords: ["projects", "materials", "selections", "approval", "finishes"],
-    icon: "materials",
   },
   {
     id: "go-financial",

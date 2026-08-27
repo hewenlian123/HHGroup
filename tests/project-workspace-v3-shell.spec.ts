@@ -4,10 +4,7 @@ import { E2E_PRESERVED_PROJECT_ID } from "./e2e-cleanup-db";
 
 const TAB_ALIAS_SMOKE: Array<{ query: string; tab: string }> = [
   { query: "financial", tab: "Financial" },
-  { query: "schedule", tab: "Schedule" },
-  { query: "tasks", tab: "Tasks" },
   { query: "documents", tab: "Documents" },
-  { query: "materials", tab: "Materials" },
   { query: "closeout", tab: "Closeout" },
 ];
 
@@ -51,12 +48,9 @@ async function expectWorkspaceTabs(page: Page) {
   for (const label of [
     "Overview",
     "Financial",
-    "Schedule",
-    "Tasks",
     "People",
     "Documents",
     "Photos",
-    "Materials",
     "Inspections",
     "Closeout",
   ]) {

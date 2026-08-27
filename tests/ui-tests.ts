@@ -223,12 +223,8 @@ async function main() {
     "projects",
     "estimates",
     "change_orders",
-    "tasks",
-    "punch_list",
-    "schedule",
     "site_photos",
     "inspection_log",
-    "material_catalog",
     "labor_receipts",
   ];
 
@@ -388,107 +384,6 @@ async function main() {
     })
   );
 
-  // ── 9. tasks ───────────────────────────────────────────────────────────────
-  results.push(
-    await runTest("tasks", async () => {
-      const page = await browser.newPage();
-      page.setDefaultTimeout(WAIT_TIMEOUT);
-      try {
-        await smokeTestModulePage(page, "/tasks", "Task");
-      } finally {
-        await page.close();
-      }
-    })
-  );
-
-  // ── 9b. tasks create + delete (mutating) ───────────────────────────────────
-  // UI smoke tests should be read-only by default. Enable explicitly when needed:
-  // UI_TEST_MUTATIONS=1 npm run ui:test
-  if (process.env.UI_TEST_MUTATIONS === "1") {
-    results.push(
-      await runTest("tasks_create_delete", async () => {
-        const page = await browser.newPage();
-        page.setDefaultTimeout(WAIT_TIMEOUT);
-        const taskTitle = `UI Test Task ${Date.now()}`;
-        try {
-          await goto(page, "/tasks");
-          await waitFor(page, "main, [class*='page-container']", "page content");
-          await clickByText(page, "New Task");
-          await page.waitForSelector('[role="dialog"], [class*="dialog"]', {
-            timeout: WAIT_TIMEOUT,
-          });
-          const firstProjectValue = await page.evaluate(() => {
-            const opt = document.querySelector('select option[value]:not([value=""])');
-            return opt ? (opt as HTMLOptionElement).value : null;
-          });
-          if (!firstProjectValue) {
-            await page.keyboard.press("Escape");
-            return;
-          }
-          await page.select("select", firstProjectValue);
-          const titleInput = await page.$(
-            'input[placeholder*="Task title"], input[placeholder*="title"]'
-          );
-          if (!titleInput) throw new Error("Task title input not found");
-          await titleInput.type(taskTitle, { delay: 20 });
-          await clickByText(page, "Save");
-          await page
-            .waitForFunction(
-              () =>
-                !document.querySelector('[role="dialog"]') &&
-                !document.querySelector('[class*="dialog"][data-state="open"]'),
-              { timeout: WAIT_TIMEOUT }
-            )
-            .catch(() => {});
-          await new Promise((r) => setTimeout(r, 800));
-          const hasRow = await page.evaluate(
-            (title) => document.body.innerText.includes(title),
-            taskTitle
-          );
-          if (!hasRow) throw new Error(`New task row "${taskTitle}" did not appear`);
-          await clickByText(page, taskTitle);
-          await new Promise((r) => setTimeout(r, 400));
-          page.once("dialog", (d: { accept: () => void }) => d.accept());
-          await clickByText(page, "Delete");
-          await new Promise((r) => setTimeout(r, 1200));
-          const stillThere = await page.evaluate(
-            (title) => document.body.innerText.includes(title),
-            taskTitle
-          );
-          if (stillThere) throw new Error("Task row still visible after delete");
-        } finally {
-          await page.close();
-        }
-      })
-    );
-  }
-
-  // ── 10. punch_list ────────────────────────────────────────────────────────
-  results.push(
-    await runTest("punch_list", async () => {
-      const page = await browser.newPage();
-      page.setDefaultTimeout(WAIT_TIMEOUT);
-      try {
-        await smokeTestModulePage(page, "/punch-list", "Punch");
-      } finally {
-        await page.close();
-      }
-    })
-  );
-
-  // ── 11. schedule ───────────────────────────────────────────────────────────
-  results.push(
-    await runTest("schedule", async () => {
-      const page = await browser.newPage();
-      page.setDefaultTimeout(WAIT_TIMEOUT);
-      try {
-        await smokeTestModulePage(page, "/schedule", "Schedule");
-      } finally {
-        await page.close();
-      }
-    })
-  );
-
   // ── 12. site_photos ────────────────────────────────────────────────────────
   results.push(
     await runTest("site_photos", async () => {
@@ -509,19 +404,6 @@ async function main() {
       page.setDefaultTimeout(WAIT_TIMEOUT);
       try {
         await smokeTestModulePage(page, "/inspection-log", "Inspection");
-      } finally {
-        await page.close();
-      }
-    })
-  );
-
-  // ── 14. material selections ────────────────────────────────────────────────
-  results.push(
-    await runTest("material_catalog", async () => {
-      const page = await browser.newPage();
-      page.setDefaultTimeout(WAIT_TIMEOUT);
-      try {
-        await smokeTestModulePage(page, "/materials", "Material Selections");
       } finally {
         await page.close();
       }

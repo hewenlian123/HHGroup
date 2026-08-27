@@ -50,7 +50,6 @@ const storageBuckets = [
   "worker-receipts",
   "commission-receipts",
   "commission-payment-receipts",
-  "punch-photos",
 ];
 
 const repairPolicyFiles = [

@@ -26,8 +26,6 @@ const PHASE_6D_OPERATIONAL_PATHS = [
   ...authoredSources("src/app/estimate-templates"),
   "src/app/financial/page.tsx",
   ...authoredSources("src/app/inspection-log"),
-  ...authoredSources("src/app/schedule"),
-  ...authoredSources("src/app/punch-list"),
   ...authoredSources("src/app/site-photos"),
   ...authoredSources("src/app/system-logs"),
   ...authoredSources("src/app/system-metrics"),
@@ -227,10 +225,6 @@ test("Phase 6D preserves exact protected exception ownership", () => {
   assert.match(
     source("src/app/workers/[id]/statement/print/page.tsx"),
     /payroll-statement-print-root/
-  );
-  assert.match(
-    source("src/app/materials/[id]/material-selection-document.tsx"),
-    /material-selection-a4-page/
   );
   assert.match(source("src/components/receipt-viewer/receipt-viewer-dialog.tsx"), /receipt-viewer/);
   assert.match(source("src/components/attachment-preview-modal.tsx"), /attachment-preview/);

@@ -138,10 +138,6 @@ test.describe("HH Project OS sidebar final pass", () => {
       "Estimates",
       "Change Orders",
       "Time Entries",
-      "Tasks",
-      "Punch List",
-      "Schedule",
-      "Material Selections",
       "Overview",
       "Owner Dashboard",
       "AR",
@@ -185,6 +181,16 @@ test.describe("HH Project OS sidebar final pass", () => {
     await expect(visibleSidebar(page).getByText("Expenses", { exact: true })).toHaveCount(0);
     await expect(visibleSidebar(page).getByText("Receipt Inbox", { exact: true })).toHaveCount(0);
     await expect(visibleSidebar(page).getByText("Reimbursements", { exact: true })).toHaveCount(0);
+    for (const deletedProjectModule of [
+      "Tasks",
+      "Punch List",
+      "Schedule",
+      "Material Selections",
+    ]) {
+      await expect(
+        visibleSidebar(page).getByText(deletedProjectModule, { exact: true })
+      ).toHaveCount(0);
+    }
 
     const workersBox = await navLink(page, "Workers").boundingBox();
     const reportsBox = await navLink(page, "Reports").boundingBox();
@@ -217,10 +223,6 @@ test.describe("HH Project OS sidebar final pass", () => {
       { path: "/estimates", active: "Estimates" },
       { path: "/change-orders", active: "Change Orders" },
       { path: "/labor", active: "Time Entries" },
-      { path: "/tasks", active: "Tasks" },
-      { path: "/punch-list", active: "Punch List" },
-      { path: "/schedule", active: "Schedule" },
-      { path: "/materials", active: "Material Selections" },
       { path: "/financial", active: "Overview" },
       { path: "/financial/owner", active: "Owner Dashboard" },
       { path: "/financial/ar", active: "AR" },
@@ -293,9 +295,16 @@ test.describe("HH Project OS sidebar final pass", () => {
     await page.getByRole("button", { name: /^Open menu$/i }).click();
     await ensureAllSectionsOpen(page);
     await expect(visibleSidebar(page).getByText("Admin Center", { exact: true })).toBeVisible();
-    await expect(
-      visibleSidebar(page).getByText("Material Selections", { exact: true })
-    ).toBeVisible();
+    for (const deletedProjectModule of [
+      "Tasks",
+      "Punch List",
+      "Schedule",
+      "Material Selections",
+    ]) {
+      await expect(
+        visibleSidebar(page).getByText(deletedProjectModule, { exact: true })
+      ).toHaveCount(0);
+    }
     await expect(visibleSidebar(page).getByText("Worker Receipts", { exact: true })).toHaveCount(0);
     await expect(visibleSidebar(page).getByText("Expense Operations", { exact: true })).toHaveCount(
       1
@@ -315,10 +324,17 @@ test.describe("HH Project OS sidebar final pass", () => {
     await waitForRouteSmoke(page, "/dashboard");
     const dialog = await openCommandPalette(page);
 
+    for (const deletedCommand of [
+      "Go to Tasks",
+      "Go to Punch List",
+      "Go to Schedule",
+      "Go to Material Selections",
+    ]) {
+      await expect(dialog.getByText(deletedCommand, { exact: true })).toHaveCount(0);
+    }
+
     for (const item of [
       { query: "expense operations", label: "Go to Expense Operations" },
-      { query: "material selections", label: "Go to Material Selections" },
-      { query: "punch list", label: "Go to Punch List" },
       { query: "receipt inbox", label: "Go to Receipt Inbox" },
       { query: "upload receipt", label: "Upload Receipt" },
       { query: "worker summary", label: "Go to Workforce Overview" },
@@ -354,7 +370,6 @@ test.describe("HH Project OS sidebar final pass", () => {
         expectedPath: "/reports/workforce",
         title: "Reports › Workforce",
       },
-      { path: "/materials", title: "Projects › Material Selections" },
       { path: "/dashboard/cashflow", title: "Financial › Cash › Cash Flow" },
       { path: "/reports", title: "Reports" },
       { path: "/system-health", title: "Settings › Admin Center › System Health" },

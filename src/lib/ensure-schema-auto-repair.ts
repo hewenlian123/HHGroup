@@ -529,36 +529,6 @@ $_$`,
   `ALTER TABLE public.project_change_orders ADD COLUMN IF NOT EXISTS approved_by text NULL`,
   `NOTIFY pgrst, 'reload schema'`,
 
-  // 9d. punch_list columns used by Operations / Punch List.
-  `ALTER TABLE public.punch_list ADD COLUMN IF NOT EXISTS location text NULL`,
-  `ALTER TABLE public.punch_list ADD COLUMN IF NOT EXISTS assigned_worker_id uuid NULL`,
-  `ALTER TABLE public.punch_list ADD COLUMN IF NOT EXISTS status text NULL DEFAULT 'open'`,
-  `ALTER TABLE public.punch_list ADD COLUMN IF NOT EXISTS photo_url text NULL`,
-  `ALTER TABLE public.punch_list ADD COLUMN IF NOT EXISTS notes text NULL`,
-  `ALTER TABLE public.punch_list ADD COLUMN IF NOT EXISTS created_at timestamptz NULL DEFAULT now()`,
-  `ALTER TABLE public.punch_list ADD COLUMN IF NOT EXISTS description text NULL`,
-  `ALTER TABLE public.punch_list ADD COLUMN IF NOT EXISTS priority text NOT NULL DEFAULT 'Medium'`,
-  `ALTER TABLE public.punch_list ADD COLUMN IF NOT EXISTS completed_at timestamptz NULL`,
-  `ALTER TABLE public.punch_list ADD COLUMN IF NOT EXISTS created_by text NULL`,
-  `ALTER TABLE public.punch_list ADD COLUMN IF NOT EXISTS photo_id uuid NULL`,
-  `CREATE INDEX IF NOT EXISTS idx_punch_list_photo_id ON public.punch_list (photo_id)`,
-  `DO $$
-BEGIN
-  IF EXISTS (
-    SELECT 1 FROM information_schema.columns
-    WHERE table_schema = 'public' AND table_name = 'punch_list' AND column_name = 'notes'
-  ) THEN
-    UPDATE public.punch_list
-    SET description = notes
-    WHERE description IS NULL AND notes IS NOT NULL;
-  END IF;
-
-  UPDATE public.punch_list SET status = 'assigned' WHERE status = 'in_progress';
-  UPDATE public.punch_list SET status = 'completed' WHERE status = 'resolved';
-END
-$$`,
-  `NOTIFY pgrst, 'reload schema'`,
-
   // 9e. bank_transactions (cash reconciliation / accounts overview)
   `CREATE EXTENSION IF NOT EXISTS pgcrypto`,
   `CREATE TABLE IF NOT EXISTS public.bank_transactions (

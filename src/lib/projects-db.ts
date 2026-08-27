@@ -64,8 +64,7 @@ export type Project = {
   snapshotRevenue?: number | null;
   snapshotBudgetCost?: number | null;
   snapshotBudgetBreakdown?: {
-    materials: number;
-    labor: number;
+      labor: number;
     vendor: number;
     other: number;
   } | null;
@@ -94,7 +93,6 @@ const PG_FK_VIOLATION = "23503";
 
 /** Map DB table name -> dialog key (matches ProjectUsageCounts or extended config keys) */
 const FK_TABLE_TO_COUNT_KEY: Record<string, string> = {
-  project_tasks: "project_tasks",
   labor_entries: "labor_entries",
   expense_lines: "expenses",
   expenses: "expenses",
@@ -103,13 +101,10 @@ const FK_TABLE_TO_COUNT_KEY: Record<string, string> = {
   subcontracts: "subcontracts",
   project_change_orders: "project_change_orders",
   worker_receipts: "worker_receipts",
-  punch_list: "punch_list",
   site_photos: "site_photos",
-  project_material_selections: "materials",
   activity_logs: "activity_logs",
   estimates: "estimates",
   commitments: "commitments",
-  project_schedule: "project_schedule",
   inspection_log: "inspection_log",
   subcontract_bills: "subcontract_bills",
   documents: "documents",
@@ -543,19 +538,14 @@ const FORCE_DELETE_ORDER: { table: string; column?: string; orColumns?: [string,
   { table: "invoices" },
   { table: "bills" },
   { table: "activity_logs" },
-  { table: "punch_list" },
   { table: "site_photos" },
-  { table: "project_tasks" },
-  { table: "project_schedule" },
-  { table: "project_material_selections" },
   { table: "commitments" },
   { table: "subcontract_bills" },
   { table: "subcontracts" },
   { table: "commission_payments" },
   { table: "commissions" },
-  { table: "project_closeout_punch" },
-  { table: "project_closeout_warranty" },
-  { table: "project_closeout_completion" },
+  { table: "warranties" },
+  { table: "completion_certificates" },
   { table: "inspection_log" },
   { table: "documents" },
   { table: "deposits" },
@@ -601,7 +591,6 @@ export async function forceDeleteProject(id: string): Promise<void> {
 }
 
 export type ProjectUsageCounts = {
-  project_tasks: number;
   labor_entries: number;
   expenses: number;
   bills: number;
@@ -609,7 +598,6 @@ export type ProjectUsageCounts = {
   subcontracts: number;
   project_change_orders: number;
   worker_receipts: number;
-  punch_list: number;
   site_photos: number;
   materials: number;
 };
@@ -648,7 +636,6 @@ export async function getProjectUsageCountsWithClient(
   };
 
   const [
-    project_tasks,
     labor_entries,
     expenses,
     bills,
@@ -656,11 +643,8 @@ export async function getProjectUsageCountsWithClient(
     subcontracts,
     project_change_orders,
     worker_receipts,
-    punch_list,
     site_photos,
-    materials,
   ] = await Promise.all([
-    safeCount("project_tasks", "project_id", pid),
     laborOr(),
     safeCount("expense_lines", "project_id", pid),
     safeCount("bills", "project_id", pid),
@@ -668,13 +652,10 @@ export async function getProjectUsageCountsWithClient(
     safeCount("subcontracts", "project_id", pid),
     safeCount("project_change_orders", "project_id", pid),
     safeCount("worker_receipts", "project_id", pid),
-    safeCount("punch_list", "project_id", pid),
     safeCount("site_photos", "project_id", pid),
-    safeCount("project_material_selections", "project_id", pid),
   ]);
 
   return {
-    project_tasks,
     labor_entries,
     expenses,
     bills,
@@ -682,9 +663,7 @@ export async function getProjectUsageCountsWithClient(
     subcontracts,
     project_change_orders,
     worker_receipts,
-    punch_list,
     site_photos,
-    materials,
   };
 }
 

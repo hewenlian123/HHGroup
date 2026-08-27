@@ -1,18 +1,35 @@
 import { NextResponse } from "next/server";
 import { upsertCloseoutCompletion } from "@/lib/data";
+import { requireSupabaseOwnerOrAdminWithClient } from "@/lib/auth-boundary";
+import {
+  getServerSupabaseAdminNoStore,
+  SUPABASE_MISSING_SERVER_ADMIN_ENV_MESSAGE,
+} from "@/lib/supabase-server";
 
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
+  const guard = await requireSupabaseOwnerOrAdminWithClient(req, getServerSupabaseAdminNoStore);
+  if (!guard.ok) return guard.response;
+  if (!guard.client) {
+    return NextResponse.json(
+      { ok: false, message: SUPABASE_MISSING_SERVER_ADMIN_ENV_MESSAGE },
+      { status: 503 }
+    );
+  }
   const { id } = await ctx.params;
   if (!id) return NextResponse.json({ ok: false, message: "Missing project id" }, { status: 400 });
   try {
     const body = await req.json();
-    await upsertCloseoutCompletion(id, {
-      completion_date: body.completion_date ?? null,
-      contractor_name: body.contractor_name ?? null,
-      client_name: body.client_name ?? null,
-      contractor_signature: body.contractor_signature ?? null,
-      client_signature: body.client_signature ?? null,
-    });
+    await upsertCloseoutCompletion(
+      id,
+      {
+        completion_date: body.completion_date ?? null,
+        contractor_name: body.contractor_name ?? null,
+        client_name: body.client_name ?? null,
+        contractor_signature: body.contractor_signature ?? null,
+        client_signature: body.client_signature ?? null,
+      },
+      guard.client
+    );
     return NextResponse.json({ ok: true });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Failed to save";

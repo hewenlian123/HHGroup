@@ -1,6 +1,5 @@
 /**
  * Connect to the database and delete all test/seed data:
- * - Tasks (project_tasks): title "Untitled", title containing test keywords, or is_test = true
  * - Projects: name "Untitled" or name containing test keywords
  *
  * Usage: npx tsx scripts/cleanup-test-data.ts
@@ -65,32 +64,7 @@ async function main() {
   const deleted: Record<string, number> = {};
   const errors: string[] = [];
 
-  // 1. Tasks: "Untitled", test keywords, or is_test = true (tasks first — they reference projects)
-  const taskIds: string[] = [];
-
-  try {
-    const { data: byFlag } = await client.from("project_tasks").select("id").eq("is_test", true);
-    (byFlag ?? []).forEach((r: { id: string }) => taskIds.push(r.id));
-  } catch {
-    // Column is_test may not exist yet
-  }
-
-  for (const kw of TEST_KEYWORDS) {
-    const { data } = await client.from("project_tasks").select("id").ilike("title", `%${kw}%`);
-    (data ?? []).forEach((r: { id: string }) => taskIds.push(r.id));
-  }
-
-  const uniqueTaskIds = uniqueIds(taskIds);
-  if (uniqueTaskIds.length > 0) {
-    const { error } = await client.from("project_tasks").delete().in("id", uniqueTaskIds);
-    if (error) {
-      errors.push(`project_tasks: ${error.message}`);
-    } else {
-      deleted["project_tasks"] = uniqueTaskIds.length;
-    }
-  }
-
-  // 2. Projects: "Untitled" or test keywords
+  // Projects: "Untitled" or test keywords
   const projectIds: string[] = [];
   for (const kw of TEST_KEYWORDS) {
     const { data } = await client.from("projects").select("id").ilike("name", `%${kw}%`);
@@ -116,7 +90,7 @@ async function main() {
     console.log("Deleted:", deleted);
     console.log("Total rows removed:", total);
   } else {
-    console.log("No test/seed tasks or projects found to delete.");
+    console.log("No test/seed projects found to delete.");
   }
 }
 

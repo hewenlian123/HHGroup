@@ -27,17 +27,12 @@ CREATE INDEX idx_invoices_status ON public.invoices USING btree (status);
 
 CREATE INDEX idx_labor_worker ON public.labor_entries USING btree (worker_id);
 
-CREATE INDEX idx_project_schedule_dates ON public.project_schedule USING btree (start_date, end_date);
 
-CREATE INDEX idx_project_schedule_project ON public.project_schedule USING btree (project_id);
 
-CREATE INDEX idx_project_tasks_due ON public.project_tasks USING btree (due_date);
 
-CREATE INDEX idx_project_tasks_project ON public.project_tasks USING btree (project_id);
 
 CREATE INDEX idx_projects_created ON public.projects USING btree (created_at DESC);
 
-CREATE INDEX idx_punch_list_project ON public.punch_list USING btree (project_id);
 
 CREATE INDEX idx_worker_receipts_date ON public.worker_receipts USING btree (receipt_date);
 
@@ -61,19 +56,8 @@ begin
   if to_regclass('public.labor_entries') is not null then
     create index if not exists idx_labor_worker on public.labor_entries using btree (worker_id);
   end if;
-  if to_regclass('public.project_schedule') is not null then
-    create index if not exists idx_project_schedule_dates on public.project_schedule using btree (start_date, end_date);
-    create index if not exists idx_project_schedule_project on public.project_schedule using btree (project_id);
-  end if;
-  if to_regclass('public.project_tasks') is not null then
-    create index if not exists idx_project_tasks_due on public.project_tasks using btree (due_date);
-    create index if not exists idx_project_tasks_project on public.project_tasks using btree (project_id);
-  end if;
   if to_regclass('public.projects') is not null then
     create index if not exists idx_projects_created on public.projects using btree (created_at desc);
-  end if;
-  if to_regclass('public.punch_list') is not null then
-    create index if not exists idx_punch_list_project on public.punch_list using btree (project_id);
   end if;
   if to_regclass('public.worker_receipts') is not null then
     create index if not exists idx_worker_receipts_date on public.worker_receipts using btree (receipt_date);

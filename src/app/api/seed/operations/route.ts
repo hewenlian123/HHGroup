@@ -8,46 +8,12 @@ import {
 import {
   getProjects,
   createProject,
-  getAllTasksWithProject,
-  getPunchListAll,
-  getAllScheduleWithProject,
-  createProjectTask,
-  createPunchListItem,
-  createProjectScheduleItem,
   getWorkers,
   createWorker,
   getSitePhotos,
   getInspectionLogs,
   createInspectionLog,
 } from "@/lib/data";
-
-const TASK_TITLES = [
-  "Install drywall",
-  "Electrical inspection",
-  "Order materials",
-  "Plumbing rough-in",
-  "Install flooring",
-  "Final painting",
-];
-const TASK_STATUSES: ("todo" | "in_progress")[] = [
-  "todo",
-  "in_progress",
-  "todo",
-  "in_progress",
-  "todo",
-  "in_progress",
-];
-
-const PUNCH_ISSUES = [
-  "Paint scratch on bedroom wall",
-  "Loose door hinge",
-  "Window seal gap",
-  "Bathroom tile crack",
-  "Missing outlet cover",
-];
-const PUNCH_LOCATIONS = ["Bedroom", "Kitchen", "Living room", "Bathroom", "Hallway"];
-
-const SCHEDULE_TITLES = ["Demolition", "Framing", "Electrical", "Drywall", "Painting"];
 
 const DEMO_PROJECTS: Array<{
   name: string;
@@ -95,8 +61,7 @@ const INSPECTION_TEMPLATES: Array<{ type: string; status: "passed" | "failed" | 
  *
  * - Creates 3 demo projects if fewer than 3 exist (does not touch existing ones).
  * - Inserts workers only if workers table is empty.
- * - Seeds tasks, punch list, schedule, site photos, and inspection log
- *   only when their respective tables are empty.
+ * - Seeds site photos and inspection log only when their respective tables are empty.
  *
  * Does NOT overwrite existing data.
  */
@@ -164,11 +129,7 @@ export async function POST(request: Request) {
       }
     }
 
-    // 3) Tasks, punch list, schedule — only if empty.
-    const [tasks, punchItems, scheduleItems, sitePhotos, inspections] = await Promise.all([
-      getAllTasksWithProject().catch(() => []),
-      getPunchListAll().catch(() => []),
-      getAllScheduleWithProject().catch(() => []),
+    const [sitePhotos, inspections] = await Promise.all([
       getSitePhotos(null).catch(() => []),
       getInspectionLogs().catch(() => []),
     ]);
@@ -176,61 +137,12 @@ export async function POST(request: Request) {
     const seeded = {
       projects: false,
       workers: workersSeeded,
-      tasks: false,
-      punchList: false,
-      schedule: false,
       sitePhotos: false,
       inspectionLog: false,
     };
 
     if ((projects?.length ?? 0) >= 3) {
       seeded.projects = true;
-    }
-
-    if (tasks.length === 0) {
-      const base = new Date();
-      for (let i = 0; i < TASK_TITLES.length; i++) {
-        const d = new Date(base);
-        d.setDate(d.getDate() + (i % 7) + 1);
-        await createProjectTask({
-          project_id: projectId,
-          title: TASK_TITLES[i],
-          status: TASK_STATUSES[i],
-          priority: "medium",
-          due_date: d.toISOString().slice(0, 10),
-        });
-      }
-      seeded.tasks = true;
-    }
-
-    if (punchItems.length === 0) {
-      for (let i = 0; i < PUNCH_ISSUES.length; i++) {
-        await createPunchListItem({
-          project_id: projectId,
-          issue: PUNCH_ISSUES[i],
-          location: PUNCH_LOCATIONS[i],
-          status: "open",
-        });
-      }
-      seeded.punchList = true;
-    }
-
-    if (scheduleItems.length === 0) {
-      const base = new Date();
-      for (let i = 0; i < SCHEDULE_TITLES.length; i++) {
-        const start = new Date(base);
-        start.setDate(start.getDate() + i);
-        const end = new Date(start);
-        end.setDate(end.getDate() + 3);
-        await createProjectScheduleItem({
-          project_id: projectId,
-          title: SCHEDULE_TITLES[i],
-          start_date: start.toISOString().slice(0, 10),
-          end_date: end.toISOString().slice(0, 10),
-          status: "planned",
-        });
-      }
-      seeded.schedule = true;
     }
 
     // 4) Site photos — seeding disabled; demo paths (site-photos/demo-*.jpg) have no files in storage and would 404.

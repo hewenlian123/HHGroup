@@ -12,17 +12,10 @@ import {
   getSubcontractsByProject,
   getBillsBySubcontractIds,
   getPaymentsBySubcontractIds,
-  getProjectTasks,
-  getProjectSchedule,
   getActivityLogsByProject,
-  getWorkers,
-  getCloseoutPunch,
   getCloseoutWarranty,
   getCloseoutCompletion,
-  getSelectionsByProject,
-  getMaterialCatalog,
   getCommissionsByProject,
-  getPunchListByProject,
 } from "@/lib/data";
 import { getApBillsByProject } from "@/lib/ap-bills-db";
 import { createRouteSupabaseClient, getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
@@ -30,8 +23,6 @@ import { getCanonicalProjectProfit } from "@/lib/profit-engine";
 
 type TabKey =
   | "overview"
-  | "tasks"
-  | "schedule"
   | "financial"
   | "budget"
   | "expenses"
@@ -41,10 +32,8 @@ type TabKey =
   | "bills"
   | "documents"
   | "activity"
-  | "materials"
   | "closeout"
-  | "commission"
-  | "punch-list";
+  | "commission";
 
 function jsonError(message: string, status = 400) {
   return NextResponse.json({ ok: false as const, message }, { status });
@@ -82,16 +71,6 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
         transactions,
         expenseLines,
       });
-    }
-
-    if (key === "tasks") {
-      const [tasks, workers] = await Promise.all([getProjectTasks(id), getWorkers()]);
-      return NextResponse.json({ ok: true as const, key, tasks, workers });
-    }
-
-    if (key === "schedule") {
-      const schedule = await getProjectSchedule(id);
-      return NextResponse.json({ ok: true as const, key, schedule });
     }
 
     if (key === "budget") {
@@ -163,31 +142,17 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
       return NextResponse.json({ ok: true as const, key, projectBills });
     }
 
-    if (key === "materials") {
-      const [selections, catalog] = await Promise.all([
-        getSelectionsByProject(id),
-        getMaterialCatalog(),
-      ]);
-      return NextResponse.json({ ok: true as const, key, selections, catalog });
-    }
-
     if (key === "closeout") {
-      const [punch, warranty, completion] = await Promise.all([
-        getCloseoutPunch(id).catch(() => null),
+      const [warranty, completion] = await Promise.all([
         getCloseoutWarranty(id).catch(() => null),
         getCloseoutCompletion(id).catch(() => null),
       ]);
-      return NextResponse.json({ ok: true as const, key, punch, warranty, completion });
+      return NextResponse.json({ ok: true as const, key, warranty, completion });
     }
 
     if (key === "commission") {
       const commissions = await getCommissionsByProject(id);
       return NextResponse.json({ ok: true as const, key, commissions });
-    }
-
-    if (key === "punch-list") {
-      const [punchItems, workers] = await Promise.all([getPunchListByProject(id), getWorkers()]);
-      return NextResponse.json({ ok: true as const, key, punchItems, workers });
     }
 
     return jsonError("Unknown tab key", 400);

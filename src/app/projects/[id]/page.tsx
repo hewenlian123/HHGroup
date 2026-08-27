@@ -3,21 +3,14 @@ import { requireSupabaseOwnerOrAdminServerAction } from "@/lib/auth-boundary";
 import {
   getProjectById,
   getProjectBillingSummary,
-  getProjectTasks,
-  getWorkers,
   getDocumentsByProject,
   getCommissionsWithPaidByProject,
-  getSelectionsByProject,
-  getMaterialCatalog,
-  getPunchListByProject,
   getSubcontractsByProject,
   getActivityLogsByProject,
   getChangeOrdersByProject,
   getProjectBudgetItems,
-  getCloseoutPunch,
   getCloseoutWarranty,
   getCloseoutCompletion,
-  getProjectSchedule,
   getInvoicesWithDerived,
   getEstimateList,
 } from "@/lib/data";
@@ -45,21 +38,15 @@ const LEGACY_TAB_MAP: Record<string, string> = {
   bills: "financial",
   commission: "financial",
   "change-orders": "financial",
-  work: "tasks",
-  "punch-list": "tasks",
-  activity: "tasks",
   docs: "documents",
 };
 
 type TabKey =
   | "overview"
   | "financial"
-  | "work"
   | "documents"
   | "cost"
-  | "tasks"
   | "people"
-  | "schedule"
   | "photos"
   | "inspections"
   | "docs"
@@ -70,10 +57,8 @@ type TabKey =
   | "bills"
   | "activity"
   | "change-orders"
-  | "materials"
   | "closeout"
-  | "commission"
-  | "punch-list";
+  | "commission";
 
 type ProjectDetailSearchParams = {
   tab?: string | string[];
@@ -101,12 +86,9 @@ export default async function ProjectDetailPage({
   const validTabs: TabKey[] = [
     "overview",
     "financial",
-    "work",
     "documents",
     "cost",
-    "tasks",
     "people",
-    "schedule",
     "photos",
     "inspections",
     "docs",
@@ -117,10 +99,8 @@ export default async function ProjectDetailPage({
     "bills",
     "activity",
     "change-orders",
-    "materials",
     "closeout",
     "commission",
-    "punch-list",
   ];
   const tab: TabKey = validTabs.includes(tabParam as TabKey) ? (tabParam as TabKey) : "overview";
   const internalSupabase = getServerSupabaseInternalNoStore();
@@ -172,23 +152,16 @@ export default async function ProjectDetailPage({
   };
   const [
     billingSummary,
-    tasks,
-    workers,
     laborEntries,
     documents,
     commissions,
-    materialSelections,
-    materialCatalog,
-    punchItems,
     subcontracts,
     bills,
     activityLogs,
     changeOrders,
     budgetItems,
-    closeoutPunch,
     closeoutWarranty,
     closeoutCompletion,
-    scheduleItems,
     projectInvoicesRaw,
     estimatesRaw,
   ] = await Promise.all([
@@ -198,8 +171,6 @@ export default async function ProjectDetailPage({
       arBalance: 0,
       lastPaymentDate: null,
     }),
-    safe(() => getProjectTasks(id), []),
-    safe(() => getWorkers(), []),
     safe(
       () =>
         internalSupabase
@@ -216,9 +187,6 @@ export default async function ProjectDetailPage({
         return [];
       }
     })(),
-    safe(() => getSelectionsByProject(id), []),
-    safe(() => getMaterialCatalog(), []),
-    safe(() => getPunchListByProject(id), []),
     safe(() => getSubcontractsByProject(id), []),
     safe(
       () =>
@@ -228,10 +196,8 @@ export default async function ProjectDetailPage({
     safe(() => getActivityLogsByProject(id, 20), []),
     safe(() => getChangeOrdersByProject(id, projectSupabase), []),
     safe(() => getProjectBudgetItems(id), []),
-    safe(() => getCloseoutPunch(id), null),
-    safe(() => getCloseoutWarranty(id), null),
-    safe(() => getCloseoutCompletion(id), null),
-    safe(() => getProjectSchedule(id), []),
+    safe(() => getCloseoutWarranty(id, projectSupabase), null),
+    safe(() => getCloseoutCompletion(id, projectSupabase), null),
     safe(() => getInvoicesWithDerived({ projectId: id }), []),
     safe(() => getEstimateList(projectSupabase), []),
   ]);
@@ -286,25 +252,18 @@ export default async function ProjectDetailPage({
       projectCost={costDashboard}
       showFinancialSnapshotComparison={showFinancialSnapshotComparison}
       initialTab={tab}
-      tasks={tasks ?? []}
-      workers={workers ?? []}
       recentExpenseLines={recentExpenseLines}
       expenseLineRows={expenseLineRowsAll}
-      scheduleItems={scheduleItems ?? []}
       projectInvoices={projectInvoices}
       relatedEstimates={relatedEstimates}
       laborEntries={laborEntries ?? []}
       documents={documents ?? []}
       commissions={commissions ?? []}
-      materialSelections={materialSelections ?? []}
-      materialCatalog={materialCatalog ?? []}
-      punchItems={punchItems ?? []}
       subcontracts={subcontracts ?? []}
       bills={bills ?? []}
       activityLogs={activityLogs ?? []}
       changeOrders={changeOrders ?? []}
       budgetItems={budgetItems ?? []}
-      closeoutPunch={closeoutPunch ?? null}
       closeoutWarranty={closeoutWarranty ?? null}
       closeoutCompletion={closeoutCompletion ?? null}
     />

@@ -148,7 +148,6 @@ async function runChecklist(origin: string, doCleanup: boolean, request: Request
     { path: "/api/expenses", name: "Expenses" },
     { path: "/api/invoices", name: "Invoices" },
     { path: "/api/worker-receipts", name: "Worker Receipts" },
-    { path: "/api/operations/tasks", name: "Tasks" },
     { path: "/api/system-health", name: "System Health" },
   ];
   const apiChecks: CheckResult[] = [];

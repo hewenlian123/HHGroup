@@ -7,8 +7,6 @@ import {
   Camera,
   Receipt,
   Hammer,
-  CheckCircle,
-  AlertTriangle,
   FilePen,
   DollarSign,
   FolderKanban,
@@ -33,8 +31,6 @@ const LINK_ACTIONS_TOP = [
 
 const LINK_ACTIONS_REST = [
   { label: "New Project", href: "/projects/new", icon: FolderKanban },
-  { label: "New Task", href: "/tasks/new", icon: CheckCircle },
-  { label: "New Punch Issue", href: "/punch-list/new", icon: AlertTriangle },
   /** Project-scoped create lives under `/projects/[id]/change-orders/new`; hub is `/change-orders`. */
   { label: "Create Change Order", href: "/change-orders", icon: FilePen },
   { label: "New Expense", href: "/financial/expenses/new", icon: DollarSign },

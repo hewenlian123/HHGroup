@@ -94,12 +94,7 @@ test.describe("System Guardian command center", () => {
         contentType: "application/json",
         body: JSON.stringify({
           ok: true,
-          orphanedTasks: { ok: true, count: 0 },
-          ghostTasks: { ok: true, count: 0 },
-          duplicateTasks: { ok: true, count: 0 },
-          overdueNotCompleted: { count: 0 },
           staleTestData: {
-            tasks: { ok: true, count: 0 },
             projects: { ok: true, count: 0 },
           },
         }),
@@ -409,12 +404,7 @@ test.describe("System Guardian command center", () => {
         contentType: "application/json",
         body: JSON.stringify({
           ok: true,
-          orphanedTasks: { ok: true, count: 0 },
-          ghostTasks: { ok: true, count: 0 },
-          duplicateTasks: { ok: true, count: 0 },
-          overdueNotCompleted: { count: 0 },
           staleTestData: {
-            tasks: { ok: true, count: 0 },
             projects: { ok: true, count: 0 },
           },
         }),
@@ -723,12 +713,7 @@ test.describe("System Guardian command center", () => {
         contentType: "application/json",
         body: JSON.stringify({
           ok: true,
-          orphanedTasks: { ok: true, count: 0 },
-          ghostTasks: { ok: true, count: 0 },
-          duplicateTasks: { ok: true, count: 0 },
-          overdueNotCompleted: { count: 0 },
           staleTestData: {
-            tasks: { ok: true, count: 0 },
             projects: { ok: true, count: 0 },
           },
         }),

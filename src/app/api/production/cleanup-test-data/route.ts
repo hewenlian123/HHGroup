@@ -3,10 +3,10 @@
  *
  * 1. Deletes all rows matching test/demo patterns (Workflow Test, Test, Test Vendor,
  *    Test Worker, Test Project, Example, Demo) in dependency order across:
- *    project_tasks, punch_list, project_schedule, site_photos, inspection_log,
+ *    site_photos, inspection_log,
  *    project_change_orders, worker_receipts, worker_reimbursements, worker_payments,
  *    labor_entries, expenses, expense_lines, invoices, payments_received,
- *    estimates, material_catalog, activity_logs, projects, workers.
+ *    estimates, activity_logs, projects, workers.
  * 2. Runs System Tests (full-system-test), Run All Tests, and UI Tests.
  *
  * Returns: { ok, cleanup: { deleted, errors }, systemTest, runAllTests, uiTests, summary }.

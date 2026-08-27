@@ -15,8 +15,6 @@ const OPERATIONAL_ROUTES = [
   "/financial",
   "/inspection-log",
   "/labor/entries",
-  "/schedule",
-  "/punch-list",
   "/site-photos",
   "/system-logs",
   "/system-metrics",

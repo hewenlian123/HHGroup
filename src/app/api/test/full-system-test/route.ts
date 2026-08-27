@@ -44,12 +44,8 @@ const TEST_IDS = [
   "estimates_crud",
   "customers_crud",
   "change_orders_crud",
-  "tasks_crud",
-  "punch_list_crud",
-  "schedule_crud",
   "site_photos_crud",
   "inspection_log_crud",
-  "material_catalog_crud",
 ] as const;
 
 type TestId = (typeof TEST_IDS)[number];
@@ -112,12 +108,8 @@ export async function POST(req: Request) {
     "activity_logs",
     "estimates",
     "project_change_orders",
-    "project_tasks",
-    "punch_list",
-    "project_schedule",
     "site_photos",
     "inspection_log",
-    "material_catalog",
   ] as const;
   const missingTables: string[] = [];
   for (const table of REQUIRED_TABLES) {
@@ -1115,168 +1107,6 @@ export async function POST(req: Request) {
     }
   }
 
-  // ── 10. Tasks CRUD ───────────────────────────────────────────────────────
-  if (run("tasks_crud")) {
-    log("tasks_crud", "start");
-    const steps: string[] = [];
-    let projectId: string | null = null;
-    let taskId: string | null = null;
-    try {
-      const { data: proj, error: projErr } = await c
-        .from("projects")
-        .insert({ name: "Workflow Test Tasks Project", status: "active" })
-        .select("id")
-        .single();
-      if (projErr || !proj)
-        throw new Error(
-          projErr ? tableMissingMessage("projects", projErr) : "Project create failed"
-        );
-      projectId = (proj as { id: string }).id;
-      const { data: created, error: createErr } = await c
-        .from("project_tasks")
-        .insert({
-          project_id: projectId,
-          title: "Workflow Test Task",
-          status: "todo",
-          is_test: true,
-        })
-        .select("id, title, status")
-        .single();
-      if (createErr || !created)
-        throw new Error(
-          createErr ? tableMissingMessage("project_tasks", createErr) : "Create failed"
-        );
-      taskId = (created as { id: string }).id;
-      steps.push("task created");
-      const { error: fetchErr } = await c
-        .from("project_tasks")
-        .select("id")
-        .eq("id", taskId)
-        .maybeSingle();
-      if (fetchErr) throw new Error(`Read failed: ${(fetchErr as { message?: string })?.message}`);
-      steps.push("task read ok");
-      const deletedTaskId = taskId;
-      await c.from("project_tasks").delete().eq("id", deletedTaskId);
-      taskId = null;
-      steps.push("task deleted (test cleanup)");
-      const { data: afterRow } = await c
-        .from("project_tasks")
-        .select("id")
-        .eq("id", deletedTaskId)
-        .maybeSingle();
-      if (afterRow) throw new Error("Task still exists after delete");
-      steps.push("task removed from DB");
-      await c.from("projects").delete().eq("id", projectId);
-      projectId = null;
-      steps.push("project cleaned up");
-      tests.push({ name: "tasks_crud", ok: true, steps });
-    } catch (e) {
-      if (taskId) await safeDelete("project_tasks", taskId);
-      if (projectId) await safeDelete("projects", projectId);
-      const err = toErrorString(e);
-      log("tasks_crud", `error: ${err}`);
-      tests.push({ name: "tasks_crud", ok: false, steps: [...steps, err] });
-    }
-  }
-
-  // ── 11. Punch List CRUD ───────────────────────────────────────────────────
-  if (run("punch_list_crud")) {
-    log("punch_list_crud", "start");
-    const steps: string[] = [];
-    let projectId: string | null = null;
-    let punchId: string | null = null;
-    try {
-      const { data: proj, error: projErr } = await c
-        .from("projects")
-        .insert({ name: "Workflow Test Punch Project", status: "active" })
-        .select("id")
-        .single();
-      if (projErr || !proj)
-        throw new Error(
-          projErr ? tableMissingMessage("projects", projErr) : "Project create failed"
-        );
-      projectId = (proj as { id: string }).id;
-      const { data: created, error: createErr } = await c
-        .from("punch_list")
-        .insert({ project_id: projectId, issue: "Workflow Test Issue", status: "open" })
-        .select("id, issue, status")
-        .single();
-      if (createErr || !created)
-        throw new Error(createErr ? tableMissingMessage("punch_list", createErr) : "Create failed");
-      punchId = (created as { id: string }).id;
-      steps.push("punch list item created");
-      const { error: fetchErr } = await c
-        .from("punch_list")
-        .select("id")
-        .eq("id", punchId)
-        .maybeSingle();
-      if (fetchErr) throw new Error(`Read failed: ${(fetchErr as { message?: string })?.message}`);
-      steps.push("punch list read ok");
-      await c.from("punch_list").delete().eq("id", punchId);
-      punchId = null;
-      await c.from("projects").delete().eq("id", projectId);
-      projectId = null;
-      steps.push("punch list item and project deleted");
-      tests.push({ name: "punch_list_crud", ok: true, steps });
-    } catch (e) {
-      if (punchId) await safeDelete("punch_list", punchId);
-      if (projectId) await safeDelete("projects", projectId);
-      const err = toErrorString(e);
-      log("punch_list_crud", `error: ${err}`);
-      tests.push({ name: "punch_list_crud", ok: false, steps: [...steps, err] });
-    }
-  }
-
-  // ── 12. Schedule CRUD ──────────────────────────────────────────────────────
-  if (run("schedule_crud")) {
-    log("schedule_crud", "start");
-    const steps: string[] = [];
-    let projectId: string | null = null;
-    let scheduleId: string | null = null;
-    try {
-      const { data: proj, error: projErr } = await c
-        .from("projects")
-        .insert({ name: "Workflow Test Schedule Project", status: "active" })
-        .select("id")
-        .single();
-      if (projErr || !proj)
-        throw new Error(
-          projErr ? tableMissingMessage("projects", projErr) : "Project create failed"
-        );
-      projectId = (proj as { id: string }).id;
-      const { data: created, error: createErr } = await c
-        .from("project_schedule")
-        .insert({ project_id: projectId, title: "Workflow Test Schedule", status: "scheduled" })
-        .select("id, title, status")
-        .single();
-      if (createErr || !created)
-        throw new Error(
-          createErr ? tableMissingMessage("project_schedule", createErr) : "Create failed"
-        );
-      scheduleId = (created as { id: string }).id;
-      steps.push("schedule item created");
-      const { error: fetchErr } = await c
-        .from("project_schedule")
-        .select("id")
-        .eq("id", scheduleId)
-        .maybeSingle();
-      if (fetchErr) throw new Error(`Read failed: ${(fetchErr as { message?: string })?.message}`);
-      steps.push("schedule read ok");
-      await c.from("project_schedule").delete().eq("id", scheduleId);
-      scheduleId = null;
-      await c.from("projects").delete().eq("id", projectId);
-      projectId = null;
-      steps.push("schedule item and project deleted");
-      tests.push({ name: "schedule_crud", ok: true, steps });
-    } catch (e) {
-      if (scheduleId) await safeDelete("project_schedule", scheduleId);
-      if (projectId) await safeDelete("projects", projectId);
-      const err = toErrorString(e);
-      log("schedule_crud", `error: ${err}`);
-      tests.push({ name: "schedule_crud", ok: false, steps: [...steps, err] });
-    }
-  }
-
   // ── 13. Site Photos CRUD ──────────────────────────────────────────────────
   if (run("site_photos_crud")) {
     log("site_photos_crud", "start");
@@ -1374,42 +1204,6 @@ export async function POST(req: Request) {
       const err = toErrorString(e);
       log("inspection_log_crud", `error: ${err}`);
       tests.push({ name: "inspection_log_crud", ok: false, steps: [...steps, err] });
-    }
-  }
-
-  // ── 15. Material selections data CRUD ─────────────────────────────────────
-  if (run("material_catalog_crud")) {
-    log("material_catalog_crud", "start");
-    const steps: string[] = [];
-    let catalogId: string | null = null;
-    try {
-      const { data: created, error: createErr } = await c
-        .from("material_catalog")
-        .insert({ category: "Workflow Test", material_name: "Workflow Test Material" })
-        .select("id, category, material_name")
-        .single();
-      if (createErr || !created)
-        throw new Error(
-          createErr ? tableMissingMessage("material_catalog", createErr) : "Create failed"
-        );
-      catalogId = (created as { id: string }).id;
-      steps.push("material selection data item created");
-      const { error: fetchErr } = await c
-        .from("material_catalog")
-        .select("id")
-        .eq("id", catalogId)
-        .maybeSingle();
-      if (fetchErr) throw new Error(`Read failed: ${(fetchErr as { message?: string })?.message}`);
-      steps.push("material selection data read ok");
-      await c.from("material_catalog").delete().eq("id", catalogId);
-      catalogId = null;
-      steps.push("material selection data item deleted");
-      tests.push({ name: "material_catalog_crud", ok: true, steps });
-    } catch (e) {
-      if (catalogId) await safeDelete("material_catalog", catalogId);
-      const err = toErrorString(e);
-      log("material_catalog_crud", `error: ${err}`);
-      tests.push({ name: "material_catalog_crud", ok: false, steps: [...steps, err] });
     }
   }
 

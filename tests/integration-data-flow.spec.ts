@@ -150,36 +150,6 @@ test.describe("Integration: data linked across modules", () => {
     );
   });
 
-  test("tasks: new task dialog lists projects (task ↔ project)", async ({ page }) => {
-    await page.goto(`${trimBase(BASE)}/tasks`);
-    await page.waitForLoadState("domcontentloaded");
-    if (
-      await page
-        .getByText(/Failed to load tasks/i)
-        .isVisible()
-        .catch(() => false)
-    ) {
-      test.skip(true, "Tasks API failed.");
-    }
-    await expect(page.getByText(/Loading/i).first())
-      .not.toBeVisible({ timeout: LOAD_MS })
-      .catch(() => undefined);
-    await page.getByRole("button", { name: /\+ New Task/i }).click();
-    const dlg = page.getByRole("dialog", { name: /New Task/i });
-    await expect(dlg).toBeVisible({ timeout: 10_000 });
-    const projectSel = dlg.locator("select").first();
-    try {
-      await expect(async () => {
-        const n = await projectSel.locator("option").count();
-        expect(n).toBeGreaterThan(1);
-      }).toPass({ timeout: 45_000, intervals: [400, 800, 1500] });
-    } catch {
-      test.skip(true, "No projects in task dialog — link chain incomplete in DB.");
-    }
-    await dlg.getByRole("button", { name: /Cancel/i }).click();
-    await expect(dlg).not.toBeVisible({ timeout: 8000 });
-  });
-
   test("bills list ↔ new bill (AP graph)", async ({ page }) => {
     await page.goto(`${trimBase(BASE)}/bills`);
     await page.waitForLoadState("domcontentloaded");

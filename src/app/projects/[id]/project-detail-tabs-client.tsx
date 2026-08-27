@@ -37,11 +37,8 @@ import { getProjectFinancialSnapshotProfitReadinessWarning } from "@/lib/financi
 import type { ProjectCostDashboardPayload } from "@/lib/project-cost-dashboard";
 import { ProjectDocumentsTab } from "./project-documents-tab";
 import { ProjectCostLinesTable } from "./project-cost-lines-table";
-import { ProjectTasksTab } from "./project-tasks-tab";
 import { ProjectCloseoutTab } from "./project-closeout-tab";
-import { ProjectMaterialsTab } from "./project-materials-tab";
 import { ProjectCommissionTab } from "./project-commission-tab";
-import { ProjectPunchListTab } from "./project-punch-list-tab";
 import { ProjectFinancialSnapshotComparisonPanel } from "./project-financial-snapshot-comparison-panel";
 import { RecentExpenseLines } from "./recent-expense-lines";
 import { InvoiceStatusBadge } from "@/components/invoice-status-badge";
@@ -368,12 +365,9 @@ function DetailRow({
 type TabKey =
   | "overview"
   | "financial"
-  | "work"
   | "documents"
   | "cost"
-  | "tasks"
   | "people"
-  | "schedule"
   | "photos"
   | "inspections"
   | "docs"
@@ -384,33 +378,27 @@ type TabKey =
   | "bills"
   | "activity"
   | "change-orders"
-  | "materials"
   | "closeout"
-  | "commission"
-  | "punch-list";
+  | "commission";
 
 type WorkspaceTabKey =
   | "overview"
   | "financial"
-  | "schedule"
-  | "tasks"
   | "people"
   | "documents"
   | "photos"
-  | "materials"
   | "inspections"
+  | "activity"
   | "closeout";
 
 const PROJECT_WORKSPACE_TABS: Array<{ key: WorkspaceTabKey; label: string }> = [
   { key: "overview", label: "Overview" },
   { key: "financial", label: "Financial" },
-  { key: "schedule", label: "Schedule" },
-  { key: "tasks", label: "Tasks" },
   { key: "people", label: "People" },
   { key: "documents", label: "Documents" },
   { key: "photos", label: "Photos" },
-  { key: "materials", label: "Materials" },
   { key: "inspections", label: "Inspections" },
+  { key: "activity", label: "Activity" },
   { key: "closeout", label: "Closeout" },
 ];
 
@@ -443,11 +431,8 @@ function normalizeWorkspaceTab(tab: TabKey): WorkspaceTabKey {
   ) {
     return "financial";
   }
-  if (tab === "tasks" || tab === "activity" || tab === "punch-list" || tab === "work") {
-    return "tasks";
-  }
-  if (tab === "schedule") {
-    return "schedule";
+  if (tab === "activity") {
+    return "activity";
   }
   if (tab === "people") {
     return "people";
@@ -484,26 +469,19 @@ export interface ProjectDetailTabsClientProps {
   };
   canonicalProfit: CanonicalProjectProfit;
   initialTab: TabKey;
-  tasks: import("@/lib/data").ProjectTaskWithWorker[];
-  workers: import("@/lib/labor-db").Worker[];
   recentExpenseLines: import("./recent-expense-lines").RecentExpenseLineRow[];
   /** All expense lines for this project (Expenses tab); overview uses first 10 of recentExpenseLines. */
   expenseLineRows: import("./recent-expense-lines").RecentExpenseLineRow[];
-  scheduleItems: import("@/lib/data").ProjectScheduleItem[];
   projectInvoices: import("@/lib/data").InvoiceWithDerived[];
   relatedEstimates: EstimateListItem[];
   laborEntries: import("@/lib/daily-labor-db").LaborEntryWithJoins[];
   documents: import("@/lib/data").DocumentRow[];
   commissions: import("@/lib/data").CommissionWithPaid[];
-  materialSelections: import("@/lib/data").ProjectMaterialSelectionWithMaterial[];
-  materialCatalog: import("@/lib/data").MaterialCatalogRow[];
-  punchItems: import("@/lib/punch-list-db").PunchListItemWithJoins[];
   subcontracts: import("@/lib/subcontracts-db").SubcontractWithSubcontractor[];
   bills: import("@/lib/ap-bills-db").ApBillWithProject[];
   activityLogs: import("@/lib/activity-logs-db").ActivityLog[];
   changeOrders: import("@/lib/change-orders-db").ChangeOrder[];
   budgetItems: import("@/lib/data").ProjectBudgetItem[];
-  closeoutPunch: import("@/lib/data").CloseoutPunch | null;
   closeoutWarranty: import("@/lib/data").CloseoutWarranty | null;
   closeoutCompletion: import("@/lib/data").CloseoutCompletion | null;
 }
@@ -517,25 +495,18 @@ export function ProjectDetailTabsClient({
   billingSummary,
   canonicalProfit,
   initialTab,
-  tasks,
-  workers,
   recentExpenseLines,
   expenseLineRows,
-  scheduleItems,
   projectInvoices,
   relatedEstimates,
   laborEntries,
   documents,
   commissions,
-  materialSelections,
-  materialCatalog,
-  punchItems,
   subcontracts,
   bills,
   activityLogs,
   changeOrders,
   budgetItems,
-  closeoutPunch,
   closeoutWarranty,
   closeoutCompletion,
 }: ProjectDetailTabsClientProps) {
@@ -767,25 +738,13 @@ export function ProjectDetailTabsClient({
   const topProfitTone =
     headerProfitValue == null ? "attention" : headerProfitValue >= 0 ? "positive" : "negative";
   const topMarginDisplay = headerMarginValue == null ? "—" : `${headerMarginValue.toFixed(1)}%`;
-  const openTaskCount = tasks.filter((task) => {
-    const status = String(task.status ?? "").toLowerCase();
-    return status !== "done" && status !== "completed" && status !== "complete";
-  }).length;
-  const openPunchCount = punchItems.filter((item) => {
-    const status = String(item.status ?? "").toLowerCase();
-    return status !== "completed" && status !== "resolved" && status !== "done";
-  }).length;
   const latestActivity = activityLogs.slice(0, 4);
   const recentCostActivity = recentExpenseLines.slice(0, 4);
   const projectClientName =
     displayProject.client ?? (displayProject as { client_name?: string }).client_name ?? null;
   const projectWorkerNames = React.useMemo(
-    () =>
-      uniqueText([
-        ...tasks.map((task) => task.worker_name),
-        ...laborEntries.map((entry) => entry.worker_name),
-      ]),
-    [laborEntries, tasks]
+    () => uniqueText(laborEntries.map((entry) => entry.worker_name)),
+    [laborEntries]
   );
   const subcontractorNames = React.useMemo(
     () => uniqueText(subcontracts.map((subcontract) => subcontract.subcontractor_name)),
@@ -1190,17 +1149,6 @@ export function ProjectDetailTabsClient({
                       value={<ProjectDetailStatusPill status={displayProject.status} />}
                     />
                     <DetailRow
-                      label="Open tasks"
-                      value={openTaskCount}
-                      tone={openTaskCount > 0 ? "attention" : "positive"}
-                    />
-                    <DetailRow label="Schedule items" value={scheduleItems.length} />
-                    <DetailRow
-                      label="Open punch items"
-                      value={openPunchCount}
-                      tone={openPunchCount > 0 ? "attention" : "positive"}
-                    />
-                    <DetailRow
                       label="Needs review"
                       value={
                         <Link
@@ -1291,170 +1239,6 @@ export function ProjectDetailTabsClient({
                   )}
                 </ExecutiveCard>
               </div>
-            </TabsContent>
-
-            <TabsContent value="tasks" className="mt-4 space-y-4">
-              <ExecutiveCard title="Tasks">
-                <ProjectTasksTab
-                  projectId={projectId}
-                  tasks={tasks}
-                  workers={workers}
-                  onTaskCreated={() =>
-                    syncClientsThenRefreshInBackground(router, "project-task-created")
-                  }
-                  onTaskUpdated={() =>
-                    syncClientsThenRefreshInBackground(router, "project-task-updated")
-                  }
-                />
-              </ExecutiveCard>
-
-              <ExecutiveCard
-                title="Schedule"
-                action={
-                  <Link
-                    href="/schedule"
-                    className="min-h-8 text-hh-metadata font-medium text-[var(--hh-action-primary)] underline-offset-4 hover:underline"
-                  >
-                    Company schedule
-                  </Link>
-                }
-              >
-                {scheduleItems.length === 0 ? (
-                  <p className="py-6 text-hh-body text-[var(--hh-text-secondary)]">
-                    No schedule milestones for this project.
-                  </p>
-                ) : (
-                  <div className="airtable-table-wrap airtable-table-wrap--ruled">
-                    <div className="airtable-table-scroll">
-                      <table className="w-full text-hh-body">
-                        <thead>
-                          <tr>
-                            <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
-                              Title
-                            </th>
-                            <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
-                              Start
-                            </th>
-                            <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
-                              End
-                            </th>
-                            <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
-                              Status
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {scheduleItems.map((s) => (
-                            <tr key={s.id} className={listTableRowStaticClassName}>
-                              <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell font-medium">
-                                {s.title}
-                              </td>
-                              <td className="h-11 min-h-[44px] px-3 py-0 align-middle hh-fin text-hh-table-cell tabular-nums">
-                                {s.start_date ?? "—"}
-                              </td>
-                              <td className="h-11 min-h-[44px] px-3 py-0 align-middle hh-fin text-hh-table-cell tabular-nums">
-                                {s.end_date ?? "—"}
-                              </td>
-                              <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell capitalize">
-                                {(s.status ?? "scheduled").replace(/_/g, " ")}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
-              </ExecutiveCard>
-
-              <ExecutiveCard title="Activity">
-                {activityLogs.length === 0 ? (
-                  <p className="py-6 text-hh-body text-[var(--hh-text-secondary)]">
-                    No activity for this project.
-                  </p>
-                ) : (
-                  <ul className="divide-y divide-[var(--hh-border)]">
-                    {activityLogs.map((log) => (
-                      <li key={log.id} className="flex gap-3 py-2.5 text-hh-table-cell">
-                        <span className="w-[9rem] shrink-0 hh-fin tabular-nums text-[var(--hh-text-secondary)]">
-                          {log.created_at?.slice(0, 19).replace("T", " ") ?? "—"}
-                        </span>
-                        <span className="min-w-0 text-[var(--hh-text-primary)]">
-                          {log.description ?? log.type}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </ExecutiveCard>
-
-              <ExecutiveCard title="Punch List">
-                <ProjectPunchListTab projectId={projectId} punchItems={punchItems} />
-              </ExecutiveCard>
-            </TabsContent>
-
-            <TabsContent value="schedule" className={TAB_PANEL}>
-              <SectionHeader
-                label="Schedule"
-                className="text-hh-status tracking-normal text-[var(--hh-text-tertiary)] font-medium"
-              />
-              <Divider />
-              {scheduleItems.length === 0 ? (
-                <p className="py-6 text-hh-body text-[var(--hh-text-secondary)]">
-                  No schedule milestones for this project.
-                </p>
-              ) : (
-                <>
-                  <div className="airtable-table-wrap airtable-table-wrap--ruled mt-2">
-                    <div className="airtable-table-scroll">
-                      <table className="w-full text-hh-body">
-                        <thead>
-                          <tr>
-                            <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
-                              Title
-                            </th>
-                            <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
-                              Start
-                            </th>
-                            <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
-                              End
-                            </th>
-                            <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
-                              Status
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {scheduleItems.map((s) => (
-                            <tr key={s.id} className={listTableRowStaticClassName}>
-                              <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell font-medium">
-                                {s.title}
-                              </td>
-                              <td className="h-11 min-h-[44px] px-3 py-0 align-middle hh-fin text-hh-table-cell tabular-nums">
-                                {s.start_date ?? "—"}
-                              </td>
-                              <td className="h-11 min-h-[44px] px-3 py-0 align-middle hh-fin text-hh-table-cell tabular-nums">
-                                {s.end_date ?? "—"}
-                              </td>
-                              <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell capitalize">
-                                {(s.status ?? "scheduled").replace(/_/g, " ")}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                  <div className="mt-3">
-                    <Link
-                      href="/schedule"
-                      className="text-hh-metadata font-medium text-[var(--hh-text-secondary)] hover:text-[var(--hh-text-primary)]"
-                    >
-                      Open company schedule →
-                    </Link>
-                  </div>
-                </>
-              )}
             </TabsContent>
 
             <TabsContent value="financial" className="mt-4 space-y-4">
@@ -2164,29 +1948,12 @@ export function ProjectDetailTabsClient({
                 </div>
               )}
             </TabsContent>
-            <TabsContent value="materials" className={TAB_PANEL}>
-              <ProjectMaterialsTab
-                projectId={projectId}
-                projectName={displayProject.name}
-                clientName={
-                  displayProject.client ??
-                  (displayProject as { client_name?: string }).client_name ??
-                  undefined
-                }
-                selections={materialSelections}
-                catalog={materialCatalog}
-                onRefresh={() =>
-                  syncClientsThenRefreshInBackground(router, "project-materials-mutated")
-                }
-              />
-            </TabsContent>
             <TabsContent value="closeout" className={TAB_PANEL}>
               <ProjectCloseoutTab
                 projectId={projectId}
                 projectName={displayProject.name}
                 billingSummary={billingSummary}
                 contractValue={canonicalProfit.revenue}
-                punch={closeoutPunch}
                 warranty={closeoutWarranty}
                 completion={closeoutCompletion}
                 onRefresh={() =>
@@ -2204,9 +1971,6 @@ export function ProjectDetailTabsClient({
                   }
                 />
               </div>
-            </TabsContent>
-            <TabsContent value="punch-list" className={TAB_PANEL}>
-              <ProjectPunchListTab projectId={projectId} punchItems={punchItems} />
             </TabsContent>
             <TabsContent value="subcontracts" className={TAB_PANEL}>
               <SectionHeader

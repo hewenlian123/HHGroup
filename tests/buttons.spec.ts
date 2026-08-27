@@ -127,20 +127,6 @@ test.describe("Labor page buttons", () => {
   });
 });
 
-// ─── TASKS PAGE ───────────────────────────────────────────────────────────────
-test.describe("Tasks page buttons", () => {
-  test("New task button works", async ({ page }) => {
-    await page.goto("/tasks");
-    await page.waitForLoadState("domcontentloaded");
-    const newBtn = page.locator('button:has-text("New Task"), button:has-text("Add Task")').first();
-    if (await newBtn.isVisible()) {
-      await newBtn.click();
-      await page.waitForTimeout(500);
-      await expect(page.locator("body")).not.toContainText("Application error");
-    }
-  });
-});
-
 // ─── DOCUMENTS PAGE ───────────────────────────────────────────────────────────
 test.describe("Documents page buttons", () => {
   test("Upload/New document button works", async ({ page }) => {

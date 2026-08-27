@@ -64,42 +64,22 @@ async function checkDataIntegrity(origin: string, headers?: HeadersInit): Promis
     });
     const data = (await res.json().catch(() => ({}))) as {
       ok?: boolean;
-      orphanedTasks?: { count?: number };
-      ghostTasks?: { count?: number };
-      duplicateTasks?: { count?: number };
-      staleTestData?: { tasks?: { count?: number }; projects?: { count?: number } };
+      staleTestData?: { projects?: { count?: number } };
       errors?: string[];
     };
-    const orphanCount = data.orphanedTasks?.count ?? 0;
-    const ghostCount = data.ghostTasks?.count ?? 0;
-    const dupCount = data.duplicateTasks?.count ?? 0;
-    const staleTasks = data.staleTestData?.tasks?.count ?? 0;
     const staleProjects = data.staleTestData?.projects?.count ?? 0;
-    const hasIssues =
-      orphanCount > 0 || ghostCount > 0 || dupCount > 0 || staleTasks > 0 || staleProjects > 0;
+    const hasIssues = staleProjects > 0;
     if (res.status >= 500 || (data.ok === false && hasIssues)) {
       const msg =
         (data.errors?.length ?? 0) > 0
           ? (data.errors ?? []).join("; ")
           : hasIssues
-            ? [
-                orphanCount && `${orphanCount} orphan`,
-                ghostCount && `${ghostCount} ghost`,
-                dupCount && `${dupCount} duplicate`,
-                staleTasks + staleProjects > 0 && "stale test data",
-              ]
-                .filter(Boolean)
-                .join("; ")
+            ? "stale test data"
             : "Integrity check failed";
       return { name: "Data integrity", ok: false, error: msg };
     }
     if (hasIssues) {
-      const parts: string[] = [];
-      if (orphanCount > 0) parts.push(`${orphanCount} orphan`);
-      if (ghostCount > 0) parts.push(`${ghostCount} ghost`);
-      if (dupCount > 0) parts.push(`${dupCount} duplicate`);
-      if (staleTasks > 0 || staleProjects > 0) parts.push("stale test data");
-      return { name: "Data integrity", ok: false, error: parts.join("; ") };
+      return { name: "Data integrity", ok: false, error: "stale test data" };
     }
     return { name: "Data integrity", ok: true };
   } catch (e) {

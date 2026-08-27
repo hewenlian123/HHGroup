@@ -188,12 +188,8 @@ async function main() {
     "projects",
     "estimates",
     "change_orders",
-    "tasks",
-    "punch_list",
-    "schedule",
     "site_photos",
     "inspection_log",
-    "material_catalog",
     "labor_receipts",
   ];
 
@@ -352,111 +348,6 @@ async function main() {
     })
   );
 
-  // ── 9. tasks ───────────────────────────────────────────────────────────────
-  results.push(
-    await runTest("tasks", async () => {
-      const page = await browser.newPage();
-      page.setDefaultTimeout(WAIT_TIMEOUT);
-      try {
-        await smokeTestModulePage(page, "/tasks", "Task");
-      } finally {
-        await page.close();
-      }
-    })
-  );
-
-  // ── 9b. tasks create + delete (row disappears) ─────────────────────────────
-  results.push(
-    await runTest("tasks_create_delete", async () => {
-      const page = await browser.newPage();
-      page.setDefaultTimeout(WAIT_TIMEOUT);
-      const taskTitle = `UI Test Task ${Date.now()}`;
-      try {
-        await goto(page, "/tasks");
-        await waitFor(page, "main, [class*='page-container']", "page content");
-        const newBtn = await page.$x('//button[contains(., "New Task")]').then((a) => a[0]);
-        if (!newBtn) throw new Error('"New Task" button not found');
-        await newBtn.click();
-        await page.waitForSelector('[role="dialog"], [class*="dialog"]', { timeout: WAIT_TIMEOUT });
-        const firstProjectValue = await page.evaluate(() => {
-          const opt = document.querySelector('select option[value]:not([value=""])');
-          return opt ? opt.value : null;
-        });
-        if (!firstProjectValue) {
-          await page.keyboard.press("Escape");
-          return;
-        }
-        await page.select("select", firstProjectValue);
-        const titleInput = await page.$(
-          'input[placeholder*="Task title"], input[placeholder*="title"]'
-        );
-        if (!titleInput) throw new Error("Task title input not found");
-        await titleInput.type(taskTitle, { delay: 20 });
-        const saveBtn = await page.$x('//button[contains(., "Save")]').then((a) => a[0]);
-        if (!saveBtn) throw new Error("Save button not found");
-        await saveBtn.click();
-        await page
-          .waitForFunction(
-            () =>
-              !document.querySelector('[role="dialog"]') &&
-              !document.querySelector('[class*="dialog"][data-state="open"]'),
-            { timeout: WAIT_TIMEOUT }
-          )
-          .catch(() => {});
-        await new Promise((r) => setTimeout(r, 800));
-        const hasRow = await page.evaluate(
-          (title) => document.body.innerText.includes(title),
-          taskTitle
-        );
-        if (!hasRow) throw new Error(`New task row "${taskTitle}" did not appear`);
-        const rowEl = await page
-          .$x(`//tr[contains(., "${taskTitle}")] | //button[contains(., "${taskTitle}")]`)
-          .then((a) => a[0]);
-        if (!rowEl) throw new Error(`Row with "${taskTitle}" not found`);
-        await rowEl.click();
-        await new Promise((r) => setTimeout(r, 400));
-        const deleteBtn = await page.$x('//button[contains(., "Delete")]').then((a) => a[0]);
-        if (!deleteBtn) throw new Error("Delete button not found in drawer");
-        page.once("dialog", (d) => d.accept());
-        await deleteBtn.click();
-        await new Promise((r) => setTimeout(r, 1200));
-        const stillThere = await page.evaluate(
-          (title) => document.body.innerText.includes(title),
-          taskTitle
-        );
-        if (stillThere) throw new Error("Task row still visible after delete");
-      } finally {
-        await page.close();
-      }
-    })
-  );
-
-  // ── 10. punch_list ────────────────────────────────────────────────────────
-  results.push(
-    await runTest("punch_list", async () => {
-      const page = await browser.newPage();
-      page.setDefaultTimeout(WAIT_TIMEOUT);
-      try {
-        await smokeTestModulePage(page, "/punch-list", "Punch");
-      } finally {
-        await page.close();
-      }
-    })
-  );
-
-  // ── 11. schedule ───────────────────────────────────────────────────────────
-  results.push(
-    await runTest("schedule", async () => {
-      const page = await browser.newPage();
-      page.setDefaultTimeout(WAIT_TIMEOUT);
-      try {
-        await smokeTestModulePage(page, "/schedule", "Schedule");
-      } finally {
-        await page.close();
-      }
-    })
-  );
-
   // ── 12. site_photos ────────────────────────────────────────────────────────
   results.push(
     await runTest("site_photos", async () => {
@@ -477,19 +368,6 @@ async function main() {
       page.setDefaultTimeout(WAIT_TIMEOUT);
       try {
         await smokeTestModulePage(page, "/inspection-log", "Inspection");
-      } finally {
-        await page.close();
-      }
-    })
-  );
-
-  // ── 14. material selections ────────────────────────────────────────────────
-  results.push(
-    await runTest("material_catalog", async () => {
-      const page = await browser.newPage();
-      page.setDefaultTimeout(WAIT_TIMEOUT);
-      try {
-        await smokeTestModulePage(page, "/materials", "Material Selections");
       } finally {
         await page.close();
       }

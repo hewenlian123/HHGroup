@@ -21,20 +21,13 @@ const flows: Flow[] = [
   { name: "Customers: add customer", path: "/customers", submitText: /create|save|add/i },
 
   // OPERATIONS
-  { name: "Tasks: add task", path: "/tasks/new", submitText: /create|save|add/i },
-  { name: "Punch List: add item", path: "/punch-list/new", submitText: /create|save|add/i },
-  { name: "Schedule: add schedule entry", path: "/schedule", submitText: /create|save|add/i },
   {
     name: "Site Photos: upload photo",
     path: "/site-photos/upload",
     submitText: /upload|save|add/i,
   },
   { name: "Inspection Log: add record", path: "/inspection-log", submitText: /create|save|add/i },
-  {
-    name: "Material Selections: create selection",
-    path: "/materials/new",
-    submitText: /create|save|add/i,
-  },
+
 
   // FINANCE
   {

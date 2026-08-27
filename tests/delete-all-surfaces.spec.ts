@@ -79,19 +79,6 @@ test.describe("Delete surface catalog (read-only)", () => {
     await expect(del.first()).toBeVisible({ timeout: 5000 });
   });
 
-  test("tasks (desktop table): overflow has Delete", async ({ page }) => {
-    await page.goto(`${BASE}/tasks`);
-    await page.waitForLoadState("domcontentloaded");
-    await skipIfBackendError(page, /Failed to load tasks/i);
-    await expect(page.getByText(/Loading/i).first())
-      .not.toBeVisible({ timeout: LIST_LOAD_MS })
-      .catch(() => undefined);
-    const row = page.locator("table tbody tr").first();
-    await expectVisibleOrSkip(row, "No task rows.", LIST_LOAD_MS);
-    await clickFirstRowOverflowMenu(page);
-    await expectDeleteMenuItemThenClose(page);
-  });
-
   test("estimates: overflow menu has Delete", async ({ page }) => {
     await page.goto(`${BASE}/estimates`);
     await page.waitForLoadState("domcontentloaded");

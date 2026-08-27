@@ -1,14 +1,7 @@
 /**
  * GET /api/system/integrity
  *
- * Data integrity checks for the System Health page:
- * - Orphaned tasks (project no longer exists)
- * - Ghost tasks (missing title or project_id)
- * - Duplicate tasks (same title in same project)
- * - Overdue not completed (count only, for awareness)
- * - Stale test data (Untitled or test keywords)
- *
- * Returns counts and IDs for each category so the UI can show "Clean up" actions.
+ * Data integrity checks for stale test projects on the System Health page.
  */
 
 import { NextResponse } from "next/server";
@@ -18,7 +11,7 @@ import postgres from "postgres";
 
 export const dynamic = "force-dynamic";
 
-/** Only very specific test terms; no generic words like "Test", "Example", "Demo", "Untitled". */
+/** Only very specific test terms; no generic words like "Test", "Example", or "Demo". */
 const TEST_KEYWORDS = ["Workflow Test", "Test Worker", "Test Project", "Test Vendor"];
 
 /** Known real projects to exclude from stale test data check and cleanup. */
@@ -32,12 +25,7 @@ export type IntegrityCheck = {
 
 export type DataIntegrityResult = {
   ok: boolean;
-  orphanedTasks: IntegrityCheck;
-  ghostTasks: IntegrityCheck;
-  duplicateTasks: IntegrityCheck;
-  overdueNotCompleted: { count: number };
   staleTestData: {
-    tasks: IntegrityCheck;
     projects: IntegrityCheck;
   };
   errors?: string[];
@@ -52,14 +40,7 @@ export async function GET(request: Request): Promise<NextResponse<DataIntegrityR
   if (!url) {
     return NextResponse.json({
       ok: true,
-      orphanedTasks: { ok: true, count: 0 },
-      ghostTasks: { ok: true, count: 0 },
-      duplicateTasks: { ok: true, count: 0 },
-      overdueNotCompleted: { count: 0 },
-      staleTestData: {
-        tasks: { ok: true, count: 0 },
-        projects: { ok: true, count: 0 },
-      },
+      staleTestData: { projects: { ok: true, count: 0 } },
       errors: [
         "Data Integrity requires SUPABASE_DATABASE_URL or DATABASE_URL in .env.local. Add the direct PostgreSQL connection string from Supabase → Project Settings → Database → Connection string (URI).",
       ],
@@ -70,134 +51,43 @@ export async function GET(request: Request): Promise<NextResponse<DataIntegrityR
 
   try {
     const sql = postgres(url, { max: 1, connect_timeout: 10 });
-
-    // 1. Orphaned tasks — project_id not in projects
-    let orphanedTasks: IntegrityCheck = { ok: true, count: 0 };
-    try {
-      const rows = await sql`
-        SELECT pt.id
-        FROM public.project_tasks pt
-        LEFT JOIN public.projects p ON p.id = pt.project_id
-        WHERE p.id IS NULL
-      `;
-      const ids = (rows as unknown as { id: string }[]).map((r) => r.id);
-      orphanedTasks = { ok: ids.length === 0, count: ids.length, ids };
-    } catch (e) {
-      errors.push(`Orphan: ${safeErrorMessage(e)}`);
-    }
-
-    // 2. Ghost tasks — no title or empty title (project_id is NOT NULL in schema)
-    let ghostTasks: IntegrityCheck = { ok: true, count: 0 };
-    try {
-      const rows = await sql`
-        SELECT id FROM public.project_tasks
-        WHERE trim(coalesce(title, '')) = ''
-      `;
-      const ids = (rows as unknown as { id: string }[]).map((r) => r.id);
-      ghostTasks = { ok: ids.length === 0, count: ids.length, ids };
-    } catch (e) {
-      errors.push(`Ghost: ${safeErrorMessage(e)}`);
-    }
-
-    // 3. Duplicate tasks — same (project_id, title) with count > 1; return IDs to delete (keep one per group)
-    let duplicateTasks: IntegrityCheck = { ok: true, count: 0 };
-    try {
-      const rows = await sql`
-        WITH dupes AS (
-          SELECT id, project_id, title,
-            row_number() OVER (PARTITION BY project_id, trim(coalesce(title,'')) ORDER BY created_at ASC) AS rn
-          FROM public.project_tasks
-        )
-        SELECT id FROM dupes WHERE rn > 1
-      `;
-      const ids = (rows as unknown as { id: string }[]).map((r) => r.id);
-      duplicateTasks = { ok: ids.length === 0, count: ids.length, ids };
-    } catch (e) {
-      errors.push(`Duplicate: ${safeErrorMessage(e)}`);
-    }
-
-    // 4. Overdue not completed — count only
-    let overdueCount = 0;
-    try {
-      const rows = await sql`
-        SELECT count(*)::int AS c
-        FROM public.project_tasks
-        WHERE due_date IS NOT NULL AND due_date < current_date AND status != 'done'
-      `;
-      overdueCount = Number((rows[0] as { c: number })?.c ?? 0);
-    } catch (e) {
-      errors.push(`Overdue: ${safeErrorMessage(e)}`);
-    }
-
-    // 5. Stale test data — word-boundary match so "Test Project" doesn't match "Testing Ground" or "Contest"
-    let staleTaskIds: string[] = [];
     let staleProjectIds: string[] = [];
+
     try {
-      for (const kw of TEST_KEYWORDS) {
-        const pattern = `\\m${kw}\\M`;
-        const t = await sql`
-          SELECT id FROM public.project_tasks
-          WHERE title ~* ${pattern}
-             OR (description IS NOT NULL AND description ~* ${pattern})
-        `;
-        (t as unknown as { id: string }[]).forEach((r) => staleTaskIds.push(r.id));
-        const p = await sql`
+      for (const keyword of TEST_KEYWORDS) {
+        const pattern = `\\m${keyword}\\M`;
+        const rows = await sql`
           SELECT id FROM public.projects
           WHERE name ~* ${pattern}
         `;
-        (p as unknown as { id: string }[]).forEach((r) => staleProjectIds.push(r.id));
+        (rows as unknown as { id: string }[]).forEach((row) => staleProjectIds.push(row.id));
       }
-      staleTaskIds = [...new Set(staleTaskIds)];
       staleProjectIds = [...new Set(staleProjectIds)].filter(
         (id) => !WHITELIST_PROJECT_IDS.includes(id)
       );
-    } catch (e) {
-      errors.push(`Stale: ${safeErrorMessage(e)}`);
+    } catch (error) {
+      errors.push(`Stale projects: ${safeErrorMessage(error)}`);
+    } finally {
+      await sql.end();
     }
 
-    await sql.end();
-
-    const staleTasks: IntegrityCheck = {
-      ok: staleTaskIds.length === 0,
-      count: staleTaskIds.length,
-      ids: staleTaskIds,
-    };
     const staleProjects: IntegrityCheck = {
       ok: staleProjectIds.length === 0,
       count: staleProjectIds.length,
       ids: staleProjectIds,
     };
 
-    const ok =
-      errors.length === 0 &&
-      orphanedTasks.count === 0 &&
-      ghostTasks.count === 0 &&
-      duplicateTasks.count === 0 &&
-      staleTasks.count === 0 &&
-      staleProjects.count === 0;
-
     return NextResponse.json({
-      ok,
-      orphanedTasks,
-      ghostTasks,
-      duplicateTasks,
-      overdueNotCompleted: { count: overdueCount },
-      staleTestData: { tasks: staleTasks, projects: staleProjects },
+      ok: errors.length === 0 && staleProjects.count === 0,
+      staleTestData: { projects: staleProjects },
       ...(errors.length > 0 ? { errors } : {}),
     });
-  } catch (e) {
+  } catch (error) {
     return NextResponse.json(
       {
         ok: false,
-        orphanedTasks: { ok: false, count: 0 },
-        ghostTasks: { ok: false, count: 0 },
-        duplicateTasks: { ok: false, count: 0 },
-        overdueNotCompleted: { count: 0 },
-        staleTestData: {
-          tasks: { ok: false, count: 0 },
-          projects: { ok: false, count: 0 },
-        },
-        errors: [safeErrorMessage(e)],
+        staleTestData: { projects: { ok: false, count: 0 } },
+        errors: [safeErrorMessage(error)],
       },
       { status: 500 }
     );

@@ -27,12 +27,8 @@ const FULL_SYSTEM_DISPLAY_NAMES: Record<string, string> = {
   labor_workflow: "Labor Entry & Payment",
   estimates_crud: "Estimates CRUD",
   change_orders_crud: "Change Orders CRUD",
-  tasks_crud: "Tasks CRUD",
-  punch_list_crud: "Punch List CRUD",
-  schedule_crud: "Schedule CRUD",
   site_photos_crud: "Site Photos CRUD",
   inspection_log_crud: "Inspection Log CRUD",
-  material_catalog_crud: "Material Selections Data CRUD",
 };
 
 export type RunAllTestRow = {

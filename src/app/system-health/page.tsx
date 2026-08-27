@@ -78,11 +78,7 @@ type IntegrityCheck = { ok: boolean; count: number; ids?: string[] };
 
 type DataIntegrityResult = {
   ok: boolean;
-  orphanedTasks: IntegrityCheck;
-  ghostTasks: IntegrityCheck;
-  duplicateTasks: IntegrityCheck;
-  overdueNotCompleted: { count: number };
-  staleTestData: { tasks: IntegrityCheck; projects: IntegrityCheck };
+  staleTestData: { projects: IntegrityCheck };
   errors?: string[];
 };
 
@@ -1820,7 +1816,7 @@ function MetadataGrid({ rows }: { rows: Array<{ label: string; value: React.Reac
   );
 }
 
-type CleanupCategory = "orphaned" | "ghost" | "duplicate" | "stale";
+type CleanupCategory = "stale";
 
 export default function SystemHealthPage() {
   const [health, setHealth] = React.useState<SystemHealthResult | null>(null);
@@ -2096,13 +2092,7 @@ export default function SystemHealthPage() {
       code: "schema_drift_info",
     }))
   );
-  const orphanedTaskCount = integrityCount(integrity?.orphanedTasks);
-  const ghostTaskCount = integrityCount(integrity?.ghostTasks);
-  const duplicateTaskCount = integrityCount(integrity?.duplicateTasks);
-  const overdueNotCompletedCount = integrityCount(integrity?.overdueNotCompleted);
-  const staleTaskCount = integrityCount(integrity?.staleTestData?.tasks);
   const staleProjectCount = integrityCount(integrity?.staleTestData?.projects);
-  const staleTestDataCount = staleTaskCount + staleProjectCount;
   const cadenceSeconds = REFRESH_INTERVAL_MS / 1000;
   const displayCheckedAt = lastRefreshed ?? health?.checkedAt ?? summary?.checkedAt ?? null;
   const dataLayerChecks = summary
@@ -2186,87 +2176,15 @@ export default function SystemHealthPage() {
     : integrity
       ? [
           {
-            id: "orphaned-tasks",
-            name: "Orphaned tasks",
-            status: orphanedTaskCount === 0 ? "ok" : "warning",
-            message:
-              orphanedTaskCount > 0
-                ? `${orphanedTaskCount} task(s) with missing project`
-                : "No orphaned tasks detected.",
-            action:
-              orphanedTaskCount > 0 ? (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="min-h-[44px] border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] text-[var(--hh-warning)] hover:bg-[var(--hh-l3-hover)]"
-                  onClick={() => runCleanup("orphaned")}
-                  disabled={cleanupBusy !== null}
-                >
-                  {cleanupBusy === "orphaned" ? "Cleaning..." : "Clean up"}
-                </Button>
-              ) : undefined,
-          },
-          {
-            id: "ghost-tasks",
-            name: "Ghost tasks",
-            status: ghostTaskCount === 0 ? "ok" : "warning",
-            message:
-              ghostTaskCount > 0
-                ? `${ghostTaskCount} task(s) with no title`
-                : "No ghost tasks detected.",
-            action:
-              ghostTaskCount > 0 ? (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="min-h-[44px] border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] text-[var(--hh-warning)] hover:bg-[var(--hh-l3-hover)]"
-                  onClick={() => runCleanup("ghost")}
-                  disabled={cleanupBusy !== null}
-                >
-                  {cleanupBusy === "ghost" ? "Cleaning..." : "Clean up"}
-                </Button>
-              ) : undefined,
-          },
-          {
-            id: "duplicate-tasks",
-            name: "Duplicate tasks",
-            status: duplicateTaskCount === 0 ? "ok" : "warning",
-            message:
-              duplicateTaskCount > 0
-                ? `${duplicateTaskCount} duplicate(s) in same project`
-                : "No duplicate tasks detected.",
-            action:
-              duplicateTaskCount > 0 ? (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="min-h-[44px] border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] text-[var(--hh-warning)] hover:bg-[var(--hh-l3-hover)]"
-                  onClick={() => runCleanup("duplicate")}
-                  disabled={cleanupBusy !== null}
-                >
-                  {cleanupBusy === "duplicate" ? "Cleaning..." : "Clean up"}
-                </Button>
-              ) : undefined,
-          },
-          {
-            id: "overdue-not-completed",
-            name: "Overdue not completed",
-            status: overdueNotCompletedCount === 0 ? "ok" : "warning",
-            message:
-              overdueNotCompletedCount > 0
-                ? `${overdueNotCompletedCount} task(s) past due`
-                : "No overdue incomplete tasks detected.",
-          },
-          {
             id: "stale-test-data",
             name: "Stale test data",
-            status: staleTestDataCount === 0 ? "ok" : "warning",
+            status: staleProjectCount === 0 ? "ok" : "warning",
             message:
-              staleTestDataCount > 0
-                ? `${staleTaskCount} task(s), ${staleProjectCount} project(s)`
+              staleProjectCount > 0
+                ? `${staleProjectCount} project(s)`
                 : "No stale test data detected.",
             action:
-              staleTestDataCount > 0 ? (
+              staleProjectCount > 0 ? (
                 <Button
                   size="sm"
                   variant="outline"

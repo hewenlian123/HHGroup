@@ -1041,7 +1041,6 @@
   :where(
     .estimate-a4-page,
     .invoice-a4-page,
-    .material-selection-a4-page,
     .receipt,
     .receipt-print-shell,
     .payroll-statement-print-root

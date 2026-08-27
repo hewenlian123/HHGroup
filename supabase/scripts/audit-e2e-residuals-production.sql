@@ -128,10 +128,6 @@ WHERE sp.project_id = '11111111-1111-1111-1111-111111111111'::uuid
    OR sp.description ILIKE ANY (ARRAY['%PW%','%Playwright%','%Workflow Test%','%Body balance%','%E2E%','%Seed%'])
    OR sp.description LIKE '[[]E2E]%'
 
-UNION ALL SELECT 'project_tasks', count(*)::bigint
-FROM public.project_tasks pt
-WHERE pt.project_id = '11111111-1111-1111-1111-111111111111'::uuid
-
 UNION ALL SELECT 'projects', count(*)::bigint
 FROM public.projects p
 WHERE p.id = '11111111-1111-1111-1111-111111111111'::uuid

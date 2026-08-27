@@ -29,12 +29,8 @@ const TEST_NAMES: UiTestRow["name"][] = [
   "projects",
   "estimates",
   "change_orders",
-  "tasks",
-  "punch_list",
-  "schedule",
   "site_photos",
   "inspection_log",
-  "material_catalog",
   "labor_receipts",
 ];
 
@@ -56,7 +52,7 @@ function parseScriptOutput(stdout: string): ScriptResult {
   throw new Error("No JSON output found in script stdout");
 }
 
-/** Merge script results with the known test list so we always return all 5 rows. */
+/** Merge script results with the known test list so every expected check is represented. */
 function normaliseTests(result: ScriptResult): UiTestRow[] {
   const byName = new Map(result.tests.map((t) => [t.name, t]));
   return TEST_NAMES.map((name) => byName.get(name) ?? { name, ok: false, error: "Did not run" });

@@ -178,15 +178,14 @@ export async function openFirstProjectStatusSelect(page: Page): Promise<void> {
 
 /**
  * Desktop table: open the overflow / kebab on the first body row.
- * Supports `RowActionsMenu` (`Actions for …`, `Row actions`) and Tasks (`Task actions`),
- * plus icon-only triggers in the last cell (e.g. Customers).
+ * Supports `RowActionsMenu` (`Actions for …`, `Row actions`) plus icon-only triggers in the last
+ * cell (e.g. Customers).
  */
 export async function clickFirstRowOverflowMenu(page: Page): Promise<void> {
   const row = page.locator("tbody tr").first();
   await expect(row).toBeVisible({ timeout: 55_000 });
   const candidates = [
     row.getByRole("button", { name: /^Actions for / }),
-    row.getByRole("button", { name: "Task actions" }),
     row.getByRole("button", { name: "Row actions" }),
   ];
   for (const loc of candidates) {

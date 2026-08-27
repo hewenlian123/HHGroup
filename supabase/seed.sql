@@ -18,7 +18,7 @@
 --      AND table_name IN (
 --        'categories', 'subcontractors', 'projects',
 --        'workers', 'labor_entries', 'labor_workers',
---        'project_tasks', 'documents', 'site_photos',
+--        'documents', 'site_photos',
 --        'project_subcontractors'
 --      )
 --    ORDER BY table_name, ordinal_position;
@@ -51,7 +51,6 @@ DO $$
 DECLARE
   v_project constant uuid := '11111111-1111-1111-1111-111111111111'::uuid;
   v_worker constant uuid := '22222222-2222-2222-2222-222222222222'::uuid;
-  v_has_tasks_is_test boolean;
   v_has_modern_labor boolean;
   v_sep text;
   v_cols text;
@@ -86,11 +85,6 @@ BEGIN
   IF to_regclass('public.documents') IS NOT NULL
      AND pg_temp.hh_e2e_col('documents', 'project_id') THEN
     EXECUTE format('DELETE FROM public.documents WHERE project_id = %L::uuid', v_project);
-  END IF;
-
-  IF to_regclass('public.project_tasks') IS NOT NULL
-     AND pg_temp.hh_e2e_col('project_tasks', 'project_id') THEN
-    EXECUTE format('DELETE FROM public.project_tasks WHERE project_id = %L::uuid', v_project);
   END IF;
 
   IF to_regclass('public.project_subcontractors') IS NOT NULL
@@ -339,83 +333,6 @@ BEGIN
         '[E2E] Test Subcontractor'
       );
       EXECUTE v_sql;
-    END IF;
-  END IF;
-
-  -- ─── project_tasks ───
-  IF to_regclass('public.project_tasks') IS NOT NULL
-     AND pg_temp.hh_e2e_col('project_tasks', 'project_id')
-     AND pg_temp.hh_e2e_col('project_tasks', 'title')
-     AND pg_temp.hh_e2e_col('project_tasks', 'status')
-     AND pg_temp.hh_e2e_col('project_tasks', 'priority') THEN
-    SELECT EXISTS (
-      SELECT 1
-      FROM information_schema.columns
-      WHERE table_schema = 'public'
-        AND table_name = 'project_tasks'
-        AND column_name = 'is_test'
-    ) INTO v_has_tasks_is_test;
-
-    IF v_has_tasks_is_test AND pg_temp.hh_e2e_col('project_tasks', 'description') THEN
-      EXECUTE format(
-        $t$INSERT INTO public.project_tasks (project_id, title, description, status, priority, is_test) VALUES
-        (%L::uuid, %L, %L, %L, %L, true),
-        (%L::uuid, %L, %L, %L, %L, true)$t$,
-        v_project,
-        '[E2E] Task — setup',
-        '[E2E] Seeded for manual QA',
-        'todo',
-        'medium',
-        v_project,
-        '[E2E] Task — in progress',
-        'Seeded row',
-        'in_progress',
-        'high'
-      );
-    ELSIF v_has_tasks_is_test THEN
-      EXECUTE format(
-        $t$INSERT INTO public.project_tasks (project_id, title, status, priority, is_test) VALUES
-        (%L::uuid, %L, %L, %L, true),
-        (%L::uuid, %L, %L, %L, true)$t$,
-        v_project,
-        '[E2E] Task — setup',
-        'todo',
-        'medium',
-        v_project,
-        '[E2E] Task — in progress',
-        'in_progress',
-        'high'
-      );
-    ELSIF pg_temp.hh_e2e_col('project_tasks', 'description') THEN
-      EXECUTE format(
-        $t$INSERT INTO public.project_tasks (project_id, title, description, status, priority) VALUES
-        (%L::uuid, %L, %L, %L, %L),
-        (%L::uuid, %L, %L, %L, %L)$t$,
-        v_project,
-        '[E2E] Task — setup',
-        '[E2E] Seeded for manual QA',
-        'todo',
-        'medium',
-        v_project,
-        '[E2E] Task — in progress',
-        'Seeded row',
-        'in_progress',
-        'high'
-      );
-    ELSE
-      EXECUTE format(
-        $t$INSERT INTO public.project_tasks (project_id, title, status, priority) VALUES
-        (%L::uuid, %L, %L, %L),
-        (%L::uuid, %L, %L, %L)$t$,
-        v_project,
-        '[E2E] Task — setup',
-        'todo',
-        'medium',
-        v_project,
-        '[E2E] Task — in progress',
-        'in_progress',
-        'high'
-      );
     END IF;
   END IF;
 

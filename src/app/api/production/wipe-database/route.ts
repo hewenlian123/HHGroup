@@ -6,9 +6,8 @@
  *    labor_entries, worker_receipts, worker_reimbursements, worker_payments,
  *    invoice_payments, invoice_items, deposits, payments_received, invoices,
  *    site_photos, project_budget_items, project_change_order_items, project_change_order_attachments,
- *    project_change_orders, project_tasks, punch_list, project_material_selections,
- *    project_schedule, inspection_log, activity_logs, estimate_meta, estimate_items,
- *    estimate_categories, estimates, material_catalog, projects, workers.
+ *    project_change_orders, inspection_log, activity_logs, estimate_meta, estimate_items,
+ *    estimate_categories, estimates, projects, workers.
  * 2. Runs Full System Test and UI Tests to confirm the app works with an empty database.
  *
  * Returns: { ok, wipe: { deleted, errors }, systemTest, uiTests, summary }.
