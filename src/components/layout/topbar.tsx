@@ -32,8 +32,6 @@ const SEGMENT_LABELS: Record<string, string> = {
   project: "Project",
   estimates: "Estimates",
   estimate: "Estimate",
-  "site-photos": "Site Photos",
-  "inspection-log": "Inspection Log",
   financial: "Financial",
   finance: "Financial",
   people: "Directory",
@@ -58,7 +56,6 @@ const SEGMENT_LABELS: Record<string, string> = {
   payroll: "Payroll",
   "upload-receipt": "Upload Worker Receipt",
   customers: "Customers",
-  documents: "Documents",
   settings: "Settings",
   ar: "AR",
   vendors: "Vendors",
@@ -334,11 +331,6 @@ export function Topbar({
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
               <Link href="/estimates/new">New Estimate</Link>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuLabel className={TYPO.tableHeader}>Work</DropdownMenuLabel>
-            <DropdownMenuItem asChild>
-              <Link href="/site-photos/upload">Upload Site Photo</Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuLabel className={TYPO.tableHeader}>Finance</DropdownMenuLabel>

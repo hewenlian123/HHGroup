@@ -435,7 +435,6 @@ async function prepareDesktopSidebar(page: Page) {
         PROJECTS: true,
         FINANCIAL: true,
         PEOPLE: true,
-        DOCUMENTS: true,
         SETTINGS: true,
       })
     );
@@ -829,8 +828,6 @@ test("sidebar smoke loads every major module without crashes", async ({ page }, 
     { label: "Estimates", href: "/estimates" },
     { label: "Change Orders", href: "/change-orders" },
     { label: "Customers", href: "/customers" },
-    { label: "Site Photos", href: "/site-photos" },
-    { label: "Inspection Log", href: "/inspection-log" },
     { label: "Inbox draft", href: "/financial/inbox" },
     { label: "Owner dashboard", href: "/financial/owner" },
     { label: "Invoices", href: "/financial/invoices" },
@@ -851,7 +848,6 @@ test("sidebar smoke loads every major module without crashes", async ({ page }, 
     { label: "Worker Summary", href: "/workers/summary" },
     { label: "Vendors", href: "/financial/vendors" },
     { label: "Subcontractors", href: "/subcontractors" },
-    { label: "Documents", href: "/documents" },
     { label: "Settings", href: "/settings/company" },
   ];
 
@@ -1001,7 +997,6 @@ test("mobile primary actions stay reachable without blocking overlays", async ({
     { label: "Expenses mobile", href: "/financial/expenses", action: "Quick" },
     { label: "Labor mobile", href: "/labor", action: "Add entry" },
     { label: "Workers mobile", href: "/workers", action: "Add worker" },
-    { label: "Documents mobile", href: "/documents", action: "Upload" },
     { label: "Settings mobile", href: "/settings", action: "Company" },
   ];
 

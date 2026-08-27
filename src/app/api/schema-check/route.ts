@@ -11,8 +11,6 @@ const REQUIRED: { table: string; column?: string }[] = [
   { table: "workers" },
   { table: "estimates" },
   { table: "project_change_orders" },
-  { table: "site_photos" },
-  { table: "inspection_log" },
   { table: "worker_receipts" },
   { table: "worker_reimbursements" },
   { table: "expenses", column: "account_id" },

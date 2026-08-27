@@ -127,22 +127,6 @@ test.describe("Labor page buttons", () => {
   });
 });
 
-// ─── DOCUMENTS PAGE ───────────────────────────────────────────────────────────
-test.describe("Documents page buttons", () => {
-  test("Upload/New document button works", async ({ page }) => {
-    await page.goto("/documents");
-    await page.waitForLoadState("domcontentloaded");
-    const btn = page
-      .locator('button:has-text("Upload"), button:has-text("New Document"), button:has-text("Add")')
-      .first();
-    if (await btn.isVisible()) {
-      await btn.click();
-      await page.waitForTimeout(500);
-      await expect(page.locator("body")).not.toContainText("Application error");
-    }
-  });
-});
-
 // ─── VENDORS PAGE ─────────────────────────────────────────────────────────────
 test.describe("Vendors page buttons", () => {
   test("Add vendor button works", async ({ page }) => {

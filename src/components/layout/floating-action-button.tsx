@@ -2,15 +2,7 @@
 
 import * as React from "react";
 import { usePathname, useRouter } from "next/navigation";
-import {
-  Plus,
-  Camera,
-  Receipt,
-  Hammer,
-  FilePen,
-  DollarSign,
-  FolderKanban,
-} from "lucide-react";
+import { Plus, Receipt, Hammer, FilePen, DollarSign, FolderKanban } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { useLaborAddEntry } from "@/contexts/labor-add-entry-context";
@@ -24,10 +16,7 @@ import { UPLOAD_RECEIPT_ACTION } from "@/lib/navigation/actions";
  * Opens bottom sheet menu with quick actions.
  * Desktop layout unchanged (hidden lg:).
  */
-const LINK_ACTIONS_TOP = [
-  { label: "Upload Photo", href: "/site-photos/upload", icon: Camera },
-  { ...UPLOAD_RECEIPT_ACTION, icon: Receipt },
-] as const;
+const LINK_ACTIONS_TOP = [{ ...UPLOAD_RECEIPT_ACTION, icon: Receipt }] as const;
 
 const LINK_ACTIONS_REST = [
   { label: "New Project", href: "/projects/new", icon: FolderKanban },

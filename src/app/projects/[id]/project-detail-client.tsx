@@ -474,7 +474,7 @@ export function ProjectDetailClient({ id }: { id: string }) {
           <TabsTrigger value="expenses">Expenses</TabsTrigger>
           <TabsTrigger value="bills">Bills</TabsTrigger>
           <TabsTrigger value="timesheets">Timesheets</TabsTrigger>
-          <TabsTrigger value="documents">Documents</TabsTrigger>
+          <TabsTrigger value="documents">Project Files</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview">
@@ -622,7 +622,7 @@ export function ProjectDetailClient({ id }: { id: string }) {
         <TabsContent value="documents">
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-hh-body">Documents</CardTitle>
+              <CardTitle className="text-hh-body">Project Files</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-hh-body text-[var(--hh-text-secondary)]">No data yet.</p>

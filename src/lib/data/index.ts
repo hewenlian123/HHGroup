@@ -27,8 +27,6 @@ import * as subcontractDeductionsDb from "../subcontract-deductions-db";
 import * as subcontractPaymentScheduleDb from "../subcontract-payment-schedule-db";
 import * as documentsDb from "../documents-db";
 import * as activityLogsDb from "../activity-logs-db";
-import * as sitePhotosDb from "../site-photos-db";
-import * as inspectionLogDb from "../inspection-log-db";
 import * as projectCloseoutDb from "../project-closeout-db";
 import * as apBillsDb from "../ap-bills-db";
 import { getCommissionCostByProject } from "../commission-db";
@@ -160,21 +158,8 @@ export type {
   SubcontractPaymentScheduleRow,
   SubcontractScheduleStatus,
 } from "../subcontract-ap-linkage";
-export type {
-  DocumentRow,
-  DocumentWithProject,
-  DocumentFilters,
-  DocumentDraft,
-  DocumentFileType,
-} from "../documents-db";
+export type { DocumentRow, DocumentDraft, DocumentFileType } from "../documents-db";
 export type { ActivityLog } from "../activity-logs-db";
-export type { SitePhoto, SitePhotoWithProject, SitePhotoDraft } from "../site-photos-db";
-export type {
-  InspectionLogEntry,
-  InspectionLogEntryWithProject,
-  InspectionLogDraft,
-  InspectionLogStatus,
-} from "../inspection-log-db";
 export type { CloseoutWarranty, CloseoutCompletion } from "../project-closeout-db";
 export type {
   ProjectCommission,
@@ -922,15 +907,6 @@ export async function approveLaborEntries(entryIds: string[], approvedBy?: strin
 export async function lockLaborEntries(entryIds: string[], lockedBy?: string | null) {
   return dailyLaborDb.lockLaborEntries(entryIds, lockedBy);
 }
-export async function getDocuments(filters: import("../documents-db").DocumentFilters = {}) {
-  return documentsDb.getDocuments(filters);
-}
-export async function getDocumentsPaged(
-  input: Parameters<typeof documentsDb.getDocumentsPaged>[0],
-  explicitClient?: SupabaseClient
-) {
-  return documentsDb.getDocumentsPaged(input, explicitClient);
-}
 export async function getDocumentsByProject(projectId: string) {
   return documentsDb.getDocumentsByProject(projectId);
 }
@@ -952,44 +928,6 @@ export async function getActivityLogsByProject(projectId: string, limit?: number
 }
 export async function insertActivityLog(projectId: string, type: string, description: string) {
   return activityLogsDb.insertActivityLog(projectId, type, description);
-}
-export async function getSitePhotos(projectId?: string | null) {
-  return sitePhotosDb.getSitePhotos(projectId);
-}
-export async function getSitePhotoById(id: string) {
-  return sitePhotosDb.getSitePhotoById(id);
-}
-export async function createSitePhoto(draft: import("../site-photos-db").SitePhotoDraft) {
-  return sitePhotosDb.createSitePhoto(draft);
-}
-export async function updateSitePhoto(
-  id: string,
-  patch: Parameters<typeof sitePhotosDb.updateSitePhoto>[1]
-) {
-  return sitePhotosDb.updateSitePhoto(id, patch);
-}
-export async function deleteSitePhoto(id: string) {
-  return sitePhotosDb.deleteSitePhoto(id);
-}
-export async function getInspectionLogs() {
-  return inspectionLogDb.getInspectionLogs();
-}
-export async function getInspectionLogById(id: string) {
-  return inspectionLogDb.getInspectionLogById(id);
-}
-export async function createInspectionLog(
-  draft: import("../inspection-log-db").InspectionLogDraft
-) {
-  return inspectionLogDb.createInspectionLog(draft);
-}
-export async function updateInspectionLog(
-  id: string,
-  patch: Parameters<typeof inspectionLogDb.updateInspectionLog>[1]
-) {
-  return inspectionLogDb.updateInspectionLog(id, patch);
-}
-export async function deleteInspectionLog(id: string) {
-  return inspectionLogDb.deleteInspectionLog(id);
 }
 export async function getCloseoutWarranty(
   projectId: string,

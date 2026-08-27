@@ -18,7 +18,7 @@
 --      AND table_name IN (
 --        'categories', 'subcontractors', 'projects',
 --        'workers', 'labor_entries', 'labor_workers',
---        'documents', 'site_photos',
+--        'documents',
 --        'project_subcontractors'
 --      )
 --    ORDER BY table_name, ordinal_position;
@@ -75,11 +75,6 @@ BEGIN
     ELSE
       RAISE NOTICE 'labor_entries: tear-down skipped (no project_id/worker_id columns).';
     END IF;
-  END IF;
-
-  IF to_regclass('public.site_photos') IS NOT NULL
-     AND pg_temp.hh_e2e_col('site_photos', 'project_id') THEN
-    EXECUTE format('DELETE FROM public.site_photos WHERE project_id = %L::uuid', v_project);
   END IF;
 
   IF to_regclass('public.documents') IS NOT NULL
@@ -383,36 +378,6 @@ BEGIN
       v_vals := v_vals || ', ' || quote_literal('[E2E] SEED');
     END IF;
     EXECUTE format('INSERT INTO public.documents (%s) VALUES (%s)', v_cols, v_vals);
-  END IF;
-
-  -- ─── site_photos ───
-  IF to_regclass('public.site_photos') IS NOT NULL
-     AND pg_temp.hh_e2e_col('site_photos', 'project_id')
-     AND pg_temp.hh_e2e_col('site_photos', 'photo_url') THEN
-    v_sep := '';
-    v_cols := '';
-    v_vals := '';
-    v_cols := quote_ident('project_id');
-    v_vals := format('%L::uuid', v_project);
-    v_sep := ', ';
-    v_cols := v_cols || v_sep || quote_ident('photo_url');
-    v_vals := v_vals || v_sep || quote_literal('https://picsum.photos/seed/hh-e2e/800/600');
-    v_sep := ', ';
-    IF pg_temp.hh_e2e_col('site_photos', 'description') THEN
-      v_cols := v_cols || v_sep || quote_ident('description');
-      v_vals := v_vals || v_sep || quote_literal('[E2E] Seeded site photo');
-      v_sep := ', ';
-    END IF;
-    IF pg_temp.hh_e2e_col('site_photos', 'tags') THEN
-      v_cols := v_cols || v_sep || quote_ident('tags');
-      v_vals := v_vals || v_sep || quote_literal('e2e,seed');
-      v_sep := ', ';
-    END IF;
-    IF pg_temp.hh_e2e_col('site_photos', 'uploaded_by') THEN
-      v_cols := v_cols || v_sep || quote_ident('uploaded_by');
-      v_vals := v_vals || v_sep || quote_literal('e2e_seed');
-    END IF;
-    EXECUTE format('INSERT INTO public.site_photos (%s) VALUES (%s)', v_cols, v_vals);
   END IF;
 
   -- ─── labor_entries ───

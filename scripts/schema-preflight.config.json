@@ -1,9 +1,7 @@
 {
   "rlsMode": "loose",
   "criticalTables": [
-    { "table": "inspection_logs", "module": "operations" },
-    { "table": "site_photos", "module": "operations" },
-    { "table": "documents", "module": "docs" },
+    { "table": "documents", "module": "shared_project_files" },
     { "table": "project_change_orders", "module": "change_orders" },
     { "table": "project_change_order_items", "module": "change_orders" },
     { "table": "project_change_order_attachments", "module": "change_orders" },

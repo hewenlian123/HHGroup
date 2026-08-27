@@ -368,8 +368,6 @@ type TabKey =
   | "documents"
   | "cost"
   | "people"
-  | "photos"
-  | "inspections"
   | "docs"
   | "budget"
   | "expenses"
@@ -381,23 +379,13 @@ type TabKey =
   | "closeout"
   | "commission";
 
-type WorkspaceTabKey =
-  | "overview"
-  | "financial"
-  | "people"
-  | "documents"
-  | "photos"
-  | "inspections"
-  | "activity"
-  | "closeout";
+type WorkspaceTabKey = "overview" | "financial" | "people" | "documents" | "activity" | "closeout";
 
 const PROJECT_WORKSPACE_TABS: Array<{ key: WorkspaceTabKey; label: string }> = [
   { key: "overview", label: "Overview" },
   { key: "financial", label: "Financial" },
   { key: "people", label: "People" },
-  { key: "documents", label: "Documents" },
-  { key: "photos", label: "Photos" },
-  { key: "inspections", label: "Inspections" },
+  { key: "documents", label: "Project Files" },
   { key: "activity", label: "Activity" },
   { key: "closeout", label: "Closeout" },
 ];
@@ -436,12 +424,6 @@ function normalizeWorkspaceTab(tab: TabKey): WorkspaceTabKey {
   }
   if (tab === "people") {
     return "people";
-  }
-  if (tab === "photos") {
-    return "photos";
-  }
-  if (tab === "inspections") {
-    return "inspections";
   }
   if (tab === "materials") {
     return "materials";
@@ -1733,74 +1715,6 @@ export function ProjectDetailTabsClient({
               <ExecutiveCard title="Docs">
                 <ProjectDocumentsTab projectId={projectId} documents={documents} />
               </ExecutiveCard>
-            </TabsContent>
-
-            <TabsContent value="photos" className={TAB_PANEL}>
-              <SectionHeader
-                label="Photos"
-                className="text-hh-status tracking-normal text-[var(--hh-text-secondary)] font-medium"
-                action={
-                  <Link
-                    href={`/site-photos?project_id=${encodeURIComponent(projectId)}`}
-                    className="text-hh-metadata font-medium text-[var(--hh-action-primary)] underline-offset-4 hover:underline"
-                  >
-                    Open site photos
-                  </Link>
-                }
-              />
-              <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                <Link
-                  href={`/site-photos?project_id=${encodeURIComponent(projectId)}`}
-                  className="rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-3 text-hh-body font-medium text-[var(--hh-text-primary)] transition-colors hover:border-[var(--hh-action-primary)]"
-                >
-                  Site Photos
-                  <span className="mt-1 block text-hh-metadata font-normal text-[var(--hh-text-secondary)]">
-                    Project photo stream
-                  </span>
-                </Link>
-                <Link
-                  href="/site-photos/upload"
-                  className="rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-3 text-hh-body font-medium text-[var(--hh-text-primary)] transition-colors hover:border-[var(--hh-action-primary)]"
-                >
-                  Upload Photos
-                  <span className="mt-1 block text-hh-metadata font-normal text-[var(--hh-text-secondary)]">
-                    Field photo intake
-                  </span>
-                </Link>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="inspections" className={TAB_PANEL}>
-              <SectionHeader
-                label="Inspections"
-                className="text-hh-status tracking-normal text-[var(--hh-text-secondary)] font-medium"
-                action={
-                  <Link
-                    href="/inspection-log"
-                    className="text-hh-metadata font-medium text-[var(--hh-action-primary)] underline-offset-4 hover:underline"
-                  >
-                    Open inspection log
-                  </Link>
-                }
-              />
-              <div className="mt-3 rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-3">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <p className="text-hh-body font-medium text-[var(--hh-text-primary)]">
-                      Inspection Log
-                    </p>
-                    <p className="mt-1 text-hh-metadata text-[var(--hh-text-secondary)]">
-                      Field inspections and punch follow-up
-                    </p>
-                  </div>
-                  <Link
-                    href="/inspection-log"
-                    className="min-h-9 rounded-hh-standard border border-[var(--hh-border)] px-3 py-2 text-hh-metadata font-medium text-[var(--hh-text-primary)] transition-colors hover:border-[var(--hh-action-primary)]"
-                  >
-                    Open
-                  </Link>
-                </div>
-              </div>
             </TabsContent>
 
             <TabsContent value="expenses" className={TAB_PANEL}>

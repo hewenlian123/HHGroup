@@ -122,12 +122,6 @@ WHERE d.project_id = '11111111-1111-1111-1111-111111111111'::uuid
    OR d.file_url ILIKE ANY (ARRAY['%PW%','%Playwright%','%Workflow Test%','%Body balance%','%E2E%','%Seed%'])
    OR d.file_url LIKE '[[]E2E]%'
 
-UNION ALL SELECT 'site_photos', count(*)::bigint
-FROM public.site_photos sp
-WHERE sp.project_id = '11111111-1111-1111-1111-111111111111'::uuid
-   OR sp.description ILIKE ANY (ARRAY['%PW%','%Playwright%','%Workflow Test%','%Body balance%','%E2E%','%Seed%'])
-   OR sp.description LIKE '[[]E2E]%'
-
 UNION ALL SELECT 'projects', count(*)::bigint
 FROM public.projects p
 WHERE p.id = '11111111-1111-1111-1111-111111111111'::uuid

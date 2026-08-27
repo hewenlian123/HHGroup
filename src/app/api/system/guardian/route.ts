@@ -274,7 +274,9 @@ export async function GET(request: Request): Promise<NextResponse<GuardianResult
       c
         ? checkTable(c, "worker_receipts", "Receipt Uploads")
         : Promise.resolve(notConfigured("Receipt Uploads")),
-      c ? checkTable(c, "documents", "Documents") : Promise.resolve(notConfigured("Documents")),
+      c
+        ? checkTable(c, "documents", "Project Files")
+        : Promise.resolve(notConfigured("Project Files")),
       c
         ? checkTable(c, "activity_logs", "Activity Logs")
         : Promise.resolve(notConfigured("Activity Logs")),

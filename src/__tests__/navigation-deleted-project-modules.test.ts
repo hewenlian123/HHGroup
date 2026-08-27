@@ -9,7 +9,20 @@ import {
 } from "@/lib/navigation/ia";
 import { QUICK_ACTION_ROUTES } from "@/lib/route-prefetch";
 
-const DELETED_MODULE_ROOTS = ["/tasks", "/punch-list", "/schedule", "/materials"] as const;
+const DELETED_MODULE_ROOTS = [
+  "/tasks",
+  "/punch-list",
+  "/schedule",
+  "/materials",
+  "/documents",
+  "/projects/documents",
+  "/site-photos",
+  "/inspection-log",
+] as const;
+
+const DELETED_STANDALONE_MODULE_ROOTS = DELETED_MODULE_ROOTS.filter(
+  (root) => root !== "/projects/documents"
+);
 
 function belongsToDeletedModule(href: string): boolean {
   const path = href.split("?")[0].split("#")[0];
@@ -34,9 +47,15 @@ describe("deleted project modules navigation contract", () => {
     expect(navHrefs.some(belongsToDeletedModule)).toBe(false);
     expect(HH_PROJECT_OS_COMMAND_ITEMS.some((item) => belongsToDeletedModule(item.href))).toBe(false);
     expect(QUICK_ACTION_ROUTES.some(belongsToDeletedModule)).toBe(false);
-    for (const root of DELETED_MODULE_ROOTS) {
+    for (const root of DELETED_STANDALONE_MODULE_ROOTS) {
       expect(getHhProjectOsMobileActiveHref(root)).toBeNull();
       expect(shouldHideFloatingQuickActionFab(root)).toBe(false);
     }
+  });
+
+  it("removes the retired Documents section completely", () => {
+    expect(HH_PROJECT_OS_NAV_SECTIONS.map((section) => String(section.key))).not.toContain(
+      "DOCUMENTS"
+    );
   });
 });

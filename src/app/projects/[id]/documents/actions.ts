@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getSupabaseClient } from "@/lib/supabase";
-import { insertDocument } from "@/lib/data";
+import { deleteDocument, getDocumentById, getDocumentSignedUrl, insertDocument } from "@/lib/data";
 import type { DocumentFileType } from "@/lib/documents-db";
 import { DOCUMENT_FILE_TYPES } from "@/lib/data";
 
@@ -21,6 +21,45 @@ const ALLOWED_MIME = new Set<string>([
 
 function sanitizeFileName(name: string): string {
   return name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 200) || "file";
+}
+
+export async function getProjectDocumentPreviewUrl(
+  projectId: string,
+  documentId: string
+): Promise<{ url: string | null; error?: string }> {
+  const doc = await getDocumentById(documentId);
+  if (!doc || doc.project_id !== projectId) {
+    return { url: null, error: "Project file not found." };
+  }
+  return getDocumentSignedUrl(doc.file_path, 120);
+}
+
+export async function getProjectDocumentDownloadUrl(
+  projectId: string,
+  documentId: string
+): Promise<{ url: string | null; error?: string }> {
+  return getProjectDocumentPreviewUrl(projectId, documentId);
+}
+
+export async function deleteProjectDocument(
+  projectId: string,
+  documentId: string
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    if (!projectId || !documentId) return { ok: false, error: "Missing project file id." };
+    const doc = await getDocumentById(documentId);
+    if (!doc || doc.project_id !== projectId) {
+      return { ok: false, error: "Project file not found." };
+    }
+    await deleteDocument(documentId, true);
+    revalidatePath(`/projects/${projectId}`);
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Failed to delete project file.",
+    };
+  }
 }
 
 export async function uploadProjectDocument(

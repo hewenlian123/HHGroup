@@ -5,15 +5,7 @@ import {
   SUPABASE_MISSING_SERVER_ADMIN_ENV_MESSAGE,
   getServerSupabaseAdmin,
 } from "@/lib/supabase-server";
-import {
-  getProjects,
-  createProject,
-  getWorkers,
-  createWorker,
-  getSitePhotos,
-  getInspectionLogs,
-  createInspectionLog,
-} from "@/lib/data";
+import { getProjects, createProject, getWorkers, createWorker } from "@/lib/data";
 
 const DEMO_PROJECTS: Array<{
   name: string;
@@ -47,22 +39,12 @@ const DEMO_WORKERS: Array<{ name: string; trade: string; dailyRate: number }> = 
   { name: "Mike Chen", trade: "Labor", dailyRate: 180 },
 ];
 
-const INSPECTION_TEMPLATES: Array<{ type: string; status: "passed" | "failed" | "pending" }> = [
-  { type: "Electrical inspection", status: "passed" },
-  { type: "Framing inspection", status: "passed" },
-  { type: "Plumbing inspection", status: "failed" },
-  { type: "Safety inspection", status: "passed" },
-  { type: "Final inspection", status: "pending" },
-];
-
 /**
  * POST /api/seed/operations
  * Development seed for operations module.
  *
  * - Creates 3 demo projects if fewer than 3 exist (does not touch existing ones).
  * - Inserts workers only if workers table is empty.
- * - Seeds site photos and inspection log only when their respective tables are empty.
- *
  * Does NOT overwrite existing data.
  */
 export async function POST(request: Request) {
@@ -129,50 +111,13 @@ export async function POST(request: Request) {
       }
     }
 
-    const [sitePhotos, inspections] = await Promise.all([
-      getSitePhotos(null).catch(() => []),
-      getInspectionLogs().catch(() => []),
-    ]);
-
     const seeded = {
       projects: false,
       workers: workersSeeded,
-      sitePhotos: false,
-      inspectionLog: false,
     };
 
     if ((projects?.length ?? 0) >= 3) {
       seeded.projects = true;
-    }
-
-    // 4) Site photos — seeding disabled; demo paths (site-photos/demo-*.jpg) have no files in storage and would 404.
-    // When the list is empty, the UI shows "No photos yet. Upload a photo to get started."
-    if (sitePhotos.length === 0) {
-      seeded.sitePhotos = false;
-    }
-
-    // 5) Inspection log — only if empty.
-    if (inspections.length === 0) {
-      try {
-        const base = new Date();
-        for (let i = 0; i < INSPECTION_TEMPLATES.length; i++) {
-          const t = INSPECTION_TEMPLATES[i];
-          const d = new Date(base);
-          d.setDate(d.getDate() - (INSPECTION_TEMPLATES.length - i));
-          await createInspectionLog({
-            project_id: projectId,
-            inspection_type: t.type,
-            inspector: "Inspector " + (i + 1),
-            inspection_date: d.toISOString().slice(0, 10),
-            status: t.status,
-            notes: null,
-          });
-        }
-        seeded.inspectionLog = true;
-      } catch {
-        // Ignore inspection seed failures in dev.
-        seeded.inspectionLog = false;
-      }
     }
 
     return NextResponse.json({

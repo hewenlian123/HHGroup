@@ -101,11 +101,9 @@ const FK_TABLE_TO_COUNT_KEY: Record<string, string> = {
   subcontracts: "subcontracts",
   project_change_orders: "project_change_orders",
   worker_receipts: "worker_receipts",
-  site_photos: "site_photos",
   activity_logs: "activity_logs",
   estimates: "estimates",
   commitments: "commitments",
-  inspection_log: "inspection_log",
   subcontract_bills: "subcontract_bills",
   documents: "documents",
   deposits: "deposits",
@@ -538,7 +536,6 @@ const FORCE_DELETE_ORDER: { table: string; column?: string; orColumns?: [string,
   { table: "invoices" },
   { table: "bills" },
   { table: "activity_logs" },
-  { table: "site_photos" },
   { table: "commitments" },
   { table: "subcontract_bills" },
   { table: "subcontracts" },
@@ -546,7 +543,6 @@ const FORCE_DELETE_ORDER: { table: string; column?: string; orColumns?: [string,
   { table: "commissions" },
   { table: "warranties" },
   { table: "completion_certificates" },
-  { table: "inspection_log" },
   { table: "documents" },
   { table: "deposits" },
   { table: "payments_received" },
@@ -598,7 +594,6 @@ export type ProjectUsageCounts = {
   subcontracts: number;
   project_change_orders: number;
   worker_receipts: number;
-  site_photos: number;
   materials: number;
 };
 
@@ -643,7 +638,6 @@ export async function getProjectUsageCountsWithClient(
     subcontracts,
     project_change_orders,
     worker_receipts,
-    site_photos,
   ] = await Promise.all([
     laborOr(),
     safeCount("expense_lines", "project_id", pid),
@@ -652,7 +646,6 @@ export async function getProjectUsageCountsWithClient(
     safeCount("subcontracts", "project_id", pid),
     safeCount("project_change_orders", "project_id", pid),
     safeCount("worker_receipts", "project_id", pid),
-    safeCount("site_photos", "project_id", pid),
   ]);
 
   return {
@@ -663,7 +656,6 @@ export async function getProjectUsageCountsWithClient(
     subcontracts,
     project_change_orders,
     worker_receipts,
-    site_photos,
   };
 }
 

@@ -114,30 +114,7 @@ export async function cleanupTestData(c: SupabaseClient): Promise<CleanupResult>
     errors.push(`Resolve test ids: ${e instanceof Error ? e.message : String(e)}`);
   }
 
-  // 4. site_photos — by description pattern
-  await tryDelete("site_photos", async () => {
-    const ids: string[] = [];
-    for (const pattern of TEST_DATA_PATTERNS) {
-      const { data } = await c
-        .from("site_photos")
-        .select("id")
-        .ilike("description", `%${pattern}%`);
-      ids.push(...(data ?? []).map((r: { id: string }) => r.id));
-    }
-    return uniqueStrings(ids);
-  });
-
-  // 5. inspection_log — by notes pattern
-  await tryDelete("inspection_log", async () => {
-    const ids: string[] = [];
-    for (const pattern of TEST_DATA_PATTERNS) {
-      const { data } = await c.from("inspection_log").select("id").ilike("notes", `%${pattern}%`);
-      ids.push(...(data ?? []).map((r: { id: string }) => r.id));
-    }
-    return uniqueStrings(ids);
-  });
-
-  // 6. project_change_orders — by title pattern (or similar column if different)
+  // Project change orders — by title pattern (or similar column if different)
   await tryDelete("project_change_orders", async () => {
     const ids: string[] = [];
     for (const pattern of TEST_DATA_PATTERNS) {

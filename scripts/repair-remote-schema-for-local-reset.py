@@ -6,7 +6,7 @@ tables/policies/indexes only exist on full production dumps.
 Transforms (idempotent enough for re-run on same file):
   - drop policy on public.* -> DROP POLICY IF EXISTS
   - alter table "public".* -> ALTER TABLE IF EXISTS "public".*
-  - guard optional btree indexes (inspection_log + batch)
+  - guard optional btree indexes
   - wrap each public-table policy group in DO $$ IF to_regclass(...) $$
 """
 from __future__ import annotations
@@ -17,22 +17,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 MIGRATION = ROOT / "supabase/migrations/20260325075614_remote_schema.sql"
 
-INDEX_BLOCK_OLD = """CREATE INDEX idx_inspection_log_date ON public.inspection_log USING btree (inspection_date);
-
-CREATE INDEX idx_inspection_log_project ON public.inspection_log USING btree (project_id);
-
-CREATE INDEX idx_invoices_project ON public.invoices USING btree (project_id);
+INDEX_BLOCK_OLD = """CREATE INDEX idx_invoices_project ON public.invoices USING btree (project_id);
 
 CREATE INDEX idx_invoices_status ON public.invoices USING btree (status);
 
 CREATE INDEX idx_labor_worker ON public.labor_entries USING btree (worker_id);
 
-
-
-
-
 CREATE INDEX idx_projects_created ON public.projects USING btree (created_at DESC);
-
 
 CREATE INDEX idx_worker_receipts_date ON public.worker_receipts USING btree (receipt_date);
 
@@ -40,14 +31,6 @@ CREATE INDEX idx_worker_receipts_reimbursement_id ON public.worker_receipts USIN
 """
 
 INDEX_BLOCK_NEW = """do $$
-begin
-  if to_regclass('public.inspection_log') is not null then
-    create index if not exists idx_inspection_log_date on public.inspection_log using btree (inspection_date);
-    create index if not exists idx_inspection_log_project on public.inspection_log using btree (project_id);
-  end if;
-end $$;
-
-do $$
 begin
   if to_regclass('public.invoices') is not null then
     create index if not exists idx_invoices_project on public.invoices using btree (project_id);

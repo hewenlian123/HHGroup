@@ -19,8 +19,6 @@ const TEST_LABELS: Record<string, string> = {
   projects: "Projects",
   estimates: "Estimates",
   change_orders: "Change Orders",
-  site_photos: "Site Photos",
-  inspection_log: "Inspection Log",
   labor_receipts: "Labor Receipts",
 };
 

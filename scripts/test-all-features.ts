@@ -50,8 +50,6 @@ async function run(): Promise<void> {
 
   let projectId: string;
   let workerId: string;
-  let sitePhotoId: string;
-  let inspectionId: string;
   let expenseId: string;
   let invoiceId: string;
   let reimbursementId: string;
@@ -302,58 +300,6 @@ async function run(): Promise<void> {
         detail: "SKIP (schema: payments_received.project_id missing)",
       });
     else results.push({ module: "payments", pass: false, detail: msg });
-  }
-
-  // —— Site photos ——
-  try {
-    if (!projectId) throw new Error("No projectId");
-    const created = await data.createSitePhoto({
-      project_id: projectId,
-      photo_url: "https://example.com/photo.jpg",
-    });
-    sitePhotoId = created.id;
-    const read = await data.getSitePhotoById(sitePhotoId);
-    if (!read || read.photo_url !== "https://example.com/photo.jpg")
-      throw new Error("Read back failed");
-    await data.updateSitePhoto(sitePhotoId, { description: "Updated" });
-    const afterUpdate = await data.getSitePhotoById(sitePhotoId);
-    if (!afterUpdate || afterUpdate.description !== "Updated") throw new Error("Update failed");
-    await data.deleteSitePhoto(sitePhotoId);
-    const afterDelete = await data.getSitePhotoById(sitePhotoId);
-    if (afterDelete) throw new Error("Delete failed");
-    results.push({ module: "site_photos", pass: true });
-  } catch (e) {
-    results.push({
-      module: "site_photos",
-      pass: false,
-      detail: String(e instanceof Error ? e.message : e),
-    });
-  }
-
-  // —— Inspection log ——
-  try {
-    if (!projectId) throw new Error("No projectId");
-    const created = await data.createInspectionLog({
-      project_id: projectId,
-      inspection_type: "Test Type",
-    });
-    inspectionId = created.id;
-    const read = await data.getInspectionLogById(inspectionId);
-    if (!read || read.inspection_type !== "Test Type") throw new Error("Read back failed");
-    await data.updateInspectionLog(inspectionId, { inspection_type: "Test Type Updated" });
-    const afterUpdate = await data.getInspectionLogById(inspectionId);
-    if (!afterUpdate || afterUpdate.inspection_type !== "Test Type Updated")
-      throw new Error("Update failed");
-    await data.deleteInspectionLog(inspectionId);
-    const afterDelete = await data.getInspectionLogById(inspectionId);
-    if (afterDelete) throw new Error("Delete failed");
-    results.push({ module: "inspection_log", pass: true });
-  } catch (e) {
-    results.push({
-      module: "inspection_log",
-      pass: false,
-      detail: String(e instanceof Error ? e.message : e),
-    });
   }
 
   // —— Worker receipts (using worker-receipts-db; no deleteWorkerReceipt in data/index) ——

@@ -17,8 +17,6 @@ export function shouldHideFloatingQuickActionFab(pathname: string | null | undef
     "/customers",
     "/estimates",
     "/change-orders",
-    "/site-photos",
-    "/inspection-log",
     "/labor",
     "/financial/invoices",
     "/financial/payments",
@@ -29,7 +27,6 @@ export function shouldHideFloatingQuickActionFab(pathname: string | null | undef
     "/financial/commissions",
     "/subcontractors",
     "/settings/company",
-    "/documents",
   ]);
 
   if (exact.has(p)) return true;

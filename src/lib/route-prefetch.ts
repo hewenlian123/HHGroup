@@ -7,7 +7,6 @@ import { UPLOAD_RECEIPT_ACTION } from "@/lib/navigation/actions";
 export const BOTTOM_NAV_ROUTES = HH_PROJECT_OS_MOBILE_NAV_ITEMS.map((item) => item.href);
 
 export const QUICK_ACTION_ROUTES = [
-  "/site-photos/upload",
   UPLOAD_RECEIPT_ACTION.href,
   "/projects/new",
   "/change-orders",

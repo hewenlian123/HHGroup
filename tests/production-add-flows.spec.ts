@@ -20,15 +20,6 @@ const flows: Flow[] = [
   },
   { name: "Customers: add customer", path: "/customers", submitText: /create|save|add/i },
 
-  // OPERATIONS
-  {
-    name: "Site Photos: upload photo",
-    path: "/site-photos/upload",
-    submitText: /upload|save|add/i,
-  },
-  { name: "Inspection Log: add record", path: "/inspection-log", submitText: /create|save|add/i },
-
-
   // FINANCE
   {
     name: "Invoices: create invoice",

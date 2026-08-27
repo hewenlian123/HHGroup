@@ -52,8 +52,6 @@ const strictRouteFiles = [
   "src/app/api/labor/workers/[id]/financial-summary/route.ts",
   "src/app/api/labor/workers/[id]/rate-history/route.ts",
   "src/app/api/labor/workers/[id]/rate-history/apply-unpaid/route.ts",
-  "src/app/api/operations/site-photos/[id]/route.ts",
-  "src/app/api/operations/site-photos/upload/route.ts",
   "src/app/api/receipt/[id]/pdf/route.ts",
   "src/app/api/quick-expense/upload-attachment/route.ts",
   "src/app/api/projects/[id]/commissions/route.ts",

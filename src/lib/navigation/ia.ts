@@ -6,7 +6,6 @@ export type HhProjectOsSectionKey =
   | "FINANCIAL"
   | "PEOPLE"
   | "REPORTS"
-  | "DOCUMENTS"
   | "SETTINGS";
 
 export type HhProjectOsIconKey =
@@ -23,17 +22,14 @@ export type HhProjectOsIconKey =
   | "customers"
   | "dashboard"
   | "deposits"
-  | "documents"
   | "estimates"
   | "expenses"
   | "financial"
-  | "inspection"
   | "invoice"
   | "logs"
   | "metrics"
   | "payments"
   | "payroll"
-  | "photos"
   | "preferences"
   | "projects"
   | "receipts"
@@ -92,7 +88,6 @@ export const HH_PROJECT_OS_SECTION_KEYS = [
   "FINANCIAL",
   "PEOPLE",
   "REPORTS",
-  "DOCUMENTS",
   "SETTINGS",
 ] as const satisfies readonly HhProjectOsSectionKey[];
 
@@ -102,7 +97,6 @@ export const HH_PROJECT_OS_DEFAULT_OPEN_SECTIONS: Record<HhProjectOsSectionKey, 
   FINANCIAL: true,
   PEOPLE: true,
   REPORTS: true,
-  DOCUMENTS: true,
   SETTINGS: true,
 };
 
@@ -222,15 +216,6 @@ export const HH_PROJECT_OS_NAV_SECTIONS = [
     ],
   },
   {
-    key: "DOCUMENTS",
-    label: "DOCUMENTS",
-    entries: [
-      { href: "/documents", label: "Documents", icon: "documents" },
-      { href: "/site-photos", label: "Site Photos", icon: "photos" },
-      { href: "/inspection-log", label: "Inspection Log", icon: "inspection" },
-    ],
-  },
-  {
     key: "SETTINGS",
     label: "SETTINGS",
     entries: [
@@ -320,12 +305,6 @@ export const HH_PROJECT_OS_MOBILE_NAV_ITEMS = [
       "/labor/workers",
     ],
   },
-  {
-    href: "/documents",
-    label: "Documents",
-    icon: "documents",
-    aliases: ["/projects/documents", "/site-photos", "/inspection-log"],
-  },
 ] as const satisfies readonly HhProjectOsNavItem[];
 
 type HhProjectOsMobileNavHref = (typeof HH_PROJECT_OS_MOBILE_NAV_ITEMS)[number]["href"];
@@ -348,10 +327,6 @@ const HH_PROJECT_OS_MOBILE_ROUTE_OWNERS = [
       "/labor/subcontractors",
       "/labor/workers",
     ],
-  },
-  {
-    href: "/documents",
-    paths: ["/documents", "/projects/documents", "/site-photos", "/inspection-log"],
   },
   {
     href: "/financial",
@@ -567,30 +542,6 @@ export const HH_PROJECT_OS_COMMAND_ITEMS = [
     href: "/subcontractors",
     keywords: ["directory", "people", "subcontractors", "subs", "contracts", "ap"],
     icon: "subcontractors",
-  },
-  {
-    id: "go-documents",
-    label: "Go to Documents",
-    description: "Documents, site photos, receipts, and inspections",
-    href: "/documents",
-    keywords: ["files", "plans", "photos", "receipts", "inspections"],
-    icon: "documents",
-  },
-  {
-    id: "go-site-photos",
-    label: "Go to Site Photos",
-    description: "Open project site photos",
-    href: "/site-photos",
-    keywords: ["documents", "photos", "site photos", "field", "project photos"],
-    icon: "photos",
-  },
-  {
-    id: "go-inspection-log",
-    label: "Go to Inspection Log",
-    description: "Open inspection records",
-    href: "/inspection-log",
-    keywords: ["documents", "inspection", "inspections", "log"],
-    icon: "inspection",
   },
   {
     id: "go-invoices",

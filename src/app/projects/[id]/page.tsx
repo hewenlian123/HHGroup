@@ -47,8 +47,6 @@ type TabKey =
   | "documents"
   | "cost"
   | "people"
-  | "photos"
-  | "inspections"
   | "docs"
   | "budget"
   | "expenses"
@@ -89,8 +87,6 @@ export default async function ProjectDetailPage({
     "documents",
     "cost",
     "people",
-    "photos",
-    "inspections",
     "docs",
     "budget",
     "expenses",

@@ -130,7 +130,7 @@ export function ProjectCloseoutTab({
       const data = await res.json();
       if (!data.ok) throw new Error(data.message || "PDF failed");
       onRefresh();
-      setMessage("Final invoice PDF saved to project documents.");
+      setMessage("Final invoice PDF saved to project files.");
     } catch (e) {
       setMessage(e instanceof Error ? e.message : "PDF failed");
     } finally {
@@ -156,7 +156,7 @@ export function ProjectCloseoutTab({
       const data = await res.json();
       if (!data.ok) throw new Error(data.message || "PDF failed");
       onRefresh();
-      setMessage("Completion certificate PDF saved to project documents.");
+      setMessage("Completion certificate PDF saved to project files.");
     } catch (e) {
       setMessage(e instanceof Error ? e.message : "PDF failed");
     } finally {

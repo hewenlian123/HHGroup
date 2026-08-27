@@ -3,7 +3,6 @@
  *
  * 1. Deletes all rows matching test/demo patterns (Workflow Test, Test, Test Vendor,
  *    Test Worker, Test Project, Example, Demo) in dependency order across:
- *    site_photos, inspection_log,
  *    project_change_orders, worker_receipts, worker_reimbursements, worker_payments,
  *    labor_entries, expenses, expense_lines, invoices, payments_received,
  *    estimates, activity_logs, projects, workers.

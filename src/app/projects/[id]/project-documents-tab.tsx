@@ -8,11 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DocumentPreviewModal } from "@/components/documents/document-preview-modal";
 import {
-  deleteDocumentAction,
-  getDocumentPreviewUrl,
-  getDocumentDownloadUrl,
-} from "@/app/documents/actions";
-import { uploadProjectDocument } from "./documents/actions";
+  deleteProjectDocument,
+  getProjectDocumentDownloadUrl,
+  getProjectDocumentPreviewUrl,
+  uploadProjectDocument,
+} from "./documents/actions";
 import { DOCUMENT_FILE_TYPES } from "@/lib/data";
 import type { DocumentRow } from "@/lib/data";
 import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
@@ -38,22 +38,28 @@ export function ProjectDocumentsTab({ projectId, documents }: Props) {
   const [deleteError, setDeleteError] = React.useState<string | null>(null);
   const formRef = React.useRef<HTMLFormElement>(null);
 
-  const handlePreview = React.useCallback(async (doc: DocumentRow) => {
-    setPreviewDoc(doc);
-    setPreviewUrl(null);
-    setLoadingPreview(true);
-    try {
-      const result = await getDocumentPreviewUrl(doc.id);
-      if (result.url) setPreviewUrl(result.url);
-    } finally {
-      setLoadingPreview(false);
-    }
-  }, []);
+  const handlePreview = React.useCallback(
+    async (doc: DocumentRow) => {
+      setPreviewDoc(doc);
+      setPreviewUrl(null);
+      setLoadingPreview(true);
+      try {
+        const result = await getProjectDocumentPreviewUrl(projectId, doc.id);
+        if (result.url) setPreviewUrl(result.url);
+      } finally {
+        setLoadingPreview(false);
+      }
+    },
+    [projectId]
+  );
 
-  const handleDownload = React.useCallback(async (doc: DocumentRow) => {
-    const result = await getDocumentDownloadUrl(doc.id);
-    if (result.url) window.open(result.url, "_blank", "noopener,noreferrer");
-  }, []);
+  const handleDownload = React.useCallback(
+    async (doc: DocumentRow) => {
+      const result = await getProjectDocumentDownloadUrl(projectId, doc.id);
+      if (result.url) window.open(result.url, "_blank", "noopener,noreferrer");
+    },
+    [projectId]
+  );
 
   const handleDelete = React.useCallback(
     async (doc: DocumentRow) => {
@@ -61,7 +67,7 @@ export function ProjectDocumentsTab({ projectId, documents }: Props) {
       setDeleteError(null);
       setDeletingId(doc.id);
       try {
-        const res = await deleteDocumentAction(doc.id);
+        const res = await deleteProjectDocument(projectId, doc.id);
         if (!res.ok) {
           setDeleteError(res.error ?? "Delete failed.");
           return;
@@ -71,7 +77,7 @@ export function ProjectDocumentsTab({ projectId, documents }: Props) {
         setDeletingId(null);
       }
     },
-    [router]
+    [projectId, router]
   );
 
   const handleUpload = React.useCallback(
@@ -140,15 +146,11 @@ export function ProjectDocumentsTab({ projectId, documents }: Props) {
         }
       />
       <Divider />
-      <SectionHeader label="Documents" className="mt-4" />
+      <SectionHeader label="Project Files" className="mt-4" />
       <Divider />
       {documents.length === 0 ? (
         <p className="py-6 text-hh-body text-[var(--hh-text-secondary)]">
-          No documents yet. Upload files above or view all in{" "}
-          <a href="/documents" className="hover:text-[var(--hh-text-primary)]">
-            Documents
-          </a>
-          .
+          No project files yet. Upload a file above.
         </p>
       ) : (
         <div className="airtable-table-wrap airtable-table-wrap--ruled">

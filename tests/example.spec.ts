@@ -70,17 +70,11 @@ test.describe("smoke: main routes", () => {
   test("projects", async ({ page }) => {
     await checkPage(page, "/projects");
   });
-  test("documents", async ({ page }) => {
-    await checkPage(page, "/documents");
-  });
   test("vendors", async ({ page }) => {
     await checkPage(page, "/vendors");
   });
   test("subcontractors", async ({ page }) => {
     await checkPage(page, "/subcontractors");
-  });
-  test("site-photos", async ({ page }) => {
-    await checkPage(page, "/site-photos");
   });
   test("estimates", async ({ page }) => {
     await checkPage(page, "/estimates");

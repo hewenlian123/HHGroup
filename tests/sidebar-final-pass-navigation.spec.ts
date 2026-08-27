@@ -8,7 +8,6 @@ const OPEN_SECTIONS = {
   FINANCIAL: true,
   PEOPLE: true,
   REPORTS: true,
-  DOCUMENTS: true,
   SETTINGS: true,
 };
 
@@ -48,15 +47,7 @@ async function ensureSectionOpen(page: Page, label: string) {
 }
 
 async function ensureAllSectionsOpen(page: Page) {
-  for (const label of [
-    "DASHBOARD",
-    "PROJECTS",
-    "FINANCIAL",
-    "PEOPLE",
-    "REPORTS",
-    "DOCUMENTS",
-    "SETTINGS",
-  ]) {
+  for (const label of ["DASHBOARD", "PROJECTS", "FINANCIAL", "PEOPLE", "REPORTS", "SETTINGS"]) {
     await ensureSectionOpen(page, label);
   }
 }
@@ -158,9 +149,6 @@ test.describe("HH Project OS sidebar final pass", () => {
       "Workers",
       "Vendors",
       "Subcontractors",
-      "Documents",
-      "Site Photos",
-      "Inspection Log",
       "Company",
       "Users",
       "Roles",
@@ -186,6 +174,9 @@ test.describe("HH Project OS sidebar final pass", () => {
       "Punch List",
       "Schedule",
       "Material Selections",
+      "Documents",
+      "Site Photos",
+      "Inspection Log",
     ]) {
       await expect(
         visibleSidebar(page).getByText(deletedProjectModule, { exact: true })
@@ -244,9 +235,6 @@ test.describe("HH Project OS sidebar final pass", () => {
       { path: "/financial/inbox/worker", active: "Expense Operations" },
       { path: "/labor/payroll", expectedPath: "/reports/workforce", active: "Workforce" },
       { path: "/subcontractors", active: "Subcontractors" },
-      { path: "/documents", active: "Documents" },
-      { path: "/site-photos", active: "Site Photos" },
-      { path: "/inspection-log", active: "Inspection Log" },
       { path: "/settings/company", active: "Company" },
       { path: "/system-health", active: "System Health" },
       { path: "/system-metrics", active: "System Metrics" },
@@ -269,8 +257,6 @@ test.describe("HH Project OS sidebar final pass", () => {
     for (const route of [
       { path: "/financial/vendors", bottom: "Directory" },
       { path: "/bills", bottom: "Financial" },
-      { path: "/site-photos", bottom: "Documents" },
-      { path: "/inspection-log", bottom: "Documents" },
       { path: "/estimates", bottom: "Projects" },
       { path: "/labor", bottom: "Projects" },
       { path: "/labor/payroll", expectedPath: "/reports/workforce", bottom: "Reports" },
@@ -300,6 +286,9 @@ test.describe("HH Project OS sidebar final pass", () => {
       "Punch List",
       "Schedule",
       "Material Selections",
+      "Documents",
+      "Site Photos",
+      "Inspection Log",
     ]) {
       await expect(
         visibleSidebar(page).getByText(deletedProjectModule, { exact: true })
@@ -329,6 +318,9 @@ test.describe("HH Project OS sidebar final pass", () => {
       "Go to Punch List",
       "Go to Schedule",
       "Go to Material Selections",
+      "Go to Documents",
+      "Go to Site Photos",
+      "Go to Inspection Log",
     ]) {
       await expect(dialog.getByText(deletedCommand, { exact: true })).toHaveCount(0);
     }

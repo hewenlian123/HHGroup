@@ -44,8 +44,6 @@ const TEST_IDS = [
   "estimates_crud",
   "customers_crud",
   "change_orders_crud",
-  "site_photos_crud",
-  "inspection_log_crud",
 ] as const;
 
 type TestId = (typeof TEST_IDS)[number];
@@ -108,8 +106,6 @@ export async function POST(req: Request) {
     "activity_logs",
     "estimates",
     "project_change_orders",
-    "site_photos",
-    "inspection_log",
   ] as const;
   const missingTables: string[] = [];
   for (const table of REQUIRED_TABLES) {
@@ -1104,106 +1100,6 @@ export async function POST(req: Request) {
       const err = toErrorString(e);
       log("change_orders_crud", `error: ${err}`);
       tests.push({ name: "change_orders_crud", ok: false, steps: [...steps, err] });
-    }
-  }
-
-  // ── 13. Site Photos CRUD ──────────────────────────────────────────────────
-  if (run("site_photos_crud")) {
-    log("site_photos_crud", "start");
-    const steps: string[] = [];
-    let projectId: string | null = null;
-    let photoId: string | null = null;
-    try {
-      const { data: proj, error: projErr } = await c
-        .from("projects")
-        .insert({ name: "Workflow Test Photos Project", status: "active" })
-        .select("id")
-        .single();
-      if (projErr || !proj)
-        throw new Error(
-          projErr ? tableMissingMessage("projects", projErr) : "Project create failed"
-        );
-      projectId = (proj as { id: string }).id;
-      const { data: created, error: createErr } = await c
-        .from("site_photos")
-        .insert({ project_id: projectId, photo_url: "https://example.com/wftest-placeholder.jpg" })
-        .select("id, photo_url")
-        .single();
-      if (createErr || !created)
-        throw new Error(
-          createErr ? tableMissingMessage("site_photos", createErr) : "Create failed"
-        );
-      photoId = (created as { id: string }).id;
-      steps.push("site photo created");
-      const { error: fetchErr } = await c
-        .from("site_photos")
-        .select("id")
-        .eq("id", photoId)
-        .maybeSingle();
-      if (fetchErr) throw new Error(`Read failed: ${(fetchErr as { message?: string })?.message}`);
-      steps.push("site photo read ok");
-      await c.from("site_photos").delete().eq("id", photoId);
-      photoId = null;
-      await c.from("projects").delete().eq("id", projectId);
-      projectId = null;
-      steps.push("site photo and project deleted");
-      tests.push({ name: "site_photos_crud", ok: true, steps });
-    } catch (e) {
-      if (photoId) await safeDelete("site_photos", photoId);
-      if (projectId) await safeDelete("projects", projectId);
-      const err = toErrorString(e);
-      log("site_photos_crud", `error: ${err}`);
-      tests.push({ name: "site_photos_crud", ok: false, steps: [...steps, err] });
-    }
-  }
-
-  // ── 14. Inspection Log CRUD ───────────────────────────────────────────────
-  if (run("inspection_log_crud")) {
-    log("inspection_log_crud", "start");
-    const steps: string[] = [];
-    let projectId: string | null = null;
-    let inspectionId: string | null = null;
-    try {
-      const { data: proj, error: projErr } = await c
-        .from("projects")
-        .insert({ name: "Workflow Test Inspection Project", status: "active" })
-        .select("id")
-        .single();
-      if (projErr || !proj)
-        throw new Error(
-          projErr ? tableMissingMessage("projects", projErr) : "Project create failed"
-        );
-      projectId = (proj as { id: string }).id;
-      const { data: created, error: createErr } = await c
-        .from("inspection_log")
-        .insert({ project_id: projectId, inspection_type: "Workflow Test", status: "pending" })
-        .select("id, inspection_type, status")
-        .single();
-      if (createErr || !created)
-        throw new Error(
-          createErr ? tableMissingMessage("inspection_log", createErr) : "Create failed"
-        );
-      inspectionId = (created as { id: string }).id;
-      steps.push("inspection log entry created");
-      const { error: fetchErr } = await c
-        .from("inspection_log")
-        .select("id")
-        .eq("id", inspectionId)
-        .maybeSingle();
-      if (fetchErr) throw new Error(`Read failed: ${(fetchErr as { message?: string })?.message}`);
-      steps.push("inspection log read ok");
-      await c.from("inspection_log").delete().eq("id", inspectionId);
-      inspectionId = null;
-      await c.from("projects").delete().eq("id", projectId);
-      projectId = null;
-      steps.push("inspection log entry and project deleted");
-      tests.push({ name: "inspection_log_crud", ok: true, steps });
-    } catch (e) {
-      if (inspectionId) await safeDelete("inspection_log", inspectionId);
-      if (projectId) await safeDelete("projects", projectId);
-      const err = toErrorString(e);
-      log("inspection_log_crud", `error: ${err}`);
-      tests.push({ name: "inspection_log_crud", ok: false, steps: [...steps, err] });
     }
   }
 

@@ -223,8 +223,6 @@ async function main() {
     "projects",
     "estimates",
     "change_orders",
-    "site_photos",
-    "inspection_log",
     "labor_receipts",
   ];
 
@@ -378,32 +376,6 @@ async function main() {
       page.setDefaultTimeout(WAIT_TIMEOUT);
       try {
         await smokeTestModulePage(page, "/change-orders", "Change Order");
-      } finally {
-        await page.close();
-      }
-    })
-  );
-
-  // ── 12. site_photos ────────────────────────────────────────────────────────
-  results.push(
-    await runTest("site_photos", async () => {
-      const page = await browser.newPage();
-      page.setDefaultTimeout(WAIT_TIMEOUT);
-      try {
-        await smokeTestModulePage(page, "/site-photos", "Photo");
-      } finally {
-        await page.close();
-      }
-    })
-  );
-
-  // ── 13. inspection_log ─────────────────────────────────────────────────────
-  results.push(
-    await runTest("inspection_log", async () => {
-      const page = await browser.newPage();
-      page.setDefaultTimeout(WAIT_TIMEOUT);
-      try {
-        await smokeTestModulePage(page, "/inspection-log", "Inspection");
       } finally {
         await page.close();
       }

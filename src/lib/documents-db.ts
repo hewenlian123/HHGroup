@@ -1,9 +1,6 @@
-/**
- * Documents Center — canonical document metadata. Files stored in Supabase Storage (attachments bucket).
- */
+/** Shared project-file metadata. Files are stored in the attachments bucket. */
 
 import { getSupabaseClient } from "@/lib/supabase";
-import type { SupabaseClient } from "@supabase/supabase-js";
 
 export const DOCUMENT_FILE_TYPES = [
   "Contract",
@@ -34,19 +31,6 @@ export type DocumentRow = {
   notes: string | null;
 };
 
-export type DocumentWithProject = DocumentRow & {
-  project_name: string | null;
-};
-
-export type DocumentFilters = {
-  project_id?: string | null;
-  file_type?: DocumentFileType | null;
-  related_module?: string | null;
-  date_from?: string | null;
-  date_to?: string | null;
-  search?: string | null;
-};
-
 export type DocumentDraft = {
   file_name: string;
   file_path: string;
@@ -62,15 +46,10 @@ export type DocumentDraft = {
 
 const BUCKET = "attachments";
 
-function client(explicitClient?: SupabaseClient) {
-  const c = explicitClient ?? getSupabaseClient();
+function client() {
+  const c = getSupabaseClient();
   if (!c) throw new Error("Supabase is not configured.");
   return c;
-}
-
-/** On any query error, return empty/list so app does not 500. */
-function safeReturnDocuments(): DocumentWithProject[] {
-  return [];
 }
 
 function mapRow(r: Record<string, unknown>): DocumentRow {
@@ -88,129 +67,6 @@ function mapRow(r: Record<string, unknown>): DocumentRow {
     uploaded_at: (r.uploaded_at as string) ?? "",
     notes: (r.notes as string | null) ?? null,
   };
-}
-
-/** List documents with optional filters and search. */
-export async function getDocuments(filters: DocumentFilters = {}): Promise<DocumentWithProject[]> {
-  const c = client();
-  const colsWithProject =
-    "id, file_name, file_path, file_type, mime_type, size_bytes, project_id, related_module, related_id, uploaded_by, uploaded_at, notes, projects(name)";
-  const colsOnly =
-    "id, file_name, file_path, file_type, mime_type, size_bytes, project_id, related_module, related_id, uploaded_by, uploaded_at, notes";
-
-  let q = c.from("documents").select(colsWithProject).order("uploaded_at", { ascending: false });
-
-  if (filters.project_id) q = q.eq("project_id", filters.project_id);
-  if (filters.file_type) q = q.eq("file_type", filters.file_type);
-  if (filters.related_module) q = q.eq("related_module", filters.related_module);
-  if (filters.date_from) q = q.gte("uploaded_at", filters.date_from);
-  if (filters.date_to) q = q.lte("uploaded_at", filters.date_to + "T23:59:59.999Z");
-  if (filters.search?.trim()) {
-    const term = `%${filters.search.trim().toLowerCase()}%`;
-    q = q.ilike("file_name", term);
-  }
-
-  const { data: rows, error } = await q;
-  if (error) {
-    try {
-      let qFallback = c
-        .from("documents")
-        .select(colsOnly)
-        .order("uploaded_at", { ascending: false });
-      if (filters.project_id) qFallback = qFallback.eq("project_id", filters.project_id);
-      if (filters.file_type) qFallback = qFallback.eq("file_type", filters.file_type);
-      if (filters.related_module)
-        qFallback = qFallback.eq("related_module", filters.related_module);
-      if (filters.date_from) qFallback = qFallback.gte("uploaded_at", filters.date_from);
-      if (filters.date_to)
-        qFallback = qFallback.lte("uploaded_at", filters.date_to + "T23:59:59.999Z");
-      if (filters.search?.trim()) {
-        const term = `%${filters.search.trim().toLowerCase()}%`;
-        qFallback = qFallback.ilike("file_name", term);
-      }
-      const res = await qFallback;
-      if (res.error) return safeReturnDocuments();
-      return (res.data ?? []).map((r: Record<string, unknown>) => ({
-        ...mapRow(r),
-        project_name: null,
-      }));
-    } catch {
-      return safeReturnDocuments();
-    }
-  }
-  return (rows ?? []).map((r: Record<string, unknown>) => {
-    const proj = r.projects as { name?: string } | null;
-    const row = mapRow(r);
-    return { ...row, project_name: proj?.name ?? null };
-  });
-}
-
-export async function getDocumentsPaged(
-  input: DocumentFilters & { page?: number; pageSize?: number } = {},
-  explicitClient?: SupabaseClient
-): Promise<{ rows: DocumentWithProject[]; total: number }> {
-  const c = client(explicitClient);
-  const page = Math.max(1, Math.floor(input.page ?? 1));
-  const pageSize = Math.max(1, Math.min(100, Math.floor(input.pageSize ?? 20)));
-  const from = (page - 1) * pageSize;
-  const to = from + pageSize - 1;
-
-  const colsWithProject =
-    "id, file_name, file_path, file_type, mime_type, size_bytes, project_id, related_module, related_id, uploaded_by, uploaded_at, notes, projects(name)";
-  const colsOnly =
-    "id, file_name, file_path, file_type, mime_type, size_bytes, project_id, related_module, related_id, uploaded_by, uploaded_at, notes";
-
-  let q = c
-    .from("documents")
-    .select(colsWithProject, { count: "exact" })
-    .order("uploaded_at", { ascending: false });
-
-  if (input.project_id) q = q.eq("project_id", input.project_id);
-  if (input.file_type) q = q.eq("file_type", input.file_type);
-  if (input.related_module) q = q.eq("related_module", input.related_module);
-  if (input.date_from) q = q.gte("uploaded_at", input.date_from);
-  if (input.date_to) q = q.lte("uploaded_at", input.date_to + "T23:59:59.999Z");
-  if (input.search?.trim()) {
-    const term = `%${input.search.trim().toLowerCase()}%`;
-    q = q.ilike("file_name", term);
-  }
-
-  const res = await q.range(from, to);
-  if (res.error) {
-    try {
-      let qFallback = c
-        .from("documents")
-        .select(colsOnly, { count: "exact" })
-        .order("uploaded_at", { ascending: false });
-      if (input.project_id) qFallback = qFallback.eq("project_id", input.project_id);
-      if (input.file_type) qFallback = qFallback.eq("file_type", input.file_type);
-      if (input.related_module) qFallback = qFallback.eq("related_module", input.related_module);
-      if (input.date_from) qFallback = qFallback.gte("uploaded_at", input.date_from);
-      if (input.date_to) qFallback = qFallback.lte("uploaded_at", input.date_to + "T23:59:59.999Z");
-      if (input.search?.trim()) {
-        const term = `%${input.search.trim().toLowerCase()}%`;
-        qFallback = qFallback.ilike("file_name", term);
-      }
-      const fallback = await qFallback.range(from, to);
-      if (fallback.error) return { rows: safeReturnDocuments(), total: 0 };
-      return {
-        rows: (fallback.data ?? []).map((r: Record<string, unknown>) => ({
-          ...mapRow(r),
-          project_name: null,
-        })),
-        total: fallback.count ?? 0,
-      };
-    } catch {
-      return { rows: safeReturnDocuments(), total: 0 };
-    }
-  }
-
-  const rows = (res.data ?? []).map((r: Record<string, unknown>) => {
-    const proj = r.projects as { name?: string } | null;
-    const row = mapRow(r);
-    return { ...row, project_name: proj?.name ?? null };
-  });
-  return { rows, total: res.count ?? rows.length };
 }
 
 /** Get documents for a single project. */
@@ -232,20 +88,18 @@ export async function getDocumentsByProject(projectId: string): Promise<Document
 }
 
 /** Get one document by id. */
-export async function getDocumentById(id: string): Promise<DocumentWithProject | null> {
+export async function getDocumentById(id: string): Promise<DocumentRow | null> {
   try {
     const c = client();
     const { data: row, error } = await c
       .from("documents")
       .select(
-        "id, file_name, file_path, file_type, mime_type, size_bytes, project_id, related_module, related_id, uploaded_by, uploaded_at, notes, projects(name)"
+        "id, file_name, file_path, file_type, mime_type, size_bytes, project_id, related_module, related_id, uploaded_by, uploaded_at, notes"
       )
       .eq("id", id)
       .maybeSingle();
     if (error || !row) return null;
-    const r = row as Record<string, unknown>;
-    const proj = r.projects as { name?: string } | null;
-    return { ...mapRow(r), project_name: proj?.name ?? null };
+    return mapRow(row as Record<string, unknown>);
   } catch {
     return null;
   }

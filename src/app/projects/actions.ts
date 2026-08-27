@@ -63,8 +63,7 @@ export async function getProjectUsageAction(
       (counts.invoices ?? 0) > 0 ||
       (counts.subcontracts ?? 0) > 0 ||
       (counts.project_change_orders ?? 0) > 0 ||
-      (counts.worker_receipts ?? 0) > 0 ||
-      (counts.site_photos ?? 0) > 0;
+      (counts.worker_receipts ?? 0) > 0;
     if (hasAny) return { blocked: true, counts };
     return { blocked: false };
   } catch {
@@ -183,8 +182,7 @@ export async function deleteProjectAction(
       (usage.invoices ?? 0) > 0 ||
       (usage.subcontracts ?? 0) > 0 ||
       (usage.project_change_orders ?? 0) > 0 ||
-      (usage.worker_receipts ?? 0) > 0 ||
-      (usage.site_photos ?? 0) > 0;
+      (usage.worker_receipts ?? 0) > 0;
     if (hasAny) {
       return { blocked: true, counts: usage };
     }

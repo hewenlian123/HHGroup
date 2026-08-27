@@ -25,8 +25,6 @@ const PHASE_6D_OPERATIONAL_PATHS = [
   ...authoredSources("src/app/change-orders"),
   ...authoredSources("src/app/estimate-templates"),
   "src/app/financial/page.tsx",
-  ...authoredSources("src/app/inspection-log"),
-  ...authoredSources("src/app/site-photos"),
   ...authoredSources("src/app/system-logs"),
   ...authoredSources("src/app/system-metrics"),
   ...authoredSources("src/app/system/backups"),
