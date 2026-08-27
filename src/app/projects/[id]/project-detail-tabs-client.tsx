@@ -425,9 +425,6 @@ function normalizeWorkspaceTab(tab: TabKey): WorkspaceTabKey {
   if (tab === "people") {
     return "people";
   }
-  if (tab === "materials") {
-    return "materials";
-  }
   if (tab === "closeout") {
     return "closeout";
   }

@@ -64,7 +64,8 @@ export type Project = {
   snapshotRevenue?: number | null;
   snapshotBudgetCost?: number | null;
   snapshotBudgetBreakdown?: {
-      labor: number;
+    materials: number;
+    labor: number;
     vendor: number;
     other: number;
   } | null;
@@ -594,7 +595,6 @@ export type ProjectUsageCounts = {
   subcontracts: number;
   project_change_orders: number;
   worker_receipts: number;
-  materials: number;
 };
 
 /** Count records that reference the project. Used to block deletion when in use. */
