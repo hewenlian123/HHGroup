@@ -1,9 +1,8 @@
 "use client";
 
 import * as React from "react";
-import type { User } from "@supabase/supabase-js";
+import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { authorizedAppRole } from "@/lib/auth-role";
-import { createBrowserClient } from "@/lib/supabase";
 import {
   DEFAULT_ROLE_PERMISSIONS,
   type AppRole,
@@ -73,16 +72,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   const configured = Boolean(url && anon);
-  const supabase = React.useMemo(
-    () => (configured ? createBrowserClient(url as string, anon as string) : null),
-    [configured, url, anon]
-  );
+  const [supabase, setSupabase] = React.useState<SupabaseClient | null>(null);
 
   const [initialized, setInitialized] = React.useState(false);
   const [user, setUser] = React.useState<User | null>(null);
   const [profile, setProfile] = React.useState<ProfileRow | null>(null);
   const [role, setRole] = React.useState<AppRole | null>(null);
   const [permissions, setPermissions] = React.useState<PermissionMap>(EMPTY_PERMS);
+
+  React.useEffect(() => {
+    let active = true;
+    if (!configured || !url || !anon) {
+      setSupabase(null);
+      return () => {
+        active = false;
+      };
+    }
+
+    void import("@/lib/supabase").then(({ createBrowserClient }) => {
+      if (active) setSupabase(createBrowserClient(url, anon));
+    });
+    return () => {
+      active = false;
+    };
+  }, [configured, url, anon]);
 
   const loadAuthState = React.useCallback(async () => {
     if (!supabase) {

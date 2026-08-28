@@ -49,6 +49,8 @@ import { OWNER_NAV_PREFETCH_ROUTES, prefetchRoutes, runWhenIdle } from "@/lib/ro
 import { companyProfileQueryKey, fetchCompanyProfileForNav } from "@/lib/queries/companyProfile";
 import { getCompanyInitials } from "@/lib/company-profile";
 import { useSystemHealth } from "@/contexts/system-health-context";
+import { useAuth } from "@/components/auth/auth-provider";
+import { authIdentityRoleLabel } from "@/components/auth/auth-ui";
 import {
   HH_PROJECT_OS_DEFAULT_OPEN_SECTIONS,
   HH_PROJECT_OS_NAV_SECTIONS,
@@ -128,6 +130,7 @@ export function Sidebar({
   onToggleCollapsed?: () => void;
 }) {
   const pathname = usePathname();
+  const { initialized: authInitialized, role: authRole, user: authUser } = useAuth();
   const deferBulkPrefetch = pathname === "/estimate-templates" || pathname.startsWith("/estimates");
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -165,6 +168,11 @@ export function Sidebar({
   });
   const orgName = companyProfile?.org_name?.trim() || "HH Group";
   const logoUrl = companyProfile?.logo_url ?? null;
+  const accountName = authUser?.email?.trim() || (authInitialized ? "Not signed in" : "Loading…");
+  const accountRole = authInitialized
+    ? authIdentityRoleLabel(authRole, Boolean(authUser))
+    : "Checking session";
+  const accountInitial = authUser?.email?.trim().charAt(0).toUpperCase() || "?";
 
   const sectionsInitDone = React.useRef(false);
 
@@ -484,12 +492,12 @@ export function Sidebar({
                   TYPO.tableHeader
                 )}
               >
-                U
+                {accountInitial}
               </AvatarFallback>
             </Avatar>
             <div className="min-w-0 flex-1">
-              <p className={cn("truncate", TYPO.primaryName)}>User</p>
-              <p className={cn("truncate", TYPO.tableHeader)}>Admin</p>
+              <p className={cn("truncate", TYPO.primaryName)}>{accountName}</p>
+              <p className={cn("truncate", TYPO.tableHeader)}>{accountRole}</p>
             </div>
           </div>
         </div>

@@ -77,9 +77,23 @@ function client(explicitClient?: SupabaseClient) {
   return c;
 }
 
-function isMissingTable(err: { message?: string } | null): boolean {
+type ProjectDatabaseError = { code?: string; message?: string } | null;
+
+export function isMissingProjectsTable(err: ProjectDatabaseError): boolean {
+  const code = err?.code?.trim().toUpperCase() ?? "";
   const m = err?.message ?? "";
-  return /schema cache|relation.*does not exist|could not find the table/i.test(m);
+  return (
+    code === "42P01" ||
+    code === "PGRST205" ||
+    /relation\s+[^\n]+\s+does not exist|table\s+[^\n]+\s+does not exist|could not find the table\s+[^\n]+\s+in the schema cache/i.test(
+      m
+    )
+  );
+}
+
+function projectDatabaseErrorMessage(error: ProjectDatabaseError): string {
+  if (isMissingProjectsTable(error)) return `Projects table not found. ${HINT}`;
+  return error?.message?.trim() || "Could not access projects.";
 }
 
 function isMissingColumn(err: { message?: string } | null): boolean {
@@ -242,7 +256,7 @@ const COLS_BASE = "id,name,status,budget,spent,created_at,updated_at,client,addr
 export async function getProjects(explicitClient?: SupabaseClient): Promise<Project[]> {
   const c = client(explicitClient);
   let rows: ProjectRow[] | null = null;
-  let error: { message?: string } | null = null;
+  let error: ProjectDatabaseError = null;
   for (const cols of [COLS_WITH_CUSTOMER, COLS, COLS_BASE]) {
     const res = await c.from("projects").select(cols).order("updated_at", { ascending: false });
     rows = (res.data ?? null) as ProjectRow[] | null;
@@ -250,8 +264,7 @@ export async function getProjects(explicitClient?: SupabaseClient): Promise<Proj
     if (!error) break;
   }
   if (error) {
-    if (isMissingTable(error)) throw new Error(`Projects table not found. ${HINT}`);
-    throw new Error(error.message ? `${error.message} ${HINT}` : HINT);
+    throw new Error(projectDatabaseErrorMessage(error));
   }
   return (rows ?? []).map((r) => toProject(r as ProjectRow));
 }
@@ -272,8 +285,7 @@ export async function getProjectsDashboard(
     .order("updated_at", { ascending: false })
     .limit(cap);
   if (error) {
-    if (isMissingTable(error)) throw new Error(`Projects table not found. ${HINT}`);
-    throw new Error(error.message ? `${error.message} ${HINT}` : HINT);
+    throw new Error(projectDatabaseErrorMessage(error));
   }
 
   return (rows ?? []).map((r) => {
@@ -306,7 +318,7 @@ export async function getProjectByIdWithClient(
 ): Promise<Project | null> {
   const c = client(explicitClient);
   let r: ProjectRow | null = null;
-  let error: { message?: string } | null = null;
+  let error: ProjectDatabaseError = null;
   for (const cols of [COLS_WITH_CUSTOMER, COLS, COLS_BASE]) {
     const res = await c.from("projects").select(cols).eq("id", id).maybeSingle();
     r = (res.data ?? null) as ProjectRow | null;
@@ -314,8 +326,7 @@ export async function getProjectByIdWithClient(
     if (!error) break;
   }
   if (error) {
-    if (isMissingTable(error)) throw new Error(`Projects table not found. ${HINT}`);
-    throw new Error(error.message ? `${error.message} ${HINT}` : HINT);
+    throw new Error(projectDatabaseErrorMessage(error));
   }
   return r ? toProject(r as ProjectRow) : null;
 }
@@ -334,7 +345,7 @@ export async function getProjectBySourceEstimateId(
 ): Promise<Project | null> {
   const c = client(explicitClient);
   let r: ProjectRow | null = null;
-  let error: { message?: string } | null = null;
+  let error: ProjectDatabaseError = null;
   for (const cols of [COLS_WITH_CUSTOMER, COLS, COLS_BASE]) {
     const res = await c
       .from("projects")
@@ -346,8 +357,7 @@ export async function getProjectBySourceEstimateId(
     if (!error) break;
   }
   if (error) {
-    if (isMissingTable(error)) throw new Error(`Projects table not found. ${HINT}`);
-    throw new Error(error.message ? `${error.message} ${HINT}` : HINT);
+    throw new Error(projectDatabaseErrorMessage(error));
   }
   return r ? toProject(r as ProjectRow) : null;
 }
@@ -417,7 +427,7 @@ export async function createProjectWithClient(
   if (error) {
     const raw = error.message ? ` (${error.message})` : "";
     throw new Error(
-      isMissingTable(error) ? `Projects table missing. ${HINT}${raw}` : error.message
+      isMissingProjectsTable(error) ? `Projects table missing. ${HINT}${raw}` : error.message
     );
   }
   if (!inserted) throw new Error("Failed to create project: no id returned.");
@@ -501,8 +511,7 @@ export async function updateProjectWithClient(
     .select(COLS_WITH_CUSTOMER)
     .maybeSingle();
   if (error) {
-    if (isMissingTable(error)) throw new Error(`Projects table not found. ${HINT}`);
-    throw new Error(error.message ?? HINT);
+    throw new Error(projectDatabaseErrorMessage(error));
   }
   return updated ? toProject(updated as ProjectRow) : null;
 }
@@ -521,10 +530,10 @@ export async function deleteProjectWithClient(
   const c = client(explicitClient);
   const { data, error } = await c.from("projects").delete().eq("id", id).select("id").maybeSingle();
   if (error) {
-    if (isMissingTable(error)) throw new Error(`Projects table not found. ${HINT}`);
+    if (isMissingProjectsTable(error)) throw new Error(`Projects table not found. ${HINT}`);
     const blocked = await parseForeignKeyError(error, id, c);
     if (blocked) throw blocked;
-    throw new Error(error.message ?? HINT);
+    throw new Error(error.message?.trim() || "Could not delete project.");
   }
   return Boolean((data as { id?: string } | null)?.id);
 }

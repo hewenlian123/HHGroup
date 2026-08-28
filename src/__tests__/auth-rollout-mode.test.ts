@@ -20,27 +20,30 @@ describe("HH_REQUIRE_LOGIN rollout configuration", () => {
     });
   });
 
-  it.each(["0", "false", " FALSE "])("%s enables compatibility mode", (requireLogin) => {
-    expect(
-      resolveAuthRolloutConfig({
+  it.each(["0", "false", " FALSE "])(
+    "%s remains strict in Production while exposing stale configuration state",
+    (requireLogin) => {
+      expect(
+        resolveAuthRolloutConfig({
+          runtime: "production",
+          requireLogin,
+        })
+      ).toEqual({
+        mode: "strict",
         runtime: "production",
-        requireLogin,
-      })
-    ).toEqual({
-      mode: "compatibility",
-      runtime: "production",
-      configurationState: "disabled",
-    });
-  });
+        configurationState: "disabled",
+      });
+    }
+  );
 
-  it("keeps production in compatibility mode when HH_REQUIRE_LOGIN is unset", () => {
+  it("fails Production closed when HH_REQUIRE_LOGIN is unset", () => {
     expect(
       resolveAuthRolloutConfig({
         runtime: "production",
         requireLogin: undefined,
       })
     ).toEqual({
-      mode: "compatibility",
+      mode: "strict",
       runtime: "production",
       configurationState: "unset",
     });
@@ -50,17 +53,17 @@ describe("HH_REQUIRE_LOGIN rollout configuration", () => {
         requireLogin: undefined,
         allowLocal: undefined,
       })
-    ).toBe(true);
+    ).toBe(false);
   });
 
-  it("keeps invalid production configuration observable without locking users out", () => {
+  it("fails Production closed while keeping invalid configuration observable", () => {
     expect(
       resolveAuthRolloutConfig({
         runtime: "production",
         requireLogin: "unexpected-value",
       })
     ).toEqual({
-      mode: "compatibility",
+      mode: "strict",
       runtime: "production",
       configurationState: "invalid",
     });
@@ -70,7 +73,7 @@ describe("HH_REQUIRE_LOGIN rollout configuration", () => {
         requireLogin: "unexpected-value",
         allowLocal: undefined,
       })
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it("gives strict mode precedence over local compatibility flags", () => {
@@ -90,21 +93,21 @@ describe("HH_REQUIRE_LOGIN rollout configuration", () => {
     ).toBe(false);
   });
 
-  it("does not let the local flag independently change deployed compatibility mode", () => {
+  it("does not let local compatibility flags change deployed strict mode", () => {
     expect(
       isCompatibilityAccessEnabled({
         runtime: "production",
         requireLogin: "false",
         allowLocal: "0",
       })
-    ).toBe(true);
+    ).toBe(false);
     expect(
       isCompatibilityAccessEnabled({
         runtime: "production",
         requireLogin: "false",
         allowLocal: "1",
       })
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it("allows local no-login only in compatibility mode with the explicit local flag", () => {
@@ -131,6 +134,17 @@ describe("HH_REQUIRE_LOGIN rollout configuration", () => {
     ).toBe(false);
   });
 
+  it("lets real local auto-login disable the legacy no-session compatibility path", () => {
+    expect(
+      isCompatibilityAccessEnabled({
+        runtime: "development",
+        requireLogin: "false",
+        allowLocal: "1",
+        allowAutoLogin: "1",
+      })
+    ).toBe(false);
+  });
+
   it("logs only resolved state and a temporary compatibility warning", () => {
     const logger = {
       info: vi.fn(),
@@ -149,10 +163,10 @@ describe("HH_REQUIRE_LOGIN rollout configuration", () => {
       info: logger.info.mock.calls,
       warn: logger.warn.mock.calls,
     });
-    expect(output).toContain("mode=compatibility");
+    expect(output).toContain("mode=strict");
     expect(output).toContain("runtime=production");
     expect(output).toContain("configuration=invalid");
-    expect(output).toContain("temporary");
+    expect(output).not.toContain("temporary");
     expect(output).not.toContain("raw-invalid-value-must-not-appear");
   });
 });

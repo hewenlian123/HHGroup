@@ -2,6 +2,7 @@ export type AuthRolloutOptions = {
   runtime?: string;
   requireLogin?: string;
   allowLocal?: string;
+  allowAutoLogin?: string;
 };
 
 export type AuthRolloutConfig = {
@@ -33,6 +34,24 @@ export function resolveAuthRolloutConfig(options: AuthRolloutOptions = {}): Auth
   const rawRequireLogin = options.requireLogin ?? process.env.HH_REQUIRE_LOGIN;
   const requireLogin = rawRequireLogin?.trim().toLowerCase();
 
+  // Deployed environments are permanently fail-closed. HH_REQUIRE_LOGIN remains a
+  // local rollout control only; an unset, invalid, or stale false value can never
+  // reopen Production or Preview without authentication.
+  if (runtime === "production" || runtime === "preview") {
+    return {
+      mode: "strict",
+      runtime,
+      configurationState:
+        requireLogin === "1" || requireLogin === "true"
+          ? "enabled"
+          : requireLogin === "0" || requireLogin === "false"
+            ? "disabled"
+            : rawRequireLogin === undefined || requireLogin === ""
+              ? "unset"
+              : "invalid",
+    };
+  }
+
   if (requireLogin === "1" || requireLogin === "true") {
     return {
       mode: "strict",
@@ -63,10 +82,13 @@ export function isCompatibilityAccessEnabled(options: AuthRolloutOptions = {}): 
   const allowLocal = (options.allowLocal ?? process.env.HH_ALLOW_LOCAL_NO_LOGIN ?? "")
     .trim()
     .toLowerCase();
+  const allowAutoLogin = (options.allowAutoLogin ?? process.env.HH_ALLOW_LOCAL_AUTO_LOGIN ?? "")
+    .trim()
+    .toLowerCase();
 
-  if (config.runtime === "production" || config.runtime === "preview") {
-    return true;
-  }
+  // Once real local auto-login is selected, the legacy no-session compatibility
+  // path is disabled even if an old HH_ALLOW_LOCAL_NO_LOGIN value remains locally.
+  if (allowAutoLogin === "1" || allowAutoLogin === "true") return false;
 
   return allowLocal === "1" || allowLocal === "true";
 }

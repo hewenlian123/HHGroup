@@ -11,6 +11,7 @@ import {
 } from "@/lib/device-unlock-token";
 import { workerReceiptInboxPath } from "@/lib/expense-operations-routing";
 import { isCompatibilityAccessEnabled } from "@/lib/owner-access-mode";
+import { isLocalAutoLoginEnabled, LOCAL_AUTO_LOGIN_PATH } from "@/lib/local-auto-login";
 
 const INTERNAL_ADMIN_SECRET_HEADER = "x-internal-admin-secret";
 const PRODUCTION_SAFETY_LOCK_HEADER = "x-hh-production-safety-lock";
@@ -28,6 +29,7 @@ const PUBLIC_APP_PATHS = new Set([
 ]);
 
 const PUBLIC_API_PATHS = new Set([
+  LOCAL_AUTO_LOGIN_PATH,
   "/api/auth/login",
   "/api/auth/forgot-password",
   "/api/auth/recovery/verify",
@@ -156,6 +158,16 @@ function loginRedirectResponse(request: NextRequest): NextResponse {
   target.search = "";
   target.searchParams.set("redirect", `${request.nextUrl.pathname}${request.nextUrl.search || ""}`);
   return NextResponse.redirect(target);
+}
+
+function localAutoLoginRedirectResponse(request: NextRequest): NextResponse {
+  const target = request.nextUrl.clone();
+  target.pathname = LOCAL_AUTO_LOGIN_PATH;
+  target.search = "";
+  target.searchParams.set("redirect", `${request.nextUrl.pathname}${request.nextUrl.search || ""}`);
+  const response = NextResponse.redirect(target);
+  response.headers.set("Cache-Control", "no-store, max-age=0");
+  return response;
 }
 
 function unauthorizedApiResponse(): NextResponse {
@@ -313,10 +325,25 @@ export async function middleware(request: NextRequest) {
   const apiPath = isApiPath(pathname);
   const publicPath = apiPath ? isPublicApiPath(pathname) : isPublicAppPath(pathname);
   let authenticatedResponse: NextResponse | null = null;
+  let localAutoLoginAuth: Awaited<ReturnType<typeof hasSupabaseSessionUser>> | null = null;
 
-  if (pathname === "/login") {
+  // Browser navigations in explicitly enabled local development obtain a real
+  // Supabase owner session through a Node Route Handler. APIs never auto-login,
+  // so anonymous permission boundaries remain independently testable.
+  const localAutoLoginNavigation =
+    !apiPath && (pathname === "/" || pathname === "/login" || !publicPath);
+  if (localAutoLoginNavigation && isLocalAutoLoginEnabled(request.url)) {
     const response = NextResponse.next();
     const auth = await hasSupabaseSessionUser(request, response);
+    if (!auth.authenticated) return localAutoLoginRedirectResponse(request);
+    if (!auth.authorized) return forbiddenAdminPageResponse();
+    authenticatedResponse = response;
+    localAutoLoginAuth = auth;
+  }
+
+  if (pathname === "/login") {
+    const response = authenticatedResponse ?? NextResponse.next();
+    const auth = localAutoLoginAuth ?? (await hasSupabaseSessionUser(request, response));
     if (auth.authenticated && auth.authorized) {
       const destination = (await requiresDeviceUnlock(request, auth)) ? "/unlock" : "/dashboard";
       return copyResponseCookies(
@@ -330,11 +357,11 @@ export async function middleware(request: NextRequest) {
 
   if (!publicPath) {
     const strict = requiresStrictSupabaseAuth(pathname);
-    if (!strict && isCompatibilityAccessEnabled()) {
+    if (!localAutoLoginAuth && !strict && isCompatibilityAccessEnabled()) {
       authenticatedResponse = NextResponse.next();
     } else {
-      const response = NextResponse.next();
-      const auth = await hasSupabaseSessionUser(request, response);
+      const response = authenticatedResponse ?? NextResponse.next();
+      const auth = localAutoLoginAuth ?? (await hasSupabaseSessionUser(request, response));
       if (!auth.authenticated) {
         return apiPath ? unauthorizedApiResponse() : loginRedirectResponse(request);
       }

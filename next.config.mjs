@@ -1,4 +1,15 @@
 export default function nextConfig() {
+  const localAutoLogin = (process.env.HH_ALLOW_LOCAL_AUTO_LOGIN || "").trim().toLowerCase();
+  const deployedRuntime = (process.env.VERCEL_ENV || "").trim().toLowerCase();
+  if (
+    (localAutoLogin === "1" || localAutoLogin === "true") &&
+    (deployedRuntime === "production" || deployedRuntime === "preview")
+  ) {
+    throw new Error(
+      "HH_ALLOW_LOCAL_AUTO_LOGIN is local-development only and must not be enabled in Vercel Production or Preview."
+    );
+  }
+
   const distDir = (process.env.NEXT_DIST_DIR || ".next").trim() || ".next";
   const base = {
     // Playwright can set NEXT_DIST_DIR=.next-e2e to avoid stale or cloud-evicted local .next output.

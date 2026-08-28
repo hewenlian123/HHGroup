@@ -2,14 +2,7 @@
 
 import { NeoPanel, NeoStatus, PageHeader, PageLayout } from "@/components/base";
 import { useAuth } from "@/components/auth/auth-provider";
-
-type RoleLabel = "Owner" | "Admin" | "Assistant";
-
-function roleLabel(role: string | null | undefined): RoleLabel {
-  if (role === "owner") return "Owner";
-  if (role === "admin") return "Admin";
-  return "Assistant";
-}
+import { authIdentityRoleLabel } from "@/components/auth/auth-ui";
 
 export default function SettingsAccountPage() {
   const { role, user } = useAuth();
@@ -34,7 +27,7 @@ export default function SettingsAccountPage() {
         </div>
         <div className="flex items-center justify-between gap-4 px-4 py-3">
           <p className="text-sm text-[var(--hh-text-secondary)]">Role</p>
-          <NeoStatus label={roleLabel(role)} variant="default" />
+          <NeoStatus label={authIdentityRoleLabel(role, Boolean(user))} variant="default" />
         </div>
       </NeoPanel>
     </PageLayout>

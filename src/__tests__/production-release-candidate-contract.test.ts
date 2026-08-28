@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -18,6 +19,18 @@ function source(relativePath: string): string {
   const file = resolve(ROOT, relativePath);
   expect(existsSync(file), `${relativePath} must be tracked`).toBe(true);
   return readFileSync(file, "utf8");
+}
+
+function isGitTracked(relativePath: string): boolean {
+  try {
+    execFileSync("git", ["ls-files", "--error-unmatch", "--", relativePath], {
+      cwd: ROOT,
+      stdio: "ignore",
+    });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 describe("production release candidate contract", () => {
@@ -102,8 +115,8 @@ describe("production release candidate contract", () => {
     ).toBe(false);
   });
 
-  it("excludes local Supabase CLI state", () => {
-    expect(existsSync(resolve(ROOT, "supabase/.temp/cli-latest"))).toBe(false);
+  it("excludes local Supabase CLI state from the release artifact", () => {
+    expect(isGitTracked("supabase/.temp/cli-latest")).toBe(false);
   });
 
   it("ships an operator-only migration gate with no db push or repair path", () => {

@@ -31,6 +31,7 @@ describe("middleware Auth rollout behavior", () => {
     };
     delete process.env.NEXT_PUBLIC_SUPABASE_URL;
     delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    delete process.env.HH_ALLOW_LOCAL_AUTO_LOGIN;
     delete process.env.HH_ALLOW_LOCAL_NO_LOGIN;
     delete process.env.HH_REQUIRE_LOGIN;
     getUserMock.mockReset().mockResolvedValue({ data: { user: null } });
@@ -94,7 +95,7 @@ describe("middleware Auth rollout behavior", () => {
     ["explicit zero", "0"],
     ["unset", undefined],
     ["invalid", "invalid-test-value"],
-  ])("keeps existing pages available in production compatibility mode (%s)", async (_, value) => {
+  ])("keeps existing pages strict in Production (%s)", async (_, value) => {
     if (value === undefined) {
       delete process.env.HH_REQUIRE_LOGIN;
     } else {
@@ -103,11 +104,16 @@ describe("middleware Auth rollout behavior", () => {
 
     const response = await middleware(request("/dashboard"));
 
-    expect(response.status).toBe(200);
-    expect(response.headers.get("x-middleware-next")).toBe("1");
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toContain("/login?redirect=");
   });
 
   it("redirects legacy worker receipts before the Labor App Router boundary and preserves only supported filters", async () => {
+    process.env = { ...process.env, NODE_ENV: "development" };
+    delete process.env.VERCEL_ENV;
+    process.env.HH_REQUIRE_LOGIN = "false";
+    process.env.HH_ALLOW_LOCAL_NO_LOGIN = "1";
+
     const response = await middleware(
       request(
         "/labor/receipts?project_id=project-a&workerId=worker-a&status=pending&date_from=2026-08-01&date_to=2026-08-15&search=discard-me"
@@ -189,7 +195,10 @@ describe("middleware Auth rollout behavior", () => {
   });
 
   it("keeps the non-receipt OCR writeback workflow available in compatibility mode", async () => {
+    process.env = { ...process.env, NODE_ENV: "development" };
+    delete process.env.VERCEL_ENV;
     process.env.HH_REQUIRE_LOGIN = "false";
+    process.env.HH_ALLOW_LOCAL_NO_LOGIN = "1";
 
     const response = await middleware(
       request(`/api/financial/expenses/${EXPENSE_ID}/ocr-writeback`, { method: "POST" })
@@ -197,6 +206,51 @@ describe("middleware Auth rollout behavior", () => {
 
     expect(response.status).toBe(200);
     expect(response.headers.get("x-middleware-next")).toBe("1");
+  });
+
+  it("redirects a local browser navigation to the server-side auto-login endpoint", async () => {
+    process.env = { ...process.env, NODE_ENV: "development" };
+    delete process.env.VERCEL_ENV;
+    process.env.HH_ALLOW_LOCAL_AUTO_LOGIN = "1";
+    process.env.NEXT_PUBLIC_SUPABASE_URL = "http://127.0.0.1:54321";
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "local-anon-key";
+
+    const response = await middleware(
+      new NextRequest("http://localhost:3000/projects?status=active")
+    );
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe(
+      "http://localhost:3000/api/auth/local-auto-login?redirect=%2Fprojects%3Fstatus%3Dactive"
+    );
+  });
+
+  it("never auto-logs an anonymous local API request", async () => {
+    process.env = { ...process.env, NODE_ENV: "development" };
+    delete process.env.VERCEL_ENV;
+    process.env.HH_ALLOW_LOCAL_AUTO_LOGIN = "1";
+    process.env.HH_REQUIRE_LOGIN = "1";
+    process.env.NEXT_PUBLIC_SUPABASE_URL = "http://127.0.0.1:54321";
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "local-anon-key";
+
+    const response = await middleware(new NextRequest("http://localhost:3000/api/expenses"));
+
+    expect(response.status).toBe(401);
+    expect(response.headers.get("location")).toBeNull();
+  });
+
+  it("keeps public Auth recovery and worker intake pages outside local auto-login", async () => {
+    process.env = { ...process.env, NODE_ENV: "development" };
+    delete process.env.VERCEL_ENV;
+    process.env.HH_ALLOW_LOCAL_AUTO_LOGIN = "1";
+    process.env.NEXT_PUBLIC_SUPABASE_URL = "http://127.0.0.1:54321";
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "local-anon-key";
+
+    for (const path of ["/auth/recovery/callback", "/forgot-password", "/upload-receipt"]) {
+      const response = await middleware(new NextRequest(`http://localhost:3000${path}`));
+      expect(response.status).toBe(200);
+      expect(response.headers.get("location")).toBeNull();
+    }
   });
 
   it.each(["/api/ocr-receipt", "/api/upload-receipt/sync", "/api/worker-receipts"])(

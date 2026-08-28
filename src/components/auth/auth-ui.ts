@@ -22,3 +22,21 @@ export const AUTH_SUCCESS_CLASS =
 
 export const AUTH_ERROR_CLASS =
   "rounded-hh-standard border border-[var(--hh-danger-border)] bg-[var(--hh-danger-soft-fill)] px-hh-3 py-hh-2 text-hh-body text-[var(--hh-danger)]";
+
+export type AuthIdentityRoleLabel =
+  | "Owner"
+  | "Admin"
+  | "Assistant"
+  | "Not signed in"
+  | "Role unavailable";
+
+export function authIdentityRoleLabel(
+  role: string | null | undefined,
+  authenticated: boolean
+): AuthIdentityRoleLabel {
+  if (!authenticated) return "Not signed in";
+  if (role === "owner") return "Owner";
+  if (role === "admin") return "Admin";
+  if (role === "assistant") return "Assistant";
+  return "Role unavailable";
+}

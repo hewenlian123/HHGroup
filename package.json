@@ -6,8 +6,8 @@
     "node": "22.x"
   },
   "scripts": {
-    "dev": "next dev -p 3000",
-    "dev:safe": "ulimit -n 10240 2>/dev/null; next dev -p 3000",
+    "dev": "next dev -H 127.0.0.1 -p 3000",
+    "dev:safe": "ulimit -n 10240 2>/dev/null; next dev -H 127.0.0.1 -p 3000",
     "clean": "rm -rf .next .next-dev node_modules/.cache",
     "build": "next build",
     "build:clean": "npm run clean && npm run build",
