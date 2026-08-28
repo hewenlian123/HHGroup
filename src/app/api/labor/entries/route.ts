@@ -94,6 +94,25 @@ function safeString(v: unknown): string {
   return typeof v === "string" ? v.trim() : "";
 }
 
+function hasProjectInput(input: LaborEntryPayload): boolean {
+  return (
+    Object.prototype.hasOwnProperty.call(input, "projectId") ||
+    Object.prototype.hasOwnProperty.call(input, "project_id")
+  );
+}
+
+function requireProjectId(value: unknown): string {
+  const projectId = safeString(value);
+  if (!projectId) throw new Error("Project is required for labor attribution.");
+  return projectId;
+}
+
+function projectIdForUpdate(input: LaborEntryPayload, currentProjectId: unknown): string {
+  return hasProjectInput(input)
+    ? requireProjectId(input.projectId ?? input.project_id)
+    : requireProjectId(currentProjectId);
+}
+
 function safeDate(v: unknown): string {
   const text = safeString(v);
   return /^\d{4}-\d{2}-\d{2}/.test(text) ? text.slice(0, 10) : "";
@@ -284,7 +303,7 @@ async function updateSessionEntry(
   const { data: current, error: curErr } = await supabase
     .from("labor_entries")
     .select(
-      "id, worker_id, work_date, morning, afternoon, status, daily_rate_snapshot, notes, cost_amount"
+      "id, worker_id, project_id, work_date, morning, afternoon, status, daily_rate_snapshot, notes, cost_amount"
     )
     .eq("id", id)
     .maybeSingle();
@@ -293,6 +312,7 @@ async function updateSessionEntry(
 
   const row = current as {
     worker_id: string;
+    project_id?: string | null;
     work_date: string;
     morning?: boolean | null;
     afternoon?: boolean | null;
@@ -344,7 +364,7 @@ async function updateSessionEntry(
   });
   const notesSource = Object.prototype.hasOwnProperty.call(body, "notes") ? body.notes : row.notes;
   const payload: Record<string, unknown> = {
-    project_id: safeString(body.projectId ?? body.project_id) || null,
+    project_id: projectIdForUpdate(body, row.project_id),
     work_date: normalizedWorkDate,
     hours,
     cost_amount: totalAmount,
@@ -379,13 +399,16 @@ async function updateDailyEntry(
 
   const { data: current, error: curErr } = await supabase
     .from("labor_entries")
-    .select("id, worker_id, work_date, morning, afternoon, status, daily_rate_snapshot, notes")
+    .select(
+      "id, worker_id, project_id, work_date, morning, afternoon, status, daily_rate_snapshot, notes"
+    )
     .eq("id", id)
     .maybeSingle();
   if (curErr) throw new Error(curErr.message ?? "Failed to load labor entry.");
   if (!current) throw new Error("Labor entry not found.");
   const row = current as {
     worker_id?: string | null;
+    project_id?: string | null;
     work_date?: string | null;
     morning?: boolean | null;
     afternoon?: boolean | null;
@@ -430,7 +453,7 @@ async function updateDailyEntry(
   const notesSource = Object.prototype.hasOwnProperty.call(body, "notes") ? body.notes : row.notes;
   const payload = {
     worker_id: workerId,
-    project_id: safeString(body.projectId ?? body.project_id) || null,
+    project_id: projectIdForUpdate(body, row.project_id),
     work_date: workDate,
     hours,
     cost_code: safeString(body.costCode ?? body.cost_code) || null,
@@ -621,7 +644,7 @@ export async function POST(request: Request) {
     const body = (await request.json().catch(() => null)) as LaborEntryPayload | null;
     if (!body) return apiError(400, "Invalid JSON body.");
     if (Array.isArray(body.rows)) {
-      const projectId = typeof body.projectId === "string" ? body.projectId.trim() : "";
+      const projectId = safeString(body.projectId ?? body.project_id);
       const workDate =
         typeof body.workDate === "string" && /^\d{4}-\d{2}-\d{2}/.test(body.workDate)
           ? body.workDate.slice(0, 10)

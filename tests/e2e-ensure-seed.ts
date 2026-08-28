@@ -213,76 +213,11 @@ export async function ensureE2EPreservedSeed(supabase: SupabaseClient): Promise<
 
     await supabase.from("labor_entries").delete().eq("id", lid);
 
-    // Shapes mirror `insertLaborEntryShaped` (api/test/financial-workflows) — schemas differ by migration.
-    // Older DBs: project_am_id + day_rate + total (see 202603082100_daily_labor_log_schema.sql).
-    // Newer DBs: project_id + work_date + hours + cost_amount (+ optional morning/afternoon, status).
+    // Optional labor columns vary, but every supported shape must retain canonical project_id.
     const laborAttempts: RecordUpsert[] = [
       {
         id: lid,
         worker_id: wid,
-        work_date: workDate,
-        project_am_id: pid,
-        project_pm_id: null,
-        day_rate: 200,
-        ot_amount: 0,
-        total: 200,
-      },
-      {
-        id: lid,
-        worker_id: wid,
-        work_date: workDate,
-        project_am_id: pid,
-        day_rate: 200,
-        ot_amount: 0,
-        total: 200,
-      },
-      {
-        id: lid,
-        worker_id: wid,
-        project_id: pid,
-        work_date: workDate,
-        hours: 8,
-        notes,
-      },
-      {
-        id: lid,
-        worker_id: wid,
-        work_date: workDate,
-        hours: 8,
-        cost_amount: 200,
-        status: "Draft",
-        worker_payment_id: null,
-        notes,
-      },
-      {
-        id: lid,
-        worker_id: wid,
-        work_date: workDate,
-        hours: 8,
-        cost_amount: 200,
-        status: "Draft",
-        notes,
-      },
-      {
-        id: lid,
-        worker_id: wid,
-        work_date: workDate,
-        cost_amount: 200,
-        status: "Draft",
-        notes,
-      },
-      {
-        id: lid,
-        worker_id: wid,
-        entry_date: workDate,
-        hours: 8,
-        cost_amount: 200,
-        status: "Draft",
-        notes,
-      },
-      {
-        id: lid,
-        worker_id: wid,
         project_id: pid,
         work_date: workDate,
         hours: 8,
@@ -303,6 +238,16 @@ export async function ensureE2EPreservedSeed(supabase: SupabaseClient): Promise<
         status: "Draft",
         morning: true,
         afternoon: true,
+        notes,
+      },
+      {
+        id: lid,
+        worker_id: wid,
+        project_id: pid,
+        work_date: workDate,
+        hours: 8,
+        cost_amount: 200,
+        status: "Draft",
         notes,
       },
       {
@@ -339,7 +284,7 @@ export async function ensureE2EPreservedSeed(supabase: SupabaseClient): Promise<
         break;
       }
       laborLastErr = error.message ?? "";
-      const retry = missingColumnOrSchemaCache(laborLastErr) || isForeignKeyError(laborLastErr);
+      const retry = missingColumnOrSchemaCache(laborLastErr);
       if (!retry) {
         throw new Error(`E2E seed labor_entries: ${laborLastErr}`);
       }

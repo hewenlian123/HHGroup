@@ -52,6 +52,26 @@ function failFinancialRead(source: string, error: unknown): never {
   throw new FinancialDataUnavailableError(source, error);
 }
 
+async function assertNoUnattributedLaborRows(
+  c: ReturnType<typeof client>,
+  source: string
+): Promise<void> {
+  const { data, error } = await c
+    .from("labor_entries")
+    .select("id")
+    .is("project_id", null)
+    .limit(1);
+  if (error) failFinancialRead(source, error);
+  if ((data ?? []).length > 0) {
+    failFinancialRead(
+      source,
+      new Error(
+        "Unattributed labor entries require project assignment before profit can be calculated."
+      )
+    );
+  }
+}
+
 function isMissingColumn(err: { message?: string } | null): boolean {
   const m = err?.message ?? "";
   return /column .* does not exist|does not exist.*column|could not find the .* column|schema cache|pgrst204/i.test(
@@ -143,6 +163,7 @@ async function fetchLaborCostForProject(
   explicitClient?: SupabaseClient
 ): Promise<number> {
   const c = client(explicitClient);
+  await assertNoUnattributedLaborRows(c, "labor_entries attribution");
   // `project_id` and `cost_amount` are the verified current-schema contract.
   const byProjectId = await c
     .from("labor_entries")
@@ -175,6 +196,7 @@ async function fetchLaborCostBatch(
   if (!idList) return map;
 
   const c = client(explicitClient);
+  await assertNoUnattributedLaborRows(c, "labor_entries attribution batch");
   const byProjectId = await c
     .from("labor_entries")
     .select("project_id, cost_amount, status")

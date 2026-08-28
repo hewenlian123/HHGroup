@@ -82,6 +82,12 @@ function client(explicitClient?: SupabaseClient) {
   return c;
 }
 
+function requireLaborProjectId(value: string | null | undefined): string {
+  const projectId = value?.trim() ?? "";
+  if (!projectId) throw new Error("Project is required for labor attribution.");
+  return projectId;
+}
+
 export type LaborEntryWithJoins = {
   id: string;
   worker_id: string;
@@ -659,13 +665,14 @@ export async function getTotalLaborCost(): Promise<number> {
   if (error) {
     if (/column .* does not exist|schema cache/i.test(error.message ?? "")) {
       const fallback = await c.from("labor_entries").select("cost_amount");
-      if (fallback.error) return 0;
+      if (fallback.error)
+        throw new Error(fallback.error.message ?? "Failed to load total labor cost.");
       return (fallback.data ?? []).reduce(
         (s, r) => s + Number((r as { cost_amount?: number }).cost_amount ?? 0),
         0
       );
     }
-    return 0;
+    throw new Error(error.message ?? "Failed to load total labor cost.");
   }
   return (rows ?? []).reduce(
     (s, r) => s + Number((r as { cost_amount?: number }).cost_amount ?? 0),
@@ -711,8 +718,7 @@ export async function insertDailyLaborEntries(
       return false;
     }
     if (!r.project_id) {
-      warnings.push(`row#${idx + 1}: project_id missing skipped`);
-      return false;
+      throw new Error(`row#${idx + 1}: Project is required for labor attribution.`);
     }
     return Boolean(r.worker_id);
   });
@@ -802,6 +808,7 @@ export async function updateDailyLaborEntry(
   draft: DailyLaborEntryDraft
 ): Promise<DailyLaborEntryRow> {
   const c = client();
+  const projectId = requireLaborProjectId(draft.project_id);
   let currentRes = await c
     .from("labor_entries")
     .select("status, worker_id, work_date, daily_rate_snapshot")
@@ -836,7 +843,7 @@ export async function updateDailyLaborEntry(
   });
   const payload = {
     worker_id: draft.worker_id,
-    project_id: draft.project_id || null,
+    project_id: projectId,
     hours,
     cost_code: draft.cost_code?.trim() || null,
     notes: draft.notes?.trim() || null,
@@ -911,7 +918,9 @@ export async function updateLaborEntry(
   }
 
   const payload: Record<string, unknown> = {};
-  if (updates.project_id !== undefined) payload.project_id = updates.project_id ?? null;
+  if (updates.project_id !== undefined) {
+    payload.project_id = requireLaborProjectId(updates.project_id);
+  }
 
   const ot = updates.overtime_hours;
   const otAmount = updates.overtime_amount;
@@ -969,7 +978,7 @@ export async function getProjectLaborBreakdown(
       throw new Error(error.message ?? "Failed to load project labor breakdown.");
 
     // Fallback for environments missing the RPC: aggregate from labor_entries directly.
-    const entries = await getLaborEntriesWithJoins({ project_id: projectId }).catch(() => []);
+    const entries = await getLaborEntriesWithJoins({ project_id: projectId });
     const byWorker = new Map<
       string,
       { worker_name: string | null; days: Set<string>; total_labor_cost: number }

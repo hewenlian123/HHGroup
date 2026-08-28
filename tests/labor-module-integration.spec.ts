@@ -39,9 +39,9 @@ WITH p AS (
   FROM w
   RETURNING id
 ), le AS (
-  INSERT INTO labor_entries (worker_id, work_date, cost_code, cost_amount, status, morning, afternoon, notes)
-  SELECT lw.id, (CURRENT_DATE - INTERVAL '2 days')::date, 'TEST', 123.45, 'Approved', true, false, 'integration labor entry'
-  FROM lw
+  INSERT INTO labor_entries (worker_id, project_id, work_date, cost_code, cost_amount, status, morning, afternoon, notes)
+  SELECT lw.id, p.id, (CURRENT_DATE - INTERVAL '2 days')::date, 'TEST', 123.45, 'Approved', true, false, 'integration labor entry'
+  FROM lw, p
   RETURNING id
 ), rb_today AS (
   INSERT INTO worker_reimbursements (worker_id, project_id, amount, description, vendor, status, reimbursement_date)
@@ -193,22 +193,15 @@ test.describe("Labor module integration", () => {
     await expect(page.getByText(/Date/i).first()).toBeVisible({ timeout: 30_000 });
     await expect(page.locator("tbody tr").first()).toBeVisible({ timeout: 30_000 });
 
-    // 5) Receipts list
+    // 5) Legacy labor receipts route → canonical worker-submitted receipt inbox
     await page.goto(`${BASE}/labor/receipts`);
     await skipIfBackendUnavailable(page);
-    await expect(page.getByText(/Receipt Uploads|Receipts/i).first()).toBeVisible({
+    await expect(page.getByRole("heading", { name: /Worker Submitted/i })).toBeVisible({
       timeout: 30_000,
     });
     await expect(page.getByText("Loading…").first()).not.toBeVisible({ timeout: 30_000 });
-    // Receipt list is table-based; assert page is loaded and shows at least one row or an empty state.
-    const hasAnyRow = await page
-      .locator("tbody tr")
-      .count()
-      .catch(() => 0);
-    if (hasAnyRow === 0) {
-      await expect(page.getByText(/No receipts|No receipt/i).first()).toBeVisible({
-        timeout: 30_000,
-      });
-    }
+    await expect(
+      page.getByRole("button", { name: `Review receipt from ${WORKER_NAME}` })
+    ).toBeVisible({ timeout: 30_000 });
   });
 });

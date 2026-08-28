@@ -16,9 +16,8 @@ function tryNextLaborInsertShape(msg: string): boolean {
 /**
  * Insert one `labor_entries` row for workflow / system tests.
  *
- * Schema varies: some envs have only `worker_id`, `work_date`, `cost_amount`, flags, `status`
- * (no `project_id` / AM-PM project columns). Try **minimal** shapes first, then richer / `project_id`
- * variants. Never use dropped columns (`project_am_id`, `am_project_id`, `day_rate`, …).
+ * Every supported schema must preserve the canonical direct project attribution.
+ * Optional status/session fields may vary, but `project_id` is never removed.
  */
 export async function insertLaborEntryForTestSchema(
   c: SupabaseClient,
@@ -26,55 +25,26 @@ export async function insertLaborEntryForTestSchema(
 ): Promise<{ id: string }> {
   const { workerId, projectId, workDate } = opts;
 
-  /** Sparse daily labor (matches local Supabase: no project_* on row). */
-  const minimalAttempts: Record<string, unknown>[] = [
-    { worker_id: workerId, work_date: workDate, cost_amount: 50 },
-    { worker_id: workerId, work_date: workDate, cost_amount: 50, status: "pending" },
-    { worker_id: workerId, work_date: workDate, cost_amount: 50, status: "Draft" },
+  const attempts: Record<string, unknown>[] = [
     {
       worker_id: workerId,
+      project_id: projectId,
       work_date: workDate,
-      cost_amount: 50,
       morning: true,
       afternoon: true,
+      cost_amount: 50,
     },
     {
       worker_id: workerId,
+      project_id: projectId,
       work_date: workDate,
-      cost_amount: 50,
       hours: 4,
-      notes: "workflow-test",
+      cost_amount: 50,
     },
-    { worker_id: workerId, work_date: workDate, cost_amount: 50, hours: 0 },
-  ];
-
-  /** Wider schemas: project link, alternate date column names, etc. */
-  const extendedAttempts: Record<string, unknown>[] = [
-    { worker_id: workerId, project_id: projectId, work_date: workDate },
     { worker_id: workerId, project_id: projectId, work_date: workDate, cost_amount: 50 },
-    { worker_id: workerId, project_id: projectId, date: workDate },
-    { worker_id: workerId, project_id: projectId, entry_date: workDate },
-    { worker_id: workerId, project_id: projectId, work_date: workDate, status: "pending" },
     { worker_id: workerId, project_id: projectId, work_date: workDate, status: "Draft" },
-    {
-      worker_id: workerId,
-      project_id: projectId,
-      work_date: workDate,
-      morning: true,
-      afternoon: true,
-      cost_amount: 50,
-    },
-    {
-      worker_id: workerId,
-      project_id: projectId,
-      work_date: workDate,
-      hours: 4,
-      cost_amount: 50,
-    },
-    { worker_id: workerId, project_id: projectId, date: workDate, cost_amount: 50 },
+    { worker_id: workerId, project_id: projectId, work_date: workDate },
   ];
-
-  const attempts = [...minimalAttempts, ...extendedAttempts];
   let lastErr = "";
   for (const payload of attempts) {
     const { data, error } = await c.from("labor_entries").insert(payload).select("id").single();

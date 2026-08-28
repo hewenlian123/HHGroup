@@ -148,6 +148,64 @@ describe("profit engine commission cost", () => {
     });
   });
 
+  it("keeps labor costs isolated by project in both batch and single-project profit", async () => {
+    fakeData = {
+      projects: [
+        { id: "project-1", budget: 1000 },
+        { id: "project-2", budget: 900 },
+      ],
+      project_change_orders: [],
+      subcontract_bills: [],
+      labor_entries: [
+        { id: "labor-1", project_id: "project-1", status: "Approved", cost_amount: 125 },
+        { id: "labor-2", project_id: "project-2", status: "Approved", cost_amount: 275 },
+      ],
+      expense_lines: [],
+      expenses: [],
+      commissions: [],
+      project_commissions: [],
+      commission_payments: [],
+    };
+
+    const { getCanonicalProjectProfit, getCanonicalProjectProfitBatch } =
+      await import("@/lib/profit-engine");
+    const batch = await getCanonicalProjectProfitBatch(["project-1", "project-2"]);
+    const single = await getCanonicalProjectProfit("project-1");
+
+    expect(batch.get("project-1")?.laborCost).toBe(125);
+    expect(batch.get("project-2")?.laborCost).toBe(275);
+    expect(batch.get("project-1")?.actualCost).toBe(125);
+    expect(batch.get("project-2")?.actualCost).toBe(275);
+    expect(single.laborCost).toBe(batch.get("project-1")?.laborCost);
+    expect(single.actualCost).toBe(batch.get("project-1")?.actualCost);
+  });
+
+  it("rejects canonical profit when any historical labor row is unattributed", async () => {
+    fakeData = {
+      projects: [{ id: "project-1", budget: 1000 }],
+      project_change_orders: [],
+      subcontract_bills: [],
+      labor_entries: [
+        { id: "labor-unattributed", project_id: null, status: "Approved", cost_amount: 125 },
+      ],
+      expense_lines: [],
+      expenses: [],
+      commissions: [],
+      project_commissions: [],
+      commission_payments: [],
+    };
+
+    const { getCanonicalProjectProfit, getCanonicalProjectProfitBatch } =
+      await import("@/lib/profit-engine");
+
+    await expect(getCanonicalProjectProfit("project-1")).rejects.toThrow(
+      "Unattributed labor entries require project assignment"
+    );
+    await expect(getCanonicalProjectProfitBatch(["project-1"])).rejects.toThrow(
+      "Unattributed labor entries require project assignment"
+    );
+  });
+
   it("uses the production Change Order total contract without querying the absent amount column", async () => {
     missingColumns = { project_change_orders: new Set(["amount"]) };
     fakeData = {

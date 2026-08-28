@@ -19,15 +19,12 @@ import {
 } from "@/lib/labor-overtime-notes";
 
 const LABOR_ENTRIES_COLS = "id, worker_id, project_id, work_date, hours, cost_code, notes" as const;
-const LABOR_ENTRIES_COLS_NO_PROJECT = "id, worker_id, work_date, hours, cost_code, notes" as const;
 /** Columns for labor cost aggregation (includes cost_amount). Use after migration 202603101200. */
 const LABOR_ENTRIES_COLS_WITH_COST =
   "id, worker_id, project_id, work_date, hours, cost_code, notes, cost_amount" as const;
 /** Columns for daily (AM/PM) insert; includes morning, afternoon when migration 202603191000 applied. */
 const LABOR_ENTRIES_DAILY_COLS =
   "id, worker_id, project_id, work_date, hours, cost_code, notes, cost_amount, morning, afternoon" as const;
-const LABOR_ENTRIES_DAILY_COLS_NO_PROJECT =
-  "id, worker_id, work_date, hours, cost_code, notes, cost_amount, morning, afternoon" as const;
 /** Columns for reading entries with AM/PM for pay display. */
 const LABOR_ENTRIES_COLS_WITH_AMPM =
   "id, worker_id, project_id, work_date, hours, cost_code, notes, morning, afternoon" as const;
@@ -201,6 +198,12 @@ function client(explicitClient?: SupabaseClient) {
   const c = explicitClient ?? getSupabaseClient();
   if (!c) throw new Error("Supabase is not configured.");
   return c;
+}
+
+function requireLaborProjectId(value: string | null | undefined): string {
+  const projectId = value?.trim() ?? "";
+  if (!projectId) throw new Error("Project is required for labor attribution.");
+  return projectId;
 }
 
 function isMissingTable(err: { message?: string } | null): boolean {
@@ -484,9 +487,8 @@ export async function getLaborAllocatedByProject(
   const { data: rows, error } = await q;
   if (error) {
     if (isMissingTable(error)) throw new Error("labor_entries: table not found. Run migrations.");
-    if (isMissingColumn(error)) {
-      return 0;
-    }
+    if (isMissingColumn(error))
+      throw new Error(`labor_entries project attribution schema is unavailable: ${error.message}`);
     throw new Error(error.message ?? "Failed to load labor_entries.");
   }
   const entries = (rows ?? []) as Array<LaborEntryRow & { cost_amount?: number | null }>;
@@ -634,6 +636,7 @@ export async function insertDailyLaborEntriesWithClient(
   options?: { notes?: string; costCode?: string }
 ): Promise<LaborEntry[]> {
   const c = client(explicitClient);
+  const canonicalProjectId = requireLaborProjectId(projectId);
   const date = workDate.slice(0, 10);
   const toInsert = rows.filter((r) => r.morning || r.afternoon);
   if (toInsert.length === 0) return [];
@@ -681,7 +684,7 @@ export async function insertDailyLaborEntriesWithClient(
     });
     payloads.push({
       worker_id: r.workerId,
-      project_id: projectId || null,
+      project_id: canonicalProjectId,
       work_date: date,
       morning: !!r.morning,
       afternoon: !!r.afternoon,
@@ -703,17 +706,6 @@ export async function insertDailyLaborEntriesWithClient(
 
   let { data: inserted, error } = await insertPayloads(payloads, LABOR_ENTRIES_DAILY_COLS);
   if (error) {
-    if (isMissingColumn(error) && /project_id/i.test(error.message ?? "")) {
-      const payloadsNoProject = payloads.map((p) => {
-        const copy = { ...p };
-        delete copy.project_id;
-        return copy;
-      });
-      const fallback = await insertPayloads(payloadsNoProject, LABOR_ENTRIES_DAILY_COLS_NO_PROJECT);
-      inserted = fallback.data as typeof inserted;
-      error = fallback.error as typeof error;
-      if (!error) return (inserted ?? []).map((r) => toLaborEntry(r as unknown as LaborEntryRow));
-    }
     if (isMissingColumn(error)) {
       const payloadsHoursOnly = payloads.map((p) => {
         const rest = { ...(p as Record<string, unknown>) };
@@ -726,19 +718,7 @@ export async function insertDailyLaborEntriesWithClient(
         delete rest.rate_history_id;
         return rest;
       });
-      let fallback = await insertPayloads(payloadsHoursOnly, LABOR_ENTRIES_COLS);
-      if (
-        fallback.error &&
-        isMissingColumn(fallback.error) &&
-        /project_id/i.test(fallback.error.message ?? "")
-      ) {
-        const payloadsHoursOnlyNoProject = payloadsHoursOnly.map((p) => {
-          const copy = { ...p };
-          delete copy.project_id;
-          return copy;
-        });
-        fallback = await insertPayloads(payloadsHoursOnlyNoProject, LABOR_ENTRIES_COLS_NO_PROJECT);
-      }
+      const fallback = await insertPayloads(payloadsHoursOnly, LABOR_ENTRIES_COLS);
       const { data, error: err2 } = fallback;
       if (err2) throw new Error(err2.message ?? "Failed to save daily labor entries.");
       return (data ?? []).map((row) => toLaborEntry(row as unknown as LaborEntryRow));
@@ -783,6 +763,7 @@ export async function upsertLaborEntry(
   entry: Omit<LaborEntry, "id"> & { id?: string }
 ): Promise<LaborEntry> {
   const c = client();
+  const projectId = requireLaborProjectId(entry.projectId);
   const worker = await getWorkerById(entry.workerId);
   if (!worker) throw new Error(`Worker not found: ${entry.workerId}`);
 
@@ -809,7 +790,7 @@ export async function upsertLaborEntry(
   });
   const payload = {
     worker_id: entry.workerId,
-    project_id: entry.projectId || null,
+    project_id: projectId,
     work_date: entry.date.slice(0, 10),
     hours,
     cost_code: entry.costCode?.trim() || null,
@@ -916,7 +897,9 @@ export async function updateLaborEntry(
   }
 
   const payload: Record<string, unknown> = {};
-  if (updates.project_id !== undefined) payload.project_id = updates.project_id ?? null;
+  if (updates.project_id !== undefined) {
+    payload.project_id = requireLaborProjectId(updates.project_id);
+  }
   if (updates.cost_amount !== undefined) payload.cost_amount = Number(updates.cost_amount) || 0;
   if (updates.hours !== undefined) payload.hours = Number(updates.hours) || 0;
   if (updates.notes !== undefined) payload.notes = updates.notes ?? null;

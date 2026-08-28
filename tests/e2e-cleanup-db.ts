@@ -341,6 +341,23 @@ export async function cleanupTestData(supabase: SupabaseClient): Promise<Cleanup
 
   const projectIds = await collectProjectIdsForCleanup(supabase);
   if (projectIds.length > 0) {
+    // Migration 178 gives labor_entries a NO ACTION project FK. Remove only labor
+    // rows tied to the exact disposable E2E projects before deleting those projects.
+    const { data: projectLaborRows, error: projectLaborReadError } = await supabase
+      .from("labor_entries")
+      .select("id")
+      .in("project_id", projectIds);
+    if (projectLaborReadError) {
+      warnings.push(`labor_entries by project: ${projectLaborReadError.message}`);
+    } else {
+      const projectLaborIds = (projectLaborRows ?? []).map((row: { id: string }) => row.id);
+      if (projectLaborIds.length > 0) {
+        const { error } = await supabase.from("labor_entries").delete().in("id", projectLaborIds);
+        if (error) warnings.push(`labor_entries by project: ${error.message}`);
+        else bump("labor_entries", projectLaborIds.length);
+      }
+    }
+
     const { error } = await supabase.from("projects").delete().in("id", projectIds);
     if (error) warnings.push(`projects: ${error.message}`);
     else bump("projects", projectIds.length);
