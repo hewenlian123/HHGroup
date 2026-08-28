@@ -2,7 +2,7 @@
 
 This document describes how **receipt images** move through the app today: client compression, storage naming, the single OCR API, and how **Quick Expense** and **Receipt Queue** share the same pipeline. Use it to avoid E2E or feature work that assumes the wrong filename or duplicate OCR systems.
 
-For **Expenses page perf / local schema / batching** (not OCR-specific), see [performance-notes.md](./performance-notes.md).
+For **Expenses page perf / local schema / batching** (not OCR-specific), see [performance-notes.md](./archive/historical/performance-notes.md).
 
 ## Single OCR API
 

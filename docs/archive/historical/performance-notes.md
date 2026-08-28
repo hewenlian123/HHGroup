@@ -1,6 +1,6 @@
 # Performance notes (HH Unified Web)
 
-Operational notes for `/financial/expenses` and related fixes. For receipt/OCR product flow, see [receipt-upload-ocr-flow.md](./receipt-upload-ocr-flow.md).
+Operational notes for `/financial/expenses` and related fixes. For receipt/OCR product flow, see [receipt-upload-ocr-flow.md](../../receipt-upload-ocr-flow.md).
 
 ## Local Supabase — schema alignment (expenses list)
 

@@ -53,6 +53,6 @@ Fix: seed the corresponding entities in Supabase (or run against an env that has
 - `tests/expense-receipt-preview-layout.spec.ts`
 - `tests/expenses-receipt-queue.spec.ts`
 
-**Plus** `docs/playwright-skip-inventory.md` (this section) → **`git diff --stat` shows 10 files** when the doc is included.
+**Plus** `docs/archive/historical/playwright-skip-inventory.md` (this section) → **`git diff --stat` shows 10 files** when the doc is included.
 
 Focused Chromium run: keep `npm run dev:safe` on `:3000`, then `E2E_WEB_SERVER=off npx playwright test` on the five expense specs with `--retries=0` (see repo scripts / CI docs).

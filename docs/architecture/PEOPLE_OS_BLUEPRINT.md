@@ -255,7 +255,7 @@ Use source ownership to avoid accidental financial drift:
 5. Support companies and individuals. Do not force every row into a person shape.
 6. Support multiple roles on the same contact, but keep role-specific source IDs.
 7. Keep old routes and APIs as compatibility surfaces until at least one full release cycle after dual-read verification.
-8. Only add `contacts` and `contact_roles` after schema columns are verified per `CURSOR_RULES.md` and a migration rollback plan exists.
+8. Only add `contacts` and `contact_roles` after schema columns are verified per `AGENTS.md` and a migration rollback plan exists.
 
 ### Suggested Future Read Model Shape
 

@@ -227,7 +227,7 @@ Recommended tests later:
 Files changed by this review:
 
 - `src/app/api/upload-receipt/sync/route.ts` — added production safety guard to GET and POST.
-- `CODE_LOGIC_UI_QUALITY_REVIEW.md` — this report.
+- `docs/archive/2026-05/CODE_LOGIC_UI_QUALITY_REVIEW.md` — this report.
 
 Existing untracked files to keep out of commits:
 
@@ -238,7 +238,7 @@ Current recommendation:
 
 - Yes, this is worth committing after owner review, but only stage:
   - `src/app/api/upload-receipt/sync/route.ts`
-  - `CODE_LOGIC_UI_QUALITY_REVIEW.md`
+  - `docs/archive/2026-05/CODE_LOGIC_UI_QUALITY_REVIEW.md`
 - Do not stage `SYSTEM_MODULE_INVENTORY.md` or `.SYSTEM_MODULE_INVENTORY.md.swp`.
 - Do not push or deploy until explicitly requested.
 
