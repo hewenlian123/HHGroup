@@ -1,53 +1,62 @@
-# GitHub Actions → tests → Vercel
+# GitHub Actions checks and Vercel Git Integration
 
-Workflow: [`.github/workflows/ci.yml`](../.github/workflows/ci.yml)
+Repository workflow: [`.github/workflows/ci.yml`](../.github/workflows/ci.yml)
 
-## What runs
+The GitHub Actions workflow validates pushes and pull requests targeting `main`. It does not run Playwright, deploy to Vercel, or apply Supabase migrations.
 
-| Step       | Command                      | Notes                                                                    |
-| ---------- | ---------------------------- | ------------------------------------------------------------------------ |
-| Unit tests | `npm run test:unit`          | Vitest (`src/__tests__/**/*.test.ts`)                                    |
-| Format     | `npm run format:check:ci`    | Prettier on workflows, docs, configs (full repo: `npm run format:check`) |
-| ESLint     | `npm run lint:ci`            | `src/__tests__` only; full app: `npm run lint`                           |
-| E2E        | `npm run test:e2e:ci`        | Playwright **chromium** only; excludes payment/delete-mutation specs     |
-| Build      | `npm run build`              | Uses `NEXT_PUBLIC_*` from workflow env                                   |
-| Deploy     | `amondnet/vercel-action@v25` | **Only** on `push` to `main`                                             |
+## Runtime
 
-Playwright starts **`npm run start`** automatically when `CI=true` (see `playwright.config.ts` `webServer`).
+- **Canonical repository runtime:** Node.js 22.x.
+- GitHub Actions uses `actions/setup-node@v4` with Node 22.
+- After the repository runtime alignment, `package.json` and the root lockfile declare `engines.node` as `22.x`; that repository setting governs future Vercel builds.
+- The Vercel Dashboard currently remains set to Node 24.x. That Dashboard setting is intentionally unchanged in this phase.
+
+Use Node 22 locally for dependency installs, tests, and builds so local results match GitHub Actions and future Vercel builds.
+
+## What CI runs
+
+| Step                | Command                                 | Scope                                                           |
+| ------------------- | --------------------------------------- | --------------------------------------------------------------- |
+| Install             | `npm ci`                                | Frozen install from `package-lock.json`                         |
+| Migration filenames | `npm run check:migration-filenames`     | Validates migration filenames                                   |
+| Migration ordering  | `npm run check:migration-order`         | Rejects insertions before the existing migration tail           |
+| Schema preflight    | `npm run check:schema-preflight:strict` | Strict table, policy, and schema expectations                   |
+| Schema/code audit   | `npm run check:schema-vs-code`          | Checks referenced database columns against the schema inventory |
+| Unit tests          | `npm run test:unit`                     | Vitest unit and contract tests                                  |
+| Formatting          | `npm run format:check`                  | Full-repository Prettier check                                  |
+| ESLint              | `npm run lint:ci`                       | Limited to `src/__tests__` by the current script                |
+| TypeScript          | `npm run typecheck`                     | Application typecheck                                           |
+| Build               | `npm run build`                         | Next.js production build                                        |
+
+Playwright remains a local verification tool. It is intentionally absent from `.github/workflows/ci.yml`, including the non-mutating Chromium project.
 
 ## GitHub configuration
 
-### Secrets (repository → Settings → Secrets and variables)
+The build can consume these optional repository values:
 
-**Deploy (required for production job):**
+- Repository variable `NEXT_PUBLIC_SUPABASE_URL`
+- Repository secret `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 
-- `VERCEL_TOKEN` — Vercel account → Settings → Tokens
-- `VERCEL_ORG_ID` — Team / user id (`.vercel/project.json` after `vercel link`, or Vercel dashboard)
-- `VERCEL_PROJECT_ID` — Project id (same sources)
+When they are absent, the workflow supplies non-secret placeholders so `next build` can complete. The workflow does not require `VERCEL_TOKEN`, `VERCEL_ORG_ID`, or `VERCEL_PROJECT_ID` because it contains no Vercel CLI/action deployment job.
 
-**Optional (better builds & E2E against real data):**
+## Deployment boundary
 
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY` — Supabase anon key (also used at build time)
-- Variable `NEXT_PUBLIC_SUPABASE_URL` — Repository **Variables** (public URL is non-secret)
+Vercel deployment is handled by the repository's **Vercel Git Integration**, configured outside GitHub Actions. Depending on the Vercel project settings, a push to `main` may trigger a Production deployment and a pull request may trigger a Preview deployment. The GitHub Actions workflow itself does not deploy, promote, or roll back a Vercel deployment.
 
-If these are missing, the workflow uses placeholders so `next build` can succeed; E2E may skip more tests.
+Production Supabase migrations are never applied by the CI workflow or by the documented Git deployment path. They remain manual, explicitly authorized operations. Use the guarded [`manual-production-supabase-migration.yml`](../.github/workflows/manual-production-supabase-migration.yml) workflow only after the exact Production migration has been reviewed and approved.
 
-### Duplicate deploys
-
-If the Vercel GitHub integration **also** deploys `main`, you get two production deploys. Either:
-
-- disable automatic Production Deployments for `main` in Vercel and rely on this workflow, **or**
-- remove the `deploy-vercel` job from `ci.yml` and keep only tests in Actions (let Vercel deploy on push).
-
-## Local commands
+## Local verification commands
 
 ```bash
-npm run test:unit          # Vitest
-npm run test:e2e:install   # Playwright browsers (dev)
-npm run test:e2e:install:ci # Chromium + OS deps (like CI)
-npm run test:e2e:ci        # Stop anything on :3000 first, or unset CI to use your dev server
-npm run format             # Prettier write
-npm run format:check:ci    # Prettier check (CI scope)
-npm run lint               # next lint (full tree)
-npm run lint:ci            # ESLint tests only
+npm run check:migration-filenames
+npm run check:migration-order
+npm run check:schema-preflight:strict
+npm run check:schema-vs-code
+npm run test:unit
+npm run format:check
+npm run lint:ci
+npm run typecheck
+npm run build
 ```
+
+Run Playwright separately against the local application and local Supabase only, using the task-appropriate `test:e2e:*` script. Playwright success does not authorize a push, deployment, or Production migration.

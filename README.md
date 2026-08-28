@@ -9,16 +9,20 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Testing & code quality
 
-| Tool                 | Scripts                                                                     |
-| -------------------- | --------------------------------------------------------------------------- |
-| **Vitest** (unit)    | `npm run test:unit` / `npm test` (watch)                                    |
-| **Playwright** (E2E) | `npm run test:e2e:ci` (Chromium, safe specs), `npm run test:e2e:install`    |
-| **Prettier**         | `npm run format`, `npm run format:check`, CI: `npm run format:check:ci`     |
-| **ESLint**           | `npm run lint` (Next.js), CI gate: `npm run lint:ci` (`src/__tests__` only) |
+| Tool                   | Scripts                                                                                                                                       |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Schema checks**      | `npm run check:migration-filenames`, `npm run check:migration-order`, `npm run check:schema-preflight:strict`, `npm run check:schema-vs-code` |
+| **Vitest**             | `npm run test:unit` / `npm test` (watch)                                                                                                      |
+| **Playwright**         | Local only: use the task-appropriate `test:e2e:*` script; install browsers with `npm run test:e2e:install`                                    |
+| **Prettier**           | `npm run format`, `npm run format:check`; CI runs the full `format:check`                                                                     |
+| **ESLint**             | `npm run lint`; CI runs limited `npm run lint:ci` coverage for `src/__tests__`                                                                |
+| **TypeScript / build** | `npm run typecheck`, `npm run build`                                                                                                          |
 
-**GitHub Actions:** `.github/workflows/ci.yml` runs tests + build + Playwright, then deploys **production** to Vercel on `main` (requires `VERCEL_*` secrets). See [`docs/CI_GITHUB_VERCEL.md`](docs/CI_GITHUB_VERCEL.md).
+**GitHub Actions:** [`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs schema checks, Vitest, full-repository Prettier, limited ESLint, TypeScript, and a Next.js build. It does **not** run Playwright or deploy. Vercel deployments are handled separately by the external Git Integration. See [`docs/CI_GITHUB_VERCEL.md`](docs/CI_GITHUB_VERCEL.md).
 
 ## Getting Started
+
+Use Node.js **22.x**, the canonical repository runtime. GitHub Actions uses Node 22. The Vercel Dashboard remains set to 24.x in this phase, while the repository's `engines.node: 22.x` setting governs future Vercel builds.
 
 First, run the development server:
 
@@ -49,7 +53,9 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 
 ## Deploy on Vercel
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Vercel deployment is handled by the repository's Git Integration, configured outside GitHub Actions. A push to `main` may trigger a Production deployment according to the Vercel project settings; `.github/workflows/ci.yml` does not call Vercel or gate Production migrations.
+
+Production Supabase migrations remain manual and require explicit authorization. They are not run by GitHub Actions or by the documented Git deployment path.
 
 **Before production:** see [`docs/PRODUCTION_CHECKLIST.md`](docs/PRODUCTION_CHECKLIST.md) (env vars, migrations, pay/receipt/delete verification).
 

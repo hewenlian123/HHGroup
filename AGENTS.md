@@ -52,6 +52,7 @@ This file is the single canonical repository-level instruction source for Codex 
 
 ## Implementation and verification
 
+- Use Node.js 22.x for local development, CI, and future Vercel builds. Treat `.nvmrc` and `package.json#engines` as the repository runtime contract.
 - Follow the existing Next.js, React, TypeScript, Supabase, and HH design-system patterns. Reuse established components, tokens, data-access layers, and tests before adding new abstractions or dependencies.
 - Verify in proportion to risk: run the narrowest relevant tests first, then required type, lint, format, build, migration, or Playwright checks for the changed surface.
 - For UI changes, inspect the result in the running local app at relevant viewport sizes and verify loading, empty, error, and success states as applicable.

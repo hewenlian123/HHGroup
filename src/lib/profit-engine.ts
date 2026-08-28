@@ -474,10 +474,7 @@ export async function getCanonicalProjectProfitBatch(
       total_amount?: unknown;
     }>) {
       const pid = co.project_id ?? "";
-      coByProject.set(
-        pid,
-        (coByProject.get(pid) ?? 0) + toNum(changeOrderAmountValue(co))
-      );
+      coByProject.set(pid, (coByProject.get(pid) ?? 0) + toNum(changeOrderAmountValue(co)));
     }
   }
 

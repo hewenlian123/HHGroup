@@ -1,23 +1,4 @@
-import withPWAInit from "@ducanh2912/next-pwa";
-
-const withPWA = withPWAInit({
-  dest: "public",
-  disable: process.env.NODE_ENV === "development",
-  register: true,
-  skipWaiting: true,
-  reloadOnOnline: true,
-  cacheOnFrontEndNav: true,
-  cacheStartUrl: true,
-  dynamicStartUrl: true,
-  fallbacks: {
-    document: "/offline",
-  },
-  workboxOptions: {
-    navigateFallbackDenylist: [/^\/api\//],
-  },
-});
-
-export default function nextConfig(phase) {
+export default function nextConfig() {
   const distDir = (process.env.NEXT_DIST_DIR || ".next").trim() || ".next";
   const base = {
     // Playwright can set NEXT_DIST_DIR=.next-e2e to avoid stale or cloud-evicted local .next output.
@@ -119,5 +100,5 @@ export default function nextConfig(phase) {
       return config;
     },
   };
-  return withPWA(base);
+  return base;
 }

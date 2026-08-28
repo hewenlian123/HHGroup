@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "engines": {
-    "node": "20.x"
+    "node": "22.x"
   },
   "scripts": {
     "dev": "next dev -p 3000",
@@ -34,7 +34,7 @@
     "test:local:ui-only": "CI= E2E_UI_READONLY=1 npx playwright test -c playwright.ui.config.ts",
     "test:ui:readonly": "CI= E2E_UI_READONLY=1 npx playwright test -c playwright.ui.config.ts",
     "auth:ui-readonly-owner": "npx tsx tests/ui-readonly/create-owner-storage-state.ts",
-    "test:before-push": "npx prettier --write . && CI= E2E_BASE_URL='http://localhost:3000' npx playwright test --project=chromium && node scripts/guard-no-test-data-push.mjs && git push origin main",
+    "verify:before-push": "npm run check:migration-filenames && npm run check:migration-order && npm run check:schema-preflight:strict && npm run check:schema-vs-code && npm run test:unit && npm run format:check && npm run lint:ci && npm run typecheck && npm run build && node scripts/guard-no-test-data-push.mjs",
     "test:e2e:company-profile": "CI= playwright test tests/settings-company-profile.spec.ts --project=chromium",
     "test:e2e:document-header": "CI= playwright test tests/settings-company-profile.spec.ts -g \"invoice print header\" --project=chromium",
     "test:e2e:company-branding": "CI= playwright test tests/settings-company-profile.spec.ts --project=chromium",
@@ -68,7 +68,6 @@
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
-    "@ducanh2912/next-pwa": "^10.2.9",
     "@radix-ui/react-avatar": "^1.1.11",
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-dropdown-menu": "^2.1.16",

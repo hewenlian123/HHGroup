@@ -148,12 +148,12 @@ function isVercelRuntime(): boolean {
 function ensureVercelChromiumRuntimeEnv(): void {
   const runtime = process.env.AWS_LAMBDA_JS_RUNTIME ?? "";
   if (!runtime.includes("20.x") && !runtime.includes("22.x")) {
-    process.env.AWS_LAMBDA_JS_RUNTIME = "nodejs20.x";
+    process.env.AWS_LAMBDA_JS_RUNTIME = "nodejs22.x";
   }
 
   const executionEnv = process.env.AWS_EXECUTION_ENV ?? "";
   if (!executionEnv.includes("20.x") && !executionEnv.includes("22.x")) {
-    process.env.AWS_EXECUTION_ENV = "AWS_Lambda_nodejs20.x";
+    process.env.AWS_EXECUTION_ENV = "AWS_Lambda_nodejs22.x";
   }
 }
 

@@ -1,5 +1,0 @@
-{
-  "playwright.env": {
-    "E2E_ALLOW_PAYMENT_MUTATIONS": "1"
-  }
-}

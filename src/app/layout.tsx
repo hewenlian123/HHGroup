@@ -5,10 +5,12 @@ import { Inter } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
 import { ensureConstructionSchema } from "@/lib/ensure-construction-schema";
-import { DevUnregisterServiceWorker } from "@/components/dev-unregister-service-worker";
+import { ServiceWorkerCleanup } from "@/components/service-worker-cleanup";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Providers } from "./providers";
 import { OPERATIONAL_THEME_BOOTSTRAP_SCRIPT } from "@/lib/operational-theme";
+
+const LEGACY_SERVICE_WORKER_CLEANUP_SCRIPT = `(function(){var key="hh-sw-cleanup-reload-v1";var hadController=typeof navigator!=="undefined"&&"serviceWorker" in navigator&&Boolean(navigator.serviceWorker.controller);var unregister=typeof navigator!=="undefined"&&"serviceWorker" in navigator?navigator.serviceWorker.getRegistrations().then(function(registrations){return Promise.all(registrations.map(function(registration){return registration.unregister();}));}).catch(function(){return[];}):Promise.resolve([]);unregister.then(function(){if(typeof caches==="undefined")return[];return caches.keys().then(function(keys){return Promise.all(keys.map(function(cacheName){return caches.delete(cacheName);}));}).catch(function(){return[];});}).then(function(){if(hadController){try{if(sessionStorage.getItem(key)!=="1"){sessionStorage.setItem(key,"1");location.reload();return;}}catch(_error){}}try{sessionStorage.removeItem(key);}catch(_error){}});})();`;
 
 const AppShell = dynamic(() => import("@/components/layout/app-shell").then((m) => m.AppShell), {
   ssr: false,
@@ -85,12 +87,10 @@ export default async function RootLayout(
         />
       </head>
       <body className="hh-motion-root antialiased">
-        {process.env.NODE_ENV === "development" ? (
-          <Script id="dev-unregister-sw-before-interactive" strategy="beforeInteractive">
-            {`(function(){if(typeof navigator!=="undefined"&&"serviceWorker"in navigator){navigator.serviceWorker.getRegistrations().then(function(r){r.forEach(function(x){x.unregister();});});}})();`}
-          </Script>
-        ) : null}
-        {process.env.NODE_ENV === "development" ? <DevUnregisterServiceWorker /> : null}
+        <Script id="legacy-service-worker-cleanup" strategy="beforeInteractive">
+          {LEGACY_SERVICE_WORKER_CLEANUP_SCRIPT}
+        </Script>
+        <ServiceWorkerCleanup />
         <Providers>
           <AppShell>{props.children}</AppShell>
         </Providers>

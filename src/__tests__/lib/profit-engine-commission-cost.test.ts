@@ -71,7 +71,10 @@ class FakeQuery {
 
   private error(): FakeError | null {
     const missingColumn = [...(missingColumns[this.table] ?? [])].find((column) =>
-      this.selected.split(",").map((value) => value.trim()).includes(column)
+      this.selected
+        .split(",")
+        .map((value) => value.trim())
+        .includes(column)
     );
     if (missingColumn) return { code: "42703", message: `column ${missingColumn} does not exist` };
     return fakeErrors[this.table] ?? null;

@@ -55,7 +55,7 @@ if (blocked.size > 0) {
   for (const file of [...blocked].sort()) {
     console.error(` - ${file}`);
   }
-  console.error("Remove or untrack these files, then re-run test:before-push.");
+  console.error("Remove or untrack these files, then re-run verify:before-push.");
   process.exit(1);
 }
 

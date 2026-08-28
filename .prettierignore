@@ -3,7 +3,6 @@
 .next-e2e-node20
 node_modules
 package-lock.json
-public/sw.js
 coverage
 playwright-report
 test-results
