@@ -138,11 +138,15 @@ function sessionSortValue(entry: LaborEntryWithJoins): number {
   return 2;
 }
 
+const UNATTRIBUTED_LABOR_LABEL = "Unattributed / 未归类";
+
 function projectSummaryForEntries(entries: LaborEntryWithJoins[]): string {
   const projects = new Map<string, string>();
   for (const entry of entries) {
     const id = entry.project_id ?? "__none__";
-    const name = entry.project_name ?? "—";
+    const name = entry.project_id
+      ? (entry.project_name ?? entry.project_id)
+      : UNATTRIBUTED_LABOR_LABEL;
     projects.set(id, name);
   }
   if (projects.size === 0) return "—";
@@ -558,7 +562,7 @@ export default function LaborPageClient() {
     const byProject = new Map<string, { id: string; name: string; total: number }>();
     for (const e of monthEntries) {
       const pid = e.project_id ?? "__none__";
-      const name = e.project_name ?? "No project";
+      const name = e.project_id ? (e.project_name ?? e.project_id) : UNATTRIBUTED_LABOR_LABEL;
       const amount = e.cost_amount ?? 0;
       const cur = byProject.get(pid);
       if (cur) {
@@ -1055,7 +1059,9 @@ export default function LaborPageClient() {
                                                       )}
                                                     </td>
                                                     <td className="py-2 px-3 text-muted-foreground/80">
-                                                      {child.project_name ?? "—"}
+                                                      {child.project_id
+                                                        ? (child.project_name ?? child.project_id)
+                                                        : UNATTRIBUTED_LABOR_LABEL}
                                                     </td>
                                                     <td className="py-2 px-3">
                                                       <span
@@ -1126,7 +1132,9 @@ export default function LaborPageClient() {
                                           {e.worker_name ?? "—"}
                                         </td>
                                         <td className="py-2 px-3 text-muted-foreground/80">
-                                          {e.project_name ?? "—"}
+                                          {e.project_id
+                                            ? (e.project_name ?? e.project_id)
+                                            : UNATTRIBUTED_LABOR_LABEL}
                                         </td>
                                         <td className="py-2 px-3">
                                           <span
@@ -1238,7 +1246,9 @@ export default function LaborPageClient() {
                                                         )}
                                                       </span>
                                                       <div className="mt-1 truncate text-xs text-muted-foreground">
-                                                        {child.project_name ?? "—"}
+                                                        {child.project_id
+                                                          ? (child.project_name ?? child.project_id)
+                                                          : UNATTRIBUTED_LABOR_LABEL}
                                                       </div>
                                                     </div>
                                                     <div className="shrink-0 text-right">
@@ -1303,7 +1313,9 @@ export default function LaborPageClient() {
                                             </span>
                                           </div>
                                           <div className="mt-0.5 text-xs text-muted-foreground truncate">
-                                            {e.project_name ?? "—"}
+                                            {e.project_id
+                                              ? (e.project_name ?? e.project_id)
+                                              : UNATTRIBUTED_LABOR_LABEL}
                                           </div>
                                         </div>
                                         <div className="shrink-0 text-right">
@@ -1758,7 +1770,9 @@ export default function LaborPageClient() {
                                   {e.worker_name ?? "—"}
                                 </td>
                                 <td className="py-2 px-3 text-muted-foreground/80">
-                                  {e.project_name ?? "—"}
+                                  {e.project_id
+                                    ? (e.project_name ?? e.project_id)
+                                    : UNATTRIBUTED_LABOR_LABEL}
                                 </td>
                                 <td className="py-2 px-3">
                                   <span

@@ -85,12 +85,10 @@ export default async function MonthlyLaborPage({ searchParams }: Props) {
 
   const byProject = entries.reduce(
     (acc, e) => {
-      if (e.project_id) {
-        const id = e.project_id;
-        const name = e.project_name ?? "—";
-        if (!acc[id]) acc[id] = { project_name: name, total: 0 };
-        acc[id].total += entryAmount(e.worker_id, e.hours);
-      }
+      const id = e.project_id ?? "__unattributed__";
+      const name = e.project_id ? (e.project_name ?? e.project_id) : "Unattributed / 未归类";
+      if (!acc[id]) acc[id] = { project_name: name, total: 0 };
+      acc[id].total += entryAmount(e.worker_id, e.hours);
       return acc;
     },
     {} as Record<string, { project_name: string; total: number }>

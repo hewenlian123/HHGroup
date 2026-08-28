@@ -35,7 +35,7 @@ import {
 import { Pagination } from "@/components/ui/pagination";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
-import { Search } from "lucide-react";
+import { AlertTriangle, Search } from "lucide-react";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import {
   getLaborPaymentStatus,
@@ -48,6 +48,15 @@ import {
   parseLaborOvertimeHoursFromNotes,
   stripLaborOvertimeHoursFromNotes,
 } from "@/lib/labor-overtime-notes";
+
+const UNATTRIBUTED_PROJECT_FILTER = "__unattributed__";
+const UNATTRIBUTED_LABOR_LABEL = "Unattributed / 未归类";
+
+type UnattributedLaborSummary = {
+  entryCount: number;
+  recordedCost: number;
+  canonicalCost: number;
+};
 
 function DailyEntriesSuspenseFallback() {
   return (
@@ -157,7 +166,9 @@ const LaborEntryTableRow = React.memo(function LaborEntryTableRow({
         {formatDate(row.work_date)}
       </td>
       <td className="py-1.5 px-3">{row.worker_name ?? "—"}</td>
-      <td className="py-1.5 px-3">{row.project_name ?? "—"}</td>
+      <td className="py-1.5 px-3">
+        {row.project_id ? (row.project_name ?? row.project_id) : UNATTRIBUTED_LABOR_LABEL}
+      </td>
       <td className={cn("py-1.5 px-3 text-right tabular-nums", listTableAmountCellClassName)}>
         {row.hours}
       </td>
@@ -236,6 +247,11 @@ function DailyEntriesPageInner() {
   const [bulkAction, setBulkAction] = React.useState<"submit" | "approve" | "lock" | null>(null);
   const [searchInput, setSearchInput] = React.useState("");
   const [filtersOpen, setFiltersOpen] = React.useState(false);
+  const [unattributedLabor, setUnattributedLabor] = React.useState<UnattributedLaborSummary>({
+    entryCount: 0,
+    recordedCost: 0,
+    canonicalCost: 0,
+  });
 
   const activeDrawerFilterCount =
     (filters.date_from ? 1 : 0) +
@@ -252,7 +268,8 @@ function DailyEntriesPageInner() {
         (e.notes ?? "").toLowerCase().includes(q) ||
         (e.cost_code ?? "").toLowerCase().includes(q) ||
         (e.worker_name ?? "").toLowerCase().includes(q) ||
-        (e.project_name ?? "").toLowerCase().includes(q)
+        (e.project_name ?? "").toLowerCase().includes(q) ||
+        (!e.project_id && UNATTRIBUTED_LABOR_LABEL.toLowerCase().includes(q))
     );
   }, [entries, searchInput]);
 
@@ -293,14 +310,19 @@ function DailyEntriesPageInner() {
         entries?: LaborEntryWithJoins[];
         projects?: Array<{ id: string; name: string }>;
         workers?: Array<{ id: string; name: string }>;
+        unattributedLabor?: UnattributedLaborSummary;
       };
       if (!response.ok) throw new Error(body.message ?? "Failed to load entries.");
       setEntries(body.entries ?? []);
       setProjects(body.projects ?? []);
       setWorkers(body.workers ?? []);
+      setUnattributedLabor(
+        body.unattributedLabor ?? { entryCount: 0, recordedCost: 0, canonicalCost: 0 }
+      );
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load entries.");
       setEntries([]);
+      setUnattributedLabor({ entryCount: 0, recordedCost: 0, canonicalCost: 0 });
     } finally {
       setLoading(false);
     }
@@ -577,6 +599,7 @@ function DailyEntriesPageInner() {
             className="w-full"
           >
             <option value="">All projects</option>
+            <option value={UNATTRIBUTED_PROJECT_FILTER}>{UNATTRIBUTED_LABOR_LABEL}</option>
             {projects.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name}
@@ -672,6 +695,7 @@ function DailyEntriesPageInner() {
               }
             >
               <option value="">All projects</option>
+              <option value={UNATTRIBUTED_PROJECT_FILTER}>{UNATTRIBUTED_LABOR_LABEL}</option>
               {projects.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name}
@@ -769,6 +793,35 @@ function DailyEntriesPageInner() {
           {message}
         </div>
       ) : null}
+      {unattributedLabor.entryCount > 0 ? (
+        <div
+          role="status"
+          className="flex flex-col gap-2 rounded-hh-standard border border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] px-3 py-2 text-sm text-[var(--hh-warning)] sm:flex-row sm:items-center sm:justify-between"
+        >
+          <div className="flex min-w-0 items-start gap-2">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+            <p>
+              <span className="font-semibold">{UNATTRIBUTED_LABOR_LABEL}:</span>{" "}
+              {unattributedLabor.entryCount} legacy record
+              {unattributedLabor.entryCount === 1 ? "" : "s"}, $
+              {unattributedLabor.recordedCost.toFixed(2)} recorded. Preserved in labor history and
+              excluded from every individual Project profit total.
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="min-h-9 shrink-0 border-[var(--hh-warning-border)] bg-background text-[var(--hh-warning)]"
+            onClick={() => {
+              setSearchInput("");
+              setFilters({ project_id: UNATTRIBUTED_PROJECT_FILTER });
+            }}
+          >
+            Show unattributed
+          </Button>
+        </div>
+      ) : null}
       <div className="border-t border-gray-100 dark:border-border/60 md:hidden">
         {loading ? (
           <div className="flex flex-col gap-3 py-2">
@@ -829,7 +882,9 @@ function DailyEntriesPageInner() {
                         {row.worker_name ?? "—"}
                       </p>
                       <p className="truncate text-xs text-muted-foreground">
-                        {row.project_name ?? "—"}
+                        {row.project_id
+                          ? (row.project_name ?? row.project_id)
+                          : UNATTRIBUTED_LABOR_LABEL}
                       </p>
                       <div className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-xs tabular-nums text-muted-foreground">
                         <span>{row.hours}h</span>
@@ -998,7 +1053,9 @@ function DailyEntriesPageInner() {
                   }
                   className="mt-1 w-full"
                 >
-                  <option value="">—</option>
+                  {editEntry?.project_id == null ? (
+                    <option value="">{UNATTRIBUTED_LABOR_LABEL} (legacy only)</option>
+                  ) : null}
                   {projects.map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.name}

@@ -27,9 +27,12 @@ describe("labor project attribution contract", () => {
     expect(sql).toMatch(
       /idx_labor_entries_project_id[\s\S]*\(project_id\)[\s\S]*WHERE project_id IS NOT NULL/i
     );
-    expect(sql).toMatch(
-      /labor_entries_project_id_required[\s\S]*CHECK \(project_id IS NOT NULL\)[\s\S]*NOT VALID/i
-    );
+    expect(sql).toContain("CREATE TRIGGER labor_entries_require_project_attribution");
+    expect(sql).toContain("TG_OP = 'INSERT' AND NEW.project_id IS NULL");
+    expect(sql).toContain("OLD.project_id IS NOT NULL");
+    expect(sql).toContain("NEW.project_id IS NULL");
+    expect(sql).toContain("DROP CONSTRAINT IF EXISTS labor_entries_project_id_required");
+    expect(sql).not.toMatch(/CHECK \(project_id IS NOT NULL\)[\s\S]*NOT VALID/i);
     expect(sql).not.toMatch(/\bcreate\s+policy\b/i);
   });
 
@@ -76,16 +79,32 @@ describe("labor project attribution contract", () => {
     expect(dailyLabor).toContain("Project is required for labor attribution.");
     expect(api).toContain("projectIdForUpdate");
     expect(api).toContain("Project is required for labor attribution.");
+    expect(api).toContain("if (!current) return null");
+    expect(api).toContain("Project attribution cannot be removed from a labor entry.");
     expect(testInsert).not.toMatch(/minimalAttempts|no project_\*/i);
     expect(e2eSeed).not.toContain("project_am_id");
   });
 
-  it("keeps canonical profit fail-closed for unattributed labor", () => {
+  it("keeps project profit isolated while reporting unattributed labor separately", () => {
     const profit = source("src/lib/profit-engine.ts");
 
-    expect(profit).toContain("assertNoUnattributedLaborRows");
-    expect(profit).toContain("Unattributed labor entries require project assignment");
+    expect(profit).not.toContain("assertNoUnattributedLaborRows");
+    expect(profit).toContain("getUnattributedLaborSummary");
+    expect(profit).toContain("labor_entries unattributed summary");
     expect(profit).toMatch(/\.is\("project_id", null\)/);
+    expect(profit).toMatch(/\.eq\("project_id", projectId\)/);
+    expect(profit).toMatch(/\.in\("project_id", projectIds\)/);
+  });
+
+  it("surfaces legacy unattributed labor without presenting it as a migration error", () => {
+    const page = source("src/app/labor/entries/page.tsx");
+    const api = source("src/app/api/labor/entries/route.ts");
+
+    expect(page).toContain("Unattributed / 未归类");
+    expect(page).toContain("Show unattributed");
+    expect(page).toContain("excluded from every individual Project profit total");
+    expect(page).not.toMatch(/Run .*migration/i);
+    expect(api).toContain("getUnattributedLaborSummary");
   });
 
   it("cleans attributed E2E labor before deleting its disposable project", () => {

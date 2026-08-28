@@ -21,6 +21,7 @@ import {
   resolveWorkerDailyRateForDateWithClient,
 } from "@/lib/worker-rate-history-db";
 import { isDuplicateBlockingLaborEntryStatus } from "@/lib/labor-entry-status";
+import { getUnattributedLaborSummary } from "@/lib/profit-engine";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -101,16 +102,14 @@ function hasProjectInput(input: LaborEntryPayload): boolean {
   );
 }
 
-function requireProjectId(value: unknown): string {
-  const projectId = safeString(value);
-  if (!projectId) throw new Error("Project is required for labor attribution.");
-  return projectId;
-}
+function projectIdForUpdate(input: LaborEntryPayload, currentProjectId: unknown): string | null {
+  const current = safeString(currentProjectId);
+  if (!hasProjectInput(input)) return current || null;
 
-function projectIdForUpdate(input: LaborEntryPayload, currentProjectId: unknown): string {
-  return hasProjectInput(input)
-    ? requireProjectId(input.projectId ?? input.project_id)
-    : requireProjectId(currentProjectId);
+  const requested = safeString(input.projectId ?? input.project_id);
+  if (requested) return requested;
+  if (!current) return null;
+  throw new Error("Project attribution cannot be removed from a labor entry.");
 }
 
 function safeDate(v: unknown): string {
@@ -143,7 +142,12 @@ function isDuplicateLaborSessionError(error: unknown): boolean {
 
 function laborApiError(error: unknown, fallback: string): NextResponse {
   const message = error instanceof Error ? error.message : fallback;
-  return apiError(isDuplicateLaborSessionError(error) ? 409 : 500, message);
+  const status = isDuplicateLaborSessionError(error)
+    ? 409
+    : /Project is required|Project attribution cannot be removed/i.test(message)
+      ? 400
+      : 500;
+  return apiError(status, message);
 }
 
 function toPayload(input: LaborEntryPayload) {
@@ -152,7 +156,7 @@ function toPayload(input: LaborEntryPayload) {
   const workDate = safeDate(input.workDate ?? input.work_date);
   const hours = safeNumber(input.hours);
   if (!workerId) throw new Error("Worker is required.");
-  if (!projectId) throw new Error("Project is required.");
+  if (!projectId) throw new Error("Project is required for labor attribution.");
   if (!workDate) throw new Error("Work date is required.");
   if (hours <= 0) throw new Error("Hours must be greater than 0.");
   const notes = hasLaborOvertimeInput(input as Record<string, unknown>)
@@ -508,7 +512,7 @@ export async function GET(request: Request) {
   const view = searchParams.get("view")?.trim() ?? "";
   if (view === "joined") {
     try {
-      const [entries, workersRes, projectsRes] = await Promise.all([
+      const [entries, workersRes, projectsRes, unattributedLabor] = await Promise.all([
         getLaborEntriesWithJoins(
           {
             date_from: searchParams.get("dateFrom")?.trim() || undefined,
@@ -527,6 +531,7 @@ export async function GET(request: Request) {
         ),
         supabase.from("labor_workers").select("id,name").order("name").limit(1000),
         supabase.from("projects").select("id,name").order("name").limit(1000),
+        getUnattributedLaborSummary(supabase),
       ]);
       if (workersRes.error && !isMissingTableError(workersRes.error))
         throw new Error(workersRes.error.message);
@@ -539,6 +544,7 @@ export async function GET(request: Request) {
           entries,
           workers: (workersRes.data ?? []) as Array<{ id: string; name: string }>,
           projects: (projectsRes.data ?? []) as Array<{ id: string; name: string }>,
+          unattributedLabor,
         },
         { headers: NO_CACHE_HEADERS }
       );

@@ -180,7 +180,7 @@ describe("profit engine commission cost", () => {
     expect(single.actualCost).toBe(batch.get("project-1")?.actualCost);
   });
 
-  it("rejects canonical profit when any historical labor row is unattributed", async () => {
+  it("excludes historical unattributed labor from projects and reports it separately", async () => {
     fakeData = {
       projects: [{ id: "project-1", budget: 1000 }],
       project_change_orders: [],
@@ -195,14 +195,33 @@ describe("profit engine commission cost", () => {
       commission_payments: [],
     };
 
-    const { getCanonicalProjectProfit, getCanonicalProjectProfitBatch } =
-      await import("@/lib/profit-engine");
+    const {
+      getCanonicalProjectProfit,
+      getCanonicalProjectProfitBatch,
+      getUnattributedLaborSummary,
+    } = await import("@/lib/profit-engine");
 
-    await expect(getCanonicalProjectProfit("project-1")).rejects.toThrow(
-      "Unattributed labor entries require project assignment"
-    );
-    await expect(getCanonicalProjectProfitBatch(["project-1"])).rejects.toThrow(
-      "Unattributed labor entries require project assignment"
+    const single = await getCanonicalProjectProfit("project-1");
+    const batch = await getCanonicalProjectProfitBatch(["project-1"]);
+    const unattributed = await getUnattributedLaborSummary();
+
+    expect(single.laborCost).toBe(0);
+    expect(single.actualCost).toBe(0);
+    expect(batch.get("project-1")?.laborCost).toBe(0);
+    expect(batch.get("project-1")?.actualCost).toBe(0);
+    expect(unattributed).toEqual({
+      entryCount: 1,
+      recordedCost: 125,
+      canonicalCost: 125,
+    });
+  });
+
+  it("fails closed when the protected unattributed-labor report cannot be read", async () => {
+    fakeErrors.labor_entries = { message: "permission denied" };
+    const { getUnattributedLaborSummary } = await import("@/lib/profit-engine");
+
+    await expect(getUnattributedLaborSummary()).rejects.toThrow(
+      "Financial data unavailable: labor_entries unattributed summary"
     );
   });
 

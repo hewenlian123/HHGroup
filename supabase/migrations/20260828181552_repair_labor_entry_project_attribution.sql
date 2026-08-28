@@ -129,36 +129,52 @@ CREATE INDEX IF NOT EXISTS idx_labor_entries_unattributed
   ON public.labor_entries (id)
   WHERE project_id IS NULL;
 
-DO $$
-DECLARE
-  v_definition text;
+-- A NOT VALID `project_id IS NOT NULL` check would preserve legacy NULL rows
+-- only while they remain untouched: PostgreSQL enforces it on every subsequent
+-- update, including status/payment updates that do not change attribution.
+-- Use a trigger so the historical exception is row-scoped:
+--   * every new row must have a project;
+--   * an attributed row can never be changed back to NULL;
+--   * a pre-existing NULL row may remain NULL during unrelated updates;
+--   * a legacy NULL row may still be explicitly attributed later.
+ALTER TABLE public.labor_entries
+  DROP CONSTRAINT IF EXISTS labor_entries_project_id_required;
+
+CREATE OR REPLACE FUNCTION public.enforce_labor_entry_project_attribution()
+RETURNS trigger
+LANGUAGE plpgsql
+VOLATILE
+PARALLEL UNSAFE
+SECURITY INVOKER
+SET search_path TO pg_catalog, public
+AS $$
 BEGIN
-  SELECT pg_get_constraintdef(c.oid)
-  INTO v_definition
-  FROM pg_constraint c
-  WHERE c.conrelid = 'public.labor_entries'::regclass
-    AND c.conname = 'labor_entries_project_id_required';
-
-  IF v_definition IS NULL THEN
-    ALTER TABLE public.labor_entries
-      ADD CONSTRAINT labor_entries_project_id_required
-      CHECK (project_id IS NOT NULL)
-      NOT VALID;
-  ELSIF v_definition !~* 'CHECK \(\(project_id IS NOT NULL\)\)'
-    AND v_definition !~* 'CHECK \(project_id IS NOT NULL\)' THEN
-    RAISE EXCEPTION 'labor_entries_project_id_required has an incompatible definition: %', v_definition;
+  IF TG_OP = 'INSERT' AND NEW.project_id IS NULL THEN
+    RAISE EXCEPTION 'Project is required for new labor entries.'
+      USING ERRCODE = '23514',
+            CONSTRAINT = 'labor_entries_project_id_required';
   END IF;
 
-  -- NOT VALID preserves explicitly unattributed historical rows but still
-  -- rejects new NULL writes. Validate immediately when no historical NULLs
-  -- remain, as on a fresh database.
-  IF NOT EXISTS (
-    SELECT 1 FROM public.labor_entries WHERE project_id IS NULL
-  ) THEN
-    ALTER TABLE public.labor_entries
-      VALIDATE CONSTRAINT labor_entries_project_id_required;
+  IF TG_OP = 'UPDATE'
+     AND OLD.project_id IS NOT NULL
+     AND NEW.project_id IS NULL THEN
+    RAISE EXCEPTION 'Project attribution cannot be removed from a labor entry.'
+      USING ERRCODE = '23514',
+            CONSTRAINT = 'labor_entries_project_id_required';
   END IF;
-END $$;
+
+  RETURN NEW;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.enforce_labor_entry_project_attribution() FROM PUBLIC, anon, authenticated;
+
+DROP TRIGGER IF EXISTS labor_entries_require_project_attribution
+  ON public.labor_entries;
+CREATE TRIGGER labor_entries_require_project_attribution
+BEFORE INSERT OR UPDATE OF project_id ON public.labor_entries
+FOR EACH ROW
+EXECUTE FUNCTION public.enforce_labor_entry_project_attribution();
 
 COMMENT ON COLUMN public.labor_entries.project_id IS
   'Canonical direct project attribution for labor cost. NULL identifies a preserved historical row whose project cannot be proven; new writes must provide a valid project.';

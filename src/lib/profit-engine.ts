@@ -52,26 +52,6 @@ function failFinancialRead(source: string, error: unknown): never {
   throw new FinancialDataUnavailableError(source, error);
 }
 
-async function assertNoUnattributedLaborRows(
-  c: ReturnType<typeof client>,
-  source: string
-): Promise<void> {
-  const { data, error } = await c
-    .from("labor_entries")
-    .select("id")
-    .is("project_id", null)
-    .limit(1);
-  if (error) failFinancialRead(source, error);
-  if ((data ?? []).length > 0) {
-    failFinancialRead(
-      source,
-      new Error(
-        "Unattributed labor entries require project assignment before profit can be calculated."
-      )
-    );
-  }
-}
-
 function isMissingColumn(err: { message?: string } | null): boolean {
   const m = err?.message ?? "";
   return /column .* does not exist|does not exist.*column|could not find the .* column|schema cache|pgrst204/i.test(
@@ -152,6 +132,53 @@ type LaborCostRow = {
 
 const LABOR_EXCLUDE_STATUS = new Set(["paid", "void"]);
 
+export type UnattributedLaborSummary = {
+  /** All preserved labor rows without a project, regardless of workflow status. */
+  entryCount: number;
+  /** Sum of every unattributed row's recorded cost_amount. */
+  recordedCost: number;
+  /** Cost using the same status exclusions as canonical project labor. */
+  canonicalCost: number;
+};
+
+/**
+ * Report legacy labor that intentionally has no project separately from every
+ * project profit calculation. A failed protected read still fails closed.
+ */
+export async function getUnattributedLaborSummary(
+  explicitClient?: SupabaseClient
+): Promise<UnattributedLaborSummary> {
+  const c = client(explicitClient);
+  const { data, error, count } = await c
+    .from("labor_entries")
+    .select("id, cost_amount, status", { count: "exact" })
+    .is("project_id", null);
+  if (error) failFinancialRead("labor_entries unattributed summary", error);
+  if (typeof count === "number" && count > (data ?? []).length) {
+    failFinancialRead(
+      "labor_entries unattributed summary",
+      new Error("Unattributed labor summary exceeded the protected database response limit.")
+    );
+  }
+
+  let recordedCost = 0;
+  let canonicalCost = 0;
+  for (const row of (data ?? []) as Array<{
+    cost_amount?: unknown;
+    status?: unknown;
+  }>) {
+    const amount = toNum(row.cost_amount);
+    recordedCost += amount;
+    const status = row.status != null ? String(row.status).toLowerCase() : "";
+    if (!LABOR_EXCLUDE_STATUS.has(status)) canonicalCost += amount;
+  }
+  return {
+    entryCount: (data ?? []).length,
+    recordedCost,
+    canonicalCost,
+  };
+}
+
 function laborLineAmountForProject(row: LaborCostRow, projectId: string): number {
   const full = toNum(row.cost_amount);
   const legacyPid = row.project_id != null ? String(row.project_id) : "";
@@ -163,7 +190,6 @@ async function fetchLaborCostForProject(
   explicitClient?: SupabaseClient
 ): Promise<number> {
   const c = client(explicitClient);
-  await assertNoUnattributedLaborRows(c, "labor_entries attribution");
   // `project_id` and `cost_amount` are the verified current-schema contract.
   const byProjectId = await c
     .from("labor_entries")
@@ -196,7 +222,6 @@ async function fetchLaborCostBatch(
   if (!idList) return map;
 
   const c = client(explicitClient);
-  await assertNoUnattributedLaborRows(c, "labor_entries attribution batch");
   const byProjectId = await c
     .from("labor_entries")
     .select("project_id, cost_amount, status")

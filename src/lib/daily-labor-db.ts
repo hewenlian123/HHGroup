@@ -252,6 +252,8 @@ export type LaborEntriesFilters = {
   status?: LaborEntryStatus;
 };
 
+const UNATTRIBUTED_PROJECT_FILTER = "__unattributed__";
+
 function isMissingColumn(err: { message?: string } | null): boolean {
   const m = err?.message ?? "";
   return /column.*does not exist|does not exist.*column|undefined column|could not find.*column|column.*schema cache|schema cache.*column/i.test(
@@ -293,7 +295,12 @@ export async function getLaborEntriesWithJoins(
     if (filters.date_from) q2 = q2.gte("work_date", filters.date_from.slice(0, 10));
     if (filters.date_to) q2 = q2.lte("work_date", filters.date_to.slice(0, 10));
     if (filters.worker_id) q2 = q2.eq("worker_id", filters.worker_id);
-    if (filters.project_id && hasProjectId) q2 = q2.eq("project_id", filters.project_id);
+    if (filters.project_id && hasProjectId) {
+      q2 =
+        filters.project_id === UNATTRIBUTED_PROJECT_FILTER
+          ? q2.is("project_id", null)
+          : q2.eq("project_id", filters.project_id);
+    }
     if (statusFilter) q2 = q2.eq("status", statusFilter);
     const res = await q2;
     return { data: res.data as unknown[] | null, error: res.error };
@@ -400,7 +407,12 @@ export async function getLaborEntriesWithJoins(
     if (filters.date_from) qSafe = qSafe.gte("work_date", filters.date_from.slice(0, 10));
     if (filters.date_to) qSafe = qSafe.lte("work_date", filters.date_to.slice(0, 10));
     if (filters.worker_id) qSafe = qSafe.eq("worker_id", filters.worker_id);
-    if (filters.project_id) qSafe = qSafe.eq("project_id", filters.project_id);
+    if (filters.project_id) {
+      qSafe =
+        filters.project_id === UNATTRIBUTED_PROJECT_FILTER
+          ? qSafe.is("project_id", null)
+          : qSafe.eq("project_id", filters.project_id);
+    }
     const safeRaw = await qSafe;
     const safeRes: QueryResult = {
       data: safeRaw.data as unknown[] | null,
@@ -433,7 +445,12 @@ export async function getLaborEntriesWithJoins(
     if (filters.date_from) qFallback = qFallback.gte("work_date", filters.date_from.slice(0, 10));
     if (filters.date_to) qFallback = qFallback.lte("work_date", filters.date_to.slice(0, 10));
     if (filters.worker_id) qFallback = qFallback.eq("worker_id", filters.worker_id);
-    if (filters.project_id) qFallback = qFallback.eq("project_id", filters.project_id);
+    if (filters.project_id) {
+      qFallback =
+        filters.project_id === UNATTRIBUTED_PROJECT_FILTER
+          ? qFallback.is("project_id", null)
+          : qFallback.eq("project_id", filters.project_id);
+    }
     const resRaw = await qFallback;
     const res: QueryResult = { data: resRaw.data as unknown[] | null, error: resRaw.error };
     if (res.error && isMissingColumn(res.error)) {
@@ -445,7 +462,12 @@ export async function getLaborEntriesWithJoins(
       if (filters.date_from) qNoCost = qNoCost.gte("work_date", filters.date_from.slice(0, 10));
       if (filters.date_to) qNoCost = qNoCost.lte("work_date", filters.date_to.slice(0, 10));
       if (filters.worker_id) qNoCost = qNoCost.eq("worker_id", filters.worker_id);
-      if (filters.project_id) qNoCost = qNoCost.eq("project_id", filters.project_id);
+      if (filters.project_id) {
+        qNoCost =
+          filters.project_id === UNATTRIBUTED_PROJECT_FILTER
+            ? qNoCost.is("project_id", null)
+            : qNoCost.eq("project_id", filters.project_id);
+      }
       const resNoCostRaw = await qNoCost;
       let resNoCost: QueryResult = {
         data: resNoCostRaw.data as unknown[] | null,
