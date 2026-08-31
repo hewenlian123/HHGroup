@@ -3,6 +3,57 @@ export type EstimateBuilderReturnContext = {
   scrollTop: number | null;
 };
 
+export type EstimateActiveSectionState = {
+  id: string | null;
+  explicit: boolean;
+};
+
+export type EstimateSectionObserverEntry = {
+  id: string;
+  isIntersecting: boolean;
+  top: number;
+};
+
+/**
+ * IntersectionObserver reports only changes, so retain the existing visible
+ * set while applying the callback's delta before choosing the closest section.
+ */
+export function selectEstimateActiveSectionFromObserverEntries(
+  visibleEntries: readonly EstimateSectionObserverEntry[],
+  updates: readonly EstimateSectionObserverEntry[],
+  anchorTop = 112
+): string | null {
+  const visibleById = new Map(
+    visibleEntries
+      .filter((entry) => entry.isIntersecting)
+      .map((entry) => [entry.id, entry] as const)
+  );
+  updates.forEach((entry) => {
+    if (entry.isIntersecting) visibleById.set(entry.id, entry);
+    else visibleById.delete(entry.id);
+  });
+
+  return (
+    [...visibleById.values()].sort(
+      (left, right) => Math.abs(left.top - anchorTop) - Math.abs(right.top - anchorTop)
+    )[0]?.id ?? null
+  );
+}
+
+export function reduceEstimateActiveSection(
+  current: EstimateActiveSectionState,
+  sectionId: string,
+  source: "explicit" | "inferred"
+): EstimateActiveSectionState {
+  if (source === "inferred" && current.explicit) {
+    if (current.id !== sectionId) return current;
+    return { id: sectionId, explicit: false };
+  }
+  const explicit = source === "explicit";
+  if (current.id === sectionId && current.explicit === explicit) return current;
+  return { id: sectionId, explicit };
+}
+
 const MAX_SCROLL_TOP = 10_000_000;
 
 function encodedEstimatePath(estimateId: string): string {
@@ -120,9 +171,9 @@ export function captureEstimateBuilderReturnContext(): EstimateBuilderReturnCont
   if (typeof document === "undefined") return { sectionId: null, scrollTop: null };
   const scrollRoot = document.querySelector<HTMLElement>("[data-app-scroll-root]");
   const rootTop = scrollRoot?.getBoundingClientRect().top ?? 0;
-  const explicitlySelectedSectionId = Array.from(
-    document.querySelectorAll<HTMLElement>("[data-estimate-active-section-id]")
-  ).find((element) => element.getClientRects().length > 0)?.dataset.estimateActiveSectionId;
+  const activeSectionId = document.querySelector<HTMLElement>(
+    "[data-estimate-editor-mode][data-estimate-active-section-id]"
+  )?.dataset.estimateActiveSectionId;
   const sectionElements = Array.from(
     document.querySelectorAll<HTMLElement>(
       "[data-estimate-section-id], [data-estimate-section-mobile-id]"
@@ -136,7 +187,7 @@ export function captureEstimateBuilderReturnContext(): EstimateBuilderReturnCont
 
   return {
     sectionId: chooseEstimateReturnSectionId(
-      explicitlySelectedSectionId,
+      activeSectionId,
       nearest?.dataset.estimateSectionId ?? nearest?.dataset.estimateSectionMobileId
     ),
     scrollTop: normalizedScrollTop(scrollRoot?.scrollTop ?? window.scrollY),

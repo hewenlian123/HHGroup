@@ -191,6 +191,7 @@ export function EstimatePreviewShell({
   return (
     <div
       className="estimate-preview-shell mx-auto w-full px-3 py-5 print:px-0 print:py-0"
+      data-estimate-preview-shell="light"
       role="region"
       aria-label={`${estimateNumber} ${documentModeLabel} preview`}
     >
@@ -225,6 +226,7 @@ export function EstimatePreviewShell({
             <span className="estimate-preview-context-identity tabular-nums">{estimateNumber}</span>
             <span
               data-testid="estimate-revision-context"
+              data-revision-state={revisionContext.isCurrent ? "current" : "historical"}
               className="estimate-preview-revision-badge rounded-full px-2 py-1 font-semibold"
             >
               {revisionContext.isCurrent ? "Current revision" : "Historical revision · Read-only"}

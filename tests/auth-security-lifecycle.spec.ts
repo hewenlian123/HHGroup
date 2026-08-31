@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { expect, test, type Page } from "@playwright/test";
-import { getE2EOwnerCredentials, loginAsE2EOwner } from "./e2e-auth-owner";
+import { getE2EOwnerCredentials, loginAsE2EOwner, resetE2EOwnerPassword } from "./e2e-auth-owner";
 
 async function sameOriginJson(
   page: Page,
@@ -171,7 +171,7 @@ test.describe.serial("authenticated owner security lifecycle", () => {
       await expect(loginPage).toHaveURL(/\/dashboard$/, { timeout: 60_000 });
       await freshContext.close();
     } finally {
-      await getE2EOwnerCredentials();
+      await resetE2EOwnerPassword();
     }
   });
 });

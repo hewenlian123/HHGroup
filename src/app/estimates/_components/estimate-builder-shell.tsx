@@ -10,7 +10,7 @@ export type EstimateBuilderShellProps = {
   className?: string;
 };
 
-/** Shared Operational Compact canvas for new and existing Estimates. */
+/** Shared Figma v2 light workspace canvas for new and existing Estimates. */
 export function EstimateBuilderShell({
   children,
   className,

@@ -1,13 +1,13 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "./estimate-playwright-test";
 
 import { E2E_PRESERVED_ESTIMATE_ID } from "./e2e-cleanup-db";
-import { loginAsE2EOwner } from "./e2e-auth-owner";
+import { gotoWithE2EAuth, loginAsE2EOwner } from "./e2e-auth-owner";
 
 async function addBlankSection(page: Page, assertSingleAction = false): Promise<void> {
   if (assertSingleAction) {
     await expect(page.getByRole("button", { name: /^Add section$/i })).toHaveCount(1);
   }
-  const addSection = page.locator('button[aria-label="Add section"]');
+  const addSection = page.getByRole("button", { name: /^Add Section$/i });
   await expect(addSection).toHaveCount(1);
   await addSection.click();
   const blankSection = page.getByRole("menuitem", { name: "Blank section" });
@@ -37,7 +37,7 @@ test("new Estimate has one section action and protects unsaved changes", async (
     dialogMessage = dialog.message();
     await dialog.dismiss();
   });
-  await page.getByRole("link", { name: "← Estimates" }).click();
+  await page.getByRole("link", { name: "Estimates /", exact: true }).click();
   await expect.poll(() => dialogMessage).toContain("unsaved");
   await expect(page).toHaveURL(/\/estimates\/new$/);
 });
@@ -73,21 +73,21 @@ test("desktop quantity fields show multi-digit construction quantities without c
 });
 
 test("Preview exposes fit and zoom controls and Escape returns to Estimate", async ({ page }) => {
-  await page.goto(`/estimates/${E2E_PRESERVED_ESTIMATE_ID}/preview`, {
-    waitUntil: "domcontentloaded",
-  });
+  await gotoWithE2EAuth(page, `/estimates/${E2E_PRESERVED_ESTIMATE_ID}/preview`);
   await expect(page.getByTestId("estimate-document")).toBeVisible({ timeout: 30_000 });
   await expect(page.getByRole("button", { name: "Fit pages" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Zoom out" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Zoom in" })).toBeVisible();
   await page.keyboard.press("Escape");
-  await expect(page).toHaveURL(new RegExp(`/estimates/${E2E_PRESERVED_ESTIMATE_ID}$`));
+  await expect(page).toHaveURL(
+    new RegExp(`/estimates/${E2E_PRESERVED_ESTIMATE_ID}(?:\\?returnScroll=\\d+)?$`)
+  );
 });
 
 test("mobile Estimate editor cannot retain horizontal scroll", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await addBlankSection(page);
-  const addDetails = page.getByRole("button", { name: "Add details" });
+  const addDetails = page.getByRole("button", { name: /^Edit line item \d+:/ });
   if (await addDetails.isVisible().catch(() => false)) await addDetails.click();
   await page.getByLabel("Line item 1 title").first().fill("Mobile scope item");
   await page.getByLabel("Line item 1 unit price").first().fill("1250");
@@ -114,7 +114,7 @@ test("mobile Estimate editor cannot retain horizontal scroll", async ({ page }) 
 test("mobile number fields and saved Edit actions remain touch-safe", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await addBlankSection(page);
-  const addDetails = page.getByRole("button", { name: "Add details" }).first();
+  const addDetails = page.getByRole("button", { name: /^Edit line item \d+:/ }).first();
   if (await addDetails.isVisible().catch(() => false)) await addDetails.click();
 
   const quantity = page.getByLabel("Line item 1 quantity").first();
@@ -134,7 +134,7 @@ test("mobile number fields and saved Edit actions remain touch-safe", async ({ p
   const sectionTitleBox = await sectionTitle.boundingBox();
   expect(sectionTitleBox?.height ?? 0).toBeGreaterThanOrEqual(44);
 
-  await page.goto(`/estimates/${E2E_PRESERVED_ESTIMATE_ID}`);
+  await gotoWithE2EAuth(page, `/estimates/${E2E_PRESERVED_ESTIMATE_ID}`);
   const edit = page.getByRole("button", { name: "Edit", exact: true });
   await expect(edit).toBeVisible({ timeout: 30_000 });
   await edit.click();
@@ -147,14 +147,14 @@ test("mobile number fields and saved Edit actions remain touch-safe", async ({ p
   await expect(headerActions.getByRole("button", { name: "Done", exact: true })).toBeHidden();
   const actionBox = await editActions.boundingBox();
   expect(actionBox?.y ?? Number.POSITIVE_INFINITY).toBeLessThan(844 - 56);
-  await editActions.getByRole("button", { name: "Done", exact: true }).click();
+  await editActions.getByRole("button", { name: "Save", exact: true }).click();
 });
 
 test("iPad portrait keeps saved Edit total and actions persistently reachable", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 820, height: 1180 });
-  await page.goto(`/estimates/${E2E_PRESERVED_ESTIMATE_ID}`);
+  await gotoWithE2EAuth(page, `/estimates/${E2E_PRESERVED_ESTIMATE_ID}`);
   await page.getByRole("button", { name: "Edit", exact: true }).click();
 
   const editActions = page.getByLabel("Estimate edit actions");
@@ -183,7 +183,7 @@ test("iPad portrait keeps saved Edit total and actions persistently reachable", 
   expect(geometry.bottom).toBeLessThanOrEqual(geometry.viewportHeight);
   expect(geometry.overflow).toBe(0);
 
-  await editActions.getByRole("button", { name: "Done", exact: true }).click();
+  await editActions.getByRole("button", { name: "Save", exact: true }).click();
 });
 
 test("iPad landscape keeps line title readable beside stacked pricing", async ({ page }) => {
@@ -198,63 +198,87 @@ test("iPad landscape keeps line title readable beside stacked pricing", async ({
     return {
       inputWidth: rect.width,
       gridColumns: grid ? getComputedStyle(grid).gridTemplateColumns.split(" ").length : 0,
-      scrollbarWidth: getComputedStyle(document.querySelector(".estimate-builder")!).scrollbarWidth,
       overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
     };
   });
   expect(geometry.inputWidth).toBeGreaterThan(300);
-  expect(geometry.gridColumns).toBe(2);
-  expect(geometry.scrollbarWidth).toBe("thin");
+  expect(geometry.gridColumns).toBe(5);
   expect(geometry.overflow).toBe(0);
 });
 
-test("saved Estimate overview remains visible through a long edit", async ({ page }) => {
+test("saved Estimate pricing inspector remains visible through a long edit", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto(`/estimates/${E2E_PRESERVED_ESTIMATE_ID}`);
+  await gotoWithE2EAuth(page, `/estimates/${E2E_PRESERVED_ESTIMATE_ID}`);
   await page.getByRole("button", { name: "Edit", exact: true }).click();
 
-  const overview = page.getByLabel("Estimate overview");
-  await expect(overview).toBeVisible({ timeout: 30_000 });
-  await page.getByRole("button", { name: "Add note" }).click();
-  await page.getByRole("menuitem", { name: "Custom Note" }).click();
-  const addedNote = page.locator(".eb-note-block").last();
-  const noteBody = addedNote.getByRole("textbox").last();
-  try {
-    await noteBody.fill(
-      Array.from({ length: 40 }, (_, i) => `Scope clarification ${i + 1}`).join("\n")
-    );
-    await noteBody.scrollIntoViewIfNeeded();
-    await expect
-      .poll(async () => {
-        const box = await overview.boundingBox();
-        return box ? box.y >= 64 && box.y + box.height <= 900 : false;
-      })
-      .toBe(true);
-  } finally {
-    await addedNote.getByRole("button", { name: "Note actions" }).click();
-    await page.getByRole("menuitem", { name: "Delete" }).click();
-  }
+  const pricingSummary = page.getByRole("region", { name: "Estimate pricing summary" });
+  await expect(pricingSummary).toBeVisible({ timeout: 30_000 });
+  const scope = page.locator(".eb-scope-work-panel");
+  await scope.evaluate((element) => {
+    element.style.minHeight = "1800px";
+  });
+  await page.locator("[data-app-scroll-root]").evaluate((element) => {
+    element.scrollTop = element.scrollHeight;
+  });
+  await expect
+    .poll(async () => {
+      const box = await pricingSummary.boundingBox();
+      return box ? box.y >= 0 && box.y + box.height <= 900 : false;
+    })
+    .toBe(true);
+  await scope.evaluate((element) => {
+    element.style.removeProperty("min-height");
+  });
 });
 
-test("mobile Preview scales the complete A4 document instead of hiding content", async ({
+test("mobile Preview keeps the complete A4 document reachable inside its viewport", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto(`/estimates/${E2E_PRESERVED_ESTIMATE_ID}/preview`, {
-    waitUntil: "domcontentloaded",
-  });
+  await gotoWithE2EAuth(page, `/estimates/${E2E_PRESERVED_ESTIMATE_ID}/preview`);
   await expect(page.getByTestId("estimate-document")).toBeVisible({ timeout: 30_000 });
-  const geometry = await page.evaluate(() => {
+  const initialGeometry = await page.evaluate(() => {
     const paper = document.querySelector<HTMLElement>(".estimate-a4-page");
-    const layer = document.querySelector<HTMLElement>(".estimate-preview-zoom-layer");
+    const viewport = document.querySelector<HTMLElement>(
+      "[data-testid='estimate-preview-viewport']"
+    );
+    const renderedPaper = paper?.getBoundingClientRect();
+    const renderedViewport = viewport?.getBoundingClientRect();
     return {
       paperWidth: paper?.offsetWidth ?? 0,
-      scale: layer ? new DOMMatrix(getComputedStyle(layer).transform).a : 0,
+      paperLeft: renderedPaper?.left ?? 0,
+      renderedWidth: renderedPaper?.width ?? 0,
       rootOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      viewportClientWidth: viewport?.clientWidth ?? 0,
+      viewportLeft: renderedViewport?.left ?? 0,
+      viewportOverflowX: viewport ? getComputedStyle(viewport).overflowX : "",
+      viewportScrollWidth: viewport?.scrollWidth ?? 0,
     };
   });
-  expect(geometry.paperWidth).toBeGreaterThan(700);
-  expect(geometry.scale).toBeGreaterThan(0.35);
-  expect(geometry.scale).toBeLessThan(0.6);
-  expect(geometry.rootOverflow).toBe(0);
+  expect(initialGeometry.paperWidth).toBeGreaterThan(700);
+  expect(initialGeometry.renderedWidth).toBeGreaterThan(initialGeometry.viewportClientWidth);
+  expect(initialGeometry.paperLeft).toBeGreaterThanOrEqual(initialGeometry.viewportLeft - 1);
+  expect(initialGeometry.viewportOverflowX).toBe("auto");
+  expect(initialGeometry.viewportScrollWidth).toBeGreaterThan(initialGeometry.viewportClientWidth);
+  expect(initialGeometry.rootOverflow).toBe(0);
+
+  const endingGeometry = await page
+    .getByTestId("estimate-preview-viewport")
+    .evaluate(async (viewport) => {
+      viewport.scrollLeft = viewport.scrollWidth;
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+      const paper = viewport.querySelector<HTMLElement>(".estimate-a4-page");
+      const renderedPaper = paper?.getBoundingClientRect();
+      const renderedViewport = viewport.getBoundingClientRect();
+      return {
+        paperRight: renderedPaper?.right ?? 0,
+        rootOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        scrollLeft: viewport.scrollLeft,
+        viewportRight: renderedViewport.right,
+      };
+    });
+  expect(endingGeometry.scrollLeft).toBeGreaterThan(0);
+  expect(endingGeometry.paperRight).toBeLessThanOrEqual(endingGeometry.viewportRight + 1);
+  expect(endingGeometry.paperRight).toBeGreaterThanOrEqual(endingGeometry.viewportRight - 1);
+  expect(endingGeometry.rootOverflow).toBe(0);
 });

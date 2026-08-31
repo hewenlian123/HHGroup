@@ -52,6 +52,7 @@ export async function finalizeReceiptQueueExpense(
     const category = (row.category ?? "").trim() || "Other";
     const paId = (row.payment_account_id ?? "").trim() || null;
     const created = await createQuickExpense({
+      idempotencyKey: `receipt-queue:${row.id}`,
       date: expenseDate,
       vendorName: row.vendor_name.trim() || "Unknown",
       totalAmount: total,

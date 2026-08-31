@@ -364,20 +364,6 @@ export async function POST(request: Request) {
             ? body.paymentMethod.trim()
             : "ACH";
 
-        const { data: exp, error: expErr } = await supabase
-          .from("expenses")
-          .insert({
-            expense_date: row.txn_date,
-            vendor_name: vendorName,
-            payment_method: paymentMethod,
-            notes: row.description,
-            reference_no: null,
-          })
-          .select("id")
-          .single();
-        if (expErr) throw new Error(expErr.message);
-        const expenseId = (exp as { id: string }).id;
-
         const inputLines = Array.isArray(body.lines) ? (body.lines as SplitLineInput[]) : [];
         const lines =
           inputLines.length > 0
@@ -390,28 +376,31 @@ export async function POST(request: Request) {
                   amount: Math.abs(safeNumber(row.amount)),
                 },
               ];
-        const lineRows = lines.map((line) => ({
-          expense_id: expenseId,
-          project_id: line.projectId ?? null,
-          category: line.category || "Other",
-          memo: line.memo ?? null,
-          amount: Math.max(0, safeNumber(line.amount)),
-        }));
-        const { error: linesErr } = await supabase.from("expense_lines").insert(lineRows);
-        if (linesErr) throw new Error(linesErr.message);
-
-        const { error: updateErr } = await supabase
-          .from("bank_transactions")
-          .update({
-            status: "reconciled",
-            reconcile_type: "Expense",
-            reconciled_at: new Date().toISOString(),
-            linked_expense_id: expenseId,
-            vendor_name: vendorName,
-            payment_method: paymentMethod,
-          })
-          .eq("id", txId);
-        if (updateErr) throw new Error(updateErr.message);
+        const lineRows = lines.map((line) => {
+          const amount = typeof line.amount === "number" ? line.amount : Number(line.amount);
+          if (!Number.isFinite(amount) || amount < 0) {
+            throw new Error("Bank expense line amount must be a non-negative number.");
+          }
+          return {
+            projectId: line.projectId ?? null,
+            category: line.category || "Other",
+            memo: line.memo ?? null,
+            amount,
+          };
+        });
+        const { data, error } = await supabase.rpc("reconcile_bank_transaction_expense_atomic", {
+          p_idempotency_key: `bank-expense:${txId}`,
+          p_bank_transaction_id: txId,
+          p_vendor_name: vendorName,
+          p_payment_method: paymentMethod,
+          p_lines: lineRows,
+        });
+        if (error) throw new Error(error.message);
+        const result = (Array.isArray(data) ? data[0] : data) as {
+          expense_id?: string | null;
+        } | null;
+        const expenseId = result?.expense_id ?? null;
+        if (!expenseId) throw new Error("Atomic bank reconciliation returned no expense id.");
         return NextResponse.json({ ok: true, expenseId }, { headers: NO_CACHE_HEADERS });
       }
 

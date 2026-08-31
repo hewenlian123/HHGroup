@@ -16,7 +16,13 @@ import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { prefetchFinancialRoute } from "@/lib/financial-nav-prefetch";
 import { createBrowserClient } from "@/lib/supabase";
-import { BOTTOM_NAV_ROUTES, prefetchRoutes, runWhenIdle } from "@/lib/route-prefetch";
+import {
+  BOTTOM_NAV_ROUTES,
+  BOTTOM_NAV_VISIBLE_MEDIA_QUERY,
+  prefetchRoutes,
+  runWhenIdle,
+  shouldBulkPrefetchMobileNav,
+} from "@/lib/route-prefetch";
 import {
   HH_PROJECT_OS_MOBILE_NAV_ITEMS,
   getHhProjectOsMobileActiveHref,
@@ -94,11 +100,11 @@ const BottomNavItem = React.memo(function BottomNavItem({
       }}
       onPointerEnter={onPointerEnterNav}
       className={cn(
-        "flex min-h-[44px] min-w-[40px] flex-1 flex-col items-center justify-center gap-0.5 text-xs touch-manipulation cursor-pointer",
+        "flex min-h-[44px] min-w-[40px] flex-1 touch-manipulation cursor-pointer flex-col items-center justify-center gap-0.5 rounded-hh-standard text-xs",
         "transition-[background-color,color,opacity] duration-100 active:bg-[var(--hh-l3-pressed)] active:opacity-80",
         active
-          ? "bg-[var(--hh-gold-muted)] font-medium text-[var(--hh-gold)]"
-          : "text-sm text-[var(--hh-text-secondary)]"
+          ? "bg-[var(--hh-surface-selected)] font-medium text-[var(--hh-accent-primary)]"
+          : "text-sm text-[var(--hh-text-muted)] hover:bg-[var(--hh-surface-hover)] hover:text-[var(--hh-text-secondary)]"
       )}
       aria-current={active ? "page" : undefined}
     >
@@ -110,7 +116,6 @@ const BottomNavItem = React.memo(function BottomNavItem({
 
 export function BottomNav({ className }: { className?: string }) {
   const pathname = usePathname();
-  const deferBulkPrefetch = pathname === "/estimate-templates" || pathname.startsWith("/estimates");
   const router = useRouter();
   const queryClient = useQueryClient();
   const prefetchSupabase = React.useMemo(() => {
@@ -120,16 +125,24 @@ export function BottomNav({ className }: { className?: string }) {
   }, []);
 
   React.useEffect(() => {
-    if (deferBulkPrefetch) return;
-    return runWhenIdle(() => prefetchRoutes(router, [...BOTTOM_NAV_ROUTES]));
-  }, [deferBulkPrefetch, router]);
+    let cancelPrefetch: (() => void) | undefined;
+    const cancelIdle = runWhenIdle(() => {
+      const mobileNavigationVisible = window.matchMedia(BOTTOM_NAV_VISIBLE_MEDIA_QUERY).matches;
+      if (!shouldBulkPrefetchMobileNav(pathname, mobileNavigationVisible)) return;
+      cancelPrefetch = prefetchRoutes(router, [...BOTTOM_NAV_ROUTES]);
+    });
+    return () => {
+      cancelIdle();
+      cancelPrefetch?.();
+    };
+  }, [pathname, router]);
 
   const activeHref = getHhProjectOsMobileActiveHref(pathname);
 
   return (
     <nav
       className={cn(
-        "neo-command-bar flex min-h-14 items-center justify-around rounded-t-hh-panel border-x-0 border-b-0 pb-[env(safe-area-inset-bottom)] print:hidden sm:rounded-none",
+        "flex min-h-14 items-center justify-around gap-1 border-t border-[var(--hh-border-default)] bg-[var(--hh-surface-workspace)] px-1 pb-[env(safe-area-inset-bottom)] print:hidden",
         className
       )}
       aria-label="Bottom navigation"

@@ -10,7 +10,7 @@
  */
 
 import * as fs from "node:fs";
-import type { Browser, ElementHandle, HTTPResponse, LaunchOptions, Page } from "puppeteer";
+import type { Browser, HTTPResponse, LaunchOptions, Page } from "puppeteer";
 
 const BASE_URL = (process.env.BASE_URL || "http://localhost:3000").replace(/\/$/, "");
 const NAV_TIMEOUT = 20000;

@@ -1,7 +1,19 @@
-import { expect, test, type Page, type TestInfo } from "@playwright/test";
+import { expect, test, type Page, type TestInfo } from "./estimate-playwright-test";
 
-import { E2E_PRESERVED_ESTIMATE_ID } from "./e2e-cleanup-db";
-import { loginAsE2EOwner } from "./e2e-auth-owner";
+import { gotoWithE2EAuth, loginAsE2EOwner, reloadWithE2EAuth } from "./e2e-auth-owner";
+import {
+  cleanupPopulatedEditableEstimateFixture,
+  POPULATED_EDITABLE_ESTIMATE_ID,
+  seedPopulatedEditableEstimateFixture,
+} from "./estimate-populated-editable-fixture";
+
+test.beforeAll(async () => {
+  await seedPopulatedEditableEstimateFixture();
+});
+
+test.afterAll(async () => {
+  await cleanupPopulatedEditableEstimateFixture();
+});
 
 async function addBlankSection(page: Page): Promise<void> {
   await page
@@ -32,6 +44,16 @@ async function capture(page: Page, testInfo: TestInfo, name: string): Promise<vo
   await testInfo.attach(name, { path, contentType: "image/png" });
 }
 
+function collectRuntimeErrors(page: Page): { consoleErrors: string[]; pageErrors: string[] } {
+  const consoleErrors: string[] = [];
+  const pageErrors: string[] = [];
+  page.on("console", (message) => {
+    if (message.type() === "error") consoleErrors.push(message.text());
+  });
+  page.on("pageerror", (error) => pageErrors.push(error.message));
+  return { consoleErrors, pageErrors };
+}
+
 test("dense Builder preserves fast keyboard entry and visible lifecycle actions", async ({
   page,
 }, testInfo) => {
@@ -42,10 +64,11 @@ test("dense Builder preserves fast keyboard entry and visible lifecycle actions"
   await addBlankSection(page);
 
   const scopeTools = page.getByRole("toolbar", { name: "Scope tools" });
+  const sectionOutline = page.getByRole("navigation", { name: "Estimate sections" });
   await expect(scopeTools).toBeVisible();
-  await expect(page.getByRole("navigation", { name: "Estimate sections" })).toHaveCount(0);
+  await expect(sectionOutline).toBeVisible();
   await expect(scopeTools.getByRole("combobox", { name: "Search scope" })).toBeVisible();
-  await expect(scopeTools.getByLabel("Jump to section")).toBeVisible();
+  await expect(scopeTools.getByLabel("Jump to section")).toBeHidden();
   await expect(scopeTools.getByRole("button", { name: "Collapse all" })).toBeVisible();
   await expect(scopeTools.getByRole("button", { name: "Expand all" })).toBeVisible();
   await expect(scopeTools.getByRole("button", { name: "Add Section" })).toBeVisible();
@@ -54,15 +77,13 @@ test("dense Builder preserves fast keyboard entry and visible lifecycle actions"
   await expect(firstSection.getByRole("button", { name: "Add line to Section 1" })).toBeVisible();
 
   const gridHeader = page.getByTestId("estimate-line-item-grid-header").first();
-  await expect(gridHeader.locator(":scope > *")).toHaveCount(8);
-  await expect(gridHeader.locator(":scope > *").first()).toHaveText("#");
-  await expect(gridHeader).toContainText("Item");
-  await expect(gridHeader).toContainText("Description");
-  await expect(gridHeader).toContainText("Qty");
-  await expect(gridHeader).toContainText("Unit");
+  await expect(gridHeader.locator(":scope > *")).toHaveCount(5);
+  await expect(gridHeader).toContainText("Item details");
+  await expect(gridHeader).toContainText("Qty / Unit");
   await expect(gridHeader).toContainText("Unit price");
   await expect(gridHeader).toContainText("Line total");
-  await expect(gridHeader).toContainText("Actions");
+  await expect(gridHeader).not.toContainText("Description");
+  await expect(gridHeader).not.toContainText("Actions");
 
   const title = page.getByLabel("Line item 1 title").locator("visible=true");
   const descriptionSummary = page
@@ -73,6 +94,29 @@ test("dense Builder preserves fast keyboard entry and visible lifecycle actions"
   const unitPrice = page
     .getByLabel("Line item 1 unit price", { exact: true })
     .locator("visible=true");
+  const firstLine = firstSection.locator("[data-estimate-line-item-id]").first();
+
+  const qtyUnitGroup = firstLine.locator(".eb-line-qty-unit-group");
+  await expect(qtyUnitGroup).toHaveCount(1);
+  await expect(qtyUnitGroup.getByLabel("Line item 1 quantity")).toHaveCount(1);
+  await expect(qtyUnitGroup.getByLabel("Line item 1 unit", { exact: true })).toHaveCount(1);
+  await expect
+    .poll(() =>
+      firstLine.evaluate((line) => {
+        const titleInput = line.querySelector<HTMLInputElement>('input[aria-label$=" title"]');
+        const descriptionButton = line.querySelector<HTMLButtonElement>(
+          'button[aria-label$=" description"]'
+        );
+        if (!titleInput || !descriptionButton) return false;
+        const titleRect = titleInput.getBoundingClientRect();
+        const descriptionRect = descriptionButton.getBoundingClientRect();
+        return descriptionRect.top >= titleRect.bottom - 1;
+      })
+    )
+    .toBe(true);
+  await expect
+    .poll(() => firstLine.evaluate((line) => line.getBoundingClientRect().height))
+    .toBeGreaterThanOrEqual(68);
 
   await title.focus();
   await page.keyboard.press("Tab");
@@ -103,7 +147,6 @@ test("dense Builder preserves fast keyboard entry and visible lifecycle actions"
   await unitPrice.press("Enter");
   await expect(page.getByLabel("Line item 2 title").locator("visible=true")).toBeFocused();
 
-  const firstLine = firstSection.locator("[data-estimate-line-item-id]").first();
   await firstLine.getByRole("button", { name: "More actions" }).click();
   await page.getByRole("menuitem", { name: "Duplicate line item" }).click();
   await expect(page.getByLabel("Line item 2 title").locator("visible=true")).toHaveValue(
@@ -114,8 +157,30 @@ test("dense Builder preserves fast keyboard entry and visible lifecycle actions"
   const duplicatedLine = firstSection.locator("[data-estimate-line-item-id]").nth(1);
   await duplicatedLine.getByRole("button", { name: "More actions" }).click();
   await page.getByRole("menuitem", { name: "Remove line item" }).click();
+  await page
+    .getByRole("dialog", { name: "Delete line item?" })
+    .getByRole("button", { name: "Delete", exact: true })
+    .click();
   await expect(page.getByLabel("Line item 2 title").locator("visible=true")).toHaveValue("");
   await expect(page.getByLabel("Line item 2 title").locator("visible=true")).toBeFocused();
+
+  const excavationLineItemId = await firstLine.getAttribute("data-estimate-line-item-id");
+  expect(excavationLineItemId).not.toBeNull();
+  const excavationRow = firstSection.locator(
+    `[data-estimate-line-item-id="${excavationLineItemId}"]:visible`
+  );
+  await expect(excavationRow).toHaveCount(1);
+  await expect(excavationRow.locator('input[aria-label$=" title"]')).toHaveValue("Excavation");
+  await excavationRow.getByRole("button", { name: "More actions" }).click();
+  await expect(page.getByRole("menuitem", { name: "Move line item up" })).toBeDisabled();
+  await page.getByRole("menuitem", { name: "Move line item down" }).click();
+  const firstSectionTitles = firstSection.locator('input[aria-label$=" title"]');
+  await expect(firstSectionTitles.nth(0)).toHaveValue("");
+  await expect(firstSectionTitles.nth(1)).toHaveValue("Excavation");
+  await excavationRow.getByRole("button", { name: "More actions" }).click();
+  await page.getByRole("menuitem", { name: "Move line item up" }).click();
+  await expect(firstSectionTitles.nth(0)).toHaveValue("Excavation");
+  await expect(firstSectionTitles.nth(1)).toHaveValue("");
 
   await page.getByRole("button", { name: "More actions" }).first().click();
   await expect(page.getByRole("menuitem", { name: "Duplicate line item" })).toBeVisible();
@@ -125,11 +190,9 @@ test("dense Builder preserves fast keyboard entry and visible lifecycle actions"
   await expect(page.getByRole("menuitem", { name: "Remove line item" })).toBeVisible();
   await page.getByRole("menuitem", { name: "Move to section" }).hover();
   await page.getByRole("menuitem", { name: "Section 2", exact: true }).press("Enter");
-  const jumpToSection = scopeTools.getByLabel("Jump to section");
-  await expect(jumpToSection.locator("option")).toHaveCount(2);
-  await jumpToSection.selectOption({ label: "Section 2 · 2 items" });
+  await sectionOutline.getByRole("button", { name: /^Section 2, 2 items/ }).click();
   await expect(page.locator("[data-estimate-section-id]").nth(1)).toBeFocused();
-  await jumpToSection.selectOption({ label: "Section 1 · 1 item" });
+  await sectionOutline.getByRole("button", { name: /^Section 1, 1 item/ }).click();
 
   const scopeSearch = scopeTools.getByRole("combobox", { name: "Search scope" });
   await scopeSearch.fill("Excavation");
@@ -186,6 +249,320 @@ test("section-header Add line keeps long-estimate entry anchored in context", as
 
   await expect(page.getByLabel("Line item 2 title").locator("visible=true")).toBeFocused();
   await expect(firstSection.locator("[data-estimate-line-item-id]")).toHaveCount(2);
+});
+
+test("central Builder exposes V2 contrast and forced-colors focus states at runtime", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await loginAsE2EOwner(page, "/estimates/new");
+  await addBlankSection(page);
+
+  const firstLine = page.locator("[data-estimate-section-id] [data-estimate-line-item-id]").first();
+  const moreActions = firstLine.getByRole("button", { name: "More actions" });
+  const actionStyle = await moreActions.evaluate((button) => {
+    const style = getComputedStyle(button);
+    const rect = button.getBoundingClientRect();
+    return {
+      color: style.color,
+      opacity: style.opacity,
+      width: rect.width,
+      height: rect.height,
+    };
+  });
+  expect(actionStyle).toEqual({
+    color: "rgb(107, 114, 128)",
+    opacity: "1",
+    width: 36,
+    height: 36,
+  });
+
+  const currentSection = page.locator("[data-estimate-section-id]").first();
+  await expect(currentSection).toHaveClass(/eb-scope-section-current/);
+  const currentSectionCount = currentSection.locator(".eb-scope-section-item-count");
+  await expect(currentSectionCount).toBeVisible();
+  await expect
+    .poll(() => currentSectionCount.evaluate((element) => getComputedStyle(element).color))
+    .toBe("rgb(75, 82, 92)");
+
+  await page.emulateMedia({ forcedColors: "active" });
+  const quantity = page.getByLabel("Line item 1 quantity").locator("visible=true");
+  await page.keyboard.press("Tab");
+  await quantity.focus();
+  await expect(quantity).toBeFocused();
+  await expect
+    .poll(() =>
+      quantity.evaluate((element) => {
+        const style = getComputedStyle(element);
+        return {
+          forcedColors: window.matchMedia("(forced-colors: active)").matches,
+          focusVisible: element.matches(":focus-visible"),
+          editorRootAncestor: Boolean(element.closest("[data-estimate-editor-mode]")),
+          outlineStyle: style.outlineStyle,
+          outlineWidth: style.outlineWidth,
+        };
+      })
+    )
+    .toEqual({
+      forcedColors: true,
+      focusVisible: true,
+      editorRootAncestor: true,
+      outlineStyle: "solid",
+      outlineWidth: "2px",
+    });
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  const mobileSummary = page.getByRole("button", { name: "Edit line item 1: Untitled" });
+  await page.keyboard.press("Tab");
+  await mobileSummary.focus();
+  await expect(mobileSummary).toBeFocused();
+  await expect
+    .poll(() =>
+      mobileSummary.evaluate((element) => {
+        const style = getComputedStyle(element);
+        return {
+          forcedColors: window.matchMedia("(forced-colors: active)").matches,
+          focusVisible: element.matches(":focus-visible"),
+          outlineStyle: style.outlineStyle,
+          outlineWidth: style.outlineWidth,
+        };
+      })
+    )
+    .toEqual({
+      forcedColors: true,
+      focusVisible: true,
+      outlineStyle: "solid",
+      outlineWidth: "2px",
+    });
+});
+
+test("P2 desktop polish keeps line entry compact, hierarchical, and visually clustered", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await loginAsE2EOwner(page, "/estimates/new");
+  await addBlankSection(page);
+
+  const firstLine = page.locator("[data-estimate-section-id] [data-estimate-line-item-id]").first();
+  await expect
+    .poll(() => firstLine.evaluate((line) => line.getBoundingClientRect().height))
+    .toBeLessThanOrEqual(76);
+
+  const title = page.getByLabel("Line item 1 title").locator("visible=true");
+  const description = page
+    .getByRole("button", { name: "Line item 1 description" })
+    .locator("visible=true");
+  await expect
+    .poll(() =>
+      title.evaluate((element) => {
+        const style = getComputedStyle(element);
+        return {
+          color: style.color,
+          fontSize: style.fontSize,
+          fontWeight: style.fontWeight,
+          lineHeight: style.lineHeight,
+        };
+      })
+    )
+    .toEqual({
+      color: "rgb(24, 26, 30)",
+      fontSize: "14px",
+      fontWeight: "500",
+      lineHeight: "20px",
+    });
+  await expect
+    .poll(() =>
+      description.evaluate((element) => {
+        const style = getComputedStyle(element);
+        return {
+          color: style.color,
+          fontSize: style.fontSize,
+          fontWeight: style.fontWeight,
+          lineHeight: style.lineHeight,
+        };
+      })
+    )
+    .toEqual({
+      color: "rgb(107, 114, 128)",
+      fontSize: "13px",
+      fontWeight: "400",
+      lineHeight: "18px",
+    });
+
+  const qtyUnitCluster = firstLine.locator(".eb-line-qty-unit-group");
+  const unitPrice = firstLine.getByLabel("Line item 1 unit price", { exact: true });
+  for (const control of [qtyUnitCluster, unitPrice]) {
+    await expect
+      .poll(() =>
+        control.evaluate((element) => {
+          const style = getComputedStyle(element);
+          return {
+            background: style.backgroundColor,
+            borderColor: style.borderTopColor,
+            borderRadius: style.borderTopLeftRadius,
+            height: element.getBoundingClientRect().height,
+          };
+        })
+      )
+      .toEqual({
+        background: "rgb(255, 255, 255)",
+        borderColor: "rgb(139, 146, 155)",
+        borderRadius: "6px",
+        height: 36,
+      });
+  }
+
+  const qtyInput = firstLine.getByLabel("Line item 1 quantity", { exact: true });
+  const unitDivider = firstLine.locator(".eb-line-pricing-measure");
+  await expect
+    .poll(() => unitDivider.evaluate((element) => getComputedStyle(element).borderLeftColor))
+    .toBe("rgb(139, 146, 155)");
+  await qtyInput.focus();
+  await expect
+    .poll(() =>
+      Promise.all([
+        qtyUnitCluster.evaluate((element) => getComputedStyle(element).boxShadow !== "none"),
+        qtyInput.evaluate((element) => getComputedStyle(element).boxShadow),
+      ])
+    )
+    .toEqual([true, "none"]);
+
+  const addLine = page.locator("[data-estimate-section-id] .eb-add-line").first();
+  await expect
+    .poll(() =>
+      addLine.evaluate((element) => {
+        const style = getComputedStyle(element);
+        return {
+          background: style.backgroundColor,
+          borderColor: style.borderTopColor,
+          color: style.color,
+          height: element.getBoundingClientRect().height,
+        };
+      })
+    )
+    .toEqual({
+      background: "rgba(0, 0, 0, 0)",
+      borderColor: "rgba(0, 0, 0, 0)",
+      color: "rgb(107, 114, 128)",
+      height: 32,
+    });
+  await addLine.focus();
+  await expect
+    .poll(() =>
+      addLine.evaluate((element) => {
+        const style = getComputedStyle(element);
+        return { outlineStyle: style.outlineStyle, outlineWidth: style.outlineWidth };
+      })
+    )
+    .toEqual({ outlineStyle: "solid", outlineWidth: "2px" });
+});
+
+test("P2 mobile polish compresses chrome without shrinking touch targets", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await loginAsE2EOwner(page, "/estimates/new");
+  await addBlankSection(page);
+
+  const mobileBar = page.getByLabel("Estimate total");
+  await expect(mobileBar).toBeVisible();
+  await expect
+    .poll(() => mobileBar.evaluate((element) => element.getBoundingClientRect().height))
+    .toBeLessThanOrEqual(116);
+
+  const mobileSummary = mobileBar.locator(".eb-mobile-summary > summary");
+  await expect(mobileSummary).toBeVisible();
+  const mobileSummaryHeight = await mobileSummary.evaluate(
+    (element) => element.getBoundingClientRect().height
+  );
+  expect(mobileSummaryHeight).toBeGreaterThanOrEqual(44);
+  for (const action of [
+    mobileBar.getByRole("link", { name: "Cancel" }),
+    mobileBar.getByRole("button", { name: "Save Estimate", exact: true }),
+    mobileBar.getByRole("button", { name: "Save & Preview" }),
+  ]) {
+    await expect
+      .poll(() => action.evaluate((element) => element.getBoundingClientRect().height))
+      .toBeGreaterThanOrEqual(44);
+  }
+
+  const scopePanel = page.locator(".eb-scope-work-panel").first();
+  const notesPanel = page.locator(".eb-notes-clarifications-panel").first();
+  await expect(notesPanel).toBeVisible();
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const scope = document.querySelector<HTMLElement>(".eb-scope-work-panel");
+        const notes = document.querySelector<HTMLElement>(".eb-notes-clarifications-panel");
+        if (!scope || !notes) return Number.POSITIVE_INFINITY;
+        return notes.getBoundingClientRect().top - scope.getBoundingClientRect().bottom;
+      })
+    )
+    .toBeLessThanOrEqual(16);
+  await expect(scopePanel).toBeVisible();
+});
+
+test("keyboard section operations do not animate the operational layout", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await loginAsE2EOwner(page, "/estimates/new");
+  await addBlankSection(page);
+  await addBlankSection(page);
+
+  const appScrollRoot = page.locator("[data-app-scroll-root]");
+  await expect
+    .poll(() => appScrollRoot.evaluate((element) => getComputedStyle(element).scrollBehavior))
+    .toBe("auto");
+
+  const firstSection = page.locator("[data-estimate-section-id]").first();
+  const collapsibleBody = firstSection.locator(".eb-scope-section-body");
+  await expect
+    .poll(() => collapsibleBody.evaluate((body) => getComputedStyle(body).transitionDuration))
+    .toBe("0s");
+
+  await page.evaluate(() => {
+    const targetWindow = window as typeof window & { __estimateScrollBehaviors?: string[] };
+    targetWindow.__estimateScrollBehaviors = [];
+    Element.prototype.scrollIntoView = function (options?: boolean | ScrollIntoViewOptions) {
+      const behavior = typeof options === "object" ? options.behavior : undefined;
+      targetWindow.__estimateScrollBehaviors?.push(behavior ?? "auto");
+    };
+  });
+  const secondOutlineItem = page
+    .getByRole("navigation", { name: "Estimate sections" })
+    .getByRole("button")
+    .nth(1);
+  await secondOutlineItem.focus();
+  await page.keyboard.press("Enter");
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const targetWindow = window as typeof window & { __estimateScrollBehaviors?: string[] };
+        return targetWindow.__estimateScrollBehaviors?.at(-1);
+      })
+    )
+    .toBe("auto");
+
+  await page.setViewportSize({ width: 1280, height: 900 });
+  const jumpToSection = page.getByLabel("Jump to section");
+  await expect(jumpToSection).toBeVisible();
+  const secondSectionValue = await jumpToSection.locator("option").nth(1).getAttribute("value");
+  expect(secondSectionValue).not.toBeNull();
+  await jumpToSection.selectOption(secondSectionValue!);
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const targetWindow = window as typeof window & { __estimateScrollBehaviors?: string[] };
+        return targetWindow.__estimateScrollBehaviors?.at(-1);
+      })
+    )
+    .toBe("auto");
+
+  const dragHandle = firstSection.getByRole("button", { name: "Reorder section" });
+  await dragHandle.focus();
+  await page.keyboard.press("Space");
+  await page.keyboard.press("ArrowDown");
+  await expect
+    .poll(() => firstSection.evaluate((section) => getComputedStyle(section).transitionDuration))
+    .toBe("0s");
+  await page.keyboard.press("Escape");
 });
 
 test("descriptions stay compact until the focused rich editor is opened", async ({ page }) => {
@@ -248,25 +625,37 @@ test("descriptions stay compact until the focused rich editor is opened", async 
   await expect(descriptionSummary).toBeFocused();
   await expect(descriptionSummary).toContainText("Protect adjacent occupied finishes");
 
-  const topOffsets = await page.evaluate(() => {
+  const composedRowMetrics = await page.evaluate(() => {
     const row = document.querySelector<HTMLElement>(".eb-line-item-grid--pricing");
     if (!row) throw new Error("Estimate line-item grid is required");
-    const selectors = [
-      'input[aria-label="Line item 1 title"]',
-      'input[aria-label="Line item 1 quantity"]',
-      'input[aria-label="Line item 1 unit"]',
-      'input[aria-label="Line item 1 unit price"]',
-      ".eb-line-total-block",
-      'button[aria-label="More actions"]',
-    ];
-    const rowTop = row.getBoundingClientRect().top;
-    return selectors.map((selector) => {
+    const requireNode = (selector: string) => {
       const node = row.querySelector<HTMLElement>(selector);
       if (!node) throw new Error(`Missing line-item control: ${selector}`);
-      return Math.round(node.getBoundingClientRect().top - rowTop);
-    });
+      return node.getBoundingClientRect();
+    };
+    const title = requireNode('input[aria-label="Line item 1 title"]');
+    const description = requireNode('button[aria-label="Line item 1 description"]');
+    const quantity = requireNode('input[aria-label="Line item 1 quantity"]');
+    const unitPrice = requireNode('input[aria-label="Line item 1 unit price"]');
+    const lineTotal = requireNode(".eb-line-total-block");
+    const actions = requireNode('button[aria-label="More actions"]');
+    const centers = [quantity, unitPrice, lineTotal, actions].map(
+      (rect) => rect.top + rect.height / 2
+    );
+
+    return {
+      descriptionBelowTitle: description.top >= title.bottom - 1,
+      pricingCenterSpread: Math.max(...centers) - Math.min(...centers),
+      controlsWithinRow: [title, description, quantity, unitPrice, lineTotal, actions].every(
+        (rect) =>
+          rect.top >= row.getBoundingClientRect().top &&
+          rect.bottom <= row.getBoundingClientRect().bottom
+      ),
+    };
   });
-  expect(Math.max(...topOffsets) - Math.min(...topOffsets)).toBeLessThanOrEqual(4);
+  expect(composedRowMetrics.descriptionBelowTitle).toBe(true);
+  expect(composedRowMetrics.pricingCenterSpread).toBeLessThanOrEqual(4);
+  expect(composedRowMetrics.controlsWithinRow).toBe(true);
 
   await descriptionSummary.click();
   const richDescription = "Formatted estimate description";
@@ -296,7 +685,7 @@ test("descriptions stay compact until the focused rich editor is opened", async 
   await expect(page).toHaveURL(/\/estimates\/(?!new(?:\/|$))[^/?#]+/, { timeout: 30_000 });
   const detailUrl = page.url().replace(/\?.*$/, "");
 
-  await page.reload({ waitUntil: "domcontentloaded" });
+  await reloadWithE2EAuth(page);
   await page.getByRole("button", { name: "Edit", exact: true }).click();
   const savedDescriptionSummary = page
     .getByRole("button", { name: "Line item description" })
@@ -316,13 +705,13 @@ test("descriptions stay compact until the focused rich editor is opened", async 
     .not.toMatch(/<li(?:\s[^>]*)?>\s*(?:<p>\s*<\/p>\s*)?<\/li>/i);
   await page.getByTestId("estimate-description-done").click();
 
-  await page.goto(`${detailUrl}/preview`, { waitUntil: "domcontentloaded" });
+  await gotoWithE2EAuth(page, `${detailUrl}/preview`);
   const preview = page.getByTestId("estimate-document");
   await expect(preview).toContainText(richDescription, { timeout: 30_000 });
   await expect(preview.locator("ol")).toHaveCount(1);
   await expect(preview.locator("ol > li")).toHaveCount(1);
 
-  await page.goto(`${detailUrl}/print`, { waitUntil: "domcontentloaded" });
+  await gotoWithE2EAuth(page, `${detailUrl}/print`);
   const printDocument = page.getByRole("document", { name: "Estimate print view" });
   await expect(printDocument).toContainText(richDescription, { timeout: 30_000 });
   await expect(printDocument.locator("ol")).toHaveCount(1);
@@ -335,7 +724,7 @@ test("descriptions stay compact until the focused rich editor is opened", async 
   expect(pdf.subarray(0, 4).toString()).toBe("%PDF");
 });
 
-test("desktop Scope rows and section totals share one eight-track grid", async ({ page }) => {
+test("desktop Scope uses one composed line-editor grid with aligned totals", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await loginAsE2EOwner(page, "/estimates/new");
   await addBlankSection(page);
@@ -358,8 +747,8 @@ test("desktop Scope rows and section totals share one eight-track grid", async (
       rowColumns: getComputedStyle(rowNode).gridTemplateColumns,
     };
   });
-  expect(metrics.headerTracks).toBe(8);
-  expect(metrics.rowTracks).toBe(8);
+  expect(metrics.headerTracks).toBe(5);
+  expect(metrics.rowTracks).toBe(5);
   expect(metrics.rowColumns).toBe(metrics.headerColumns);
 
   const sectionTotalBox = await sectionTotal.boundingBox();
@@ -400,15 +789,19 @@ for (const viewport of [
     await expect(scopeTools.getByLabel("Jump to section")).toBeVisible();
 
     const compactPricing = page.getByRole("region", { name: "Estimate pricing summary" });
-    await expect(page.getByLabel("Estimate overview")).toHaveCount(0);
-    if (viewport.width >= 1024) await expect(compactPricing).toBeVisible();
+    if (viewport.width >= 1200) await expect(compactPricing).toBeVisible();
     else await expect(compactPricing).toBeHidden();
 
     if (viewport.width === 390) {
       await expect(page.getByTestId("estimate-line-item-grid-header")).toBeHidden();
-      const addDetails = page.getByRole("button", { name: "Add details" });
+      const addDetails = page.getByRole("button", { name: "Edit line item 1: Untitled" });
       await addDetails.scrollIntoViewIfNeeded();
       await expect(addDetails).toBeVisible();
+      await expect
+        .poll(() =>
+          addDetails.locator("svg").evaluate((icon) => getComputedStyle(icon).transitionDuration)
+        )
+        .toBe("0s");
       await addDetails.click();
       const mobileUnit = page
         .getByLabel("Line item 1 unit", { exact: true })
@@ -430,10 +823,14 @@ for (const viewport of [
       await duplicateSummary.click();
       await mobileRows.nth(1).getByRole("button", { name: "More actions" }).click();
       await page.getByRole("menuitem", { name: "Remove line item" }).click();
+      await page
+        .getByRole("dialog", { name: "Delete line item?" })
+        .getByRole("button", { name: "Delete", exact: true })
+        .click();
       await expect(mobileRows).toHaveCount(1);
       await expect(mobileRows.first().locator(".eb-line-item-mobile-summary")).toBeFocused();
     } else if (viewport.width < 1280) {
-      await page.getByRole("heading", { name: "Scope of work" }).scrollIntoViewIfNeeded();
+      await scopeTools.scrollIntoViewIfNeeded();
     }
 
     await expectNoHorizontalOverflow(page);
@@ -444,16 +841,21 @@ for (const viewport of [
 test("existing Estimate exposes the same Scope toolbar without changing save or preview semantics", async ({
   page,
 }, testInfo) => {
+  const runtime = collectRuntimeErrors(page);
   await page.setViewportSize({ width: 1440, height: 1000 });
-  await loginAsE2EOwner(page, `/estimates/${E2E_PRESERVED_ESTIMATE_ID}`);
+  await loginAsE2EOwner(page, `/estimates/${POPULATED_EDITABLE_ESTIMATE_ID}`);
   await page.getByRole("button", { name: "Edit", exact: true }).click();
 
-  await expect(page.getByRole("toolbar", { name: "Scope tools" })).toBeVisible();
-  await expect(page.getByRole("navigation", { name: "Estimate sections" })).toHaveCount(0);
+  const scopeTools = page.getByRole("toolbar", { name: "Scope tools" });
+  await expect(scopeTools).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Estimate sections" })).toBeVisible();
+  await expect(scopeTools.getByLabel("Jump to section")).toBeHidden();
   await expect(page.getByRole("button", { name: "Save", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Save & Preview" }).first()).toBeVisible();
   await expect(
     page.getByRole("button", { name: /Drag to reorder line item/ }).first()
   ).toBeVisible();
   await capture(page, testInfo, "estimate-p1-existing-desktop");
+  expect(runtime.consoleErrors).toEqual([]);
+  expect(runtime.pageErrors).toEqual([]);
 });

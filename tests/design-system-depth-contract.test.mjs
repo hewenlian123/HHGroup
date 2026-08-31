@@ -126,13 +126,16 @@ test("shared primitives consume semantic state and depth roles", () => {
   const typography = source("src/lib/typography.ts");
 
   assert.match(table, /data-\[state=selected\]:bg-\[var\(--hh-l3-selected\)\]/);
-  assert.match(tabs, /data-\[state=active\]:bg-\[var\(--hh-l3-selected\)\]/);
+  assert.match(tabs, /data-\[state=active\]:border-\[var\(--hh-accent-primary\)\]/);
+  assert.doesNotMatch(tabs, /data-\[state=active\]:bg-\[var\(--hh-l3-selected\)\]/);
   assert.match(dropdown, /bg-\[var\(--hh-l4-floating-surface\)\]/);
   assert.match(dropdown, /shadow-floating/);
   assert.match(popover, /bg-\[var\(--hh-l4-floating-surface\)\]/);
   assert.match(select, /bg-\[var\(--hh-l4-floating-surface\)\]/);
-  assert.match(input, /hover:bg-\[var\(--hh-l3-hover\)\]/);
-  assert.match(textarea, /hover:bg-\[var\(--hh-l3-hover\)\]/);
+  assert.match(input, /bg-\[var\(--hh-input-background\)\]/);
+  assert.match(input, /hover:border-\[var\(--hh-border-emphasis\)\]/);
+  assert.match(textarea, /bg-\[var\(--hh-input-background\)\]/);
+  assert.match(textarea, /hover:border-\[var\(--hh-border-emphasis\)\]/);
   assert.match(dialog, /bg-\[var\(--hh-l5-task-surface\)\]/);
   assert.match(dialog, /shadow-task/);
   assert.match(sheet, /bg-\[var\(--hh-l5-task-surface\)\]/);
@@ -140,10 +143,16 @@ test("shared primitives consume semantic state and depth roles", () => {
   assert.match(typography, /shadow-operational/);
 });
 
-test("preserves the documented glass date picker exception", () => {
+test("keeps DatePicker on the Certified V2 light floating surface", () => {
   const datePicker = source("src/components/ui/date-picker.tsx");
 
-  assert.match(datePicker, /appearance\?:\s*"default"\s*\|\s*"glass"/);
-  assert.match(datePicker, /bg-\[rgba\(18,22,34,0\.96\)\]/);
-  assert.match(datePicker, /backdrop-blur-\[28px\]/);
+  assert.match(datePicker, /data-finance-date-picker-appearance="default"/);
+  assert.match(datePicker, /bg-\[var\(--hh-l4-floating-surface\)\]/);
+  assert.match(datePicker, /shadow-floating/);
+  assert.match(
+    datePicker,
+    /@deprecated Retained for call-site compatibility; runtime is always V2 Light/
+  );
+  assert.doesNotMatch(datePicker, /appearance === "glass"|themeScope=\{isGlass/);
+  assert.doesNotMatch(datePicker, /bg-\[rgba\(18,22,34|backdrop-blur/);
 });

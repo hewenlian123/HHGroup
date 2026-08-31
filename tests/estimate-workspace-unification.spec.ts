@@ -1,6 +1,28 @@
-import { expect, test, type Page, type TestInfo } from "@playwright/test";
+import { expect, test, type Page, type TestInfo } from "./estimate-playwright-test";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 import { loginAsE2EOwner } from "./e2e-auth-owner";
+import { deleteLocalEstimateFixtureGraphs } from "./e2e-estimate-fixture-teardown";
+import { assertE2ESupabaseUrlSafeForMutations } from "./e2e-supabase-url-guard";
+
+function localAdmin(): SupabaseClient {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  if (!url || !key) throw new Error("Local Supabase service role is required for this test.");
+  assertE2ESupabaseUrlSafeForMutations(url);
+  return createClient(url, key, {
+    auth: { autoRefreshToken: false, detectSessionInUrl: false, persistSession: false },
+  });
+}
+
+async function cleanupEstimateGraph(estimateId: string): Promise<void> {
+  const admin = localAdmin();
+  await admin.from("estimate_payment_schedule_items").delete().eq("estimate_id", estimateId);
+  await admin.from("estimate_items").delete().eq("estimate_id", estimateId);
+  await admin.from("estimate_categories").delete().eq("estimate_id", estimateId);
+  await admin.from("estimate_meta").delete().eq("estimate_id", estimateId);
+  await deleteLocalEstimateFixtureGraphs([estimateId]);
+}
 
 type WorkspaceGeometry = {
   headerHeight: number;
@@ -68,6 +90,7 @@ test("New Estimate is the unsaved state of the Existing Estimate workspace", asy
   const lineDescription =
     "Provide field verification, shop coordination, installation, protection, and final punch completion.";
   let createdEstimateUrl: string | null = null;
+  let createdEstimateId: string | null = null;
   let newMobileScopeTop: number | null = null;
 
   try {
@@ -98,7 +121,13 @@ test("New Estimate is the unsaved state of the Existing Estimate workspace", asy
       .click();
     await page.getByRole("menuitem", { name: /^Blank section$/i }).click();
     await page.getByLabel("Line item 1 title").locator("visible=true").fill(lineTitle);
-    const newDescription = page.getByLabel("Line item 1 description").locator("visible=true");
+    await page
+      .getByRole("button", { name: "Line item 1 description" })
+      .locator("visible=true")
+      .click();
+    const newDescription = page
+      .getByRole("textbox", { name: "Line item 1 description" })
+      .locator("visible=true");
     await newDescription.fill(lineDescription);
     await newDescription.focus();
     await page.keyboard.press("Meta+a");
@@ -138,22 +167,28 @@ test("New Estimate is the unsaved state of the Existing Estimate workspace", asy
       timeout: 30_000,
     });
     createdEstimateUrl = page.url().replace(/\?.*$/, "");
+    createdEstimateId = createdEstimateUrl.split("/").filter(Boolean).at(-1) ?? null;
 
     const existingHeader = page.getByTestId("estimate-detail-header");
     await expect(existingHeader).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByText(clientName, { exact: true }).first()).toBeVisible();
+    await expect(existingHeader).toContainText(clientName);
     await expect(page.getByText("$1,749.00").locator("visible=true").first()).toBeVisible();
     await existingHeader.getByRole("button", { name: "Edit", exact: true }).click();
     await expect(existingHeader).toHaveAttribute("data-estimate-workspace-header", "true");
     await expect(existingHeader.getByRole("button", { name: "Edit details" })).toBeVisible();
     await expect(existingHeader.getByRole("button", { name: "Save & Preview" })).toBeVisible();
     await expect(existingHeader.getByRole("button", { name: "Save", exact: true })).toBeVisible();
-    await expect(existingHeader.getByRole("button", { name: "Done", exact: true })).toBeVisible();
+    await expect(existingHeader.getByRole("button", { name: "Done", exact: true })).toHaveCount(0);
     const savedDescription = page.getByLabel("Line item description").locator("visible=true");
     await expect(savedDescription).toContainText(lineDescription);
+    await savedDescription.click();
+    const savedDescriptionEditor = page
+      .getByRole("textbox", { name: "Line item description" })
+      .locator("visible=true");
     await expect
-      .poll(() => savedDescription.evaluate((element) => element.innerHTML))
+      .poll(() => savedDescriptionEditor.evaluate((element) => element.innerHTML))
       .toMatch(/<(strong|b)>/i);
+    await page.keyboard.press("Escape");
 
     for (const viewport of [
       { width: 1280, height: 900 },
@@ -192,15 +227,6 @@ test("New Estimate is the unsaved state of the Existing Estimate workspace", asy
     await page.getByRole("link", { name: "Back to estimate" }).click();
     await expect(page.getByTestId("estimate-detail-header")).toBeVisible({ timeout: 30_000 });
   } finally {
-    if (createdEstimateUrl) {
-      await page.goto(createdEstimateUrl).catch(() => undefined);
-      const deleteEstimate = page.getByRole("button", { name: "Delete estimate" });
-      if (await deleteEstimate.isVisible().catch(() => false)) {
-        await deleteEstimate.click();
-        const dialog = page.getByRole("dialog", { name: "Delete estimate?" });
-        await dialog.getByRole("button", { name: "Delete", exact: true }).click();
-        await expect(page).toHaveURL(/\/estimates\/?$/, { timeout: 30_000 });
-      }
-    }
+    if (createdEstimateId) await cleanupEstimateGraph(createdEstimateId);
   }
 });

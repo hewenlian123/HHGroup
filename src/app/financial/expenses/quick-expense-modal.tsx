@@ -66,10 +66,15 @@ import {
 } from "@/lib/expense-form-system";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import { hawaiiTodayYmd } from "@/lib/hawaii-calendar-date";
+import {
+  idempotentSubmissionForPayload,
+  type IdempotentSubmission,
+} from "@/lib/financial-idempotency";
 
 type QuickExpenseAttachmentSlot = ExpenseReceiptUploadSlot;
 
 type QuickExpenseSavePayload = {
+  idempotencyKey: string;
   date: string;
   vendorName: string;
   totalAmount: number;
@@ -170,6 +175,7 @@ export function QuickExpenseModal({
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const receiptPickLockRef = React.useRef(false);
   const replaceClientIdRef = React.useRef<string | null>(null);
+  const atomicSubmissionRef = React.useRef<IdempotentSubmission | null>(null);
   const [processing, setProcessing] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
   const [saveFlash, setSaveFlash] = React.useState(false);
@@ -1099,7 +1105,7 @@ export function QuickExpenseModal({
           createdAt: new Date().toISOString(),
         }));
 
-      const savedExpense = await saveQuickExpenseViaApi({
+      const payloadWithoutKey: Omit<QuickExpenseSavePayload, "idempotencyKey"> = {
         date: date || hawaiiTodayYmd(),
         vendorName: effectiveVendorName || "Unknown",
         totalAmount,
@@ -1122,7 +1128,16 @@ export function QuickExpenseModal({
               }
             : null,
         attachments: attachmentsToSave,
+      };
+      atomicSubmissionRef.current = idempotentSubmissionForPayload(
+        atomicSubmissionRef.current,
+        payloadWithoutKey
+      );
+      const savedExpense = await saveQuickExpenseViaApi({
+        ...payloadWithoutKey,
+        idempotencyKey: atomicSubmissionRef.current.key,
       });
+      atomicSubmissionRef.current = null;
       toast({
         title: "Expense saved",
         description: `${effectiveVendorName || "Unknown"} - ${formatCurrency(totalAmount)}. Click to open expense detail.`,

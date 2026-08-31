@@ -1,7 +1,8 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./estimate-playwright-test";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-import { loginAsE2EOwner } from "./e2e-auth-owner";
+import { gotoWithE2EAuth, loginAsE2EOwner } from "./e2e-auth-owner";
+import { deleteLocalEstimateFixtureGraphs } from "./e2e-estimate-fixture-teardown";
 import { assertE2ESupabaseUrlSafeForMutations } from "./e2e-supabase-url-guard";
 
 function localAdmin(): SupabaseClient {
@@ -253,7 +254,7 @@ test("Duplicate as Draft and Copy Previous share the reset-safe Estimate copy co
     await expect(page.locator("body")).toContainText("Hidden owner-supplied fixture");
     await assertResetSafeCopy(duplicateId);
 
-    await page.goto("/estimates", { waitUntil: "domcontentloaded" });
+    await gotoWithE2EAuth(page, "/estimates");
     const sourceRow = page.getByRole("row").filter({ hasText: sourceNumber });
     await expect(sourceRow).toBeVisible({ timeout: 30_000 });
     await sourceRow.getByLabel(`Actions for estimate ${sourceNumber}`).click();
@@ -263,10 +264,14 @@ test("Duplicate as Draft and Copy Previous share the reset-safe Estimate copy co
     expect(copyPreviousId).not.toBe(sourceId);
     expect(copyPreviousId).not.toBe(duplicateId);
     createdEstimateIds.push(copyPreviousId);
+    await expect(page.getByTestId("estimate-detail-header")).toContainText("Draft", {
+      timeout: 30_000,
+    });
+    await expect(page.locator("body")).toContainText("Hidden owner-supplied fixture");
     await assertResetSafeCopy(copyPreviousId);
 
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto(`/estimates/${sourceId}`, { waitUntil: "domcontentloaded" });
+    await gotoWithE2EAuth(page, `/estimates/${sourceId}`);
     await page.getByLabel("More estimate actions", { exact: true }).click();
     await expect(page.getByTestId("duplicate-estimate-action-mobile")).toBeVisible();
 
@@ -282,7 +287,7 @@ test("Duplicate as Draft and Copy Previous share the reset-safe Estimate copy co
     if (invoiceId) await db.from("invoices").delete().eq("id", invoiceId);
     if (projectId) await db.from("projects").delete().eq("id", projectId);
     if (createdEstimateIds.length > 0) {
-      await db.from("estimates").delete().in("id", createdEstimateIds);
+      await deleteLocalEstimateFixtureGraphs(createdEstimateIds);
     }
     if (customerId) await db.from("customers").delete().eq("id", customerId);
   }

@@ -1,10 +1,18 @@
-import { expect, test, type Page, type TestInfo } from "@playwright/test";
+import { expect, test, type Page, type TestInfo } from "./estimate-playwright-test";
 import { mkdir } from "node:fs/promises";
 
 import { loginAsE2EOwner } from "./e2e-auth-owner";
+import {
+  captureUnexpectedBrowserErrors,
+  cleanupDenseEstimateFixture,
+  DENSE_ESTIMATE_ID,
+  seedDenseEstimateFixture,
+} from "./estimate-dense-fixture";
 
-const LONG_ESTIMATE_ID = process.env.E2E_LONG_ESTIMATE_ID?.trim();
 const EVIDENCE_DIR = "/private/tmp/hh-estimate-scope-grid";
+
+test.beforeAll(seedDenseEstimateFixture);
+test.afterAll(cleanupDenseEstimateFixture);
 
 async function expectNoHorizontalOverflow(page: Page): Promise<void> {
   await expect
@@ -38,32 +46,23 @@ for (const viewport of [
   test(`long Estimate Scope grid remains usable at ${viewport.name}`, async ({
     page,
   }, testInfo) => {
-    test.skip(!LONG_ESTIMATE_ID, "Set E2E_LONG_ESTIMATE_ID to the existing long local Estimate.");
+    const runtimeErrors = captureUnexpectedBrowserErrors(page);
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
-    await loginAsE2EOwner(page, `/estimates/${LONG_ESTIMATE_ID}`);
+    await loginAsE2EOwner(page, `/estimates/${DENSE_ESTIMATE_ID}`);
     await page.getByTestId("estimate-detail-header").getByRole("button", { name: "Edit" }).click();
-    await page.getByRole("heading", { name: "Scope of work" }).scrollIntoViewIfNeeded();
+    const scopeToolbar = page.getByRole("toolbar", { name: "Scope tools" });
+    await expect(scopeToolbar).toBeVisible({ timeout: 30_000 });
+    await scopeToolbar.scrollIntoViewIfNeeded();
 
     const visibleRows = page.locator(".eb-line-item-grid--pricing:visible");
     const mobileRows = page.locator(
       "[data-estimate-section-mobile-id] [data-estimate-line-item-id]:visible"
     );
 
-    if (viewport.width >= 1280) {
+    if (viewport.width >= 768) {
       const header = page.getByTestId("estimate-line-item-grid-header").first();
       await expect(header).toBeVisible();
-      await expect(header.locator(":scope > *")).toHaveCount(8);
-      expect(await visibleRows.count()).toBeGreaterThanOrEqual(50);
-      await expect(page.locator(".eb-scope-description-disclosure")).toHaveCount(0);
-      await expect
-        .poll(() =>
-          visibleRows
-            .first()
-            .evaluate((row) => getComputedStyle(row).gridTemplateColumns.split(" ").length)
-        )
-        .toBe(8);
-    } else if (viewport.width >= 1024) {
-      await expect(page.getByTestId("estimate-line-item-grid-header").first()).toBeHidden();
+      await expect(header.locator(":scope > *")).toHaveCount(5);
       expect(await visibleRows.count()).toBeGreaterThanOrEqual(50);
       await expect
         .poll(() =>
@@ -71,7 +70,7 @@ for (const viewport of [
             .first()
             .evaluate((row) => getComputedStyle(row).gridTemplateColumns.split(" ").length)
         )
-        .toBe(2);
+        .toBe(5);
     } else {
       await expect(page.getByTestId("estimate-line-item-grid-header").first()).toBeHidden();
       await expect(visibleRows).toHaveCount(0);
@@ -84,6 +83,7 @@ for (const viewport of [
     }
 
     await expectNoHorizontalOverflow(page);
+    expect(runtimeErrors).toEqual([]);
     await capture(page, testInfo, `estimate-scope-grid-${viewport.name}`);
   });
 }

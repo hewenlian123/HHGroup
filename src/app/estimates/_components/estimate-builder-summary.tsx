@@ -19,6 +19,8 @@ export type EstimateBuilderSummaryProps = {
   showInternal?: boolean;
   /** Shown when milestones exist — compact executive line only. */
   paymentSummary?: EstimateBuilderPaymentSummary | null;
+  onOpenPaymentSchedule?: () => void;
+  onOpenDetails?: () => void;
   className?: string;
   floating?: boolean;
 };
@@ -113,63 +115,81 @@ export function EstimateBuilderCompactSummary({
   summary,
   showInternal = false,
   paymentSummary = null,
+  onOpenPaymentSchedule,
+  onOpenDetails,
   className,
 }: EstimateBuilderSummaryProps): React.ReactElement {
-  const detailAvailable =
-    Boolean(showInternal) || Boolean(paymentSummary && paymentSummary.milestoneCount > 0);
-
   return (
     <section
       className={cn("eb-pricing-summary-strip", className)}
       aria-label="Estimate pricing summary"
+      data-estimate-inspector="pricing"
     >
+      <header className="eb-pricing-inspector-header">
+        <h2>Pricing overview</h2>
+      </header>
+
+      <nav className="eb-pricing-inspector-tabs" aria-label="Pricing inspector sections">
+        <span aria-current="page">Overview</span>
+        {onOpenPaymentSchedule ? (
+          <button type="button" onClick={onOpenPaymentSchedule}>
+            Payment
+          </button>
+        ) : null}
+        {onOpenDetails ? (
+          <button type="button" onClick={onOpenDetails}>
+            Details
+          </button>
+        ) : null}
+      </nav>
+
       <div className="eb-pricing-summary-main">
         <CompactAmount label="Subtotal" value={summary?.subtotal ?? null} />
-        <CompactAmount label="Tax" value={summary?.tax ?? null} />
         <CompactAmount
           label="Discount"
           value={summary ? (summary.discount > 0 ? -summary.discount : 0) : null}
         />
+        <CompactAmount label="Tax" value={summary?.tax ?? null} />
         <CompactAmount label="Total" value={summary?.grandTotal ?? null} total />
       </div>
 
-      {detailAvailable ? (
-        <details className="eb-pricing-summary-details">
-          <summary>
-            Pricing details
-            <ChevronDown className="h-3.5 w-3.5" aria-hidden />
-          </summary>
-          <div className="eb-pricing-summary-detail-grid">
-            {showInternal ? (
-              <div>
-                <p className={EB.summaryInternalLabel}>Internal costs</p>
-                {summary ? (
-                  <div className="mt-1 grid gap-0.5 sm:grid-cols-3 sm:gap-4">
-                    <InternalLine label="Material" value={summary.materialCost} />
-                    <InternalLine label="Labor" value={summary.laborCost} />
-                    <InternalLine label="Subcontractor" value={summary.subcontractorCost} />
-                  </div>
-                ) : (
-                  <p className="mt-1 text-hh-metadata text-muted-foreground">No internal costs</p>
-                )}
-              </div>
-            ) : null}
-            {paymentSummary && paymentSummary.milestoneCount > 0 ? (
-              <div className="eb-pricing-summary-payment">
-                <p className={EB.summaryInternalLabel}>Payments</p>
-                <p className="mt-1 text-hh-metadata text-muted-foreground">
-                  {paymentSummary.milestoneCount} milestone
-                  {paymentSummary.milestoneCount === 1 ? "" : "s"} ·{" "}
-                  <span className="font-medium tabular-nums text-foreground">
-                    {fmt(paymentSummary.scheduledTotal)}
-                  </span>{" "}
-                  scheduled
-                </p>
-              </div>
-            ) : null}
-          </div>
-        </details>
+      {showInternal ? (
+        <section className="eb-pricing-allocation" aria-labelledby="estimate-price-allocation">
+          <h3 id="estimate-price-allocation">Estimate price allocation</h3>
+          {summary ? (
+            <div className="eb-pricing-allocation-list">
+              <InternalLine label="Material" value={summary.materialCost} />
+              <InternalLine label="Labor" value={summary.laborCost} />
+              <InternalLine label="Subcontract" value={summary.subcontractorCost} />
+            </div>
+          ) : (
+            <p className="text-hh-metadata text-muted-foreground">No internal costs</p>
+          )}
+        </section>
       ) : null}
+
+      <section className="eb-pricing-payment-card" aria-labelledby="estimate-payment-summary">
+        <div className="eb-pricing-payment-card-header">
+          <h3 id="estimate-payment-summary">Payment summary</h3>
+          {paymentSummary && paymentSummary.milestoneCount > 0 ? (
+            <span className="eb-pricing-payment-status">Scheduled</span>
+          ) : null}
+        </div>
+        {paymentSummary && paymentSummary.milestoneCount > 0 ? (
+          <div className="eb-pricing-payment-card-body">
+            <p>
+              {paymentSummary.milestoneCount} milestone
+              {paymentSummary.milestoneCount === 1 ? "" : "s"}
+            </p>
+            <p className="eb-pricing-payment-scheduled">
+              <span>Scheduled</span>
+              <strong>{fmt(paymentSummary.scheduledTotal)}</strong>
+            </p>
+          </div>
+        ) : (
+          <p className="eb-pricing-payment-empty">No milestones scheduled.</p>
+        )}
+      </section>
     </section>
   );
 }

@@ -17,6 +17,9 @@ export type EstimateLineItemsEditorLocalProps = {
   onCategoryNamesChange: (names: Record<string, string>) => void;
   sectionOrder: string[];
   onSectionOrderChange: (order: string[]) => void;
+  activeSectionId: string | null;
+  explicitActiveSectionId: string | null;
+  onActiveSectionChange: (sectionId: string, source: "explicit" | "inferred") => void;
   disabled?: boolean;
   submitAttempted?: boolean;
   lineItemsError?: string | null;
@@ -42,6 +45,9 @@ export function EstimateLineItemsEditor(props: EstimateLineItemsEditorProps): Re
       onCategoryNamesChange: props.onCategoryNamesChange,
       sectionOrder: props.sectionOrder,
       onSectionOrderChange: props.onSectionOrderChange,
+      activeSectionId: props.activeSectionId,
+      explicitActiveSectionId: props.explicitActiveSectionId,
+      onActiveSectionChange: props.onActiveSectionChange,
       disabled: props.disabled,
       submitAttempted: props.submitAttempted,
       lineItemsError: props.lineItemsError,

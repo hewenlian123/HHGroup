@@ -45,7 +45,10 @@ export function StatusBadge({
   showDot = true,
 }: StatusBadgeProps) {
   return (
-    <Badge variant={statusBadgeVariantClass(variant)} className={cn("h-hh-5 gap-hh-1", className)}>
+    <Badge
+      variant={statusBadgeVariantClass(variant)}
+      className={cn("h-[26px] shrink-0 gap-hh-1 !rounded-hh-pill px-2.5 text-hh-status", className)}
+    >
       {showDot ? (
         <span
           aria-hidden="true"

@@ -10,10 +10,7 @@ import {
   type Expense,
   type ExpenseAttachment,
 } from "@/lib/expenses-db";
-import {
-  replaceSubcontractDeductionForExpense,
-  type SubcontractDeductionInput,
-} from "@/lib/subcontract-deductions-db";
+import type { SubcontractDeductionInput } from "@/lib/subcontract-deductions-db";
 import { hawaiiTodayYmd } from "@/lib/hawaii-calendar-date";
 
 export const dynamic = "force-dynamic";
@@ -41,6 +38,7 @@ type QuickExpenseRequest = {
   referenceNo?: unknown;
   attachments?: unknown;
   subcontractDeduction?: unknown;
+  idempotencyKey?: unknown;
 };
 
 function apiError(status: number, message: string): NextResponse {
@@ -124,12 +122,15 @@ export async function POST(request: Request) {
   }
 
   const vendorName = optionalString(body.vendorName) ?? "Unknown";
+  const idempotencyKey = optionalString(body.idempotencyKey);
+  if (!idempotencyKey) return apiError(400, "Expense idempotency key is required.");
   const totalAmount = Number(body.totalAmount);
   if (!Number.isFinite(totalAmount) || totalAmount < 0) {
     return apiError(400, "Quick expense amount must be a valid number.");
   }
 
   try {
+    const deduction = normalizeSubcontractDeduction(body.subcontractDeduction);
     let expense = await createQuickExpenseWithClient(supabase, {
       date: optionalString(body.date) ?? hawaiiTodayYmd(),
       vendorName,
@@ -142,21 +143,15 @@ export async function POST(request: Request) {
       projectId: optionalString(body.projectId),
       paymentAccountId: optionalString(body.paymentAccountId),
       referenceNo: optionalString(body.referenceNo),
+      idempotencyKey,
+      subcontractDeduction: deduction
+        ? {
+            ...deduction,
+            projectId: deduction.projectId ?? optionalString(body.projectId),
+            amount: deduction.amount ?? totalAmount,
+          }
+        : null,
     });
-
-    const deduction = normalizeSubcontractDeduction(body.subcontractDeduction);
-    if (deduction) {
-      const savedDeduction = await replaceSubcontractDeductionForExpense(
-        expense.id,
-        {
-          ...deduction,
-          projectId: deduction.projectId ?? optionalString(body.projectId),
-          amount: deduction.amount ?? totalAmount,
-        },
-        supabase
-      );
-      expense = { ...expense, subcontractDeduction: savedDeduction };
-    }
 
     for (const attachment of normalizeAttachments(body.attachments)) {
       expense = (await addExpenseAttachmentWithClient(supabase, expense.id, attachment)) ?? expense;

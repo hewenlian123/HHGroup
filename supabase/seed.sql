@@ -127,12 +127,12 @@ BEGIN
 
   -- ─── customers (Playwright integration: list + detail link) ───
   IF to_regclass('public.customers') IS NOT NULL AND pg_temp.hh_e2e_col('customers', 'name') THEN
-    EXECUTE $d$DELETE FROM public.customers WHERE id = '33333333-3333-3333-3333-333333333333'::uuid OR name = '[E2E] Test Customer'$d$;
+    EXECUTE $d$DELETE FROM public.customers WHERE id = '33333333-3333-4333-8333-333333333333'::uuid OR name = '[E2E] Test Customer'$d$;
     IF pg_temp.hh_e2e_col('customers', 'id') THEN
       EXECUTE $cust$
         INSERT INTO public.customers (id, name, email)
         VALUES (
-          '33333333-3333-3333-3333-333333333333'::uuid,
+          '33333333-3333-4333-8333-333333333333'::uuid,
           '[E2E] Test Customer',
           'e2e-customer@example.test'
         )
@@ -311,7 +311,7 @@ BEGIN
     IF pg_temp.hh_e2e_col('projects', 'customer_id') THEN
       EXECUTE format(
         'UPDATE public.projects SET customer_id = %L::uuid WHERE id = %L::uuid',
-        '33333333-3333-3333-3333-333333333333'::uuid,
+        '33333333-3333-4333-8333-333333333333'::uuid,
         v_project
       );
     END IF;
@@ -674,7 +674,7 @@ BEGIN
         '44444444-4444-4444-4444-444444444447'::uuid,
         '[E2E]-INV-SEED-001',
         %L::uuid,
-        '33333333-3333-3333-3333-333333333333'::uuid,
+        '33333333-3333-4333-8333-333333333333'::uuid,
         '[E2E] Test Customer',
         'Sent',
         100,

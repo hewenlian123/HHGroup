@@ -12,6 +12,8 @@ import { PaymentPreviewActions } from "./payment-preview-actions";
 import { ProposalScopePreview } from "@/app/estimates/_components/proposal-scope-preview";
 import { formatEstimatePaymentDueDate } from "@/app/estimates/_components/estimate-payment-date";
 import { getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
+import { ServerDataLoadFallback } from "@/components/server-data-load-fallback";
+import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
 
 export const dynamic = "force-dynamic";
 
@@ -26,12 +28,27 @@ export default async function EstimatePaymentPreviewPage({
   const { id, paymentId } = await params;
   const readClient = getServerSupabaseInternalNoStore();
 
-  const [estimate, meta, paymentSchedule, company] = await Promise.all([
+  const pageData = await Promise.all([
     getEstimateById(id, readClient),
     getEstimateMeta(id, readClient),
     getPaymentSchedule(id, readClient),
     fetchDocumentCompanyProfile(),
-  ]);
+  ])
+    .then((data) => ({ data }))
+    .catch((error: unknown) => ({ error }));
+
+  if ("error" in pageData) {
+    logServerPageDataError(`estimates/${id}/payments/${paymentId}/preview`, pageData.error);
+    return (
+      <ServerDataLoadFallback
+        message={serverDataLoadWarning(pageData.error, "payment preview financial details")}
+        backHref={`/estimates/${id}`}
+        backLabel="Back to estimate"
+      />
+    );
+  }
+
+  const [estimate, meta, paymentSchedule, company] = pageData.data;
 
   if (!estimate || !meta) redirect("/estimates");
 

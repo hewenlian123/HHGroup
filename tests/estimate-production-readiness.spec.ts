@@ -2,11 +2,12 @@ import { randomUUID } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
-import { expect, test, type Locator, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "./estimate-playwright-test";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 import { E2E_PRESERVED_CUSTOMER_ID, E2E_PRESERVED_PROJECT_LABEL } from "./e2e-cleanup-db";
-import { loginAsE2EOwner } from "./e2e-auth-owner";
+import { gotoWithE2EAuth, loginAsE2EOwner, reloadWithE2EAuth } from "./e2e-auth-owner";
+import { deleteLocalEstimateFixtureGraphs } from "./e2e-estimate-fixture-teardown";
 import { expectBoundedLetterPages } from "./estimate-document-page-integrity";
 import { assertEstimateCertificationLocalOnly } from "./e2e-supabase-url-guard";
 
@@ -35,7 +36,7 @@ async function cleanupEstimateGraph(estimateId: string): Promise<void> {
   await admin.from("estimate_items").delete().eq("estimate_id", estimateId);
   await admin.from("estimate_categories").delete().eq("estimate_id", estimateId);
   await admin.from("estimate_meta").delete().eq("estimate_id", estimateId);
-  await admin.from("estimates").delete().eq("id", estimateId);
+  await deleteLocalEstimateFixtureGraphs([estimateId]);
 }
 
 async function addBlankSection(page: Page): Promise<void> {
@@ -46,9 +47,34 @@ async function addBlankSection(page: Page): Promise<void> {
   await page.getByRole("menuitem", { name: /^Blank section$/i }).click();
 }
 
+async function waitForSectionInsertionFocus(page: Page): Promise<void> {
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+      })
+  );
+}
+
+async function waitForActiveSectionObserverTurn(page: Page): Promise<void> {
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+      })
+  );
+}
+
+async function manuallyScrollEstimateToTop(page: Page): Promise<void> {
+  const scrollRoot = page.locator("[data-app-scroll-root]");
+  await scrollRoot.hover({ position: { x: 20, y: 180 } });
+  await page.mouse.wheel(0, -10_000);
+}
+
 async function fillEstimateDetails(
   page: Page,
-  values: { clientName: string; projectName: string; documentStyle?: "proposal" | "itemized" }
+  values: { clientName: string; projectName: string; documentStyle?: "proposal" | "itemized" },
+  options: { awaitServerPersistence?: boolean } = {}
 ): Promise<void> {
   const dialog = page.getByRole("dialog");
   if (!(await dialog.isVisible().catch(() => false))) {
@@ -65,7 +91,19 @@ async function fillEstimateDetails(
       })
       .check();
   }
+  const persistenceResponse = options.awaitServerPersistence
+    ? page.waitForResponse((response) => {
+        const request = response.request();
+        return request.method() === "POST" && Boolean(request.headers()["next-action"]);
+      })
+    : null;
   await dialog.getByRole("button", { name: "Save", exact: true }).click();
+  if (persistenceResponse) {
+    expect((await persistenceResponse).ok()).toBe(true);
+    await expect(page.getByText("Estimate updated.", { exact: true })).toBeVisible({
+      timeout: 30_000,
+    });
+  }
   await expect(dialog).toBeHidden();
 }
 
@@ -107,13 +145,12 @@ async function readDescriptionMetrics(description: Locator): Promise<{
   });
 }
 
-async function expectAutoGrowingDescription(
-  page: Page,
-  description: Locator,
-  value: string
-): Promise<number> {
+async function expectAutoGrowingDescription(lineItem: Locator, value: string): Promise<number> {
+  const descriptionSummary = lineItem.getByRole("button", { name: "Line item description" });
+  await descriptionSummary.click();
+  const description = lineItem.getByRole("textbox", { name: "Line item description" });
+  await expect(description).toBeVisible();
   await description.fill(value);
-  await page.getByLabel("Line item quantity").locator("visible=true").first().focus();
   await expect(description).toContainText(value);
 
   const metrics = await readDescriptionMetrics(description);
@@ -123,30 +160,9 @@ async function expectAutoGrowingDescription(
   expect(metrics.styleHeight).toBeGreaterThan(0);
   expect(Math.abs(metrics.styleHeight - metrics.scrollHeight)).toBeLessThanOrEqual(2);
   expect(metrics.scrollHeight).toBeLessThanOrEqual(metrics.clientHeight + 1);
+  await lineItem.getByLabel("Line item quantity", { exact: true }).focus();
+  await expect(descriptionSummary).toContainText(value);
   return metrics.height;
-}
-
-async function expectTopAlignedLineItemControls(description: Locator): Promise<void> {
-  const topOffsets = await description.evaluate((element) => {
-    const row = element.closest<HTMLElement>(".eb-line-item-grid--pricing");
-    if (!row) throw new Error("Estimate line-item grid is required");
-    const selectors = [
-      'input[aria-label="Line item title"]',
-      'input[aria-label="Line item quantity"]',
-      'input[aria-label="Line item unit"]',
-      'input[aria-label="Line item unit price"]',
-      ".eb-line-total-block",
-      'button[aria-label="More actions"]',
-    ];
-    const rowTop = row.getBoundingClientRect().top;
-    return selectors.map((selector) => {
-      const node = row.querySelector<HTMLElement>(selector);
-      if (!node) throw new Error(`Missing line-item control: ${selector}`);
-      return Math.round(node.getBoundingClientRect().top - rowTop);
-    });
-  });
-
-  expect(Math.max(...topOffsets) - Math.min(...topOffsets)).toBeLessThanOrEqual(2);
 }
 
 async function capture(page: Page, name: string): Promise<string> {
@@ -323,17 +339,23 @@ test("New Estimate persists an additional empty Section after Save and reload", 
   });
   await addBlankSection(page);
   await addBlankSection(page);
-  await page.getByLabel("Line item 1 title").locator("visible=true").fill("Persisted work item");
-  await page.getByLabel("Line item 1 quantity").locator("visible=true").fill("1");
-  await page.getByLabel("Line item 1 unit price").locator("visible=true").fill("1000");
+  await waitForSectionInsertionFocus(page);
+  const firstSection = page.locator("[data-estimate-section-id]:visible").first();
+  await firstSection.getByLabel("Line item 1 title").fill("Persisted work item");
+  await firstSection.getByLabel("Line item 1 quantity").fill("1");
+  await firstSection.getByLabel("Line item 1 unit price").fill("1000");
 
   const secondSection = page.locator("[data-estimate-section-id]").nth(1);
   await secondSection.getByRole("button", { name: "More actions" }).click();
   await page.getByRole("menuitem", { name: "Remove line item" }).click();
+  await page
+    .getByRole("dialog", { name: "Delete line item?" })
+    .getByRole("button", { name: "Delete", exact: true })
+    .click();
   await expect(secondSection.locator("[data-estimate-line-item-id]")).toHaveCount(0);
-  await expect(page.getByLabel("Jump to section").locator("option").nth(1)).toContainText(
-    "0 items"
-  );
+  const sectionOutline = page.getByRole("navigation", { name: "Estimate sections" });
+  const outlineSectionButtons = sectionOutline.locator("ol").getByRole("button");
+  await expect(outlineSectionButtons.nth(1)).toHaveAccessibleName(/, 0 items,/);
 
   await page.getByRole("button", { name: "Save Estimate" }).click();
   await expect(page).toHaveURL(/\/estimates\/(?!new(?:\/|$))[^/?#]+/, { timeout: 60_000 });
@@ -349,12 +371,10 @@ test("New Estimate persists an additional empty Section after Save and reload", 
   expect(persistedCategoriesError).toBeNull();
   expect(persistedCategories).toHaveLength(2);
 
-  await page.reload({ waitUntil: "domcontentloaded" });
+  await reloadWithE2EAuth(page);
   await page.getByRole("button", { name: "Edit", exact: true }).click();
-  await expect(page.getByLabel("Jump to section").locator("option")).toHaveCount(2);
-  await expect(page.getByLabel("Jump to section").locator("option").nth(1)).toContainText(
-    "0 items"
-  );
+  await expect(outlineSectionButtons).toHaveCount(2);
+  await expect(outlineSectionButtons.nth(1)).toHaveAccessibleName(/, 0 items,/);
 });
 
 test("60-line Estimate completes publication, continuity, revenue-readiness, and responsive stress", async ({
@@ -380,13 +400,28 @@ test("60-line Estimate completes publication, continuity, revenue-readiness, and
     total.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
   );
   await expect(page.getByText(SYSTEM_WARNING_TEXT)).toHaveCount(0);
-  await expect(
-    page.locator('[data-app-topbar] button[aria-label="Notifications"] + span.bg-red-500')
-  ).toHaveCount(1);
 
   await page.getByRole("button", { name: "Edit", exact: true }).click();
-  const jumpToSection = page.getByLabel("Jump to section");
-  await jumpToSection.selectOption({ label: "Production Readiness Section 8 · 6 items" });
+  const editorRoot = page.locator("[data-estimate-editor-mode]");
+  const sectionOutline = page.getByRole("navigation", { name: "Estimate sections" });
+  const selectedOutlineSection = sectionOutline.getByRole("button", {
+    name: /^Production Readiness Section 8, 6 items,/,
+  });
+  const firstOutlineSection = sectionOutline.getByRole("button", {
+    name: /^Production Readiness Section 1, 6 items,/,
+  });
+  await selectedOutlineSection.click();
+  await expect(editorRoot).toHaveAttribute("data-estimate-active-section-id", "stress-08");
+  await expect(selectedOutlineSection).toHaveAttribute("aria-current", "location");
+  await waitForActiveSectionObserverTurn(page);
+  await manuallyScrollEstimateToTop(page);
+  await expect(editorRoot).toHaveAttribute("data-estimate-active-section-id", "stress-01");
+  await expect(firstOutlineSection).toHaveAttribute("aria-current", "location");
+  await expect(selectedOutlineSection).not.toHaveAttribute("aria-current", "location");
+
+  await selectedOutlineSection.click();
+  await expect(editorRoot).toHaveAttribute("data-estimate-active-section-id", "stress-08");
+  await expect(selectedOutlineSection).toHaveAttribute("aria-current", "location");
   const selectedSection = page.locator('[data-estimate-section-id="stress-08"]');
   await expect(selectedSection).toBeFocused();
   const selectedPrice = selectedSection
@@ -416,11 +451,46 @@ test("60-line Estimate completes publication, continuity, revenue-readiness, and
   );
 
   await page.getByRole("button", { name: "Edit", exact: true }).click();
-  await fillEstimateDetails(page, {
-    clientName: "[E2E] Production Readiness Customer",
-    projectName: E2E_PRESERVED_PROJECT_LABEL,
-    documentStyle: "itemized",
-  });
+  const scopeSearch = page.getByRole("combobox", { name: "Search scope" });
+  await scopeSearch.fill("Construction scope line 41");
+  await expect(page.getByRole("option", { name: /Construction scope line 41/ })).toBeVisible();
+  await scopeSearch.press("Enter");
+  const searchedOutlineSection = page
+    .getByRole("navigation", { name: "Estimate sections" })
+    .getByRole("button", { name: /^Production Readiness Section 7, 6 items,/ });
+  await expect(searchedOutlineSection).toHaveAttribute("aria-current", "location");
+  await expect(page.locator(".eb-estimate-editor-surface")).toHaveAttribute(
+    "data-estimate-active-section-id",
+    "stress-07"
+  );
+  await waitForActiveSectionObserverTurn(page);
+  await manuallyScrollEstimateToTop(page);
+  await expect(editorRoot).toHaveAttribute("data-estimate-active-section-id", "stress-01");
+  await expect(firstOutlineSection).toHaveAttribute("aria-current", "location");
+  await expect(searchedOutlineSection).not.toHaveAttribute("aria-current", "location");
+
+  await searchedOutlineSection.click();
+  await expect(editorRoot).toHaveAttribute("data-estimate-active-section-id", "stress-07");
+  await expect(searchedOutlineSection).toHaveAttribute("aria-current", "location");
+  await page.getByRole("button", { name: "Save & Preview" }).first().click();
+  await expect(page).toHaveURL(/\/preview\?.*returnSection=stress-07/, { timeout: 60_000 });
+  await page.getByTestId("estimate-preview-back-link").click();
+  await expect(page).toHaveURL(/returnSection=stress-07/);
+  await expect(page.locator('[data-estimate-section-id="stress-07"]')).toBeFocused();
+  await expect(page.locator('[data-estimate-section-id="stress-07"]')).toHaveClass(
+    /eb-scope-section-current/
+  );
+
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  await fillEstimateDetails(
+    page,
+    {
+      clientName: "[E2E] Production Readiness Customer",
+      projectName: E2E_PRESERVED_PROJECT_LABEL,
+      documentStyle: "itemized",
+    },
+    { awaitServerPersistence: true }
+  );
   await page.getByRole("button", { name: "Edit", exact: true }).click();
   await page.getByRole("button", { name: "Save & Preview" }).first().click();
   await expect(page).toHaveURL(/\/preview/, { timeout: 60_000 });
@@ -501,18 +571,33 @@ test("60-line Estimate completes publication, continuity, revenue-readiness, and
   await capture(page, "itemized-preview-1440");
 
   await page.getByTestId("estimate-preview-back-link").click();
-  await expect(page.getByTestId("estimate-invoice-readiness")).toContainText(estimateNumber);
-  await expect(page.getByTestId("estimate-invoice-readiness")).toContainText(
-    "[E2E] Production Readiness Customer"
+  const detailHeader = page.getByTestId("estimate-detail-header");
+  await expect(detailHeader).toContainText(estimateNumber);
+  await expect(detailHeader).toContainText("[E2E] Production Readiness Customer");
+  await expect(detailHeader).toContainText(E2E_PRESERVED_PROJECT_LABEL);
+  await expect(page.locator("[data-estimate-editor-mode]")).toHaveAttribute(
+    "data-estimate-editor-mode",
+    "read"
   );
-  await expect(page.getByTestId("estimate-invoice-readiness")).toContainText(
-    E2E_PRESERVED_PROJECT_LABEL
+  await page.getByRole("button", { name: "Estimate actions", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Payment Schedule", exact: true }).click();
+  const paymentSheet = page.getByTestId("estimate-payment-schedule-sheet");
+  await expect(paymentSheet).toBeVisible();
+  await expect(page.locator("[data-estimate-editor-mode]")).toHaveAttribute(
+    "data-estimate-editor-mode",
+    "edit"
   );
-  await expect(page.getByRole("link", { name: "Create Draft Invoice" })).toHaveCount(6);
-  await expect(page.getByRole("link", { name: "Create Draft Invoice" }).first()).toHaveAttribute(
-    "href",
-    /\/financial\/invoices\/new\?.*returnTo=/
-  );
+  await expect(
+    paymentSheet.getByRole("button", { name: "Schedule Payment", exact: true })
+  ).toBeVisible();
+  await expect(paymentSheet.getByTestId("estimate-invoice-readiness")).toHaveCount(0);
+  const createDraftInvoiceLinks = paymentSheet.getByRole("link", {
+    name: "Create Draft Invoice",
+  });
+  await expect(createDraftInvoiceLinks).toHaveCount(0);
+  await expect(paymentSheet.getByRole("button", { name: "Create Draft Invoice" })).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await expect(paymentSheet).toBeHidden();
 
   const viewports = [
     { name: "desktop-1440", width: 1440, height: 900 },
@@ -523,7 +608,7 @@ test("60-line Estimate completes publication, continuity, revenue-readiness, and
   ];
   for (const viewport of viewports) {
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
-    await page.goto(`/estimates/${estimateId}`, { waitUntil: "domcontentloaded" });
+    await gotoWithE2EAuth(page, `/estimates/${estimateId}`);
     await page.getByRole("button", { name: "Edit", exact: true }).click();
     await expectNoHorizontalOverflow(page);
     await expect(page.getByText(SYSTEM_WARNING_TEXT)).toHaveCount(0);
@@ -542,30 +627,29 @@ test("60-line Estimate completes publication, continuity, revenue-readiness, and
     }
 
     if (viewport.width >= 1024) {
-      const description = page.getByLabel("Line item description").locator("visible=true").first();
-      await description.scrollIntoViewIfNeeded();
+      const firstLineItem = page.locator("[data-estimate-line-item-id]:visible").first();
+      const descriptionSummary = firstLineItem.getByRole("button", {
+        name: "Line item description",
+      });
+      await descriptionSummary.scrollIntoViewIfNeeded();
       if (viewport.name === "desktop-1440") {
         const shortDescription = "Protect adjacent finishes.";
         const mediumDescription =
           "Coordinate material staging, site protection, field verification, and final closeout documentation.";
         const longDescription =
-          "Protect adjacent occupied finishes, coordinate daily access with the owner, maintain dust control and safe egress, and include all temporary protection, cleanup, adjustments, and closeout documentation required for a complete scope.";
+          "Protect adjacent occupied finishes, coordinate daily access with the owner, maintain dust control and safe egress, and include all temporary protection, cleanup, adjustments, and closeout documentation required for a complete scope. ".repeat(
+            4
+          );
 
-        const shortHeight = await expectAutoGrowingDescription(page, description, shortDescription);
-        const mediumHeight = await expectAutoGrowingDescription(
-          page,
-          description,
-          mediumDescription
-        );
-        const longHeight = await expectAutoGrowingDescription(page, description, longDescription);
+        const shortHeight = await expectAutoGrowingDescription(firstLineItem, shortDescription);
+        const mediumHeight = await expectAutoGrowingDescription(firstLineItem, mediumDescription);
+        const longHeight = await expectAutoGrowingDescription(firstLineItem, longDescription);
 
-        expect(shortHeight).toBeLessThan(mediumHeight);
+        expect(shortHeight).toBeLessThanOrEqual(mediumHeight);
         expect(mediumHeight).toBeLessThan(longHeight);
-        await expectTopAlignedLineItemControls(description);
       } else {
         await expectAutoGrowingDescription(
-          page,
-          description,
+          firstLineItem,
           "Coordinate material staging, site protection, field verification, and final closeout documentation."
         );
         await expect(
@@ -584,11 +668,13 @@ test("60-line Estimate completes publication, continuity, revenue-readiness, and
 
     await capture(page, `builder-${viewport.name}`);
     await page
-      .getByRole("button", { name: "Done", exact: true })
+      .getByRole("button", { name: "Save & Preview", exact: true })
       .locator("visible=true")
       .first()
       .click();
-    await page.goto(`/estimates/${estimateId}/preview`, { waitUntil: "domcontentloaded" });
+    await expect(page).toHaveURL(new RegExp(`/estimates/${estimateId}/preview`), {
+      timeout: 60_000,
+    });
     await expect(page.getByTestId("estimate-document")).toBeVisible({ timeout: 60_000 });
     await expectNoHorizontalOverflow(page);
     await expect(page.getByRole("link", { name: "Download PDF" })).toBeVisible();

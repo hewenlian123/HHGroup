@@ -1,10 +1,13 @@
-import { expect, test, type Page, type TestInfo } from "@playwright/test";
+import { expect, test, type Page, type TestInfo } from "./estimate-playwright-test";
 import { mkdir } from "node:fs/promises";
-import { createClient } from "@supabase/supabase-js";
 
-import { loginAsE2EOwner } from "./e2e-auth-owner";
+import { gotoWithE2EAuth, loginAsE2EOwner } from "./e2e-auth-owner";
 import { E2E_PRESERVED_ESTIMATE_ID } from "./e2e-cleanup-db";
-import { assertE2ESupabaseUrlSafeForMutations } from "./e2e-supabase-url-guard";
+import {
+  cleanupPopulatedEditableEstimateFixture,
+  POPULATED_EDITABLE_ESTIMATE_ID,
+  seedPopulatedEditableEstimateFixture,
+} from "./estimate-populated-editable-fixture";
 
 const SCREENSHOT_DIR = "/private/tmp/hh-estimate-edit-hierarchy";
 
@@ -30,37 +33,23 @@ async function capture(page: Page, testInfo: TestInfo, name: string): Promise<vo
   await testInfo.attach(name, { path, contentType: "image/png" });
 }
 
-async function findLocalEditableEstimateWithItems(): Promise<string> {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
-  const key =
-    process.env.SUPABASE_SECRET_KEY?.trim() || process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
-  if (!url || !key) throw new Error("Local Supabase configuration is required.");
-  assertE2ESupabaseUrlSafeForMutations(url);
-
-  const admin = createClient(url, key, {
-    auth: { autoRefreshToken: false, detectSessionInUrl: false, persistSession: false },
+function collectRuntimeErrors(page: Page): { consoleErrors: string[]; pageErrors: string[] } {
+  const consoleErrors: string[] = [];
+  const pageErrors: string[] = [];
+  page.on("console", (message) => {
+    if (message.type() === "error") consoleErrors.push(message.text());
   });
-  const { data: itemRows, error: itemError } = await admin
-    .from("estimate_items")
-    .select("estimate_id")
-    .limit(500);
-  if (itemError) throw itemError;
-  const estimateIds = Array.from(
-    new Set((itemRows ?? []).map((row) => row.estimate_id as string).filter(Boolean))
-  );
-  if (estimateIds.length === 0) throw new Error("A local Estimate with line items is required.");
-
-  const { data: estimateRows, error: estimateError } = await admin
-    .from("estimates")
-    .select("id, status")
-    .in("id", estimateIds)
-    .in("status", ["Draft", "Sent"])
-    .limit(1);
-  if (estimateError) throw estimateError;
-  const estimateId = estimateRows?.[0]?.id as string | undefined;
-  if (!estimateId) throw new Error("An editable local Estimate with line items is required.");
-  return estimateId;
+  page.on("pageerror", (error) => pageErrors.push(error.message));
+  return { consoleErrors, pageErrors };
 }
+
+test.beforeAll(async () => {
+  await seedPopulatedEditableEstimateFixture();
+});
+
+test.afterAll(async () => {
+  await cleanupPopulatedEditableEstimateFixture();
+});
 
 test("Existing Estimate Edit mode has one identity hierarchy and canonical details access", async ({
   page,
@@ -85,19 +74,28 @@ test("Existing Estimate Edit mode has one identity hierarchy and canonical detai
     name: "Mark as Sent",
     exact: true,
   });
-  await expect
-    .poll(async () => {
-      const [edit, send] = await Promise.all(
-        [editAction, sendAction].map((action) =>
-          action.evaluate((node) =>
-            (getComputedStyle(node).backgroundColor.match(/\d+/g) ?? []).map(Number)
-          )
-        )
-      );
-      const average = (rgb: number[]) => rgb.slice(0, 3).reduce((sum, value) => sum + value, 0) / 3;
-      return average(edit) < 80 && average(send) > 220;
-    })
-    .toBe(true);
+  await expect(editAction).toBeVisible();
+  await expect(sendAction).toBeVisible();
+  const [editBackground, sendBackground, renderedActionTokens] = await Promise.all([
+    editAction.evaluate((node) => getComputedStyle(node).backgroundColor),
+    sendAction.evaluate((node) => getComputedStyle(node).backgroundColor),
+    page.evaluate(() => {
+      const probe = document.createElement("div");
+      probe.style.position = "fixed";
+      probe.style.visibility = "hidden";
+      document.body.append(probe);
+
+      probe.style.backgroundColor = "var(--hh-surface-workspace)";
+      const edit = getComputedStyle(probe).backgroundColor;
+      probe.style.backgroundColor = "var(--hh-accent-primary)";
+      const send = getComputedStyle(probe).backgroundColor;
+      probe.remove();
+
+      return { edit, send };
+    }),
+  ]);
+  expect(editBackground).toBe(renderedActionTokens.edit);
+  expect(sendBackground).toBe(renderedActionTokens.send);
 
   await commandHeader.getByRole("button", { name: "Edit", exact: true }).click();
 
@@ -107,7 +105,7 @@ test("Existing Estimate Edit mode has one identity hierarchy and canonical detai
   await expect(editDetails).toBeVisible();
   await expect(commandHeader.getByRole("button", { name: "Save", exact: true })).toBeVisible();
   await expect(commandHeader.getByRole("button", { name: "Save & Preview" })).toBeVisible();
-  await expect(commandHeader.getByRole("button", { name: "Done", exact: true })).toBeVisible();
+  await expect(commandHeader.getByRole("button", { name: "Done", exact: true })).toHaveCount(0);
 
   await editDetails.click();
   const detailsSheet = page.getByRole("dialog", {
@@ -115,7 +113,8 @@ test("Existing Estimate Edit mode has one identity hierarchy and canonical detai
   });
   await expect(detailsSheet.getByLabel("Customer")).toBeVisible();
   await expect(detailsSheet.getByLabel("Project / reference")).toBeVisible();
-  await expect(detailsSheet.getByLabel("Address")).toBeVisible();
+  await expect(detailsSheet.getByRole("textbox", { name: "Billing address" })).toBeVisible();
+  await expect(detailsSheet.getByRole("textbox", { name: "Site address" })).toBeVisible();
   await expect(detailsSheet.getByText("Estimate date", { exact: true })).toBeVisible();
   await expect(detailsSheet.getByText("Estimate style", { exact: true })).toBeVisible();
   await detailsSheet.getByRole("button", { name: "Cancel", exact: true }).click();
@@ -124,36 +123,51 @@ test("Existing Estimate Edit mode has one identity hierarchy and canonical detai
   await capture(page, testInfo, "existing-estimate-edit-1440");
 });
 
-test("editable Section titles use normal white and graphite control states", async ({
+test("editable Section titles use current V2 field and control states", async ({
   page,
 }, testInfo) => {
-  const estimateId = await findLocalEditableEstimateWithItems();
+  const runtime = collectRuntimeErrors(page);
   await page.setViewportSize({ width: 1440, height: 1000 });
-  await loginAsE2EOwner(page, `/estimates/${estimateId}`);
+  await loginAsE2EOwner(page, `/estimates/${POPULATED_EDITABLE_ESTIMATE_ID}`);
   await page.getByTestId("estimate-detail-header").getByRole("button", { name: "Edit" }).click();
 
-  const sectionTitle = page.getByRole("button", { name: /^Section:/ }).first();
+  const section = page.locator("[data-estimate-section-id]:visible").first();
+  const sectionTitle = section.getByRole("button", { name: /^Section:/ });
   await expect(sectionTitle).toBeVisible();
   await expect
     .poll(() =>
       sectionTitle.evaluate((node) => {
         const style = getComputedStyle(node);
-        return { background: style.backgroundColor, color: style.color };
+        const probe = document.createElement("span");
+        probe.style.color = "var(--hh-text-primary)";
+        probe.style.visibility = "hidden";
+        document.body.append(probe);
+        const tokenColor = getComputedStyle(probe).color;
+        probe.remove();
+        return {
+          background: style.backgroundColor,
+          usesTextPrimaryToken: style.color === tokenColor,
+        };
       })
     )
-    .toEqual({ background: "rgba(0, 0, 0, 0)", color: "rgb(23, 23, 23)" });
+    .toEqual({
+      background: "rgba(0, 0, 0, 0)",
+      usesTextPrimaryToken: true,
+    });
   await capture(page, testInfo, "existing-section-title-1440");
 
-  const precedingControl = sectionTitle.locator("xpath=preceding::button[1]");
-  await precedingControl.focus();
+  await sectionTitle.focus();
+  await page.keyboard.press("Shift+Tab");
   await page.keyboard.press("Tab");
   await expect(sectionTitle).toBeFocused();
   await expect
     .poll(() => sectionTitle.evaluate((node) => getComputedStyle(node).boxShadow))
     .not.toBe("none");
+  expect(runtime.consoleErrors).toEqual([]);
+  expect(runtime.pageErrors).toEqual([]);
 });
 
-test("Existing Estimate Done restores View hierarchy and New Estimate remains unchanged", async ({
+test("Existing Estimate Save restores View hierarchy and New Estimate remains unchanged", async ({
   page,
 }) => {
   await loginAsE2EOwner(page, `/estimates/${E2E_PRESERVED_ESTIMATE_ID}`);
@@ -163,11 +177,11 @@ test("Existing Estimate Done restores View hierarchy and New Estimate remains un
   ).trim();
 
   await commandHeader.getByRole("button", { name: "Edit", exact: true }).click();
-  await commandHeader.getByRole("button", { name: "Done", exact: true }).click();
+  await commandHeader.getByRole("button", { name: "Save", exact: true }).click();
   await expect(commandHeader.getByRole("button", { name: "Edit", exact: true })).toBeVisible();
   await expect(page.getByText(estimateNumber, { exact: true })).toHaveCount(1);
 
-  await page.goto("/estimates/new");
+  await gotoWithE2EAuth(page, "/estimates/new");
   await expect(page.getByRole("heading", { name: "New Estimate" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Edit details" })).toBeVisible();
 });
@@ -182,7 +196,7 @@ test("Existing Estimate Save and Save & Preview preserve the established workflo
   await commandHeader.getByRole("button", { name: "Edit", exact: true }).click();
   await commandHeader.getByRole("button", { name: "Save", exact: true }).click();
   await expect(commandHeader.getByRole("button", { name: "Edit", exact: true })).toBeVisible();
-  await expect(page.getByTestId("estimate-details-summary")).toBeVisible();
+  await expect(page.locator('[data-estimate-inspector="pricing"]')).toBeVisible();
 
   await commandHeader.getByRole("button", { name: "Edit", exact: true }).click();
   await commandHeader.getByRole("button", { name: "Save & Preview" }).click();
@@ -202,8 +216,9 @@ for (const viewport of [
   test(`Existing Estimate Edit hierarchy stays compact at ${viewport.name}`, async ({
     page,
   }, testInfo) => {
+    const runtime = collectRuntimeErrors(page);
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
-    await loginAsE2EOwner(page, `/estimates/${E2E_PRESERVED_ESTIMATE_ID}`);
+    await loginAsE2EOwner(page, `/estimates/${POPULATED_EDITABLE_ESTIMATE_ID}`);
     const commandHeader = page.getByTestId("estimate-detail-header");
     const estimateNumber = (
       await commandHeader.getByRole("heading", { level: 1 }).innerText()
@@ -214,13 +229,19 @@ for (const viewport of [
     await expect(page.getByTestId("estimate-details-summary")).toHaveCount(0);
     const editDetails = commandHeader.getByRole("button", { name: "Edit details" });
     await expect(editDetails).toBeVisible();
-    if (viewport.width < 1024) {
+    if (viewport.width <= 767) {
       const box = await editDetails.boundingBox();
       expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
     }
 
-    await page.getByRole("heading", { name: "Scope of work" }).scrollIntoViewIfNeeded();
+    await page
+      .locator("[data-estimate-section-id], [data-estimate-section-mobile-id]")
+      .locator("visible=true")
+      .first()
+      .scrollIntoViewIfNeeded();
     await expectNoHorizontalOverflow(page);
     await capture(page, testInfo, `existing-edit-${viewport.name}`);
+    expect(runtime.consoleErrors).toEqual([]);
+    expect(runtime.pageErrors).toEqual([]);
   });
 }

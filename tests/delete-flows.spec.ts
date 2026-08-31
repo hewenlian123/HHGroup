@@ -2,7 +2,6 @@ import { test, expect } from "@playwright/test";
 import {
   acceptBrowserDialogs,
   expectDeleteControlVisibleWithoutHover,
-  clickTrashInRowAndConfirmDialog,
   expectVisibleOrSkip,
 } from "./e2e-helpers";
 import { e2eTargetOrigin } from "./e2e-env-helpers";
@@ -14,7 +13,6 @@ import { e2eTargetOrigin } from "./e2e-env-helpers";
  * `E2E_BASE_URL` optional (default http://localhost:3000).
  */
 const BASE = e2eTargetOrigin();
-const ROW_REMOVED_MS = 15_000;
 /** List pages can stay on “Loading…” for a long time if Supabase/API is slow. */
 const LIST_LOAD_MS = 55_000;
 

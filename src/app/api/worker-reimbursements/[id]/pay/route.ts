@@ -1,71 +1,49 @@
 import { NextResponse } from "next/server";
 import { requireSupabaseOwnerOrAdminWithClient } from "@/lib/auth-boundary";
-import { getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
-import { getReimbursementById, markReimbursementPaid } from "@/lib/worker-reimbursements-db";
-import { createExpenseFromPaidReimbursement } from "@/lib/expenses-db";
+import {
+  getServerSupabaseAdminNoStore,
+  SUPABASE_MISSING_SERVER_ADMIN_ENV_MESSAGE,
+} from "@/lib/supabase-server";
+import {
+  getReimbursementById,
+  recordReimbursementPaymentAtomicWithClient,
+} from "@/lib/worker-reimbursements-db";
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const guard = await requireSupabaseOwnerOrAdminWithClient(req, getServerSupabaseInternalNoStore);
+  const guard = await requireSupabaseOwnerOrAdminWithClient(req, getServerSupabaseAdminNoStore);
   if (!guard.ok) return guard.response;
 
   const { id: reimbursementId } = await params;
   const supabase = guard.client;
   if (!supabase) {
-    return NextResponse.json({ message: "Supabase not configured." }, { status: 500 });
+    return NextResponse.json(
+      { message: SUPABASE_MISSING_SERVER_ADMIN_ENV_MESSAGE },
+      { status: 503 }
+    );
   }
 
   try {
     const body = await req.json().catch(() => ({}));
-
-    // Step 1: Find reimbursement by id
     const existing = await getReimbursementById(reimbursementId, supabase);
     if (!existing) {
       return NextResponse.json({ message: "Reimbursement not found." }, { status: 404 });
     }
 
-    // Step 2: If already paid, return early (prevent duplicate execution)
-    if (existing.status === "paid") {
-      return NextResponse.json({
-        reimbursement: existing,
-        expenseId: undefined,
-        expenseWarning: undefined,
-      });
-    }
-
-    // Step 3: Create expense from reimbursement
-    let expenseWarning: string | null = null;
-    let expenseId: string | null = null;
-    try {
-      const expense = await createExpenseFromPaidReimbursement(
-        {
-          id: existing.id,
-          workerId: existing.workerId,
-          workerName: existing.workerName,
-          vendor: existing.vendor ?? "Worker Reimbursement",
-          projectId: existing.projectId,
-          amount: existing.amount ?? 0,
-          description: existing.description,
-        },
-        { paymentMethod: body?.method ?? null, note: body?.note ?? null },
-        supabase
-      );
-      expenseId = expense?.id ?? null;
-    } catch (expErr) {
-      expenseWarning =
-        expErr instanceof Error ? expErr.message : "Could not add to Project Expenses.";
-      if (typeof console !== "undefined" && console.error) {
-        console.error("[reimbursement/pay] createExpenseFromPaidReimbursement failed", expErr);
-      }
-    }
-
-    // Step 4: Update reimbursement status (SET status='paid', paid_at=now())
-    const reimbursement = await markReimbursementPaid(reimbursementId, supabase);
-
-    // Step 5: Return updated reimbursement
+    const result = await recordReimbursementPaymentAtomicWithClient(
+      [reimbursementId],
+      {
+        idempotencyKey: `reimbursement-pay:${reimbursementId}`,
+        paymentMethod: body?.method ?? null,
+        note: body?.note ?? null,
+      },
+      supabase
+    );
     return NextResponse.json({
-      reimbursement,
-      expenseId: expenseId ?? undefined,
-      expenseWarning: expenseWarning ?? undefined,
+      reimbursement: result.reimbursements[0],
+      payment: result.payment,
+      expenseId: result.expenseIds[0],
+      expenseWarning: null,
+      reused: result.reused,
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Failed to record payment";

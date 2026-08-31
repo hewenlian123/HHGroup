@@ -5,7 +5,6 @@
  */
 
 import { getSupabaseClient } from "@/lib/supabase";
-import { createDepositFromPayment } from "@/lib/deposits-db";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export const PAYMENT_METHODS = ["Check", "ACH", "Wire", "Cash", "Credit Card"] as const;
@@ -56,6 +55,7 @@ export type PaymentReceivedDetail = PaymentReceivedWithMeta & {
 };
 
 export type CreatePaymentReceivedPayload = {
+  idempotency_key: string;
   invoice_id: string;
   project_id?: string | null;
   customer_name: string;
@@ -513,64 +513,6 @@ function activeInvoicePaymentsTotal(
   return rows
     .filter((row) => isActiveInvoicePayment(row) && row.id !== excludeId)
     .reduce((sum, row) => sum + (Number(row.amount ?? 0) || 0), 0);
-}
-
-function invoiceStatusForPaidTotal(
-  previousStatus: string | null | undefined,
-  invoiceTotal: number,
-  paidTotal: number
-): string | null {
-  const raw = String(previousStatus ?? "")
-    .trim()
-    .toLowerCase();
-  if (raw === "void") return null;
-  if (paidTotal + MONEY_EPSILON >= invoiceTotal) return "Paid";
-  if (paidTotal > MONEY_EPSILON) return "Partially Paid";
-  if (raw && raw !== "draft") return "Sent";
-  return "Draft";
-}
-
-async function syncInvoicePaymentRow(
-  c: ReturnType<typeof client>,
-  invoicePaymentId: string,
-  paymentId: string,
-  payload: {
-    amount: number;
-    payment_date: string;
-    payment_method: string | null;
-    memo: string | null;
-  }
-): Promise<void> {
-  const full = {
-    amount: payload.amount,
-    paid_at: payload.payment_date,
-    payment_date: payload.payment_date,
-    method: payload.payment_method,
-    memo: payload.memo,
-    status: "Posted",
-    payment_received_id: paymentId,
-  };
-  let res = await c.from("invoice_payments").update(full).eq("id", invoicePaymentId);
-  if (res.error && isInvoicePaymentDateWriteUnsupported(res.error)) {
-    const withoutPaymentDate: Partial<typeof full> = { ...full };
-    delete withoutPaymentDate.payment_date;
-    res = await c.from("invoice_payments").update(withoutPaymentDate).eq("id", invoicePaymentId);
-  }
-  if (res.error && isMissingColumn(res.error)) {
-    const withoutLink: Partial<typeof full> = { ...full };
-    delete withoutLink.payment_received_id;
-    res = await c.from("invoice_payments").update(withoutLink).eq("id", invoicePaymentId);
-  }
-  if (
-    res.error &&
-    (isMissingColumn(res.error) || isInvoicePaymentDateWriteUnsupported(res.error))
-  ) {
-    const withoutPaymentDate: Partial<typeof full> = { ...full };
-    delete withoutPaymentDate.payment_date;
-    delete withoutPaymentDate.payment_received_id;
-    res = await c.from("invoice_payments").update(withoutPaymentDate).eq("id", invoicePaymentId);
-  }
-  if (res.error) throw new Error(res.error.message ?? "Failed to update invoice ledger.");
 }
 
 async function updatePaymentAttachments(
@@ -1117,198 +1059,41 @@ function isMissingColumn(err: { message?: string } | null): boolean {
   return /column .* does not exist|could not find the .* column|schema cache/i.test(m);
 }
 
-function isInvoicePaymentDateWriteUnsupported(err: { message?: string } | null): boolean {
-  const m = err?.message ?? "";
-  return /payment_date/i.test(m) && /non-DEFAULT|generated|cannot insert|cannot update/i.test(m);
-}
-
 export async function createPaymentReceived(
   payload: CreatePaymentReceivedPayload,
   explicitClient?: SupabaseClient
 ): Promise<PaymentReceivedRow> {
   const c = client(explicitClient);
-  const paymentDate = payload.payment_date.slice(0, 10);
+  const idempotencyKey = payload.idempotency_key.trim();
+  if (!idempotencyKey) throw new Error("Payment idempotency key is required.");
 
-  // Financial safety checks:
-  // - Prevent paying a fully-paid invoice
-  // - Prevent overpayment beyond remaining balance
-  const invRes = await c
-    .from("invoices")
-    .select("id, total, status")
-    .eq("id", payload.invoice_id)
-    .maybeSingle();
-  if (invRes.error) throw new Error(invRes.error.message ?? "Failed to load invoice.");
-  if (!invRes.data) throw new Error("Invoice not found.");
-  const total = Number((invRes.data as { total?: number | null }).total ?? 0) || 0;
-  const invStatusRaw = String((invRes.data as { status?: string | null }).status ?? "");
+  const attachments = (payload.attachments ?? []).map((attachment) => ({
+    file_url: attachment.file_url.trim(),
+    file_name: attachment.file_name.trim(),
+    mime_type: attachment.mime_type ?? null,
+    size_bytes: attachment.size_bytes ?? null,
+    file_type: attachment.file_type,
+  }));
+  const { data, error } = await c.rpc("record_payment_received_atomic", {
+    p_idempotency_key: idempotencyKey,
+    p_invoice_id: payload.invoice_id,
+    p_project_id: payload.project_id ?? null,
+    p_customer_name: payload.customer_name ?? "",
+    p_payment_date: payload.payment_date.slice(0, 10),
+    p_amount: payload.amount,
+    p_payment_method: payload.payment_method,
+    p_deposit_account: payload.deposit_account ?? null,
+    p_notes: payload.notes ?? null,
+    p_attachment_url: payload.attachment_url ?? null,
+    p_attachments: attachments,
+  });
+  if (error) throw new Error(error.message ?? "Failed to record payment atomically.");
 
-  const payRes = await c
-    .from("invoice_payments")
-    .select("amount, status")
-    .eq("invoice_id", payload.invoice_id);
-  if (payRes.error) throw new Error(payRes.error.message ?? "Failed to load invoice payments.");
-  const paidTotal = (
-    (payRes.data ?? []) as Array<{ amount?: number | null; status?: string | null }>
-  )
-    .filter((p) => String(p.status ?? "") !== "Voided")
-    .reduce((s, p) => s + (Number(p.amount ?? 0) || 0), 0);
-  const remaining = Math.max(0, total - paidTotal);
-  if (remaining <= 0.0000001) throw new Error("Invoice already fully paid");
-  if ((Number(payload.amount) || 0) - remaining > 0.0000001) {
-    throw new Error("Payment exceeds remaining balance");
-  }
-
-  // Full insert with all optional columns. If schema cache lags, retry stripping unknown columns.
-  const insertAttempts: Record<string, unknown>[] = [
-    {
-      invoice_id: payload.invoice_id,
-      project_id: payload.project_id ?? null,
-      customer_name: payload.customer_name ?? "",
-      payment_date: paymentDate,
-      amount: payload.amount,
-      payment_method: payload.payment_method || null,
-      deposit_account: payload.deposit_account ?? null,
-      notes: payload.notes ?? null,
-      attachment_url: payload.attachment_url ?? null,
-    },
-    // Without attachment_url
-    {
-      invoice_id: payload.invoice_id,
-      project_id: payload.project_id ?? null,
-      customer_name: payload.customer_name ?? "",
-      payment_date: paymentDate,
-      amount: payload.amount,
-      payment_method: payload.payment_method || null,
-      deposit_account: payload.deposit_account ?? null,
-      notes: payload.notes ?? null,
-    },
-    // Without deposit_account + attachment_url
-    {
-      invoice_id: payload.invoice_id,
-      project_id: payload.project_id ?? null,
-      customer_name: payload.customer_name ?? "",
-      payment_date: paymentDate,
-      amount: payload.amount,
-      payment_method: payload.payment_method || null,
-      notes: payload.notes ?? null,
-    },
-    // Without customer_name (old schema)
-    {
-      invoice_id: payload.invoice_id,
-      project_id: payload.project_id ?? null,
-      payment_date: paymentDate,
-      amount: payload.amount,
-      payment_method: payload.payment_method || null,
-    },
-    // Minimal
-    {
-      invoice_id: payload.invoice_id,
-      payment_date: paymentDate,
-      amount: payload.amount,
-    },
-  ];
-
-  // Select columns: try full then fallback to minimal
-  const selectAttempts = [
-    "id, invoice_id, project_id, customer_name, payment_date, amount, payment_method, deposit_account, notes, attachment_url, status, created_at",
-    "id, invoice_id, project_id, payment_date, amount, payment_method, created_at",
-    "id, invoice_id, payment_date, amount, created_at",
-  ];
-
-  let row: PaymentReceivedDbRow | null = null;
-  let lastError: { message?: string } | null = null;
-
-  for (const insertRow of insertAttempts) {
-    for (const selectCols of selectAttempts) {
-      const { data, error } = await c
-        .from("payments_received")
-        .insert(insertRow)
-        .select(selectCols)
-        .single();
-      if (!error) {
-        row = data as unknown as PaymentReceivedDbRow;
-        break;
-      }
-      lastError = error as { message?: string };
-      if (!isMissingColumn(lastError)) break;
-    }
-    if (row) break;
-    if (lastError && !isMissingColumn(lastError)) break;
-  }
-
-  if (!row) throw new Error(lastError?.message ?? "Failed to create payment.");
-  const payment = row;
-
-  // Auto-create deposit record (payment_id, invoice_id, project_id, customer_name, deposit_account, amount, payment_method, deposit_date)
-  await createDepositFromPayment(
-    {
-      id: payment.id,
-      invoice_id: payment.invoice_id,
-      project_id: payment.project_id,
-      amount: payment.amount,
-      payment_date: payment.payment_date,
-      deposit_account: payment.deposit_account,
-      customer_name: payment.customer_name,
-      payment_method: payment.payment_method ?? null,
-    },
-    c
-  );
-
-  // Sync to invoice_payments so balance / AR derivation sees the payment.
-  const syncFull = {
-    invoice_id: payload.invoice_id,
-    paid_at: paymentDate,
-    payment_date: paymentDate,
-    amount: payload.amount,
-    method: payload.payment_method || null,
-    memo: payload.notes ?? payload.deposit_account ?? null,
-    status: "Posted" as const,
-    payment_received_id: payment.id,
-  };
-  let syncRes = await c.from("invoice_payments").insert(syncFull);
-  if (syncRes.error && isInvoicePaymentDateWriteUnsupported(syncRes.error)) {
-    const withoutPaymentDate: Partial<typeof syncFull> = { ...syncFull };
-    delete withoutPaymentDate.payment_date;
-    syncRes = await c.from("invoice_payments").insert(withoutPaymentDate);
-  }
-  if (syncRes.error && isMissingColumn(syncRes.error)) {
-    const withoutLink: Partial<typeof syncFull> = { ...syncFull };
-    delete withoutLink.payment_received_id;
-    syncRes = await c.from("invoice_payments").insert(withoutLink);
-  }
-  if (
-    syncRes.error &&
-    (isMissingColumn(syncRes.error) || isInvoicePaymentDateWriteUnsupported(syncRes.error))
-  ) {
-    syncRes = await c.from("invoice_payments").insert({
-      invoice_id: payload.invoice_id,
-      paid_at: paymentDate,
-      amount: payload.amount,
-      status: "Posted",
-    });
-  }
-  if (syncRes.error) {
-    throw new Error(
-      syncRes.error.message ?? "Payment saved but failed to sync to invoice_payments."
-    );
-  }
-
-  // Auto-calculate invoice status (stored) based on paid vs total.
-  // Map requested statuses: paid/partial/sent → Paid/Partially Paid/Sent (existing UI expects title-case).
-  const newPaid = paidTotal + (Number(payload.amount) || 0);
-  if (invStatusRaw.trim().toLowerCase() !== "void") {
-    let nextStatus: string | null = null;
-    if (newPaid + 0.0000001 >= total) nextStatus = "Paid";
-    else if (newPaid > 0.0000001) nextStatus = "Partially Paid";
-    else if (invStatusRaw.trim().toLowerCase() !== "draft") nextStatus = "Sent";
-    if (nextStatus) {
-      await c.from("invoices").update({ status: nextStatus }).eq("id", payload.invoice_id);
-    }
-  }
-
-  const attachments = await insertPaymentAttachments(c, payment.id, payload.attachments);
-
-  return { ...payment, attachments };
+  const paymentId = String((data as { payment_id?: unknown } | null)?.payment_id ?? "");
+  if (!paymentId) throw new Error("Atomic payment RPC returned no payment id.");
+  const payment = await getPaymentReceivedById(paymentId, c);
+  if (!payment) throw new Error("Payment recorded, but could not be reloaded.");
+  return payment;
 }
 
 export async function updatePaymentReceived(
@@ -1379,66 +1164,25 @@ export async function updatePaymentReceived(
     throw new Error("Payment exceeds the invoice balance available for this edit.");
   }
 
-  const updateRow: Record<string, unknown> = {
-    payment_date: nextPaymentDate,
-    amount: nextAmount,
-    payment_method: normalizeMemo(nextMethod) || null,
-    deposit_account: normalizeMemo(nextDepositAccount) || null,
-    notes: normalizeMemo(nextNotes) || null,
-  };
-  if (!ledgerAffectingChange) {
-    delete updateRow.payment_date;
-    delete updateRow.amount;
-    delete updateRow.payment_method;
-    delete updateRow.deposit_account;
+  if (!link.row) {
+    throw new Error(
+      link.status === "ambiguous"
+        ? "This legacy payment has multiple possible invoice ledger matches."
+        : "This payment is not linked to an invoice ledger row."
+    );
   }
 
-  if (Object.keys(updateRow).length > 0) {
-    const { error } = await c.from("payments_received").update(updateRow).eq("id", paymentId);
-    if (error) throw new Error(error.message ?? "Failed to update payment.");
-  }
-
-  if (ledgerAffectingChange && link.row) {
-    const memo = normalizeMemo(nextNotes) || normalizeMemo(nextDepositAccount) || null;
-    await syncInvoicePaymentRow(c, link.row.id, paymentId, {
-      amount: nextAmount,
-      payment_date: nextPaymentDate,
-      payment_method: normalizeMemo(nextMethod) || null,
-      memo,
-    });
-
-    const depositRow: Record<string, unknown> = {
-      amount: nextAmount,
-      deposit_date: nextPaymentDate,
-      deposit_account: normalizeMemo(nextDepositAccount) || null,
-      payment_method: normalizeMemo(nextMethod) || null,
-      customer_name: existing.customer_name,
-      project_id: existing.project_id ?? null,
-      invoice_id: existing.invoice_id,
-      status: "recorded",
-    };
-    const depositRes = await c.from("deposits").update(depositRow).eq("payment_id", paymentId);
-    if (
-      depositRes.error &&
-      !isMissingTable(depositRes.error) &&
-      !isMissingColumn(depositRes.error)
-    ) {
-      throw new Error(depositRes.error.message ?? "Failed to update linked deposit.");
-    }
-
-    const newPaidTotal = paidExcluding + nextAmount;
-    const nextStatus = invoiceStatusForPaidTotal(invoice?.status, invoiceTotal, newPaidTotal);
-    if (nextStatus) {
-      await c.from("invoices").update({ status: nextStatus }).eq("id", existing.invoice_id);
-    }
-  } else if (link.row && normalizeMemo(nextNotes) !== normalizeMemo(existing.notes)) {
-    const memo = normalizeMemo(nextNotes) || normalizeMemo(existing.deposit_account) || null;
-    await syncInvoicePaymentRow(c, link.row.id, paymentId, {
-      amount: Number(existing.amount) || 0,
-      payment_date: normalizeDate(existing.payment_date),
-      payment_method: existing.payment_method ?? null,
-      memo,
-    });
+  const { error: updateError } = await c.rpc("update_payment_received_atomic", {
+    p_payment_id: paymentId,
+    p_payment_date: nextPaymentDate,
+    p_amount: nextAmount,
+    p_payment_method: normalizeMemo(nextMethod) || null,
+    p_deposit_account: normalizeMemo(nextDepositAccount) || null,
+    p_notes: normalizeMemo(nextNotes) || null,
+    p_invoice_payment_id: link.row.id,
+  });
+  if (updateError) {
+    throw new Error(updateError.message ?? "Failed to update payment atomically.");
   }
 
   await updatePaymentAttachments(c, existing, payload.attachments);

@@ -89,31 +89,37 @@ function main() {
   const changed = sh(
     `git diff --find-renames --name-status ${diffRange} -- supabase/migrations/*.sql`
   );
-  if (!changed) {
+  const untracked = sh("git ls-files --others --exclude-standard -- 'supabase/migrations/*.sql'");
+  if (!changed && !untracked) {
     console.log("Migration order check passed (no migration changes).");
     return;
   }
 
-  const changedTargets = [];
-  for (const line of changed.split("\n")) {
+  const changedTargets = new Set();
+  for (const line of changed.split("\n").filter(Boolean)) {
     const parts = line.split("\t");
     const status = parts[0] || "";
     if (status.startsWith("R")) {
       const from = parts[1];
       const to = parts[2];
       if (from && to && productionRecordedRenameTargets.get(from) === to) continue;
-      if (to) changedTargets.push(to);
+      if (to) changedTargets.add(to);
       continue;
     }
     if (status === "A") {
       const file = parts[1];
       const base = file?.split("/").pop() || "";
       if (productionRecordedHistoricalMigrations.has(base)) continue;
-      if (file) changedTargets.push(file);
+      if (file) changedTargets.add(file);
     }
   }
+  for (const file of untracked.split("\n").filter(Boolean)) {
+    const base = file.split("/").pop() || "";
+    if (productionRecordedHistoricalMigrations.has(base)) continue;
+    changedTargets.add(file);
+  }
 
-  const changedVersions = changedTargets
+  const changedVersions = Array.from(changedTargets)
     .map((p) => p.split("/").pop() || "")
     .map(parseVersionFromName)
     .filter(Boolean);

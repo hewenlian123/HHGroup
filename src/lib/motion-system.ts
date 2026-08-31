@@ -53,7 +53,7 @@ export const motionPopoverLayer = cn(
 
 /** HH Neo Focus Reveal: shared modal overlay. */
 export const hhNeoFocusRevealOverlay = cn(
-  "bg-[color-mix(in_srgb,var(--hh-l0-canvas)_55%,transparent)]",
+  "hh-overlay-scrim",
   "data-[state=open]:animate-hh-modal-fade-in data-[state=closed]:animate-hh-modal-fade-out",
   "motion-reduce:data-[state=open]:animate-hh-modal-fade-in motion-reduce:data-[state=closed]:animate-hh-modal-fade-out",
   "data-[state=closed]:pointer-events-none"

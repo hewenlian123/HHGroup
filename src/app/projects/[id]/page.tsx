@@ -210,7 +210,7 @@ export default async function ProjectDetailPage({
     safe(() => getDocumentsByProject(id), []),
     (async () => {
       try {
-        return await getCommissionsWithPaidByProject(id);
+        return await getCommissionsWithPaidByProject(id, projectSupabase);
       } catch (e) {
         logServerPageDataError(`projects/${id}/commissions`, e);
         return [];

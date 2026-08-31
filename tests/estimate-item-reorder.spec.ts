@@ -1,7 +1,8 @@
-import { expect, test, type Locator, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "./estimate-playwright-test";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-import { loginAsE2EOwner } from "./e2e-auth-owner";
+import { loginAsE2EOwner, reloadWithE2EAuth } from "./e2e-auth-owner";
+import { deleteLocalEstimateFixtureGraphs } from "./e2e-estimate-fixture-teardown";
 import { assertE2ESupabaseUrlSafeForMutations } from "./e2e-supabase-url-guard";
 
 function localAdmin(): SupabaseClient {
@@ -14,16 +15,12 @@ function localAdmin(): SupabaseClient {
   });
 }
 
-function isKnownLocalRscNavigationFallback(message: string): boolean {
-  return (
-    message.includes("Failed to fetch RSC payload for http://localhost:") &&
-    message.includes("Falling back to browser navigation")
-  );
-}
-
 async function openLineMenu(page: Page, lineId: string): Promise<void> {
   const row = page.locator(`[data-estimate-section-id] [data-estimate-line-item-id="${lineId}"]`);
-  await row.getByRole("button", { name: "More actions" }).click();
+  await row.hover();
+  const actions = row.getByRole("button", { name: "More actions" });
+  await expect(actions).toBeVisible();
+  await actions.click();
 }
 
 async function dragLineHandleToRow(page: Page, handle: Locator, target: Locator): Promise<void> {
@@ -38,6 +35,29 @@ async function dragLineHandleToRow(page: Page, handle: Locator, target: Locator)
   await page.mouse.up();
 }
 
+async function performAndWaitForEstimateRefresh(
+  page: Page,
+  estimateId: string,
+  action: () => Promise<void>
+): Promise<void> {
+  const refreshResponse = page.waitForResponse(
+    (response) => {
+      const headers = response.request().headers();
+      return (
+        new URL(response.url()).pathname === `/estimates/${estimateId}` &&
+        headers["rsc"] === "1" &&
+        headers["next-router-prefetch"] !== "1" &&
+        headers["next-action"] === undefined
+      );
+    },
+    { timeout: 30_000 }
+  );
+  await action();
+  const response = await refreshResponse;
+  expect(response.ok()).toBe(true);
+  await page.waitForLoadState("networkidle");
+}
+
 test("Estimate items reorder atomically within/across Sections and persist after reload", async ({
   page,
 }) => {
@@ -49,9 +69,7 @@ test("Estimate items reorder atomically within/across Sections and persist after
   const failedResponses: string[] = [];
   page.on("pageerror", (error) => runtimeErrors.push(error.message));
   page.on("console", (message) => {
-    if (message.type() === "error" && !isKnownLocalRscNavigationFallback(message.text())) {
-      runtimeErrors.push(message.text());
-    }
+    if (message.type() === "error") runtimeErrors.push(message.text());
   });
   page.on("response", (response) => {
     if (response.status() >= 500) failedResponses.push(`${response.status()} ${response.url()}`);
@@ -77,6 +95,9 @@ test("Estimate items reorder atomically within/across Sections and persist after
     expect((await persistedItems()).map((item) => item.sort_order)).toEqual(
       expected.map((_, index) => index)
     );
+    // Each reorder action schedules router.refresh(). Do not begin another
+    // mutation or full reload while that RSC request is still in flight.
+    await page.waitForLoadState("networkidle");
   }
 
   try {
@@ -179,17 +200,22 @@ test("Estimate items reorder atomically within/across Sections and persist after
     );
 
     await loginAsE2EOwner(page, `/estimates/${estimateId}`);
+    await page.waitForLoadState("networkidle");
     await page.getByRole("button", { name: "Edit", exact: true }).click();
 
     // Keyboard-accessible move down and move up.
     await openLineMenu(page, alpha);
-    await page.getByRole("menuitem", { name: "Move line item down" }).click();
+    await performAndWaitForEstimateRefresh(page, estimateId, () =>
+      page.getByRole("menuitem", { name: "Move line item down" }).click()
+    );
     await expectPersistedOrder([bravo, alpha, charlie, delta]);
+    expect(runtimeErrors).toEqual([]);
     await openLineMenu(page, alpha);
     const moveAlphaUp = page.getByRole("menuitem", { name: "Move line item up" });
     await expect(moveAlphaUp).not.toHaveAttribute("data-disabled", "");
-    await moveAlphaUp.click();
+    await performAndWaitForEstimateRefresh(page, estimateId, () => moveAlphaUp.click());
     await expectPersistedOrder([alpha, bravo, charlie, delta]);
+    expect(runtimeErrors).toEqual([]);
 
     // Handle-only drag within the first Section.
     const alphaRow = page.locator(
@@ -202,16 +228,23 @@ test("Estimate items reorder atomically within/across Sections and persist after
       name: /Drag to reorder line item/,
     });
     await expect(alphaDragHandle).toBeEnabled();
-    await dragLineHandleToRow(page, alphaDragHandle, bravoRow);
+    await performAndWaitForEstimateRefresh(page, estimateId, () =>
+      dragLineHandleToRow(page, alphaDragHandle, bravoRow)
+    );
     await expectPersistedOrder([bravo, alpha, charlie, delta]);
+    expect(runtimeErrors).toEqual([]);
 
     // Existing move-to-Section interaction now uses the same atomic order engine.
     await openLineMenu(page, alpha);
     await page.getByRole("menuitem", { name: "Move to section" }).hover();
-    await page.getByRole("menuitem", { name: "Section Two", exact: true }).press("Enter");
+    await performAndWaitForEstimateRefresh(page, estimateId, () =>
+      page.getByRole("menuitem", { name: "Section Two", exact: true }).press("Enter")
+    );
     await expectPersistedOrder([bravo, charlie, delta, alpha]);
+    expect(runtimeErrors).toEqual([]);
 
-    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.waitForLoadState("networkidle");
+    await reloadWithE2EAuth(page);
     await page.getByRole("button", { name: "Edit", exact: true }).click();
     await expect(
       page.locator('[data-estimate-section-id="100000"] [data-estimate-line-item-id]')
@@ -223,20 +256,9 @@ test("Estimate items reorder atomically within/across Sections and persist after
     // Existing Section reorder remains independent and persistent.
     const sectionHandles = page.getByRole("button", { name: "Reorder section" });
     const sections = page.locator("[data-estimate-section-id]");
-    const firstHandleBox = await sectionHandles.first().boundingBox();
-    const secondSectionBox = await sections.nth(1).boundingBox();
-    if (!firstHandleBox || !secondSectionBox) throw new Error("Could not measure Sections.");
-    await page.mouse.move(
-      firstHandleBox.x + firstHandleBox.width / 2,
-      firstHandleBox.y + firstHandleBox.height / 2
+    await performAndWaitForEstimateRefresh(page, estimateId, () =>
+      dragLineHandleToRow(page, sectionHandles.first(), sectionHandles.nth(1))
     );
-    await page.mouse.down();
-    await page.mouse.move(
-      secondSectionBox.x + secondSectionBox.width / 2,
-      secondSectionBox.y + secondSectionBox.height - 8,
-      { steps: 10 }
-    );
-    await page.mouse.up();
     await expect
       .poll(async () => {
         const result = await db
@@ -247,14 +269,16 @@ test("Estimate items reorder atomically within/across Sections and persist after
         return (result.data ?? []).map((category) => category.cost_code);
       })
       .toEqual(["200000", "100000"]);
-
-    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.waitForLoadState("networkidle");
+    expect(runtimeErrors).toEqual([]);
+    await reloadWithE2EAuth(page);
     await page.getByRole("button", { name: "Edit", exact: true }).click();
     await expect(sections.first()).toHaveAttribute("data-estimate-section-id", "200000");
 
     // Tablet/mobile card exposes and executes the same keyboard-accessible contract.
-    await page.setViewportSize({ width: 768, height: 1024 });
-    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.setViewportSize({ width: 390, height: 1024 });
+    await page.waitForLoadState("networkidle");
+    await reloadWithE2EAuth(page);
     await page.getByRole("button", { name: "Edit", exact: true }).click();
     const bravoMobile = page.locator(
       `[data-estimate-section-mobile-id="100000"] [data-estimate-line-item-id="${bravo}"]`
@@ -263,10 +287,14 @@ test("Estimate items reorder atomically within/across Sections and persist after
     await bravoMobile.getByRole("button", { name: "More actions" }).click();
     await expect(page.getByRole("menuitem", { name: "Move line item up" })).toBeDisabled();
     await page.getByRole("menuitem", { name: "Move to section" }).hover();
-    await page.getByRole("menuitem", { name: "Section Two", exact: true }).press("Enter");
+    await performAndWaitForEstimateRefresh(page, estimateId, () =>
+      page.getByRole("menuitem", { name: "Section Two", exact: true }).press("Enter")
+    );
     await expectPersistedOrder([charlie, delta, alpha, bravo]);
+    expect(runtimeErrors).toEqual([]);
 
-    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.waitForLoadState("networkidle");
+    await reloadWithE2EAuth(page);
     await expect(page.locator("body")).toContainText("$447.12");
     const finalRows = await persistedItems();
     expect(
@@ -292,6 +320,7 @@ test("Estimate items reorder atomically within/across Sections and persist after
         hide_amount_on_pdf: source?.hide_amount_on_pdf,
       });
     }
+    await page.waitForLoadState("networkidle");
     expect(runtimeErrors).toEqual([]);
     expect(failedResponses).toEqual([]);
   } finally {
@@ -299,7 +328,7 @@ test("Estimate items reorder atomically within/across Sections and persist after
       await db.from("estimate_items").delete().eq("estimate_id", estimateId);
       await db.from("estimate_categories").delete().eq("estimate_id", estimateId);
       await db.from("estimate_meta").delete().eq("estimate_id", estimateId);
-      await db.from("estimates").delete().eq("id", estimateId);
+      await deleteLocalEstimateFixtureGraphs([estimateId]);
     }
   }
 });

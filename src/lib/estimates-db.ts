@@ -132,6 +132,21 @@ export type PaymentScheduleWriteInput = {
   invoiceId?: string | null;
 };
 
+export type EstimateFinancialReadResource = "estimate_items" | "estimate_payment_schedule_items";
+
+export class EstimateFinancialReadError extends Error {
+  readonly resource: EstimateFinancialReadResource;
+  readonly estimateId: string;
+
+  constructor(resource: EstimateFinancialReadResource, estimateId: string, cause?: unknown) {
+    super(`Could not load ${resource} for Estimate ${estimateId}.`);
+    this.name = "EstimateFinancialReadError";
+    this.resource = resource;
+    this.estimateId = estimateId;
+    if (cause !== undefined) this.cause = cause;
+  }
+}
+
 export type DuplicateEstimateResult = {
   estimateId: string;
   estimateNumber: string;
@@ -178,6 +193,40 @@ function isMissingTable(err: { message?: string } | null): boolean {
 
 function isNonNegativeFiniteNumber(value: number): boolean {
   return Number.isFinite(value) && value >= 0;
+}
+
+function requiredFiniteFinancialNumber(
+  value: unknown,
+  field: string,
+  resource: EstimateFinancialReadResource,
+  estimateId: string
+): number {
+  const parsed =
+    typeof value === "number"
+      ? value
+      : typeof value === "string" && value.trim() !== ""
+        ? Number(value)
+        : Number.NaN;
+  if (!Number.isFinite(parsed)) {
+    throw new EstimateFinancialReadError(
+      resource,
+      estimateId,
+      `${field} was missing or not a finite number.`
+    );
+  }
+  return parsed;
+}
+
+function requiredSortOrder(
+  value: unknown,
+  resource: EstimateFinancialReadResource,
+  estimateId: string
+): number {
+  const parsed = requiredFiniteFinancialNumber(value, "sort_order", resource, estimateId);
+  if (!Number.isInteger(parsed) || parsed < 0) {
+    throw new EstimateFinancialReadError(resource, estimateId, "sort_order was invalid.");
+  }
+  return parsed;
 }
 
 function assertValidEstimateItemAmounts(
@@ -1110,22 +1159,32 @@ export async function getEstimateItems(
     .order("sort_order", { ascending: true })
     .order("id", { ascending: true });
   if (error) {
-    if (isMissingTable(error)) return [];
     if (isMissingColumnError(error, "sort_order")) {
       const { data: fallbackRows, error: fallbackError } = await c
         .from("estimate_items")
         .select("*")
         .eq("estimate_id", estimateId)
         .order("cost_code");
-      if (fallbackError) throw new Error(fallbackError.message);
-      return (fallbackRows ?? []).map((r, index) => ({
-        ...mapEstimateItemRow(r as Record<string, unknown>),
-        sortOrder: index,
-      }));
+      if (fallbackError) {
+        throw new EstimateFinancialReadError("estimate_items", estimateId, fallbackError);
+      }
+      if (fallbackRows === null) {
+        throw new EstimateFinancialReadError(
+          "estimate_items",
+          estimateId,
+          "Read returned no data."
+        );
+      }
+      return fallbackRows.map((r, index) =>
+        mapEstimateItemFinancialReadRow(r as Record<string, unknown>, estimateId, index)
+      );
     }
-    throw new Error(error.message);
+    throw new EstimateFinancialReadError("estimate_items", estimateId, error);
   }
-  return (rows ?? []).map((r) => mapEstimateItemRow(r as Record<string, unknown>));
+  if (rows === null) {
+    throw new EstimateFinancialReadError("estimate_items", estimateId, "Read returned no data.");
+  }
+  return rows.map((r) => mapEstimateItemFinancialReadRow(r as Record<string, unknown>, estimateId));
 }
 
 function toSnapshotRecord(r: Record<string, unknown>): EstimateSnapshotRecord {
@@ -1351,117 +1410,63 @@ export async function updateEstimateMetaWithClient(
     categoryNames?: Record<string, string>;
   }
 ): Promise<boolean> {
-  const { data: est } = await c.from("estimates").select("status").eq("id", estimateId).single();
-  if (!est || !["Draft", "Sent"].includes(est.status as string)) return false;
-
-  const estimateUpdates: Record<string, unknown> = {};
+  const patch: Record<string, unknown> = {};
   if (payload.customerId !== undefined) {
-    estimateUpdates.customer_id = payload.customerId?.trim() || null;
-    estimateUpdates.updated_at = new Date().toISOString().slice(0, 10);
+    patch.customer_id = payload.customerId?.trim() || null;
   }
-  if (Object.keys(estimateUpdates).length > 0) {
-    const { data: estimateRow, error: estimateError } = await c
-      .from("estimates")
-      .update(estimateUpdates)
-      .eq("id", estimateId)
-      .select("id")
-      .maybeSingle();
-    if (estimateError || !estimateRow?.id) return false;
-  }
-
-  const { data: existingMetaRow } = await c
-    .from("estimate_meta")
-    .select("cost_category_names")
-    .eq("estimate_id", estimateId)
-    .maybeSingle();
-
-  const updates: Record<string, unknown> = {};
-  if (payload.client?.name != null) updates.client_name = payload.client.name;
-  if (payload.client?.phone != null) updates.client_phone = payload.client.phone;
-  if (payload.client?.email != null) updates.client_email = payload.client.email;
+  if (payload.client?.name != null) patch.client_name = payload.client.name;
+  if (payload.client?.phone != null) patch.client_phone = payload.client.phone;
+  if (payload.client?.email != null) patch.client_email = payload.client.email;
   if (payload.client?.address != null) {
-    updates.client_address = payload.client.address;
-    updates.project_site_address = payload.project?.siteAddress ?? payload.client.address;
+    patch.client_address = payload.client.address;
+    patch.project_site_address = payload.project?.siteAddress ?? payload.client.address;
   }
-  if (payload.project?.name != null) updates.project_name = payload.project.name;
+  if (payload.project?.name != null) patch.project_name = payload.project.name;
   if (payload.project?.siteAddress != null)
-    updates.project_site_address = payload.project.siteAddress;
-  if (payload.tax != null) updates.tax = payload.tax;
-  if (payload.discount != null) updates.discount = payload.discount;
-  if (payload.overheadPct != null) updates.overhead_pct = payload.overheadPct;
-  if (payload.profitPct != null) updates.profit_pct = payload.profitPct;
-  if (payload.estimateDate != null) updates.estimate_date = payload.estimateDate || null;
-  if (payload.validUntil != null) updates.valid_until = payload.validUntil || null;
-  if (payload.notes != null) updates.notes = payload.notes;
+    patch.project_site_address = payload.project.siteAddress;
+
+  const financialValues = [
+    ["tax", payload.tax],
+    ["discount", payload.discount],
+    ["overhead_pct", payload.overheadPct],
+    ["profit_pct", payload.profitPct],
+  ] as const;
+  for (const [field, value] of financialValues) {
+    if (value == null) continue;
+    if (!Number.isFinite(value)) {
+      throw new Error(`${field} must be a finite number.`);
+    }
+    patch[field] = value;
+  }
+
+  if (payload.estimateDate != null) patch.estimate_date = payload.estimateDate || null;
+  if (payload.validUntil != null) patch.valid_until = payload.validUntil || null;
+  if (payload.notes != null) patch.notes = payload.notes;
   if (payload.documentNotes != null)
-    updates.document_notes = normalizeEstimateNoteBlocks(payload.documentNotes);
-  if (payload.salesPerson != null) updates.sales_person = payload.salesPerson;
-  if (payload.documentStyle != null) {
-    updates.cost_category_names = mergeDocumentStyleIntoCostCategoryNames(
-      (existingMetaRow as { cost_category_names?: unknown } | null)?.cost_category_names,
-      payload.documentStyle
+    patch.document_notes = normalizeEstimateNoteBlocks(payload.documentNotes);
+  if (payload.salesPerson != null) patch.sales_person = payload.salesPerson;
+  if (payload.documentStyle != null) patch.document_style = payload.documentStyle;
+
+  if (payload.categoryNames && Object.keys(payload.categoryNames).length > 0) {
+    patch.category_names = Object.entries(payload.categoryNames).map(
+      ([cost_code, display_name]) => ({
+        cost_code,
+        display_name,
+      })
     );
   }
 
-  if (Object.keys(updates).length > 0) {
-    const { data: metaRow, error: e1 } = await c
-      .from("estimate_meta")
-      .update(updates)
-      .eq("estimate_id", estimateId)
-      .select("estimate_id")
-      .maybeSingle();
-    if (e1) {
-      if (updates.document_notes != null && isMissingColumnError(e1, "document_notes")) {
-        delete updates.document_notes;
-        if (Object.keys(updates).length === 0) return false;
-        const retry = await c
-          .from("estimate_meta")
-          .update(updates)
-          .eq("estimate_id", estimateId)
-          .select("estimate_id")
-          .maybeSingle();
-        if (retry.error || !retry.data?.estimate_id) return false;
-      } else {
-        return false;
-      }
-    } else if (!metaRow?.estimate_id) {
-      return false;
-    }
-    const estRow: Record<string, string> = { updated_at: new Date().toISOString().slice(0, 10) };
-    if (payload.client?.name) estRow.client = payload.client.name;
-    if (payload.project?.name) estRow.project = payload.project.name;
-    const { data: estimateRow, error: estimateErr } = await c
-      .from("estimates")
-      .update(estRow)
-      .eq("id", estimateId)
-      .select("id")
-      .maybeSingle();
-    if (estimateErr || !estimateRow?.id) return false;
-  }
-
-  if (payload.categoryNames && Object.keys(payload.categoryNames).length > 0) {
-    for (const [cost_code, display_name] of Object.entries(payload.categoryNames)) {
-      const { data: existing } = await c
-        .from("estimate_categories")
-        .select("order_index")
-        .eq("estimate_id", estimateId)
-        .eq("cost_code", cost_code)
-        .maybeSingle();
-      const oi =
-        existing && (existing as { order_index?: number }).order_index != null
-          ? Number((existing as { order_index: number }).order_index)
-          : await nextCategoryOrderIndex(c, estimateId);
-      const up = await upsertEstimateCategoryWithOrderFallback(c, {
-        estimate_id: estimateId,
-        cost_code,
-        display_name,
-        order_index: oi,
-      });
-      if (!up.ok) return false;
-    }
-    if (!(await touchEstimateUpdatedAt(c, estimateId))) return false;
-  }
-  return true;
+  const { data, error } = await c.rpc("update_estimate_meta_atomic", {
+    p_estimate_id: estimateId,
+    p_patch: patch,
+  });
+  if (error || !Array.isArray(data)) return false;
+  return data.some(
+    (row) =>
+      row != null &&
+      typeof row === "object" &&
+      String((row as { estimate_id?: unknown }).estimate_id ?? "") === estimateId
+  );
 }
 
 export async function updateEstimateMeta(
@@ -1571,6 +1576,26 @@ function mapEstimateItemRow(r: Record<string, unknown>): EstimateItemRow {
     hideAmountOnPdf: Boolean(r.hide_amount_on_pdf),
     status: normalizeLineItemStatus(r.status),
     sortOrder: Number(r.sort_order ?? 0) || 0,
+  };
+}
+
+function mapEstimateItemFinancialReadRow(
+  r: Record<string, unknown>,
+  estimateId: string,
+  fallbackSortOrder?: number
+): EstimateItemRow {
+  const mapped = mapEstimateItemRow(r);
+  return {
+    ...mapped,
+    qty: requiredFiniteFinancialNumber(r.qty, "qty", "estimate_items", estimateId),
+    unitCost: requiredFiniteFinancialNumber(r.unit_cost, "unit_cost", "estimate_items", estimateId),
+    markupPct: requiredFiniteFinancialNumber(
+      r.markup_pct,
+      "markup_pct",
+      "estimate_items",
+      estimateId
+    ),
+    sortOrder: fallbackSortOrder ?? requiredSortOrder(r.sort_order, "estimate_items", estimateId),
   };
 }
 
@@ -2288,14 +2313,25 @@ function normalizePaymentStatus(status: unknown): PaymentScheduleItem["status"] 
   return "draft";
 }
 
-function mapPaymentScheduleRow(row: Record<string, unknown>): PaymentScheduleItem {
+function mapPaymentScheduleRow(
+  row: Record<string, unknown>,
+  estimateId: string,
+  fallbackSortOrder?: number
+): PaymentScheduleItem {
   return {
     id: row.id as string,
     estimateId: row.estimate_id as string,
-    sortOrder: Number(row.sort_order ?? 0),
+    sortOrder:
+      fallbackSortOrder ??
+      requiredSortOrder(row.sort_order, "estimate_payment_schedule_items", estimateId),
     title: (row.title as string) ?? "",
     description: (row.description as string) ?? null,
-    amount: Number(row.amount ?? 0),
+    amount: requiredFiniteFinancialNumber(
+      row.amount,
+      "amount",
+      "estimate_payment_schedule_items",
+      estimateId
+    ),
     dueDate: (row.due_date as string) ?? null,
     status: normalizePaymentStatus(row.status),
     invoiceId: (row.invoice_id as string) ?? null,
@@ -2325,18 +2361,39 @@ export async function getPaymentSchedule(
     .eq("estimate_id", estimateId)
     .order("sort_order", { ascending: true });
   if (error) {
-    if (isMissingTable(error)) return [];
     if (isMissingColumnError(error, "sort_order")) {
       const { data: fallbackRows, error: fallbackError } = await c
         .from("estimate_payment_schedule_items")
         .select("*")
         .eq("estimate_id", estimateId);
-      if (fallbackError) return [];
-      return (fallbackRows ?? []).map((r: Record<string, unknown>) => mapPaymentScheduleRow(r));
+      if (fallbackError) {
+        throw new EstimateFinancialReadError(
+          "estimate_payment_schedule_items",
+          estimateId,
+          fallbackError
+        );
+      }
+      if (fallbackRows === null) {
+        throw new EstimateFinancialReadError(
+          "estimate_payment_schedule_items",
+          estimateId,
+          "Read returned no data."
+        );
+      }
+      return fallbackRows.map((r: Record<string, unknown>, index) =>
+        mapPaymentScheduleRow(r, estimateId, index)
+      );
     }
-    throw new Error(error.message);
+    throw new EstimateFinancialReadError("estimate_payment_schedule_items", estimateId, error);
   }
-  return (rows ?? []).map((r: Record<string, unknown>) => mapPaymentScheduleRow(r));
+  if (rows === null) {
+    throw new EstimateFinancialReadError(
+      "estimate_payment_schedule_items",
+      estimateId,
+      "Read returned no data."
+    );
+  }
+  return rows.map((r: Record<string, unknown>) => mapPaymentScheduleRow(r, estimateId));
 }
 
 export async function addPaymentMilestoneWithClient(
@@ -2370,7 +2427,7 @@ export async function addPaymentMilestoneWithClient(
     .select("*")
     .single();
   if (error || !inserted) return null;
-  return mapPaymentScheduleRow(inserted as Record<string, unknown>);
+  return mapPaymentScheduleRow(inserted as Record<string, unknown>, estimateId);
 }
 
 export async function addPaymentMilestone(

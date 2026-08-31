@@ -1,7 +1,8 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "./estimate-playwright-test";
 import { createClient } from "@supabase/supabase-js";
 
-import { loginAsE2EOwner } from "./e2e-auth-owner";
+import { gotoWithE2EAuth, loginAsE2EOwner, reloadWithE2EAuth } from "./e2e-auth-owner";
+import { deleteLocalEstimateFixtureGraphs } from "./e2e-estimate-fixture-teardown";
 import { assertE2ESupabaseUrlSafeForMutations } from "./e2e-supabase-url-guard";
 
 const createdClientNames = new Set<string>();
@@ -51,11 +52,10 @@ async function cleanupEstimateTestData(
   if (ids.length === 0) return;
 
   await supabase.from("estimate_payment_schedule_items").delete().in("estimate_id", ids);
-  await supabase.from("estimate_snapshots").delete().in("estimate_id", ids);
   await supabase.from("estimate_items").delete().in("estimate_id", ids);
   await supabase.from("estimate_categories").delete().in("estimate_id", ids);
   await supabase.from("estimate_meta").delete().in("estimate_id", ids);
-  await supabase.from("estimates").delete().in("id", ids);
+  await deleteLocalEstimateFixtureGraphs(ids);
 }
 
 async function expectEstimateDeleted(estimateId: string): Promise<void> {
@@ -98,6 +98,41 @@ async function expectEstimateDeleted(estimateId: string): Promise<void> {
       )
       .toBe(0);
   }
+}
+
+async function expectEstimateClientPersisted(
+  estimateId: string,
+  clientName: string
+): Promise<void> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  const key =
+    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
+  if (!url || !key) throw new Error("Local Supabase admin credentials are required.");
+  assertE2ESupabaseUrlSafeForMutations(url);
+  const supabase = createClient(url, key);
+
+  await expect
+    .poll(
+      async () => {
+        const [metaResult, estimateResult] = await Promise.all([
+          supabase
+            .from("estimate_meta")
+            .select("client_name")
+            .eq("estimate_id", estimateId)
+            .single(),
+          supabase.from("estimates").select("client").eq("id", estimateId).single(),
+        ]);
+        expect(metaResult.error).toBeNull();
+        expect(estimateResult.error).toBeNull();
+        return {
+          detailClient: metaResult.data?.client_name ?? null,
+          listClient: estimateResult.data?.client ?? null,
+        };
+      },
+      { timeout: 30_000 }
+    )
+    .toEqual({ detailClient: clientName, listClient: clientName });
 }
 
 async function fillNewEstimateCustomerFields(
@@ -154,7 +189,14 @@ async function fillNewEstimate(
 
   const lineTitleInput = page.getByLabel("Line item 1 title").locator("visible=true");
   await expect(lineTitleInput).toBeVisible({ timeout: 15_000 });
+  // Blank-section insertion intentionally focuses the section name after two
+  // animation frames. Wait for that transition before moving focus to the line
+  // title so the late focus effect cannot redirect part of the fill.
+  await expect(page.locator('input[aria-label^="Section name for "]:visible').last()).toBeFocused();
+  await lineTitleInput.click();
+  await expect(lineTitleInput).toBeFocused();
   await lineTitleInput.fill(params.lineTitle);
+  await expect(lineTitleInput).toHaveValue(params.lineTitle);
   await page
     .getByLabel("Line item 1 quantity")
     .locator("visible=true")
@@ -223,7 +265,7 @@ async function createEstimateForSavedDetailsRegression(
   createdClientNames.add(params.clientName);
   createdProjectNames.add(params.projectName);
 
-  await page.goto("/estimates/new");
+  await gotoWithE2EAuth(page, "/estimates/new");
   await page.waitForLoadState("domcontentloaded");
   await expect(page.getByRole("heading", { name: "New Estimate" })).toBeVisible({
     timeout: 30_000,
@@ -263,7 +305,7 @@ async function createEstimateForSavedDetailsRegression(
   await expect(saveEstimate).toBeEnabled({ timeout: 15_000 });
   await saveEstimate.click();
   await expect(page).toHaveURL(/\/estimates\/(?!new(?:\/|$))[^/?#]+/, { timeout: 30_000 });
-  await expect(page.getByText(params.clientName, { exact: true }).first()).toBeVisible({
+  await expect(page.getByTestId("estimate-detail-header")).toContainText(params.clientName, {
     timeout: 30_000,
   });
   return page.url().replace(/\?.*$/, "");
@@ -279,12 +321,25 @@ async function expectEstimateFinancialsAndProject(
     paymentAmount: string;
   }
 ): Promise<void> {
-  const overview = page.getByLabel("Estimate overview");
-  await expect(overview).toContainText(params.taxText, { timeout: 30_000 });
-  await expect(overview).toContainText(params.totalText);
-  await expect(page.locator("body")).toContainText(params.projectName);
-  await expect(page.locator("body")).toContainText(params.paymentTitle);
-  await expect(page.locator("body")).toContainText(params.paymentAmount);
+  const pricingSummary = page.getByLabel("Estimate pricing summary");
+  await expect(pricingSummary).toContainText(params.taxText, { timeout: 30_000 });
+  await expect(pricingSummary).toContainText(params.totalText);
+  await expect(page.getByTestId("estimate-detail-header")).toContainText(params.projectName);
+  await page.getByRole("button", { name: "Estimate actions", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Payment Schedule", exact: true }).click();
+  const paymentSheet = page.getByTestId("estimate-payment-schedule-sheet");
+  await expect(paymentSheet).toContainText(params.paymentTitle);
+  await expect(paymentSheet).toContainText(params.paymentAmount);
+  await page.keyboard.press("Escape");
+  await expect(paymentSheet).toBeHidden();
+  const save = page
+    .getByTestId("estimate-detail-header-actions")
+    .getByRole("button", { name: "Save", exact: true });
+  await expect(save).toBeVisible();
+  await save.click();
+  await expect(page.getByRole("button", { name: "Edit", exact: true })).toBeVisible({
+    timeout: 30_000,
+  });
 }
 
 async function poisonClosedEstimateDetailsForm(page: Page): Promise<void> {
@@ -356,7 +411,7 @@ async function createEstimate(
   createdClientNames.add(params.clientName);
   createdProjectNames.add(params.projectName);
 
-  await page.goto("/estimates/new");
+  await gotoWithE2EAuth(page, "/estimates/new");
   await page.waitForLoadState("domcontentloaded");
   await expect(page.getByRole("heading", { name: "New Estimate" })).toBeVisible({
     timeout: 30_000,
@@ -367,7 +422,7 @@ async function createEstimate(
   await expect(saveButton).toBeEnabled({ timeout: 15_000 });
   await saveButton.click();
   await expect(page).toHaveURL(/\/estimates\/(?!new(?:\/|$))[^/?#]+/, { timeout: 30_000 });
-  await expect(page.getByText(params.clientName, { exact: true }).first()).toBeVisible({
+  await expect(page.getByTestId("estimate-detail-header")).toContainText(params.clientName, {
     timeout: 30_000,
   });
   await expect(
@@ -450,16 +505,22 @@ test("creates, edits, cancels, saves, and deletes a draft estimate", async ({ pa
   createdClientNames.add(savedClientName);
   createdProjectNames.add(projectName);
 
-  await page.goto("/finance");
+  await gotoWithE2EAuth(page, "/finance");
   await page.waitForLoadState("domcontentloaded");
   await expect(page.locator("body")).not.toContainText("Something went wrong");
 
-  const estimatesLink = page.locator('main a[href="/financial/estimates"]').first();
+  const estimatesLink = page
+    .getByRole("complementary")
+    .getByRole("link", { name: "Estimates", exact: true });
   await expect(estimatesLink).toBeVisible({ timeout: 30_000 });
   await estimatesLink.click();
   await expect(page).toHaveURL(isEstimatesListUrl, { timeout: 30_000 });
 
-  await page.locator('main a[href="/estimates/new"]:visible').first().click();
+  await page
+    .getByRole("link", { name: /New Estimate/i })
+    .locator("visible=true")
+    .first()
+    .click();
   await expect(page).toHaveURL(/\/estimates\/new(?:[/?#]|$)/, { timeout: 30_000 });
   await expect(page.getByRole("heading", { name: "New Estimate" })).toBeVisible({
     timeout: 30_000,
@@ -477,15 +538,23 @@ test("creates, edits, cancels, saves, and deletes a draft estimate", async ({ pa
   await expect(page.getByLabel("Line item 2 title").locator("visible=true")).toBeVisible({
     timeout: 10_000,
   });
-  await page.getByRole("button", { name: "More actions" }).locator("visible=true").last().click();
+  const secondLine = page
+    .locator("[data-estimate-line-item-id]")
+    .filter({ has: page.getByLabel("Line item 2 title").locator("visible=true") });
+  await expect(secondLine).toHaveCount(1);
+  await secondLine.getByRole("button", { name: "More actions" }).click();
   await page.getByRole("menuitem", { name: "Remove line item" }).click();
+  await page
+    .getByRole("dialog", { name: "Delete line item?" })
+    .getByRole("button", { name: "Delete", exact: true })
+    .click();
   await expect(page.getByLabel("Line item 2 title").locator("visible=true")).toHaveCount(0);
 
   const saveEstimate = page.getByRole("button", { name: "Save Estimate" });
   await expect(saveEstimate).toBeEnabled({ timeout: 15_000 });
   await saveEstimate.click();
   await expect(page).toHaveURL(/\/estimates\/(?!new(?:\/|$))[^/?#]+/, { timeout: 30_000 });
-  await expect(page.getByText(clientName, { exact: true }).locator("visible=true")).toBeVisible({
+  await expect(page.getByTestId("estimate-detail-header")).toContainText(clientName, {
     timeout: 30_000,
   });
   await expect(page.getByText(lineTitle, { exact: true }).locator("visible=true")).toBeVisible({
@@ -507,16 +576,16 @@ test("creates, edits, cancels, saves, and deletes a draft estimate", async ({ pa
   const detailUrl = page.url();
   const estimateId = new URL(detailUrl).pathname.split("/").filter(Boolean).pop();
   expect(estimateId).toBeTruthy();
-  await page.goto("/estimates");
+  await gotoWithE2EAuth(page, "/estimates");
   await page.waitForLoadState("domcontentloaded");
   const listSearch = page.locator('input[placeholder="Search estimates…"]:visible').first();
   await expect(listSearch).toBeVisible({ timeout: 30_000 });
   await listSearch.fill(clientName);
-  await expect(page.getByText(clientName, { exact: true }).locator("visible=true")).toBeVisible({
+  await expect(page.getByRole("row").filter({ hasText: clientName })).toBeVisible({
     timeout: 30_000,
   });
 
-  await page.goto(detailUrl);
+  await gotoWithE2EAuth(page, detailUrl);
   await page.waitForLoadState("domcontentloaded");
   await page.getByRole("button", { name: "Edit", exact: true }).click();
   await page.getByRole("button", { name: /Edit details/i }).click();
@@ -525,20 +594,27 @@ test("creates, edits, cancels, saves, and deletes a draft estimate", async ({ pa
     .getByPlaceholder("Client or company name")
     .fill(canceledClientName);
   await page.getByRole("dialog").getByRole("button", { name: "Cancel", exact: true }).click();
-  await page.locator("header").getByRole("button", { name: "Done" }).click();
-  await expect(page.getByText(clientName, { exact: true }).first()).toBeVisible({
+  await page
+    .getByTestId("estimate-detail-header-actions")
+    .getByRole("button", { name: "Save", exact: true })
+    .click();
+  await expect(page.getByTestId("estimate-detail-header")).toContainText(clientName, {
     timeout: 10_000,
   });
   await expect(page.getByText(canceledClientName, { exact: true })).toHaveCount(0);
 
   await page.getByRole("button", { name: "Edit", exact: true }).click();
   await page.getByRole("button", { name: /Edit details/i }).click();
-  await page.getByRole("dialog").getByPlaceholder("Client or company name").fill(savedClientName);
+  const savedClientInput = page.getByRole("dialog").getByPlaceholder("Client or company name");
+  await savedClientInput.fill(savedClientName);
+  await expect(savedClientInput).toHaveValue(savedClientName);
   await page.getByRole("dialog").getByRole("button", { name: "Save", exact: true }).click();
   await expect(page.getByRole("button", { name: "Edit", exact: true })).toBeVisible({
     timeout: 30_000,
   });
-  await expect(page.getByText(savedClientName, { exact: true }).first()).toBeVisible({
+  await expectEstimateClientPersisted(estimateId!, savedClientName);
+  await reloadWithE2EAuth(page);
+  await expect(page.getByTestId("estimate-detail-header")).toContainText(savedClientName, {
     timeout: 30_000,
   });
 
@@ -550,23 +626,23 @@ test("creates, edits, cancels, saves, and deletes a draft estimate", async ({ pa
   await expect(page.locator("body")).not.toContainText("Estimate form not found.");
   await expect(page.locator("body")).not.toContainText("Nothing to save");
 
-  await page.getByRole("button", { name: "Delete estimate" }).click();
+  await page.getByRole("button", { name: "Estimate actions", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Delete estimate", exact: true }).click();
   let deleteDialog = page.getByRole("dialog", { name: "Delete estimate?" });
   await expect(deleteDialog).toBeVisible({ timeout: 10_000 });
   await deleteDialog.getByRole("button", { name: "Cancel" }).click();
-  await expect(
-    page.getByText(savedClientName, { exact: true }).locator("visible=true")
-  ).toBeVisible({
+  await expect(page.getByTestId("estimate-detail-header")).toContainText(savedClientName, {
     timeout: 10_000,
   });
 
-  await page.getByRole("button", { name: "Delete estimate" }).click();
+  await page.getByRole("button", { name: "Estimate actions", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Delete estimate", exact: true }).click();
   deleteDialog = page.getByRole("dialog", { name: "Delete estimate?" });
   await expect(deleteDialog).toBeVisible({ timeout: 10_000 });
   await deleteDialog.getByRole("button", { name: "Delete", exact: true }).click();
   await expect(deleteDialog).toBeHidden({ timeout: 10_000 });
   await expectEstimateDeleted(estimateId!);
-  await page.goto("/estimates", { waitUntil: "domcontentloaded" });
+  await gotoWithE2EAuth(page, "/estimates");
   await expect(
     page.getByRole("heading", { name: "Estimates", level: 1 }).locator("visible=true")
   ).toBeVisible({ timeout: 15_000 });
@@ -574,9 +650,7 @@ test("creates, edits, cancels, saves, and deletes a draft estimate", async ({ pa
   await expectNoEstimateListRowForClient(page, savedClientName);
 
   for (const deletedRoute of [detailUrl, `${detailUrl}/preview`, `${detailUrl}/print`]) {
-    await page.goto(`${deletedRoute}?deleted_check=${Date.now()}`, {
-      waitUntil: "domcontentloaded",
-    });
+    await gotoWithE2EAuth(page, `${deletedRoute}?deleted_check=${Date.now()}`);
     await expect(page.locator("body")).not.toContainText(savedClientName);
   }
 });
@@ -619,7 +693,7 @@ test("saved estimate details and section reorder preserve tax, project title, an
   await expect(page.getByRole("button", { name: "Edit", exact: true })).toBeVisible({
     timeout: 30_000,
   });
-  await page.reload({ waitUntil: "domcontentloaded" });
+  await reloadWithE2EAuth(page);
   await expectEstimateFinancialsAndProject(page, {
     projectName,
     taxText: "$17,860.00",
@@ -644,7 +718,7 @@ test("saved estimate details and section reorder preserve tax, project title, an
   await expect(page.getByRole("button", { name: "Edit", exact: true })).toBeVisible({
     timeout: 30_000,
   });
-  await page.reload({ waitUntil: "domcontentloaded" });
+  await reloadWithE2EAuth(page);
   await expectEstimateFinancialsAndProject(page, {
     projectName,
     taxText: "$17,860.00",
@@ -674,7 +748,7 @@ test("saved estimate details and section reorder preserve tax, project title, an
     .not.toEqual(beforeOrder);
   await expect(page.locator("body")).not.toContainText("Could not save section order");
 
-  await page.reload({ waitUntil: "domcontentloaded" });
+  await reloadWithE2EAuth(page);
   await expectEstimateFinancialsAndProject(page, {
     projectName,
     taxText: "$17,860.00",
@@ -683,13 +757,13 @@ test("saved estimate details and section reorder preserve tax, project title, an
     paymentAmount: "$397,860.00",
   });
 
-  await page.goto(`${detailUrl}/preview`, { waitUntil: "domcontentloaded" });
+  await gotoWithE2EAuth(page, `${detailUrl}/preview`);
   await expect(page.locator("main")).toContainText(projectName, { timeout: 30_000 });
   await expect(page.locator("main")).toContainText("$17,860.00");
   await expect(page.locator("main")).toContainText("$397,860.00");
   await expect(page.locator("main")).toContainText(paymentTitle);
 
-  await page.goto(`${detailUrl}/print`, { waitUntil: "domcontentloaded" });
+  await gotoWithE2EAuth(page, `${detailUrl}/print`);
   const printDocument = page.getByRole("document", { name: "Estimate print view" });
   await expect(printDocument).toContainText(projectName, { timeout: 30_000 });
   await expect(printDocument).toContainText("$17,860.00");
@@ -712,7 +786,7 @@ test("keeps saved estimate detail header actions compact on desktop and mobile",
   await expectDetailHeaderActionsHorizontal(page);
 
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto(detailUrl);
+  await gotoWithE2EAuth(page, detailUrl);
   await page.waitForLoadState("domcontentloaded");
   await expect(page.getByTestId("estimate-detail-header")).toBeVisible({ timeout: 30_000 });
   await expectNoHorizontalOverflow(page);
@@ -720,22 +794,25 @@ test("keeps saved estimate detail header actions compact on desktop and mobile",
   await expect(page.getByRole("button", { name: "Collapse section" }).first()).toBeVisible({
     timeout: 15_000,
   });
-  await expect(page.getByRole("button", { name: /^Add line$/i }).first()).toBeVisible({
+  await expect(page.getByRole("button", { name: /^Add line to /i }).first()).toBeVisible({
     timeout: 15_000,
   });
   await expectNoHorizontalOverflow(page);
 });
 
-test("renders seeded legacy estimate with the unified composer shell", async ({ page }) => {
+test("renders the intentionally empty legacy estimate in the current V2 workspace", async ({
+  page,
+}) => {
   test.setTimeout(90_000);
 
-  await page.goto("/estimates/44444444-4444-4444-4444-444444444449");
+  await gotoWithE2EAuth(page, "/estimates/44444444-4444-4444-4444-444444444449");
   await page.waitForLoadState("domcontentloaded");
-  await expect(page.getByText("[E2E]-EST-001", { exact: true }).first()).toBeVisible({
+  await expect(page.getByTestId("estimate-detail-header")).toContainText("[E2E]-EST-001", {
     timeout: 30_000,
   });
-  await expect(page.locator(".estimate-builder-new").first()).toBeVisible({ timeout: 15_000 });
-  await expect(page.locator("main")).toContainText("Scope of work", { timeout: 15_000 });
+  await expect(page.getByTestId("estimate-detail-header")).toBeVisible();
+  await expect(page.locator("main")).toContainText("No sections", { timeout: 15_000 });
+  await expect(page.getByLabel("Estimate pricing summary")).toBeVisible();
 
   await page.getByRole("button", { name: "Edit", exact: true }).click();
   await expect(page.getByRole("button", { name: /Edit details/i })).toBeVisible({
@@ -744,9 +821,13 @@ test("renders seeded legacy estimate with the unified composer shell", async ({ 
   await expect(page.getByRole("button", { name: /^Add Section$/i }).first()).toBeVisible({
     timeout: 15_000,
   });
-  await expect(page.locator("details").filter({ hasText: "Payment schedule" }).first()).toBeVisible(
-    { timeout: 15_000 }
-  );
+  await page
+    .getByRole("navigation", { name: "Pricing inspector sections" })
+    .getByRole("button", { name: "Payment", exact: true })
+    .click();
+  await expect(page.getByTestId("estimate-payment-schedule-sheet")).toBeVisible({
+    timeout: 15_000,
+  });
   await expect(page.locator("body")).not.toContainText("Something went wrong");
 });
 
@@ -789,7 +870,7 @@ test("formats fractional-cent estimate amounts as standard currency", async ({ p
   createdClientNames.add(clientName);
   createdProjectNames.add(projectName);
 
-  await page.goto("/estimates/new");
+  await gotoWithE2EAuth(page, "/estimates/new");
   await page.waitForLoadState("domcontentloaded");
   await expect(page.getByRole("heading", { name: "New Estimate" })).toBeVisible({
     timeout: 30_000,
@@ -824,22 +905,24 @@ test("formats fractional-cent estimate amounts as standard currency", async ({ p
     timeout: 30_000,
   });
   await expect(page.locator('input[name="unitCost"]').locator("visible=true")).toHaveValue("0.01");
-  await page.getByRole("button", { name: "Done" }).click();
+  await page
+    .getByTestId("estimate-detail-header-actions")
+    .getByRole("button", { name: "Save", exact: true })
+    .click();
 
-  await page.goto("/estimates");
+  await gotoWithE2EAuth(page, "/estimates");
   await page.waitForLoadState("domcontentloaded");
   const listSearch = page.locator('input[placeholder="Search estimates…"]:visible').first();
   await expect(listSearch).toBeVisible({ timeout: 30_000 });
   await listSearch.fill(clientName);
-  await expect(page.getByText(clientName, { exact: true }).first()).toBeVisible({
+  const precisionRow = page.getByRole("row").filter({ hasText: clientName });
+  await expect(precisionRow).toBeVisible({
     timeout: 30_000,
   });
   await expect(page.locator("body")).not.toContainText(rawFractionalCurrency);
-  await expect(page.getByText("$0.01").locator("visible=true").first()).toBeVisible({
-    timeout: 30_000,
-  });
+  await expect(precisionRow).toContainText("$0.01");
 
-  await page.goto(`${detailUrl}/preview`);
+  await gotoWithE2EAuth(page, `${detailUrl}/preview`);
   await page.waitForLoadState("domcontentloaded");
   await expect(page.locator("body")).not.toContainText(rawFractionalCurrency);
   await expect(page.getByText("$0.01").locator("visible=true").first()).toBeVisible({
@@ -851,7 +934,7 @@ test("keeps estimate actions usable on mobile", async ({ page }) => {
   test.setTimeout(90_000);
   await page.setViewportSize({ width: 390, height: 844 });
 
-  await page.goto("/financial/estimates");
+  await gotoWithE2EAuth(page, "/estimates");
   await page.waitForLoadState("domcontentloaded");
   await expect(page).toHaveURL(isEstimatesListUrl, { timeout: 30_000 });
   await expect(page.locator("body")).not.toContainText("Something went wrong");
@@ -860,7 +943,7 @@ test("keeps estimate actions usable on mobile", async ({ page }) => {
   });
   await expect(page.getByLabel("New estimate")).toBeVisible({ timeout: 30_000 });
 
-  await page.goto("/estimates/new");
+  await gotoWithE2EAuth(page, "/estimates/new");
   await page.waitForLoadState("domcontentloaded");
   await expect(page.getByRole("heading", { name: "New Estimate" })).toBeVisible({
     timeout: 30_000,
@@ -906,17 +989,17 @@ test("keeps estimate actions usable on mobile", async ({ page }) => {
   await lineCard.getByLabel("Line item 1 title").fill(lineTitle);
   await lineCard.getByLabel("Line item 1 quantity").fill("2");
   await lineCard.getByLabel("Line item 1 unit price").fill("50");
-  await expect(lineCard.getByText(/\$100\.00/)).toBeVisible({ timeout: 10_000 });
+  await expect(lineCard).toContainText("$100.00", { timeout: 10_000 });
 
-  await expect(lineCard.getByRole("button", { name: "Hide details" })).toBeVisible({
+  await expect(lineCard.getByRole("button", { name: /^Collapse line item \d+:/ })).toBeVisible({
     timeout: 10_000,
   });
-  await expect(lineCard.getByText("More", { exact: true })).toHaveCount(0);
-  await lineCard.getByRole("button", { name: "Line item options" }).click();
-  await expect(page.getByLabel("Line item 1 unit", { exact: true })).toBeVisible({
-    timeout: 10_000,
-  });
+  await lineCard.getByRole("button", { name: "More actions" }).click();
+  await expect(page.getByRole("menuitem", { name: "Remove line item" })).toBeVisible();
   await page.keyboard.press("Escape");
+  await expect(
+    lineCard.getByLabel("Line item 1 unit", { exact: true }).locator("visible=true")
+  ).toBeVisible({ timeout: 10_000 });
 
   const scheduleSection = page
     .locator("details")
@@ -964,7 +1047,7 @@ test("keeps new estimate detail and payment drawers visible on desktop and mobil
     { width: 390, height: 844 },
   ]) {
     await page.setViewportSize(viewport);
-    await page.goto("/estimates/new");
+    await gotoWithE2EAuth(page, "/estimates/new");
     await page.waitForLoadState("domcontentloaded");
     await expect(page.getByRole("heading", { name: "New Estimate" })).toBeVisible({
       timeout: 30_000,

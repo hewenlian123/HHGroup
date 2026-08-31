@@ -9,12 +9,9 @@ import {
   expenseIsArchivedDoneDbStatus,
   expenseSourceTypeIsWorkerReimbursement,
 } from "@/lib/expense-workflow-status";
-import { syncExpenseHeaderAmountFromLinesWithClient } from "@/lib/expenses-db";
-import { isConfirmedExpenseStatus } from "@/lib/project-expense-cost-status";
 import {
   getSubcontractDeductionByExpenseId,
   getSubcontractDeductionOptions,
-  replaceSubcontractDeductionForExpense,
   type SubcontractDeductionInput,
 } from "@/lib/subcontract-deductions-db";
 
@@ -29,7 +26,6 @@ const NO_CACHE_HEADERS: Record<string, string> = {
   "Vercel-CDN-Cache-Control": "no-store",
 };
 
-const EXPENSE_LINE_SELECT = "id, expense_id, project_id, category, cost_code, memo, amount";
 const EXPENSE_STATUS_VALUES = new Set([
   "pending",
   "needs_review",
@@ -122,7 +118,7 @@ function linePatchToDb(patch: ExpenseLinePatch): Record<string, unknown> {
     payload.cost_code = nullableString(patch.costCode);
   }
   if (Object.prototype.hasOwnProperty.call(patch, "memo")) {
-    payload.memo = nullableString(patch.memo);
+    payload.description = nullableString(patch.memo);
   }
   if (Object.prototype.hasOwnProperty.call(patch, "amount")) {
     const amount = Number(patch.amount);
@@ -331,7 +327,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     Object.prototype.hasOwnProperty.call(body, "category") ||
     Object.prototype.hasOwnProperty.call(body, "amount");
   const subcontractDeductionPatch = normalizeSubcontractDeduction(body.subcontractDeduction);
-  if (Object.keys(patch).length === 0 && subcontractDeductionPatch === undefined) {
+  if (Object.keys(patch).length === 0 && !hasLinePatch && subcontractDeductionPatch === undefined) {
     return apiError(400, "No expense fields to update.");
   }
 
@@ -343,125 +339,63 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     return apiError(400, "Choose a worker before saving this reimbursement expense.");
   }
 
-  const syncBeforeHeaderUpdate =
-    typeof patch.status === "string" &&
-    isConfirmedExpenseStatus(patch.status) &&
-    !Object.prototype.hasOwnProperty.call(body, "amount");
-  if (syncBeforeHeaderUpdate) {
-    try {
-      await syncExpenseHeaderAmountFromLinesWithClient(supabase, id);
-    } catch (error) {
-      console.error("[expenses/:id] pre-status header sync failed", error);
-      return apiError(500, "Failed to sync expense total before saving status.");
-    }
+  const headerPatch: Record<string, unknown> = {};
+  if (Object.prototype.hasOwnProperty.call(patch, "expense_date"))
+    headerPatch.expenseDate = patch.expense_date;
+  if (Object.prototype.hasOwnProperty.call(patch, "vendor_name"))
+    headerPatch.vendorName = patch.vendor_name;
+  if (Object.prototype.hasOwnProperty.call(patch, "payment_method"))
+    headerPatch.paymentMethod = patch.payment_method;
+  if (Object.prototype.hasOwnProperty.call(patch, "reference_no"))
+    headerPatch.referenceNo = patch.reference_no;
+  if (Object.prototype.hasOwnProperty.call(patch, "notes")) headerPatch.notes = patch.notes;
+  if (Object.prototype.hasOwnProperty.call(patch, "status")) headerPatch.status = patch.status;
+  if (Object.prototype.hasOwnProperty.call(patch, "worker_id"))
+    headerPatch.workerId = patch.worker_id;
+  if (Object.prototype.hasOwnProperty.call(patch, "source_type"))
+    headerPatch.sourceType = patch.source_type;
+  if (Object.prototype.hasOwnProperty.call(patch, "payment_account_id"))
+    headerPatch.paymentAccountId = patch.payment_account_id;
+  if (Object.prototype.hasOwnProperty.call(patch, "project_id"))
+    headerPatch.projectId = patch.project_id;
+
+  const linePatch: Record<string, unknown> = {};
+  if (hasLinePatch && Object.prototype.hasOwnProperty.call(body, "projectId"))
+    linePatch.projectId = stringOrNull(body.projectId);
+  if (hasLinePatch && Object.prototype.hasOwnProperty.call(body, "category"))
+    linePatch.category = nullableString(body.category) ?? "Other";
+  if (hasLinePatch && Object.prototype.hasOwnProperty.call(body, "amount")) {
+    const amount = Number(body.amount);
+    if (!Number.isFinite(amount) || amount < 0)
+      return apiError(400, "Line amount must be a valid number.");
+    linePatch.amount = amount;
   }
 
-  let data: unknown = null;
-  if (Object.keys(patch).length > 0) {
-    const result = await supabase
-      .from("expenses")
-      .update(patch)
-      .eq("id", id)
-      .select("*")
-      .maybeSingle();
-    if (result.error) {
-      console.error("[expenses/:id] update failed", result.error);
-      return apiError(500, "Failed to save expense.");
-    }
-    if (!result.data) return apiError(404, "Expense not found.");
-    data = result.data;
+  const effectiveDeduction = subcontractDeductionPatch
+    ? {
+        ...subcontractDeductionPatch,
+        projectId:
+          subcontractDeductionPatch.projectId ??
+          (Object.prototype.hasOwnProperty.call(body, "projectId")
+            ? stringOrNull(body.projectId)
+            : null),
+        amount:
+          subcontractDeductionPatch.amount ??
+          (Object.prototype.hasOwnProperty.call(body, "amount") ? Number(body.amount) : undefined),
+      }
+    : null;
+  const { data, error } = await supabase.rpc("update_expense_atomic", {
+    p_expense_id: id,
+    p_header_patch: headerPatch,
+    p_line_patch: linePatch,
+    p_apply_deduction: subcontractDeductionPatch !== undefined,
+    p_deduction: effectiveDeduction,
+  });
+  if (error) {
+    console.error("[expenses/:id] atomic update failed", error);
+    const code = (error as { code?: string }).code;
+    return apiError(code === "P0002" ? 404 : code === "22023" ? 400 : 500, error.message);
   }
-
-  if (hasLinePatch) {
-    const linePatch: Record<string, unknown> = {};
-    if (Object.prototype.hasOwnProperty.call(body, "projectId")) {
-      linePatch.project_id = stringOrNull(body.projectId);
-    }
-    if (Object.prototype.hasOwnProperty.call(body, "category")) {
-      linePatch.category = nullableString(body.category) ?? "Other";
-    }
-    if (Object.prototype.hasOwnProperty.call(body, "amount")) {
-      const amount = Number(body.amount);
-      if (!Number.isFinite(amount) || amount < 0) {
-        return apiError(400, "Line amount must be a valid number.");
-      }
-      linePatch.amount = amount;
-    }
-
-    if (Object.keys(linePatch).length > 0) {
-      const { data: firstLine, error: firstLineError } = await supabase
-        .from("expense_lines")
-        .select("id")
-        .eq("expense_id", id)
-        .limit(1)
-        .maybeSingle();
-      if (firstLineError) {
-        console.error("[expenses/:id] first line load failed", firstLineError);
-        return apiError(500, "Failed to save expense line.");
-      }
-      if (!firstLine) return apiError(404, "Expense line not found.");
-      const { data: updatedLine, error: lineError } = await supabase
-        .from("expense_lines")
-        .update(linePatch)
-        .eq("id", firstLine.id)
-        .eq("expense_id", id)
-        .select("id")
-        .maybeSingle();
-      if (lineError) {
-        console.error("[expenses/:id] line update failed", lineError);
-        return apiError(500, "Failed to save expense line.");
-      }
-      if (!updatedLine) return apiError(404, "Expense line not found.");
-      if (Object.prototype.hasOwnProperty.call(linePatch, "amount")) {
-        try {
-          const syncedAmount = await syncExpenseHeaderAmountFromLinesWithClient(supabase, id, {
-            lineId: firstLine.id,
-            amount: linePatch.amount as number,
-          });
-          if (syncedAmount != null && data && typeof data === "object") {
-            data = {
-              ...(data as Record<string, unknown>),
-              amount: syncedAmount,
-              total: syncedAmount,
-            };
-          }
-        } catch (error) {
-          console.error("[expenses/:id] line amount header sync failed", error);
-          return apiError(500, "Failed to sync expense total.");
-        }
-      }
-    }
-  }
-
-  if (subcontractDeductionPatch !== undefined) {
-    const effectiveProjectId =
-      subcontractDeductionPatch?.projectId ??
-      (Object.prototype.hasOwnProperty.call(body, "projectId")
-        ? stringOrNull(body.projectId)
-        : null);
-    const effectiveAmount =
-      subcontractDeductionPatch?.amount ??
-      (Object.prototype.hasOwnProperty.call(body, "amount") ? Number(body.amount) : undefined);
-    try {
-      await replaceSubcontractDeductionForExpense(
-        id,
-        subcontractDeductionPatch
-          ? {
-              ...subcontractDeductionPatch,
-              projectId: effectiveProjectId,
-              amount: effectiveAmount,
-            }
-          : null,
-        supabase
-      );
-    } catch (error) {
-      return apiError(
-        400,
-        error instanceof Error ? error.message : "Failed to save subcontract deduction."
-      );
-    }
-  }
-
   return NextResponse.json({ ok: true, expense: data }, { headers: NO_CACHE_HEADERS });
 }
 
@@ -571,50 +505,61 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   try {
     if (action === "add-line") {
-      const { data, error } = await supabase
-        .from("expense_lines")
-        .insert([{ expense_id: id, project_id: null, category: "Other", amount: 0 }])
-        .select(EXPENSE_LINE_SELECT)
-        .single();
+      const { data, error } = await supabase.rpc("mutate_expense_line_atomic", {
+        p_expense_id: id,
+        p_operation: "add",
+        p_line_id: null,
+        p_line_patch: { projectId: null, category: "Other", amount: 0 },
+        p_preserve_last_line: false,
+      });
       if (error) throw error;
-      return NextResponse.json({ ok: true, line: data }, { headers: NO_CACHE_HEADERS });
+      return NextResponse.json(
+        { ok: true, line: (data as { line?: unknown } | null)?.line ?? null },
+        { headers: NO_CACHE_HEADERS }
+      );
     }
 
     if (action === "update-line") {
       const lineId = stringOrNull(body.lineId);
       if (!lineId) return apiError(400, "Expense line is required.");
-      const patch = linePatchToDb((body.patch ?? {}) as ExpenseLinePatch);
-      if (Object.keys(patch).length === 0) return apiError(400, "No line fields to update.");
-      const { data, error } = await supabase
-        .from("expense_lines")
-        .update(patch)
-        .eq("id", lineId)
-        .eq("expense_id", id)
-        .select(EXPENSE_LINE_SELECT)
-        .maybeSingle();
+      const patch = (body.patch ?? {}) as ExpenseLinePatch;
+      const dbPatch = linePatchToDb(patch);
+      if (Object.keys(dbPatch).length === 0) return apiError(400, "No line fields to update.");
+      const atomicPatch: Record<string, unknown> = {};
+      if (Object.prototype.hasOwnProperty.call(dbPatch, "project_id"))
+        atomicPatch.projectId = dbPatch.project_id;
+      if (Object.prototype.hasOwnProperty.call(dbPatch, "category"))
+        atomicPatch.category = dbPatch.category;
+      if (Object.prototype.hasOwnProperty.call(dbPatch, "cost_code"))
+        atomicPatch.costCode = dbPatch.cost_code;
+      if (Object.prototype.hasOwnProperty.call(dbPatch, "description"))
+        atomicPatch.memo = dbPatch.description;
+      if (Object.prototype.hasOwnProperty.call(dbPatch, "amount"))
+        atomicPatch.amount = dbPatch.amount;
+      const { data, error } = await supabase.rpc("mutate_expense_line_atomic", {
+        p_expense_id: id,
+        p_operation: "update",
+        p_line_id: lineId,
+        p_line_patch: atomicPatch,
+        p_preserve_last_line: false,
+      });
       if (error) throw error;
-      if (!data) return apiError(404, "Expense line not found.");
-      if (Object.prototype.hasOwnProperty.call(patch, "amount")) {
-        await syncExpenseHeaderAmountFromLinesWithClient(supabase, id, {
-          lineId,
-          amount: patch.amount as number,
-        });
-      }
-      return NextResponse.json({ ok: true, line: data }, { headers: NO_CACHE_HEADERS });
+      const line = (data as { line?: unknown } | null)?.line ?? null;
+      if (!line) return apiError(404, "Expense line not found.");
+      return NextResponse.json({ ok: true, line }, { headers: NO_CACHE_HEADERS });
     }
 
     if (action === "delete-line") {
       const lineId = stringOrNull(body.lineId);
       if (!lineId) return apiError(400, "Expense line is required.");
-      const { data, error } = await supabase
-        .from("expense_lines")
-        .delete()
-        .eq("id", lineId)
-        .eq("expense_id", id)
-        .select("id");
+      const { error } = await supabase.rpc("mutate_expense_line_atomic", {
+        p_expense_id: id,
+        p_operation: "delete",
+        p_line_id: lineId,
+        p_line_patch: {},
+        p_preserve_last_line: false,
+      });
       if (error) throw error;
-      if (!data || data.length === 0) return apiError(404, "Expense line not found.");
-      await syncExpenseHeaderAmountFromLinesWithClient(supabase, id);
       return NextResponse.json({ ok: true }, { headers: NO_CACHE_HEADERS });
     }
 

@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 
+import { deleteLocalEstimateFixtureGraphs } from "./e2e-estimate-fixture-teardown";
 import { assertE2ESupabaseUrlSafeForMutations } from "./e2e-supabase-url-guard";
 
 const customerNames = new Set<string>();
@@ -84,11 +85,10 @@ async function cleanupProjectsModuleData(): Promise<void> {
       .delete()
       .in("estimate_id", estimateIdList);
     await supabase.from("estimate_payment_schedule").delete().in("estimate_id", estimateIdList);
-    await supabase.from("estimate_snapshots").delete().in("estimate_id", estimateIdList);
     await supabase.from("estimate_items").delete().in("estimate_id", estimateIdList);
     await supabase.from("estimate_categories").delete().in("estimate_id", estimateIdList);
     await supabase.from("estimate_meta").delete().in("estimate_id", estimateIdList);
-    await supabase.from("estimates").delete().in("id", estimateIdList);
+    await deleteLocalEstimateFixtureGraphs(estimateIdList);
   }
 
   if (projectIds.size > 0) {

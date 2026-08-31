@@ -75,10 +75,11 @@ test("Badge and StatusBadge use semantic soft states with non-color context", ()
   assert.match(globals, /\.hh-pill-warning\s*\{[^}]*var\(--hh-warning-soft-fill\)/s);
 });
 
-test("shared amount tones retain FIN and use semantic financial state colors", () => {
+test("shared amount tones retain FIN and keep non-danger amounts neutral", () => {
   const typography = source("src/lib/typography.ts");
 
-  assert.match(typography, /income:\s*"text-\[var\(--hh-success\)\]"/);
-  assert.match(typography, /expense:\s*"text-\[var\(--hh-danger\)\]"/);
+  assert.match(typography, /income:\s*OS\.neutralAmount/);
+  assert.match(typography, /expense:\s*OS\.neutralAmount/);
+  assert.match(typography, /danger:\s*"text-\[var\(--hh-danger\)\]"/);
   assert.match(typography, /amount:\s*"hh-fin text-hh-financial/);
 });

@@ -51,7 +51,6 @@ type BalanceResponse = {
 let admin: SupabaseClient;
 let workerId = "";
 let owedWorkerId = "";
-let settledWorkerId = "";
 
 function previousMonthFixtureDates(): {
   monthYm: string;
@@ -331,7 +330,7 @@ async function saveDailyEntry(params: {
 
 async function seedWorkerCenterSortRows(page: Page): Promise<void> {
   owedWorkerId = await createWorkerViaWorkerCenter(page, OWED_WORKER_NAME);
-  settledWorkerId = await createWorkerViaWorkerCenter(page, SETTLED_WORKER_NAME);
+  await createWorkerViaWorkerCenter(page, SETTLED_WORKER_NAME);
 
   await saveDailyEntry({
     page,

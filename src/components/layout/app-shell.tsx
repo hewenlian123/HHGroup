@@ -23,12 +23,14 @@ import {
   type HhContextName,
   type HhThemeName,
 } from "@/contexts/hh-theme-context";
-import {
-  applyOperationalThemeMode,
-  operationalThemeName,
-  readOperationalThemeMode,
-  type OperationalThemeMode,
-} from "@/lib/operational-theme";
+
+function AppShellProviders({ children }: { children: React.ReactNode }) {
+  return (
+    <ToastProvider>
+      <AttachmentPreviewProvider>{children}</AttachmentPreviewProvider>
+    </ToastProvider>
+  );
+}
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -65,6 +67,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       /^\/financial\/invoices\/[^/]+\/preview(?:\/|$)/.test(pathname) ||
       /^\/materials\/[^/]+\/preview(?:\/|$)/.test(pathname))
   );
+  const estimatePathSegments = pathname?.split("/").filter(Boolean) ?? [];
+  const integratedEstimateWorkspace =
+    estimatePathSegments[0] === "estimates" &&
+    Boolean(estimatePathSegments[1]) &&
+    (estimatePathSegments[1] === "new" ||
+      estimatePathSegments.length === 2 ||
+      estimatePathSegments[2] === "snapshot");
   const publicWorkerIntake =
     pathname === "/receipt" ||
     pathname === "/upload-receipt" ||
@@ -79,8 +88,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         : publicWorkerIntake
           ? "public-worker-intake"
           : "operational";
-  const [operationalThemeMode, setOperationalThemeMode] =
-    React.useState<OperationalThemeMode>(readOperationalThemeMode);
   const routeTheme: HhThemeName = documentRoute
     ? "document-light"
     : viewerRoute
@@ -89,16 +96,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         ? "auth"
         : publicWorkerIntake
           ? "public"
-          : operationalThemeName(operationalThemeMode);
+          : "operational-light";
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const [collapsed, setCollapsed] = React.useState(false);
   const [commandOpen, setCommandOpen] = React.useState(false);
   /** When true on tablet, sidebar shows labels; when false, icon rail only. */
   const [tabletSidebarExpanded, setTabletSidebarExpanded] = React.useState(false);
-
-  React.useEffect(() => {
-    applyOperationalThemeMode(operationalThemeMode);
-  }, [operationalThemeMode]);
 
   React.useEffect(() => {
     try {
@@ -137,85 +140,82 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         theme={routeTheme}
         className={printReceiptBg ? "min-h-screen bg-[#f5f5f5]" : "min-h-screen bg-workspace"}
       >
-        <ToastProvider>
-          <AttachmentPreviewProvider>
-            <ScrollLockRecovery />
-            {children}
-          </AttachmentPreviewProvider>
-        </ToastProvider>
+        <AppShellProviders>
+          <ScrollLockRecovery />
+          {children}
+        </AppShellProviders>
       </HhRouteThemeRoot>
     );
   }
 
   return (
     <HhRouteThemeRoot context={routeContext} theme={routeTheme}>
-      <ToastProvider>
-        <AttachmentPreviewProvider>
-          <BreadcrumbOverrideProvider>
-            <SystemHealthProvider>
-              <LaborAddEntryProvider>
-                <ScrollLockRecovery />
-                <SystemHealthPoller />
-                <div className="app-shell hh-app-shell neo-app-shell flex min-h-0 overflow-hidden bg-canvas sm:p-hh-sidebar-inset">
-                  {/* Tablet/Desktop (640px+): sidebar fixed left, collapsible. */}
-                  <Sidebar
-                    className="hidden sm:flex shrink-0 transition-[width] duration-200"
-                    collapsed={isTabletNav ? !tabletSidebarExpanded : collapsed}
-                    onToggleCollapsed={handleToggleSidebar}
-                  />
-                  {/* Mobile (<640px): slide-out drawer (hamburger menu). */}
-                  <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-                    <SheetContent
-                      side="left"
-                      className={cn(
-                        "w-hh-sidebar-expanded max-w-[85vw] p-0 shadow-none transition-transform duration-200 data-[state=open]:slide-in-from-left data-[state=closed]:slide-out-to-left",
-                        "border-r border-[var(--hh-border)] bg-canvas"
-                      )}
-                    >
-                      <SheetTitle className="sr-only">Navigation menu</SheetTitle>
-                      <SheetDescription className="sr-only">
-                        Main HH Project OS navigation sections and module links.
-                      </SheetDescription>
-                      <Sidebar
-                        className="h-full w-full !rounded-none !border-none !shadow-none"
-                        onNavigate={() => setMobileOpen(false)}
-                      />
-                    </SheetContent>
-                  </Sheet>
-                  <div
-                    data-app-main-column
-                    className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+      <AppShellProviders>
+        <BreadcrumbOverrideProvider>
+          <SystemHealthProvider>
+            <LaborAddEntryProvider>
+              <ScrollLockRecovery />
+              <SystemHealthPoller />
+              <div
+                className="app-shell hh-app-shell flex min-h-0 overflow-hidden bg-[var(--hh-surface-workspace)] [font-family:var(--hh-font-family-sans)]"
+                data-integrated-estimate-workspace={
+                  integratedEstimateWorkspace ? "true" : undefined
+                }
+              >
+                {/* Tablet/Desktop (640px+): sidebar fixed left, collapsible. */}
+                <Sidebar
+                  className="hidden sm:flex shrink-0 transition-[width] duration-200"
+                  collapsed={isTabletNav ? !tabletSidebarExpanded : collapsed}
+                  onToggleCollapsed={handleToggleSidebar}
+                />
+                {/* Mobile (<640px): slide-out drawer (hamburger menu). */}
+                <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+                  <SheetContent
+                    side="left"
+                    className={cn(
+                      "w-hh-sidebar-expanded max-w-[85vw] p-0 shadow-none transition-transform duration-200 data-[state=open]:slide-in-from-left data-[state=closed]:slide-out-to-left",
+                      "border-r border-[var(--hh-border-default)] bg-[var(--hh-surface-workspace)]"
+                    )}
                   >
-                    <Topbar
-                      onOpenSidebar={() => setMobileOpen(true)}
-                      onToggleSidebar={handleToggleSidebar}
-                      onOpenCommandPalette={() => setCommandOpen(true)}
-                      operationalThemeMode={operationalThemeMode}
-                      showOperationalThemeToggle={routeContext === "operational"}
-                      onToggleOperationalTheme={() =>
-                        setOperationalThemeMode((mode) => (mode === "dark" ? "light" : "dark"))
-                      }
+                    <SheetTitle className="sr-only">Navigation menu</SheetTitle>
+                    <SheetDescription className="sr-only">
+                      Main HH Project OS navigation sections and module links.
+                    </SheetDescription>
+                    <Sidebar
+                      className="h-full w-full !rounded-none !border-none !shadow-none"
+                      onNavigate={() => setMobileOpen(false)}
                     />
-                    <main
-                      data-app-scroll-root
-                      className={cn(
-                        "neo-workspace-canvas min-h-0 flex-1 scroll-smooth overflow-y-auto overflow-x-hidden overscroll-y-contain bg-canvas [-webkit-overflow-scrolling:touch]",
-                        "pb-[calc(4rem+env(safe-area-inset-bottom))] sm:pb-0"
-                      )}
-                    >
-                      {children}
-                    </main>
-                    <BottomNav className="fixed bottom-0 left-0 right-0 z-30 sm:hidden" />
-                    <FloatingActionButton />
-                    <NeoCommandPalette open={commandOpen} onOpenChange={setCommandOpen} />
-                  </div>
+                  </SheetContent>
+                </Sheet>
+                <div
+                  data-app-main-column
+                  className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+                >
+                  <Topbar
+                    onOpenSidebar={() => setMobileOpen(true)}
+                    onToggleSidebar={handleToggleSidebar}
+                    onOpenCommandPalette={() => setCommandOpen(true)}
+                    integratedEstimateWorkspace={integratedEstimateWorkspace}
+                  />
+                  <main
+                    data-app-scroll-root
+                    className={cn(
+                      "min-h-0 flex-1 scroll-smooth overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[var(--hh-surface-canvas)] [-webkit-overflow-scrolling:touch]",
+                      "pb-[calc(4rem+env(safe-area-inset-bottom))] sm:pb-0"
+                    )}
+                  >
+                    {children}
+                  </main>
+                  <BottomNav className="fixed bottom-0 left-0 right-0 z-30 sm:hidden" />
+                  <FloatingActionButton />
+                  <NeoCommandPalette open={commandOpen} onOpenChange={setCommandOpen} />
                 </div>
-                <PWAInstallPrompt />
-              </LaborAddEntryProvider>
-            </SystemHealthProvider>
-          </BreadcrumbOverrideProvider>
-        </AttachmentPreviewProvider>
-      </ToastProvider>
+              </div>
+              <PWAInstallPrompt />
+            </LaborAddEntryProvider>
+          </SystemHealthProvider>
+        </BreadcrumbOverrideProvider>
+      </AppShellProviders>
     </HhRouteThemeRoot>
   );
 }

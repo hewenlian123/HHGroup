@@ -1,8 +1,9 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "./estimate-playwright-test";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { mkdir } from "node:fs/promises";
 
-import { loginAsE2EOwner } from "./e2e-auth-owner";
+import { gotoWithE2EAuth, loginAsE2EOwner } from "./e2e-auth-owner";
+import { deleteLocalEstimateFixtureGraphs } from "./e2e-estimate-fixture-teardown";
 import { assertE2ESupabaseUrlSafeForMutations } from "./e2e-supabase-url-guard";
 
 const createdCustomerNames = new Set<string>();
@@ -53,6 +54,19 @@ function invoiceIdFromUrl(url: string): string {
   return match[1];
 }
 
+async function requireCleanupResult<T extends { error: { message: string } | null }>(
+  operation: string,
+  query: PromiseLike<T>
+): Promise<T> {
+  const result = await query;
+  if (result.error) {
+    throw new Error(
+      `Estimate payment fixture cleanup failed during ${operation}: ${result.error.message}`
+    );
+  }
+  return result;
+}
+
 async function cleanupCreatedRows(): Promise<void> {
   const supabase = db();
   if (!supabase) return;
@@ -65,74 +79,110 @@ async function cleanupCreatedRows(): Promise<void> {
   const customerIds = new Set<string>();
 
   if (customerNames.length > 0) {
-    const { data: invoices } = await supabase
-      .from("invoices")
-      .select("id")
-      .in("client_name", customerNames);
+    const { data: invoices } = await requireCleanupResult(
+      "invoice discovery",
+      supabase.from("invoices").select("id").in("client_name", customerNames)
+    );
     for (const row of invoices ?? []) invoiceIds.add((row as { id: string }).id);
 
-    const { data: estimates } = await supabase
-      .from("estimates")
-      .select("id")
-      .in("client", customerNames);
+    const { data: estimates } = await requireCleanupResult(
+      "customer Estimate discovery",
+      supabase.from("estimates").select("id").in("client", customerNames)
+    );
     for (const row of estimates ?? []) estimateIds.add((row as { id: string }).id);
 
-    const { data: customers } = await supabase
-      .from("customers")
-      .select("id")
-      .in("name", customerNames);
+    const { data: customers } = await requireCleanupResult(
+      "customer discovery",
+      supabase.from("customers").select("id").in("name", customerNames)
+    );
     for (const row of customers ?? []) customerIds.add((row as { id: string }).id);
   }
 
   if (projectNames.length > 0) {
-    const { data: estimates } = await supabase
-      .from("estimates")
-      .select("id")
-      .in("project", projectNames);
+    const { data: estimates } = await requireCleanupResult(
+      "project Estimate discovery",
+      supabase.from("estimates").select("id").in("project", projectNames)
+    );
     for (const row of estimates ?? []) estimateIds.add((row as { id: string }).id);
 
-    const { data: projects } = await supabase
-      .from("projects")
-      .select("id")
-      .in("name", projectNames);
+    const { data: projects } = await requireCleanupResult(
+      "project discovery",
+      supabase.from("projects").select("id").in("name", projectNames)
+    );
     for (const row of projects ?? []) projectIds.add((row as { id: string }).id);
   }
 
   const ids = Array.from(invoiceIds);
   if (ids.length > 0) {
-    const { data: payments } = await supabase
-      .from("payments_received")
-      .select("id")
-      .in("invoice_id", ids);
+    const { data: payments } = await requireCleanupResult(
+      "payment discovery",
+      supabase.from("payments_received").select("id").in("invoice_id", ids)
+    );
     const paymentIds = (payments ?? []).map((row: { id: string }) => row.id).filter(Boolean);
     if (paymentIds.length > 0) {
-      await supabase.from("payment_received_attachments").delete().in("payment_id", paymentIds);
+      await requireCleanupResult(
+        "payment attachment deletion",
+        supabase.from("payment_received_attachments").delete().in("payment_id", paymentIds)
+      );
     }
-    await supabase.from("deposits").delete().in("invoice_id", ids);
-    await supabase.from("payments_received").delete().in("invoice_id", ids);
-    await supabase.from("invoice_payments").delete().in("invoice_id", ids);
-    await supabase.from("invoice_items").delete().in("invoice_id", ids);
-    await supabase.from("invoices").delete().in("id", ids);
+    await requireCleanupResult(
+      "deposit deletion",
+      supabase.from("deposits").delete().in("invoice_id", ids)
+    );
+    await requireCleanupResult(
+      "payment deletion",
+      supabase.from("payments_received").delete().in("invoice_id", ids)
+    );
+    await requireCleanupResult(
+      "invoice payment deletion",
+      supabase.from("invoice_payments").delete().in("invoice_id", ids)
+    );
+    await requireCleanupResult(
+      "invoice item deletion",
+      supabase.from("invoice_items").delete().in("invoice_id", ids)
+    );
+    await requireCleanupResult(
+      "invoice deletion",
+      supabase.from("invoices").delete().in("id", ids)
+    );
   }
 
   const estimateIdList = Array.from(estimateIds);
   if (estimateIdList.length > 0) {
-    await supabase
-      .from("estimate_payment_schedule_items")
-      .delete()
-      .in("estimate_id", estimateIdList);
-    await supabase.from("estimate_snapshots").delete().in("estimate_id", estimateIdList);
-    await supabase.from("estimate_items").delete().in("estimate_id", estimateIdList);
-    await supabase.from("estimate_categories").delete().in("estimate_id", estimateIdList);
-    await supabase.from("estimate_meta").delete().in("estimate_id", estimateIdList);
-    await supabase.from("estimates").delete().in("id", estimateIdList);
+    await requireCleanupResult(
+      "Estimate payment schedule deletion",
+      supabase.from("estimate_payment_schedule_items").delete().in("estimate_id", estimateIdList)
+    );
+    await requireCleanupResult(
+      "Estimate item deletion",
+      supabase.from("estimate_items").delete().in("estimate_id", estimateIdList)
+    );
+    await requireCleanupResult(
+      "Estimate category deletion",
+      supabase.from("estimate_categories").delete().in("estimate_id", estimateIdList)
+    );
+    await requireCleanupResult(
+      "Estimate metadata deletion",
+      supabase.from("estimate_meta").delete().in("estimate_id", estimateIdList)
+    );
+    await deleteLocalEstimateFixtureGraphs(estimateIdList);
   }
 
   const projectIdList = Array.from(projectIds);
-  if (projectIdList.length > 0) await supabase.from("projects").delete().in("id", projectIdList);
+  if (projectIdList.length > 0) {
+    await requireCleanupResult(
+      "project deletion",
+      supabase.from("projects").delete().in("id", projectIdList)
+    );
+  }
 
   const customerIdList = Array.from(customerIds);
-  if (customerIdList.length > 0) await supabase.from("customers").delete().in("id", customerIdList);
+  if (customerIdList.length > 0) {
+    await requireCleanupResult(
+      "customer deletion",
+      supabase.from("customers").delete().in("id", customerIdList)
+    );
+  }
 }
 
 async function createCustomerAndProject(
@@ -225,8 +275,7 @@ async function createEstimateWithPaymentSchedule(
     fixedAmount?: string;
   }
 ): Promise<string> {
-  await page.goto("/estimates/new");
-  await page.waitForLoadState("domcontentloaded");
+  await gotoWithE2EAuth(page, "/estimates/new");
   await expect(page.getByRole("heading", { name: "New Estimate" })).toBeVisible({
     timeout: 30_000,
   });
@@ -281,8 +330,27 @@ async function createEstimateWithPaymentSchedule(
   return page.url().replace(/\?.*$/, "");
 }
 
+async function approveSavedEstimate(page: Page): Promise<void> {
+  await page.getByRole("button", { name: "Mark as Sent", exact: true }).click();
+  await expect(page.getByText("Sent", { exact: true }).locator("visible=true")).toBeVisible({
+    timeout: 15_000,
+  });
+  await page.getByRole("button", { name: "Mark accepted", exact: true }).click();
+  await expect(page.getByText("Approved", { exact: true }).locator("visible=true")).toBeVisible({
+    timeout: 15_000,
+  });
+}
+
+async function openPaymentSchedule(page: Page): Promise<Locator> {
+  await page.getByRole("button", { name: "Estimate actions", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Payment Schedule", exact: true }).click();
+  const paymentSheet = page.getByTestId("estimate-payment-schedule-sheet");
+  await expect(paymentSheet).toBeVisible({ timeout: 30_000 });
+  return paymentSheet;
+}
+
 async function markInvoiceSent(page: Page, invoiceId: string): Promise<void> {
-  await page.goto(`/financial/invoices/${invoiceId}`);
+  await gotoWithE2EAuth(page, `/financial/invoices/${invoiceId}`);
   await expect(page.getByTestId("invoice-detail-status")).toContainText("Draft", {
     timeout: 30_000,
   });
@@ -321,10 +389,17 @@ async function projectOutstandingForInvoice(
   );
 }
 
-test.afterEach(async () => {
-  await cleanupCreatedRows();
-  createdCustomerNames.clear();
-  createdProjectNames.clear();
+test.afterEach(async ({ page }) => {
+  try {
+    await gotoWithE2EAuth(page, "/estimates");
+  } finally {
+    try {
+      await cleanupCreatedRows();
+    } finally {
+      createdCustomerNames.clear();
+      createdProjectNames.clear();
+    }
+  }
 });
 
 test("creates one draft invoice from an estimate payment schedule item and syncs payment flow", async ({
@@ -356,7 +431,23 @@ test("creates one draft invoice from an estimate payment schedule item and syncs
     expectedAmount: 1200,
   });
 
-  const readiness = page.getByTestId("estimate-invoice-readiness");
+  const draftPaymentSheet = await openPaymentSchedule(page);
+  await expect(
+    draftPaymentSheet.getByRole("button", { name: "Schedule Payment", exact: true })
+  ).toBeVisible();
+  await expect(
+    draftPaymentSheet.getByRole("link", { name: /^Create Draft Invoice$/i })
+  ).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await expect(draftPaymentSheet).toBeHidden();
+  const finishEditing = page.getByRole("button", { name: "Save", exact: true });
+  await expect(finishEditing).toBeVisible();
+  await finishEditing.click();
+  await expect(finishEditing).toBeHidden();
+
+  await approveSavedEstimate(page);
+  const paymentSheet = await openPaymentSchedule(page);
+  const readiness = paymentSheet.getByTestId("estimate-invoice-readiness");
   await expect(readiness).toContainText(customerName);
   await expect(readiness).toContainText(projectName);
   await readiness.scrollIntoViewIfNeeded();
@@ -365,7 +456,9 @@ test("creates one draft invoice from an estimate payment schedule item and syncs
     path: `${WORKFLOW_SCREENSHOT_DIR}/estimate-payment-schedule-readiness-desktop.png`,
     fullPage: false,
   });
-  const createDraftInvoiceLink = page.getByRole("link", { name: /^Create Draft Invoice$/i });
+  const createDraftInvoiceLink = paymentSheet.getByRole("link", {
+    name: /^Create Draft Invoice$/i,
+  });
   await expect(createDraftInvoiceLink).toHaveAttribute("href", /returnTo=/);
   for (const viewport of CONTINUITY_VIEWPORTS) {
     await page.setViewportSize(viewport);
@@ -387,10 +480,6 @@ test("creates one draft invoice from an estimate payment schedule item and syncs
   await expect(originContext).toContainText("$1,200.00");
   const invoiceWorkspace = page.getByTestId("invoice-estimate-origin-workspace");
   await expect(invoiceWorkspace).toBeVisible();
-  await expect(invoiceWorkspace).not.toHaveClass(/\bdark\b|neo-page-on-graphite/);
-  await expect
-    .poll(() => invoiceWorkspace.evaluate((node) => getComputedStyle(node).backgroundColor))
-    .toBe("rgb(247, 247, 246)");
   const invoiceBackToEstimate = page.getByTestId("invoice-new-back-to-estimate");
   await expect(invoiceBackToEstimate).toBeVisible();
   for (const viewport of CONTINUITY_VIEWPORTS) {
@@ -463,12 +552,15 @@ test("creates one draft invoice from an estimate payment schedule item and syncs
   expect(scheduleItem).toMatchObject({ invoice_id: invoiceId, status: "invoiced" });
   expect(await projectOutstandingForInvoice(supabase, invoiceId)).toBe(0);
 
-  await page.goto(estimateUrl, { waitUntil: "domcontentloaded" });
-  await expect(page.getByRole("link", { name: /^View Invoice$/i })).toBeVisible({
+  await gotoWithE2EAuth(page, estimateUrl);
+  const linkedPaymentSheet = await openPaymentSchedule(page);
+  await expect(linkedPaymentSheet.getByRole("link", { name: /^View Invoice$/i })).toBeVisible({
     timeout: 30_000,
   });
-  await expect(page.getByRole("link", { name: /^Create Draft Invoice$/i })).toHaveCount(0);
-  await page.getByRole("link", { name: /^View Invoice$/i }).click();
+  await expect(
+    linkedPaymentSheet.getByRole("link", { name: /^Create Draft Invoice$/i })
+  ).toHaveCount(0);
+  await linkedPaymentSheet.getByRole("link", { name: /^View Invoice$/i }).click();
   await expect(page).toHaveURL(new RegExp(`/financial/invoices/${invoiceId}`), {
     timeout: 30_000,
   });
@@ -491,7 +583,7 @@ test("creates one draft invoice from an estimate payment schedule item and syncs
   await expect(receivePaymentLink).toBeVisible({ timeout: 30_000 });
   const paymentHref = await receivePaymentLink.getAttribute("href");
   expect(paymentHref).toBeTruthy();
-  await page.goto(paymentHref!);
+  await gotoWithE2EAuth(page, paymentHref!);
   await expect(page).toHaveURL(/\/financial\/payments\?/, { timeout: 30_000 });
   const paymentUrl = new URL(page.url());
   expect(paymentUrl.searchParams.get("invoiceId")).toBe(invoiceId);
@@ -506,10 +598,30 @@ test("creates one draft invoice from an estimate payment schedule item and syncs
   await expect(dialog.locator("input[readonly]").first()).not.toHaveValue(projectId);
   await expect(dialog.getByPlaceholder("Customer name")).toHaveValue(customerName);
   await expect(dialog.getByPlaceholder("0")).toHaveValue("1200");
-  await dialog.getByRole("button", { name: "Receive Payment" }).click();
-  await expect(dialog).toBeHidden({ timeout: 30_000 });
 
-  await page.goto(`/financial/invoices/${invoiceId}`);
+  const paymentActionFinished = page.waitForEvent("requestfinished", {
+    predicate: (request) => {
+      const url = new URL(request.url());
+      return (
+        request.method() === "POST" &&
+        url.pathname === "/financial/payments" &&
+        Boolean(request.headers()["next-action"])
+      );
+    },
+  });
+  await dialog.getByRole("button", { name: "Receive Payment" }).click();
+  const paymentActionRequest = await paymentActionFinished;
+  const paymentActionResponse = await paymentActionRequest.response();
+  expect(paymentActionResponse?.status()).toBeGreaterThanOrEqual(200);
+  expect(paymentActionResponse?.status()).toBeLessThan(300);
+  await expect(dialog).toBeHidden({ timeout: 30_000 });
+  await expect(page).toHaveURL(/\/financial\/payments$/, { timeout: 30_000 });
+  const paymentRecorded = page.locator("section").filter({ hasText: "Payment recorded" });
+  await expect(paymentRecorded).toBeVisible({ timeout: 30_000 });
+  const viewPaidInvoice = paymentRecorded.getByRole("link", { name: "View Invoice" });
+  await expect(viewPaidInvoice).toHaveAttribute("href", `/financial/invoices/${invoiceId}`);
+  await viewPaidInvoice.click();
+  await expect(page).toHaveURL(`/financial/invoices/${invoiceId}`, { timeout: 30_000 });
   await expect(page.getByTestId("invoice-detail-status")).toContainText("Paid", {
     timeout: 30_000,
   });
@@ -544,15 +656,19 @@ test("creates one draft invoice for a fixed amount payment schedule item", async
     expectedAmount: 1000,
   });
 
-  await page.getByRole("link", { name: /^Create Draft Invoice$/i }).click();
+  await approveSavedEstimate(page);
+  let paymentSheet = await openPaymentSchedule(page);
+  await paymentSheet.getByRole("link", { name: /^Create Draft Invoice$/i }).click();
   await expect(page).toHaveURL(/\/financial\/invoices\/new\?/, { timeout: 30_000 });
   await expect(page.getByTestId("invoice-new-project-select")).toHaveValue(projectId);
   await expect(page.getByTestId("invoice-new-line-1-item-input")).toHaveValue("Progress Payment");
   await expect(page.getByTestId("invoice-new-line-1-rate-input")).toHaveValue("1000");
   await page.getByRole("button", { name: "Cancel and return" }).click();
   await expect(page).toHaveURL(/\/estimates\/[^?]+\?returnMilestone=/, { timeout: 30_000 });
-  await expect(page.locator("[data-estimate-payment-milestone-id]").first()).toBeFocused();
-  await page.getByRole("link", { name: /^Create Draft Invoice$/i }).click();
+  paymentSheet = page.getByTestId("estimate-payment-schedule-sheet");
+  await expect(paymentSheet).toBeVisible({ timeout: 30_000 });
+  await expect(paymentSheet.locator("[data-estimate-payment-milestone-id]").first()).toBeFocused();
+  await paymentSheet.getByRole("link", { name: /^Create Draft Invoice$/i }).click();
   await expect(page).toHaveURL(/\/financial\/invoices\/new\?/, { timeout: 30_000 });
   await page.getByRole("button", { name: "Create draft invoice" }).click();
   await expect(page).toHaveURL(/\/financial\/invoices\/[^/?#]+\/preview/, { timeout: 30_000 });
@@ -587,12 +703,13 @@ test("creates one draft invoice for a fixed amount payment schedule item", async
   );
   expect(Number(invoiceItems![0].amount)).toBe(1000);
 
-  await page.goto(estimateUrl, { waitUntil: "domcontentloaded" });
-  await expect(page.getByRole("link", { name: /^View Invoice$/i })).toBeVisible({
+  await gotoWithE2EAuth(page, estimateUrl);
+  paymentSheet = await openPaymentSchedule(page);
+  await expect(paymentSheet.getByRole("link", { name: /^View Invoice$/i })).toBeVisible({
     timeout: 30_000,
   });
-  await expect(page.getByRole("link", { name: /^Create Draft Invoice$/i })).toHaveCount(0);
-  await page.getByRole("link", { name: /^View Invoice$/i }).click();
+  await expect(paymentSheet.getByRole("link", { name: /^Create Draft Invoice$/i })).toHaveCount(0);
+  await paymentSheet.getByRole("link", { name: /^View Invoice$/i }).click();
   await expect(page).toHaveURL(new RegExp(`/financial/invoices/${invoiceId}`), {
     timeout: 30_000,
   });

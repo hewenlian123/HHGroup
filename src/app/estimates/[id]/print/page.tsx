@@ -16,6 +16,8 @@ import { PrintActionBar } from "./print-action-bar";
 import { SetBreadcrumbEntityTitle } from "@/components/layout/set-breadcrumb-entity-title";
 import { getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
 import { safeEstimateReturnPath } from "@/app/estimates/_components/estimate-workflow-continuity";
+import { ServerDataLoadFallback } from "@/components/server-data-load-fallback";
+import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
 
 export const dynamic = "force-dynamic";
 
@@ -31,17 +33,32 @@ export default async function EstimatePrintPage({
   const pdfCapture = pdf === "1";
   const readClient = getServerSupabaseInternalNoStore();
 
+  const pageData = await Promise.all([
+    getEstimateHeaderById(id, readClient),
+    getEstimateMeta(id, readClient),
+    getEstimateItems(id, readClient),
+    getEstimateCategories(id, readClient),
+    getPaymentSchedule(id, readClient),
+    getCostCodes(),
+    fetchDocumentCompanyProfile(),
+    readClient ? getEstimateRevisionContext(id, readClient).catch(() => null) : null,
+  ])
+    .then((data) => ({ data }))
+    .catch((error: unknown) => ({ error }));
+
+  if ("error" in pageData) {
+    logServerPageDataError(`estimates/${id}/print`, pageData.error);
+    return (
+      <ServerDataLoadFallback
+        message={serverDataLoadWarning(pageData.error, "estimate print financial details")}
+        backHref={`/estimates/${id}`}
+        backLabel="Back to estimate"
+      />
+    );
+  }
+
   const [estimate, meta, items, categories, paymentSchedule, costCodes, company, revisionContext] =
-    await Promise.all([
-      getEstimateHeaderById(id, readClient),
-      getEstimateMeta(id, readClient),
-      getEstimateItems(id, readClient),
-      getEstimateCategories(id, readClient),
-      getPaymentSchedule(id, readClient),
-      getCostCodes(),
-      fetchDocumentCompanyProfile(),
-      readClient ? getEstimateRevisionContext(id, readClient).catch(() => null) : null,
-    ]);
+    pageData.data;
 
   if (!estimate || !meta || !revisionContext) redirect("/estimates");
   const resolvedSummary = getEstimateSummaryFromRecords(meta, items);

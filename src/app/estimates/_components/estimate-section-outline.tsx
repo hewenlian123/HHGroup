@@ -30,58 +30,28 @@ function visibleSectionElement(sectionId: string): HTMLElement | null {
 
 export function EstimateSectionOutline({
   sections,
+  activeSectionId,
+  onActiveSectionChange,
   onCollapseAll,
   onExpandAll,
   addSectionControl,
 }: {
   sections: EstimateSectionOutlineItem[];
+  activeSectionId: string | null;
+  onActiveSectionChange: (sectionId: string, source: "explicit" | "inferred") => void;
   onCollapseAll: () => void;
   onExpandAll: () => void;
   addSectionControl?: React.ReactNode;
 }): React.ReactElement {
-  const [activeSectionId, setActiveSectionId] = React.useState<string | null>(
-    sections[0]?.id ?? null
-  );
-
-  const sectionKey = sections.map((section) => section.id).join("|");
-
-  React.useEffect(() => {
-    if (activeSectionId && sections.some((section) => section.id === activeSectionId)) return;
-    setActiveSectionId(sections[0]?.id ?? null);
-  }, [activeSectionId, sectionKey, sections]);
-
-  React.useEffect(() => {
-    if (typeof IntersectionObserver === "undefined") return;
-    const elements = sections
-      .map((section) => ({ id: section.id, element: visibleSectionElement(section.id) }))
-      .filter((entry): entry is { id: string; element: HTMLElement } => Boolean(entry.element));
-    if (!elements.length) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const nearest = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort(
-            (a, b) =>
-              Math.abs(a.boundingClientRect.top - 112) - Math.abs(b.boundingClientRect.top - 112)
-          )[0];
-        const match = nearest
-          ? elements.find((entry) => entry.element === nearest.target)
-          : undefined;
-        if (match) setActiveSectionId(match.id);
-      },
-      { rootMargin: "-88px 0px -62% 0px", threshold: [0, 0.2, 0.5] }
-    );
-    elements.forEach((entry) => observer.observe(entry.element));
-    return () => observer.disconnect();
-  }, [sectionKey, sections]);
-
-  const jumpToSection = (sectionId: string): void => {
+  const jumpToSection = (sectionId: string, allowSmoothScroll: boolean): void => {
     const target = visibleSectionElement(sectionId);
     if (!target) return;
-    setActiveSectionId(sectionId);
+    onActiveSectionChange(sectionId, "explicit");
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    target.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
+    target.scrollIntoView({
+      behavior: reduceMotion || !allowSmoothScroll ? "auto" : "smooth",
+      block: "start",
+    });
     target.focus({ preventScroll: true });
   };
 
@@ -112,7 +82,7 @@ export function EstimateSectionOutline({
                 <button
                   type="button"
                   className={cn("eb-section-outline-row", active && "is-active")}
-                  onClick={() => jumpToSection(section.id)}
+                  onClick={(event) => jumpToSection(section.id, event.detail > 0)}
                   aria-current={active ? "location" : undefined}
                   aria-label={`${section.name}, ${section.itemCount} ${
                     section.itemCount === 1 ? "item" : "items"

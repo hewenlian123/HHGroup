@@ -181,8 +181,13 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     }
 
     if (key === "commission") {
-      const commissions = await getCommissionsByProject(id);
-      return NextResponse.json({ ok: true as const, key, commissions });
+      const sessionResponse = NextResponse.next();
+      const supabase = createRouteSupabaseClient(_req, sessionResponse, { noStore: true });
+      if (!supabase) return jsonError("Authenticated project session is not configured.", 503);
+      const commissions = await getCommissionsByProject(id, supabase);
+      const response = NextResponse.json({ ok: true as const, key, commissions });
+      for (const cookie of sessionResponse.cookies.getAll()) response.cookies.set(cookie);
+      return response;
     }
 
     if (key === "punch-list") {

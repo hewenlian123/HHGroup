@@ -82,11 +82,7 @@ export function NeoToolbar({ children, className }: { children: ReactNode; class
     <Toolbar
       variant="filters"
       data-neo-toolbar="true"
-      className={cn(
-        OS.filterSurface,
-        "flex flex-col gap-3 p-3 md:flex-row md:items-center",
-        className
-      )}
+      className={cn("flex flex-col gap-3 md:flex-row md:items-center", className)}
     >
       {children}
     </Toolbar>
@@ -218,7 +214,7 @@ export function NeoBulkActions({
     <div
       data-neo-bulk-actions="true"
       className={cn(
-        "flex flex-col gap-hh-3 rounded-hh-standard border border-[var(--hh-border-strong)] bg-[var(--hh-l3-selected)] px-hh-3 py-hh-2 text-[var(--hh-text-primary)] shadow-operational",
+        "flex flex-col gap-hh-3 rounded-hh-panel border border-[var(--hh-information-border)] bg-[var(--hh-l3-selected)] px-hh-3 py-hh-2 text-[var(--hh-text-primary)] shadow-none",
         "sm:flex-row sm:items-center sm:justify-between",
         className
       )}

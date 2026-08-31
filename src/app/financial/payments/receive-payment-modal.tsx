@@ -25,6 +25,10 @@ import {
 } from "@/lib/payment-attachment-upload-browser";
 import { useToast } from "@/components/toast/toast-provider";
 import { formatCurrency } from "@/lib/formatters";
+import {
+  idempotentSubmissionForPayload,
+  type IdempotentSubmission,
+} from "@/lib/financial-idempotency";
 import { cn } from "@/lib/utils";
 import { createPaymentReceivedAction } from "./actions";
 
@@ -174,6 +178,7 @@ export function ReceivePaymentModal({
   const uploadInputRef = React.useRef<HTMLInputElement | null>(null);
   const dragDepthRef = React.useRef(0);
   const preserveUploadedAttachmentsRef = React.useRef(false);
+  const atomicSubmissionRef = React.useRef<IdempotentSubmission | null>(null);
   const [invoices, setInvoices] = React.useState<InvoiceWithDerived[]>([]);
   const [projects, setProjects] = React.useState<Awaited<ReturnType<typeof getProjects>>>([]);
   const [invoiceId, setInvoiceId] = React.useState("");
@@ -459,7 +464,7 @@ export function ReceivePaymentModal({
           size_bytes: draft.size_bytes ?? null,
           file_type: draft.file_type,
         }));
-      const payload: CreatePaymentReceivedPayload = {
+      const payloadWithoutKey: Omit<CreatePaymentReceivedPayload, "idempotency_key"> = {
         invoice_id: invId,
         project_id: projectId || null,
         customer_name:
@@ -471,6 +476,14 @@ export function ReceivePaymentModal({
         notes: notes.trim() || null,
         attachments,
       };
+      atomicSubmissionRef.current = idempotentSubmissionForPayload(
+        atomicSubmissionRef.current,
+        payloadWithoutKey
+      );
+      const payload: CreatePaymentReceivedPayload = {
+        ...payloadWithoutKey,
+        idempotency_key: atomicSubmissionRef.current.key,
+      };
       const result = await createPaymentReceivedAction(payload);
       if (!result.ok) throw new Error(result.error);
       preserveUploadedAttachmentsRef.current = true;
@@ -479,6 +492,7 @@ export function ReceivePaymentModal({
       toast({ title: "Payment recorded", variant: "success" });
       setAmount("");
       setNotes("");
+      atomicSubmissionRef.current = null;
     } catch (err) {
       toast({
         title: "Failed to record payment",

@@ -18,11 +18,13 @@ export function EstimateItemSortableRow({
   disabled?: boolean;
   children: (dragHandle: React.ReactNode) => React.ReactNode;
 }): React.ReactElement {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging, isOver } =
-    useSortable({ id, disabled });
+  const { attributes, listeners, setNodeRef, transform, isDragging, isOver } = useSortable({
+    id,
+    disabled,
+  });
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
-    transition,
+    transition: "none",
   };
   const dragHandle = (
     <button

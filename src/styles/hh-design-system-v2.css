@@ -1,0 +1,261 @@
+/*
+ * HH Group Design System v2
+ * Authority: Figma — "HH UI Validation — Round 1.1 — Final"
+ *
+ * This file intentionally loads after design-tokens.generated.css. The generated
+ * v1 file remains untouched; these aliases keep existing components compatible
+ * while the application migrates to the Figma light theme.
+ */
+
+:root {
+  --hh-v2-canvas: #f7f7f8;
+  --hh-v2-workspace: #ffffff;
+  --hh-v2-section: #fafafb;
+  --hh-v2-subtle: #f5f5f6;
+  --hh-v2-hover: #f4f4f5;
+  --hh-v2-selected: #eef4ff;
+
+  --hh-v2-text-primary: #181a1e;
+  --hh-v2-text-secondary: #4b525c;
+  --hh-v2-text-muted: #6b7280;
+
+  --hh-v2-border: #ecedef;
+  --hh-v2-border-strong: #dadde1;
+  --hh-v2-border-emphasis: #8b929b;
+
+  --hh-v2-accent: #2563eb;
+  --hh-v2-accent-hover: #1d4ed8;
+  --hh-v2-accent-soft: #dbeafe;
+
+  --hh-v2-success: #15803d;
+  --hh-v2-success-soft: #f0fdf4;
+  --hh-v2-warning: #b45309;
+  --hh-v2-warning-soft: #fffbeb;
+  --hh-v2-danger: #b91c1c;
+  --hh-v2-danger-soft: #fef2f2;
+  --hh-v2-information: #1d4ed8;
+  --hh-v2-information-soft: #dbeafe;
+  --hh-v2-information-border: #bfdbfe;
+}
+
+/*
+ * Repeated selectors deliberately outrank the legacy single-boundary aliases
+ * declared later in globals.css. Every application theme boundary resolves to
+ * the new light system; document/print surfaces keep their explicit CSS.
+ */
+:root:root,
+html.dark.dark,
+[data-hh-theme="auth"][data-hh-theme="auth"],
+[data-hh-theme="public"][data-hh-theme="public"],
+[data-hh-theme="document-light"][data-hh-theme="document-light"],
+[data-hh-theme="operational-light"][data-hh-theme="operational-light"],
+[data-hh-theme="operational-dark"][data-hh-theme="operational-dark"],
+[data-hh-theme="neo-dark"][data-hh-theme="neo-dark"] {
+  color-scheme: light;
+
+  /* Surfaces */
+  --hh-surface-canvas: var(--hh-v2-canvas);
+  --hh-surface-workspace: var(--hh-v2-workspace);
+  --hh-surface-section: var(--hh-v2-section);
+  --hh-surface-subtle: var(--hh-v2-subtle);
+  --hh-surface-hover: var(--hh-v2-hover);
+  --hh-surface-selected: var(--hh-v2-selected);
+  --hh-l0-canvas: var(--hh-v2-canvas);
+  --hh-l1-workspace: var(--hh-v2-workspace);
+  --hh-l2-operational-surface: var(--hh-v2-section);
+  --hh-l3-hover: var(--hh-v2-hover);
+  --hh-l3-selected: var(--hh-v2-selected);
+  --hh-l3-pressed: var(--hh-v2-accent-soft);
+  --hh-l4-floating-surface: var(--hh-v2-workspace);
+  --hh-l5-task-surface: var(--hh-v2-workspace);
+
+  /* Typography */
+  --hh-text-strong: var(--hh-v2-text-primary);
+  --hh-text-primary: var(--hh-v2-text-primary);
+  --hh-text-secondary: var(--hh-v2-text-secondary);
+  --hh-text-tertiary: var(--hh-v2-text-muted);
+  --hh-text-dim: var(--hh-v2-text-muted);
+  --hh-text-muted: var(--hh-v2-text-muted);
+  --hh-font-family-sans:
+    var(--font-geist-sans), "Geist", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
+  --hh-type-page-title-font-size: 24px;
+  --hh-type-page-title-line-height: 30px;
+  --hh-type-page-title-font-weight: 600;
+  --hh-type-page-title-letter-spacing: 0;
+  --hh-type-section-title-font-size: 16px;
+  --hh-type-section-title-line-height: 22px;
+  --hh-type-section-title-font-weight: 600;
+  --hh-type-section-title-letter-spacing: 0;
+  --hh-type-panel-title-font-size: 14px;
+  --hh-type-panel-title-line-height: 20px;
+  --hh-type-panel-title-font-weight: 500;
+  --hh-type-panel-title-letter-spacing: 0;
+  --hh-type-body-font-size: 14px;
+  --hh-type-body-line-height: 20px;
+  --hh-type-body-font-weight: 400;
+  --hh-type-body-letter-spacing: 0;
+  --hh-type-body-strong-font-size: 14px;
+  --hh-type-body-strong-line-height: 20px;
+  --hh-type-body-strong-font-weight: 500;
+  --hh-type-body-strong-letter-spacing: 0;
+  --hh-type-label-font-size: 12px;
+  --hh-type-label-line-height: 16px;
+  --hh-type-label-font-weight: 500;
+  --hh-type-label-letter-spacing: 0.1px;
+  --hh-type-metadata-font-size: 11px;
+  --hh-type-metadata-line-height: 14px;
+  --hh-type-metadata-font-weight: 500;
+  --hh-type-metadata-letter-spacing: 0.2px;
+  --hh-type-table-header-font-size: 11px;
+  --hh-type-table-header-line-height: 14px;
+  --hh-type-table-header-font-weight: 500;
+  --hh-type-table-header-letter-spacing: 0.2px;
+  --hh-type-table-cell-font-size: 13px;
+  --hh-type-table-cell-line-height: 18px;
+  --hh-type-table-cell-font-weight: 400;
+  --hh-type-table-cell-letter-spacing: 0;
+  --hh-type-financial-font-size: 14px;
+  --hh-type-financial-line-height: 20px;
+  --hh-type-financial-font-weight: 500;
+  --hh-type-financial-letter-spacing: 0;
+  --hh-type-financial-total-font-size: 20px;
+  --hh-type-financial-total-line-height: 24px;
+  --hh-type-financial-total-font-weight: 600;
+  --hh-type-financial-total-letter-spacing: 0;
+  --hh-type-control-font-size: 12px;
+  --hh-type-control-line-height: 16px;
+  --hh-type-control-font-weight: 500;
+  --hh-type-control-letter-spacing: 0.1px;
+  --hh-type-helper-font-size: 11px;
+  --hh-type-helper-line-height: 14px;
+  --hh-type-helper-font-weight: 400;
+  --hh-type-helper-letter-spacing: 0;
+  --hh-type-error-font-size: 11px;
+  --hh-type-error-line-height: 14px;
+  --hh-type-error-font-weight: 500;
+  --hh-type-error-letter-spacing: 0;
+  --hh-type-status-font-size: 11px;
+  --hh-type-status-line-height: 14px;
+  --hh-type-status-font-weight: 500;
+  --hh-type-status-letter-spacing: 0.2px;
+
+  /* Borders and elevation */
+  --hh-border-default: var(--hh-v2-border-strong);
+  --hh-border-input: var(--hh-v2-border-emphasis);
+  --hh-border-subtle: var(--hh-v2-border);
+  --hh-border: var(--hh-v2-border);
+  --hh-border-floating: var(--hh-v2-border-strong);
+  --hh-border-strong: var(--hh-v2-border-emphasis);
+  --hh-border-emphasis: var(--hh-v2-border-emphasis);
+  --hh-input: var(--hh-border-input);
+  --hh-input-background: var(--hh-v2-workspace);
+  --hh-shadow-operational: 0 1px 2px rgb(24 26 30 / 4%);
+  --hh-shadow-floating: 0 4px 12px rgb(24 26 30 / 8%);
+  --hh-shadow-task: 0 8px 24px rgb(24 26 30 / 10%);
+  --hh-shadow-overlay: 0 16px 40px rgb(24 26 30 / 14%);
+  /* Foundation decision: one visible scrim for Light task surfaces. */
+  --hh-overlay-scrim: rgb(24 26 30 / 32%);
+  --hh-shadow-sidebar: none;
+
+  /* Actions and focus */
+  --hh-accent-primary: var(--hh-v2-accent);
+  --hh-accent-hover: var(--hh-v2-accent-hover);
+  --hh-accent-soft: var(--hh-v2-accent-soft);
+  --hh-action-primary: var(--hh-v2-accent);
+  --hh-action-primary-hover: var(--hh-v2-accent-hover);
+  --hh-action-primary-foreground: #ffffff;
+  --hh-focus-ring: var(--hh-v2-accent);
+  --hh-ring: var(--hh-v2-accent);
+
+  /* Retained aliases now resolve to blue/semantic v2 colors, never gold. */
+  --hh-gold: var(--hh-v2-accent);
+  --hh-gold-hover: var(--hh-v2-accent-hover);
+  --hh-gold-muted: var(--hh-v2-selected);
+  --hh-gold-border: var(--hh-v2-accent-soft);
+  --hh-emerald: var(--hh-v2-success);
+  --hh-emerald-hover: var(--hh-v2-success);
+  --hh-emerald-muted: var(--hh-v2-success-soft);
+  --hh-emerald-border: var(--hh-v2-success);
+
+  /* Semantic states */
+  --hh-success: var(--hh-v2-success);
+  --hh-success-soft-fill: var(--hh-v2-success-soft);
+  --hh-success-border: var(--hh-v2-success);
+  --hh-warning: var(--hh-v2-warning);
+  --hh-warning-soft-fill: var(--hh-v2-warning-soft);
+  --hh-warning-border: var(--hh-v2-warning);
+  --hh-danger: var(--hh-v2-danger);
+  --hh-danger-soft-fill: var(--hh-v2-danger-soft);
+  --hh-danger-border: var(--hh-v2-danger);
+  --hh-information: var(--hh-v2-information);
+  --hh-information-soft-fill: var(--hh-v2-information-soft);
+  --hh-information-border: var(--hh-v2-information-border);
+
+  /* Geometry */
+  --hh-radius-row: 4px;
+  --hh-radius-control: 6px;
+  --hh-radius-card: 8px;
+  --hh-radius-pill: 999px;
+  --hh-radius-compact: var(--hh-radius-control);
+  --hh-radius-standard: var(--hh-radius-control);
+  --hh-radius-panel: var(--hh-radius-card);
+  --hh-radius-task: var(--hh-radius-card);
+  --hh-control-height-compact: 32px;
+  --hh-control-height-standard: 36px;
+  --hh-control-height-comfortable: 36px;
+  --hh-row-height-dense: 40px;
+  --hh-row-height-standard: 40px;
+  --hh-row-height-portrait-grid-header: 44px;
+  --hh-row-height-portrait-line-item: 52px;
+  --hh-grid-template-estimate-line-portrait: 2rem minmax(4rem, 0.8fr) minmax(5.5rem, 1.15fr) 2.75rem
+    3rem minmax(4.5rem, 0.75fr) minmax(5.75rem, 0.95fr) var(--hh-touch-min);
+  --hh-table-cell-padding-block: 10px;
+  --hh-sidebar-width-expanded: 216px;
+  --hh-sidebar-width-collapsed: 72px;
+  --hh-topbar-height-mobile: 56px;
+  --hh-topbar-height-desktop: 56px;
+
+  /* shadcn/Tailwind compatibility */
+  --background: 240 6.6666666667% 97.0588235294%;
+  --foreground: 220 11.1111111111% 10.5882352941%;
+  --card: 0 0% 100%;
+  --card-foreground: 220 11.1111111111% 10.5882352941%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 220 11.1111111111% 10.5882352941%;
+  --primary: 221.2121212121 83.1932773109% 53.3333333333%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 240 5.2631578947% 96.2745098039%;
+  --secondary-foreground: 220 11.1111111111% 10.5882352941%;
+  --muted: 240 5.2631578947% 96.2745098039%;
+  --muted-foreground: 220 8.9361702128% 46.0784313725%;
+  --accent: 218.8235294118 100% 96.6666666667%;
+  --accent-foreground: 224.2780748663 76.3265306122% 48.0392156863%;
+  --destructive: 0 73.7089201878% 41.7647058824%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 220 8.5714285714% 93.137254902%;
+  --input: 213.75 7.4074074074% 57.6470588235%;
+  --ring: 221.2121212121 83.1932773109% 53.3333333333%;
+  --radius: var(--hh-radius-standard);
+}
+
+.hh-overlay-scrim {
+  background-color: var(--hh-overlay-scrim);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+/* Native text controls retain the mobile anti-zoom size, then use body text on desktop. */
+.hh-type-text-entry {
+  font-size: var(--hh-type-text-entry-size-mobile);
+  font-weight: var(--hh-type-body-font-weight);
+  line-height: var(--hh-type-text-entry-line-height-mobile);
+}
+
+@media (min-width: 768px) {
+  .hh-type-text-entry {
+    font-size: var(--hh-type-text-entry-size-desktop);
+    font-weight: var(--hh-type-body-font-weight);
+    line-height: var(--hh-type-text-entry-line-height-desktop);
+  }
+}

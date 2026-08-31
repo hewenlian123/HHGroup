@@ -20,25 +20,19 @@ test("defines the approved L0, L1, and L2 background tokens for both themes", ()
   );
 });
 
-test("maps semantic backgrounds through Tailwind and the shared shell without Neo aliases", () => {
+test("maps Certified V2 light backgrounds through the shared shell without Neo aliases", () => {
   const css = source("src/app/globals.css");
   const tailwind = source("tailwind.config.ts");
   const shell = source("src/components/layout/app-shell.tsx");
   const pageLayout = source("src/components/base/page-layout.tsx");
 
-  assert.match(tailwind, /darkMode:\s*\[\s*"variant"/);
-  assert.match(tailwind, /data-hh-theme="neo-dark"/);
-  assert.match(tailwind, /explicitLightThemeBoundary/);
   assert.match(tailwind, /canvas:\s*"var\(--hh-l0-canvas\)"/);
   assert.match(tailwind, /workspace:\s*"var\(--hh-l1-workspace\)"/);
   assert.match(tailwind, /surface:\s*"var\(--hh-l2-operational-surface\)"/);
-  assert.match(tailwind, /canvas:\s*"var\(--hh-l0-canvas\)"/);
-  assert.match(tailwind, /base:\s*"var\(--hh-l1-workspace\)"/);
-  assert.match(tailwind, /raised:\s*"var\(--hh-l2-operational-surface\)"/);
-  assert.match(tailwind, /muted:\s*"var\(--hh-l2-operational-surface\)"/);
-  assert.match(shell, /hh-app-shell[^"\n]*bg-canvas/);
-  assert.match(shell, /neo-workspace-canvas[^"\n]*bg-canvas/);
-  assert.match(pageLayout, /neo-page-on-graphite[^"\n]*bg-canvas/);
+  assert.match(shell, /: "operational-light"/);
+  assert.match(shell, /hh-app-shell[^"\n]*bg-\[var\(--hh-surface-workspace\)\]/);
+  assert.doesNotMatch(shell, /neo-workspace-canvas[^"\n]*bg-canvas/);
+  assert.doesNotMatch(pageLayout, /neo-page-on-graphite/);
   assert.doesNotMatch(css, /--neo-[a-z0-9-]+\s*:/);
 });
 
@@ -71,18 +65,26 @@ test("reuses global depth tokens in Expense Operations and removes forced-dark r
   assert.match(estimateOriginInvoice, /background:\s*var\(--hh-l1-workspace\);/);
   assert.match(estimateOriginInvoice, /background:\s*var\(--hh-l4-floating-surface\);/);
   assert.doesNotMatch(estimateOriginInvoice, /--neo-surface-(?:base|raised|muted):\s*#/);
-  assert.match(estimateList, /background:\s*var\(--hh-l1-workspace\);/);
-  assert.match(estimateList, /background:\s*var\(--hh-l2-operational-surface\);/);
+  assert.match(estimateList, /background:\s*var\(--hh-surface-canvas\);/);
+  assert.match(estimateList, /background:\s*var\(--hh-surface-workspace\);/);
   assert.doesNotMatch(estimateList, /color-scheme:\s*light/);
-  assert.match(estimateListClient, /bg-\[var\(--hh-l2-operational-surface\)\]/);
+  assert.match(estimateListClient, /bg-\[var\(--hh-surface-workspace\)\]/);
   assert.doesNotMatch(estimateListClient, /bg-\[#f4f4f2\]/);
 });
 
-test("keeps the approved estimate preview and print background exception", () => {
+test("keeps the Certified V2 light preview shell and white print document", () => {
   const css = source("src/app/globals.css");
 
-  assert.match(css, /\.estimate-preview-page-shell\s*\{[\s\S]*?background:\s*#181818;/);
-  assert.match(css, /\.estimate-preview-shell\s*\{[\s\S]*?background:\s*#181818;/);
+  assert.match(
+    css,
+    /\.estimate-preview-page-shell\s*\{[\s\S]*?background:\s*var\(--hh-surface-canvas,\s*#f7f7f8\);/
+  );
+  assert.match(
+    css,
+    /\.estimate-preview-shell\s*\{[\s\S]*?background:\s*var\(--hh-surface-canvas,\s*#f7f7f8\);/
+  );
+  assert.doesNotMatch(css, /\.estimate-preview-(?:page-)?shell\s*\{[^}]*#181818/s);
+  assert.match(css, /\.estimate-a4-page\s*\{[^}]*background:\s*#ffffff/s);
   assert.match(css, /@media print\s*\{/);
   assert.match(css, /body:has\(\[data-estimate-pdf-capture="true"\]\)/);
 });

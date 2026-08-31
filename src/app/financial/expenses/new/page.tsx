@@ -21,7 +21,6 @@ import {
   getPaymentAccounts,
   getSubcontractDeductionOptions,
   updateExpenseReceiptUrl,
-  updateExpenseForReview,
   type PaymentAccountRow,
   type SubcontractDeductionOption,
 } from "@/lib/data";
@@ -45,6 +44,10 @@ import {
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/formatters";
 import { hawaiiTodayYmd } from "@/lib/hawaii-calendar-date";
+import {
+  idempotentSubmissionForPayload,
+  type IdempotentSubmission,
+} from "@/lib/financial-idempotency";
 
 type ProjectOption = { id: string; name: string | null };
 
@@ -109,6 +112,7 @@ export default function NewExpensePage() {
 
   const [loading, setLoading] = React.useState(true);
   const [saving, setSaving] = React.useState(false);
+  const atomicSubmissionRef = React.useRef<IdempotentSubmission | null>(null);
   const [error, setError] = React.useState<string | null>(null);
 
   const [projects, setProjects] = React.useState<ProjectOption[]>([]);
@@ -303,7 +307,7 @@ export default function NewExpensePage() {
     setSaving(true);
     try {
       const selectedAccount = accounts.find((account) => account.id === accountId);
-      const created = await createExpense({
+      const createPayload = {
         date,
         vendorName: vendorName.trim(),
         referenceNo: referenceNo.trim() || undefined,
@@ -325,6 +329,19 @@ export default function NewExpensePage() {
               note: deductionNote.trim() || null,
             }
           : null,
+        initialStatus: deriveExpenseWorkflowStatus(
+          effectiveLines[0]?.projectId ?? null,
+          effectiveLines[0]?.category ?? "",
+          effectiveLines[0]?.costAllocation ?? EXPENSE_COST_ALLOCATION_OVERHEAD
+        ),
+      };
+      atomicSubmissionRef.current = idempotentSubmissionForPayload(
+        atomicSubmissionRef.current,
+        createPayload
+      );
+      const created = await createExpense({
+        ...createPayload,
+        idempotencyKey: atomicSubmissionRef.current.key,
       });
       if (receiptFile) {
         const uploadData = new FormData();
@@ -348,14 +365,7 @@ export default function NewExpensePage() {
         persistLastExpensePaymentAccountId(pa);
         rememberExpenseVendorPaymentAccount(vendorName.trim(), pa);
       }
-      const head = effectiveLines[0];
-      await updateExpenseForReview(created.id, {
-        status: deriveExpenseWorkflowStatus(
-          head?.projectId ?? null,
-          head?.category ?? "",
-          head?.costAllocation ?? EXPENSE_COST_ALLOCATION_OVERHEAD
-        ),
-      });
+      atomicSubmissionRef.current = null;
       toast({ title: "Created", description: "Expense created.", variant: "success" });
       router.push("/financial/expenses");
       syncRouterNonBlocking(router);

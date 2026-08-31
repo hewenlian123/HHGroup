@@ -148,8 +148,6 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       "id, worker_id, work_date, cost_amount, status, worker_payment_id",
       "id, worker_id, work_date, cost_amount, status",
       "id, worker_id, work_date, cost_amount",
-      // With total when column exists (older daily log).
-      "id, worker_id, work_date, days_worked, cost_amount, total, status, worker_payment_id, morning, afternoon, hours, notes",
       // project_id on row (newer unified schema).
       "id, worker_id, project_id, work_date, days_worked, cost_amount, status, worker_payment_id, morning, afternoon, hours, notes",
       "id, worker_id, project_id, work_date, cost_amount, status, worker_payment_id, morning, afternoon",

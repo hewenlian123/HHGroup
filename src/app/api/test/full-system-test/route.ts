@@ -860,6 +860,7 @@ export async function POST(req: Request) {
 
       // Receive partial payment via app layer (syncs to invoice_payments + deposits)
       const payment = await createPaymentReceived({
+        idempotency_key: crypto.randomUUID(),
         invoice_id: invoiceId,
         project_id: projectId,
         customer_name: "Workflow Test Client",

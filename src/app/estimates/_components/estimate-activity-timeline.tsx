@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { Activity, ArrowUpRight } from "lucide-react";
+import { Activity, ArrowUpRight, RotateCw } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
 
 import { formatEstimateActivityEvent, type EstimateActivityEvent } from "@/lib/estimate-activity";
 import { cn } from "@/lib/utils";
@@ -18,10 +20,12 @@ function formatOccurredAt(value: string): string {
 export function EstimateActivityTimeline({
   events,
   revisionNumber,
+  onRetry,
   className,
 }: {
   events: EstimateActivityEvent[] | null;
   revisionNumber: number;
+  onRetry?: () => void;
   className?: string;
 }): React.ReactElement {
   return (
@@ -52,9 +56,20 @@ export function EstimateActivityTimeline({
       </div>
 
       {events === null ? (
-        <p className="py-4 text-sm text-[var(--hh-text-secondary)]" role="status">
-          Activity is temporarily unavailable.
-        </p>
+        <div className="eb-activity-unavailable py-4" role="status">
+          <p className="text-sm font-medium text-[var(--hh-danger)]">
+            Activity is temporarily unavailable.
+          </p>
+          <p className="mt-1 text-xs text-[var(--hh-text-secondary)]">
+            Activity history could not be loaded. Try again.
+          </p>
+          {onRetry ? (
+            <Button type="button" variant="outline" size="sm" className="mt-3" onClick={onRetry}>
+              <RotateCw className="h-3.5 w-3.5" aria-hidden />
+              Retry
+            </Button>
+          ) : null}
+        </div>
       ) : events.length === 0 ? (
         <p className="py-4 text-sm text-[var(--hh-text-secondary)]">
           No recorded business activity.

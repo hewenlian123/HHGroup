@@ -1,7 +1,8 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "./estimate-playwright-test";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-import { loginAsE2EOwner } from "./e2e-auth-owner";
+import { gotoWithE2EAuth, loginAsE2EOwner, reloadWithE2EAuth } from "./e2e-auth-owner";
+import { deleteLocalEstimateFixtureGraphs } from "./e2e-estimate-fixture-teardown";
 import { assertE2ESupabaseUrlSafeForMutations } from "./e2e-supabase-url-guard";
 
 const createdClientNames = new Set<string>();
@@ -20,9 +21,6 @@ async function deleteRowsByEstimateIds(
   const { error } = await supabase.from(table).delete().in("estimate_id", estimateIds);
   if (
     error &&
-    !(
-      table === "estimate_snapshots" && /permission denied|row-level security/i.test(error.message)
-    ) &&
     !/schema cache|relation .* does not exist|could not find the table/i.test(error.message)
   ) {
     throw error;
@@ -64,11 +62,10 @@ async function cleanupEstimateTestData(
   if (ids.length === 0) return;
 
   await deleteRowsByEstimateIds(supabase, "estimate_payment_schedule_items", ids);
-  await deleteRowsByEstimateIds(supabase, "estimate_snapshots", ids);
   await deleteRowsByEstimateIds(supabase, "estimate_items", ids);
   await deleteRowsByEstimateIds(supabase, "estimate_categories", ids);
   await deleteRowsByEstimateIds(supabase, "estimate_meta", ids);
-  await supabase.from("estimates").delete().in("id", ids);
+  await deleteLocalEstimateFixtureGraphs(ids);
 }
 
 async function fillBaseEstimate(page: Page, params: { client: string; project: string }) {
@@ -163,8 +160,7 @@ test("estimate payment schedule persists and has customer-facing payment preview
   createdClientNames.add(client);
   createdProjectNames.add(project);
 
-  await page.goto("/estimates/new");
-  await page.waitForLoadState("domcontentloaded");
+  await gotoWithE2EAuth(page, "/estimates/new");
   await expect(page.getByRole("heading", { name: "New Estimate" })).toBeVisible({
     timeout: 30_000,
   });
@@ -191,7 +187,7 @@ test("estimate payment schedule persists and has customer-facing payment preview
   await expect(page).toHaveURL(/\/estimates\/(?!new(?:\/|$))[^/?#]+/, { timeout: 30_000 });
   const detailUrl = page.url().replace(/\?.*$/, "");
 
-  await page.reload({ waitUntil: "domcontentloaded" });
+  await reloadWithE2EAuth(page);
   const paymentSheet = await openDetailPaymentSchedule(page);
   await expect(paymentSheet.getByText("1st Payment", { exact: true })).toBeVisible({
     timeout: 30_000,
@@ -215,7 +211,7 @@ test("estimate payment schedule persists and has customer-facing payment preview
   await expect(page.locator("main")).toContainText("$7,500.00");
   await expect(page.locator("main")).not.toContainText(/internal only/i);
 
-  await page.goto(`${detailUrl}/print`, { waitUntil: "domcontentloaded" });
+  await gotoWithE2EAuth(page, `${detailUrl}/print`);
   await expect(page.getByRole("document", { name: "Estimate print view" })).toContainText(
     "Final Payment"
   );
@@ -228,19 +224,19 @@ test("estimate payment schedule persists and has customer-facing payment preview
   expect(printText).not.toContain("\t");
   expect(printText).not.toContain("\u2028");
 
-  await page.goto(detailUrl, { waitUntil: "domcontentloaded" });
+  await gotoWithE2EAuth(page, detailUrl);
   await expect(page.locator("body")).not.toContainText("Payment Request");
   await openDetailPaymentSchedule(page);
   await expect(page.getByRole("link", { name: /^Create Draft Invoice$/i })).toHaveCount(0);
 
-  await page.goto(detailUrl, { waitUntil: "domcontentloaded" });
+  await gotoWithE2EAuth(page, detailUrl);
   await page.getByRole("button", { name: "Edit", exact: true }).click();
   const editablePaymentSheet = await openDetailPaymentSchedule(page);
   await page.getByRole("button", { name: /Delete 2nd Payment/i }).click();
   await expect(editablePaymentSheet.getByText("2nd Payment", { exact: true })).toHaveCount(0, {
     timeout: 30_000,
   });
-  await page.reload({ waitUntil: "domcontentloaded" });
+  await reloadWithE2EAuth(page);
   const paymentSheetAfterDelete = await openDetailPaymentSchedule(page);
   await expect(paymentSheetAfterDelete.getByText("2nd Payment", { exact: true })).toHaveCount(0);
   await expect(paymentSheetAfterDelete.getByText("1st Payment", { exact: true })).toBeVisible({

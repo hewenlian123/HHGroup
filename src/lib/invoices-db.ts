@@ -171,11 +171,6 @@ function isMissingColumn(err: { message?: string } | null): boolean {
   return /column .* does not exist|could not find the .* column|schema cache/i.test(m);
 }
 
-function isQuantityColumnUnsupported(err: { message?: string } | null): boolean {
-  const m = err?.message ?? "";
-  return /quantity/i.test(m) && /column|generated|schema cache|could not find/i.test(m);
-}
-
 function normalizeReceivableStatus(status: string | null | undefined): string {
   return String(status ?? "")
     .trim()
@@ -218,50 +213,6 @@ function isoDateLike(value: unknown): string | null {
   if (value === null || value === undefined) return null;
   const text = String(value);
   return text ? text.slice(0, 10) : null;
-}
-
-async function insertInvoiceItems(
-  c: ReturnType<typeof client>,
-  rows: Array<{
-    invoice_id: string;
-    description: string;
-    qty: number;
-    unit_price: number;
-    amount: number;
-  }>
-): Promise<{ error?: string }> {
-  if (rows.length === 0) return {};
-  const rowsWithQuantity = rows.map((row) => ({ ...row, quantity: row.qty }));
-  let { error } = await c.from("invoice_items").insert(rowsWithQuantity);
-  if (error && isQuantityColumnUnsupported(error)) {
-    const fallback = await c.from("invoice_items").insert(rows);
-    error = fallback.error;
-  }
-  return error ? { error: error.message ?? "Failed to create invoice items." } : {};
-}
-
-async function syncInvoiceStoredTotals(
-  c: ReturnType<typeof client>,
-  invoiceId: string,
-  lineItems: InvoiceLineItem[],
-  taxPct: number
-): Promise<void> {
-  const subtotal = lineItems.reduce((sum, item) => {
-    const quantity = Math.max(0, Number(item.qty) || 0);
-    const unitPrice = Math.max(0, Number(item.unitPrice) || 0);
-    return sum + quantity * unitPrice;
-  }, 0);
-  const safeTaxPct = Math.max(0, Number(taxPct) || 0);
-  const taxAmount = Math.round(subtotal * (safeTaxPct / 100) * 100) / 100;
-  await c
-    .from("invoices")
-    .update({
-      subtotal,
-      tax_pct: safeTaxPct,
-      tax_amount: taxAmount,
-      total: subtotal + taxAmount,
-    })
-    .eq("id", invoiceId);
 }
 
 /** Avoid appending migration HINT to connection/network errors. */
@@ -1100,88 +1051,66 @@ export async function deleteInvoice(invoiceId: string): Promise<boolean> {
   return !error && Boolean(data);
 }
 
-export async function createInvoice(payload: {
-  invoiceNo?: string;
-  projectId: string;
-  customerId?: string | null;
-  clientName: string;
-  issueDate: string;
-  dueDate: string;
-  lineItems: InvoiceLineItem[];
-  taxPct?: number;
-  notes?: string;
-}): Promise<Invoice> {
-  const c = client();
-  const subtotal = payload.lineItems.reduce((s, l) => s + l.amount, 0);
-  const taxPct = payload.taxPct ?? 0;
-  const taxAmount = Math.round(subtotal * (taxPct / 100) * 100) / 100;
-  const total = subtotal + taxAmount;
+export async function createInvoice(
+  payload: {
+    idempotencyKey?: string;
+    invoiceNo?: string;
+    projectId: string;
+    customerId?: string | null;
+    clientName: string;
+    issueDate: string;
+    dueDate: string;
+    lineItems: InvoiceLineItem[];
+    taxPct?: number;
+    notes?: string;
+  },
+  explicitClient?: SupabaseClient
+): Promise<Invoice> {
+  return createInvoiceAtomicWithClient(payload, client(explicitClient));
+}
 
-  const isUniqueInvoiceNo = (err: unknown): boolean => {
-    const code = (err as { code?: string } | null)?.code;
-    const msg = (err as { message?: string } | null)?.message ?? "";
-    return code === "23505" || /invoice_no|invoices_invoice_no_key/i.test(msg);
-  };
-
-  let lastErr: unknown = null;
-  for (let attempt = 0; attempt < 2; attempt++) {
-    const customInvoiceNo = payload.invoiceNo?.trim();
-    let invoiceNo = customInvoiceNo ?? "";
-    if (!invoiceNo) {
-      const { count } = await c.from("invoices").select("id", { count: "exact", head: true });
-      const nextNum = (count ?? 0) + 1 + attempt;
-      invoiceNo = `INV-${String(nextNum).padStart(4, "0")}`;
-    }
-
-    const { data: invRow, error: invErr } = await c
-      .from("invoices")
-      .insert({
-        invoice_no: invoiceNo,
-        project_id: payload.projectId || null,
-        customer_id: payload.customerId || null,
-        client_name: payload.clientName ?? "",
-        issue_date: payload.issueDate.slice(0, 10),
-        due_date: payload.dueDate.slice(0, 10),
-        status: "Draft",
-        notes: payload.notes ?? null,
-        tax_pct: taxPct,
-        subtotal,
-        tax_amount: taxAmount,
-        total,
-      })
-      .select(
-        "id, invoice_no, project_id, customer_id, client_name, issue_date, due_date, status, notes, tax_pct, subtotal, tax_amount, total"
-      )
-      .single();
-
-    if (!invErr && invRow) {
-      const inv = invRow as InvoiceRow;
-      const itemRows = payload.lineItems.map((item) => {
-        const quantity = Number(item.qty) || 0;
-        const unitPrice = Number(item.unitPrice) || 0;
-        return {
-          invoice_id: inv.id,
-          description: item.description,
-          qty: quantity,
-          unit_price: unitPrice,
-          amount: quantity * unitPrice,
-        };
-      });
-      const itemInsert = await insertInvoiceItems(c, itemRows);
-      if (itemInsert.error) {
-        await c.from("invoices").delete().eq("id", inv.id);
-        throw new Error(itemInsert.error);
-      }
-      await syncInvoiceStoredTotals(c, inv.id, payload.lineItems, taxPct);
-      const savedItemRows = await getInvoiceItemsOrEmpty(inv.id);
-      return toInvoice(inv, savedItemRows);
-    }
-
-    lastErr = invErr;
-    if (!payload.invoiceNo && invErr && isUniqueInvoiceNo(invErr) && attempt === 0) continue;
-    throw new Error(invErr?.message ?? "Failed to create invoice.");
-  }
-  throw new Error((lastErr as { message?: string } | null)?.message ?? "Failed to create invoice.");
+export async function createInvoiceAtomicWithClient(
+  payload: {
+    idempotencyKey?: string;
+    invoiceNo?: string;
+    projectId: string;
+    customerId?: string | null;
+    clientName: string;
+    issueDate: string;
+    dueDate: string;
+    lineItems: InvoiceLineItem[];
+    taxPct?: number;
+    notes?: string;
+  },
+  explicitClient: SupabaseClient
+): Promise<Invoice> {
+  const idempotencyKey = payload.idempotencyKey?.trim() || globalThis.crypto.randomUUID();
+  const { data, error } = await explicitClient.rpc("create_invoice_atomic", {
+    p_idempotency_key: idempotencyKey,
+    p_header: {
+      invoice_no: payload.invoiceNo?.trim() || null,
+      project_id: payload.projectId || null,
+      customer_id: payload.customerId || null,
+      client_name: payload.clientName ?? "",
+      issue_date: payload.issueDate.slice(0, 10),
+      due_date: payload.dueDate.slice(0, 10),
+      status: "Draft",
+      notes: payload.notes ?? null,
+      tax_pct: payload.taxPct ?? 0,
+    },
+    p_items: payload.lineItems.map((item) => ({
+      description: item.description,
+      qty: item.qty,
+      unit_price: item.unitPrice,
+    })),
+  });
+  if (error) throw new Error(error.message ?? "Failed to create invoice.");
+  const invoiceId = String((data as { invoice_id?: unknown } | null)?.invoice_id ?? "");
+  if (!invoiceId) throw new Error("Atomic invoice create returned no invoice id.");
+  const saved = await getInvoiceById(invoiceId, explicitClient);
+  if (!saved)
+    throw new Error("Atomic invoice create completed but the invoice could not be loaded.");
+  return saved;
 }
 
 export async function updateInvoice(
@@ -1196,59 +1125,34 @@ export async function updateInvoice(
     lineItems: InvoiceLineItem[];
     taxPct: number;
     notes: string;
-  }>
+  }>,
+  explicitClient?: SupabaseClient
 ): Promise<boolean> {
-  const c = client();
-  const inv = await getInvoiceById(invoiceId);
+  const c = client(explicitClient);
+  const inv = await getInvoiceById(invoiceId, explicitClient);
   if (!inv || inv.status !== "Draft") return false;
-  const updates: Record<string, unknown> = {};
-  if (payload.projectId !== undefined) updates.project_id = payload.projectId || null;
-  if (payload.customerId !== undefined) updates.customer_id = payload.customerId || null;
-  if (payload.invoiceNo !== undefined)
-    updates.invoice_no = payload.invoiceNo.trim() || inv.invoiceNo;
-  if (payload.clientName !== undefined) updates.client_name = payload.clientName.trim();
-  if (payload.issueDate != null) updates.issue_date = payload.issueDate.slice(0, 10);
-  if (payload.dueDate != null) updates.due_date = payload.dueDate.slice(0, 10);
-  if (payload.notes !== undefined) updates.notes = payload.notes ?? null;
-  if (payload.taxPct != null) updates.tax_pct = payload.taxPct;
-  if (payload.lineItems != null || payload.taxPct != null) {
-    const nextItems = payload.lineItems ?? inv.lineItems;
-    const subtotal = nextItems.reduce((sum, item) => {
-      const quantity = Math.max(0, Number(item.qty) || 0);
-      const unitPrice = Math.max(0, Number(item.unitPrice) || 0);
-      return sum + quantity * unitPrice;
-    }, 0);
-    const taxPct = Math.max(0, Number(payload.taxPct ?? inv.taxPct ?? 0) || 0);
-    const taxAmount = Math.round(subtotal * (taxPct / 100) * 100) / 100;
-    updates.subtotal = subtotal;
-    updates.tax_pct = taxPct;
-    updates.tax_amount = taxAmount;
-    updates.total = subtotal + taxAmount;
-  }
-  if (Object.keys(updates).length > 0) {
-    const { error: updateErr } = await c.from("invoices").update(updates).eq("id", invoiceId);
-    if (updateErr) return false;
-  }
-  if (payload.lineItems != null) {
-    const { error: deleteErr } = await c.from("invoice_items").delete().eq("invoice_id", invoiceId);
-    if (deleteErr) return false;
-    const itemRows = payload.lineItems.map((item) => {
-      const quantity = Number(item.qty) || 0;
-      const unitPrice = Number(item.unitPrice) || 0;
-      return {
-        invoice_id: invoiceId,
+  const { error } = await c.rpc("update_invoice_atomic", {
+    p_invoice_id: invoiceId,
+    p_header: {
+      invoice_no: payload.invoiceNo?.trim() || inv.invoiceNo,
+      project_id:
+        payload.projectId !== undefined ? payload.projectId || null : inv.projectId || null,
+      customer_id:
+        payload.customerId !== undefined ? payload.customerId || null : inv.customerId || null,
+      client_name: payload.clientName !== undefined ? payload.clientName.trim() : inv.clientName,
+      issue_date: payload.issueDate != null ? payload.issueDate.slice(0, 10) : inv.issueDate,
+      due_date: payload.dueDate != null ? payload.dueDate.slice(0, 10) : inv.dueDate,
+      notes: payload.notes !== undefined ? (payload.notes ?? null) : (inv.notes ?? null),
+      tax_pct: Math.max(0, payload.taxPct ?? inv.taxPct ?? 0),
+    },
+    p_items:
+      payload.lineItems?.map((item) => ({
         description: item.description,
-        qty: quantity,
-        unit_price: unitPrice,
-        amount: quantity * unitPrice,
-      };
-    });
-    const itemInsert = await insertInvoiceItems(c, itemRows);
-    if (itemInsert.error) return false;
-    const taxPct = Math.max(0, Number(payload.taxPct ?? inv.taxPct ?? 0) || 0);
-    await syncInvoiceStoredTotals(c, invoiceId, payload.lineItems, taxPct);
-  }
-  return true;
+        qty: item.qty,
+        unit_price: item.unitPrice,
+      })) ?? null,
+  });
+  return !error;
 }
 
 export async function markInvoiceSent(invoiceId: string): Promise<boolean> {

@@ -1,11 +1,15 @@
 import { execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
+import { existsSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
+import { homedir } from "node:os";
+import { delimiter, join } from "node:path";
 
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./estimate-playwright-test";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-import { loginAsE2EOwner } from "./e2e-auth-owner";
+import { gotoWithE2EAuth, loginAsE2EOwner } from "./e2e-auth-owner";
+import { deleteLocalEstimateFixtureGraphs } from "./e2e-estimate-fixture-teardown";
 import { expectBoundedLetterPages } from "./estimate-document-page-integrity";
 import { assertE2ESupabaseUrlSafeForMutations } from "./e2e-supabase-url-guard";
 
@@ -27,8 +31,33 @@ function longScope(label: string, index: number): string {
   )}`;
 }
 
+function resolvePdfToTextBinary(): string {
+  const configured = process.env.PDFTOTEXT_BIN?.trim();
+  const pathCandidates = (process.env.PATH ?? "")
+    .split(delimiter)
+    .filter(Boolean)
+    .map((entry) => join(entry, "pdftotext"));
+  const candidates = [
+    configured,
+    ...pathCandidates,
+    "/opt/homebrew/bin/pdftotext",
+    "/usr/local/bin/pdftotext",
+    join(
+      homedir(),
+      ".cache/codex-runtimes/codex-primary-runtime/dependencies/native/poppler/poppler/bin/pdftotext"
+    ),
+  ].filter((candidate): candidate is string => Boolean(candidate));
+  const binary = candidates.find((candidate) => existsSync(candidate));
+  if (!binary) {
+    throw new Error(
+      "pdftotext is required for Estimate PDF integrity verification. Set PDFTOTEXT_BIN or add Poppler to PATH."
+    );
+  }
+  return binary;
+}
+
 function pdfText(pdf: Buffer): string {
-  return execFileSync("pdftotext", ["-layout", "-", "-"], {
+  return execFileSync(resolvePdfToTextBinary(), ["-layout", "-", "-"], {
     encoding: "utf8",
     input: pdf,
     maxBuffer: 10 * 1024 * 1024,
@@ -327,7 +356,7 @@ test("immutable revisions keep selected Preview, Print, and PDF identity and con
         schedule: "Rev 1 deposit",
       },
     ]) {
-      await page.goto(`/estimates/${fixture.id}/print`, { waitUntil: "domcontentloaded" });
+      await gotoWithE2EAuth(page, `/estimates/${fixture.id}/print`);
       await expect(page.locator(".estimate-print-context-identity")).toHaveText(
         `${estimateNumber} Rev ${fixture.revision}`
       );
@@ -357,12 +386,12 @@ test("immutable revisions keep selected Preview, Print, and PDF identity and con
       expect(text).toContain(fixture.schedule);
     }
 
-    await page.goto(`/estimates/${sourceId}`, { waitUntil: "domcontentloaded" });
+    await gotoWithE2EAuth(page, `/estimates/${sourceId}`);
     await expect(page.getByRole("button", { name: "Edit", exact: true })).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Current revision", exact: true })).toBeVisible();
 
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto(`/estimates/${sourceId}/preview`, { waitUntil: "domcontentloaded" });
+    await gotoWithE2EAuth(page, `/estimates/${sourceId}/preview`);
     await expect(page.getByTestId("estimate-revision-context")).toBeVisible();
     await page.getByRole("button", { name: "More preview actions" }).click();
     await expect(page.getByRole("menuitem", { name: "Next revision" })).toBeVisible();
@@ -383,8 +412,7 @@ test("immutable revisions keep selected Preview, Print, and PDF identity and con
       await db.from("estimate_items").delete().in("estimate_id", estimateIds);
       await db.from("estimate_categories").delete().in("estimate_id", estimateIds);
       await db.from("estimate_meta").delete().in("estimate_id", estimateIds);
-      if (revisionId) await db.from("estimates").delete().eq("id", revisionId);
-      await db.from("estimates").delete().eq("id", sourceId);
+      await deleteLocalEstimateFixtureGraphs(estimateIds);
     }
     await db.from("customers").delete().eq("id", customerId);
   }

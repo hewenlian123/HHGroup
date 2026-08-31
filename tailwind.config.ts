@@ -27,6 +27,7 @@ const config: Config = {
       minHeight: {
         touch: "var(--hh-touch-min)",
         "hh-touch": "var(--hh-touch-min)",
+        "hh-row-dense": "var(--hh-row-height-dense)",
         "hh-row-touch": "var(--hh-row-min-height-touch)",
       },
       minWidth: {
@@ -77,8 +78,8 @@ const config: Config = {
         surface: "var(--hh-l2-operational-surface)",
         page: "var(--hh-l0-canvas)",
         text: {
-          primary: "#0F172A",
-          secondary: "#71717A",
+          primary: "var(--hh-text-primary)",
+          secondary: "var(--hh-text-secondary)",
         },
         neo: {
           surface: {
@@ -193,6 +194,7 @@ const config: Config = {
         sm: "calc(var(--radius) - 4px)",
         "hh-compact": "var(--hh-radius-compact)",
         "hh-standard": "var(--hh-radius-standard)",
+        "hh-pill": "var(--hh-radius-pill)",
         "hh-panel": "var(--hh-radius-panel)",
         "hh-task": "var(--hh-radius-task)",
       },

@@ -1,10 +1,20 @@
-import { expect, test, type Page, type TestInfo } from "@playwright/test";
+import { expect, test, type Page, type TestInfo } from "./estimate-playwright-test";
 import { mkdir } from "node:fs/promises";
 
 import { loginAsE2EOwner } from "./e2e-auth-owner";
+import {
+  captureUnexpectedBrowserErrors,
+  cleanupDenseEstimateFixture,
+  DENSE_ESTIMATE_ID,
+  DENSE_ESTIMATE_NUMBER,
+  seedDenseEstimateFixture,
+} from "./estimate-dense-fixture";
 
-const DENSE_ESTIMATE_ID = "edc68a63-cb87-4298-8231-9c668bf43ffe";
 const SCREENSHOT_DIR = "/private/tmp/hh-estimate-final-acceptance-after";
+const browserErrors = new WeakMap<Page, string[]>();
+
+test.beforeAll(seedDenseEstimateFixture);
+test.afterAll(cleanupDenseEstimateFixture);
 
 async function expectNoHorizontalOverflow(page: Page): Promise<void> {
   await expect
@@ -45,99 +55,55 @@ async function openEstimateDetails(page: Page): Promise<void> {
   ).toBeVisible();
 }
 
+async function fillNewLineDescription(page: Page, ordinal: number, value: string): Promise<void> {
+  const name = `Line item ${ordinal} description`;
+  await page.getByRole("button", { name, exact: true }).locator("visible=true").click();
+  const editor = page.getByRole("textbox", { name, exact: true }).locator("visible=true");
+  await editor.fill(value);
+  await page.getByTestId("estimate-description-done").locator("visible=true").click();
+  await expect(
+    page.getByRole("button", { name, exact: true }).locator("visible=true")
+  ).toContainText(value);
+}
+
 test.beforeEach(async ({ page }) => {
+  browserErrors.set(page, captureUnexpectedBrowserErrors(page));
   await page.emulateMedia({ reducedMotion: "reduce" });
 });
+test.afterEach(({ page }) => expect(browserErrors.get(page) ?? []).toEqual([]));
 
-test("Existing Estimate locks typography, context, summary, and Builder rhythm", async ({
+test("Existing Estimate exposes the Certified V2 command, outline, scope, and pricing hierarchy", async ({
   page,
 }, testInfo) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await loginAsE2EOwner(page, `/estimates/${DENSE_ESTIMATE_ID}`);
 
-  const contextPanel = page
-    .getByTestId("estimate-details-summary")
-    .locator(".eb-estimate-context-panel");
-  const contextLabel = contextPanel.locator(".eb-estimate-context-label").first();
-  const summary = page.locator(".eb-pricing-summary-strip");
-  const summaryLabel = summary.locator(".eb-pricing-summary-cell > span").first();
-  const totalValue = summary.locator(".eb-pricing-summary-cell.is-total > strong");
-  const regularValue = summary.locator(".eb-pricing-summary-cell > strong").first();
-  const scopeSearch = page.locator(".eb-scope-toolbar-search-wrap > input");
-  const sectionJump = page.locator(".eb-scope-jump-wrap");
-  const sectionTitle = page.locator(".eb-scope-block-title").first();
-  const itemCount = page.locator(".eb-scope-section-item-count").first();
-
-  await expect(contextPanel).toBeVisible();
-  await expect(summary).toBeVisible();
+  await expect(page.getByTestId("estimate-detail-header")).toContainText(DENSE_ESTIMATE_NUMBER);
+  await expect(page.getByTestId("estimate-details-summary")).toContainText(
+    "[E2E] Pacific Heritage Construction Partners"
+  );
+  const sectionOutline = page.getByRole("navigation", { name: "Estimate sections" });
+  await expect(sectionOutline).toBeVisible();
+  const outlineSections = sectionOutline.locator("ol").getByRole("button");
+  await expect(outlineSections).toHaveCount(10);
+  await expect(outlineSections.first()).toHaveAccessibleName(
+    /^Certified Dense Scope 1, 7 items, \$[\d,]+\.\d{2}, expanded$/
+  );
+  await expect(outlineSections.first()).toHaveAttribute("aria-current", "location");
+  await expect(page.getByRole("toolbar", { name: "Scope tools" })).toBeVisible();
+  await expect(page.getByRole("combobox", { name: "Search scope" })).toBeVisible();
   await expect(page.locator("[data-estimate-line-item-id]")).toHaveCount(62);
 
-  await expect
-    .poll(() =>
-      contextPanel.evaluate((node) => {
-        const style = getComputedStyle(node);
-        return {
-          borderLeft: style.borderLeftWidth,
-          radius: style.borderRadius,
-          shadow: style.boxShadow,
-        };
-      })
-    )
-    .toEqual({ borderLeft: "0px", radius: "0px", shadow: "none" });
-
-  await expect
-    .poll(() =>
-      contextLabel.evaluate((node) => {
-        const style = getComputedStyle(node);
-        return { letterSpacing: style.letterSpacing, textTransform: style.textTransform };
-      })
-    )
-    .toEqual({ letterSpacing: "normal", textTransform: "none" });
-
-  await expect
-    .poll(() => summaryLabel.evaluate((node) => getComputedStyle(node).textTransform))
-    .toBe("none");
-  const [totalFont, regularFont] = await Promise.all([
-    totalValue.evaluate((node) => Number.parseFloat(getComputedStyle(node).fontSize)),
-    regularValue.evaluate((node) => Number.parseFloat(getComputedStyle(node).fontSize)),
-  ]);
-  expect(totalFont).toBeGreaterThan(regularFont);
-
-  const [searchMetrics, jumpMetrics] = await Promise.all(
-    [scopeSearch, sectionJump].map((locator) =>
-      locator.evaluate((node) => {
-        const style = getComputedStyle(node);
-        const box = node.getBoundingClientRect();
-        return {
-          background: style.backgroundColor,
-          height: box.height,
-          radius: style.borderRadius,
-        };
-      })
-    )
-  );
-  expect(searchMetrics).toEqual(jumpMetrics);
-  expect(searchMetrics).toEqual({ background: "rgb(250, 250, 249)", height: 32, radius: "6px" });
-
-  const [sectionTypography, itemCountTypography] = await Promise.all(
-    [sectionTitle, itemCount].map((locator) =>
-      locator.evaluate((node) => {
-        const style = getComputedStyle(node);
-        return {
-          fontSize: Number.parseFloat(style.fontSize),
-          fontWeight: Number.parseInt(style.fontWeight, 10),
-        };
-      })
-    )
-  );
-  expect(sectionTypography.fontSize).toBeGreaterThanOrEqual(16);
-  expect(sectionTypography.fontWeight).toBeGreaterThan(itemCountTypography.fontWeight);
+  const pricing = page.getByRole("region", { name: "Estimate pricing summary" });
+  await expect(pricing).toBeVisible();
+  await expect(pricing).toContainText("$3,253,937.00");
+  await expect(pricing).toContainText("5 milestones");
 
   await expectNoHorizontalOverflow(page);
   await capture(page, testInfo, "existing-view-1440");
 });
 
-test("Existing Edit Details presents primary relationships and supporting context", async ({
+test("Existing Edit Details separates information from current pricing controls", async ({
   page,
 }, testInfo) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
@@ -149,101 +115,53 @@ test("Existing Edit Details presents primary relationships and supporting contex
   const primary = dialog.getByTestId("estimate-details-primary-relationships");
   const supporting = dialog.getByTestId("estimate-details-supporting-context");
   const terms = dialog.getByTestId("estimate-details-terms");
-  const customerLabel = dialog.getByText("Customer", { exact: true }).first();
 
-  await expect(
-    dialog.locator(".eb-sheet-title").getByText("Estimate details", { exact: true })
-  ).toBeVisible();
-  await expect(
-    dialog.getByText("Customer, project, document context, and commercial terms.")
-  ).toBeVisible();
-  await expect(primary.getByLabel("Customer")).toBeVisible();
+  await expect(dialog.getByText("Estimate Information", { exact: true })).toBeVisible();
+  await expect(primary.getByLabel("Customer")).toHaveValue(
+    "[E2E] Pacific Heritage Construction Partners"
+  );
   await expect(primary.getByLabel("Project / reference")).toBeVisible();
-  await expect(supporting.getByLabel("Address")).toBeVisible();
+  await expect(supporting.getByLabel("Site address")).toBeVisible();
   await expect(supporting.getByText("Estimate date", { exact: true })).toBeVisible();
   await expect(supporting.getByText("Estimate style", { exact: true })).toBeVisible();
-  await expect(terms.getByText("Terms & pricing", { exact: true })).toBeVisible();
-
-  await expect
-    .poll(() =>
-      primary.evaluate((node) => {
-        const style = getComputedStyle(node);
-        return {
-          background: style.backgroundColor,
-          border: style.borderTopWidth,
-          padding: style.paddingTop,
-          radius: style.borderRadius,
-        };
-      })
-    )
-    .toEqual({
-      background: "rgba(0, 0, 0, 0)",
-      border: "0px",
-      padding: "0px",
-      radius: "0px",
-    });
-  await expect
-    .poll(() => customerLabel.evaluate((node) => getComputedStyle(node).textTransform))
-    .toBe("none");
+  await expect(terms).toBeHidden();
 
   const customer = primary.getByLabel("Customer");
   await customer.focus();
-  await expect
-    .poll(() => customer.evaluate((node) => getComputedStyle(node).boxShadow))
-    .toBe("rgba(23, 23, 23, 0.18) 0px 0px 0px 2px");
-  await customer.blur();
-
-  const validUntilShortcut = dialog.getByRole("button", { name: "7 days", exact: true });
-  await expect(validUntilShortcut).toBeVisible();
-  await expect
-    .poll(() =>
-      validUntilShortcut.evaluate((node) => {
-        const style = getComputedStyle(node);
-        return { background: style.backgroundColor, color: style.color };
-      })
-    )
-    .toEqual({ background: "rgb(255, 255, 255)", color: "rgb(79, 79, 76)" });
+  await expect(customer).toBeFocused();
 
   const save = dialog.getByRole("button", { name: "Save", exact: true });
   const cancel = dialog.getByRole("button", { name: "Cancel", exact: true });
   const [saveBox, cancelBox] = await Promise.all([save.boundingBox(), cancel.boundingBox()]);
   expect(saveBox?.height ?? 0).toBeGreaterThanOrEqual(44);
   expect(cancelBox?.height ?? 0).toBeGreaterThanOrEqual(44);
-  expect(saveBox?.x ?? 0).toBeGreaterThan(cancelBox?.x ?? 0);
+  await cancel.click();
+
+  await page
+    .getByRole("region", { name: "Estimate pricing summary" })
+    .getByRole("button", { name: "Details", exact: true })
+    .click();
+  await expect(dialog.getByText("Advanced Pricing", { exact: true })).toBeVisible();
+  await expect(primary).toBeHidden();
+  await expect(supporting).toBeHidden();
+  await expect(terms).toBeVisible();
+  await expect(terms.getByTestId("estimate-pricing-live-summary")).toContainText("$3,253,937.00");
+  await expect(terms).toContainText(
+    "Internal overhead and profit references are stored for planning only"
+  );
 
   await expectNoHorizontalOverflow(page);
   await capture(page, testInfo, "edit-details-1440");
 });
 
-test("New Estimate uses the same Edit Details hierarchy", async ({ page }, testInfo) => {
+test("New Estimate uses V2 details and the collapsed-description interaction", async ({
+  page,
+}, testInfo) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await loginAsE2EOwner(page, "/estimates/new");
 
-  const templatePanel = page
-    .getByTestId("estimate-template-selector")
-    .locator(":scope > .eb-glass-panel");
-  await expect(templatePanel).toBeVisible();
-  await expect
-    .poll(() =>
-      templatePanel.evaluate((node) => {
-        const style = getComputedStyle(node);
-        const box = node.getBoundingClientRect();
-        return {
-          background: style.backgroundColor,
-          border: style.borderTopWidth,
-          height: Math.round(box.height),
-          radius: style.borderRadius,
-          shadow: style.boxShadow,
-        };
-      })
-    )
-    .toEqual({
-      background: "rgba(0, 0, 0, 0)",
-      border: "0px",
-      height: 52,
-      radius: "0px",
-      shadow: "none",
-    });
+  await expect(page.getByTestId("estimate-new-header")).toContainText("New Estimate");
+  await expect(page.getByTestId("estimate-template-selector")).toBeVisible();
 
   await page.getByRole("button", { name: "Edit details", exact: true }).click();
   const dialog = page.getByRole("dialog", { name: "Customer / project / pricing details" });
@@ -292,10 +210,11 @@ test("New Estimate uses the same Edit Details hierarchy", async ({ page }, testI
   }
 
   await page.getByLabel("Line item 1 title").locator("visible=true").fill("Site logistics setup");
-  await page
-    .getByLabel("Line item 1 description")
-    .locator("visible=true")
-    .fill("Coordinate occupied-site access, temporary protection, staging, cleanup, and closeout.");
+  await fillNewLineDescription(
+    page,
+    1,
+    "Coordinate occupied-site access, temporary protection, staging, cleanup, and closeout."
+  );
   await page.getByLabel("Line item 1 quantity").locator("visible=true").fill("1");
   await page.getByLabel("Line item 1 unit", { exact: true }).locator("visible=true").fill("LS");
   await page
@@ -304,10 +223,11 @@ test("New Estimate uses the same Edit Details hierarchy", async ({ page }, testI
     .fill("18500");
 
   await page.getByLabel("Line item 2 title").locator("visible=true").fill("Finish carpentry");
-  await page
-    .getByLabel("Line item 2 description")
-    .locator("visible=true")
-    .fill("Field verify, fabricate, install, protect, and complete final punch work.");
+  await fillNewLineDescription(
+    page,
+    2,
+    "Field verify, fabricate, install, protect, and complete final punch work."
+  );
   await page.getByLabel("Line item 2 quantity").locator("visible=true").fill("120");
   await page.getByLabel("Line item 2 unit", { exact: true }).locator("visible=true").fill("LF");
   await page
@@ -315,41 +235,33 @@ test("New Estimate uses the same Edit Details hierarchy", async ({ page }, testI
     .locator("visible=true")
     .fill("145.75");
 
-  await page.evaluate(() => {
-    window.scrollTo({ top: 0 });
-    document.querySelector<HTMLElement>("[data-app-scroll-root]")?.scrollTo({ top: 0 });
-  });
+  await expect(page.getByRole("region", { name: "Estimate pricing summary" })).toContainText(
+    "$35,990.00"
+  );
+  await expectNoHorizontalOverflow(page);
   await capture(page, testInfo, "new-1440");
 });
 
-test("Existing Estimate Edit keeps the unified control system", async ({ page }, testInfo) => {
+test("Existing Estimate Edit exposes accessible, focusable line controls", async ({
+  page,
+}, testInfo) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await loginAsE2EOwner(page, `/estimates/${DENSE_ESTIMATE_ID}`);
   await enterExistingEdit(page);
 
   const quantity = page.getByLabel("Line item quantity").first();
-  const richText = page.getByRole("textbox", { name: "Line item description" }).first();
   await expect(quantity).toBeVisible();
+  await expect(quantity).toBeEditable();
+  await quantity.focus();
+  await expect(quantity).toBeFocused();
+
+  const descriptionButton = page.getByRole("button", { name: "Line item description" }).first();
+  if (await descriptionButton.isVisible()) await descriptionButton.click();
+  const richText = page.getByRole("textbox", { name: "Line item description" }).first();
   await expect(richText).toBeVisible();
-
-  const defaultControl = await quantity.evaluate((node) => {
-    const style = getComputedStyle(node);
-    return {
-      background: style.backgroundColor,
-      border: style.borderTopColor,
-      radius: style.borderRadius,
-    };
-  });
-  expect(defaultControl).toEqual({
-    background: "rgb(250, 250, 249)",
-    border: "rgba(0, 0, 0, 0)",
-    radius: "6px",
-  });
-
+  await expect(richText).toBeEditable();
   await richText.focus();
-  await expect
-    .poll(() => richText.locator("..").evaluate((node) => getComputedStyle(node).boxShadow))
-    .toBe("rgba(23, 23, 23, 0.18) 0px 0px 0px 2px");
+  await expect(richText).toBeFocused();
 
   await expectNoHorizontalOverflow(page);
   await capture(page, testInfo, "existing-edit-1440");
@@ -361,19 +273,14 @@ for (const viewport of [
   { name: "ipad-portrait", width: 820, height: 1180 },
   { name: "mobile-390", width: 390, height: 844 },
 ] as const) {
-  test(`premium Estimate remains comfortable at ${viewport.name}`, async ({ page }, testInfo) => {
+  test(`Certified V2 Estimate remains usable at ${viewport.name}`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
     await loginAsE2EOwner(page, `/estimates/${DENSE_ESTIMATE_ID}`);
     await expect(page.getByTestId("estimate-detail-header")).toBeVisible();
+    await expect(page.getByRole("toolbar", { name: "Scope tools" })).toBeVisible();
     await expectNoHorizontalOverflow(page);
 
     if (viewport.width === 390) {
-      const scopeTop = await page
-        .getByRole("heading", { name: "Scope of work" })
-        .evaluate((node) => Math.round(node.getBoundingClientRect().top));
-      testInfo.annotations.push({ type: "mobile-scope-top", description: String(scopeTop) });
-      expect(scopeTop).toBeLessThanOrEqual(520);
-
       const headerActions = page.getByTestId("estimate-detail-header-actions");
       const preview = headerActions.getByRole("link", { name: "Preview", exact: true });
       const edit = headerActions.getByRole("button", { name: "Edit", exact: true });
@@ -382,18 +289,10 @@ for (const viewport of [
       await expect(edit).toBeVisible();
       await expect(more).toBeVisible();
 
-      const actionMetrics = await Promise.all(
-        [headerActions, preview, edit, more].map((locator) =>
-          locator.evaluate((node) => {
-            const box = node.getBoundingClientRect();
-            return { height: Math.round(box.height), width: Math.round(box.width) };
-          })
-        )
-      );
-      expect(actionMetrics[0]?.height).toBeLessThanOrEqual(44);
-      for (const metric of actionMetrics.slice(1)) {
-        expect(metric.height).toBeGreaterThanOrEqual(44);
-        expect(metric.width).toBeGreaterThanOrEqual(44);
+      for (const control of [preview, edit, more]) {
+        const box = await control.boundingBox();
+        expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
+        expect(box?.width ?? 0).toBeGreaterThanOrEqual(44);
       }
 
       await more.click();
@@ -414,7 +313,7 @@ for (const viewport of [
 
       await capture(page, testInfo, `existing-view-${viewport.name}`);
       await page
-        .getByRole("heading", { name: "Scope of work" })
+        .getByRole("toolbar", { name: "Scope tools" })
         .evaluate((node) => node.scrollIntoView({ block: "start" }));
       await capture(page, testInfo, "existing-builder-mobile-390");
       await enterExistingEdit(page);
@@ -422,8 +321,7 @@ for (const viewport of [
       const dialog = page.getByRole("dialog", {
         name: "Customer / project / pricing details",
       });
-      const dialogBox = await dialog.boundingBox();
-      expect(dialogBox?.width ?? 0).toBeLessThanOrEqual(374);
+      await expect(dialog).toBeInViewport();
       await expect(dialog.getByRole("textbox", { name: "Customer" })).toHaveCSS(
         "min-height",
         "44px"
@@ -436,11 +334,14 @@ for (const viewport of [
   });
 }
 
-test("Edit Details remains composed at 1280", async ({ page }, testInfo) => {
+test("Edit Details remains visible and overflow-free at 1280", async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await loginAsE2EOwner(page, `/estimates/${DENSE_ESTIMATE_ID}`);
   await enterExistingEdit(page);
   await openEstimateDetails(page);
+  await expect(
+    page.getByRole("dialog", { name: "Customer / project / pricing details" })
+  ).toBeInViewport();
   await expectNoHorizontalOverflow(page);
   await capture(page, testInfo, "edit-details-1280");
 });

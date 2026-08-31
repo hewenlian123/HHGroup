@@ -1,10 +1,21 @@
-import { expect, test, type Page, type TestInfo } from "@playwright/test";
+import { expect, test, type Page, type TestInfo } from "./estimate-playwright-test";
 import { mkdir } from "node:fs/promises";
 
 import { loginAsE2EOwner } from "./e2e-auth-owner";
+import {
+  captureUnexpectedBrowserErrors,
+  cleanupDenseEstimateFixture,
+  DENSE_ESTIMATE_ID,
+  seedDenseEstimateFixture,
+} from "./estimate-dense-fixture";
 
-const DENSE_ESTIMATE_ID = "edc68a63-cb87-4298-8231-9c668bf43ffe";
 const SCREENSHOT_DIR = "/private/tmp/hh-estimate-premium-screenshots";
+const browserErrors = new WeakMap<Page, string[]>();
+
+test.beforeAll(seedDenseEstimateFixture);
+test.afterAll(cleanupDenseEstimateFixture);
+test.beforeEach(({ page }) => browserErrors.set(page, captureUnexpectedBrowserErrors(page)));
+test.afterEach(({ page }) => expect(browserErrors.get(page) ?? []).toEqual([]));
 
 async function expectNoHorizontalOverflow(page: Page): Promise<void> {
   await expect
@@ -28,55 +39,41 @@ async function capture(page: Page, testInfo: TestInfo, name: string): Promise<vo
   await testInfo.attach(name, { path, contentType: "image/png" });
 }
 
-test("dense Estimate uses the premium flattened hierarchy", async ({ page }, testInfo) => {
+test("dense Estimate preserves ordered V2 scope and exact financial output", async ({
+  page,
+}, testInfo) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await loginAsE2EOwner(page, `/estimates/${DENSE_ESTIMATE_ID}`);
 
-  const scopePanel = page.locator(".eb-scope-work-panel");
-  const summary = page.locator(".eb-pricing-summary-strip");
-  const summaryCell = summary.locator(".eb-pricing-summary-cell").first();
-  const totalCell = summary.locator(".eb-pricing-summary-cell.is-total");
-  const description = page.locator(".eb-scope-description-readonly").first();
-  const sectionChip = page.locator(".eb-section-header-chip").first();
-
-  await expect(scopePanel).toBeVisible();
-  await expect(summary).toBeVisible();
+  await expect(page.getByRole("toolbar", { name: "Scope tools" })).toBeVisible();
+  const sectionOutline = page.getByRole("navigation", { name: "Estimate sections" });
+  await expect(sectionOutline).toBeVisible();
+  const outlineSections = sectionOutline.locator("ol").getByRole("button");
+  await expect(outlineSections).toHaveCount(10);
+  await expect(outlineSections.first()).toHaveAccessibleName(
+    /^Certified Dense Scope 1, 7 items, \$[\d,]+\.\d{2}, expanded$/
+  );
+  await expect(outlineSections.first()).toHaveAttribute("aria-current", "location");
   await expect(page.locator("[data-estimate-line-item-id]")).toHaveCount(62);
-  await expect
-    .poll(() => scopePanel.evaluate((node) => getComputedStyle(node).boxShadow))
-    .toBe("none");
-  await expect
-    .poll(() => summaryCell.evaluate((node) => getComputedStyle(node).borderRightWidth))
-    .toBe("0px");
-  await expect
-    .poll(() => totalCell.evaluate((node) => getComputedStyle(node).backgroundColor))
-    .toBe("rgba(0, 0, 0, 0)");
-  await expect
-    .poll(() => description.evaluate((node) => getComputedStyle(node).borderTopWidth))
-    .toBe("0px");
-  await expect
-    .poll(() => sectionChip.evaluate((node) => getComputedStyle(node).backdropFilter))
-    .toBe("none");
+  await expect(page.getByText("Certified Dense Scope 1", { exact: true }).first()).toBeVisible();
 
-  const sectionTotal = page.locator(".eb-scope-block-total:visible").first();
-  const firstLineTotal = page.locator(".eb-line-total-amount:visible").first();
-  const [sectionBox, lineBox] = await Promise.all([
-    sectionTotal.boundingBox(),
-    firstLineTotal.boundingBox(),
-  ]);
-  expect(sectionBox).not.toBeNull();
-  expect(lineBox).not.toBeNull();
-  expect(
-    Math.abs(
-      (sectionBox?.x ?? 0) + (sectionBox?.width ?? 0) - ((lineBox?.x ?? 0) + (lineBox?.width ?? 0))
-    )
-  ).toBeLessThanOrEqual(4);
+  const summary = page.getByRole("region", { name: "Estimate pricing summary" });
+  await expect(summary).toContainText("Subtotal");
+  await expect(summary).toContainText("Tax");
+  await expect(summary).toContainText("Discount");
+  await expect(summary).toContainText("$3,253,937.00");
+  await expect(summary).toContainText("5 milestones");
+
+  await page.getByRole("combobox", { name: "Search scope" }).fill("scope line 62");
+  await expect(
+    page.getByRole("option", { name: /Certified construction scope line 62/ })
+  ).toBeVisible();
 
   await expectNoHorizontalOverflow(page);
   await capture(page, testInfo, "existing-view-1440");
 });
 
-test("desktop Edit fields stay quiet by default and explicit on focus", async ({
+test("desktop Edit exposes keyboard-focusable current line controls", async ({
   page,
 }, testInfo) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
@@ -85,65 +82,34 @@ test("desktop Edit fields stay quiet by default and explicit on focus", async ({
 
   const quantity = page.getByLabel("Line item quantity").first();
   await expect(quantity).toBeVisible();
-  const initial = await quantity.evaluate((node) => {
-    const style = getComputedStyle(node);
-    return {
-      border: style.borderTopColor,
-      background: style.backgroundColor,
-      shadow: style.boxShadow,
-    };
-  });
-  expect(initial.border).toBe("rgba(0, 0, 0, 0)");
-  expect(initial.background).toBe("rgb(250, 250, 249)");
-  expect(initial.shadow).toBe("none");
-
+  await expect(quantity).toBeEditable();
   await quantity.focus();
-  await expect
-    .poll(() =>
-      quantity.evaluate((node) => {
-        const style = getComputedStyle(node);
-        return {
-          border: style.borderTopColor,
-          shadow: style.boxShadow,
-        };
-      })
-    )
-    .toEqual({
-      border: "rgba(23, 23, 23, 0.45)",
-      shadow: "rgba(23, 23, 23, 0.18) 0px 0px 0px 2px",
-    });
+  await expect(quantity).toBeFocused();
 
+  const descriptionButton = page.getByRole("button", { name: "Line item description" }).first();
+  if (await descriptionButton.isVisible()) await descriptionButton.click();
   const descriptionEditor = page.getByRole("textbox", { name: "Line item description" }).first();
+  await expect(descriptionEditor).toBeVisible();
+  await expect(descriptionEditor).toBeEditable();
   await descriptionEditor.focus();
-  await expect
-    .poll(() =>
-      descriptionEditor.locator("..").evaluate((node) => getComputedStyle(node).boxShadow)
-    )
-    .not.toBe("none");
+  await expect(descriptionEditor).toBeFocused();
 
   await expectNoHorizontalOverflow(page);
   await capture(page, testInfo, "existing-edit-1440");
 });
 
-test("New Estimate shares the flattened workspace language", async ({ page }, testInfo) => {
+test("New Estimate presents the current V2 command, scope, and pricing surfaces", async ({
+  page,
+}, testInfo) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await loginAsE2EOwner(page, "/estimates/new");
 
-  const scopePanel = page.locator(".eb-scope-work-panel");
-  const summary = page.locator(".eb-pricing-summary-strip");
-  await expect(scopePanel).toBeVisible();
-  await expect(summary).toBeVisible();
-  await expect
-    .poll(() => scopePanel.evaluate((node) => getComputedStyle(node).boxShadow))
-    .toBe("none");
-  await expect
-    .poll(() =>
-      summary
-        .locator(".eb-pricing-summary-cell")
-        .first()
-        .evaluate((node) => getComputedStyle(node).borderRightWidth)
-    )
-    .toBe("0px");
+  await expect(page.getByTestId("estimate-new-header")).toContainText("New Estimate");
+  await expect(page.getByTestId("estimate-template-selector")).toBeVisible();
+  await expect(page.getByRole("toolbar", { name: "Scope tools" })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Estimate sections" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Estimate pricing summary" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Add Section$/i }).first()).toBeVisible();
   await expectNoHorizontalOverflow(page);
   await capture(page, testInfo, "new-1440");
 });
@@ -154,10 +120,10 @@ for (const viewport of [
   { name: "ipad-portrait", width: 820, height: 1180 },
   { name: "mobile-390", width: 390, height: 844 },
 ] as const) {
-  test(`premium Estimate remains usable at ${viewport.name}`, async ({ page }, testInfo) => {
+  test(`dense V2 Estimate remains usable at ${viewport.name}`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
     await loginAsE2EOwner(page, `/estimates/${DENSE_ESTIMATE_ID}`);
-    await page.getByRole("heading", { name: "Scope of work" }).scrollIntoViewIfNeeded();
+    await page.getByRole("toolbar", { name: "Scope tools" }).scrollIntoViewIfNeeded();
     await expectNoHorizontalOverflow(page);
 
     if (viewport.width === 390) {
@@ -165,17 +131,15 @@ for (const viewport of [
         .getByTestId("estimate-detail-header")
         .getByRole("button", { name: "Edit" })
         .click();
-      const mobileSummary = page.locator(".eb-line-item-mobile-summary").first();
-      await expect(mobileSummary).toBeVisible();
-      const metrics = await mobileSummary.evaluate((node) => {
-        const style = getComputedStyle(node);
-        const box = node.getBoundingClientRect();
-        return { border: style.borderTopWidth, height: box.height };
-      });
-      expect(Number.parseFloat(metrics.border)).toBeGreaterThan(0);
-      expect(metrics.height).toBeGreaterThanOrEqual(44);
+      const lineToggle = page.getByRole("button", { name: /Edit line item 1:/ }).first();
+      await expect(lineToggle).toBeVisible();
+      const lineToggleBox = await lineToggle.boundingBox();
+      expect(lineToggleBox?.height ?? 0).toBeGreaterThanOrEqual(44);
+      expect(lineToggleBox?.width ?? 0).toBeGreaterThanOrEqual(44);
+      await lineToggle.click();
+      await expect(page.getByLabel("Line item 1 quantity").locator("visible=true")).toBeVisible();
 
-      const scopeSearch = page.locator(".eb-scope-toolbar-search-wrap > input");
+      const scopeSearch = page.getByRole("combobox", { name: "Search scope" });
       const searchBox = await scopeSearch.boundingBox();
       expect(searchBox?.height ?? 0).toBeGreaterThanOrEqual(44);
     }

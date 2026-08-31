@@ -5,6 +5,12 @@ import { createClient } from "@supabase/supabase-js";
 
 type E2EAuthRole = "owner" | "assistant";
 
+function localServerSecret(): string | null {
+  return (
+    process.env.SUPABASE_SECRET_KEY?.trim() || process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || null
+  );
+}
+
 function localE2EAuthCredentials(role: E2EAuthRole): {
   email: string;
   password: string;
@@ -16,14 +22,14 @@ function localE2EAuthCredentials(role: E2EAuthRole): {
     return { email: configuredEmail, password: configuredPassword };
   }
 
-  const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
-  if (!serviceRole) {
+  const serverSecret = localServerSecret();
+  if (!serverSecret) {
     throw new Error(
-      "Local authenticated E2E requires configured owner credentials or the local service-role key."
+      "Local authenticated E2E requires configured owner credentials or a local server secret."
     );
   }
   const digest = createHash("sha256")
-    .update(`hh-local-e2e-auth:${role}:${serviceRole}`)
+    .update(`hh-local-e2e-auth:${role}:${serverSecret}`)
     .digest("hex");
   return {
     email: `e2e-auth-${role}-${digest.slice(0, 16)}@example.invalid`,
@@ -33,17 +39,17 @@ function localE2EAuthCredentials(role: E2EAuthRole): {
 
 function localAuthAdmin() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
-  const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
-  if (!url || !serviceRole) {
+  const serverSecret = localServerSecret();
+  if (!url || !serverSecret) {
     throw new Error(
-      "Local authenticated E2E requires NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY."
+      "Local authenticated E2E requires NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SECRET_KEY (or the legacy SUPABASE_SERVICE_ROLE_KEY fallback)."
     );
   }
   const parsed = new URL(url);
   if (parsed.hostname !== "localhost" && parsed.hostname !== "127.0.0.1") {
     throw new Error("Authenticated E2E owner lifecycle is local-Docker only.");
   }
-  return createClient(url, serviceRole, {
+  return createClient(url, serverSecret, {
     auth: {
       autoRefreshToken: false,
       detectSessionInUrl: false,
@@ -53,7 +59,8 @@ function localAuthAdmin() {
 }
 
 async function ensureE2EUser(
-  role: E2EAuthRole
+  role: E2EAuthRole,
+  options: { resetExisting?: boolean } = {}
 ): Promise<{ email: string; password: string; userId: string }> {
   const { email, password } = localE2EAuthCredentials(role);
   const admin = localAuthAdmin();
@@ -65,12 +72,14 @@ async function ensureE2EUser(
 
   const existing = listed.users.find((user) => user.email?.toLowerCase() === email.toLowerCase());
   if (existing) {
-    const { error } = await admin.auth.admin.updateUserById(existing.id, {
-      app_metadata: { role },
-      email_confirm: true,
-      password,
-    });
-    if (error) throw new Error("Unable to reset the local E2E Auth owner.");
+    if (options.resetExisting) {
+      const { error } = await admin.auth.admin.updateUserById(existing.id, {
+        app_metadata: { role },
+        email_confirm: true,
+        password,
+      });
+      if (error) throw new Error("Unable to reset the local E2E Auth owner.");
+    }
     return { email, password, userId: existing.id };
   }
 
@@ -85,6 +94,15 @@ async function ensureE2EUser(
     throw new Error("Unable to create the local E2E Auth owner.");
   }
   return { email, password, userId: data.user.id };
+}
+
+export async function provisionE2EAuthUsersForRun(): Promise<void> {
+  await ensureE2EUser("owner", { resetExisting: true });
+  await ensureE2EUser("assistant", { resetExisting: true });
+}
+
+export async function resetE2EOwnerPassword(): Promise<void> {
+  await ensureE2EUser("owner", { resetExisting: true });
 }
 
 export async function ensureE2EOwner(): Promise<string> {
@@ -133,10 +151,70 @@ export async function deleteE2EAssistant(): Promise<void> {
 }
 
 export async function loginAsE2EOwner(page: Page, destination = "/dashboard"): Promise<void> {
-  const baseURL = (process.env.E2E_BASE_URL || "http://localhost:3000").replace(/\/$/, "");
+  const baseURL = (process.env.E2E_BASE_URL || "http://127.0.0.1:3001").replace(/\/$/, "");
   await addE2EOwnerSession(page.context(), baseURL);
-  await page.goto(destination, { waitUntil: "domcontentloaded" });
-  await page.waitForURL((url) => url.pathname === destination, { timeout: 60_000 });
+  await gotoWithE2EAuth(page, destination);
+}
+
+function e2eBaseURL(): string {
+  return process.env.E2E_BASE_URL || "http://127.0.0.1:3001";
+}
+
+function destinationMatches(actual: URL, expected: URL): boolean {
+  return actual.href === expected.href;
+}
+
+async function waitForSuccessfulAuthResponse(
+  page: Page
+): Promise<Awaited<ReturnType<Page["waitForResponse"]>>> {
+  const authOrigin = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL || "http://127.0.0.1:54321")
+    .origin;
+  const response = await page.waitForResponse(
+    (candidate) => {
+      const candidateURL = new URL(candidate.url());
+      return candidateURL.origin === authOrigin && candidateURL.pathname === "/auth/v1/user";
+    },
+    { timeout: 60_000 }
+  );
+  if (!response.ok()) {
+    throw new Error(
+      `Authenticated E2E navigation received ${response.status()} ${response.statusText()} from ${response.url()}.`
+    );
+  }
+  return response;
+}
+
+async function finishE2EAuthNavigation(
+  page: Page,
+  destination: string,
+  navigate: () => Promise<unknown>
+): Promise<void> {
+  const expectedDestination = new URL(destination, e2eBaseURL());
+  const authResponse = waitForSuccessfulAuthResponse(page);
+  await Promise.all([authResponse, navigate()]);
+  await page.waitForURL((url) => destinationMatches(url, expectedDestination), { timeout: 60_000 });
+  await page.waitForLoadState("networkidle");
+}
+
+async function drainCurrentPage(page: Page): Promise<void> {
+  if (/^https?:\/\//i.test(page.url())) {
+    await page.waitForLoadState("networkidle");
+  }
+}
+
+export async function gotoWithE2EAuth(page: Page, destination: string): Promise<void> {
+  await drainCurrentPage(page);
+  await finishE2EAuthNavigation(page, destination, () =>
+    page.goto(destination, { waitUntil: "domcontentloaded" })
+  );
+}
+
+export async function reloadWithE2EAuth(page: Page): Promise<void> {
+  const destination = page.url();
+  await drainCurrentPage(page);
+  await finishE2EAuthNavigation(page, destination, () =>
+    page.reload({ waitUntil: "domcontentloaded" })
+  );
 }
 
 export async function addE2EOwnerSession(context: BrowserContext, baseURL: string): Promise<void> {

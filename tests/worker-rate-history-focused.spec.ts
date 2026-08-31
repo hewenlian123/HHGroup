@@ -30,7 +30,7 @@ function makeMemoryClient(db: MemoryDb): SupabaseClient {
 
     constructor(private readonly table: TableName) {}
 
-    select(_columns?: string): this {
+    select(): this {
       this.wantsSelect = true;
       return this;
     }

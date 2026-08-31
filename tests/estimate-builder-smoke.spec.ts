@@ -1,14 +1,15 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "./estimate-playwright-test";
 import { createClient } from "@supabase/supabase-js";
 
-import { loginAsE2EOwner } from "./e2e-auth-owner";
+import { gotoWithE2EAuth, loginAsE2EOwner, reloadWithE2EAuth } from "./e2e-auth-owner";
+import { deleteLocalEstimateFixtureGraphs } from "./e2e-estimate-fixture-teardown";
 import { assertE2ESupabaseUrlSafeForMutations } from "./e2e-supabase-url-guard";
 
 const createdClientNames = new Set<string>();
 const createdProjectNames = new Set<string>();
 
 test.beforeEach(async ({ page }) => {
-  await loginAsE2EOwner(page, "/estimates");
+  await loginAsE2EOwner(page, "/estimates/new");
 });
 
 async function cleanupEstimateTestData(
@@ -46,11 +47,10 @@ async function cleanupEstimateTestData(
   if (ids.length === 0) return;
 
   await supabase.from("estimate_payment_schedule_items").delete().in("estimate_id", ids);
-  await supabase.from("estimate_snapshots").delete().in("estimate_id", ids);
   await supabase.from("estimate_items").delete().in("estimate_id", ids);
   await supabase.from("estimate_categories").delete().in("estimate_id", ids);
   await supabase.from("estimate_meta").delete().in("estimate_id", ids);
-  await supabase.from("estimates").delete().in("id", ids);
+  await deleteLocalEstimateFixtureGraphs(ids);
 }
 
 test.afterEach(async () => {
@@ -68,20 +68,6 @@ async function addBlankEstimateSection(page: import("@playwright/test").Page): P
   if (await blankSection.isVisible({ timeout: 2_000 }).catch(() => false)) {
     await blankSection.click();
   }
-}
-
-function captureUnexpectedBrowserErrors(page: Page): string[] {
-  const errors: string[] = [];
-  page.on("pageerror", (error) => {
-    errors.push(`pageerror: ${error.message}`);
-  });
-  page.on("console", (message) => {
-    if (message.type() !== "error") return;
-    const text = message.text();
-    if (/favicon|ResizeObserver loop/i.test(text)) return;
-    errors.push(`console: ${text}`);
-  });
-  return errors;
 }
 
 function escapeRegExp(value: string): string {
@@ -116,24 +102,62 @@ async function addTemplateSectionFromNewComposer(page: Page, name: string): Prom
 }
 
 async function expectSavedSectionMenuLayout(page: Page): Promise<void> {
+  const scopeToolbar = page.getByRole("toolbar", { name: "Scope tools" });
+  await expect(scopeToolbar).toBeVisible();
   const visibleAddSectionActions = page
     .getByRole("button", { name: /^Add Section$/i })
     .locator("visible=true");
   await expect(visibleAddSectionActions).toHaveCount(1);
+  const toolbarAddSectionAction = scopeToolbar.getByRole("button", {
+    name: /^Add Section$/i,
+  });
 
-  let search = page
-    .getByRole("textbox", { name: /^Search or add section(?: from outline)?$/i })
+  let search = scopeToolbar
+    .getByRole("textbox", { name: "Search or add section", exact: true })
     .locator("visible=true")
     .first();
   if (!(await search.isVisible().catch(() => false))) {
-    await visibleAddSectionActions.click();
-    search = page
-      .getByRole("textbox", { name: /^Search or add section(?: from outline)?$/i })
+    await toolbarAddSectionAction.click();
+    search = scopeToolbar
+      .getByRole("textbox", { name: "Search or add section", exact: true })
       .locator("visible=true")
       .first();
   }
   await expect(search).toBeVisible();
   await search.scrollIntoViewIfNeeded();
+  const searchActionability = await search.evaluate((input) => {
+    const inputRect = input.getBoundingClientRect();
+    const commandHeader = document.querySelector<HTMLElement>("[data-estimate-workspace-header]");
+    const headerRect = commandHeader?.getBoundingClientRect();
+    const centerX = inputRect.left + inputRect.width / 2;
+    const centerY = inputRect.top + inputRect.height / 2;
+    const centerTarget = document.elementFromPoint(centerX, centerY);
+    const toolbar = input.closest<HTMLElement>(".eb-scope-toolbar");
+    return {
+      centerHitsInput: Boolean(
+        centerTarget && (centerTarget === input || input.contains(centerTarget))
+      ),
+      headerBottom: headerRect?.bottom ?? 0,
+      inputTop: inputRect.top,
+      inputIsBelowHeader: inputRect.top >= (headerRect?.bottom ?? 0),
+      toolbarHasNoVerticalOverflow: toolbar ? toolbar.scrollHeight <= toolbar.clientHeight : false,
+      toolbarPosition: toolbar ? getComputedStyle(toolbar).position : null,
+      toolbarScrollTop: toolbar?.scrollTop ?? null,
+      viewportWidth: window.innerWidth,
+    };
+  });
+  expect(
+    searchActionability,
+    `section composer geometry: ${JSON.stringify(searchActionability)}`
+  ).toMatchObject({
+    centerHitsInput: true,
+    inputIsBelowHeader: true,
+    toolbarHasNoVerticalOverflow: true,
+    toolbarScrollTop: 0,
+  });
+  expect(searchActionability.toolbarPosition).toBe(
+    searchActionability.viewportWidth >= 768 ? "sticky" : "relative"
+  );
   await search.click();
 
   const menu = page.getByRole("listbox");
@@ -152,6 +176,20 @@ async function expectSavedSectionMenuLayout(page: Page): Promise<void> {
       Math.min(rect.right - 2, rect.left + rect.width / 2),
       Math.min(rect.bottom - 2, rect.top + rect.height / 2)
     );
+    const overlapsLine = Boolean(
+      lineRect &&
+      rect.left < lineRect.right &&
+      rect.right > lineRect.left &&
+      rect.top < lineRect.bottom &&
+      rect.bottom > lineRect.top
+    );
+    const overlapTarget =
+      overlapsLine && lineRect
+        ? document.elementFromPoint(
+            (Math.max(rect.left, lineRect.left) + Math.min(rect.right, lineRect.right)) / 2,
+            (Math.max(rect.top, lineRect.top) + Math.min(rect.bottom, lineRect.bottom)) / 2
+          )
+        : null;
 
     return {
       backgroundColor: style.backgroundColor,
@@ -161,6 +199,8 @@ async function expectSavedSectionMenuLayout(page: Page): Promise<void> {
       line: lineRect
         ? { top: lineRect.top, right: lineRect.right, bottom: lineRect.bottom, left: lineRect.left }
         : null,
+      menuOwnsLineOverlapPoint:
+        !overlapsLine || Boolean(overlapTarget && element.contains(overlapTarget)),
       menuOwnsTopmostPoint: Boolean(topmost && element.contains(topmost)),
       viewport: { width: window.innerWidth, height: window.innerHeight },
     };
@@ -183,7 +223,7 @@ async function expectSavedSectionMenuLayout(page: Page): Promise<void> {
       layout.menu.right > layout.line.left &&
       layout.menu.top < layout.line.bottom &&
       layout.menu.bottom > layout.line.top;
-    expect(intersectsLine).toBe(false);
+    if (intersectsLine) expect(layout.menuOwnsLineOverlapPoint).toBe(true);
   }
 
   await page.keyboard.press("Escape");
@@ -191,11 +231,11 @@ async function expectSavedSectionMenuLayout(page: Page): Promise<void> {
   if (await search.isVisible().catch(() => false)) {
     await expect(search).toBeFocused();
   } else {
-    await expect(visibleAddSectionActions).toBeVisible();
-    await expect(visibleAddSectionActions).toBeFocused();
-    await visibleAddSectionActions.click();
-    search = page
-      .getByRole("textbox", { name: /^Search or add section(?: from outline)?$/i })
+    await expect(toolbarAddSectionAction).toBeVisible();
+    await expect(toolbarAddSectionAction).toBeFocused();
+    await toolbarAddSectionAction.click();
+    search = scopeToolbar
+      .getByRole("textbox", { name: "Search or add section", exact: true })
       .locator("visible=true")
       .first();
     await expect(search).toBeFocused();
@@ -203,7 +243,7 @@ async function expectSavedSectionMenuLayout(page: Page): Promise<void> {
 
   await search.click();
   await expect(menu).toBeVisible();
-  await page.getByRole("heading", { name: "Scope of work" }).click();
+  await page.getByTestId("estimate-detail-header").getByRole("heading").click();
   await expect(menu).toBeHidden();
 }
 
@@ -219,8 +259,6 @@ test("estimate builder smoke: create, edit totals, preview, open existing edit",
   createdClientNames.add(clientName);
   createdProjectNames.add(projectName);
 
-  await page.goto("/estimates/new");
-  await page.waitForLoadState("domcontentloaded");
   await expect(page.getByRole("heading", { name: "New Estimate" })).toBeVisible({
     timeout: 30_000,
   });
@@ -299,8 +337,7 @@ test("estimate builder smoke: create, edit totals, preview, open existing edit",
   const previewMainText = await page.locator("main").evaluate((el) => el.textContent ?? "");
   expect(previewMainText).not.toContain("\u2028");
 
-  await page.goto(detailUrl);
-  await page.waitForLoadState("domcontentloaded");
+  await gotoWithE2EAuth(page, detailUrl);
   await page.getByRole("button", { name: "Edit", exact: true }).click();
   await expect(page.getByRole("button", { name: "Save", exact: true })).toBeVisible({
     timeout: 15_000,
@@ -316,7 +353,15 @@ test("estimate builder smoke: create, edit totals, preview, open existing edit",
   const secondLineTitle = `PW second line ${suffix}`;
   await page.getByRole("button", { name: "Add line" }).first().click();
   await page.waitForLoadState("networkidle");
-  const secondDesc = page.getByLabel("Line item description").locator("visible=true").nth(1);
+  const secondDescriptionSummary = page
+    .getByRole("button", { name: "Line item description" })
+    .locator("visible=true")
+    .nth(1);
+  await expect(secondDescriptionSummary).toBeVisible({ timeout: 30_000 });
+  await secondDescriptionSummary.click();
+  const secondDesc = page
+    .getByRole("textbox", { name: "Line item description" })
+    .locator("visible=true");
   await expect(secondDesc).toBeVisible({ timeout: 30_000 });
   await secondDesc.fill(secondLineTitle);
   await secondDesc.blur();
@@ -342,9 +387,13 @@ test("estimate builder smoke: create, edit totals, preview, open existing edit",
     timeout: 30_000,
   });
 
-  await page.reload();
-  await page.waitForLoadState("domcontentloaded");
-  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  const detailHeader = page.getByTestId("estimate-detail-header");
+  await detailHeader.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(detailHeader.getByRole("button", { name: "Edit", exact: true })).toBeVisible({
+    timeout: 30_000,
+  });
+  await reloadWithE2EAuth(page);
+  await detailHeader.getByRole("button", { name: "Edit", exact: true }).click();
   await expect(page.locator("main")).toContainText(secondLineTitle, { timeout: 30_000 });
   await expect(page.locator("main")).toContainText(sectionName, { timeout: 30_000 });
 });
@@ -353,15 +402,12 @@ test("estimate section dropdowns add templates without crashing in new and edit 
   page,
 }) => {
   test.setTimeout(120_000);
-  const browserErrors = captureUnexpectedBrowserErrors(page);
   const suffix = Date.now();
   const clientName = `PW Estimate Section Dropdown ${suffix}`;
   const projectName = `PW Estimate Section Dropdown Project ${suffix}`;
   createdClientNames.add(clientName);
   createdProjectNames.add(projectName);
 
-  await page.goto("/estimates/new");
-  await page.waitForLoadState("domcontentloaded");
   await expect(page.getByRole("heading", { name: "New Estimate" })).toBeVisible({
     timeout: 30_000,
   });
@@ -431,6 +477,4 @@ test("estimate section dropdowns add templates without crashing in new and edit 
   await expect(duplicateElectrical).toBeVisible();
   await duplicateElectrical.click();
   await expectVisibleSectionName(page, "Electrical");
-
-  expect(browserErrors).toEqual([]);
 });

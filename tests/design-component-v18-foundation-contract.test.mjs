@@ -6,15 +6,16 @@ import test from "node:test";
 const ROOT = process.cwd();
 const source = (path) => readFileSync(resolve(ROOT, path), "utf8");
 
-test("Version 18 actions and fields consume the approved focus, input, invalid, and hover tokens", () => {
+test("Figma v2 actions and fields consume the approved light-theme interaction tokens", () => {
   const button = source("src/components/ui/button.tsx");
   const input = source("src/components/ui/input.tsx");
   const select = source("src/components/ui/select.tsx");
   const textarea = source("src/components/ui/textarea.tsx");
   const globals = source("src/app/globals.css");
 
-  assert.match(button, /dark:hover:bg-\[var\(--hh-gold-hover\)\]/);
-  assert.match(button, /dark:active:bg-\[var\(--hh-gold-hover\)\]/);
+  assert.match(button, /hover:bg-\[var\(--hh-action-primary-hover\)\]/);
+  assert.match(button, /active:bg-\[var\(--hh-action-primary-hover\)\]/);
+  assert.doesNotMatch(button, /dark:|--hh-gold/);
   assert.match(button, /disabled:pointer-events-none disabled:opacity-50/);
 
   for (const field of [input, select, textarea]) {
@@ -32,7 +33,7 @@ test("Version 18 actions and fields consume the approved focus, input, invalid, 
   );
 });
 
-test("Version 18 badges and tables consume semantic states, panel radius, and padding-driven density", () => {
+test("Figma v2 badges and tables preserve semantic states and exact dense-row geometry", () => {
   const badge = source("src/components/ui/badge.tsx");
   const table = source("src/components/ui/table.tsx");
 
@@ -45,20 +46,24 @@ test("Version 18 badges and tables consume semantic states, panel radius, and pa
   assert.match(table, /rounded-hh-panel/);
   assert.equal((table.match(/px-hh-table-cell-inline/g) ?? []).length, 4);
   assert.equal((table.match(/py-hh-table-cell-block/g) ?? []).length, 4);
-  assert.doesNotMatch(table, /h-hh-row-standard/);
+  assert.match(table, /h-hh-row-standard/);
+  assert.match(table, /data-\[state=selected\]:border-l-\[var\(--hh-action-primary\)\]/);
+  assert.match(table, /data-\[state=selected\]:bg-\[var\(--hh-l3-selected\)\]/);
   assert.match(table, /hh-touch-table-cell/);
   assert.match(table, /scope=\{scope \?\? "col"\}/);
 });
 
-test("Version 18 tabs and floating layers retain Radix state, portal, and surface contracts", () => {
+test("Shared tabs and floating layers retain Radix state, portal, and surface contracts", () => {
   const tabs = source("src/components/ui/tabs.tsx");
   const dropdown = source("src/components/ui/dropdown-menu.tsx");
   const popover = source("src/components/ui/popover.tsx");
   const select = source("src/components/ui/select.tsx");
   const tooltip = source("src/components/ui/tooltip.tsx");
 
-  assert.match(tabs, /rounded-hh-standard/);
-  assert.match(tabs, /data-\[state=active\]:bg-\[var\(--hh-l3-selected\)\]/);
+  assert.match(tabs, /border-b-2 border-transparent/);
+  assert.match(tabs, /data-\[state=active\]:border-\[var\(--hh-accent-primary\)\]/);
+  assert.doesNotMatch(tabs, /data-\[state=active\]:bg-\[var\(--hh-l3-selected\)\]/);
+  assert.doesNotMatch(tabs, /rounded-hh-standard/);
   assert.match(tabs, /hh-focus-ring/);
 
   for (const layer of [dropdown, popover, select, tooltip]) {
@@ -76,7 +81,7 @@ test("Version 18 tabs and floating layers retain Radix state, portal, and surfac
   assert.match(tooltip, /role="tooltip"/);
 });
 
-test("Version 18 task layers and loading states preserve controlled behavior, touch, and reduced motion", () => {
+test("Shared task layers and loading states preserve controlled behavior, touch, and reduced motion", () => {
   const sheet = source("src/components/ui/sheet.tsx");
   const drawer = source("src/components/base/drawer.tsx");
   const dialog = source("src/components/ui/dialog.tsx");

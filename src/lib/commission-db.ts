@@ -235,8 +235,11 @@ async function fetchLegacyCommissions(
 }
 
 /** Canonical rows from `commissions`; legacy-only rows from `project_commissions` (same id not duplicated). */
-async function loadCommissionsMerged(projectId?: string): Promise<{ merged: ProjectCommission[] }> {
-  const c = client();
+async function loadCommissionsMerged(
+  projectId?: string,
+  explicitClient?: SupabaseClient
+): Promise<{ merged: ProjectCommission[] }> {
+  const c = client(explicitClient);
   let q = c
     .from(TABLE_COMMISSIONS)
     .select(COMMISSION_COLS)
@@ -278,16 +281,20 @@ export async function getSumPaidForCommission(
   return (leg ?? []).reduce((s, p) => s + (Number((p as { amount: number }).amount) || 0), 0);
 }
 
-export async function getCommissionsByProject(projectId: string): Promise<ProjectCommission[]> {
-  const { merged } = await loadCommissionsMerged(projectId);
+export async function getCommissionsByProject(
+  projectId: string,
+  explicitClient?: SupabaseClient
+): Promise<ProjectCommission[]> {
+  const { merged } = await loadCommissionsMerged(projectId, explicitClient);
   return merged;
 }
 
 export async function attachPaidTotalsToCommissions(
-  commissions: ProjectCommission[]
+  commissions: ProjectCommission[],
+  explicitClient?: SupabaseClient
 ): Promise<CommissionWithPaid[]> {
   if (commissions.length === 0) return [];
-  const c = client();
+  const c = client(explicitClient);
   const ids = commissions.map((x) => x.id);
   const { data: payments, error: paymentsError } = await c
     .from(TABLE_PAYMENTS)
@@ -342,10 +349,11 @@ export async function attachPaidTotalsToCommissions(
 }
 
 export async function getCommissionsWithPaidByProject(
-  projectId: string
+  projectId: string,
+  explicitClient?: SupabaseClient
 ): Promise<CommissionWithPaid[]> {
-  const { merged } = await loadCommissionsMerged(projectId);
-  return attachPaidTotalsToCommissions(merged);
+  const { merged } = await loadCommissionsMerged(projectId, explicitClient);
+  return attachPaidTotalsToCommissions(merged, explicitClient);
 }
 
 export async function createCommission(

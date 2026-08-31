@@ -1346,6 +1346,8 @@ export async function createWorkerPayment(
         notes: input.notes,
         project_id: input.projectId ?? null,
         idempotency_key: input.idempotencyKey ?? null,
+        advance_ids: input.advanceIds ?? [],
+        advance_deduction_amount: input.advanceDeductionAmount ?? 0,
       }),
     });
     const body = (await res.json().catch(() => ({}))) as {
@@ -1906,6 +1908,7 @@ export async function createExpense(
     attachments?: import("../expenses-db").ExpenseAttachment[];
     lines?: Array<Omit<ExpenseLine, "id">>;
     subcontractDeduction?: import("../subcontract-deductions-db").SubcontractDeductionInput | null;
+    idempotencyKey: string;
   }
 ): Promise<Expense> {
   const lines = payload.lines?.length
@@ -1934,6 +1937,8 @@ export async function createExpense(
     lines: lines ?? [{ projectId: null, category: "Other", amount: 0 }],
     linkedBankTxId: payload.linkedBankTxId,
     subcontractDeduction: payload.subcontractDeduction ?? null,
+    idempotencyKey: payload.idempotencyKey,
+    initialStatus: payload.status,
   });
 }
 
@@ -1949,6 +1954,7 @@ export async function createQuickExpense(payload: {
   referenceNo?: string | null;
   sourceType?: "company" | "receipt_upload" | "reimbursement";
   initialStatus?: NonNullable<Expense["status"]>;
+  idempotencyKey: string;
 }): Promise<Expense> {
   return expensesDb.createQuickExpense(payload);
 }
@@ -2372,18 +2378,22 @@ export type {
   InvoiceDeleteWarning,
 } from "../invoices-db";
 
-export async function createInvoice(payload: {
-  invoiceNo?: string;
-  projectId: string;
-  customerId?: string | null;
-  clientName: string;
-  issueDate: string;
-  dueDate: string;
-  lineItems: InvoiceLineItem[];
-  taxPct?: number;
-  notes?: string;
-}): Promise<Invoice> {
-  return invoicesDb.createInvoice(payload);
+export async function createInvoice(
+  payload: {
+    idempotencyKey?: string;
+    invoiceNo?: string;
+    projectId: string;
+    customerId?: string | null;
+    clientName: string;
+    issueDate: string;
+    dueDate: string;
+    lineItems: InvoiceLineItem[];
+    taxPct?: number;
+    notes?: string;
+  },
+  explicitClient?: SupabaseClient
+): Promise<Invoice> {
+  return invoicesDb.createInvoice(payload, explicitClient);
 }
 
 export async function updateInvoice(
@@ -2398,9 +2408,10 @@ export async function updateInvoice(
     lineItems: InvoiceLineItem[];
     taxPct: number;
     notes: string;
-  }>
+  }>,
+  explicitClient?: SupabaseClient
 ): Promise<boolean> {
-  return invoicesDb.updateInvoice(invoiceId, payload);
+  return invoicesDb.updateInvoice(invoiceId, payload, explicitClient);
 }
 
 export async function markInvoiceSent(invoiceId: string): Promise<boolean> {
@@ -2956,7 +2967,6 @@ export async function reconcileBankTransaction(
 ): Promise<BankTransaction | null> {
   const tx = await bankTxDb.getBankTransactionById(params.bankTxId);
   if (!tx) return null;
-  const now = new Date().toISOString().slice(0, 10);
   if (params.type === "Expense") {
     const targetAmount = Math.abs(tx.amount);
     const useLines = params.lines && params.lines.length > 0;
@@ -2975,19 +2985,11 @@ export async function reconcileBankTransaction(
             amount: targetAmount,
           },
         ];
-    const expense = await createExpense({
-      date: tx.date,
+    await bankTxDb.reconcileBankTransactionExpenseAtomic({
+      bankTransactionId: tx.id,
       vendorName: params.vendorName ?? tx.description,
       paymentMethod: params.paymentMethod ?? "ACH",
-      notes: useLines ? undefined : params.memo,
       lines: linePayload,
-      linkedBankTxId: tx.id,
-    });
-    await bankTxDb.updateBankTransaction(params.bankTxId, {
-      status: "reconciled",
-      linkedExpenseId: expense.id,
-      reconciledAt: now,
-      reconciledBy: "owner",
     });
   }
   return bankTxDb.getBankTransactionById(params.bankTxId);

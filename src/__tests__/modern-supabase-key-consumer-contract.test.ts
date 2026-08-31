@@ -26,8 +26,9 @@ describe("modern Supabase key consumer contract", () => {
 
   it("supports modern server secrets in local verification without logging key prefixes", () => {
     const consumers = [
-      "playwright.config.ts",
+      "tests/e2e-webserver-env.ts",
       ".env.test.example",
+      "tests/e2e-auth-owner.ts",
       "tests/global-setup.ts",
       "tests/global-teardown.ts",
       "tests/e2e-supabase-env-diagnostic.ts",

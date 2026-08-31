@@ -19,6 +19,8 @@ import {
   buildEstimatePreviewHref,
   readEstimateBuilderReturnContext,
 } from "@/app/estimates/_components/estimate-workflow-continuity";
+import { ServerDataLoadFallback } from "@/components/server-data-load-fallback";
+import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
 
 export const dynamic = "force-dynamic";
 
@@ -33,17 +35,32 @@ export default async function EstimatePreviewPage({
   const previewSearchParams = await searchParams;
   const readClient = getServerSupabaseInternalNoStore();
 
+  const pageData = await Promise.all([
+    getEstimateHeaderById(id, readClient),
+    getEstimateMeta(id, readClient),
+    getEstimateItems(id, readClient),
+    getEstimateCategories(id, readClient),
+    getPaymentSchedule(id, readClient),
+    getCostCodes(),
+    fetchDocumentCompanyProfile(),
+    readClient ? getEstimateRevisionContext(id, readClient).catch(() => null) : null,
+  ])
+    .then((data) => ({ data }))
+    .catch((error: unknown) => ({ error }));
+
+  if ("error" in pageData) {
+    logServerPageDataError(`estimates/${id}/preview`, pageData.error);
+    return (
+      <ServerDataLoadFallback
+        message={serverDataLoadWarning(pageData.error, "estimate preview financial details")}
+        backHref={`/estimates/${id}`}
+        backLabel="Back to estimate"
+      />
+    );
+  }
+
   const [estimate, meta, items, categories, paymentSchedule, costCodes, company, revisionContext] =
-    await Promise.all([
-      getEstimateHeaderById(id, readClient),
-      getEstimateMeta(id, readClient),
-      getEstimateItems(id, readClient),
-      getEstimateCategories(id, readClient),
-      getPaymentSchedule(id, readClient),
-      getCostCodes(),
-      fetchDocumentCompanyProfile(),
-      readClient ? getEstimateRevisionContext(id, readClient).catch(() => null) : null,
-    ]);
+    pageData.data;
 
   if (!estimate || !meta || !revisionContext) redirect("/estimates");
   const resolvedSummary = getEstimateSummaryFromRecords(meta, items);
@@ -69,7 +86,8 @@ export default async function EstimatePreviewPage({
     <div
       className="page-container page-shell-document estimate-preview-page-shell py-0"
       data-hh-context="viewer"
-      data-hh-theme="neo-dark"
+      data-hh-theme="operational-light"
+      data-estimate-preview-theme="light"
     >
       <SetBreadcrumbEntityTitle label={revisionLabel} />
       <EstimatePreviewShell

@@ -140,6 +140,36 @@ export async function updateBankTransaction(
   return toBankTx(row as BankTransactionRow);
 }
 
+export async function reconcileBankTransactionExpenseAtomic(input: {
+  bankTransactionId: string;
+  vendorName: string;
+  paymentMethod: string;
+  lines: Array<{
+    projectId: string | null;
+    category: string;
+    memo?: string | null;
+    amount: number;
+  }>;
+}): Promise<BankTransaction | null> {
+  const c = client();
+  const lines = input.lines.map((line) => {
+    const amount = Number(line.amount);
+    if (!Number.isFinite(amount) || amount < 0) {
+      throw new Error("Bank expense line amount must be a non-negative number.");
+    }
+    return { ...line, amount };
+  });
+  const { error } = await c.rpc("reconcile_bank_transaction_expense_atomic", {
+    p_idempotency_key: `bank-expense:${input.bankTransactionId}`,
+    p_bank_transaction_id: input.bankTransactionId,
+    p_vendor_name: input.vendorName,
+    p_payment_method: input.paymentMethod,
+    p_lines: lines,
+  });
+  if (error) throw new Error(error.message ?? "Failed to reconcile bank transaction atomically.");
+  return getBankTransactionById(input.bankTransactionId);
+}
+
 export async function linkBankTransactionToExpense(
   bankTxId: string,
   expenseId: string

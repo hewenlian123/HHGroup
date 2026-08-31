@@ -1,4 +1,12 @@
+import fs from "node:fs";
+import path from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const SNAPSHOT_DELETE_RESTRICT_MIGRATION = path.join(
+  process.cwd(),
+  "supabase/migrations/20260830120000_estimate_snapshot_delete_restrict.sql"
+);
+const ROLLBACK_CHECK = path.join(process.cwd(), "scripts/check-rollback-sql.mjs");
 
 const revalidatePathMock = vi.fn();
 const getServerSupabaseAdminMock = vi.fn();
@@ -120,9 +128,37 @@ describe("deleteEstimateAction", () => {
     expect(revalidatePathMock).not.toHaveBeenCalled();
   });
 
+  it("enforces protected snapshot history with a database-level restrictive foreign key", () => {
+    expect(
+      fs.existsSync(SNAPSHOT_DELETE_RESTRICT_MIGRATION),
+      `${SNAPSHOT_DELETE_RESTRICT_MIGRATION} must be checked in`
+    ).toBe(true);
+    const sql = fs.readFileSync(SNAPSHOT_DELETE_RESTRICT_MIGRATION, "utf8");
+    expect(sql).toMatch(
+      /add\s+constraint\s+estimate_snapshots_estimate_id_fkey[\s\S]*references\s+public\.estimates\s*\(id\)[\s\S]*on\s+delete\s+restrict/i
+    );
+    expect(sql).not.toMatch(
+      /add\s+constraint\s+estimate_snapshots_estimate_id_fkey[\s\S]*on\s+delete\s+cascade/i
+    );
+    expect(sql).toMatch(
+      /begin;[\s\S]*drop\s+constraint\s+if\s+exists\s+estimate_snapshots_estimate_id_fkey;[\s\S]*add\s+constraint\s+estimate_snapshots_estimate_id_fkey[\s\S]*not\s+valid;[\s\S]*commit;/i
+    );
+    expect(sql).toMatch(
+      /commit;[\s\S]*begin;[\s\S]*validate\s+constraint\s+estimate_snapshots_estimate_id_fkey;[\s\S]*commit;/i
+    );
+
+    const probe = fs.readFileSync(ROLLBACK_CHECK, "utf8");
+    expect(probe).toContain("20260830120000_estimate_snapshot_delete_restrict.rollback.sql");
+    expect(probe).toMatch(/estimate_snapshots_estimate_id_fkey[\s\S]*confdeltype/i);
+    expect(probe).toMatch(/estimate_snapshots_estimate_id_fkey[\s\S]*convalidated/i);
+  });
+
   it("revalidates list and detail surfaces after deleting an estimate", async () => {
     const estimateId = "11111111-1111-1111-1111-111111111111";
-    mockDeleteFlow({ deleteData: [{ id: estimateId }], postDeleteData: null });
+    const { deleteByTable } = mockDeleteFlow({
+      deleteData: [{ id: estimateId }],
+      postDeleteData: null,
+    });
 
     const { deleteEstimateAction } = await import("@/app/estimates/actions");
     const formData = new FormData();
@@ -144,6 +180,7 @@ describe("deleteEstimateAction", () => {
     expect(revalidatePathMock).toHaveBeenCalledWith(`/estimates/${estimateId}`);
     expect(revalidatePathMock).toHaveBeenCalledWith(`/estimates/${estimateId}/preview`);
     expect(revalidatePathMock).toHaveBeenCalledWith(`/estimates/${estimateId}/print`);
+    expect(deleteByTable.estimate_snapshots).not.toHaveBeenCalled();
   });
 
   it("does not report success when post-delete verification still finds the estimate row", async () => {

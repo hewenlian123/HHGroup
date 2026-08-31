@@ -26,14 +26,6 @@ function isMissingTableError(error: unknown): boolean {
   return /schema cache|could not find the table|relation .* does not exist/i.test(e.message ?? "");
 }
 
-function isMissingColumnError(error: unknown, columns: string[]): boolean {
-  const message = ((error as { message?: string } | null)?.message ?? "").toLowerCase();
-  return (
-    columns.some((column) => message.includes(column.toLowerCase())) ||
-    message.includes("schema cache")
-  );
-}
-
 function apiError(status: number, message: string): NextResponse {
   return NextResponse.json({ ok: false, message }, { status, headers: NO_CACHE_HEADERS });
 }
@@ -59,54 +51,22 @@ export async function GET(request: Request) {
   const projectId = searchParams.get("projectId")?.trim() ?? "";
 
   try {
-    const entriesPromise = async () => {
-      const initial = await supabase
-        .from("labor_entries")
-        .select(
-          "id,entry_date,worker_id,total,am_worked,am_project_id,pm_worked,pm_project_id,ot_amount,ot_project_id"
-        )
-        .eq("status", "confirmed")
-        .gte("entry_date", startDate)
-        .lte("entry_date", endDate)
-        .limit(2000);
-      if (
-        initial.error &&
-        /column .*entry_date|column .*total|schema cache/i.test(initial.error.message ?? "")
-      ) {
-        return supabase
-          .from("labor_entries")
-          .select(
-            "id,work_date,worker_id,labor_cost_snapshot,amount_snapshot,cost_amount,hours,project_id"
-          )
-          .gte("work_date", startDate)
-          .lte("work_date", endDate)
-          .limit(2000);
-      }
-      return initial;
-    };
-    const paymentsPromise = async () => {
-      const initial = await supabase
-        .from("labor_payments")
-        .select("id,worker_id,payment_date,amount,method,memo,applied_start_date,applied_end_date")
-        .or(
-          `and(applied_start_date.eq.${startDate},applied_end_date.eq.${endDate}),and(payment_date.gte.${startDate},payment_date.lte.${endDate})`
-        )
-        .limit(2000);
-      if (
-        initial.error &&
-        /column .*memo|column .*applied_start_date|column .*applied_end_date|schema cache/i.test(
-          initial.error.message ?? ""
-        )
-      ) {
-        return supabase
-          .from("labor_payments")
-          .select("id,worker_id,payment_date,amount,method")
-          .gte("payment_date", startDate)
-          .lte("payment_date", endDate)
-          .limit(2000);
-      }
-      return initial;
-    };
+    const entriesPromise = supabase
+      .from("labor_entries")
+      .select(
+        "id,work_date,worker_id,labor_cost_snapshot,amount_snapshot,cost_amount,hours,project_id"
+      )
+      .eq("status", "confirmed")
+      .gte("work_date", startDate)
+      .lte("work_date", endDate)
+      .limit(2000);
+    const paymentsPromise = supabase
+      .from("labor_payments")
+      .select("id,worker_id,payment_date,amount,method,note,applied_start_date,applied_end_date")
+      .or(
+        `and(applied_start_date.eq.${startDate},applied_end_date.eq.${endDate}),and(payment_date.gte.${startDate},payment_date.lte.${endDate})`
+      )
+      .limit(2000);
 
     const [workersRes, entriesRes, paymentsRes, projectsRes, methodsRes] = await Promise.all([
       supabase
@@ -114,8 +74,8 @@ export async function GET(request: Request) {
         .select("id,name,half_day_rate")
         .order("created_at", { ascending: false })
         .limit(500),
-      entriesPromise(),
-      paymentsPromise(),
+      entriesPromise,
+      paymentsPromise,
       supabase
         .from("projects")
         .select("id,name")
@@ -147,7 +107,7 @@ export async function GET(request: Request) {
     }>;
     const entries = (entriesRes.data ?? []) as Array<{
       entry_date?: string;
-      work_date?: string;
+      work_date: string;
       worker_id: string;
       total?: number | null;
       cost_amount?: number | null;
@@ -167,17 +127,15 @@ export async function GET(request: Request) {
       payment_date: string;
       amount: number | null;
       method: string | null;
-      memo: string | null;
+      note: string | null;
       applied_start_date: string | null;
       applied_end_date: string | null;
     }>;
 
-    const entryDate = (entry: { entry_date?: string; work_date?: string }) =>
-      (entry.entry_date ?? entry.work_date ?? "").slice(0, 10);
     const inRange = (d: string) => d >= startDate && d <= endDate;
     const rows = workers.map((worker) => {
       const workerEntries = entries.filter(
-        (entry) => entry.worker_id === worker.id && inRange(entryDate(entry))
+        (entry) => entry.worker_id === worker.id && inRange(entry.work_date.slice(0, 10))
       );
       const rate = safeNumber(worker.half_day_rate);
       let confirmedTotal: number;
@@ -230,7 +188,7 @@ export async function GET(request: Request) {
           paymentDate: payment.payment_date,
           amount: safeNumber(payment.amount),
           method: payment.method ?? "—",
-          memo: payment.memo ?? undefined,
+          memo: payment.note ?? undefined,
         })),
       };
     });
@@ -280,21 +238,11 @@ export async function POST(request: Request) {
       payment_date: paymentDate,
       amount,
       method,
-      memo: typeof body.memo === "string" && body.memo.trim() ? body.memo.trim() : null,
+      note: typeof body.memo === "string" && body.memo.trim() ? body.memo.trim() : null,
       applied_start_date: startDate,
       applied_end_date: endDate,
     };
-    let { error } = await supabase.from("labor_payments").insert(paymentPayload);
-    if (error && isMissingColumnError(error, ["memo", "applied_start_date", "applied_end_date"])) {
-      const fallbackPayload = {
-        worker_id: workerId,
-        payment_date: paymentDate,
-        amount,
-        method,
-      };
-      const fallback = await supabase.from("labor_payments").insert(fallbackPayload);
-      error = fallback.error;
-    }
+    const { error } = await supabase.from("labor_payments").insert(paymentPayload);
     if (error) throw new Error(error.message);
     return NextResponse.json({ ok: true }, { headers: NO_CACHE_HEADERS });
   } catch (e) {

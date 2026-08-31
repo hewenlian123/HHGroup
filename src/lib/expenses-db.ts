@@ -15,7 +15,6 @@ import { stripInboxUploadNoiseFromText } from "@/lib/inbox-upload-constants";
 import type { SubcontractDeductionRow } from "@/lib/subcontract-deductions-db";
 import {
   getSubcontractDeductionsByExpenseIds,
-  replaceSubcontractDeductionForExpense,
   type SubcontractDeductionInput,
 } from "@/lib/subcontract-deductions-db";
 
@@ -221,11 +220,6 @@ async function hydrateExpenseListPaymentMethods(
 function isMissingTable(err: { message?: string } | null): boolean {
   const m = err?.message ?? "";
   return /schema cache|relation.*does not exist|could not find the table/i.test(m);
-}
-
-function isMissingFunction(err: { message?: string } | null): boolean {
-  const m = err?.message ?? "";
-  return /could not find the function|schema cache/i.test(m);
 }
 
 const HINT = "Run supabase/migrations/202602280008_create_expenses.sql";
@@ -960,6 +954,29 @@ export async function getExpenseCardNames(paymentMethod: string): Promise<string
   return Array.from(new Set(names)).sort();
 }
 
+type AtomicExpenseCreateResult = {
+  expense_id?: string | null;
+  expense_ids?: string[] | null;
+  replayed?: boolean;
+};
+
+async function createExpenseAtomicWithClient(
+  c: SupabaseClient,
+  idempotencyKey: string,
+  payload: Record<string, unknown>
+): Promise<AtomicExpenseCreateResult & { expense_id: string }> {
+  const key = idempotencyKey.trim();
+  if (!key) throw new Error("Expense idempotency key is required.");
+  const { data, error } = await c.rpc("create_expense_atomic", {
+    p_idempotency_key: key,
+    p_payload: payload,
+  });
+  if (error) throw new Error(error.message ?? "Failed to create expense atomically.");
+  const result = (Array.isArray(data) ? data[0] : data) as AtomicExpenseCreateResult | null;
+  if (!result?.expense_id) throw new Error("Atomic expense create returned no expense id.");
+  return result as AtomicExpenseCreateResult & { expense_id: string };
+}
+
 export async function createExpense(payload: {
   date: string;
   vendorName: string;
@@ -978,202 +995,71 @@ export async function createExpense(payload: {
   }>;
   linkedBankTxId?: string | null;
   subcontractDeduction?: SubcontractDeductionInput | null;
+  idempotencyKey: string;
+  initialStatus?: NonNullable<Expense["status"]>;
 }): Promise<Expense> {
+  if (payload.linkedBankTxId) {
+    throw new Error("Bank-linked expenses must be created by the atomic bank reconciliation RPC.");
+  }
+  const idempotencyKey = payload.idempotencyKey?.trim();
+  if (!idempotencyKey) throw new Error("Expense idempotency key is required.");
   const c = client();
   const date = payload.date?.slice(0, 10) ?? new Date().toISOString().slice(0, 10);
   const vendor = (payload.vendorName ?? "").trim();
   if (!vendor) throw new Error("Vendor name is required");
-  const notes = payload.notes ?? null;
-
   const lines = payload.lines?.length ? payload.lines : [];
-  const totalAmount = lines.reduce((s, l) => s + (Number(l.amount) || 0), 0);
+  const normalizedLines = lines.map((line) => {
+    const amount = Number(line.amount);
+    if (!Number.isFinite(amount)) throw new Error("Expense line amount must be a valid number.");
+    return { ...line, amount };
+  });
+  const totalAmount = normalizedLines.reduce((sum, line) => sum + line.amount, 0);
   if (!(totalAmount > 0)) throw new Error("Amount must be greater than 0");
   const paymentMethodValue =
     payload.paymentMethod?.trim() || (await defaultPaymentMethodName()) || "Other";
 
-  const byProject = new Map<string | null, typeof lines>();
-  for (const l of lines) {
-    const key = l.projectId ?? null;
-    if (!byProject.has(key)) byProject.set(key, []);
-    byProject.get(key)!.push(l);
+  const byProject = new Map<string | null, typeof normalizedLines>();
+  for (const line of normalizedLines) {
+    const key = line.projectId ?? null;
+    const group = byProject.get(key) ?? [];
+    group.push(line);
+    byProject.set(key, group);
   }
-
-  let firstId: string | null = null;
-  const createdIds: string[] = [];
-  for (const [projectId, group] of Array.from(byProject)) {
-    const pLines = group.map((l) => ({
-      description: l.memo ?? "",
-      qty: 1,
-      unit_cost: l.amount ?? 0,
-      cost_code: l.costCode ?? null,
-      memo: l.memo ?? null,
-      amount: Number(l.amount) || 0,
-    }));
-    const category = group[0]?.category ?? "Other";
-
-    const { data: expenseId, error } = await c.rpc("create_expense_with_lines", {
-      p_project_id: projectId,
-      p_vendor: vendor,
-      p_category: category,
-      p_expense_date: date,
-      p_notes: notes,
-      p_lines: pLines,
-    });
-
-    let id: string | null = null;
-    if (error) {
-      const msg = error.message ?? "";
-      const rpcSchemaMismatch =
-        /project_id.*expenses|column.*project_id.*relation.*expenses|expenses.*project_id/i.test(
-          msg
-        );
-      if (!isMissingFunction(error) && !rpcSchemaMismatch)
-        throw new Error(error.message ?? "Failed to create expense.");
-      // Fallback: insert expense header then expense_lines directly.
-      const totalGroupAmount = group.reduce((s, l) => s + (Number(l.amount) || 0), 0);
-      // Header row: canonical schema has no project_id / amount on expenses (lines carry project_id).
-      const insertPayload: Record<string, unknown> = {
-        expense_date: date,
-        vendor_name: vendor,
-        notes: notes,
-        reference_no: payload.referenceNo?.trim() || null,
-        total: totalGroupAmount,
-        /** Some remotes enforce NOT NULL `amount` on expenses (mirror `total`). */
-        amount: totalGroupAmount,
-        line_count: group.length,
-        card_name: payload.cardName?.trim() || null,
-        account_id: payload.accountId ?? null,
-        payment_account_id: payload.paymentAccountId ?? null,
-      };
-      let expInsErr: { message?: string } | null = null;
-      let expRow: { id: string } | null = null;
-      let ins = await c
-        .from("expenses")
-        .insert({ ...insertPayload, payment_method: paymentMethodValue })
-        .select("id")
-        .single();
-      if (ins.error && isMissingColumn(ins.error)) {
-        ins = await c.from("expenses").insert(insertPayload).select("id").single();
-      }
-      if (ins.error && isMissingColumn(ins.error)) {
-        ins = await c
-          .from("expenses")
-          .insert({
-            expense_date: date,
-            vendor: vendor,
-            notes: notes,
-            reference_no: payload.referenceNo?.trim() || null,
-            total: totalGroupAmount,
-            amount: totalGroupAmount,
-            line_count: group.length,
-            payment_method: paymentMethodValue,
-          })
-          .select("id")
-          .single();
-      }
-      if (ins.error && isMissingColumn(ins.error)) {
-        ins = await c
-          .from("expenses")
-          .insert({
-            expense_date: date,
-            vendor: vendor,
-            notes: notes,
-            reference_no: payload.referenceNo?.trim() || null,
-            total: totalGroupAmount,
-            line_count: group.length,
-            payment_method: paymentMethodValue,
-          })
-          .select("id")
-          .single();
-      }
-      expInsErr = ins.error as { message?: string } | null;
-      expRow = ins.data as { id: string } | null;
-      if (expInsErr) throw new Error(expInsErr.message ?? "Failed to create expense.");
-      id = (expRow as { id: string } | null)?.id ?? null;
-      if (id) {
-        const lineInserts = group.map((l) => ({
-          expense_id: id,
-          project_id: l.projectId ?? null,
-          category: l.category ?? "Other",
-          cost_code: l.costCode ?? null,
-          memo: l.memo ?? null,
-          amount: Number(l.amount) || 0,
-        }));
-        // Strip unknown columns one at a time until insert succeeds (schema cache may lag)
-        const stripLineKeys = (
-          rows: typeof lineInserts,
-          keys: ("cost_code" | "memo" | "category" | "project_id")[]
-        ) =>
-          rows.map((row) => {
-            const copy = { ...row };
-            for (const k of keys) delete copy[k];
-            return copy;
-          });
-        const lineAttempts: Record<string, unknown>[][] = [
-          lineInserts,
-          stripLineKeys(lineInserts, ["cost_code", "memo"]),
-          stripLineKeys(lineInserts, ["cost_code", "memo", "category"]),
-          stripLineKeys(lineInserts, ["cost_code", "memo", "category", "project_id"]),
-        ];
-        let lineInsErr: { message?: string } | null = null;
-        for (const attempt of lineAttempts) {
-          const { error: err } = await c.from("expense_lines").insert(attempt);
-          lineInsErr = err as { message?: string } | null;
-          if (!lineInsErr) break;
-          if (!isMissingColumn(lineInsErr)) break;
-        }
-        if (lineInsErr) throw new Error(lineInsErr.message ?? "Failed to create expense lines.");
-      }
-    } else {
-      const rawId = expenseId;
-      id = (Array.isArray(rawId) ? rawId[0] : rawId) as string | null;
-    }
-    if (id) {
-      createdIds.push(id);
-      if (!firstId) firstId = id;
-    }
-  }
-
-  if (!firstId) throw new Error("Failed to create expense: no id returned.");
-
-  if (payload.subcontractDeduction) {
-    await replaceSubcontractDeductionForExpense(
-      firstId,
-      {
+  const groups = Array.from(byProject, ([projectId, group]) => ({
+    projectId,
+    lines: group.map((line) => ({
+      projectId: line.projectId ?? null,
+      category: line.category ?? "Other",
+      costCode: line.costCode ?? null,
+      memo: line.memo ?? null,
+      amount: line.amount,
+    })),
+  }));
+  const deduction = payload.subcontractDeduction
+    ? {
         ...payload.subcontractDeduction,
-        projectId: payload.subcontractDeduction.projectId ?? lines[0]?.projectId ?? null,
+        projectId: payload.subcontractDeduction.projectId ?? normalizedLines[0]?.projectId ?? null,
         amount: payload.subcontractDeduction.amount ?? totalAmount,
-      },
-      c
-    );
-  }
+      }
+    : null;
+  const result = await createExpenseAtomicWithClient(c, idempotencyKey, {
+    expenseDate: date,
+    vendorName: vendor,
+    paymentMethod: paymentMethodValue,
+    referenceNo: payload.referenceNo?.trim() || null,
+    notes: payload.notes ?? null,
+    cardName: payload.cardName?.trim() || null,
+    accountId: payload.accountId ?? null,
+    paymentAccountId: payload.paymentAccountId ?? null,
+    sourceType: "company",
+    status: expenseStatusForDatabase(payload.initialStatus ?? "pending"),
+    groups,
+    deduction,
+  });
 
-  const cardNameValue = payload.cardName?.trim() || null;
-  const updatePayload: Record<string, unknown> = {
-    card_name: cardNameValue,
-    account_id: payload.accountId ?? null,
-    payment_account_id: payload.paymentAccountId ?? null,
-  };
-  let updateErr: { message?: string } | null = null;
-  const withPaymentMethod = { ...updatePayload, payment_method: paymentMethodValue };
-  let upd = await c.from("expenses").update(withPaymentMethod).in("id", createdIds);
-  if (upd.error && isMissingColumn(upd.error)) {
-    upd = await c.from("expenses").update(updatePayload).in("id", createdIds);
-  }
-  updateErr = upd.error as { message?: string } | null;
-  if (updateErr && !isMissingColumn(updateErr)) {
-    throw new Error(updateErr.message ?? "Failed to update expense.");
-  }
-
-  const stUpd = await c.from("expenses").update({ source_type: "company" }).in("id", createdIds);
-  if (stUpd.error && !isMissingColumn(stUpd.error)) {
-    console.warn("[createExpense] source_type update:", stUpd.error.message);
-  }
-
-  const exp = await getExpenseById(firstId);
-  if (!exp) throw new Error("Failed to load created expense.");
-  const linkedBankTxId = payload.linkedBankTxId ?? (await getLinkedBankTxId(firstId));
-  return { ...exp, linkedBankTxId: linkedBankTxId ?? undefined };
+  const expense = await getExpenseById(result.expense_id, c);
+  if (!expense) throw new Error("Failed to load created expense.");
+  return expense;
 }
 
 function isStatusConstraintError(err: { message?: string } | null): boolean {
@@ -1199,6 +1085,8 @@ export async function createQuickExpense(payload: {
   sourceType?: "company" | "receipt_upload" | "reimbursement" | "bank_import";
   /** When set, overrides default status (receipt → needs_review, else pending). */
   initialStatus?: NonNullable<Expense["status"]>;
+  idempotencyKey: string;
+  subcontractDeduction?: SubcontractDeductionInput | null;
 }): Promise<Expense> {
   return createQuickExpenseWithClient(undefined, payload);
 }
@@ -1221,12 +1109,19 @@ export async function createQuickExpenseWithClient(
     sourceType?: "company" | "receipt_upload" | "reimbursement" | "bank_import";
     /** When set, overrides default status (receipt → needs_review, else pending). */
     initialStatus?: NonNullable<Expense["status"]>;
+    idempotencyKey: string;
+    subcontractDeduction?: SubcontractDeductionInput | null;
   }
 ): Promise<Expense> {
   const c = client(explicitClient);
+  const idempotencyKey = payload.idempotencyKey?.trim();
+  if (!idempotencyKey) throw new Error("Expense idempotency key is required.");
   const date = payload.date?.slice(0, 10) ?? new Date().toISOString().slice(0, 10);
   const vendor = (payload.vendorName ?? "").trim() || "Unknown";
-  const total = Number(payload.totalAmount) || 0;
+  const total = Number(payload.totalAmount);
+  if (!Number.isFinite(total) || total < 0) {
+    throw new Error("Quick expense amount must be a valid non-negative number.");
+  }
   const receiptUrl = (payload.receiptUrl ?? "").trim();
   const category = (payload.category ?? "Other").trim() || "Other";
   const notes = (payload.notes ?? "").trim();
@@ -1242,171 +1137,32 @@ export async function createQuickExpenseWithClient(
     payload.initialStatus ??
       (workflowDefault === "reviewed" ? "reviewed" : receiptUrl ? "needs_review" : "pending")
   );
-  const hasReceiptUrlColumn = await publicSchemaItemAvailable("expenses", "receipt_url");
-
-  const insertRow: Record<string, unknown> = {
-    expense_date: date,
-    vendor_name: vendor,
-    /** Legacy/newer schemas expose `vendor`; mirror label so sort + list mapping never see NULL. */
-    vendor,
+  const deduction = payload.subcontractDeduction
+    ? {
+        ...payload.subcontractDeduction,
+        projectId: payload.subcontractDeduction.projectId ?? projectId,
+        amount: payload.subcontractDeduction.amount ?? total,
+      }
+    : null;
+  const result = await createExpenseAtomicWithClient(c, idempotencyKey, {
+    expenseDate: date,
+    vendorName: vendor,
+    paymentMethod: paymentMethodValue,
+    referenceNo: payload.referenceNo?.trim() || null,
     notes: notes || null,
-    reference_no: payload.referenceNo?.trim() || null,
-    total,
-    /** Some schemas use NOT NULL `amount` on expenses (legacy); mirror `total` for quick create. */
-    amount: total,
-    line_count: 1,
+    receiptUrl: receiptUrl || null,
+    paymentAccountId: payload.paymentAccountId?.trim() || null,
+    sourceType,
     status: resolvedStatus,
-    source_type: sourceType,
-  };
-  if (hasReceiptUrlColumn) insertRow.receipt_url = receiptUrl || null;
-  if (payload.paymentAccountId !== undefined) {
-    insertRow.payment_account_id = payload.paymentAccountId?.trim() || null;
-  }
-  let result = await c
-    .from("expenses")
-    .insert({ ...insertRow, payment_method: paymentMethodValue })
-    .select("id")
-    .single();
-  if (result.error && isMissingColumn(result.error)) {
-    const noSt = { ...insertRow };
-    delete noSt.source_type;
-    result = await c
-      .from("expenses")
-      .insert({ ...noSt, payment_method: paymentMethodValue })
-      .select("id")
-      .single();
-  }
-  if (result.error && isMissingColumn(result.error)) {
-    const noAmt = { ...insertRow };
-    delete noAmt.source_type;
-    delete noAmt.amount;
-    result = await c
-      .from("expenses")
-      .insert({ ...noAmt, payment_method: paymentMethodValue })
-      .select("id")
-      .single();
-  }
-  if (result.error && isStatusConstraintError(result.error)) {
-    result = await c
-      .from("expenses")
-      .insert({
-        ...insertRow,
-        status: "pending",
-        payment_method: paymentMethodValue,
-      })
-      .select("id")
-      .single();
-  }
-  if (result.error && isMissingColumn(result.error)) {
-    result = await c.from("expenses").insert(insertRow).select("id").single();
-  }
-  if (
-    result.error &&
-    isStatusConstraintError(result.error) &&
-    insertRow.status === "needs_review"
-  ) {
-    result = await c
-      .from("expenses")
-      .insert({ ...insertRow, status: "pending" })
-      .select("id")
-      .single();
-  }
-  if (result.error && isMissingColumn(result.error)) {
-    const insertRowLegacy: Record<string, unknown> = {
-      expense_date: date,
-      vendor,
-      notes: notes || null,
-      reference_no: payload.referenceNo?.trim() || null,
-      total,
-      amount: total,
-      line_count: 1,
-      status: "pending",
-    };
-    result = await c.from("expenses").insert(insertRowLegacy).select("id").single();
-  }
-  if (result.error && isMissingColumn(result.error)) {
-    const insertRowLegacyNoAmt: Record<string, unknown> = {
-      expense_date: date,
-      vendor,
-      notes: notes || null,
-      reference_no: payload.referenceNo?.trim() || null,
-      total,
-      line_count: 1,
-      status: "pending",
-    };
-    result = await c.from("expenses").insert(insertRowLegacyNoAmt).select("id").single();
-  }
-  const { data: expRow, error: expErr } = result;
-  if (expErr) throw new Error(expErr.message ?? "Failed to create quick expense.");
-  const expenseId = (expRow as { id: string } | null)?.id;
-  if (!expenseId) throw new Error("Failed to create quick expense: no id.");
-  const vendorSync = await c
-    .from("expenses")
-    .update({ vendor, vendor_name: vendor })
-    .eq("id", expenseId);
-  if (vendorSync.error && !isMissingColumn(vendorSync.error)) {
-    console.warn("[createQuickExpense] vendor sync:", vendorSync.error.message);
-  }
-
-  const lineBase = (includeProject: boolean): Record<string, unknown> => ({
-    expense_id: expenseId,
-    amount: total,
-    ...(includeProject && projectId ? { project_id: projectId } : {}),
+    groups: [
+      {
+        projectId,
+        lines: [{ projectId, category, memo: notes || null, amount: total }],
+      },
+    ],
+    deduction,
   });
-
-  const lineAttempts: Record<string, unknown>[] = [
-    { ...lineBase(true), category, memo: notes || null },
-    { ...lineBase(true), category },
-    { ...lineBase(true) },
-    // If DB has no expense_lines.project_id (stale remote snapshot), still create the line;
-    // expenses.project_id update below keeps header project.
-    { ...lineBase(false), category, memo: notes || null },
-    { ...lineBase(false), category },
-    { ...lineBase(false) },
-  ];
-
-  let lineErr: { message?: string } | null = null;
-  for (const attempt of lineAttempts) {
-    const { error } = await c.from("expense_lines").insert(attempt);
-    lineErr = error;
-    if (!lineErr) break;
-    if (!isMissingColumn(lineErr)) break;
-  }
-  if (lineErr) throw new Error(lineErr.message ?? "Failed to create expense line.");
-
-  if (projectId) {
-    const { error: hdrErr } = await c
-      .from("expenses")
-      .update({ project_id: projectId })
-      .eq("id", expenseId);
-    if (hdrErr && !isMissingColumn(hdrErr)) {
-      console.warn("[createQuickExpense] expenses.project_id update:", hdrErr.message);
-    }
-  }
-
-  if (payload.paymentAccountId !== undefined) {
-    const paId = payload.paymentAccountId?.trim() || null;
-    const paUpd = await c.from("expenses").update({ payment_account_id: paId }).eq("id", expenseId);
-    if (paUpd.error && !isMissingColumn(paUpd.error)) {
-      console.warn("[createQuickExpense] payment_account_id update:", paUpd.error.message);
-    }
-  }
-
-  /** INSERT may fall back to `pending` when `reviewed` fails the status check; upgrade once lines exist. */
-  const workflowDesired = deriveExpenseWorkflowStatus(projectId, category);
-  const shouldUpgradeToReviewed =
-    workflowDesired === "reviewed" &&
-    (payload.initialStatus == null ||
-      expenseStatusForDatabase(payload.initialStatus) === "reviewed");
-  if (shouldUpgradeToReviewed) {
-    const st = expenseStatusForDatabase("reviewed");
-    const statusUpd = await c.from("expenses").update({ status: st }).eq("id", expenseId);
-    if (statusUpd.error && !isMissingColumn(statusUpd.error)) {
-      console.warn("[createQuickExpense] workflow reviewed status:", statusUpd.error.message);
-    }
-  }
-
-  const exp = await getExpenseById(expenseId, explicitClient);
+  const exp = await getExpenseById(result.expense_id, explicitClient);
   if (!exp) throw new Error("Failed to load created expense.");
   return exp;
 }
@@ -1877,7 +1633,7 @@ export async function createExpenseFromPaidReimbursement(
       expense_id: expenseId,
       project_id: projectId,
       category: REIMBURSEMENT_CATEGORY,
-      memo: notes,
+      description: notes,
       amount,
       total: amount,
     },
@@ -1894,13 +1650,13 @@ export async function createExpenseFromPaidReimbursement(
       expense_id: expenseId,
       project_id: projectId,
       category: REIMBURSEMENT_CATEGORY,
-      memo: notes,
+      description: notes,
       amount,
     },
     { expense_id: expenseId, project_id: projectId, category: REIMBURSEMENT_CATEGORY, amount },
     { expense_id: expenseId, project_id: projectId, amount },
     { expense_id: expenseId, project_id: projectId },
-    { expense_id: expenseId, category: REIMBURSEMENT_CATEGORY, memo: notes, amount },
+    { expense_id: expenseId, category: REIMBURSEMENT_CATEGORY, description: notes, amount },
     { expense_id: expenseId, category: REIMBURSEMENT_CATEGORY, amount },
     { expense_id: expenseId, amount },
     { expense_id: expenseId, total: amount },
@@ -1950,58 +1706,28 @@ export async function updateExpense(
   }>
 ): Promise<Expense | null> {
   const c = client();
-  const updates: Record<string, unknown> = {};
-  if (patch.date != null) updates.expense_date = patch.date.slice(0, 10);
-  if (patch.vendorName != null) updates.vendor = patch.vendorName;
-  if (patch.paymentMethod !== undefined) {
-    updates.payment_method = patch.paymentMethod;
-  }
-  if (patch.referenceNo !== undefined) updates.reference_no = patch.referenceNo || null;
+  const headerPatch: Record<string, unknown> = {};
+  if (patch.date != null) headerPatch.expenseDate = patch.date.slice(0, 10);
+  if (patch.vendorName != null) headerPatch.vendorName = patch.vendorName;
+  if (patch.paymentMethod !== undefined) headerPatch.paymentMethod = patch.paymentMethod;
+  if (patch.referenceNo !== undefined) headerPatch.referenceNo = patch.referenceNo || null;
   if (patch.notes !== undefined) {
     const cleaned = stripInboxUploadNoiseFromText(patch.notes ?? "");
-    updates.notes = cleaned || null;
+    headerPatch.notes = cleaned || null;
   }
-  if (patch.cardName !== undefined) updates.card_name = patch.cardName?.trim() || null;
-  if (patch.accountId !== undefined) updates.account_id = patch.accountId ?? null;
+  if (patch.cardName !== undefined) headerPatch.cardName = patch.cardName?.trim() || null;
+  if (patch.accountId !== undefined) headerPatch.accountId = patch.accountId ?? null;
   if (patch.paymentAccountId !== undefined)
-    updates.payment_account_id = patch.paymentAccountId ?? null;
-  if (Object.keys(updates).length > 0) {
-    let res = await c.from("expenses").update(updates).eq("id", expenseId).select("id");
-    let err: { message?: string } | null = res.error;
-    if (
-      err &&
-      errorSuggestsMissingNamedColumn(err, "payment_method") &&
-      updates.payment_method !== undefined
-    ) {
-      delete updates.payment_method;
-      if (Object.keys(updates).length > 0) {
-        res = await c.from("expenses").update(updates).eq("id", expenseId).select("id");
-        err = res.error;
-      } else {
-        err = null;
-      }
-    }
-    if (
-      err &&
-      errorSuggestsMissingNamedColumn(err, "payment_account_id") &&
-      updates.payment_account_id !== undefined
-    ) {
-      delete updates.payment_account_id;
-      if (Object.keys(updates).length > 0) {
-        res = await c.from("expenses").update(updates).eq("id", expenseId).select("id");
-        err = res.error;
-      } else {
-        err = null;
-      }
-    }
-    if (err) return null;
-  }
-  if (patch.paymentMethod !== undefined) {
-    const ver = await c.from("expenses").select("payment_method").eq("id", expenseId).maybeSingle();
-    if (ver.error) return null;
-    const got = (ver.data as { payment_method?: string | null } | null)?.payment_method;
-    if (got !== patch.paymentMethod) return null;
-  }
+    headerPatch.paymentAccountId = patch.paymentAccountId ?? null;
+  if (Object.keys(headerPatch).length === 0) return getExpenseById(expenseId);
+  const { error } = await c.rpc("update_expense_atomic", {
+    p_expense_id: expenseId,
+    p_header_patch: headerPatch,
+    p_line_patch: {},
+    p_apply_deduction: false,
+    p_deduction: null,
+  });
+  if (error) return null;
   return getExpenseById(expenseId);
 }
 
@@ -2031,137 +1757,45 @@ export async function updateExpenseForReview(
   }>
 ): Promise<Expense | null> {
   const c = client();
-  const expUpdates: Record<string, unknown> = {};
-  let syncedHeaderAmount = false;
-  if (patch.date != null) expUpdates.expense_date = patch.date.slice(0, 10);
+  const headerPatch: Record<string, unknown> = {};
+  const linePatch: Record<string, unknown> = {};
+  if (patch.date != null) headerPatch.expenseDate = patch.date.slice(0, 10);
   if (patch.vendorName != null) {
-    expUpdates.vendor = patch.vendorName;
-    expUpdates.vendor_name = patch.vendorName;
+    headerPatch.vendorName = patch.vendorName;
   }
   if (patch.notes !== undefined) {
     const cleaned = stripInboxUploadNoiseFromText(patch.notes ?? "");
-    expUpdates.notes = cleaned || null;
+    headerPatch.notes = cleaned || null;
   }
-  if (patch.status != null) expUpdates.status = expenseStatusForDatabase(String(patch.status));
-  if (patch.workerId !== undefined) expUpdates.worker_id = patch.workerId;
+  if (patch.status != null) headerPatch.status = expenseStatusForDatabase(String(patch.status));
+  if (patch.workerId !== undefined) headerPatch.workerId = patch.workerId;
   if (patch.sourceType != null)
-    expUpdates.source_type = expenseSourceTypeForDatabase(String(patch.sourceType));
+    headerPatch.sourceType = expenseSourceTypeForDatabase(String(patch.sourceType));
   if (patch.paymentAccountId !== undefined) {
-    expUpdates.payment_account_id = patch.paymentAccountId?.trim() || null;
+    headerPatch.paymentAccountId = patch.paymentAccountId?.trim() || null;
   }
   if (patch.paymentMethod !== undefined) {
     const pm = patch.paymentMethod.trim();
-    if (pm) expUpdates.payment_method = pm;
-  }
-  if (
-    patch.status != null &&
-    expenseStatusShouldSyncHeaderFromLines(patch.status) &&
-    patch.amount == null
-  ) {
-    try {
-      await syncExpenseHeaderAmountFromLinesWithClient(c, expenseId);
-      syncedHeaderAmount = true;
-    } catch {
-      return null;
-    }
-  }
-  if (Object.keys(expUpdates).length > 0) {
-    let res = await c.from("expenses").update(expUpdates).eq("id", expenseId);
-    let err: { message?: string } | null = res.error;
-    if (err && isMissingColumn(err) && patch.sourceType != null) {
-      delete expUpdates.source_type;
-      if (Object.keys(expUpdates).length > 0) {
-        res = await c.from("expenses").update(expUpdates).eq("id", expenseId);
-        err = res.error;
-      } else {
-        err = null;
-      }
-    }
-    if (err && isMissingColumn(err) && patch.date != null) {
-      delete expUpdates.expense_date;
-      if (Object.keys(expUpdates).length > 0) {
-        res = await c.from("expenses").update(expUpdates).eq("id", expenseId);
-        err = res.error;
-      } else {
-        err = null;
-      }
-    }
-    if (err && isMissingColumn(err) && patch.paymentAccountId !== undefined) {
-      delete expUpdates.payment_account_id;
-      if (Object.keys(expUpdates).length > 0) {
-        res = await c.from("expenses").update(expUpdates).eq("id", expenseId);
-        err = res.error;
-      } else {
-        err = null;
-      }
-    }
-    if (err && isMissingColumn(err) && patch.paymentMethod !== undefined) {
-      delete expUpdates.payment_method;
-      if (Object.keys(expUpdates).length > 0) {
-        res = await c.from("expenses").update(expUpdates).eq("id", expenseId);
-        err = res.error;
-      } else {
-        err = null;
-      }
-    }
-    if (err) return null;
-  }
-  if (patch.projectId !== undefined || patch.category != null || patch.amount != null) {
-    const { data: lines } = await c
-      .from("expense_lines")
-      .select("id")
-      .eq("expense_id", expenseId)
-      .limit(1);
-    const firstLine = Array.isArray(lines) ? lines[0] : null;
-    if (firstLine && typeof firstLine === "object" && "id" in firstLine) {
-      const lineUpdates: Record<string, unknown> = {};
-      if (patch.projectId !== undefined) lineUpdates.project_id = patch.projectId;
-      if (patch.category != null) lineUpdates.category = patch.category;
-      if (patch.amount != null) lineUpdates.amount = patch.amount;
-      if (Object.keys(lineUpdates).length > 0) {
-        await c
-          .from("expense_lines")
-          .update(lineUpdates)
-          .eq("id", (firstLine as { id: string }).id)
-          .eq("expense_id", expenseId);
-        if (lineUpdates.amount != null) {
-          try {
-            await syncExpenseHeaderAmountFromLinesWithClient(c, expenseId, {
-              lineId: (firstLine as { id: string }).id,
-              amount: lineUpdates.amount as number,
-            });
-            syncedHeaderAmount = true;
-          } catch {
-            return null;
-          }
-        }
-      }
-    }
+    if (pm) headerPatch.paymentMethod = pm;
   }
   if (patch.projectId !== undefined) {
-    const hdr =
+    const projectId =
       patch.projectId != null && String(patch.projectId).trim() !== ""
         ? String(patch.projectId).trim()
         : null;
-    const { error: hdrErr } = await c
-      .from("expenses")
-      .update({ project_id: hdr })
-      .eq("id", expenseId);
-    if (hdrErr && !isMissingColumn(hdrErr)) {
-      console.warn("[updateExpenseForReview] expenses.project_id update:", hdrErr.message);
-    }
+    headerPatch.projectId = projectId;
+    linePatch.projectId = projectId;
   }
-  if (
-    patch.status != null &&
-    expenseStatusShouldSyncHeaderFromLines(patch.status) &&
-    !syncedHeaderAmount
-  ) {
-    try {
-      await syncExpenseHeaderAmountFromLinesWithClient(c, expenseId);
-    } catch {
-      return null;
-    }
-  }
+  if (patch.category != null) linePatch.category = patch.category;
+  if (patch.amount != null) linePatch.amount = patch.amount;
+  const { error } = await c.rpc("update_expense_atomic", {
+    p_expense_id: expenseId,
+    p_header_patch: headerPatch,
+    p_line_patch: linePatch,
+    p_apply_deduction: false,
+    p_deduction: null,
+  });
+  if (error) return null;
   return getExpenseById(expenseId);
 }
 
@@ -2187,18 +1821,14 @@ export async function updateExpenseStatus(
 ): Promise<Expense | null> {
   const c = client();
   const nextStatus = expenseStatusForDatabase(status);
-  if (expenseStatusShouldSyncHeaderFromLines(nextStatus)) {
-    try {
-      await syncExpenseHeaderAmountFromLinesWithClient(c, expenseId);
-    } catch {
-      return null;
-    }
-  }
-  const { error } = await c.from("expenses").update({ status: nextStatus }).eq("id", expenseId);
-  if (error) {
-    if (isMissingColumn(error)) return getExpenseById(expenseId);
-    return null;
-  }
+  const { error } = await c.rpc("update_expense_atomic", {
+    p_expense_id: expenseId,
+    p_header_patch: { status: nextStatus },
+    p_line_patch: {},
+    p_apply_deduction: false,
+    p_deduction: null,
+  });
+  if (error) return null;
   return getExpenseById(expenseId);
 }
 
@@ -2236,21 +1866,20 @@ export async function addExpenseLine(
   }
 ): Promise<Expense | null> {
   const c = client();
-  await c.from("expense_lines").insert({
-    expense_id: expenseId,
-    project_id: line.projectId ?? null,
-    category: line.category ?? "Other",
-    cost_code: line.costCode ?? null,
-    memo: line.memo ?? null,
-    amount: line.amount ?? 0,
+  const { error } = await c.rpc("mutate_expense_line_atomic", {
+    p_expense_id: expenseId,
+    p_operation: "add",
+    p_line_id: null,
+    p_line_patch: {
+      projectId: line.projectId ?? null,
+      category: line.category ?? "Other",
+      costCode: line.costCode ?? null,
+      memo: line.memo ?? null,
+      amount: line.amount ?? 0,
+    },
+    p_preserve_last_line: false,
   });
-  if (Number.isFinite(Number(line.amount)) && Number(line.amount) > 0) {
-    try {
-      await syncExpenseHeaderAmountFromLinesWithClient(c, expenseId);
-    } catch {
-      return null;
-    }
-  }
+  if (error) return null;
   return getExpenseById(expenseId);
 }
 
@@ -2260,25 +1889,21 @@ export async function updateExpenseLine(
   patch: Partial<ExpenseLine>
 ): Promise<Expense | null> {
   const c = client();
-  const updates: Record<string, unknown> = {};
-  if (patch.projectId !== undefined) updates.project_id = patch.projectId;
-  if (patch.category != null) updates.category = patch.category;
-  if (patch.costCode !== undefined) updates.cost_code = patch.costCode ?? null;
-  if (patch.memo !== undefined) updates.memo = patch.memo ?? null;
-  if (patch.amount != null) updates.amount = patch.amount;
-  if (Object.keys(updates).length > 0) {
-    await c.from("expense_lines").update(updates).eq("id", lineId).eq("expense_id", expenseId);
-    if (Object.prototype.hasOwnProperty.call(updates, "amount")) {
-      try {
-        await syncExpenseHeaderAmountFromLinesWithClient(c, expenseId, {
-          lineId,
-          amount: updates.amount as number,
-        });
-      } catch {
-        return null;
-      }
-    }
-  }
+  const linePatch: Record<string, unknown> = {};
+  if (patch.projectId !== undefined) linePatch.projectId = patch.projectId;
+  if (patch.category != null) linePatch.category = patch.category;
+  if (patch.costCode !== undefined) linePatch.costCode = patch.costCode ?? null;
+  if (patch.memo !== undefined) linePatch.memo = patch.memo ?? null;
+  if (patch.amount != null) linePatch.amount = patch.amount;
+  if (Object.keys(linePatch).length === 0) return getExpenseById(expenseId);
+  const { error } = await c.rpc("mutate_expense_line_atomic", {
+    p_expense_id: expenseId,
+    p_operation: "update",
+    p_line_id: lineId,
+    p_line_patch: linePatch,
+    p_preserve_last_line: false,
+  });
+  if (error) return null;
   return getExpenseById(expenseId);
 }
 
@@ -2287,21 +1912,14 @@ export async function deleteExpenseLine(
   lineId: string
 ): Promise<Expense | null> {
   const c = client();
-  const { data: lines } = await c.from("expense_lines").select("id").eq("expense_id", expenseId);
-  if (lines && lines.length <= 1) {
-    await c
-      .from("expense_lines")
-      .update({ project_id: null, category: "Other", amount: 0, cost_code: null, memo: null })
-      .eq("id", lineId)
-      .eq("expense_id", expenseId);
-  } else {
-    await c.from("expense_lines").delete().eq("id", lineId).eq("expense_id", expenseId);
-    try {
-      await syncExpenseHeaderAmountFromLinesWithClient(c, expenseId);
-    } catch {
-      return null;
-    }
-  }
+  const { error } = await c.rpc("mutate_expense_line_atomic", {
+    p_expense_id: expenseId,
+    p_operation: "delete",
+    p_line_id: lineId,
+    p_line_patch: {},
+    p_preserve_last_line: true,
+  });
+  if (error) return null;
   return getExpenseById(expenseId);
 }
 

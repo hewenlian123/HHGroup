@@ -573,56 +573,130 @@ export async function recordBatchReimbursementPayment(
   updatedCount: number;
   reimbursements: WorkerReimbursement[];
 }> {
-  if (reimbursementIds.length === 0) throw new Error("No reimbursements selected.");
-  const c = client(explicitClient);
-
-  const { data: rows, error: fetchErr } = await c
-    .from(TABLE_NAME)
-    .select("id, worker_id, amount, status")
-    .in("id", reimbursementIds);
-  if (fetchErr) throw new Error(fetchErr.message ?? "Failed to load reimbursements.");
-  const list = (rows ?? []) as { id: string; worker_id: string; amount: number; status: string }[];
-  if (list.length !== reimbursementIds.length)
-    throw new Error("One or more reimbursements not found.");
-  const workerIds = new Set(list.map((r) => r.worker_id));
-  if (workerIds.size > 1)
-    throw new Error("All selected reimbursements must be for the same worker.");
-  const workerId = list[0].worker_id;
-  const notPending = list.filter((r) => r.status !== "pending");
-  if (notPending.length > 0)
-    throw new Error("All selected reimbursements must have status pending.");
-
-  const totalAmount = list.reduce((s, r) => s + Number(r.amount) || 0, 0);
-  const payment = await createWorkerPayment(
-    {
-      workerId,
-      totalAmount,
-      paymentMethod: params.paymentMethod,
-      note: params.note,
-    },
-    explicitClient
+  void reimbursementIds;
+  void params;
+  void explicitClient;
+  throw new Error(
+    "Non-atomic reimbursement payment path is disabled. Use the atomic reimbursement payment RPC."
   );
+}
 
-  const { data: updated, error: updateErr } = await c
-    .from(TABLE_NAME)
-    .update({
-      status: "paid",
-      paid_at: new Date().toISOString(),
-      payment_id: payment.id,
-    })
-    .in("id", reimbursementIds)
-    .select("id");
-  if (updateErr) throw new Error(updateErr.message ?? "Failed to update reimbursements.");
-  const updatedCount = Array.isArray(updated) ? updated.length : 0;
-  if (updatedCount !== reimbursementIds.length) {
-    throw new Error("One or more reimbursements were not updated.");
+/**
+ * Atomically creates one worker payment, links every reimbursement, and creates
+ * each reimbursement expense + line. The database RPC owns the transaction and
+ * validates idempotent replays before this helper reloads the completed result.
+ */
+export async function recordReimbursementPaymentAtomicWithClient(
+  reimbursementIds: string[],
+  params: {
+    idempotencyKey: string;
+    paymentMethod?: string | null;
+    paymentDate?: string;
+    note?: string | null;
+  },
+  explicitClient: SupabaseClient
+): Promise<{
+  payment: WorkerPayment;
+  updatedCount: number;
+  reimbursements: WorkerReimbursement[];
+  expenseIds: string[];
+  reused: boolean;
+}> {
+  const ids = [...new Set(reimbursementIds.map((id) => id.trim()).filter(Boolean))].sort();
+  if (ids.length === 0) throw new Error("No reimbursements selected.");
+  if (ids.length !== reimbursementIds.length) {
+    throw new Error("Reimbursement ids must be unique and non-empty.");
   }
-  const { data: reimbRows } = await c.from(TABLE_NAME).select(COLS).in("id", reimbursementIds);
+
+  const { data: selection, error: selectionError } = await explicitClient
+    .from(TABLE_NAME)
+    .select("id, worker_id")
+    .in("id", ids);
+  if (selectionError) {
+    throw new Error(selectionError.message ?? "Failed to load reimbursements.");
+  }
+  const selectedRows = (selection ?? []) as Array<{ id: string; worker_id: string }>;
+  if (selectedRows.length !== ids.length) throw new Error("One or more reimbursements not found.");
+  const workerIds = new Set(selectedRows.map((row) => row.worker_id));
+  if (workerIds.size !== 1) {
+    throw new Error("All selected reimbursements must be for the same worker.");
+  }
+  const workerId = selectedRows[0]!.worker_id;
+
+  const { data, error } = await explicitClient.rpc("record_worker_reimbursement_payment_atomic", {
+    p_idempotency_key: params.idempotencyKey,
+    p_worker_id: workerId,
+    p_payment_method: params.paymentMethod?.trim() || null,
+    p_payment_date: (params.paymentDate ?? workerRateLocalYmd()).slice(0, 10),
+    p_note: params.note?.trim() || null,
+    p_reimbursement_ids: ids,
+  });
+  if (error) throw new Error(error.message ?? "Failed to record reimbursement payment.");
+
+  const result = (data ?? {}) as {
+    payment_id?: unknown;
+    updated_count?: unknown;
+    reused?: unknown;
+  };
+  const paymentId = String(result.payment_id ?? "");
+  if (!paymentId) throw new Error("Atomic reimbursement payment returned no payment id.");
+
+  const [paymentResult, reimbursementResult, expenseResult] = await Promise.all([
+    explicitClient
+      .from(WORKER_PAYMENTS_TABLE)
+      .select(WORKER_PAYMENT_COLS)
+      .eq("id", paymentId)
+      .single(),
+    explicitClient.from(TABLE_NAME).select(COLS).in("id", ids),
+    explicitClient
+      .from("expenses")
+      .select("id, source_id")
+      .eq("source", "worker_reimbursement")
+      .in("source_id", ids),
+  ]);
+  if (paymentResult.error || !paymentResult.data) {
+    throw new Error(
+      paymentResult.error?.message ??
+        "Atomic reimbursement payment completed but the payment could not be loaded."
+    );
+  }
+  if (reimbursementResult.error) {
+    throw new Error(
+      reimbursementResult.error.message ??
+        "Atomic reimbursement payment completed but reimbursements could not be loaded."
+    );
+  }
+  if (expenseResult.error) {
+    throw new Error(
+      expenseResult.error.message ??
+        "Atomic reimbursement payment completed but expenses could not be loaded."
+    );
+  }
   const reimbursements = await enrichNames(
-    ((reimbRows ?? []) as Record<string, unknown>[]).map(fromRow),
+    ((reimbursementResult.data ?? []) as Record<string, unknown>[]).map(fromRow),
     explicitClient
   );
-  return { payment, updatedCount, reimbursements };
+  if (reimbursements.length !== ids.length) {
+    throw new Error("Atomic reimbursement payment returned an incomplete reimbursement set.");
+  }
+  const expenseIdBySource = new Map(
+    ((expenseResult.data ?? []) as Array<{ id: string; source_id: string }>).map((row) => [
+      row.source_id,
+      row.id,
+    ])
+  );
+  const expenseIds = ids.map((id) => expenseIdBySource.get(id) ?? "");
+  if (expenseIds.some((id) => !id) || expenseIdBySource.size !== ids.length) {
+    throw new Error("Atomic reimbursement payment returned an incomplete expense set.");
+  }
+
+  return {
+    payment: workerPaymentFromRow(paymentResult.data as Record<string, unknown>),
+    updatedCount: Number(result.updated_count ?? ids.length),
+    reimbursements,
+    expenseIds,
+    reused: result.reused === true,
+  };
 }
 
 /**

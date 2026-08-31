@@ -8,6 +8,10 @@ import {
   filterEstimateScopeSearchResults,
   type EstimateScopeSearchEntry,
 } from "./estimate-builder-productivity";
+import {
+  selectEstimateActiveSectionFromObserverEntries,
+  type EstimateSectionObserverEntry,
+} from "./estimate-workflow-continuity";
 
 export type EstimateScopeToolbarSection = {
   id: string;
@@ -42,8 +46,7 @@ function visibleLineElement(lineItemId: string): HTMLElement | null {
 }
 
 function scrollAndFocus(target: HTMLElement): void {
-  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  target.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
+  target.scrollIntoView({ behavior: "auto", block: "start" });
   const focusTarget = target.hasAttribute("data-estimate-line-item-id")
     ? (target.querySelector<HTMLElement>(
         'input[aria-label*=" title"], [role="textbox"], .eb-line-item-mobile-summary'
@@ -55,7 +58,8 @@ function scrollAndFocus(target: HTMLElement): void {
 export function EstimateScopeToolbar({
   sections,
   searchEntries,
-  initialExplicitSectionId,
+  activeSectionId,
+  explicitActiveSectionId,
   onCollapseAll,
   onExpandAll,
   onRevealSection,
@@ -64,19 +68,14 @@ export function EstimateScopeToolbar({
 }: {
   sections: EstimateScopeToolbarSection[];
   searchEntries: EstimateScopeSearchEntry[];
-  initialExplicitSectionId?: string | null;
+  activeSectionId: string | null;
+  explicitActiveSectionId: string | null;
   onCollapseAll: () => void;
   onExpandAll: () => void;
   onRevealSection?: (sectionId: string) => void;
-  onActiveSectionChange?: (sectionId: string) => void;
+  onActiveSectionChange: (sectionId: string, source: "explicit" | "inferred") => void;
   addSectionControl?: React.ReactNode;
 }): React.ReactElement {
-  const [activeSectionId, setActiveSectionId] = React.useState<string | null>(
-    initialExplicitSectionId ?? sections[0]?.id ?? null
-  );
-  const [explicitSectionId, setExplicitSectionId] = React.useState<string | null>(
-    initialExplicitSectionId ?? null
-  );
   const [query, setQuery] = React.useState("");
   const [activeResultIndex, setActiveResultIndex] = React.useState(0);
   const [resultsOpen, setResultsOpen] = React.useState(false);
@@ -87,33 +86,46 @@ export function EstimateScopeToolbar({
     [query, searchEntries]
   );
 
-  const setActive = React.useCallback(
-    (sectionId: string): void => {
-      setActiveSectionId(sectionId);
-      onActiveSectionChange?.(sectionId);
-    },
-    [onActiveSectionChange]
-  );
-
   React.useEffect(() => {
     if (activeSectionId && sections.some((section) => section.id === activeSectionId)) return;
     const next = sections[0]?.id ?? null;
-    setActiveSectionId(next);
-    if (next) onActiveSectionChange?.(next);
+    if (next) onActiveSectionChange(next, "inferred");
   }, [activeSectionId, onActiveSectionChange, sectionKey, sections]);
 
   React.useEffect(() => {
-    if (!explicitSectionId) return;
-    if (sections.some((section) => section.id === explicitSectionId)) return;
-    setExplicitSectionId(null);
-  }, [explicitSectionId, sectionKey, sections]);
+    if (!explicitActiveSectionId) return;
+    const scrollRoot = document.querySelector<HTMLElement>("[data-app-scroll-root]");
+    if (!scrollRoot) return;
 
-  React.useEffect(() => {
-    if (!initialExplicitSectionId) return;
-    if (!sections.some((section) => section.id === initialExplicitSectionId)) return;
-    setExplicitSectionId(initialExplicitSectionId);
-    setActive(initialExplicitSectionId);
-  }, [initialExplicitSectionId, sectionKey, sections, setActive]);
+    const releaseExplicitSelection = (): void => {
+      onActiveSectionChange(explicitActiveSectionId, "inferred");
+    };
+    const releaseForKeyboardScroll = (event: KeyboardEvent): void => {
+      if (!["ArrowDown", "ArrowUp", "End", "Home", "PageDown", "PageUp"].includes(event.key)) {
+        return;
+      }
+      const target = event.target;
+      if (
+        target instanceof HTMLElement &&
+        (target.matches("input, textarea, select") || target.isContentEditable)
+      ) {
+        return;
+      }
+      releaseExplicitSelection();
+    };
+
+    scrollRoot.addEventListener("wheel", releaseExplicitSelection, { passive: true, once: true });
+    scrollRoot.addEventListener("touchstart", releaseExplicitSelection, {
+      passive: true,
+      once: true,
+    });
+    document.addEventListener("keydown", releaseForKeyboardScroll);
+    return () => {
+      scrollRoot.removeEventListener("wheel", releaseExplicitSelection);
+      scrollRoot.removeEventListener("touchstart", releaseExplicitSelection);
+      document.removeEventListener("keydown", releaseForKeyboardScroll);
+    };
+  }, [explicitActiveSectionId, onActiveSectionChange]);
 
   React.useEffect(() => {
     if (typeof IntersectionObserver === "undefined") return;
@@ -122,38 +134,44 @@ export function EstimateScopeToolbar({
       .filter((entry): entry is { id: string; element: HTMLElement } => Boolean(entry.element));
     if (!elements.length) return;
 
+    const visibleEntries = new Map<string, EstimateSectionObserverEntry>();
+    const sectionIdByElement = new Map(elements.map((entry) => [entry.element, entry.id]));
+
     const observer = new IntersectionObserver(
       (entries) => {
-        const nearest = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort(
-            (a, b) =>
-              Math.abs(a.boundingClientRect.top - 112) - Math.abs(b.boundingClientRect.top - 112)
-          )[0];
-        const match = nearest
-          ? elements.find((entry) => entry.element === nearest.target)
-          : undefined;
-        if (match && !explicitSectionId) setActive(match.id);
+        const updates = entries.flatMap((entry) => {
+          const id = sectionIdByElement.get(entry.target as HTMLElement);
+          return id
+            ? [{ id, isIntersecting: entry.isIntersecting, top: entry.boundingClientRect.top }]
+            : [];
+        });
+        const activeSectionId = selectEstimateActiveSectionFromObserverEntries(
+          [...visibleEntries.values()],
+          updates
+        );
+        updates.forEach((entry) => {
+          if (entry.isIntersecting) visibleEntries.set(entry.id, entry);
+          else visibleEntries.delete(entry.id);
+        });
+        if (activeSectionId) onActiveSectionChange(activeSectionId, "inferred");
       },
       { rootMargin: "-96px 0px -58% 0px", threshold: [0, 0.2, 0.5] }
     );
     elements.forEach((entry) => observer.observe(entry.element));
     return () => observer.disconnect();
-  }, [explicitSectionId, sectionKey, sections, setActive]);
+  }, [explicitActiveSectionId, onActiveSectionChange, sectionKey, sections]);
 
   const jumpToSection = (sectionId: string): void => {
     const target = visibleSectionElement(sectionId);
     if (!target) return;
-    setExplicitSectionId(sectionId);
-    setActive(sectionId);
+    onActiveSectionChange(sectionId, "explicit");
     scrollAndFocus(target);
   };
 
   const chooseSearchResult = (entry: EstimateScopeSearchEntry): void => {
     setResultsOpen(false);
     setQuery("");
-    setExplicitSectionId(entry.sectionId);
-    setActive(entry.sectionId);
+    onActiveSectionChange(entry.sectionId, "explicit");
     if (entry.lineItemId) onRevealSection?.(entry.sectionId);
     window.requestAnimationFrame(() => {
       window.requestAnimationFrame(() => {
@@ -169,7 +187,6 @@ export function EstimateScopeToolbar({
     <div
       ref={shellRef}
       className="eb-scope-toolbar"
-      data-estimate-active-section-id={explicitSectionId ?? activeSectionId ?? undefined}
       role="toolbar"
       aria-label="Scope tools"
       onBlur={(event) => {

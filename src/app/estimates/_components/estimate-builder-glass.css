@@ -567,14 +567,14 @@ body.estimate-builder-active .eb-glass-command {
 .estimate-builder .eb-date-field,
 .estimate-builder input[type="date"],
 body.estimate-builder-active input[type="date"] {
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 .estimate-builder input[type="date"]::-webkit-calendar-picker-indicator,
 body.estimate-builder-active input[type="date"]::-webkit-calendar-picker-indicator {
   cursor: pointer;
   opacity: 0.65;
-  filter: invert(0.85);
+  filter: none;
 }
 
 /* Inputs — visible borders, clear focus */
@@ -1354,12 +1354,22 @@ body.estimate-builder-active [data-radix-dialog-overlay] {
 .estimate-builder.eb-sheet-glass input.eb-sheet-input,
 .estimate-builder.eb-sheet-glass textarea.eb-sheet-input,
 .estimate-builder.eb-sheet-glass select.eb-sheet-input {
-  min-height: 2.75rem;
+  min-height: var(--hh-control-height-standard);
   border: 1px solid var(--hh-border-floating) !important;
   border-radius: var(--hh-radius-compact) !important;
   background: var(--hh-l1-workspace) !important;
   color: var(--hh-text-secondary) !important;
   box-shadow: var(--hh-shadow-operational);
+}
+
+@media (max-width: 1023px), (pointer: coarse) {
+  .estimate-builder.eb-sheet-glass .eb-sheet-input,
+  .estimate-builder.eb-sheet-glass .eb-sheet-input.eb-input,
+  .estimate-builder.eb-sheet-glass input.eb-sheet-input,
+  .estimate-builder.eb-sheet-glass textarea.eb-sheet-input,
+  .estimate-builder.eb-sheet-glass select.eb-sheet-input {
+    min-height: var(--hh-touch-min);
+  }
 }
 
 .estimate-builder.eb-sheet-glass .eb-sheet-input::placeholder {
@@ -1470,119 +1480,6 @@ body.estimate-builder-active [data-radix-dialog-overlay] {
   border-color: var(--hh-border-strong) !important;
   background: var(--hh-l4-floating-surface) !important;
   color: var(--hh-text-primary) !important;
-}
-
-/* Estimate Overview — desktop sticky (/estimates/new only) */
-.estimate-builder-new.estimate-builder {
-  overflow: visible;
-}
-
-.estimate-builder-new .eb-builder-content {
-  overflow: visible;
-}
-
-@media (min-width: 1024px) {
-  .estimate-builder-new .eb-estimate-overview-sticky {
-    position: sticky;
-    top: 5rem;
-    align-self: start;
-    max-height: calc(100vh - 6rem);
-    z-index: 1;
-  }
-
-  .estimate-builder-new .eb-estimate-overview-sticky .eb-glass-sidebar {
-    max-height: calc(100vh - 6rem);
-    overflow-y: auto;
-    overscroll-behavior: contain;
-  }
-
-  .estimate-builder-new .eb-estimate-overview-sticky .eb-glass-sidebar-float {
-    position: static;
-    top: auto;
-  }
-
-  .estimate-builder-new .eb-estimate-overview-sticky {
-    --overview-scroll-y: 0px;
-  }
-
-  .estimate-builder-new .eb-estimate-overview-sticky .eb-glass-sidebar {
-    transition:
-      border-color 200ms cubic-bezier(0.22, 1, 0.36, 1),
-      box-shadow 200ms cubic-bezier(0.22, 1, 0.36, 1),
-      background 200ms cubic-bezier(0.22, 1, 0.36, 1),
-      transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
-    transform: translate3d(0, var(--overview-scroll-y, 0px), 0);
-  }
-
-  .estimate-builder-new .eb-estimate-overview-sticky .eb-glass-sidebar::before {
-    transition: background 200ms cubic-bezier(0.22, 1, 0.36, 1);
-  }
-
-  .estimate-builder-new .eb-estimate-overview-sticky.is-floating .eb-glass-sidebar {
-    border-color: var(--hh-border-strong);
-    background: linear-gradient(
-      168deg,
-      var(--hh-l4-floating-surface) 0%,
-      var(--hh-l2-operational-surface) 52%,
-      var(--hh-l2-operational-surface) 100%
-    );
-    box-shadow: var(--hh-shadow-operational);
-    transform: translate3d(0, calc(var(--overview-scroll-y, 0px) - 1px), 0);
-  }
-
-  .estimate-builder-new .eb-estimate-overview-sticky.is-floating.is-scroll-nudge .eb-glass-sidebar {
-    transition:
-      border-color 180ms cubic-bezier(0.22, 1, 0.36, 1),
-      box-shadow 180ms cubic-bezier(0.22, 1, 0.36, 1),
-      background 180ms cubic-bezier(0.22, 1, 0.36, 1);
-  }
-
-  .estimate-builder-new .eb-estimate-overview-sticky.is-floating .eb-glass-sidebar::before {
-    background: linear-gradient(to bottom, var(--hh-border), transparent 35%);
-  }
-
-  .estimate-builder-new .eb-estimate-overview-sticky .eb-glass-sidebar:hover,
-  .estimate-builder-new .eb-estimate-overview-sticky .eb-glass-sidebar:focus-within {
-    border-color: var(--hh-border-strong);
-    box-shadow: var(--hh-shadow-operational);
-    transform: translate3d(0, calc(var(--overview-scroll-y, 0px) - 1px), 0);
-  }
-
-  .estimate-builder-new .eb-estimate-overview-sticky.is-floating .eb-glass-sidebar:hover,
-  .estimate-builder-new .eb-estimate-overview-sticky.is-floating .eb-glass-sidebar:focus-within {
-    border-color: var(--hh-border-strong);
-    box-shadow: var(--hh-shadow-operational);
-    transform: translate3d(0, calc(var(--overview-scroll-y, 0px) - 2px), 0);
-  }
-
-  .estimate-builder-new
-    .eb-estimate-overview-sticky.is-floating.is-scroll-nudge
-    .eb-glass-sidebar:hover,
-  .estimate-builder-new
-    .eb-estimate-overview-sticky.is-floating.is-scroll-nudge
-    .eb-glass-sidebar:focus-within {
-    transform: translate3d(0, calc(var(--overview-scroll-y, 0px) - 1px), 0);
-  }
-}
-
-@media (min-width: 1024px) and (prefers-reduced-motion: reduce) {
-  .estimate-builder-new .eb-estimate-overview-sticky .eb-glass-sidebar,
-  .estimate-builder-new .eb-estimate-overview-sticky .eb-glass-sidebar::before {
-    transition:
-      border-color 120ms ease,
-      box-shadow 120ms ease,
-      background 120ms ease;
-  }
-
-  .estimate-builder-new .eb-estimate-overview-sticky .eb-glass-sidebar,
-  .estimate-builder-new .eb-estimate-overview-sticky.is-floating .eb-glass-sidebar,
-  .estimate-builder-new .eb-estimate-overview-sticky.is-floating.is-scroll-nudge .eb-glass-sidebar,
-  .estimate-builder-new .eb-estimate-overview-sticky .eb-glass-sidebar:hover,
-  .estimate-builder-new .eb-estimate-overview-sticky .eb-glass-sidebar:focus-within,
-  .estimate-builder-new .eb-estimate-overview-sticky.is-floating .eb-glass-sidebar:hover,
-  .estimate-builder-new .eb-estimate-overview-sticky.is-floating .eb-glass-sidebar:focus-within {
-    transform: none !important;
-  }
 }
 
 /* iOS typography overrides — /estimates/new canvas + portaled drawers */
@@ -2363,11 +2260,6 @@ body.estimate-builder-active [data-radix-dialog-overlay] {
 
 .estimate-builder-new .eb-section-header-chip-icon {
   margin-top: 0;
-}
-
-.estimate-builder-new .eb-line-pricing-grid :where(input) {
-  height: 2rem !important;
-  min-height: 2rem !important;
 }
 
 .estimate-builder-new .eb-line-pricing-total {

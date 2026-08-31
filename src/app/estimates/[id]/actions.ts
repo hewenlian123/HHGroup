@@ -46,6 +46,24 @@ import {
 
 export type EstimateStatus = "Draft" | "Sent" | "Approved" | "Rejected" | "Converted";
 
+type FinancialFormValue = { value?: number; error?: string };
+
+function parseOptionalFiniteFinancialFormValue(
+  value: FormDataEntryValue | null,
+  label: string
+): FinancialFormValue {
+  if (value == null) return {};
+  if (typeof value !== "string") return { error: `${label} must be a finite number.` };
+
+  const trimmed = value.trim();
+  if (!trimmed) return {};
+
+  const parsed = Number(trimmed);
+  return Number.isFinite(parsed)
+    ? { value: parsed }
+    : { error: `${label} must be a finite number.` };
+}
+
 async function getEstimateWriteClient(): Promise<SupabaseClient | null> {
   const guard = await requireSupabaseOwnerOrAdminServerAction();
   if (!guard.ok) return null;
@@ -578,10 +596,16 @@ export async function saveEstimateMetaInlineAction(
     const customerId = formData.has("customerId")
       ? (formData.get("customerId") as string)?.trim() || null
       : undefined;
-    const tax = formData.get("tax");
-    const discount = formData.get("discount");
-    const overheadPct = formData.get("overheadPct");
-    const profitPct = formData.get("profitPct");
+    const tax = parseOptionalFiniteFinancialFormValue(formData.get("tax"), "Tax");
+    const discount = parseOptionalFiniteFinancialFormValue(formData.get("discount"), "Discount");
+    const overheadPct = parseOptionalFiniteFinancialFormValue(
+      formData.get("overheadPct"),
+      "Overhead percentage"
+    );
+    const profitPct = parseOptionalFiniteFinancialFormValue(
+      formData.get("profitPct"),
+      "Profit percentage"
+    );
     const estimateDate = (formData.get("estimateDate") as string)?.trim();
     const validUntil = (formData.get("validUntil") as string)?.trim();
     const notes = (formData.get("notes") as string)?.trim();
@@ -597,6 +621,8 @@ export async function saveEstimateMetaInlineAction(
     if (formData.has("projectName") && !projectName) {
       return { ok: false, error: "Project name is required." };
     }
+    const financialInputError = tax.error ?? discount.error ?? overheadPct.error ?? profitPct.error;
+    if (financialInputError) return { ok: false, error: financialInputError };
     const db = await getEstimateWriteClient();
     if (!db) return { ok: false, error: "Database is not configured." };
     const ok = await updateEstimateMetaWithClient(db, estimateId, {
@@ -631,12 +657,10 @@ export async function saveEstimateMetaInlineAction(
       ...(projectAddress != null && projectName == null
         ? { project: { siteAddress: projectAddress } }
         : {}),
-      ...(tax != null && tax !== "" ? { tax: Number(tax) || 0 } : {}),
-      ...(discount != null && discount !== "" ? { discount: Number(discount) || 0 } : {}),
-      ...(overheadPct != null && overheadPct !== ""
-        ? { overheadPct: Number(overheadPct) || 0 }
-        : {}),
-      ...(profitPct != null && profitPct !== "" ? { profitPct: Number(profitPct) || 0 } : {}),
+      ...(tax.value !== undefined ? { tax: tax.value } : {}),
+      ...(discount.value !== undefined ? { discount: discount.value } : {}),
+      ...(overheadPct.value !== undefined ? { overheadPct: overheadPct.value } : {}),
+      ...(profitPct.value !== undefined ? { profitPct: profitPct.value } : {}),
       ...(estimateDate != null ? { estimateDate: estimateDate || undefined } : {}),
       ...(validUntil != null ? { validUntil } : {}),
       ...(formData.has("notes") ? { notes: notes ?? "" } : {}),
@@ -1435,6 +1459,18 @@ export async function deleteLineItemInlineAction(
 export async function saveEstimateMetaAction(formData: FormData) {
   const estimateId = formData.get("estimateId");
   if (typeof estimateId !== "string") return;
+  const tax = parseOptionalFiniteFinancialFormValue(formData.get("tax"), "Tax");
+  const discount = parseOptionalFiniteFinancialFormValue(formData.get("discount"), "Discount");
+  const overheadPct = parseOptionalFiniteFinancialFormValue(
+    formData.get("overheadPct"),
+    "Overhead percentage"
+  );
+  const profitPct = parseOptionalFiniteFinancialFormValue(
+    formData.get("profitPct"),
+    "Profit percentage"
+  );
+  const financialInputError = tax.error ?? discount.error ?? overheadPct.error ?? profitPct.error;
+  if (financialInputError) throw new Error(financialInputError);
   try {
     const clientName = (formData.get("clientName") as string)?.trim();
     const projectName = (formData.get("projectName") as string)?.trim();
@@ -1450,10 +1486,6 @@ export async function saveEstimateMetaAction(formData: FormData) {
     const customerId = formData.has("customerId")
       ? (formData.get("customerId") as string)?.trim() || null
       : undefined;
-    const tax = formData.get("tax");
-    const discount = formData.get("discount");
-    const overheadPct = formData.get("overheadPct");
-    const profitPct = formData.get("profitPct");
     const estimateDate = (formData.get("estimateDate") as string)?.trim();
     const validUntil = (formData.get("validUntil") as string)?.trim();
     const notes = (formData.get("notes") as string)?.trim();
@@ -1497,12 +1529,10 @@ export async function saveEstimateMetaAction(formData: FormData) {
       ...(projectAddress != null && projectName == null
         ? { project: { siteAddress: projectAddress } }
         : {}),
-      ...(tax != null && tax !== "" ? { tax: Number(tax) || 0 } : {}),
-      ...(discount != null && discount !== "" ? { discount: Number(discount) || 0 } : {}),
-      ...(overheadPct != null && overheadPct !== ""
-        ? { overheadPct: Number(overheadPct) || 0 }
-        : {}),
-      ...(profitPct != null && profitPct !== "" ? { profitPct: Number(profitPct) || 0 } : {}),
+      ...(tax.value !== undefined ? { tax: tax.value } : {}),
+      ...(discount.value !== undefined ? { discount: discount.value } : {}),
+      ...(overheadPct.value !== undefined ? { overheadPct: overheadPct.value } : {}),
+      ...(profitPct.value !== undefined ? { profitPct: profitPct.value } : {}),
       ...(estimateDate != null ? { estimateDate: estimateDate || undefined } : {}),
       ...(validUntil != null ? { validUntil } : {}),
       ...(formData.has("notes") ? { notes: notes ?? "" } : {}),

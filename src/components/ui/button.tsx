@@ -11,7 +11,7 @@ import {
 } from "@/lib/motion-system";
 
 const primaryActionClass =
-  "border-transparent bg-[var(--hh-action-primary)] text-[var(--hh-action-primary-foreground)] hover:opacity-90 active:bg-[var(--hh-action-primary)] dark:hover:bg-[var(--hh-gold-hover)] dark:hover:opacity-100 dark:active:bg-[var(--hh-gold-hover)]";
+  "border-[var(--hh-action-primary)] bg-[var(--hh-action-primary)] text-[var(--hh-action-primary-foreground)] hover:border-[var(--hh-action-primary-hover)] hover:bg-[var(--hh-action-primary-hover)] active:border-[var(--hh-action-primary-hover)] active:bg-[var(--hh-action-primary-hover)]";
 
 /**
  * Canonical operational action primitive. Workflow components compose this
@@ -40,10 +40,10 @@ const buttonVariants = cva(
       },
       size: {
         /* Touch-friendly: the shared utility applies the 44px minimum on touch/small screens. */
-        default: "hh-touch-min h-hh-control-comfortable px-hh-4",
-        sm: "hh-touch-min h-hh-control-compact rounded-hh-compact px-hh-3",
+        default: "hh-touch-min h-hh-control-standard px-hh-4",
+        sm: "hh-touch-min h-hh-control-standard rounded-hh-compact px-hh-3",
         lg: "hh-touch-min h-hh-control-touch px-hh-5",
-        icon: "hh-touch-square h-hh-control-comfortable w-hh-10",
+        icon: "hh-touch-square h-hh-control-standard w-9",
         touch: "hh-touch-square min-h-hh-touch min-w-hh-touch px-hh-4",
       },
     },

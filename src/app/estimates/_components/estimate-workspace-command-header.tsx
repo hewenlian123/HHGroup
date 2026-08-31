@@ -3,17 +3,17 @@
 import * as React from "react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { NeoStatus, type StatusBadgeVariant } from "@/components/base";
+import { StatusBadge, type StatusBadgeVariant } from "@/components/base/status-badge";
 import { EstimateBuilderSaveStatus, type EstimateSaveStatus } from "./estimate-builder-save-status";
 
 export const ESTIMATE_HEADER_BUTTON =
-  "rounded-md border border-border bg-secondary text-foreground shadow-none hover:border-border/90 hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring";
+  "rounded-[6px] border border-[var(--hh-border-default)] bg-[var(--hh-surface-workspace)] text-[var(--hh-text-primary)] shadow-none hover:border-[var(--hh-border-input)] hover:bg-[var(--hh-surface-hover)] focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)]";
 export const ESTIMATE_HEADER_PRIMARY_BUTTON =
-  "rounded-md border border-primary bg-primary text-primary-foreground shadow-none hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring";
+  "rounded-[6px] !border-[var(--hh-accent-primary)] !bg-[var(--hh-accent-primary)] !text-white shadow-none hover:!border-[var(--hh-accent-hover)] hover:!bg-[var(--hh-accent-hover)] focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)]";
 
 function estimateStatusMeta(status: string): { label: string; variant: StatusBadgeVariant } {
   if (status === "Draft") return { label: "Draft", variant: "muted" };
-  if (status === "Sent") return { label: "Sent", variant: "warning" };
+  if (status === "Sent") return { label: "Sent", variant: "info" };
   if (status === "Approved") return { label: "Approved", variant: "success" };
   if (status === "Rejected") return { label: "Rejected", variant: "danger" };
   if (status === "Converted") return { label: "Converted to Project", variant: "success" };
@@ -53,64 +53,59 @@ export function EstimateWorkspaceCommandHeader({
 
   return (
     <header
-      className="eb-estimate-command-bar border-b border-border bg-transparent pb-3 text-foreground"
+      className="eb-estimate-command-bar border-b border-[var(--hh-border-subtle)] bg-[var(--hh-surface-workspace)] text-[var(--hh-text-primary)]"
       data-testid={testId}
       data-estimate-workspace-header="true"
     >
-      <div className="flex flex-col gap-2.5 xl:flex-row xl:items-end xl:justify-between xl:gap-5">
-        <div className="min-w-0 flex-1 space-y-1.5">
+      <div className="eb-estimate-command-layout flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between xl:gap-6">
+        <div className="eb-estimate-command-copy min-w-0 flex-1 space-y-1.5">
           <Link
             href="/estimates"
-            className="inline-flex min-h-11 items-center gap-1.5 text-hh-metadata leading-none text-muted-foreground transition-colors duration-150 hover:text-foreground lg:min-h-6"
+            className="eb-estimate-command-backlink inline-flex min-h-11 items-center gap-1.5 text-hh-metadata leading-none text-[var(--hh-text-muted)] transition-colors duration-150 hover:text-[var(--hh-accent-hover)] lg:min-h-6"
           >
             <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
             Estimates
           </Link>
           <div className="min-w-0 space-y-0.5">
-            <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-              <h1 className="truncate text-[22px] font-semibold leading-7 tracking-[-0.01em] text-foreground">
+            <div className="eb-estimate-command-title-row flex min-w-0 flex-wrap items-center gap-1.5">
+              <h1 className="eb-estimate-command-title truncate text-[24px] font-semibold leading-[30px] tracking-[-0.01em] text-[var(--hh-text-primary)]">
                 {title}
+                {revisionLabel ? (
+                  <span className="font-medium text-[var(--hh-text-secondary)]">
+                    {" "}
+                    · {revisionLabel}
+                  </span>
+                ) : null}
               </h1>
-              {revisionLabel ? (
-                <span className="inline-flex h-5 items-center rounded-hh-compact border border-border bg-secondary px-1.5 text-hh-status font-medium text-muted-foreground">
-                  {revisionLabel}
-                </span>
-              ) : null}
-              <NeoStatus
-                label={statusMeta.label}
-                variant={statusMeta.variant}
-                className="h-5 px-2 text-hh-status"
-              />
+              <StatusBadge label={statusMeta.label} variant={statusMeta.variant} showDot={false} />
               {amount ? (
                 <span
-                  className="hh-fin ml-1 text-base font-semibold leading-5 text-foreground"
+                  className="eb-estimate-command-amount hh-fin ml-1 text-[20px] font-semibold leading-6 text-[var(--hh-text-primary)]"
                   aria-label={`${amountLabel}: ${amount}`}
                 >
                   {amount}
                 </span>
               ) : null}
             </div>
-            <p className="max-w-3xl overflow-hidden break-words text-hh-metadata leading-snug text-muted-foreground [overflow-wrap:anywhere]">
-              {contextLabel}
-            </p>
-            {visibleFacts.length > 0 ? (
-              <p className="flex flex-wrap gap-x-3 gap-y-0.5 text-hh-metadata leading-snug text-muted-foreground">
-                {visibleFacts.map((fact) => (
-                  <span key={fact.label}>
-                    <span className="text-[var(--hh-text-tertiary)]">{fact.label}</span>{" "}
-                    <span className="font-medium text-[var(--hh-text-secondary)]">
-                      {fact.value}
+            <p className="eb-estimate-command-context flex max-w-3xl flex-wrap gap-x-3 gap-y-0.5 overflow-hidden break-words text-hh-metadata leading-snug text-[var(--hh-text-secondary)] [overflow-wrap:anywhere]">
+              <span>{contextLabel}</span>
+              {visibleFacts.length > 0
+                ? visibleFacts.map((fact) => (
+                    <span key={fact.label}>
+                      <span className="text-[var(--hh-text-muted)]">{fact.label}</span>{" "}
+                      <span className="font-medium text-[var(--hh-text-secondary)]">
+                        {fact.value}
+                      </span>
                     </span>
-                  </span>
-                ))}
-              </p>
-            ) : null}
+                  ))
+                : null}
+              {reserveSaveStatusSpace || saveStatus !== "idle" ? (
+                <span className="hidden min-h-4 items-center lg:inline-flex">
+                  <EstimateBuilderSaveStatus status={saveStatus} />
+                </span>
+              ) : null}
+            </p>
           </div>
-          {reserveSaveStatusSpace || saveStatus !== "idle" ? (
-            <div className="min-h-4 pt-0.5">
-              <EstimateBuilderSaveStatus status={saveStatus} />
-            </div>
-          ) : null}
         </div>
 
         {children}

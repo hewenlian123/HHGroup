@@ -26,7 +26,7 @@ export function EstimateBuilderSaveStatus({
   return (
     <span
       className={cn(
-        "text-xs font-medium tabular-nums",
+        "eb-estimate-save-status text-xs font-medium tabular-nums",
         status === "unsaved" && "text-[var(--hh-warning)]",
         status === "saving" && "text-muted-foreground",
         status === "saved" && "text-[var(--hh-success)]",
@@ -35,6 +35,7 @@ export function EstimateBuilderSaveStatus({
       )}
       role="status"
       aria-live="polite"
+      data-estimate-save-state={status}
     >
       {label}
     </span>

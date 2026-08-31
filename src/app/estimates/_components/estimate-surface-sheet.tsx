@@ -52,13 +52,23 @@ export function EstimateSurfaceSheet({
   contentClassName,
   testId,
 }: EstimateSurfaceSheetProps): React.ReactElement {
+  const openerRef = React.useRef<HTMLElement | null>(null);
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
-        className={estimateSurfaceSheetClassName(surface, className)}
+        className={cn(estimateSurfaceSheetClassName(surface, className), "[&>button]:z-10")}
         data-estimate-surface={surface}
         data-testid={testId}
+        onOpenAutoFocus={() => {
+          const activeElement = document.activeElement;
+          openerRef.current = activeElement instanceof HTMLElement ? activeElement : null;
+        }}
+        onCloseAutoFocus={(event) => {
+          event.preventDefault();
+          window.requestAnimationFrame(() => openerRef.current?.focus());
+        }}
       >
         <SheetHeader className={EB.sheetHeader}>
           <SheetTitle className={EB.sheetTitle}>{title}</SheetTitle>

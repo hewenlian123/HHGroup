@@ -85,7 +85,8 @@ test("route roots expose explicit contexts and a neutral sibling portal host", (
   }
   assert.match(shell, /<HhRouteThemeRoot context=\{routeContext\} theme=\{routeTheme\}>/);
   assert.match(shell, /viewerRoute\s*\?\s*"neo-dark"/);
-  assert.match(shell, /operationalThemeName\(operationalThemeMode\)/);
+  assert.match(shell, /: "operational-light"/);
+  assert.doesNotMatch(shell, /operationalThemeName\(operationalThemeMode\)/);
 });
 
 test("all React and Radix portals use the themed portal contract", () => {

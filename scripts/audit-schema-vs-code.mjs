@@ -4,9 +4,10 @@
  * Heuristic: not 100% accurate (dynamic selects, RPCs, views) but catches most gaps.
  */
 import { readFileSync, readdirSync, statSync } from "node:fs";
-import { join, extname } from "node:path";
+import { extname, join, resolve } from "node:path";
 
-const ROOT = join(import.meta.dirname, "..");
+const configuredRoot = process.env.SCHEMA_AUDIT_ROOT?.trim();
+const ROOT = configuredRoot ? resolve(configuredRoot) : join(import.meta.dirname, "..");
 const MIGRATIONS = join(ROOT, "supabase/migrations");
 const SRC = join(ROOT, "src");
 
@@ -21,9 +22,27 @@ function addCol(table, col) {
   migrationCols.get(t).add(c);
 }
 
-// ALTER TABLE ... ADD COLUMN [IF NOT EXISTS] name
-const addColRe =
-  /ALTER\s+TABLE\s+(?:IF\s+EXISTS\s+)?(?:public\.)?["']?(\w+)["']?\s+ADD\s+COLUMN(?:\s+IF\s+NOT\s+EXISTS)?\s+["']?(\w+)["']?/gi;
+function removeCol(table, col) {
+  if (!table || !col) return;
+  migrationCols.get(table.toLowerCase())?.delete(col.toLowerCase());
+}
+
+function parseAlterTableColumnChanges(sql) {
+  const alterTableRe =
+    /ALTER\s+TABLE\s+(?:IF\s+EXISTS\s+)?(?:ONLY\s+)?(?:(?:"?public"?)\s*\.\s*)?["']?([a-z_][a-z0-9_]*)["']?\s+([\s\S]*?);/gi;
+  let alterMatch;
+  while ((alterMatch = alterTableRe.exec(sql)) !== null) {
+    const table = alterMatch[1];
+    const clauses = alterMatch[2];
+    const columnChangeRe =
+      /\b(ADD|DROP)\s+COLUMN(?:\s+IF\s+(?:NOT\s+)?EXISTS)?\s+["']?([a-z_][a-z0-9_]*)["']?/gi;
+    let columnMatch;
+    while ((columnMatch = columnChangeRe.exec(clauses)) !== null) {
+      if (columnMatch[1].toUpperCase() === "ADD") addCol(table, columnMatch[2]);
+      else removeCol(table, columnMatch[2]);
+    }
+  }
+}
 
 function parseCreateTable(sql) {
   const re = /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:public\.)?["']?(\w+)["']?\s*\(/gi;
@@ -71,11 +90,7 @@ function loadMigrations() {
     // strip block comments /* */
     sql = sql.replace(/\/\*[\s\S]*?\*\//g, " ");
     parseCreateTable(sql);
-    let m;
-    addColRe.lastIndex = 0;
-    while ((m = addColRe.exec(sql)) !== null) {
-      addCol(m[1], m[2]);
-    }
+    parseAlterTableColumnChanges(sql);
   }
 }
 
@@ -123,7 +138,7 @@ function splitSelectList(s) {
 
 function walkDir(dir, acc) {
   for (const name of readdirSync(dir)) {
-    if (name === "node_modules" || name.startsWith(".")) continue;
+    if (name === "node_modules" || name === "__tests__" || name.startsWith(".")) continue;
     const p = join(dir, name);
     const st = statSync(p);
     if (st.isDirectory()) walkDir(p, acc);
@@ -212,3 +227,4 @@ for (const [table, cols] of codeCols) {
 missing.sort((a, b) => a.table.localeCompare(b.table) || a.column.localeCompare(b.column));
 
 console.log(JSON.stringify({ missingCount: missing.length, missing }, null, 2));
+if (missing.length > 0) process.exitCode = 1;

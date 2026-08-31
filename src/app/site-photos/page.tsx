@@ -667,6 +667,7 @@ export default function SitePhotosPage() {
                           —
                         </span>
                       ) : (
+                        // eslint-disable-next-line @next/next/no-img-element -- Dynamic local media keeps the existing error fallback and thumbnail crop.
                         <img
                           src={photoImageUrl(p.photo_url)}
                           alt=""
@@ -827,6 +828,7 @@ export default function SitePhotosPage() {
                           Photo unavailable
                         </div>
                       ) : (
+                        // eslint-disable-next-line @next/next/no-img-element -- Dynamic local media keeps the existing error fallback and thumbnail crop.
                         <img
                           src={photoImageUrl(p.photo_url)}
                           alt={p.description || "Site photo"}
@@ -942,6 +944,7 @@ export default function SitePhotosPage() {
                 {failedPhotoIds.has(viewerPhoto.id) ? (
                   <p className="text-sm text-muted-foreground">Photo unavailable</p>
                 ) : (
+                  // eslint-disable-next-line @next/next/no-img-element -- Dynamic local media preserves intrinsic viewer sizing and error fallback.
                   <img
                     src={photoImageUrl(viewerPhoto.photo_url)}
                     alt={viewerPhoto.description || "Site photo"}
@@ -986,6 +989,7 @@ export default function SitePhotosPage() {
                 {failedPhotoIds.has(punchIssuePhoto.id) ? (
                   <p className="text-sm text-muted-foreground">Photo unavailable</p>
                 ) : (
+                  // eslint-disable-next-line @next/next/no-img-element -- Dynamic local media preserves intrinsic viewer sizing without layout changes.
                   <img
                     src={photoImageUrl(punchIssuePhoto.photo_url)}
                     alt={punchIssuePhoto.description || "Site photo"}
@@ -1096,6 +1100,7 @@ export default function SitePhotosPage() {
               {failedPhotoIds.has(selectedPhoto.id) ? (
                 <span className="text-sm text-muted-foreground">Photo unavailable</span>
               ) : (
+                // eslint-disable-next-line @next/next/no-img-element -- Dynamic local media preserves intrinsic detail sizing and error fallback.
                 <img
                   src={photoImageUrl(selectedPhoto.photo_url)}
                   alt={selectedPhoto.description || "Photo"}

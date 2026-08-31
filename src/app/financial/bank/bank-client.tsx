@@ -363,9 +363,10 @@ export default function BankReconcileClient() {
       const ids = close.map((e) => e.id);
       const { data: lineRows } = await supabase
         .from("expense_lines")
-        .select("expense_id,project_id,category,memo,projects(name)")
+        .select("id,expense_id,project_id,category,description,projects(name)")
         .in("expense_id", ids)
-        .order("created_at", { ascending: true })
+        .order("expense_id", { ascending: true })
+        .order("id", { ascending: true })
         .limit(500);
 
       const firstByExpense = new Map<
@@ -373,9 +374,10 @@ export default function BankReconcileClient() {
         { project?: string; category?: string; memo?: string }
       >();
       for (const r of (lineRows ?? []) as Array<{
+        id: string;
         expense_id: string;
         category: string;
-        memo: string | null;
+        description: string | null;
         projects?: { name: string } | { name: string }[] | null;
       }>) {
         if (firstByExpense.has(r.expense_id)) continue;
@@ -384,7 +386,7 @@ export default function BankReconcileClient() {
         firstByExpense.set(r.expense_id, {
           project: projName,
           category: r.category,
-          memo: r.memo ?? undefined,
+          memo: r.description ?? undefined,
         });
       }
 

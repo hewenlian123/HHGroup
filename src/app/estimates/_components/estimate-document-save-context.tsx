@@ -10,8 +10,13 @@ import {
   type EstimateDocumentSaveAction,
   type EstimateDocumentSaveState,
 } from "./estimate-document-save-state";
+import {
+  enforceEstimateMutationResult,
+  estimateMutationFailureFromError,
+  type EstimateMutationResult,
+} from "./estimate-mutation-result";
 
-type SaveResult = void | { ok: boolean; error?: string };
+type SaveResult = EstimateMutationResult;
 
 type EstimateDocumentSaveContextValue = {
   state: EstimateDocumentSaveState;
@@ -60,8 +65,9 @@ export function EstimateDocumentSaveProvider({
       const pending = Promise.resolve().then(operation);
       pendingRef.current.add(pending);
       try {
-        const result = await pending;
-        if (result && typeof result === "object" && "ok" in result && !result.ok) {
+        const rawResult = await pending;
+        const result = enforceEstimateMutationResult(rawResult);
+        if (!result.ok) {
           apply({ type: "save-failed", operationKey });
           return result;
         }
@@ -69,7 +75,7 @@ export function EstimateDocumentSaveProvider({
         return result;
       } catch (error) {
         apply({ type: "save-failed", operationKey });
-        throw error;
+        return estimateMutationFailureFromError(error) as T;
       } finally {
         pendingRef.current.delete(pending);
       }

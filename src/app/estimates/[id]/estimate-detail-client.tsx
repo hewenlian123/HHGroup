@@ -4,10 +4,9 @@ import {
   refreshRscNonBlocking,
   syncRouterNonBlocking,
 } from "@/components/perf/sync-router-non-blocking";
-import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import * as React from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { FileClock } from "lucide-react";
 import type {
   CostCode,
@@ -60,6 +59,7 @@ import {
 import { EstimateActivityTimeline } from "../_components/estimate-activity-timeline";
 import { EstimateSurfaceSheet } from "../_components/estimate-surface-sheet";
 import { formatEstimateCurrency } from "../_components/estimate-currency";
+import { createEstimateMutationSingleFlight } from "../_components/estimate-mutation-coordinator";
 
 function formatRevisionDate(value: string | null): string {
   if (!value) return "Date unavailable";
@@ -124,6 +124,8 @@ function EstimateDetailClientContent({
 }: EstimateDetailClientProps) {
   const { toast } = useToast();
   const router = useRouter();
+  const workflowSearchParams = useSearchParams();
+  const returnMilestoneId = workflowSearchParams.get("returnMilestone")?.trim() || null;
   const revisionLabel = revisionContext
     ? `${estimateNumber} Rev ${revisionContext.revisionNumber}`
     : estimateNumber;
@@ -135,7 +137,9 @@ function EstimateDetailClientContent({
     "information"
   );
   const [notesOpen, setNotesOpen] = React.useState(false);
-  const [paymentScheduleOpen, setPaymentScheduleOpen] = React.useState(false);
+  const [paymentScheduleOpen, setPaymentScheduleOpen] = React.useState(
+    () => returnMilestoneId !== null
+  );
   const [activityOpen, setActivityOpen] = React.useState(false);
   const [revisionHistoryOpen, setRevisionHistoryOpen] = React.useState(false);
   const [convertDrawerOpen, setConvertDrawerOpen] = React.useState(false);
@@ -143,8 +147,13 @@ function EstimateDetailClientContent({
   const [deleteConfirmOpen, setDeleteConfirmOpen] = React.useState(false);
   const [deleteBusy, setDeleteBusy] = React.useState(false);
   const [wholeDocumentSaving, setWholeDocumentSaving] = React.useState(false);
-  const [pending, startTransition] = React.useTransition();
+  const [commandBusy, setCommandBusy] = React.useState(false);
+  const commandSingleFlightRef = React.useRef(createEstimateMutationSingleFlight());
   const saveInFlightRef = React.useRef(false);
+
+  React.useEffect(() => {
+    if (returnMilestoneId) setPaymentScheduleOpen(true);
+  }, [returnMilestoneId]);
   const {
     state: documentSaveState,
     status: saveStatus,
@@ -158,7 +167,7 @@ function EstimateDetailClientContent({
     documentSaveState.failedOperationKeys.length > 0 ||
     documentSaveState.revision > documentSaveState.savedRevision;
   const documentSaving = saveStatus === "saving";
-  useEstimateUnsavedWarning(editing && documentHasUnsavedWork && !pending && !documentSaving);
+  useEstimateUnsavedWarning(editing && documentHasUnsavedWork && !commandBusy && !documentSaving);
 
   React.useEffect(() => {
     if (!editing) {
@@ -169,13 +178,6 @@ function EstimateDetailClientContent({
   React.useEffect(() => {
     setStatus(initialStatus);
   }, [initialStatus]);
-
-  useOnAppSync(
-    React.useCallback(() => {
-      refreshRscNonBlocking(router);
-    }, [router]),
-    [router]
-  );
 
   const persistWholeDocument = async (): Promise<boolean> => {
     if (saveInFlightRef.current) return false;
@@ -223,10 +225,14 @@ function EstimateDetailClientContent({
   };
 
   const onSave = async (): Promise<void> => {
+    const detailsForm = document.getElementById("estimate-meta-form") as HTMLFormElement | null;
+    const shouldRefreshRoute =
+      documentHasUnsavedWork || detailsForm?.dataset.estimateDetailsOpen === "true";
     if (!(await persistWholeDocument())) return;
     setDetailsOpen(false);
     setEditing(false);
-    syncRouterNonBlocking(router);
+    if (!shouldRefreshRoute) return;
+    syncRouterNonBlocking(router, "estimate-save");
   };
 
   const onSaveAndPreview = async (): Promise<void> => {
@@ -247,28 +253,69 @@ function EstimateDetailClientContent({
     const handleKeyDown = (event: KeyboardEvent): void => {
       if (!isEstimateSaveShortcut(event)) return;
       event.preventDefault();
-      void onSaveShortcutRef.current();
+      const activeControl = document.activeElement;
+      if (activeControl instanceof HTMLElement && activeControl !== document.body) {
+        activeControl.blur();
+      }
+      window.requestAnimationFrame(() => {
+        void onSaveShortcutRef.current();
+      });
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [editing, isLocked]);
 
+  const runExclusiveCommand = React.useCallback(
+    (operation: () => Promise<void>): void => {
+      void commandSingleFlightRef.current
+        .run(async () => {
+          setCommandBusy(true);
+          try {
+            await operation();
+          } finally {
+            setCommandBusy(false);
+          }
+        })
+        .catch((error) => {
+          toast({
+            title: "Action failed",
+            description: error instanceof Error ? error.message : "Please try again.",
+            variant: "error",
+          });
+        });
+    },
+    [toast]
+  );
+
   const runStatusChange = (
     next: EstimateStatus,
     runner: () => Promise<{ ok: boolean; error?: string }>
-  ) => {
+  ): void => {
     const prev = status;
-    setStatus(next);
-    startTransition(async () => {
-      const res = await runner();
-      if (res.ok) {
-        toast({ title: "Status updated", description: `Marked as ${next}.`, variant: "success" });
-        if (next !== prev) setEditing(false);
-      } else {
+    runExclusiveCommand(async () => {
+      setStatus(next);
+      try {
+        const res = await runner();
+        if (res.ok) {
+          toast({
+            title: "Status updated",
+            description: `Marked as ${next}.`,
+            variant: "success",
+          });
+          if (next !== prev) setEditing(false);
+          return;
+        }
         setStatus(prev);
         toast({
           title: "Update failed",
           description: res.error ?? "Could not update status.",
+          variant: "error",
+        });
+      } catch (error) {
+        setStatus(prev);
+        toast({
+          title: "Update failed",
+          description: error instanceof Error ? error.message : "Could not update status.",
           variant: "error",
         });
       }
@@ -317,44 +364,60 @@ function EstimateDetailClientContent({
   };
 
   const onDuplicate = (): void => {
-    startTransition(async () => {
-      const result = await duplicateEstimateAsDraftAction(estimateId);
-      if (!result.ok || !result.estimateId) {
+    runExclusiveCommand(async () => {
+      try {
+        const result = await duplicateEstimateAsDraftAction(estimateId);
+        if (!result.ok || !result.estimateId) {
+          toast({
+            title: "Could not duplicate Estimate",
+            description: result.error ?? "Please try again.",
+            variant: "error",
+          });
+          return;
+        }
+        toast({
+          title: "Draft Estimate created",
+          description: result.estimateNumber
+            ? `${result.estimateNumber} was copied without downstream history.`
+            : "The copied Estimate is ready to edit.",
+          variant: "success",
+        });
+        router.push(`/estimates/${result.estimateId}`);
+      } catch (error) {
         toast({
           title: "Could not duplicate Estimate",
-          description: result.error ?? "Please try again.",
+          description: error instanceof Error ? error.message : "Please try again.",
           variant: "error",
         });
-        return;
       }
-      toast({
-        title: "Draft Estimate created",
-        description: result.estimateNumber
-          ? `${result.estimateNumber} was copied without downstream history.`
-          : "The copied Estimate is ready to edit.",
-        variant: "success",
-      });
-      router.push(`/estimates/${result.estimateId}`);
     });
   };
 
   const onCreateRevision = (): void => {
-    startTransition(async () => {
-      const result = await createEstimateRevisionAction(estimateId);
-      if (!result.ok || !result.estimateId || result.revisionNumber == null) {
+    runExclusiveCommand(async () => {
+      try {
+        const result = await createEstimateRevisionAction(estimateId);
+        if (!result.ok || !result.estimateId || result.revisionNumber == null) {
+          toast({
+            title: "Could not create revision",
+            description: result.error ?? "Please try again.",
+            variant: "error",
+          });
+          return;
+        }
+        toast({
+          title: "Revision created",
+          description: `${result.estimateNumber} Rev ${result.revisionNumber} is ready to edit.`,
+          variant: "success",
+        });
+        router.push(`/estimates/${result.estimateId}`);
+      } catch (error) {
         toast({
           title: "Could not create revision",
-          description: result.error ?? "Please try again.",
+          description: error instanceof Error ? error.message : "Please try again.",
           variant: "error",
         });
-        return;
       }
-      toast({
-        title: "Revision created",
-        description: `${result.estimateNumber} Rev ${result.revisionNumber} is ready to edit.`,
-        variant: "success",
-      });
-      router.push(`/estimates/${result.estimateId}`);
     });
   };
 
@@ -372,7 +435,7 @@ function EstimateDetailClientContent({
         grandTotal={summary?.grandTotal}
         status={status}
         editing={editing}
-        pending={pending || wholeDocumentSaving}
+        pending={commandBusy || wholeDocumentSaving}
         saveStatus={editing ? saveStatus : "idle"}
         isLocked={isLocked}
         onEdit={() => {
@@ -415,7 +478,6 @@ function EstimateDetailClientContent({
         onSave={() => void onSave()}
         onSaveAndPreview={() => void onSaveAndPreview()}
         onPreview={onPreview}
-        onDone={() => void onSave()}
         onSend={() => runStatusChange("Sent", () => sendEstimateInlineAction(estimateId))}
         onApprove={() => runStatusChange("Approved", () => approveEstimateInlineAction(estimateId))}
         onReject={() => runStatusChange("Rejected", () => rejectEstimateInlineAction(estimateId))}
@@ -447,6 +509,7 @@ function EstimateDetailClientContent({
           className="flex flex-col gap-3 rounded-lg border border-[var(--hh-information-border)] bg-[var(--hh-information-soft-fill)] px-4 py-3 text-[var(--hh-text-primary)] sm:flex-row sm:items-center sm:justify-between"
           aria-label="Historical revision"
           data-testid="estimate-historical-revision-banner"
+          data-estimate-revision-state="historical-read-only"
         >
           <div className="flex min-w-0 items-start gap-3">
             <FileClock
@@ -454,7 +517,7 @@ function EstimateDetailClientContent({
               aria-hidden
             />
             <div className="min-w-0">
-              <p className="text-hh-table-header font-semibold uppercase tracking-[0.08em] text-[var(--hh-information)]">
+              <p className="text-hh-table-header font-semibold uppercase text-[var(--hh-information)]">
                 Historical revision
               </p>
               <p className="mt-0.5 text-hh-body text-[var(--hh-text-secondary)]">
@@ -501,6 +564,15 @@ function EstimateDetailClientContent({
         onNotesOpenChange={setNotesOpen}
         paymentScheduleOpen={paymentScheduleOpen}
         onPaymentScheduleOpenChange={setPaymentScheduleOpen}
+        onPricingInspectorDetailsClick={
+          isLocked
+            ? undefined
+            : () => {
+                if (!editing) setEditing(true);
+                setDetailsSurface("pricing");
+                setDetailsOpen(true);
+              }
+        }
       />
 
       <EstimateSurfaceSheet
@@ -515,6 +587,7 @@ function EstimateDetailClientContent({
         <EstimateActivityTimeline
           events={activityEvents}
           revisionNumber={revisionContext?.revisionNumber ?? 0}
+          onRetry={() => refreshRscNonBlocking(router)}
           className="m-0 rounded-none border-0 bg-transparent shadow-none"
         />
       </EstimateSurfaceSheet>
@@ -587,32 +660,26 @@ function EstimateDetailClientContent({
           aria-label="Estimate edit actions"
         >
           <EstimateBuilderMobileSummary className="mb-1" summary={summary} />
-          <EstimateBuilderSaveStatus status={saveStatus} className="mb-1 block text-center" />
-          <div className="grid grid-cols-[minmax(0,0.8fr)_minmax(0,0.8fr)_minmax(0,1.4fr)] gap-2">
-            <Button
-              type="button"
-              variant="ghost"
-              className={cn("min-h-11 min-w-[44px] flex-1", EB.btnGhost)}
-              disabled={pending || wholeDocumentSaving}
-              onClick={() => void onSave()}
-            >
-              Done
-            </Button>
+          <EstimateBuilderSaveStatus
+            status={saveStatus === "idle" ? "saved" : saveStatus}
+            className="mb-1 block text-center"
+          />
+          <div className="grid grid-cols-[minmax(0,0.9fr)_minmax(0,1.35fr)] gap-2">
             <Button
               type="button"
               className={cn("min-h-11 min-w-[44px] flex-1 font-medium", EB.btnPrimary)}
-              disabled={pending || wholeDocumentSaving}
-              aria-busy={pending || wholeDocumentSaving}
+              disabled={commandBusy || wholeDocumentSaving}
+              aria-busy={commandBusy || wholeDocumentSaving}
               onClick={() => void onSave()}
             >
-              <SubmitSpinner loading={pending || wholeDocumentSaving} className="mr-2" />
-              {pending || wholeDocumentSaving ? "Saving…" : "Save"}
+              <SubmitSpinner loading={commandBusy || wholeDocumentSaving} className="mr-2" />
+              {commandBusy || wholeDocumentSaving ? "Saving…" : "Save"}
             </Button>
             <Button
               type="button"
               variant="outline"
               className={cn("min-h-11 min-w-[44px] px-2 font-medium", EB.btnGhost)}
-              disabled={pending || wholeDocumentSaving}
+              disabled={commandBusy || wholeDocumentSaving}
               onClick={() => void onSaveAndPreview()}
             >
               Save &amp; Preview

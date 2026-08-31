@@ -1,6 +1,19 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "./estimate-playwright-test";
 
 import { loginAsE2EOwner } from "./e2e-auth-owner";
+import {
+  captureUnexpectedBrowserErrors,
+  cleanupDenseEstimateFixture,
+  DENSE_ESTIMATE_NUMBER,
+  seedDenseEstimateFixture,
+} from "./estimate-dense-fixture";
+
+test.beforeAll(seedDenseEstimateFixture);
+test.afterAll(cleanupDenseEstimateFixture);
+
+const browserErrors = new WeakMap<Page, string[]>();
+test.beforeEach(({ page }) => browserErrors.set(page, captureUnexpectedBrowserErrors(page)));
+test.afterEach(({ page }) => expect(browserErrors.get(page) ?? []).toEqual([]));
 
 async function expectNoHorizontalOverflow(page: Page): Promise<void> {
   await expect
@@ -38,22 +51,22 @@ test("Estimate List composes summary, tools, and rows as one compact workspace",
   expect(await tableRows.count()).toBeGreaterThan(1);
   await expect(recordsWorkspace).toContainText("$3,253,937.00");
 
-  const longEstimateRow = tableRows.filter({ hasText: "EST-0079" });
+  const longEstimateRow = tableRows.filter({ hasText: DENSE_ESTIMATE_NUMBER });
   await expect(longEstimateRow).toBeVisible();
   await expect(longEstimateRow.getByTestId("estimate-row-client")).toHaveCSS(
     "-webkit-line-clamp",
-    "2"
+    "1"
   );
   await expect(longEstimateRow.getByTestId("estimate-row-project")).toHaveCSS(
     "-webkit-line-clamp",
-    "2"
+    "1"
   );
 
   const search = page.getByPlaceholder("Search estimates…").locator("visible=true");
-  await search.fill("EST-0079");
+  await search.fill(DENSE_ESTIMATE_NUMBER);
   await expect(tableRows).toHaveCount(1);
   await search.fill("");
-  await page.locator("select:visible").selectOption("Draft");
+  await page.getByRole("button", { name: /^Draft \d+$/ }).click();
   expect(await tableRows.count()).toBeGreaterThan(1);
   await expectNoHorizontalOverflow(page);
 });

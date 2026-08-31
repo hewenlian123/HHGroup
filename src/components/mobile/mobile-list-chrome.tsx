@@ -23,7 +23,7 @@ export function MobileListHeader({
 }) {
   return (
     <div
-      data-neo-mobile-list-header={tone}
+      data-mobile-list-header={tone}
       className="flex h-11 shrink-0 items-center justify-between gap-3 md:hidden"
     >
       <h1

@@ -69,7 +69,11 @@ export const NeoInput = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof Input>
 >(function NeoInput({ className, ...props }, ref) {
   return (
-    <Input ref={ref} className={cn("h-10 rounded-md max-md:min-h-11", className)} {...props} />
+    <Input
+      ref={ref}
+      className={cn("h-hh-control-standard rounded-hh-compact max-md:min-h-11", className)}
+      {...props}
+    />
   );
 });
 
@@ -80,7 +84,7 @@ export const NeoTextarea = React.forwardRef<
   return (
     <Textarea
       ref={ref}
-      className={cn("min-h-[88px] rounded-md max-md:min-h-[104px]", className)}
+      className={cn("min-h-[88px] rounded-md mobile:min-h-[104px]", className)}
       {...props}
     />
   );
@@ -90,7 +94,13 @@ export const NeoSelect = React.forwardRef<HTMLSelectElement, NativeSelectProps>(
   { className, ...props },
   ref
 ) {
-  return <NativeSelect ref={ref} className={cn("h-10 rounded-md", className)} {...props} />;
+  return (
+    <NativeSelect
+      ref={ref}
+      className={cn("h-hh-control-standard rounded-hh-compact", className)}
+      {...props}
+    />
+  );
 });
 
 export function NeoActionFooter({

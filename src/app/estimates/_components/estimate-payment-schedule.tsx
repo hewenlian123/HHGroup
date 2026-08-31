@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NativeSelect } from "@/components/ui/native-select";
 import { useToast } from "@/components/toast/toast-provider";
 import {
   Dialog,
@@ -40,6 +41,7 @@ import {
   type ProposalPaymentMilestoneRow,
 } from "./proposal-payment-milestone-list";
 import { useEstimateDocumentSave } from "./estimate-document-save-context";
+import { createEstimateMutationSingleFlight } from "./estimate-mutation-coordinator";
 import {
   appendEstimateReturnPath,
   buildCreateDraftInvoiceHref,
@@ -135,6 +137,23 @@ export function EstimatePaymentSchedule(props: {
   const [selectedTemplateId, setSelectedTemplateId] = React.useState(
     () => paymentTemplates[0]?.id ?? ""
   );
+  const [paymentMutationBusy, setPaymentMutationBusy] = React.useState(false);
+  const paymentMutationSingleFlightRef = React.useRef(createEstimateMutationSingleFlight());
+
+  const runPaymentMutation = React.useCallback(
+    async <T,>(operation: () => Promise<T>): Promise<T | undefined> => {
+      const result = await paymentMutationSingleFlightRef.current.run(async () => {
+        setPaymentMutationBusy(true);
+        try {
+          return await operation();
+        } finally {
+          setPaymentMutationBusy(false);
+        }
+      });
+      return result.accepted ? result.value : undefined;
+    },
+    []
+  );
 
   React.useEffect(() => {
     if (
@@ -170,11 +189,12 @@ export function EstimatePaymentSchedule(props: {
   };
 
   const savePaymentMilestone = async (formData: FormData): Promise<void> => {
-    markUnsaved();
     const action = editingItem ? updatePaymentMilestoneAction : addPaymentMilestoneAction;
-    const result = await trackMutation(`payment:${editingItem?.id ?? "new"}`, () =>
-      action(formData)
-    );
+    const result = await runPaymentMutation(() => {
+      markUnsaved();
+      return trackMutation(`payment:${editingItem?.id ?? "new"}`, () => action(formData));
+    });
+    if (!result) return;
     if (result.ok) {
       setScheduleOpen(false);
       setEditingItem(null);
@@ -189,13 +209,16 @@ export function EstimatePaymentSchedule(props: {
   };
 
   const deletePaymentMilestone = async (item: PaymentScheduleItem): Promise<void> => {
-    markUnsaved();
-    const formData = new FormData();
-    formData.set("estimateId", estimateId);
-    formData.set("itemId", item.id);
-    const result = await trackMutation(`payment:delete:${item.id}`, () =>
-      deletePaymentMilestoneAction(formData)
-    );
+    const result = await runPaymentMutation(() => {
+      markUnsaved();
+      const formData = new FormData();
+      formData.set("estimateId", estimateId);
+      formData.set("itemId", item.id);
+      return trackMutation(`payment:delete:${item.id}`, () =>
+        deletePaymentMilestoneAction(formData)
+      );
+    });
+    if (!result) return;
     if (result.ok) {
       router.refresh();
       return;
@@ -205,6 +228,10 @@ export function EstimatePaymentSchedule(props: {
       description: result.error ?? "Could not delete this payment milestone.",
       variant: "error",
     });
+  };
+
+  const reorderPaymentSchedule = async (formData: FormData): Promise<void> => {
+    await runPaymentMutation(() => reorderPaymentScheduleAction(formData));
   };
 
   const orderedIdsForMove = (itemId: string, direction: "up" | "down"): string[] | null => {
@@ -227,14 +254,15 @@ export function EstimatePaymentSchedule(props: {
       return;
     }
 
-    markUnsaved();
-    const formData = new FormData();
-    formData.set("estimateId", estimateId);
-    formData.set("templateId", selectedTemplateId);
-    formData.set("mode", mode);
-    const result = await trackMutation(`payment:template:${mode}`, () =>
-      applyPaymentTemplateAction(formData)
-    );
+    const result = await runPaymentMutation(() => {
+      markUnsaved();
+      const formData = new FormData();
+      formData.set("estimateId", estimateId);
+      formData.set("templateId", selectedTemplateId);
+      formData.set("mode", mode);
+      return trackMutation(`payment:template:${mode}`, () => applyPaymentTemplateAction(formData));
+    });
+    if (!result) return;
     if (!result.ok) {
       toast({
         title: "Template application failed",
@@ -252,13 +280,14 @@ export function EstimatePaymentSchedule(props: {
   };
 
   const savePaymentTemplate = async (): Promise<void> => {
-    const formData = new FormData();
-    formData.set("estimateId", estimateId);
-    formData.set("templateName", templateNameDraft);
-    formData.set("amountType", templateAmountType);
-    const result = await trackMutation("payment:template:save", () =>
-      createPaymentTemplateAction(formData)
-    );
+    const result = await runPaymentMutation(() => {
+      const formData = new FormData();
+      formData.set("estimateId", estimateId);
+      formData.set("templateName", templateNameDraft);
+      formData.set("amountType", templateAmountType);
+      return trackMutation("payment:template:save", () => createPaymentTemplateAction(formData));
+    });
+    if (!result) return;
     if (!result.ok) {
       toast({
         title: "Template save failed",
@@ -325,8 +354,11 @@ export function EstimatePaymentSchedule(props: {
   }));
 
   return (
-    <section className={cn(EB.paymentSchedule, nested && EB.paymentScheduleNested)}>
-      <div className="flex flex-wrap items-start justify-between gap-3 py-2">
+    <section
+      className={cn(EB.paymentSchedule, nested && EB.paymentScheduleNested)}
+      data-estimate-payment-schedule="true"
+    >
+      <div className="eb-payment-schedule-header flex flex-wrap items-start justify-between gap-3 py-2">
         <div className="min-w-0">
           <h3 className={cn(EB.paymentTitle, nested && EB.paymentHeaderDuplicate)}>
             Payment schedule
@@ -340,6 +372,7 @@ export function EstimatePaymentSchedule(props: {
             size="sm"
             className={cn("min-h-11 shrink-0 px-2.5 md:min-h-8", EB.actionSecondary)}
             onClick={() => openScheduleDrawer()}
+            disabled={paymentMutationBusy}
           >
             <Plus className="h-3.5 w-3.5 mr-1.5" aria-hidden />
             Schedule Payment
@@ -347,7 +380,7 @@ export function EstimatePaymentSchedule(props: {
         )}
       </div>
       <div>
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 py-2">
+        <div className="eb-payment-schedule-stats flex flex-wrap items-center gap-x-6 gap-y-2 py-2">
           <span className={EB.paymentStatLabel}>
             Estimate total <span className={EB.paymentStatValue}>{fmt(estimateTotal)}</span>
           </span>
@@ -380,6 +413,9 @@ export function EstimatePaymentSchedule(props: {
             )}
             role={isOverallocated ? "alert" : "status"}
             data-testid="payment-schedule-reconciliation"
+            data-payment-coverage={
+              isOverallocated ? "overallocated" : isReconciled ? "reconciled" : "partial"
+            }
           >
             {isOverallocated
               ? `Schedule exceeds the Estimate total by ${fmt(Math.abs(remaining))}. Reduce a milestone before adding more.`
@@ -401,6 +437,7 @@ export function EstimatePaymentSchedule(props: {
                   aria-label="Payment template"
                   value={selectedTemplateId}
                   onChange={(event) => setSelectedTemplateId(event.target.value)}
+                  disabled={paymentMutationBusy}
                   className="mt-1 h-9 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground"
                 >
                   {paymentTemplates.map((template) => (
@@ -423,6 +460,7 @@ export function EstimatePaymentSchedule(props: {
                   size="sm"
                   className={EB.actionSecondary}
                   onClick={() => void applyPaymentTemplate("replace")}
+                  disabled={paymentMutationBusy}
                   data-testid="payment-template-replace"
                 >
                   Replace
@@ -433,6 +471,7 @@ export function EstimatePaymentSchedule(props: {
                   size="sm"
                   className={EB.actionSecondary}
                   onClick={() => void applyPaymentTemplate("merge")}
+                  disabled={paymentMutationBusy}
                   data-testid="payment-template-merge"
                 >
                   Merge
@@ -446,6 +485,7 @@ export function EstimatePaymentSchedule(props: {
                 size="sm"
                 className={EB.actionSecondary}
                 onClick={() => setSaveTemplateOpen(true)}
+                disabled={paymentMutationBusy}
                 data-testid="payment-template-save-open"
               >
                 Save template
@@ -575,7 +615,7 @@ export function EstimatePaymentSchedule(props: {
                   const orderedItemIds = orderedIdsForMove(item.id, direction);
                   const Icon = direction === "up" ? ArrowUp : ArrowDown;
                   return (
-                    <form key={direction} action={reorderPaymentScheduleAction}>
+                    <form key={direction} action={reorderPaymentSchedule}>
                       <input type="hidden" name="estimateId" value={estimateId} />
                       <input
                         type="hidden"
@@ -590,7 +630,7 @@ export function EstimatePaymentSchedule(props: {
                           "min-h-11 min-w-11 md:h-8 md:min-h-8 md:w-8 md:min-w-8",
                           EB.btnGhost
                         )}
-                        disabled={!orderedItemIds}
+                        disabled={!orderedItemIds || paymentMutationBusy}
                         aria-label={`Move ${item.title} ${direction}`}
                       >
                         <Icon className="h-4 w-4" aria-hidden />
@@ -608,6 +648,7 @@ export function EstimatePaymentSchedule(props: {
                   )}
                   aria-label={`Edit ${item.title}`}
                   onClick={() => openScheduleDrawer(item)}
+                  disabled={paymentMutationBusy}
                 >
                   <Pencil className="h-4 w-4" />
                 </Button>
@@ -622,6 +663,7 @@ export function EstimatePaymentSchedule(props: {
                     )}
                     aria-label={`Delete ${item.title}`}
                     onClick={() => void deletePaymentMilestone(item)}
+                    disabled={paymentMutationBusy}
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
@@ -779,7 +821,8 @@ export function EstimatePaymentSchedule(props: {
                   form={PAYMENT_MILESTONE_FORM_ID}
                   size="sm"
                   className={EB.sheetPrimary}
-                  disabled={draftOverallocated}
+                  disabled={draftOverallocated || paymentMutationBusy}
+                  aria-busy={paymentMutationBusy}
                 >
                   Save
                 </Button>
@@ -819,17 +862,17 @@ export function EstimatePaymentSchedule(props: {
               </label>
               <label className="block text-xs font-medium text-muted-foreground">
                 Reuse amounts as
-                <select
+                <NativeSelect
                   value={templateAmountType}
                   onChange={(event) =>
                     setTemplateAmountType(event.target.value === "fixed" ? "fixed" : "percent")
                   }
-                  className="mt-1 h-10 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground"
+                  className="mt-1"
                   aria-label="Payment template amount type"
                 >
                   <option value="percent">Percentages of Estimate total</option>
                   <option value="fixed">Fixed-dollar amounts</option>
-                </select>
+                </NativeSelect>
               </label>
             </div>
             <DialogFooter>
@@ -839,7 +882,8 @@ export function EstimatePaymentSchedule(props: {
               <Button
                 type="button"
                 onClick={() => void savePaymentTemplate()}
-                disabled={!templateNameDraft.trim()}
+                disabled={!templateNameDraft.trim() || paymentMutationBusy}
+                aria-busy={paymentMutationBusy}
                 data-testid="payment-template-save"
               >
                 Save template

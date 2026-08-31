@@ -309,6 +309,7 @@ export async function POST(req: Request) {
         log("worker_invoice_workflow", "worker invoice");
         const profitBefore = await getCanonicalProjectProfit(projectId, server);
         const expense = await createExpense({
+          idempotencyKey: `financial-workflow:worker-invoice:${inv.id}`,
           date: new Date().toISOString().slice(0, 10),
           vendorName: "Test Worker Invoice",
           paymentMethod: "Check",
@@ -368,6 +369,9 @@ export async function POST(req: Request) {
       } else {
         const profitBefore = await getCanonicalProjectProfit(projectId, server);
         const expense = await createExpense({
+          idempotencyKey: `financial-workflow:expense:${projectId}:${new Date()
+            .toISOString()
+            .slice(0, 10)}`,
           date: new Date().toISOString().slice(0, 10),
           vendorName: "Expense Workflow Test",
           paymentMethod: "Check",
@@ -424,6 +428,7 @@ export async function POST(req: Request) {
         steps.push("invoice marked sent");
         log("invoice_payment_workflow", "mark sent");
         const payment = await createPaymentReceived({
+          idempotency_key: `workflow-payment-${nonce}`,
           invoice_id: invoice.id,
           project_id: projectId,
           customer_name: "Workflow Test Client",

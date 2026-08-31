@@ -1,7 +1,8 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "./estimate-playwright-test";
 import { createClient } from "@supabase/supabase-js";
 
-import { loginAsE2EOwner } from "./e2e-auth-owner";
+import { gotoWithE2EAuth, loginAsE2EOwner, reloadWithE2EAuth } from "./e2e-auth-owner";
+import { deleteLocalEstimateFixtureGraphs } from "./e2e-estimate-fixture-teardown";
 import { assertE2ESupabaseUrlSafeForMutations } from "./e2e-supabase-url-guard";
 import type { EstimateDocumentStyle } from "../src/lib/estimate-document-style";
 
@@ -47,11 +48,10 @@ async function cleanupEstimateTestData(
   if (ids.length === 0) return;
 
   await supabase.from("estimate_payment_schedule_items").delete().in("estimate_id", ids);
-  await supabase.from("estimate_snapshots").delete().in("estimate_id", ids);
   await supabase.from("estimate_items").delete().in("estimate_id", ids);
   await supabase.from("estimate_categories").delete().in("estimate_id", ids);
   await supabase.from("estimate_meta").delete().in("estimate_id", ids);
-  await supabase.from("estimates").delete().in("id", ids);
+  await deleteLocalEstimateFixtureGraphs(ids);
 }
 
 async function fillNewEstimateCustomerFields(
@@ -125,7 +125,7 @@ test("Schedule Payment percentage helper calculates amount from estimate total",
   createdProjectNames.add(projectName);
 
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto("/estimates/new");
+  await gotoWithE2EAuth(page, "/estimates/new");
   await page.waitForLoadState("domcontentloaded");
   await expect(page.getByRole("heading", { name: "New Estimate" })).toBeVisible({
     timeout: 30_000,
@@ -173,7 +173,7 @@ test("hide amount on PDF persists through preview and print", async ({ page }) =
   createdProjectNames.add(projectName);
 
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto("/estimates/new");
+  await gotoWithE2EAuth(page, "/estimates/new");
   await page.waitForLoadState("domcontentloaded");
   await expect(page.getByRole("heading", { name: "New Estimate" })).toBeVisible({
     timeout: 30_000,
@@ -197,7 +197,7 @@ test("hide amount on PDF persists through preview and print", async ({ page }) =
   const estimateId = page.url().match(/\/estimates\/([^/?#]+)/)?.[1];
   expect(estimateId).toBeTruthy();
 
-  await page.goto(`/estimates/${estimateId}/preview`);
+  await gotoWithE2EAuth(page, `/estimates/${estimateId}/preview`);
   await page.waitForLoadState("domcontentloaded");
 
   const previewRow = page.getByTestId("estimate-line-item-output").filter({ hasText: lineTitle });
@@ -206,14 +206,14 @@ test("hide amount on PDF persists through preview and print", async ({ page }) =
   await expect(previewRow.getByTestId("estimate-line-item-total")).toHaveText("—");
   await expect(page.getByText("Grand Total")).toBeVisible();
 
-  await page.goto(`/estimates/${estimateId}/print`);
+  await gotoWithE2EAuth(page, `/estimates/${estimateId}/print`);
   await page.waitForLoadState("domcontentloaded");
   const printRow = page.getByTestId("estimate-line-item-output").filter({ hasText: lineTitle });
   await expect(printRow).toBeVisible({ timeout: 30_000 });
   await expect(printRow.getByTestId("estimate-line-item-unit-price")).toHaveText(/—/);
   await expect(printRow.getByTestId("estimate-line-item-total")).toHaveText("—");
 
-  await page.goto(`/estimates/${estimateId}`);
+  await gotoWithE2EAuth(page, `/estimates/${estimateId}`);
   await page.getByRole("button", { name: "Edit", exact: true }).click();
   await page.getByRole("button", { name: "More actions" }).locator("visible=true").first().click();
   await expect(page.getByRole("menuitem", { name: "Show amount on PDF" })).toBeVisible({
@@ -232,7 +232,7 @@ test("line item status and notes persist to customer preview and print", async (
   createdProjectNames.add(projectName);
 
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto("/estimates/new");
+  await gotoWithE2EAuth(page, "/estimates/new");
   await page.waitForLoadState("domcontentloaded");
   await expect(page.getByRole("heading", { name: "New Estimate" })).toBeVisible({
     timeout: 30_000,
@@ -266,25 +266,30 @@ test("line item status and notes persist to customer preview and print", async (
   const estimateId = page.url().match(/\/estimates\/([^/?#]+)/)?.[1];
   expect(estimateId).toBeTruthy();
 
-  await page.reload({ waitUntil: "domcontentloaded" });
+  await reloadWithE2EAuth(page);
   await page.getByRole("button", { name: "Edit", exact: true }).click();
   await expect(page.getByText("Optional", { exact: true }).locator("visible=true")).toBeVisible({
     timeout: 30_000,
   });
-  await expect(page.getByLabel("Note title").locator("visible=true")).toHaveValue("Exclusions", {
+  const detailHeader = page.getByTestId("estimate-detail-header");
+  await detailHeader.getByRole("button", { name: "Estimate actions", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Notes", exact: true }).click();
+  const notesSheet = page.getByTestId("estimate-notes-sheet");
+  await expect(notesSheet).toBeVisible({ timeout: 30_000 });
+  await expect(notesSheet.getByLabel("Note title")).toHaveValue("Exclusions", {
     timeout: 30_000,
   });
-  await expect(page.getByLabel("Exclusions body").locator("visible=true")).toHaveValue(noteText, {
+  await expect(notesSheet.getByLabel("Exclusions body")).toHaveValue(noteText, {
     timeout: 30_000,
   });
 
-  await page.goto(`/estimates/${estimateId}/preview`, { waitUntil: "domcontentloaded" });
+  await gotoWithE2EAuth(page, `/estimates/${estimateId}/preview`);
   await expect(page.locator("main")).toContainText("Notes & Clarifications");
   await expect(page.locator("main")).toContainText("Exclusions");
   await expect(page.locator("main")).toContainText(noteText);
   await expect(page.locator("main")).toContainText("Optional");
 
-  await page.goto(`/estimates/${estimateId}/print`, { waitUntil: "domcontentloaded" });
+  await gotoWithE2EAuth(page, `/estimates/${estimateId}/print`);
   const printDocument = page.getByRole("document", { name: "Estimate print view" });
   await expect(printDocument).toContainText("Notes & Clarifications");
   await expect(printDocument).toContainText(noteText);

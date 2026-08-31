@@ -18,6 +18,8 @@ import {
 import { getEstimateActivityWithClient } from "@/lib/estimate-activity";
 import { EstimateDetailClient } from "./estimate-detail-client";
 import { EstimateSuccessBanner } from "./estimate-success-banner";
+import { ServerDataLoadFallback } from "@/components/server-data-load-fallback";
+import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
 
 export const dynamic = "force-dynamic";
 
@@ -121,6 +123,31 @@ export default async function EstimateDetailPage({
   if (!readClient) redirect(`/login?next=${encodeURIComponent(`/estimates/${id}`)}`);
   const lineageClient = getServerSupabaseAdminNoStore();
   const activityClient = getServerSupabaseAdminNoStore();
+  const pageData = await Promise.all([
+    getEstimateHeaderById(id, readClient),
+    getEstimateMeta(id, readClient),
+    getEstimateItems(id, readClient),
+    getEstimateCategories(id, readClient),
+    getCostCodes(),
+    getPaymentSchedule(id, readClient),
+    listPaymentTemplates(getServerSupabaseAdminNoStore()).catch(() => []),
+    lineageClient ? getEstimateRevisionContext(id, lineageClient).catch(() => null) : null,
+    activityClient ? getEstimateActivityWithClient(activityClient, id).catch(() => null) : null,
+  ])
+    .then((data) => ({ data }))
+    .catch((error: unknown) => ({ error }));
+
+  if ("error" in pageData) {
+    logServerPageDataError(`estimates/${id}`, pageData.error);
+    return (
+      <ServerDataLoadFallback
+        message={serverDataLoadWarning(pageData.error, "estimate financial details")}
+        backHref="/estimates"
+        backLabel="Back to estimates"
+      />
+    );
+  }
+
   const [
     estimate,
     meta,
@@ -131,17 +158,7 @@ export default async function EstimateDetailPage({
     paymentTemplates,
     revisionContext,
     activityEvents,
-  ] = await Promise.all([
-    getEstimateHeaderById(id, readClient),
-    getEstimateMeta(id, readClient),
-    getEstimateItems(id, readClient),
-    getEstimateCategories(id, readClient),
-    getCostCodes(),
-    getPaymentSchedule(id, readClient),
-    listPaymentTemplates(getServerSupabaseAdminNoStore()).catch(() => []),
-    lineageClient ? getEstimateRevisionContext(id, lineageClient).catch(() => null) : null,
-    activityClient ? getEstimateActivityWithClient(activityClient, id).catch(() => null) : null,
-  ]);
+  ] = pageData.data;
 
   if (!estimate || !meta) redirect("/estimates");
   const resolvedSummary = getEstimateSummaryFromRecords(meta, items);

@@ -209,6 +209,9 @@ export type EstimateLineItemsLocalProps = {
   onCategoryNamesChange: (names: Record<string, string>) => void;
   sectionOrder: string[];
   onSectionOrderChange: (order: string[]) => void;
+  activeSectionId: string | null;
+  explicitActiveSectionId: string | null;
+  onActiveSectionChange: (sectionId: string, source: "explicit" | "inferred") => void;
   disabled?: boolean;
   submitAttempted?: boolean;
   lineItemsError?: string | null;
@@ -222,6 +225,9 @@ export function EstimateLineItemsLocal({
   onCategoryNamesChange,
   sectionOrder,
   onSectionOrderChange,
+  activeSectionId,
+  explicitActiveSectionId,
+  onActiveSectionChange,
   disabled = false,
   submitAttempted = false,
   lineItemsError,
@@ -248,7 +254,6 @@ export function EstimateLineItemsLocal({
   const [openSectionMenuKey, setOpenSectionMenuKey] = React.useState<string | null>(null);
   const [sectionFocusTargetCode, setSectionFocusTargetCode] = React.useState<string | null>(null);
   const [highlightSectionCode, setHighlightSectionCode] = React.useState<string | null>(null);
-  const [activeSectionCode, setActiveSectionCode] = React.useState<string | null>(null);
   const [lineFocusTargetId, setLineFocusTargetId] = React.useState<string | null>(null);
 
   const isSectionCollapsed = React.useCallback(
@@ -345,8 +350,7 @@ export function EstimateLineItemsLocal({
         if (!section) return;
         const rect = section.getBoundingClientRect();
         if (rect.top < 88 || rect.bottom > window.innerHeight - 88) {
-          const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-          section.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "nearest" });
+          section.scrollIntoView({ behavior: "auto", block: "nearest" });
         }
         const focusTarget = section.querySelector<HTMLElement>(
           'input[aria-label^="Section name"], input[aria-label^="Line item"]'
@@ -397,6 +401,7 @@ export function EstimateLineItemsLocal({
       const insertIndex = anchorIndex >= 0 ? anchorIndex + 1 : nextOrder.length;
       nextOrder.splice(insertIndex, 0, costCode);
       onSectionOrderChange(nextOrder);
+      onActiveSectionChange(costCode, "explicit");
       setSectionFocusTargetCode(costCode);
       pushRecentSection({ displayName: trimmed, costCode });
       refreshDraftStorage();
@@ -407,6 +412,7 @@ export function EstimateLineItemsLocal({
       lineItems,
       onCategoryNamesChange,
       onLineItemsChange,
+      onActiveSectionChange,
       onSectionOrderChange,
       orderedSectionCodes,
       refreshDraftStorage,
@@ -546,6 +552,18 @@ export function EstimateLineItemsLocal({
     }
   };
 
+  const moveItemByOffset = (id: string, costCode: string, offset: -1 | 1): void => {
+    const sectionItems = itemsByCode[costCode] ?? [];
+    const sectionIndex = sectionItems.findIndex((lineItem) => lineItem.id === id);
+    const target = sectionItems[sectionIndex + offset];
+    if (sectionIndex < 0 || !target) return;
+    const sourceIndex = lineItems.findIndex((lineItem) => lineItem.id === id);
+    const targetIndex = lineItems.findIndex((lineItem) => lineItem.id === target.id);
+    if (sourceIndex < 0 || targetIndex < 0) return;
+    onLineItemsChange(arrayMove(lineItems, sourceIndex, targetIndex));
+    setLineFocusTargetId(id);
+  };
+
   const setCategoryName = (code: string, name: string): void => {
     onCategoryNamesChange({ ...categoryNames, [code]: name });
   };
@@ -568,9 +586,10 @@ export function EstimateLineItemsLocal({
         (code) => normalizeProposalSectionName(sectionDisplayName(code)) === normalizedName
       );
       if (!existingCode) return;
+      onActiveSectionChange(existingCode, "explicit");
       setSectionFocusTargetCode(existingCode);
     },
-    [orderedSectionCodes, sectionDisplayName]
+    [onActiveSectionChange, orderedSectionCodes, sectionDisplayName]
   );
 
   const outlineSections = React.useMemo(
@@ -675,12 +694,14 @@ export function EstimateLineItemsLocal({
         <EstimateScopeToolbar
           sections={outlineSections}
           searchEntries={scopeSearchEntries}
+          activeSectionId={activeSectionId}
+          explicitActiveSectionId={explicitActiveSectionId}
           onCollapseAll={collapseAllSections}
           onExpandAll={expandAllSections}
           onRevealSection={(sectionId) =>
             setCollapsedSections((previous) => ({ ...previous, [sectionId]: false }))
           }
-          onActiveSectionChange={setActiveSectionCode}
+          onActiveSectionChange={onActiveSectionChange}
           addSectionControl={renderSectionMenu({
             menuKey: "toolbar",
             label: "Add Section",
@@ -697,7 +718,7 @@ export function EstimateLineItemsLocal({
                   <p className={EB.scopeEmptyMessage}>No line items yet.</p>
                 </div>
               ) : (
-                orderedSectionCodes.map((code) => {
+                orderedSectionCodes.map((code, sectionIndex) => {
                   const displayName = sectionDisplayName(code);
                   const catalogName = catalogNameByCode.get(code) ?? displayName;
                   const rows = itemsByCode[code] ?? [];
@@ -709,7 +730,7 @@ export function EstimateLineItemsLocal({
                       data-estimate-section-mobile-id={code}
                       className={cn(
                         EB.scopeSectionMobile,
-                        activeSectionCode === code && "eb-scope-section-current",
+                        activeSectionId === code && "eb-scope-section-current",
                         highlightSectionCode === code && EB.scopeSectionInserted
                       )}
                     >
@@ -765,9 +786,14 @@ export function EstimateLineItemsLocal({
                                     code: sectionCode,
                                     label: sectionDisplayName(sectionCode),
                                   }))}
-                                  onMoveToSection={(nextCode) =>
-                                    updateItem(item.id, { costCode: nextCode })
-                                  }
+                                  onMoveToSection={(nextCode) => {
+                                    updateItem(item.id, { costCode: nextCode });
+                                    setLineFocusTargetId(item.id);
+                                  }}
+                                  canMoveUp={rows[0]?.id !== item.id}
+                                  canMoveDown={rows[rows.length - 1]?.id !== item.id}
+                                  onMoveUp={() => moveItemByOffset(item.id, code, -1)}
+                                  onMoveDown={() => moveItemByOffset(item.id, code, 1)}
                                 />
                               </div>
                             );
@@ -783,7 +809,7 @@ export function EstimateLineItemsLocal({
                           />
                         </div>
                       </ScopeSectionCollapsibleBody>
-                      {!disabled ? (
+                      {!disabled && sectionIndex < orderedSectionCodes.length - 1 ? (
                         <div className={EB.addNextSectionRow}>
                           {renderSectionMenu({
                             menuKey: `mobile:${code}`,
@@ -820,7 +846,7 @@ export function EstimateLineItemsLocal({
                   className="eb-scope-sections-list hidden flex-col lg:flex"
                   data-section-dragging={sectionDragging ? "true" : undefined}
                 >
-                  {orderedSectionCodes.map((code) => {
+                  {orderedSectionCodes.map((code, sectionIndex) => {
                     const displayName = sectionDisplayName(code);
                     const catalogName = catalogNameByCode.get(code) ?? displayName;
                     const rows = itemsByCode[code] ?? [];
@@ -834,7 +860,7 @@ export function EstimateLineItemsLocal({
                         isDropTarget={overSectionId === code}
                         className={cn(
                           "transition-colors duration-150",
-                          activeSectionCode === code && "eb-scope-section-current",
+                          activeSectionId === code && "eb-scope-section-current",
                           highlightSectionCode === code && EB.scopeSectionInserted
                         )}
                       >
@@ -897,58 +923,60 @@ export function EstimateLineItemsLocal({
                                         }
                                         inlinePricing={
                                           <>
-                                            <div
-                                              className={cn(
-                                                EB.lineFieldStackContents,
-                                                EB.linePricingQty
-                                              )}
-                                            >
-                                              <span className={cn(EB.readLabel, EB.lineQtyLabel)}>
-                                                Qty
-                                              </span>
-                                              <Input
-                                                type="number"
-                                                min={0}
-                                                step={0.01}
-                                                inputMode="decimal"
-                                                value={row.qty}
-                                                onChange={(e) =>
-                                                  updateItem(row.id, {
-                                                    qty: Math.max(0, Number(e.target.value) || 0),
-                                                  })
-                                                }
-                                                onWheel={(event) => event.currentTarget.blur()}
-                                                className={ebInput(
-                                                  `h-8 min-h-8 w-full px-2 ${EB.inputNumeric} ${EB.lineQtyInput}`
+                                            <div className={EB.lineQtyUnitGroup}>
+                                              <div
+                                                className={cn(
+                                                  EB.lineFieldStackContents,
+                                                  EB.linePricingQty
                                                 )}
-                                                aria-label={`Line item ${globalIdx} quantity`}
-                                                disabled={disabled}
-                                              />
-                                            </div>
-                                            <div
-                                              className={cn(
-                                                EB.lineFieldStackContents,
-                                                EB.linePricingMeasure
-                                              )}
-                                            >
-                                              <span
-                                                className={cn(EB.readLabel, EB.lineMeasureLabel)}
                                               >
-                                                Unit
-                                              </span>
-                                              <Input
-                                                type="text"
-                                                value={row.unit}
-                                                onChange={(e) =>
-                                                  updateItem(row.id, { unit: e.target.value })
-                                                }
-                                                className={ebInput(
-                                                  `h-8 min-h-8 w-full px-2 ${EB.lineMeasureInput}`
+                                                <span className={cn(EB.readLabel, EB.lineQtyLabel)}>
+                                                  Qty
+                                                </span>
+                                                <Input
+                                                  type="number"
+                                                  min={0}
+                                                  step={0.01}
+                                                  inputMode="decimal"
+                                                  value={row.qty}
+                                                  onChange={(e) =>
+                                                    updateItem(row.id, {
+                                                      qty: Math.max(0, Number(e.target.value) || 0),
+                                                    })
+                                                  }
+                                                  onWheel={(event) => event.currentTarget.blur()}
+                                                  className={ebInput(
+                                                    `h-8 min-h-8 w-full px-2 ${EB.inputNumeric} ${EB.lineQtyInput}`
+                                                  )}
+                                                  aria-label={`Line item ${globalIdx} quantity`}
+                                                  disabled={disabled}
+                                                />
+                                              </div>
+                                              <div
+                                                className={cn(
+                                                  EB.lineFieldStackContents,
+                                                  EB.linePricingMeasure
                                                 )}
-                                                aria-label={`Line item ${globalIdx} unit`}
-                                                placeholder="EA"
-                                                disabled={disabled}
-                                              />
+                                              >
+                                                <span
+                                                  className={cn(EB.readLabel, EB.lineMeasureLabel)}
+                                                >
+                                                  Unit
+                                                </span>
+                                                <Input
+                                                  type="text"
+                                                  value={row.unit}
+                                                  onChange={(e) =>
+                                                    updateItem(row.id, { unit: e.target.value })
+                                                  }
+                                                  className={ebInput(
+                                                    `h-8 min-h-8 w-full px-2 ${EB.lineMeasureInput}`
+                                                  )}
+                                                  aria-label={`Line item ${globalIdx} unit`}
+                                                  placeholder="EA"
+                                                  disabled={disabled}
+                                                />
+                                              </div>
                                             </div>
                                             <div
                                               className={cn(
@@ -1038,9 +1066,14 @@ export function EstimateLineItemsLocal({
                                                     label: sectionDisplayName(sectionCode),
                                                   })
                                                 )}
-                                                onMoveToSection={(nextCode) =>
-                                                  updateItem(row.id, { costCode: nextCode })
-                                                }
+                                                onMoveToSection={(nextCode) => {
+                                                  updateItem(row.id, { costCode: nextCode });
+                                                  setLineFocusTargetId(row.id);
+                                                }}
+                                                canMoveUp={rows[0]?.id !== row.id}
+                                                canMoveDown={rows[rows.length - 1]?.id !== row.id}
+                                                onMoveUp={() => moveItemByOffset(row.id, code, -1)}
+                                                onMoveDown={() => moveItemByOffset(row.id, code, 1)}
                                                 disabled={disabled}
                                               />
                                             </div>
@@ -1060,7 +1093,7 @@ export function EstimateLineItemsLocal({
                                 />
                               </div>
                             </ScopeSectionCollapsibleBody>
-                            {!disabled ? (
+                            {!disabled && sectionIndex < orderedSectionCodes.length - 1 ? (
                               <div className={EB.addNextSectionRow}>
                                 {renderSectionMenu({
                                   menuKey: `desktop:${code}`,
@@ -1085,16 +1118,6 @@ export function EstimateLineItemsLocal({
                 </div>
               </SortableContext>
             </DndContext>
-            {!disabled && orderedSectionCodes.length > 0 ? (
-              <div className={cn(EB.addNextSectionRow, EB.addFinalSectionRow)}>
-                {renderSectionMenu({
-                  menuKey: "final",
-                  insertAfterCode: orderedSectionCodes[orderedSectionCodes.length - 1],
-                  label: "Add Final Section",
-                  ariaLabel: "Add Final Section",
-                })}
-              </div>
-            ) : null}
           </div>
         </div>
       </div>

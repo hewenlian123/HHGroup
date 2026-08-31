@@ -1,7 +1,8 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "./estimate-playwright-test";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-import { loginAsE2EOwner } from "./e2e-auth-owner";
+import { gotoWithE2EAuth, loginAsE2EOwner, reloadWithE2EAuth } from "./e2e-auth-owner";
+import { deleteLocalEstimateFixtureGraphs } from "./e2e-estimate-fixture-teardown";
 import { assertE2ESupabaseUrlSafeForMutations } from "./e2e-supabase-url-guard";
 
 const createdCustomerNames = new Set<string>();
@@ -29,9 +30,30 @@ function invoiceIdFromUrl(url: string): string {
   return match[1];
 }
 
+type SupabaseCleanupResult<T> = {
+  data: T | null;
+  error: { message: string } | null;
+};
+
+async function runSupabaseCleanupOperation<T>(
+  operation: string,
+  request: PromiseLike<SupabaseCleanupResult<T>>
+): Promise<T | null> {
+  const { data, error } = await request;
+  if (error) {
+    throw new Error(`Estimate invoice-linkage cleanup failed to ${operation}: ${error.message}`);
+  }
+  return data;
+}
+
 async function cleanupCreatedRows(): Promise<void> {
   const supabase = db();
-  if (!supabase) return;
+  if (!supabase) {
+    if (createdCustomerNames.size > 0 || createdProjectNames.size > 0) {
+      throw new Error("Estimate invoice-linkage cleanup requires the local Supabase environment.");
+    }
+    return;
+  }
 
   const customerNames = Array.from(createdCustomerNames);
   const projectNames = Array.from(createdProjectNames);
@@ -41,74 +63,148 @@ async function cleanupCreatedRows(): Promise<void> {
   const customerIds = new Set<string>();
 
   if (customerNames.length > 0) {
-    const { data: invoices } = await supabase
-      .from("invoices")
-      .select("id")
-      .in("client_name", customerNames);
+    const invoices = await runSupabaseCleanupOperation(
+      "discover invoices by customer",
+      supabase.from("invoices").select("id").in("client_name", customerNames)
+    );
     for (const row of invoices ?? []) invoiceIds.add(String(row.id));
 
-    const { data: estimates } = await supabase
-      .from("estimates")
-      .select("id")
-      .in("client", customerNames);
+    const estimates = await runSupabaseCleanupOperation(
+      "discover estimates by customer",
+      supabase.from("estimates").select("id").in("client", customerNames)
+    );
     for (const row of estimates ?? []) estimateIds.add(String(row.id));
 
-    const { data: customers } = await supabase
-      .from("customers")
-      .select("id")
-      .in("name", customerNames);
+    const customers = await runSupabaseCleanupOperation(
+      "discover customers",
+      supabase.from("customers").select("id").in("name", customerNames)
+    );
     for (const row of customers ?? []) customerIds.add(String(row.id));
   }
 
   if (projectNames.length > 0) {
-    const { data: estimates } = await supabase
-      .from("estimates")
-      .select("id")
-      .in("project", projectNames);
+    const estimates = await runSupabaseCleanupOperation(
+      "discover estimates by project",
+      supabase.from("estimates").select("id").in("project", projectNames)
+    );
     for (const row of estimates ?? []) estimateIds.add(String(row.id));
 
-    const { data: projects } = await supabase
-      .from("projects")
-      .select("id")
-      .in("name", projectNames);
+    const projects = await runSupabaseCleanupOperation(
+      "discover projects",
+      supabase.from("projects").select("id").in("name", projectNames)
+    );
     for (const row of projects ?? []) projectIds.add(String(row.id));
   }
 
   const invoiceIdList = Array.from(invoiceIds);
   if (invoiceIdList.length > 0) {
-    const { data: payments } = await supabase
-      .from("payments_received")
-      .select("id")
-      .in("invoice_id", invoiceIdList);
+    const payments = await runSupabaseCleanupOperation(
+      "discover received payments",
+      supabase.from("payments_received").select("id").in("invoice_id", invoiceIdList)
+    );
     const paymentIds = (payments ?? []).map((row: { id: string }) => row.id).filter(Boolean);
     if (paymentIds.length > 0) {
-      await supabase.from("payment_received_attachments").delete().in("payment_id", paymentIds);
+      await runSupabaseCleanupOperation(
+        "delete received-payment attachments",
+        supabase.from("payment_received_attachments").delete().in("payment_id", paymentIds)
+      );
     }
-    await supabase.from("deposits").delete().in("invoice_id", invoiceIdList);
-    await supabase.from("payments_received").delete().in("invoice_id", invoiceIdList);
-    await supabase.from("invoice_payments").delete().in("invoice_id", invoiceIdList);
-    await supabase.from("invoice_items").delete().in("invoice_id", invoiceIdList);
-    await supabase.from("invoices").delete().in("id", invoiceIdList);
+    await runSupabaseCleanupOperation(
+      "delete deposits",
+      supabase.from("deposits").delete().in("invoice_id", invoiceIdList)
+    );
+    await runSupabaseCleanupOperation(
+      "delete received payments",
+      supabase.from("payments_received").delete().in("invoice_id", invoiceIdList)
+    );
+    await runSupabaseCleanupOperation(
+      "delete invoice payments",
+      supabase.from("invoice_payments").delete().in("invoice_id", invoiceIdList)
+    );
+    await runSupabaseCleanupOperation(
+      "delete invoice items",
+      supabase.from("invoice_items").delete().in("invoice_id", invoiceIdList)
+    );
+    await runSupabaseCleanupOperation(
+      "delete invoices",
+      supabase.from("invoices").delete().in("id", invoiceIdList)
+    );
   }
 
   const estimateIdList = Array.from(estimateIds);
   if (estimateIdList.length > 0) {
-    await supabase
-      .from("estimate_payment_schedule_items")
-      .delete()
-      .in("estimate_id", estimateIdList);
-    await supabase.from("estimate_snapshots").delete().in("estimate_id", estimateIdList);
-    await supabase.from("estimate_items").delete().in("estimate_id", estimateIdList);
-    await supabase.from("estimate_categories").delete().in("estimate_id", estimateIdList);
-    await supabase.from("estimate_meta").delete().in("estimate_id", estimateIdList);
-    await supabase.from("estimates").delete().in("id", estimateIdList);
+    await runSupabaseCleanupOperation(
+      "delete estimate payment schedule items",
+      supabase.from("estimate_payment_schedule_items").delete().in("estimate_id", estimateIdList)
+    );
+    await runSupabaseCleanupOperation(
+      "delete estimate items",
+      supabase.from("estimate_items").delete().in("estimate_id", estimateIdList)
+    );
+    await runSupabaseCleanupOperation(
+      "delete estimate categories",
+      supabase.from("estimate_categories").delete().in("estimate_id", estimateIdList)
+    );
+    await runSupabaseCleanupOperation(
+      "delete estimate metadata",
+      supabase.from("estimate_meta").delete().in("estimate_id", estimateIdList)
+    );
+    await deleteLocalEstimateFixtureGraphs(estimateIdList);
   }
 
   const projectIdList = Array.from(projectIds);
-  if (projectIdList.length > 0) await supabase.from("projects").delete().in("id", projectIdList);
+  if (projectIdList.length > 0) {
+    await runSupabaseCleanupOperation(
+      "delete projects",
+      supabase.from("projects").delete().in("id", projectIdList)
+    );
+  }
 
   const customerIdList = Array.from(customerIds);
-  if (customerIdList.length > 0) await supabase.from("customers").delete().in("id", customerIdList);
+  if (customerIdList.length > 0) {
+    await runSupabaseCleanupOperation(
+      "delete customers",
+      supabase.from("customers").delete().in("id", customerIdList)
+    );
+  }
+
+  await expectCreatedRowsGone(supabase, { customerNames, projectNames });
+}
+
+async function expectCreatedRowsGone(
+  supabase: SupabaseClient,
+  params: { customerNames: string[]; projectNames: string[] }
+): Promise<void> {
+  if (params.customerNames.length > 0) {
+    const invoices = await runSupabaseCleanupOperation(
+      "verify invoices are gone",
+      supabase.from("invoices").select("id").in("client_name", params.customerNames)
+    );
+    const estimates = await runSupabaseCleanupOperation(
+      "verify customer estimates are gone",
+      supabase.from("estimates").select("id").in("client", params.customerNames)
+    );
+    const customers = await runSupabaseCleanupOperation(
+      "verify customers are gone",
+      supabase.from("customers").select("id").in("name", params.customerNames)
+    );
+    expect(invoices ?? []).toHaveLength(0);
+    expect(estimates ?? []).toHaveLength(0);
+    expect(customers ?? []).toHaveLength(0);
+  }
+
+  if (params.projectNames.length > 0) {
+    const estimates = await runSupabaseCleanupOperation(
+      "verify project estimates are gone",
+      supabase.from("estimates").select("id").in("project", params.projectNames)
+    );
+    const projects = await runSupabaseCleanupOperation(
+      "verify projects are gone",
+      supabase.from("projects").select("id").in("name", params.projectNames)
+    );
+    expect(estimates ?? []).toHaveLength(0);
+    expect(projects ?? []).toHaveLength(0);
+  }
 }
 
 async function createCustomerAndProject(
@@ -152,7 +248,7 @@ async function fillEstimateBase(
   page: Page,
   params: { customerName: string; projectName: string }
 ): Promise<void> {
-  await page.goto("/estimates/new");
+  await gotoWithE2EAuth(page, "/estimates/new");
   await page.waitForLoadState("domcontentloaded");
   await expect(page.getByRole("heading", { name: "New Estimate" })).toBeVisible({
     timeout: 30_000,
@@ -227,10 +323,31 @@ async function openPaymentSchedule(page: Page): Promise<void> {
   await expect(page.getByTestId("estimate-payment-schedule-sheet")).toBeVisible();
 }
 
-test.afterEach(async () => {
-  await cleanupCreatedRows();
-  createdCustomerNames.clear();
-  createdProjectNames.clear();
+test.afterEach(async ({ page }) => {
+  const teardownErrors: unknown[] = [];
+  const hasCreatedRows = createdCustomerNames.size > 0 || createdProjectNames.size > 0;
+
+  if (hasCreatedRows) {
+    try {
+      await gotoWithE2EAuth(page, "/estimates");
+    } catch (error) {
+      teardownErrors.push(error);
+    }
+  }
+
+  try {
+    await cleanupCreatedRows();
+  } catch (error) {
+    teardownErrors.push(error);
+  } finally {
+    createdCustomerNames.clear();
+    createdProjectNames.clear();
+  }
+
+  if (teardownErrors.length === 1) throw teardownErrors[0];
+  if (teardownErrors.length > 1) {
+    throw new AggregateError(teardownErrors, "Estimate invoice-linkage teardown failed.");
+  }
 });
 
 test("linked project payment milestone generates an invoice for the milestone amount", async ({
@@ -310,7 +427,7 @@ test("tax-inclusive milestone generates an invoice whose final total remains the
     .eq("estimate_id", estimateId!);
   expect(metaUpdateError).toBeNull();
 
-  await page.reload({ waitUntil: "domcontentloaded" });
+  await reloadWithE2EAuth(page);
   await approveSavedEstimate(page);
   await openPaymentSchedule(page);
   await page.getByRole("link", { name: /^Create Draft Invoice$/i }).click();

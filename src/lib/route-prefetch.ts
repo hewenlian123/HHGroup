@@ -33,12 +33,32 @@ export const OWNER_NAV_PREFETCH_ROUTES = [
   "/system-health",
 ] as const;
 
+export const BOTTOM_NAV_VISIBLE_MEDIA_QUERY = "(max-width: 639px)";
+export const QUICK_ACTION_FAB_VISIBLE_MEDIA_QUERY = "(max-width: 1023px)";
+
+export function shouldBulkPrefetchOwnerNav(pathname: string): boolean {
+  return pathname === "/dashboard" || pathname === "/financial";
+}
+
+export function shouldBulkPrefetchMobileNav(
+  pathname: string,
+  mobileNavigationVisible: boolean
+): boolean {
+  return mobileNavigationVisible && shouldBulkPrefetchOwnerNav(pathname);
+}
+
 export type AppRouterLike = { prefetch: (href: string) => void };
 
 const PREFETCH_BATCH_SIZE = 4;
 const PREFETCH_BATCH_IDLE_TIMEOUT_MS = 600;
 
-function prefetchRouteBatch(router: AppRouterLike, hrefs: readonly string[], startIndex: number) {
+function prefetchRouteBatch(
+  router: AppRouterLike,
+  hrefs: readonly string[],
+  startIndex: number
+): () => void {
+  let cancelled = false;
+  let cancelScheduledBatch: (() => void) | undefined;
   const endIndex = Math.min(startIndex + PREFETCH_BATCH_SIZE, hrefs.length);
   for (let index = startIndex; index < endIndex; index += 1) {
     const href = hrefs[index];
@@ -49,12 +69,19 @@ function prefetchRouteBatch(router: AppRouterLike, hrefs: readonly string[], sta
     }
   }
   if (endIndex < hrefs.length) {
-    runWhenIdle(() => prefetchRouteBatch(router, hrefs, endIndex), PREFETCH_BATCH_IDLE_TIMEOUT_MS);
+    cancelScheduledBatch = runWhenIdle(() => {
+      if (cancelled) return;
+      cancelScheduledBatch = prefetchRouteBatch(router, hrefs, endIndex);
+    }, PREFETCH_BATCH_IDLE_TIMEOUT_MS);
   }
+  return () => {
+    cancelled = true;
+    cancelScheduledBatch?.();
+  };
 }
 
-export function prefetchRoutes(router: AppRouterLike, hrefs: readonly string[]): void {
-  prefetchRouteBatch(router, hrefs, 0);
+export function prefetchRoutes(router: AppRouterLike, hrefs: readonly string[]): () => void {
+  return prefetchRouteBatch(router, hrefs, 0);
 }
 
 /** Schedule work when the main thread is idle (fallback: short timeout). */

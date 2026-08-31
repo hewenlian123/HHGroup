@@ -31,6 +31,10 @@ import {
 import { formatLedgerDate, LEDGER_DATE_CLASS } from "@/lib/ledger-date";
 import { safeWorkerReturnPath, workerDetailReturnPath } from "@/lib/worker-return-path";
 import { workerRateLocalYmd } from "@/lib/worker-rate-date";
+import {
+  idempotentSubmissionForPayload,
+  type IdempotentSubmission,
+} from "@/lib/financial-idempotency";
 
 type LaborEntryRow = {
   id: string;
@@ -402,6 +406,7 @@ export default function WorkerBalanceDetailPage() {
   const [expandedMonths, setExpandedMonths] = React.useState<Set<string>>(new Set());
   const [expandedReimbMonths, setExpandedReimbMonths] = React.useState<Set<string>>(new Set());
   const [paySubmitting, setPaySubmitting] = React.useState(false);
+  const atomicPayrollSubmissionRef = React.useRef<IdempotentSubmission | null>(null);
   const [payError, setPayError] = React.useState<string | null>(null);
   const [laborPayrollMode, setLaborPayrollMode] =
     React.useState<LaborPayrollSettlementMode>("payment_link");
@@ -846,17 +851,25 @@ export default function WorkerBalanceDetailPage() {
     setPaySubmitting(true);
     setPayError(null);
     try {
+      const requestBody = {
+        amount: netPaymentAmount,
+        payment_method: method,
+        payment_date: submittedPaymentDate,
+        notes: payNotes.trim() || null,
+        labor_entry_ids: Array.from(selectedLaborIds).sort(),
+        reimbursement_ids: Array.from(selectedReimbIds).sort(),
+        advance_deduction_amount: advanceDeductionAmount,
+      };
+      atomicPayrollSubmissionRef.current = idempotentSubmissionForPayload(
+        atomicPayrollSubmissionRef.current,
+        requestBody
+      );
       const res = await fetch(`/api/labor/workers/${workerId}/pay`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          amount: netPaymentAmount,
-          payment_method: method,
-          payment_date: submittedPaymentDate,
-          notes: payNotes.trim() || null,
-          labor_entry_ids: Array.from(selectedLaborIds),
-          reimbursement_ids: Array.from(selectedReimbIds),
-          advance_deduction_amount: advanceDeductionAmount,
+          ...requestBody,
+          idempotency_key: atomicPayrollSubmissionRef.current.key,
         }),
       });
       const data = (await res.json()) as { message?: string; payment?: { id?: string } };
@@ -871,6 +884,7 @@ export default function WorkerBalanceDetailPage() {
       setLastPaymentMonth(submittedPaymentDate.slice(0, 7));
       setMessage("Payment saved.");
       dispatchClientDataSync({ reason: "worker-pay" });
+      atomicPayrollSubmissionRef.current = null;
     } catch (err) {
       setPayError(err instanceof Error ? err.message : "Payment failed.");
     } finally {

@@ -285,7 +285,6 @@ async function loadLaborEntriesForMonth(
     "id, work_date, hours, morning, afternoon, days_worked, labor_cost_snapshot, amount_snapshot, cost_amount",
     "id, work_date, hours, morning, afternoon, cost_amount",
     "id, work_date, cost_amount",
-    "id, work_date, total",
   ] as const;
 
   let lastError: { message?: string } | null = null;

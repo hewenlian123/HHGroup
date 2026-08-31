@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { TYPO } from "@/lib/typography";
 
 const badgeVariants = cva(
-  cn("inline-flex items-center rounded-full border px-hh-2 py-0.5", TYPO.chip),
+  cn("inline-flex items-center rounded-hh-compact border px-hh-2 py-0.5", TYPO.chip),
   {
     variants: {
       variant: {

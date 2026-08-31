@@ -210,6 +210,7 @@ export function ProjectMaterialsTab({
                           rel="noopener noreferrer"
                           className="block w-9 h-9 rounded-hh-compact border border-border/60 overflow-hidden bg-muted/30"
                         >
+                          {/* eslint-disable-next-line @next/next/no-img-element -- Dynamic material media preserves its intrinsic thumbnail fallback. */}
                           <img
                             src={photoUrl(row.material_photo_url)}
                             alt=""

@@ -97,14 +97,17 @@ test("RowActions delegates keyboard behavior to DropdownMenuItem and keeps touch
   assert.doesNotMatch(interaction, /hover:-translate|active:scale/);
 });
 
-test("DatePicker preserves Hawaii YMD and scoped glass while using inherited generic Popover", () => {
+test("DatePicker preserves Hawaii YMD and uses the Certified V2 light Popover", () => {
   const datePicker = source("src/components/ui/date-picker.tsx");
   const neoForm = source("src/components/base/neo-form.tsx");
 
   assert.match(datePicker, /hawaiiTodayYmd/);
   assert.match(datePicker, /function toYmd/);
-  assert.match(datePicker, /appearance === "glass"/);
-  assert.match(datePicker, /themeScope=\{isGlass \? "dark" : "inherit"\}/);
+  assert.match(datePicker, /data-finance-date-picker-appearance="default"/);
+  assert.match(datePicker, /bg-\[var\(--hh-l4-floating-surface\)\]/);
+  assert.match(datePicker, /shadow-floating/);
+  assert.doesNotMatch(datePicker, /appearance === "glass"|themeScope=\{isGlass/);
+  assert.doesNotMatch(datePicker, /backdrop-blur|bg-\[rgba\(18,22,34/);
   assert.doesNotMatch(neoForm, /NeoDatePicker|NeoDrawer/);
   assert.match(neoForm, /<TaskFooter/);
 });

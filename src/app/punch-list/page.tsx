@@ -766,6 +766,7 @@ export default function PunchListPage() {
               <div>
                 <label className="text-xs font-medium text-muted-foreground">Related photo</label>
                 <div className="mt-1.5 rounded-sm border border-border/60 overflow-hidden bg-muted/20 flex items-center justify-center min-h-[160px]">
+                  {/* eslint-disable-next-line @next/next/no-img-element -- Dynamic local media preserves intrinsic sizing in the issue viewer. */}
                   <img
                     src={sitePhotoImageUrl(selectedItem.site_photo_url)!}
                     alt=""
@@ -847,6 +848,7 @@ export default function PunchListPage() {
               </div>
               {drawerForm.photo_url && (
                 <div className="mt-2 rounded-sm border border-border/60 overflow-hidden max-w-[200px]">
+                  {/* eslint-disable-next-line @next/next/no-img-element -- Dynamic local media preserves intrinsic sizing in the issue editor. */}
                   <img
                     src={photoUrl(drawerForm.photo_url)!}
                     alt=""

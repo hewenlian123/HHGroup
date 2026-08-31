@@ -1,7 +1,8 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "./estimate-playwright-test";
 import { createClient } from "@supabase/supabase-js";
 
-import { loginAsE2EOwner } from "./e2e-auth-owner";
+import { gotoWithE2EAuth, loginAsE2EOwner, reloadWithE2EAuth } from "./e2e-auth-owner";
+import { deleteLocalEstimateFixtureGraphs } from "./e2e-estimate-fixture-teardown";
 import { assertE2ESupabaseUrlSafeForMutations } from "./e2e-supabase-url-guard";
 import type { EstimateDocumentStyle } from "../src/lib/estimate-document-style";
 
@@ -47,11 +48,10 @@ async function cleanupEstimateTestData(
   if (ids.length === 0) return;
 
   await supabase.from("estimate_payment_schedule_items").delete().in("estimate_id", ids);
-  await supabase.from("estimate_snapshots").delete().in("estimate_id", ids);
   await supabase.from("estimate_items").delete().in("estimate_id", ids);
   await supabase.from("estimate_categories").delete().in("estimate_id", ids);
   await supabase.from("estimate_meta").delete().in("estimate_id", ids);
-  await supabase.from("estimates").delete().in("id", ids);
+  await deleteLocalEstimateFixtureGraphs(ids);
 }
 
 async function fillNewEstimateCustomerFields(
@@ -124,7 +124,7 @@ async function createBasicEstimate(
     documentStyle?: EstimateDocumentStyle;
   }
 ): Promise<string> {
-  await page.goto("/estimates/new");
+  await gotoWithE2EAuth(page, "/estimates/new");
   await page.waitForLoadState("domcontentloaded");
   await expect(page.getByRole("heading", { name: "New Estimate" })).toBeVisible({
     timeout: 30_000,
@@ -170,7 +170,7 @@ test("proposal preview and print hide line-item pricing", async ({ page }) => {
     documentStyle: "proposal",
   });
 
-  await page.goto(`/estimates/${estimateId}/preview`, { waitUntil: "domcontentloaded" });
+  await gotoWithE2EAuth(page, `/estimates/${estimateId}/preview`);
   const document = page.getByTestId("estimate-document");
   await expect(document).toHaveAttribute("data-estimate-document-style", "proposal");
   await expect(document).toContainText("Project Proposal");
@@ -188,7 +188,7 @@ test("proposal preview and print hide line-item pricing", async ({ page }) => {
   await expect(summary).not.toContainText("Discount");
   await expect(summary).not.toContainText(/Tax \(/);
 
-  await page.goto(`/estimates/${estimateId}/print`, { waitUntil: "domcontentloaded" });
+  await gotoWithE2EAuth(page, `/estimates/${estimateId}/print`);
   await expect(page.getByTestId("estimate-document")).toHaveAttribute(
     "data-estimate-document-style",
     "proposal"
@@ -214,7 +214,7 @@ test("itemized preview and print show qty, unit price, and line totals", async (
     documentStyle: "itemized",
   });
 
-  await page.goto(`/estimates/${estimateId}/preview`, { waitUntil: "domcontentloaded" });
+  await gotoWithE2EAuth(page, `/estimates/${estimateId}/preview`);
   const document = page.getByTestId("estimate-document");
   await expect(document).toHaveAttribute("data-estimate-document-style", "itemized");
   await expect(document).toContainText("Grand Total");
@@ -228,7 +228,7 @@ test("itemized preview and print show qty, unit price, and line totals", async (
   await expect(row.getByTestId("estimate-line-item-total")).toContainText("$");
   await expect(row).toContainText("Qty 2");
 
-  await page.goto(`/estimates/${estimateId}/print`, { waitUntil: "domcontentloaded" });
+  await gotoWithE2EAuth(page, `/estimates/${estimateId}/print`);
   const printRow = page.getByTestId("estimate-line-item-output").filter({ hasText: lineTitle });
   await expect(printRow.getByTestId("estimate-line-item-unit-price")).toContainText("Unit $");
   await expect(printRow).toContainText("Qty 2");
@@ -251,15 +251,18 @@ test("estimate style persists after reload and updates preview output", async ({
   });
 
   await setEstimateDocumentStyle(page, "itemized");
-  await page.reload({ waitUntil: "domcontentloaded" });
-  await expect(
-    page
-      .getByTestId("estimate-details-summary")
-      .getByText("Itemized", { exact: true })
-      .locator("visible=true")
-  ).toBeVisible({ timeout: 30_000 });
+  await reloadWithE2EAuth(page);
+  await enterEstimateEditMode(page);
+  await page.getByRole("button", { name: /Edit details/i }).click();
+  const details = page.getByRole("dialog", {
+    name: "Customer / project / pricing details",
+  });
+  await expect(details.getByRole("radio", { name: "Itemized" })).toBeChecked({
+    timeout: 30_000,
+  });
+  await details.getByRole("button", { name: "Cancel", exact: true }).click();
 
-  await page.goto(`/estimates/${estimateId}/preview`, { waitUntil: "domcontentloaded" });
+  await gotoWithE2EAuth(page, `/estimates/${estimateId}/preview`);
   await expect(page.getByTestId("estimate-document")).toHaveAttribute(
     "data-estimate-document-style",
     "itemized"
@@ -273,7 +276,7 @@ test("legacy estimate without stored style defaults to proposal preview", async 
   test.setTimeout(60_000);
   const seededEstimateId = "44444444-4444-4444-4444-444444444449";
 
-  await page.goto(`/estimates/${seededEstimateId}/preview`, { waitUntil: "domcontentloaded" });
+  await gotoWithE2EAuth(page, `/estimates/${seededEstimateId}/preview`);
   await expect(page.getByTestId("estimate-document")).toHaveAttribute(
     "data-estimate-document-style",
     "proposal"
@@ -290,7 +293,7 @@ test("preview summary shows matched tax preset label", async ({ page }) => {
   createdClientNames.add(clientName);
   createdProjectNames.add(projectName);
 
-  await page.goto("/estimates/new");
+  await gotoWithE2EAuth(page, "/estimates/new");
   await page.waitForLoadState("domcontentloaded");
   await fillNewEstimateCustomerFields(page, {
     clientName,
@@ -314,7 +317,7 @@ test("preview summary shows matched tax preset label", async ({ page }) => {
   const estimateId = page.url().match(/\/estimates\/([^/?#]+)/)?.[1];
   expect(estimateId).toBeTruthy();
 
-  await page.goto(`/estimates/${estimateId}/preview`, { waitUntil: "domcontentloaded" });
+  await gotoWithE2EAuth(page, `/estimates/${estimateId}/preview`);
   const summary = page.getByTestId("estimate-preview-summary");
   await expect(summary.getByText(/Tax \(Hawaii GET 4\.712%\)/)).toBeVisible({ timeout: 30_000 });
   await expect(summary).toContainText("$471.20");

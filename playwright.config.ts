@@ -6,6 +6,7 @@ import { config as loadDotenv } from "dotenv";
 
 import { loadE2EProcessEnv } from "./tests/e2e-load-env";
 import { assertPlaywrightProductionRunSafeForWrites } from "./tests/e2e-supabase-url-guard";
+import { buildPlaywrightWebServerEnv } from "./tests/e2e-webserver-env";
 
 /**
  * Base chain: `.env` → `.env.local` → `.env.e2e` → `.env.test` (see tests/e2e-load-env.ts).
@@ -17,8 +18,8 @@ if (existsSync(e2eTestEnvPath)) {
   loadDotenv({ path: e2eTestEnvPath, override: true });
 }
 
-/** Dynamic base URL for local dev (default :3000) or CI override. */
-const resolvedBase = (process.env.E2E_BASE_URL || "http://localhost:3000").replace(/\/$/, "");
+/** Dynamic base URL for isolated local E2E (default :3001) or CI override. */
+const resolvedBase = (process.env.E2E_BASE_URL || "http://localhost:3001").replace(/\/$/, "");
 // Helpers that read process.env.E2E_BASE_URL stay in sync when unset.
 if (!process.env.E2E_BASE_URL) {
   process.env.E2E_BASE_URL = resolvedBase;
@@ -26,38 +27,6 @@ if (!process.env.E2E_BASE_URL) {
 assertPlaywrightProductionRunSafeForWrites({ baseURL: resolvedBase, argv: process.argv });
 
 const isLocalE2eBase = /^(https?:\/\/)?(localhost|127\.0\.0\.1)(:\d+)?$/i.test(resolvedBase);
-
-/**
- * Env passed to `npm run dev` / `next start` when Playwright spawns the webServer.
- * Avoid forcing either server-secret variable to an empty string — that overrides `.env.local`
- * loaded by Next and makes API routes fall back to the publishable key + RLS.
- *
- * Playwright types `webServer.env` as `Record<string, string>` (no undefined values); `ProcessEnv` is incompatible.
- */
-function buildWebServerEnv(): Record<string, string> {
-  const out: Record<string, string> = {};
-  for (const key of Object.keys(process.env)) {
-    const v = process.env[key];
-    if (typeof v === "string") {
-      out[key] = v;
-    }
-  }
-  const trimKeys = [
-    "NEXT_PUBLIC_SUPABASE_URL",
-    "NEXT_PUBLIC_SUPABASE_ANON_KEY",
-    "SUPABASE_SECRET_KEY",
-    "SUPABASE_SERVICE_ROLE_KEY",
-  ] as const;
-  for (const key of trimKeys) {
-    const raw = out[key];
-    if (raw === undefined || raw.trim() === "") {
-      delete out[key];
-    } else {
-      out[key] = raw.trim();
-    }
-  }
-  return out;
-}
 
 /**
  * Worker-payment + delete-mutation files must **always** have a matching project.
@@ -77,6 +46,8 @@ const mobileSafariTests =
 
 export default defineConfig({
   testDir: "./tests",
+  /** Playwright specs use `.spec.ts`; colocated `.test.*` files belong to Node/Vitest. */
+  testMatch: "**/*.spec.ts",
   globalSetup: "./tests/global-setup.ts",
   globalTeardown: "./tests/global-teardown.ts",
   timeout: 30000,
@@ -98,7 +69,8 @@ export default defineConfig({
    * - `E2E_WEB_SERVER=dev` with `CI=true` forces `next dev` in CI if needed
    * - Readiness uses `/financial/expenses` so a broken dev that only serves `/` is not treated as healthy
    *
-   * Port is derived from E2E_BASE_URL (defaults to :3000).
+   * Port is derived from E2E_BASE_URL (defaults to isolated :3001 so a browser
+   * session on the normal :3000 app port cannot send stale cookies to the E2E server).
    *
    * Local `next dev` cold start can exceed 180s; Playwright only waits for `url` (not your whole test).
    */
@@ -114,7 +86,7 @@ export default defineConfig({
           /**
            * Default: reuse an already-running dev server on the port (fast local iteration).
            * Set `E2E_PLAYWRIGHT_REUSE_DEV_SERVER=0` to force Playwright to spawn its own server so
-           * `buildWebServerEnv()` is applied (fixes `/api/upload-receipt/options` when a manually
+           * `buildPlaywrightWebServerEnv()` is applied (fixes `/api/upload-receipt/options` when a manually
            * started `next dev` had no `SUPABASE_SERVICE_ROLE_KEY`). Stop the other process on the port first.
            */
           const reuseExistingServer = pipelineCi
@@ -124,7 +96,7 @@ export default defineConfig({
             ? `PORT=${port} npm run start`
             : `npm run dev:safe -- -p ${port}`;
           const readinessUrl = `${resolvedBase}/financial/expenses`;
-          const env = buildWebServerEnv();
+          const env = buildPlaywrightWebServerEnv(process.env);
           if (!useStart && !env.NEXT_DIST_DIR) {
             env.NEXT_DIST_DIR = ".next-e2e";
           }
@@ -155,7 +127,7 @@ export default defineConfig({
           return server;
         })(),
   use: {
-    baseURL: (process.env.E2E_BASE_URL || "http://localhost:3000").replace(/\/$/, ""),
+    baseURL: (process.env.E2E_BASE_URL || "http://localhost:3001").replace(/\/$/, ""),
     headless: true,
     screenshot: "only-on-failure",
   },

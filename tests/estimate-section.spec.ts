@@ -1,11 +1,9 @@
-import { test, expect, type Page } from "@playwright/test";
+import { expect, test, type Page } from "./estimate-playwright-test";
 
 import { loginAsE2EOwner } from "./e2e-auth-owner";
 
-const BASE = process.env.E2E_BASE_URL ?? "http://localhost:3000";
-
 test.beforeEach(async ({ page }) => {
-  await loginAsE2EOwner(page, "/estimates");
+  await loginAsE2EOwner(page, "/estimates/new");
 });
 
 async function addBlankEstimateSection(page: Page): Promise<void> {
@@ -21,8 +19,6 @@ async function addBlankEstimateSection(page: Page): Promise<void> {
 
 test("new estimate flow with section rename", async ({ page }) => {
   test.setTimeout(90_000);
-  await page.goto(`${BASE}/estimates/new`);
-  await page.waitForLoadState("domcontentloaded");
   await expect(page.getByText(/^Loading/i))
     .not.toBeVisible({ timeout: 60_000 })
     .catch(() => undefined);
@@ -57,8 +53,22 @@ test("new estimate flow with section rename", async ({ page }) => {
 
   const saveEstimateBtn = page.getByRole("button", { name: /Save Estimate/i });
   await expect(saveEstimateBtn).toBeVisible({ timeout: 10_000 });
+  const createdDetail = page.waitForResponse(
+    (response) => {
+      const headers = response.request().headers();
+      return (
+        /^\/estimates\/[0-9a-f-]+$/i.test(new URL(response.url()).pathname) &&
+        headers["rsc"] === "1" &&
+        headers["next-action"] === undefined &&
+        headers["next-router-prefetch"] !== "1"
+      );
+    },
+    { timeout: 30_000 }
+  );
   await saveEstimateBtn.click();
+  expect((await createdDetail).ok()).toBe(true);
 
   await expect(page.locator("body")).not.toContainText(/error|undefined/i);
   await page.waitForURL(/\/estimates\/[^/]+\??.*$/, { timeout: 20_000 });
+  await page.waitForLoadState("networkidle");
 });

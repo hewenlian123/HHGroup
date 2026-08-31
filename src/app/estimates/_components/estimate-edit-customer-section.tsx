@@ -201,8 +201,11 @@ export function EstimateEditCustomerSection({
     meta.documentStyle ?? "proposal"
   );
   const formRef = React.useRef<HTMLFormElement | null>(null);
+  const detailsOpenerRef = React.useRef<HTMLElement | null>(null);
 
   React.useEffect(() => {
+    // Same-value RSC refreshes replace the `meta` object identity. Depend on the
+    // server-authoritative scalar values so they cannot overwrite an active draft.
     setEstimateDate(meta.estimateDate ?? today);
     setValidUntil(meta.validUntil ?? "");
     setTaxDraft(tax);
@@ -217,7 +220,23 @@ export function EstimateEditCustomerSection({
     setProjectNameDraft(meta.project.name);
     setProjectAddressDraft(meta.project.siteAddress);
     setDocumentStyleDraft(meta.documentStyle ?? "proposal");
-  }, [customerId, discount, meta, tax, today]);
+  }, [
+    customerId,
+    discount,
+    meta.client.address,
+    meta.client.email,
+    meta.client.name,
+    meta.client.phone,
+    meta.documentStyle,
+    meta.estimateDate,
+    meta.overheadPct,
+    meta.profitPct,
+    meta.project.name,
+    meta.project.siteAddress,
+    meta.validUntil,
+    tax,
+    today,
+  ]);
 
   React.useEffect(() => {
     if (!detailsOpen || detailsSurface !== "information" || projectOptions.length > 0) return;
@@ -318,6 +337,15 @@ export function EstimateEditCustomerSection({
             side="right"
             className={estimateSurfaceSheetClassName(detailsSurface, "eb-estimate-details-sheet")}
             data-estimate-surface={detailsSurface}
+            onOpenAutoFocus={() => {
+              const activeElement = document.activeElement;
+              detailsOpenerRef.current =
+                activeElement instanceof HTMLElement ? activeElement : null;
+            }}
+            onCloseAutoFocus={(event) => {
+              event.preventDefault();
+              window.requestAnimationFrame(() => detailsOpenerRef.current?.focus());
+            }}
           >
             <div className="flex max-h-[100dvh] min-h-0 flex-1 flex-col overflow-hidden">
               <SheetHeader className={EB.sheetHeader}>
@@ -387,7 +415,7 @@ export function EstimateEditCustomerSection({
                           setClientEmailDraft(customer.email ?? "");
                           setClientAddressDraft(customer.address ?? "");
                         }}
-                        triggerClassName={cn(metaInput, "h-10 justify-between")}
+                        triggerClassName={cn(metaInput, "h-hh-control-standard justify-between")}
                       />
                     </div>
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -524,7 +552,6 @@ export function EstimateEditCustomerSection({
                         </Label>
                         <input type="hidden" name="estimateDate" value={estimateDate} />
                         <FinanceDatePicker
-                          appearance="glass"
                           size="sm"
                           value={estimateDate}
                           onChange={setEstimateDate}
@@ -557,7 +584,6 @@ export function EstimateEditCustomerSection({
                         </Label>
                         <input type="hidden" name="validUntil" value={validUntil} />
                         <FinanceDatePicker
-                          appearance="glass"
                           size="sm"
                           value={validUntil}
                           onChange={setValidUntil}
@@ -729,7 +755,7 @@ export function EstimateEditCustomerSection({
                     variant="ghost"
                     size="sm"
                     className={EB.sheetSecondary}
-                    onClick={() => setDetailsOpen(false)}
+                    onClick={() => handleDetailsOpenChange(false)}
                   >
                     Cancel
                   </Button>

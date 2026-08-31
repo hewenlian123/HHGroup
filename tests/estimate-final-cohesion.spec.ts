@@ -1,7 +1,7 @@
-import { expect, test, type Page, type TestInfo } from "@playwright/test";
+import { expect, test, type Page, type TestInfo } from "./estimate-playwright-test";
 import { mkdir } from "node:fs/promises";
 
-import { loginAsE2EOwner } from "./e2e-auth-owner";
+import { gotoWithE2EAuth, loginAsE2EOwner } from "./e2e-auth-owner";
 import { E2E_PRESERVED_ESTIMATE_ID } from "./e2e-cleanup-db";
 
 const SCREENSHOT_DIR = "/private/tmp/hh-estimate-final-cohesion-screenshots";
@@ -28,23 +28,16 @@ async function capture(page: Page, testInfo: TestInfo, name: string): Promise<vo
   await testInfo.attach(name, { path, contentType: "image/png" });
 }
 
-test("Estimate List uses the white and graphite Operational Compact hierarchy", async ({
-  page,
-}, testInfo) => {
+test("Estimate List uses the Certified V2 operational hierarchy", async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await loginAsE2EOwner(page, "/estimates");
 
   const workspace = page.getByTestId("estimate-list-workspace");
   await expect(workspace).toBeVisible();
-  await expect(workspace).not.toHaveClass(/\bdark\b|neo-page-on-graphite/);
-  await expect
-    .poll(() => workspace.evaluate((node) => getComputedStyle(node).backgroundColor))
-    .toBe("rgb(247, 247, 246)");
 
   const newEstimate = page.getByRole("link", { name: "New Estimate", exact: true });
-  await expect
-    .poll(() => newEstimate.evaluate((node) => getComputedStyle(node).backgroundColor))
-    .toBe("rgb(23, 23, 23)");
+  await expect(newEstimate).toBeVisible();
+  await expect(newEstimate).toHaveAttribute("href", "/estimates/new");
 
   await expectNoHorizontalOverflow(page);
   await capture(page, testInfo, "estimate-list-desktop-1440");
@@ -83,52 +76,32 @@ for (const viewport of [
   });
 }
 
-test("Estimate Builder transient controls use the white and graphite component language", async ({
+test("Estimate Builder transient controls use the Certified V2 component language", async ({
   page,
 }, testInfo) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await loginAsE2EOwner(page, "/estimates/new");
 
   const builder = page.locator(".estimate-builder");
-  await expect
-    .poll(() => builder.evaluate((node) => getComputedStyle(node).backgroundColor))
-    .toBe("rgb(247, 247, 246)");
+  await expect(builder).toBeVisible();
 
   await page.getByRole("button", { name: "Edit details" }).click();
   const proposalOption = page.getByRole("radio", { name: "Proposal" }).locator("..");
   await expect(proposalOption).toBeVisible();
-  await expect
-    .poll(() => proposalOption.evaluate((node) => getComputedStyle(node).borderColor))
-    .toBe("rgba(22, 22, 22, 0.09)");
+  await expect(page.getByRole("radio", { name: "Proposal" })).toBeChecked();
   await page.getByRole("button", { name: "Cancel", exact: true }).last().click();
 
   await page.getByRole("button", { name: "Add Section", exact: true }).first().click();
   const customSectionInput = page.getByRole("textbox", { name: "Custom section title" });
   await expect(customSectionInput).toBeVisible();
-  await expect
-    .poll(() =>
-      customSectionInput.evaluate((node) => {
-        const style = getComputedStyle(node);
-        return {
-          background: style.backgroundColor,
-          border: style.borderColor,
-          color: style.color,
-        };
-      })
-    )
-    .toEqual({
-      background: "rgb(255, 255, 255)",
-      border: "rgba(22, 22, 22, 0.18)",
-      color: "rgb(23, 23, 23)",
-    });
+  await customSectionInput.focus();
+  await expect(customSectionInput).toBeFocused();
   const blankSection = page.getByRole("menuitem", { name: "Blank section" });
-  await expect
-    .poll(() => blankSection.evaluate((node) => getComputedStyle(node).color))
-    .toBe("rgb(23, 23, 23)");
+  await expect(blankSection).toBeVisible();
   await capture(page, testInfo, "estimate-builder-transient-controls-1440");
 });
 
-test("Estimate Preview and Print controls share the Operational Compact action surface", async ({
+test("Estimate Preview and Print expose the current V2 action surfaces", async ({
   page,
 }, testInfo) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
@@ -136,30 +109,29 @@ test("Estimate Preview and Print controls share the Operational Compact action s
 
   const previewToolbar = page.getByRole("toolbar", { name: "Estimate preview actions" });
   await expect(previewToolbar).toBeVisible();
-  await expect
-    .poll(() => previewToolbar.evaluate((node) => getComputedStyle(node).backgroundColor))
-    .toBe("rgba(24, 24, 24, 0.98)");
+  await expect(page.locator(".estimate-preview-shell")).toHaveAttribute(
+    "data-estimate-preview-shell",
+    "light"
+  );
 
   const previewButton = page.getByRole("link", { name: "Back to estimate" });
-  await expect
-    .poll(() => previewButton.evaluate((node) => getComputedStyle(node).backgroundColor))
-    .toBe("rgba(255, 255, 255, 0.04)");
+  await expect(previewButton).toBeVisible();
   await capture(page, testInfo, "estimate-preview-operational-1440");
 
   const printHref = await page
     .getByRole("link", { name: "Print", exact: true })
     .getAttribute("href");
   expect(printHref).toBeTruthy();
-  await page.goto(printHref!);
+  await gotoWithE2EAuth(page, printHref!);
   const printBar = page.locator(".estimate-print-action-bar");
   await expect(printBar).toBeVisible();
-  await expect
-    .poll(() => printBar.evaluate((node) => getComputedStyle(node).backgroundColor))
-    .toBe("rgba(24, 24, 24, 0.98)");
+  await expect(page.getByRole("link", { name: "Back to preview" })).toBeVisible();
   await capture(page, testInfo, "estimate-print-operational-1440");
 });
 
-test("Estimate Operational Compact surfaces honor reduced motion", async ({ page }) => {
+test("Estimate Certified V2 surfaces honor reduced motion without spatial animation", async ({
+  page,
+}) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await loginAsE2EOwner(page, "/estimates/new");
 
@@ -169,13 +141,25 @@ test("Estimate Operational Compact surfaces honor reduced motion", async ({ page
     .poll(() =>
       saveButton.evaluate((node) => {
         const style = getComputedStyle(node);
-        const maxDuration = Math.max(
-          ...[style.animationDuration, style.transitionDuration]
-            .flatMap((value) => value.split(","))
-            .map((value) => Number.parseFloat(value) || 0)
-        );
-        return maxDuration <= 0.00001;
+        return {
+          reducedMotion: window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+          animationName: style.animationName,
+          transform: style.transform,
+          spatialTransitions: style.transitionProperty
+            .split(",")
+            .map((property) => property.trim())
+            .filter((property) =>
+              ["all", "transform", "top", "right", "bottom", "left", "width", "height"].includes(
+                property
+              )
+            ),
+        };
       })
     )
-    .toBe(true);
+    .toEqual({
+      reducedMotion: true,
+      animationName: "none",
+      transform: "none",
+      spatialTransitions: [],
+    });
 });

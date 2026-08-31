@@ -11,9 +11,11 @@ export function Toolbar({ className, variant = "plain", ...props }: ToolbarProps
     <div
       role="toolbar"
       className={cn(
-        "flex flex-col gap-hh-3 sm:flex-row sm:flex-wrap sm:items-center",
-        variant === "actions" && "justify-between border-b border-[var(--hh-border)] pb-hh-3",
-        variant === "filters" && "items-stretch sm:items-end sm:justify-between",
+        "flex min-w-0 flex-col gap-hh-2 sm:flex-row sm:flex-wrap sm:items-center",
+        variant === "actions" &&
+          "min-h-[var(--hh-row-height-standard)] justify-between border-b border-[var(--hh-border)] py-hh-2",
+        variant === "filters" &&
+          "items-stretch rounded-hh-panel border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-hh-2 shadow-none sm:items-end sm:justify-between",
         className
       )}
       {...props}
@@ -22,5 +24,7 @@ export function Toolbar({ className, variant = "plain", ...props }: ToolbarProps
 }
 
 export function ActionGroup({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn("flex flex-wrap items-center gap-hh-2", className)} {...props} />;
+  return (
+    <div className={cn("flex min-w-0 flex-wrap items-center gap-hh-2", className)} {...props} />
+  );
 }

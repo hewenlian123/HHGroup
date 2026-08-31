@@ -45,7 +45,12 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { createBrowserClient } from "@/lib/supabase";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { prefetchFinancialRoute } from "@/lib/financial-nav-prefetch";
-import { OWNER_NAV_PREFETCH_ROUTES, prefetchRoutes, runWhenIdle } from "@/lib/route-prefetch";
+import {
+  OWNER_NAV_PREFETCH_ROUTES,
+  prefetchRoutes,
+  runWhenIdle,
+  shouldBulkPrefetchOwnerNav,
+} from "@/lib/route-prefetch";
 import { companyProfileQueryKey, fetchCompanyProfileForNav } from "@/lib/queries/companyProfile";
 import { getCompanyInitials } from "@/lib/company-profile";
 import { useSystemHealth } from "@/contexts/system-health-context";
@@ -131,7 +136,7 @@ export function Sidebar({
 }) {
   const pathname = usePathname();
   const { initialized: authInitialized, role: authRole, user: authUser } = useAuth();
-  const deferBulkPrefetch = pathname === "/estimate-templates" || pathname.startsWith("/estimates");
+  const bulkPrefetchEnabled = shouldBulkPrefetchOwnerNav(pathname);
   const router = useRouter();
   const queryClient = useQueryClient();
   const prefetchedNavRoutesRef = React.useRef<Set<string>>(new Set());
@@ -177,14 +182,19 @@ export function Sidebar({
   const sectionsInitDone = React.useRef(false);
 
   React.useEffect(() => {
-    if (deferBulkPrefetch) return;
-    return runWhenIdle(() => {
+    if (!bulkPrefetchEnabled) return;
+    let cancelPrefetch: (() => void) | undefined;
+    const cancelIdle = runWhenIdle(() => {
       for (const href of OWNER_NAV_PREFETCH_ROUTES) {
         prefetchedNavRoutesRef.current.add(href);
       }
-      prefetchRoutes(router, OWNER_NAV_PREFETCH_ROUTES);
+      cancelPrefetch = prefetchRoutes(router, OWNER_NAV_PREFETCH_ROUTES);
     }, 2500);
-  }, [deferBulkPrefetch, router]);
+    return () => {
+      cancelIdle();
+      cancelPrefetch?.();
+    };
+  }, [bulkPrefetchEnabled, router]);
 
   const itemMatchesPath = React.useCallback(
     (item: HhProjectOsNavItem) => {
@@ -272,25 +282,20 @@ export function Sidebar({
   /** Nav row: inactive label always readable; hover adjusts background only. */
   const navRowClass = (active: boolean) =>
     cn(
-      "group relative flex touch-manipulation items-center rounded-md transition-[background-color] duration-200 ease-out",
+      "group relative flex touch-manipulation items-center rounded-hh-standard transition-[background-color,color] duration-150 ease-out",
       TYPO.tableCell,
       collapsed
-        ? "min-h-[44px] justify-center px-2 py-1.5 lg:min-h-0"
-        : "max-lg:min-h-[44px] min-h-0 gap-2.5 px-2 py-1.5 lg:min-h-0",
+        ? "min-h-[44px] justify-center px-2 lg:h-9 lg:min-h-9"
+        : "min-h-[44px] gap-2.5 px-2.5 lg:h-9 lg:min-h-9",
       active
-        ? cn(
-            "bg-[var(--hh-l3-selected)] font-medium text-[var(--hh-text-primary)] hover:bg-[var(--hh-l3-hover)]",
-            "dark:bg-[var(--hh-action-primary)] dark:text-[var(--hh-action-primary-foreground)] dark:hover:bg-[var(--hh-gold-hover)]"
-          )
-        : "font-normal text-[var(--hh-text-secondary)] hover:bg-[var(--hh-l2-operational-surface)] active:bg-[var(--hh-l3-hover)]"
+        ? "bg-[var(--hh-surface-selected)] font-medium text-[var(--hh-accent-hover)] before:absolute before:inset-y-1.5 before:left-0 before:w-[3px] before:rounded-r-full before:bg-[var(--hh-accent-primary)] hover:bg-[var(--hh-accent-soft)]"
+        : "font-normal text-[var(--hh-text-secondary)] hover:bg-[var(--hh-surface-hover)] active:bg-[var(--hh-accent-soft)]"
     );
 
   const navIconClass = (active: boolean, extra?: string) =>
     cn(
       "h-[15px] w-[15px] shrink-0",
-      active
-        ? "text-[var(--hh-text-primary)] dark:text-[var(--hh-action-primary-foreground)]"
-        : "text-[var(--hh-text-secondary)]",
+      active ? "text-[var(--hh-accent-primary)]" : "text-[var(--hh-text-muted)]",
       extra
     );
 
@@ -335,16 +340,16 @@ export function Sidebar({
         aria-disabled="true"
         title={label}
         className={cn(
-          "group relative flex items-center rounded-md text-[var(--hh-text-tertiary)]",
+          "group relative flex items-center rounded-hh-standard text-[var(--hh-text-muted)]",
           TYPO.tableCell,
           "cursor-default select-none",
           collapsed
-            ? "min-h-[44px] justify-center px-2 py-1.5 lg:min-h-0"
-            : "max-lg:min-h-[44px] min-h-0 gap-2.5 px-2 py-1.5 lg:min-h-0"
+            ? "min-h-[44px] justify-center px-2 lg:h-9 lg:min-h-9"
+            : "min-h-[44px] gap-2.5 px-2.5 lg:h-9 lg:min-h-9"
         )}
       >
         <Icon
-          className="h-[15px] w-[15px] shrink-0 text-[var(--hh-text-tertiary)]"
+          className="h-[15px] w-[15px] shrink-0 text-[var(--hh-text-muted)]"
           strokeWidth={1.75}
         />
         {!iconOnly && (
@@ -370,42 +375,48 @@ export function Sidebar({
     <aside
       data-app-sidebar
       className={cn(
-        "neo-sidebar relative flex h-full shrink-0 flex-col overflow-hidden",
+        "relative flex h-full shrink-0 flex-col overflow-hidden border-r border-[var(--hh-border-subtle)] bg-[var(--hh-surface-workspace)] text-[var(--hh-text-primary)] shadow-none",
         collapsed ? "w-hh-sidebar-collapsed" : "w-hh-sidebar-expanded",
         className
       )}
     >
       <div
+        data-sidebar-brand
         className={cn(
-          "relative z-[1] flex h-12 items-center gap-2 border-b border-[var(--hh-border)] bg-[var(--hh-l1-workspace)]",
+          "relative z-[1] flex h-14 min-h-14 items-center gap-2 border-b border-[var(--hh-border-subtle)] bg-[var(--hh-surface-workspace)]",
           collapsed ? "px-3" : "px-3"
         )}
       >
-        <Avatar className="h-7 w-7 rounded-md ring-1 ring-inset ring-[var(--hh-border)]">
-          {logoUrl ? <AvatarImage src={logoUrl} alt={orgName} className="object-contain" /> : null}
-          <AvatarFallback
-            className={cn(
-              "rounded-md bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)]",
-              TYPO.tableHeader
-            )}
-          >
-            {getCompanyInitials(orgName)}
-          </AvatarFallback>
-        </Avatar>
-        {!collapsed && (
-          <div className="min-w-0">
-            <p className={cn("truncate", TYPO.tableHeader)}>HH Unified</p>
-            <p className={cn("truncate", TYPO.primaryName)}>{orgName}</p>
-          </div>
-        )}
+        <div data-sidebar-standard-brand className="contents">
+          <Avatar className="h-8 w-8 rounded-md ring-1 ring-inset ring-[var(--hh-border-default)]">
+            {logoUrl ? (
+              <AvatarImage src={logoUrl} alt={orgName} className="object-contain" />
+            ) : null}
+            <AvatarFallback
+              className={cn(
+                "rounded-md bg-[var(--hh-surface-subtle)] text-[var(--hh-text-primary)]",
+                TYPO.tableHeader
+              )}
+            >
+              {getCompanyInitials(orgName)}
+            </AvatarFallback>
+          </Avatar>
+          {!collapsed && (
+            <div className="min-w-0">
+              <p className={cn("truncate", TYPO.tableHeader)}>HH Unified</p>
+              <p className={cn("truncate", TYPO.primaryName)}>{orgName}</p>
+            </div>
+          )}
+        </div>
       </div>
 
       <nav
+        data-sidebar-navigation
         className={cn(
           "relative z-[1] flex-1 overflow-y-auto",
           // Hide scrollbar chrome (keep scroll) for a cleaner SaaS feel
           "[-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
-          collapsed ? "px-2 py-3" : "px-2 py-3"
+          "px-2 py-3"
         )}
       >
         <div className={cn("flex flex-col", collapsed && "gap-1")}>
@@ -415,7 +426,7 @@ export function Sidebar({
               return (
                 <div
                   key={section.key}
-                  className={cn("flex flex-col gap-1", sectionIndex > 0 && "mt-6")}
+                  className={cn("flex flex-col gap-1", sectionIndex > 0 && "mt-4")}
                 >
                   {section.entries.map((entry) => {
                     if (isHhProjectOsNavItem(entry)) {
@@ -430,12 +441,12 @@ export function Sidebar({
               );
             }
             return (
-              <div key={section.key} className={cn("flex flex-col", sectionIndex > 0 && "mt-6")}>
+              <div key={section.key} className={cn("flex flex-col", sectionIndex > 0 && "mt-4")}>
                 <button
                   type="button"
                   onClick={() => setSectionOpen(section.key, !isOpen)}
                   className={cn(
-                    "flex min-h-[44px] w-full items-center gap-2 rounded-md px-2 py-2 text-left text-[var(--hh-text-secondary)] transition-[background-color] duration-150 ease-out hover:bg-[var(--hh-l2-operational-surface)] active:bg-[var(--hh-l3-hover)] lg:min-h-0",
+                    "flex min-h-[44px] w-full items-center gap-2 rounded-hh-standard px-2.5 text-left text-[var(--hh-text-muted)] transition-[background-color,color] duration-150 ease-out hover:bg-[var(--hh-surface-hover)] hover:text-[var(--hh-text-secondary)] active:bg-[var(--hh-accent-soft)] lg:h-9 lg:min-h-9",
                     TYPO.tableHeader
                   )}
                   aria-expanded={isOpen}
@@ -483,12 +494,15 @@ export function Sidebar({
 
       {/* User footer */}
       {!collapsed && (
-        <div className="relative z-[1] border-t border-[var(--hh-border)] px-3 py-3">
-          <div className="flex items-center gap-2.5 rounded-md border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-2.5 py-2">
-            <Avatar className="h-8 w-8 shrink-0 rounded-md ring-1 ring-inset ring-[var(--hh-border)]">
+        <div
+          data-sidebar-account
+          className="relative z-[1] border-t border-[var(--hh-border-subtle)] px-3 py-3"
+        >
+          <div className="flex min-h-11 items-center gap-2.5 rounded-hh-standard bg-[var(--hh-surface-section)] px-2.5 py-2">
+            <Avatar className="h-8 w-8 shrink-0 rounded-md ring-1 ring-inset ring-[var(--hh-border-default)]">
               <AvatarFallback
                 className={cn(
-                  "rounded-md bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-secondary)]",
+                  "rounded-md bg-[var(--hh-surface-workspace)] text-[var(--hh-text-secondary)]",
                   TYPO.tableHeader
                 )}
               >
@@ -504,14 +518,17 @@ export function Sidebar({
       )}
 
       {/* Collapse button at bottom */}
-      <div className="relative z-[1] border-t border-[var(--hh-border)] p-2">
+      <div
+        data-sidebar-collapse
+        className="relative z-[1] border-t border-[var(--hh-border-subtle)] p-2"
+      >
         <button
           type="button"
           onClick={onToggleCollapsed}
           className={cn(
-            "flex w-full items-center rounded-md text-[var(--hh-text-secondary)] transition-[background-color] duration-150 ease-out hover:bg-[var(--hh-l2-operational-surface)]",
+            "flex min-h-[44px] w-full items-center rounded-hh-standard text-[var(--hh-text-muted)] transition-[background-color,color] duration-150 ease-out hover:bg-[var(--hh-surface-hover)] hover:text-[var(--hh-text-secondary)] lg:h-9 lg:min-h-9",
             TYPO.button,
-            collapsed ? "min-h-[44px] justify-center px-2 py-2 sm:min-h-8" : "gap-2 px-2 py-1.5"
+            collapsed ? "justify-center px-2" : "gap-2 px-2.5"
           )}
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           title={collapsed ? "Expand sidebar" : "Collapse sidebar"}

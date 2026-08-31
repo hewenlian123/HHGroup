@@ -1,9 +1,10 @@
 import { mkdirSync } from "node:fs";
 
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "./estimate-playwright-test";
 import { createClient } from "@supabase/supabase-js";
 
-import { loginAsE2EOwner } from "./e2e-auth-owner";
+import { gotoWithE2EAuth, loginAsE2EOwner } from "./e2e-auth-owner";
+import { deleteLocalEstimateFixtureGraphs } from "./e2e-estimate-fixture-teardown";
 import { assertE2ESupabaseUrlSafeForMutations } from "./e2e-supabase-url-guard";
 
 const createdClientNames = new Set<string>();
@@ -52,11 +53,10 @@ async function cleanupEstimateTestData(
   if (ids.length === 0) return;
 
   await supabase.from("estimate_payment_schedule_items").delete().in("estimate_id", ids);
-  await supabase.from("estimate_snapshots").delete().in("estimate_id", ids);
   await supabase.from("estimate_items").delete().in("estimate_id", ids);
   await supabase.from("estimate_categories").delete().in("estimate_id", ids);
   await supabase.from("estimate_meta").delete().in("estimate_id", ids);
-  await supabase.from("estimates").delete().in("id", ids);
+  await deleteLocalEstimateFixtureGraphs(ids);
 }
 
 async function fillNewEstimateCustomerFields(
@@ -128,7 +128,7 @@ test("customer estimate preview and print use polished proposal output", async (
   createdProjectNames.add(projectName);
 
   await page.setViewportSize({ width: 1440, height: 1000 });
-  await page.goto("/estimates/new");
+  await gotoWithE2EAuth(page, "/estimates/new");
   await page.waitForLoadState("domcontentloaded");
   await expect(page.getByRole("heading", { name: "New Estimate" })).toBeVisible({
     timeout: 30_000,
@@ -163,7 +163,7 @@ test("customer estimate preview and print use polished proposal output", async (
   const estimateId = page.url().match(/\/estimates\/([^/?#]+)/)?.[1];
   expect(estimateId).toBeTruthy();
 
-  await page.goto(`/estimates/${estimateId}/preview`, { waitUntil: "domcontentloaded" });
+  await gotoWithE2EAuth(page, `/estimates/${estimateId}/preview`);
   const downloadPdfLink = page.getByRole("link", { name: "Download PDF" });
   await expect(downloadPdfLink).toHaveAttribute("href", `/api/estimates/${estimateId}/pdf`);
   await expect(downloadPdfLink).toHaveAttribute("download", "");
@@ -211,23 +211,23 @@ test("customer estimate preview and print use polished proposal output", async (
         const style = window.getComputedStyle(node);
         return {
           width: Number.parseFloat(style.width),
-          minHeight: Number.parseFloat(style.minHeight),
+          height: Number.parseFloat(style.height),
         };
       })
     )
     .toMatchObject({
       width: expect.any(Number),
-      minHeight: expect.any(Number),
+      height: expect.any(Number),
     });
   const previewPageSize = await previewPages.first().evaluate((node) => {
     const style = window.getComputedStyle(node);
     return {
       width: Number.parseFloat(style.width),
-      minHeight: Number.parseFloat(style.minHeight),
+      height: Number.parseFloat(style.height),
     };
   });
   expect(previewPageSize.width).toBeGreaterThan(700);
-  expect(previewPageSize.minHeight).toBeGreaterThan(1050);
+  expect(previewPageSize.height).toBeGreaterThan(1050);
   const previewPacket = page.locator(".estimate-final-packet").first();
   await expect(previewPacket).toContainText("Payment Schedule");
   await expect(previewPacket).toContainText("Total scheduled");
@@ -276,7 +276,7 @@ test("customer estimate preview and print use polished proposal output", async (
     path: "test-results/estimate-pdf-polished.png",
   });
 
-  await page.goto(`/estimates/${estimateId}/print`, { waitUntil: "domcontentloaded" });
+  await gotoWithE2EAuth(page, `/estimates/${estimateId}/print`);
   const printDocument = page.getByRole("document", { name: "Estimate print view" });
   const printPages = page.getByTestId("estimate-preview-page");
   await expect.poll(async () => printPages.count(), { timeout: 10_000 }).toBe(previewPageCount);
@@ -293,11 +293,11 @@ test("customer estimate preview and print use polished proposal output", async (
     const style = window.getComputedStyle(node);
     return {
       width: Number.parseFloat(style.width),
-      minHeight: Number.parseFloat(style.minHeight),
+      height: Number.parseFloat(style.height),
     };
   });
   expect(printPageSize.width).toBeGreaterThan(700);
-  expect(printPageSize.minHeight).toBeGreaterThan(1050);
+  expect(printPageSize.height).toBeGreaterThan(1050);
   await expect(printPages.nth(previewPageCount - 2)).toContainText("Contract Price");
   await expect(printPages.nth(previewPageCount - 1)).not.toContainText("Contract Price");
   await expect(printDocument).toContainText("Project Proposal");

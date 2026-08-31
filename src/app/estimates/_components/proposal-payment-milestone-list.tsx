@@ -38,7 +38,7 @@ export function ProposalPaymentMilestoneList({
   }
 
   return (
-    <ul className={cn("space-y-2", className)}>
+    <ul className={cn("eb-payment-milestone-list space-y-2", className)}>
       {milestones.map((m) => {
         const due = formatEstimatePaymentDueDate(m.dueDate);
         const dueLabel = due ? `Due: ${due}` : null;
@@ -48,7 +48,7 @@ export function ProposalPaymentMilestoneList({
             id={`estimate-payment-milestone-${m.id}`}
             data-estimate-payment-milestone-id={m.id}
             tabIndex={-1}
-            className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2 rounded-md px-0 py-2.5"
+            className="eb-payment-milestone-row flex flex-wrap items-start justify-between gap-x-4 gap-y-2 rounded-md px-0 py-2.5"
           >
             <div className="min-w-0 flex-1 space-y-0.5">
               <div className="flex flex-wrap items-center gap-2">
@@ -73,8 +73,8 @@ export function ProposalPaymentMilestoneList({
                 <p className="text-hh-table-cell leading-snug text-muted-foreground">{dueLabel}</p>
               ) : null}
             </div>
-            <div className="flex shrink-0 items-center gap-2">
-              <span className="text-right">
+            <div className="eb-payment-milestone-aside flex shrink-0 items-center gap-2">
+              <span className="eb-payment-milestone-amount text-right">
                 <span className="block text-hh-status font-medium text-muted-foreground">
                   Milestone amount
                 </span>

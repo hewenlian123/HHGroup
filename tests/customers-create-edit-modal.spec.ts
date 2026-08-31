@@ -1,4 +1,4 @@
-import { expect, test, type Locator, type Page } from "@playwright/test";
+import { expect, test, type Locator } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 
 import { assertE2ESupabaseUrlSafeForMutations } from "./e2e-supabase-url-guard";

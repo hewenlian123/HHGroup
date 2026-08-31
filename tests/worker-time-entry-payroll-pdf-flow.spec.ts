@@ -732,7 +732,7 @@ test.describe("Worker time entry → payment → payroll → PDF local flow", ()
     expectMoney(balance.summary.advances, 50);
     expectMoney(balance.summary.balance, 285);
 
-    let payDialog = await openPayDialog(page);
+    const payDialog = await openPayDialog(page);
     await expect(payDialog.locator("dt").filter({ hasText: "Selected labor" })).toBeVisible();
     await expect(payDialog.getByText("Reimbursements", { exact: true })).toBeVisible();
     await expect(selectedLaborAmount(payDialog)).toHaveText("$300.00");

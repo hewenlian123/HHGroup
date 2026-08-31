@@ -3,10 +3,11 @@ import { randomUUID } from "node:crypto";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "./estimate-playwright-test";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-import { loginAsE2EOwner } from "./e2e-auth-owner";
+import { gotoWithE2EAuth, loginAsE2EOwner, reloadWithE2EAuth } from "./e2e-auth-owner";
+import { deleteLocalEstimateFixtureGraphs } from "./e2e-estimate-fixture-teardown";
 import { assertEstimateCertificationLocalOnly } from "./e2e-supabase-url-guard";
 
 type ScopeItem = {
@@ -342,24 +343,6 @@ function localAdmin(): SupabaseClient {
   });
 }
 
-function isKnownLocalSystemHealth404(message: {
-  location(): { url?: string };
-  text(): string;
-}): boolean {
-  return (
-    message.text().includes("status of 404") &&
-    Boolean(message.location().url?.endsWith("/api/system-health"))
-  );
-}
-
-function isKnownLocalRscNavigationFallback(message: { text(): string }): boolean {
-  const text = message.text();
-  return (
-    text.includes("Failed to fetch RSC payload for http://localhost:") &&
-    text.includes("Falling back to browser navigation")
-  );
-}
-
 async function cleanupTemplates(): Promise<void> {
   const admin = localAdmin();
   const { error: deleteError } = await admin
@@ -379,18 +362,7 @@ async function cleanupTemplates(): Promise<void> {
 }
 
 async function cleanupEstimateGraph(id: string): Promise<void> {
-  const admin = localAdmin();
-  const { error: deleteError } = await admin.from("estimates").delete().eq("id", id);
-  if (deleteError) throw new Error(`Estimate fixture cleanup failed: ${deleteError.message}`);
-
-  const { data: remaining, error: verifyError } = await admin
-    .from("estimates")
-    .select("id")
-    .eq("id", id)
-    .maybeSingle();
-  if (verifyError)
-    throw new Error(`Estimate fixture cleanup verification failed: ${verifyError.message}`);
-  if (remaining) throw new Error(`Estimate fixture cleanup left row ${id}`);
+  await deleteLocalEstimateFixtureGraphs([id]);
 }
 
 async function click(page: Page, locator: ReturnType<Page["locator"]>): Promise<void> {
@@ -402,24 +374,31 @@ async function lineItemCardByTitle(
   page: Page,
   title: string
 ): Promise<ReturnType<Page["locator"]>> {
-  const titleInputs = page.locator('input[aria-label*="Line item"][aria-label$="title"]:visible');
+  const rows = page.locator("[data-estimate-line-item-id]:visible");
   await expect
     .poll(() =>
-      titleInputs.evaluateAll(
-        (inputs, expectedTitle) =>
-          inputs.some((input) => (input as HTMLInputElement).value === expectedTitle),
+      rows.evaluateAll(
+        (lineItems, expectedTitle) =>
+          lineItems.filter(
+            (lineItem) =>
+              lineItem.querySelector<HTMLInputElement>('input[aria-label$=" title"]')?.value ===
+              expectedTitle
+          ).length,
         title
       )
     )
-    .toBe(true);
-  const inputIndex = await titleInputs.evaluateAll(
-    (inputs, expectedTitle) =>
-      inputs.findIndex((input) => (input as HTMLInputElement).value === expectedTitle),
+    .toBe(1);
+  const rowIndex = await rows.evaluateAll(
+    (lineItems, expectedTitle) =>
+      lineItems.findIndex(
+        (lineItem) =>
+          lineItem.querySelector<HTMLInputElement>('input[aria-label$=" title"]')?.value ===
+          expectedTitle
+      ),
     title
   );
-  return titleInputs
-    .nth(inputIndex)
-    .locator("xpath=ancestor::div[contains(@class,'eb-line-item-card')][1]");
+  expect(rowIndex).toBeGreaterThanOrEqual(0);
+  return rows.nth(rowIndex);
 }
 
 async function fillTemplateScope(page: Page): Promise<void> {
@@ -539,11 +518,7 @@ test.describe.serial("Estimate operational certification", () => {
     await loginAsE2EOwner(page, "/estimate-templates");
     const consoleErrors: string[] = [];
     page.on("console", (message) => {
-      if (
-        message.type() === "error" &&
-        !isKnownLocalSystemHealth404(message) &&
-        !isKnownLocalRscNavigationFallback(message)
-      ) {
+      if (message.type() === "error") {
         const location = message.location();
         consoleErrors.push(`${message.text()} @ ${location.url || "unknown"}`);
       }
@@ -629,9 +604,7 @@ test.describe.serial("Estimate operational certification", () => {
     await loginAsE2EOwner(page, "/estimate-templates");
     const errors: string[] = [];
     page.on("console", (message) => {
-      if (message.type() === "error" && !/Failed to fetch|ERR_FAILED/.test(message.text())) {
-        errors.push(message.text());
-      }
+      if (message.type() === "error") errors.push(message.text());
     });
     page.on("framenavigated", (frame) => {
       if (frame === page.mainFrame()) metrics.routeTransitions += 1;
@@ -657,8 +630,19 @@ test.describe.serial("Estimate operational certification", () => {
       .toEqual(sections.map((section) => section.title));
     metrics.templateApplyMs = Math.round(performance.now() - applyStarted);
 
-    const firstSectionTitle = page
+    const firstSectionTitleByInitialLabel = page
       .getByLabel(`Section name for ${sections[0].title}`)
+      .locator("visible=true");
+    await expect(firstSectionTitleByInitialLabel).toBeVisible();
+    const firstSectionId = await firstSectionTitleByInitialLabel.evaluate(
+      (input) =>
+        input.closest<HTMLElement>("[data-estimate-section-id]")?.dataset.estimateSectionId ?? null
+    );
+    expect(firstSectionId).toBeTruthy();
+    const firstSectionTitle = page
+      .locator(
+        `[data-estimate-section-id="${firstSectionId}"] input[aria-label^="Section name for"]`
+      )
       .locator("visible=true");
     await firstSectionTitle.fill("Preconstruction & Mobilization");
     const firstQuantity = page.getByLabel("Line item 1 quantity").locator("visible=true");
@@ -729,16 +713,31 @@ test.describe.serial("Estimate operational certification", () => {
 
     await click(page, lineMenus.nth(0));
     await click(page, page.getByRole("menuitem", { name: "Duplicate" }));
-    const copiedTitle = page
-      .locator('input[value="Mobilization and site setup (copy)"]:visible')
-      .first();
+    const copiedRow = await lineItemCardByTitle(page, "Mobilization and site setup (copy)");
+    const copiedItemId = await copiedRow.getAttribute("data-estimate-line-item-id");
+    expect(copiedItemId).toBeTruthy();
+    const copiedItemByIdentity = page.locator(`[data-estimate-line-item-id="${copiedItemId}"]`);
+    const copiedTitle = copiedRow.locator('input[aria-label$=" title"]');
     await expect(copiedTitle).toHaveValue("Mobilization and site setup (copy)");
-    const copiedRow = copiedTitle.locator(
-      "xpath=ancestor::div[contains(@class,'eb-line-item-card')][1]"
-    );
     await click(page, copiedRow.getByRole("button", { name: "More actions" }));
     await click(page, page.getByRole("menuitem", { name: "Remove line item" }));
-    await expect(copiedTitle).toBeHidden();
+    const deleteLineDialog = page.getByRole("dialog", { name: "Delete line item?" });
+    await expect(deleteLineDialog).toBeVisible();
+    await click(page, deleteLineDialog.getByRole("button", { name: "Delete", exact: true }));
+    await expect(copiedItemByIdentity).toHaveCount(0);
+    await expect
+      .poll(() =>
+        page
+          .locator('[data-estimate-line-item-id] input[aria-label$=" title"]')
+          .evaluateAll(
+            (inputs) =>
+              inputs.filter(
+                (input) =>
+                  (input as HTMLInputElement).value === "Mobilization and site setup (copy)"
+              ).length
+          )
+      )
+      .toBe(0);
 
     await click(page, page.getByRole("button", { name: "Collapse section" }).first());
     await expect(page.getByRole("button", { name: "Expand section" }).first()).toBeVisible();
@@ -813,34 +812,45 @@ test.describe.serial("Estimate operational certification", () => {
     });
     await expect(page.getByText("Remaining $0.00", { exact: false })).toBeVisible();
 
-    let failNextAction = true;
     let createActionPosts = 0;
     await page.route("**/estimates/new**", async (route) => {
       const request = route.request();
       if (request.method() === "POST" && request.headers()["next-action"]) {
         createActionPosts += 1;
-        if (failNextAction) {
-          failNextAction = false;
-          await route.abort("failed");
-          return;
-        }
       }
       await route.continue();
+    });
+
+    await page.evaluate(() => {
+      const nativeFetch = window.fetch.bind(window);
+      let failNextServerAction = true;
+      window.fetch = async (input, init) => {
+        const headers = new Headers(init?.headers);
+        if (
+          failNextServerAction &&
+          init?.method?.toUpperCase() === "POST" &&
+          headers.has("Next-Action")
+        ) {
+          failNextServerAction = false;
+          throw new TypeError("Temporary network failure. Please try again.");
+        }
+        return nativeFetch(input, init);
+      };
     });
 
     const saveButton = page.getByRole("button", { name: "Save Estimate" });
     const failureStarted = performance.now();
     await click(page, saveButton);
-    await expect(page.getByRole("main").getByRole("alert")).toHaveText("Failed to fetch", {
-      timeout: 20_000,
-    });
+    await expect(page.getByRole("main").getByRole("alert")).toHaveText(
+      "Temporary network failure. Please try again."
+    );
     await expect(page.getByText("Save failed — try again", { exact: true }).first()).toBeVisible();
     metrics.firstSaveFailureFeedbackMs = Math.round(performance.now() - failureStarted);
-    const mobilizationRow = page
-      .locator('input[value="Mobilization and site setup"]:visible')
-      .first()
-      .locator("xpath=ancestor::div[contains(@class,'eb-line-item-card')][1]");
-    await expect(mobilizationRow.locator('input[aria-label$="unit price"]')).toHaveValue("3750");
+    expect(createActionPosts).toBe(0);
+    await expect(page).toHaveURL(/\/estimates\/new\?templateId=/);
+    await expect(firstSectionTitle).toHaveValue("Preconstruction & Mobilization");
+    await expect(firstUnitPrice).toHaveValue("3750");
+    await expect(page.getByText("Remaining $0.00", { exact: false })).toBeVisible();
 
     const retryStarted = performance.now();
     await saveButton.evaluate((button: HTMLButtonElement) => {
@@ -852,12 +862,12 @@ test.describe.serial("Estimate operational certification", () => {
       { timeout: 60_000 }
     );
     metrics.firstSaveRetryMs = Math.round(performance.now() - retryStarted);
-    expect(createActionPosts).toBe(2);
+    expect(createActionPosts).toBe(1);
     estimateId = page.url().match(/\/estimates\/([^/?#]+)/)?.[1] ?? "";
     expect(estimateId).toBeTruthy();
 
     const heading = page.getByTestId("estimate-detail-header").getByRole("heading");
-    estimateNumber = ((await heading.textContent())?.trim() ?? "").replace(/\s+Rev\s+0$/, "");
+    estimateNumber = ((await heading.textContent())?.trim() ?? "").replace(/\s*·?\s+Rev\s+0$/, "");
     expect(estimateNumber).toMatch(/^EST-/);
     await expect(page.locator("body")).toContainText("Preconstruction & Mobilization");
     await page.getByRole("button", { name: "Estimate actions" }).click();
@@ -866,7 +876,8 @@ test.describe.serial("Estimate operational certification", () => {
     await expect(paymentSheet).toContainText("Final completion");
     await expect(paymentSheet).toContainText("Due: Dec 15, 2026");
     await page.keyboard.press("Escape");
-    await page.getByRole("button", { name: "Notes", exact: true }).click();
+    await page.getByRole("button", { name: "Estimate actions" }).click();
+    await page.getByRole("menuitem", { name: "Notes", exact: true }).click();
     await expect(page.getByTestId("estimate-notes-sheet")).toContainText("承包商责任");
     await page.keyboard.press("Escape");
 
@@ -877,7 +888,7 @@ test.describe.serial("Estimate operational certification", () => {
       .eq("id", estimateId);
     expect(error).toBeNull();
     expect(matching).toHaveLength(1);
-    expect(matching?.[0]?.customer_id).toBe("33333333-3333-3333-3333-333333333333");
+    expect(matching?.[0]?.customer_id).toBe("33333333-3333-4333-8333-333333333333");
     expect(errors).toEqual([]);
   });
 
@@ -887,20 +898,16 @@ test.describe.serial("Estimate operational certification", () => {
     test.setTimeout(420_000);
     expect(estimateId).toBeTruthy();
     await loginAsE2EOwner(page, `/estimates/${estimateId}`);
+    await page.waitForLoadState("networkidle");
     const consoleErrors: string[] = [];
     page.on("console", (message) => {
-      if (
-        message.type() === "error" &&
-        !isKnownLocalSystemHealth404(message) &&
-        !isKnownLocalRscNavigationFallback(message)
-      ) {
-        consoleErrors.push(message.text());
-      }
+      if (message.type() === "error") consoleErrors.push(message.text());
     });
 
     const reloadStarted = performance.now();
-    await page.reload({ waitUntil: "domcontentloaded" });
+    await reloadWithE2EAuth(page);
     await expect(page.getByTestId("estimate-detail-header")).toBeVisible();
+    await page.waitForLoadState("networkidle");
     metrics.reloadMs = Math.round(performance.now() - reloadStarted);
 
     await click(page, page.getByRole("button", { name: "Edit", exact: true }));
@@ -922,8 +929,9 @@ test.describe.serial("Estimate operational certification", () => {
     await expect(page.getByRole("button", { name: "Edit", exact: true })).toBeVisible({
       timeout: 30_000,
     });
+    await page.waitForLoadState("networkidle");
     metrics.editSaveMs = Math.round(performance.now() - editStarted);
-    await page.reload({ waitUntil: "domcontentloaded" });
+    await reloadWithE2EAuth(page);
     await click(page, page.getByRole("button", { name: "Edit", exact: true }));
     const persistedSections = page.locator(
       ".eb-scope-sections-list:visible [data-estimate-section-id]"
@@ -944,25 +952,26 @@ test.describe.serial("Estimate operational certification", () => {
     await expect(persistedMobilizationRow.locator('input[aria-label$="unit price"]')).toHaveValue(
       "3800"
     );
-    await click(page, page.getByRole("button", { name: "Done", exact: true }).first());
+    await click(page, page.getByRole("button", { name: "Save", exact: true }).first());
     await expect(page.locator("main")).toContainText(
       `$${expectedTotal.toLocaleString("en-US", {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
       })}`
     );
+    await page.waitForLoadState("networkidle");
 
-    await page.goto("/estimates", { waitUntil: "domcontentloaded" });
+    await gotoWithE2EAuth(page, "/estimates");
     const search = page.getByPlaceholder("Search estimates…").locator("visible=true");
     await search.fill(estimateNumber);
     const estimateRecords = page.getByTestId("estimate-list-records");
     await expect(estimateRecords.getByText(estimateNumber, { exact: true })).toBeVisible();
     await expect(estimateRecords).toContainText("Rev 0");
-    const statusFilter = page.locator("select:visible").first();
-    await statusFilter.selectOption("Draft");
+    const statusRail = page.getByTestId("estimate-list-summary-rail");
+    await statusRail.getByRole("button", { name: /^Draft \d+$/ }).click();
     await expect(estimateRecords.getByText(estimateNumber, { exact: true })).toBeVisible();
     await expect(estimateRecords).toContainText("Rev 0");
-    await statusFilter.selectOption("all");
+    await statusRail.getByRole("button", { name: /^All \d+$/ }).click();
     await search.fill("No estimate should match this certification search");
     await expect(
       page
@@ -972,6 +981,8 @@ test.describe.serial("Estimate operational certification", () => {
     ).toBeVisible();
     await search.fill(estimateNumber);
     await click(page, estimateRecords.getByText(estimateNumber, { exact: true }));
+    await expect(page.getByTestId("estimate-detail-header")).toBeVisible();
+    await page.waitForLoadState("networkidle");
 
     const previewStarted = performance.now();
     await click(page, page.getByRole("link", { name: "Preview", exact: true }));
@@ -1063,6 +1074,7 @@ test.describe.serial("Estimate operational certification", () => {
 
     await page.keyboard.press("Escape");
     await expect(page).toHaveURL(new RegExp(`/estimates/${estimateId}`));
+    await page.waitForLoadState("networkidle");
 
     const viewports = [
       { name: "desktop-1440", width: 1440, height: 900 },
@@ -1074,8 +1086,9 @@ test.describe.serial("Estimate operational certification", () => {
     for (const viewport of viewports) {
       const started = performance.now();
       await page.setViewportSize({ width: viewport.width, height: viewport.height });
-      await page.goto(`/estimates/${estimateId}`, { waitUntil: "domcontentloaded" });
+      await gotoWithE2EAuth(page, `/estimates/${estimateId}`);
       await expect(page.getByTestId("estimate-detail-header")).toBeVisible();
+      await page.waitForLoadState("networkidle");
       await assertNoHorizontalOverflow(page);
       await click(page, page.getByRole("button", { name: "Edit", exact: true }));
       await expect(
@@ -1099,10 +1112,13 @@ test.describe.serial("Estimate operational certification", () => {
       expect(box!.height).toBeGreaterThanOrEqual(viewport.width <= 820 ? 44 : 30);
       await click(
         page,
-        page.getByRole("button", { name: "Done", exact: true }).locator("visible=true").first()
+        page.getByRole("button", { name: "Save", exact: true }).locator("visible=true").first()
       );
-      await page.goto(`/estimates/${estimateId}/preview`, { waitUntil: "domcontentloaded" });
+      await expect(page.getByRole("button", { name: "Edit", exact: true })).toBeVisible();
+      await page.waitForLoadState("networkidle");
+      await gotoWithE2EAuth(page, `/estimates/${estimateId}/preview`);
       await expect(page.getByTestId("estimate-document")).toBeVisible({ timeout: 60_000 });
+      await page.waitForLoadState("networkidle");
       await assertNoHorizontalOverflow(page);
       const fitPages = page.getByRole("button", { name: "Fit pages", exact: true });
       if (viewport.width <= 700) {
@@ -1128,8 +1144,14 @@ test.describe.serial("Estimate operational certification", () => {
     }
 
     await page.setViewportSize({ width: 1440, height: 900 });
-    await page.goto(`/estimates/${estimateId}`, { waitUntil: "domcontentloaded" });
+    await gotoWithE2EAuth(page, `/estimates/${estimateId}`);
     await click(page, page.getByRole("button", { name: "Mark as Sent", exact: true }));
+    await expect(page.getByText("Sent", { exact: true }).first()).toBeVisible();
+    await expect(page.getByRole("button", { name: "Mark accepted", exact: true })).toBeEnabled({
+      timeout: 30_000,
+    });
+    await page.waitForLoadState("networkidle");
+    await reloadWithE2EAuth(page);
     await expect(page.getByText("Sent", { exact: true }).first()).toBeVisible();
     await expect(page.getByRole("button", { name: "Mark as Draft", exact: true })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Mark accepted", exact: true })).toBeVisible();
@@ -1174,7 +1196,7 @@ test.describe.serial("Estimate operational certification", () => {
         project: seedProjectName,
         status: "Draft",
         updated_at: today,
-        customer_id: "33333333-3333-3333-3333-333333333333",
+        customer_id: "33333333-3333-4333-8333-333333333333",
       });
       expect(estimateInsert.error).toBeNull();
       const metaInsert = await admin.from("estimate_meta").insert({
@@ -1223,15 +1245,21 @@ test.describe.serial("Estimate operational certification", () => {
       );
       await expect(page.getByRole("button", { name: "Edit", exact: true })).toBeVisible();
       metrics.largeEditSaveMs = Math.round(performance.now() - editStarted);
-      await page.reload({ waitUntil: "domcontentloaded" });
+      await reloadWithE2EAuth(page);
       await expect(page.locator("main")).toContainText(
         `$${(initialSubtotal + 1).toLocaleString("en-US")}.00`
       );
 
       const previewStarted = performance.now();
-      await page.goto(`/estimates/${largeEstimateId}/preview`, { waitUntil: "domcontentloaded" });
+      await page.getByRole("link", { name: "Preview", exact: true }).click();
+      await expect(page).toHaveURL(
+        new RegExp(
+          `/estimates/${largeEstimateId}/preview\\?origin=builder&returnSection=large-1&returnScroll=0$`
+        )
+      );
       const estimateDocument = page.getByTestId("estimate-document");
       await expect(estimateDocument).toContainText("Large line 100", { timeout: 60_000 });
+      await page.waitForLoadState("networkidle");
       metrics.largePreviewMs = Math.round(performance.now() - previewStarted);
       const browserMetrics = await page.evaluate(() => {
         const resources = performance.getEntriesByType("resource") as PerformanceResourceTiming[];
@@ -1269,7 +1297,7 @@ test.describe.serial("Estimate operational certification", () => {
     page.once("dialog", (confirm) => void confirm.accept());
     await click(page, page.getByRole("menuitem", { name: "Delete" }));
     await expect(row).toBeHidden({ timeout: 30_000 });
-    await page.goto(`/estimates/${estimateId}/preview`, { waitUntil: "domcontentloaded" });
+    await gotoWithE2EAuth(page, `/estimates/${estimateId}/preview`);
     await expect(page.getByTestId("estimate-document")).toBeVisible({ timeout: 60_000 });
   });
 
@@ -1280,11 +1308,38 @@ test.describe.serial("Estimate operational certification", () => {
     const admin = localAdmin();
     await page.setViewportSize({ width: 1440, height: 1000 });
     await loginAsE2EOwner(page, `/estimates/${estimateId}`);
+    await expect(page.getByTestId("estimate-detail-header")).toContainText(estimateNumber);
 
     await expect(page.getByText("Sent", { exact: true }).locator("visible=true")).toBeVisible();
     await click(page, page.getByRole("button", { name: "Mark accepted", exact: true }));
     await expect(page.getByText("Approved", { exact: true }).locator("visible=true")).toBeVisible();
 
+    // Conversion belongs to the current approved revision. Historical revisions
+    // remain read-only, so establish the canonical Project before creating Rev 1.
+    await click(page, page.getByRole("button", { name: "Convert to Project", exact: true }));
+    const projectDrawer = page.getByRole("dialog", { name: "Set up project" });
+    await expect(projectDrawer).toBeVisible();
+    await projectDrawer
+      .getByLabel("Project name")
+      .fill(`LOCAL Estimate Certification Project ${suffix}`);
+    await click(page, projectDrawer.getByRole("button", { name: "Create project", exact: true }));
+    await expect(page).toHaveURL(/\/projects\/[0-9a-f-]+$/, { timeout: 30_000 });
+    convertedProjectId = new URL(page.url()).pathname.split("/").pop() ?? "";
+    expect(convertedProjectId).toBeTruthy();
+
+    const projects = await admin
+      .from("projects")
+      .select("id, source_estimate_id, customer_id, budget, snapshot_revenue")
+      .eq("source_estimate_id", estimateId);
+    expect(projects.error).toBeNull();
+    expect(projects.data).toHaveLength(1);
+    expect(projects.data?.[0]?.id).toBe(convertedProjectId);
+    expect(projects.data?.[0]?.customer_id).toBe("33333333-3333-4333-8333-333333333333");
+    expect(Number(projects.data?.[0]?.budget)).toBe(expectedTotal);
+    expect(Number(projects.data?.[0]?.snapshot_revenue)).toBe(expectedTotal);
+
+    await gotoWithE2EAuth(page, `/estimates/${estimateId}`);
+    await expect(page.getByTestId("estimate-detail-header")).toContainText("Converted to Project");
     await click(page, page.getByTestId("create-estimate-revision-action"));
     await page.waitForURL(
       (url) =>
@@ -1314,32 +1369,6 @@ test.describe.serial("Estimate operational certification", () => {
     await expect(page).toHaveURL(new RegExp(`/estimates/${estimateId}$`));
     await expect(page.getByRole("button", { name: "Edit", exact: true })).toHaveCount(0);
     await expect(page.getByRole("link", { name: "Current revision", exact: true })).toBeVisible();
-
-    // Milestone invoices require a canonical Project id. Convert first so the
-    // invoice links to the Project created from this exact Estimate revision.
-    await click(page, page.getByRole("button", { name: "Convert to Project", exact: true }));
-    const projectDrawer = page.getByRole("dialog", { name: "Set up project" });
-    await expect(projectDrawer).toBeVisible();
-    await projectDrawer
-      .getByLabel("Project name")
-      .fill(`LOCAL Estimate Certification Project ${suffix}`);
-    await click(page, projectDrawer.getByRole("button", { name: "Create project", exact: true }));
-    await expect(page).toHaveURL(/\/projects\/[0-9a-f-]+$/, { timeout: 30_000 });
-    convertedProjectId = new URL(page.url()).pathname.split("/").pop() ?? "";
-    expect(convertedProjectId).toBeTruthy();
-
-    const projects = await admin
-      .from("projects")
-      .select("id, source_estimate_id, customer_id, budget, snapshot_revenue")
-      .eq("source_estimate_id", estimateId);
-    expect(projects.error).toBeNull();
-    expect(projects.data).toHaveLength(1);
-    expect(projects.data?.[0]?.id).toBe(convertedProjectId);
-    expect(projects.data?.[0]?.customer_id).toBe("33333333-3333-3333-3333-333333333333");
-    expect(Number(projects.data?.[0]?.budget)).toBe(expectedTotal);
-    expect(Number(projects.data?.[0]?.snapshot_revenue)).toBe(expectedTotal);
-
-    await page.goto(`/estimates/${estimateId}`, { waitUntil: "domcontentloaded" });
     await expect(page.getByTestId("estimate-detail-header")).toContainText("Converted to Project");
     const sourceMilestones = await admin
       .from("estimate_payment_schedule_items")
@@ -1375,7 +1404,7 @@ test.describe.serial("Estimate operational certification", () => {
       .single();
     expect(invoice.error).toBeNull();
     expect(invoice.data?.project_id).toBe(convertedProjectId);
-    expect(invoice.data?.customer_id).toBe("33333333-3333-3333-3333-333333333333");
+    expect(invoice.data?.customer_id).toBe("33333333-3333-4333-8333-333333333333");
     expect(invoice.data?.status).toBe("Draft");
     expect(Number(invoice.data?.total)).toBe(milestoneAmount);
     expect(Number(invoice.data?.subtotal) + Number(invoice.data?.tax_amount)).toBeCloseTo(
@@ -1383,7 +1412,7 @@ test.describe.serial("Estimate operational certification", () => {
       2
     );
 
-    await page.goto(`/estimates/${estimateId}`, { waitUntil: "domcontentloaded" });
+    await gotoWithE2EAuth(page, `/estimates/${estimateId}`);
     await page.getByRole("button", { name: "Estimate actions" }).click();
     await page.getByRole("menuitem", { name: "Activity", exact: true }).click();
     const activity = page
@@ -1400,14 +1429,14 @@ test.describe.serial("Estimate operational certification", () => {
       await expect(activity).toContainText(event);
     }
 
-    await page.goto(`/estimates/${estimateId}/preview`, { waitUntil: "domcontentloaded" });
+    await gotoWithE2EAuth(page, `/estimates/${estimateId}/preview`);
     await expect(page.getByTestId("estimate-preview-context")).toContainText(
       `${estimateNumber} Rev 0`
     );
     await expect(page.getByTestId("estimate-revision-context")).toContainText(
       "Historical revision · Read-only"
     );
-    await page.goto(`/estimates/${estimateId}/print`, { waitUntil: "domcontentloaded" });
+    await gotoWithE2EAuth(page, `/estimates/${estimateId}/print`);
     await expect(page.locator(".estimate-print-context-identity")).toHaveText(
       `${estimateNumber} Rev 0`
     );
@@ -1417,7 +1446,7 @@ test.describe.serial("Estimate operational certification", () => {
     expect(pdfResponse.headers()["content-disposition"]).toContain(`${estimateNumber}_Rev_0.pdf`);
     expect((await pdfResponse.body()).subarray(0, 4).toString("utf8")).toBe("%PDF");
 
-    await page.goto(`/estimates/${revisionId}/preview`, { waitUntil: "domcontentloaded" });
+    await gotoWithE2EAuth(page, `/estimates/${revisionId}/preview`);
     await expect(page.getByTestId("estimate-preview-context")).toContainText(
       `${estimateNumber} Rev 1`
     );

@@ -188,7 +188,7 @@ type LaborPaymentRow = {
   payment_date: string;
   amount: number;
   method: string | null;
-  memo: string | null;
+  note: string | null;
   applied_start_date: string | null;
   applied_end_date: string | null;
   created_at: string;
@@ -286,7 +286,7 @@ function toLaborPayment(r: LaborPaymentRow): LaborPayment {
     paymentDate: r.payment_date?.slice(0, 10) ?? "",
     amount: Number(r.amount) || 0,
     method: r.method ?? "",
-    memo: r.memo ?? undefined,
+    memo: r.note ?? undefined,
     attachments: [],
     appliedRange:
       r.applied_start_date && r.applied_end_date
@@ -1129,7 +1129,7 @@ export async function createLaborPayment(payload: {
       payment_date: payload.paymentDate.slice(0, 10),
       amount: Math.max(0, payload.amount),
       method: payload.method ?? null,
-      memo: payload.memo ?? null,
+      note: payload.memo ?? null,
       applied_start_date: payload.appliedRange?.startDate?.slice(0, 10) ?? null,
       applied_end_date: payload.appliedRange?.endDate?.slice(0, 10) ?? null,
     })

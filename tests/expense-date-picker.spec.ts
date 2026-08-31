@@ -206,9 +206,7 @@ test.describe("Expense date picker", () => {
     await expect(popover).toBeHidden();
   });
 
-  test("shared picker preserves a non-Expense dark surface through the portal", async ({
-    page,
-  }) => {
+  test("shared picker keeps the V2 Light surface through the portal", async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await loginAsE2EOwner(page, "/financial/payments");
     const receivePayment = page.getByRole("button", { name: "Receive Payment", exact: true });
@@ -222,16 +220,20 @@ test.describe("Expense date picker", () => {
 
     const popover = page.locator('[data-finance-date-picker-content="true"]').last();
     await expect(popover).toBeVisible();
-    await expect(popover).toHaveClass(/\bdark\b/);
+    await expect(popover).toHaveAttribute("data-finance-date-picker-appearance", "default");
     const colors = await popover.evaluate((node) => {
       const selectedButton = node.querySelector('[data-selected="true"] button');
       return {
         surface: getComputedStyle(node).backgroundColor,
+        text: getComputedStyle(node).color,
+        backdropFilter: getComputedStyle(node).backdropFilter,
         selected: selectedButton ? getComputedStyle(selectedButton).backgroundColor : null,
         selectedText: selectedButton ? getComputedStyle(selectedButton).color : null,
       };
     });
-    expect(colors.surface).not.toBe("rgb(255, 255, 255)");
+    expect(colors.surface).toBe("rgb(255, 255, 255)");
+    expect(colors.text).toBe("rgb(24, 26, 30)");
+    expect(colors.backdropFilter).toBe("none");
     expect(colors.selected).not.toBe("rgb(0, 0, 255)");
     expect(colors.selectedText).not.toBe("rgb(0, 0, 255)");
 
@@ -239,7 +241,7 @@ test.describe("Expense date picker", () => {
     await expect(popover).toBeHidden();
   });
 
-  test("shared glass call site can select and clear an optional date", async ({ page }) => {
+  test("shared Light call site can select and clear an optional date", async ({ page }) => {
     await loginAsE2EOwner(page, "/estimates/44444444-4444-4444-4444-444444444449");
     const edit = page.getByRole("button", { name: "Edit", exact: true });
     await expect(edit).toBeVisible({ timeout: 30_000 });
@@ -255,7 +257,7 @@ test.describe("Expense date picker", () => {
 
     const popover = page.locator('[data-finance-date-picker-content="true"]').last();
     await expect(popover).toBeVisible();
-    await expect(popover).toHaveAttribute("data-finance-date-picker-appearance", "glass");
+    await expect(popover).toHaveAttribute("data-finance-date-picker-appearance", "default");
     const firstAvailableDate = popover
       .locator(".rdp-day:not(.rdp-outside):not(.rdp-disabled) button")
       .first();

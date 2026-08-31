@@ -63,8 +63,9 @@ test("toast convergence leaves one app-facing API and one rendered live region",
   assert.doesNotMatch(providers, /<ToastProvider>|toast\/toast-provider/);
   assert.doesNotMatch(providers, /HotToaster|components\/ui\/sonner/);
   assert.match(shell, /toast\/toast-provider/);
-  assert.equal((shell.match(/<ToastProvider>/g) ?? []).length, 2);
-  assert.match(shell, /<HhRouteThemeRoot[\s\S]*?<ToastProvider>/);
+  assert.equal((shell.match(/<ToastProvider>/g) ?? []).length, 1);
+  assert.equal((shell.match(/<AppShellProviders>/g) ?? []).length, 2);
+  assert.match(shell, /<HhRouteThemeRoot[\s\S]*?<AppShellProviders>/);
   assert.equal(existsSync(resolve(ROOT, "src/lib/sonner-toast.ts")), false);
   assert.doesNotMatch(expense, /react-hot-toast/);
   assert.doesNotMatch(receiptQueue, /react-hot-toast/);

@@ -1,8 +1,11 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "./estimate-playwright-test";
 
 import { loginAsE2EOwner } from "./e2e-auth-owner";
-
-const DENSE_ESTIMATE_ID = "edc68a63-cb87-4298-8231-9c668bf43ffe";
+import {
+  cleanupDenseEstimateFixture,
+  DENSE_ESTIMATE_ID,
+  seedDenseEstimateFixture,
+} from "./estimate-dense-fixture";
 
 type LayoutSample = {
   viewport: number;
@@ -36,7 +39,10 @@ async function readLayoutSample(page: Page): Promise<LayoutSample> {
 }
 
 test.describe("Estimate wide-screen layout", () => {
-  test("expands progressively, caps deliberately, and gives additional width to Description", async ({
+  test.beforeAll(seedDenseEstimateFixture);
+  test.afterAll(cleanupDenseEstimateFixture);
+
+  test("expands progressively, caps deliberately, and gives additional width to Item details", async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1280, height: 1000 });
@@ -50,7 +56,7 @@ test.describe("Estimate wide-screen layout", () => {
 
     for (const sample of samples) {
       expect(sample.horizontalOverflow).toBe(0);
-      expect(sample.columns).toHaveLength(8);
+      expect(sample.columns).toHaveLength(5);
     }
 
     expect(samples[1].workspaceWidth).toBeGreaterThan(samples[0].workspaceWidth + 100);
@@ -64,15 +70,11 @@ test.describe("Estimate wide-screen layout", () => {
 
     const compactColumns = samples[0].columns;
     const wideColumns = samples[5].columns;
-    const itemGrowth = wideColumns[1] - compactColumns[1];
-    const descriptionGrowth = wideColumns[2] - compactColumns[2];
+    const itemDetailsGrowth = wideColumns[1] - compactColumns[1];
 
-    expect(descriptionGrowth).toBeGreaterThan(itemGrowth * 3);
-    expect(wideColumns[1]).toBeGreaterThanOrEqual(230);
-    expect(wideColumns[1]).toBeLessThanOrEqual(240);
-    expect(wideColumns[2]).toBeGreaterThanOrEqual(680);
-    expect(wideColumns[2]).toBeLessThanOrEqual(720);
-    for (const index of [3, 4, 5, 6, 7]) {
+    expect(itemDetailsGrowth).toBeGreaterThan(250);
+    expect(wideColumns[1]).toBeGreaterThan(compactColumns[1] * 1.7);
+    for (const index of [0, 2, 3, 4]) {
       expect(Math.abs(wideColumns[index] - compactColumns[index])).toBeLessThanOrEqual(2);
     }
   });
@@ -99,9 +101,20 @@ test.describe("Estimate wide-screen layout", () => {
 
     const topEdges = boxes.map((box) => box?.y ?? 0);
     expect(Math.max(...topEdges) - Math.min(...topEdges)).toBeLessThanOrEqual(2);
-    expect(boxes[0]?.width ?? 0).toBeGreaterThan(400);
+    const toolbarBox = await toolbar.boundingBox();
+    expect(toolbarBox).not.toBeNull();
+    for (let index = 1; index < boxes.length; index += 1) {
+      const previous = boxes[index - 1];
+      const current = boxes[index];
+      expect(
+        (current?.x ?? 0) - ((previous?.x ?? 0) + (previous?.width ?? 0))
+      ).toBeGreaterThanOrEqual(0);
+    }
+    expect((boxes.at(-1)?.x ?? 0) + (boxes.at(-1)?.width ?? 0)).toBeLessThanOrEqual(
+      (toolbarBox?.x ?? 0) + (toolbarBox?.width ?? 0)
+    );
     expect(boxes[1]?.width ?? 0).toBeLessThanOrEqual(224);
 
-    await page.getByRole("button", { name: "Done", exact: true }).first().click();
+    await page.getByRole("button", { name: "Save", exact: true }).first().click();
   });
 });

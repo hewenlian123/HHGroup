@@ -1099,7 +1099,7 @@ export type LaborPaymentInsert = {
   note?: string | null;
 };
 
-/** Insert one row into labor_payments. Supabase only. Note is stored as memo. */
+/** Insert one row into labor_payments. Supabase only. */
 export async function insertLaborPayment(payload: LaborPaymentInsert): Promise<void> {
   const c = client();
   const { error } = await c.from("labor_payments").insert({
@@ -1107,7 +1107,7 @@ export async function insertLaborPayment(payload: LaborPaymentInsert): Promise<v
     payment_date: payload.payment_date.slice(0, 10),
     amount: Number(payload.amount) || 0,
     method: payload.method || null,
-    memo: payload.note?.trim() || null,
+    note: payload.note?.trim() || null,
   });
   if (error) throw new Error(error.message ?? "Failed to record payment.");
 }

@@ -5,7 +5,7 @@ import {
   requireSupabaseOwnerOrAdminWithClient,
 } from "@/lib/auth-boundary";
 import { createCommission, getCommissionsWithPaidByProject } from "@/lib/data";
-import { getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
+import { createRouteSupabaseClient, getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
 
 const ROLES = ["Designer", "Sales", "Referral", "Agent", "Other"];
 const MODES = ["Auto", "Manual"];
@@ -18,8 +18,18 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     return NextResponse.json({ ok: false, message: "Missing project id" }, { status: 400 });
   }
   try {
-    const commissions = await getCommissionsWithPaidByProject(projectId);
-    return NextResponse.json({ ok: true, commissions });
+    const sessionResponse = NextResponse.next();
+    const supabase = createRouteSupabaseClient(req, sessionResponse, { noStore: true });
+    if (!supabase) {
+      return NextResponse.json(
+        { ok: false, message: "Authenticated project session is not configured." },
+        { status: 503 }
+      );
+    }
+    const commissions = await getCommissionsWithPaidByProject(projectId, supabase);
+    const response = NextResponse.json({ ok: true, commissions });
+    for (const cookie of sessionResponse.cookies.getAll()) response.cookies.set(cookie);
+    return response;
   } catch (e) {
     const message = e instanceof Error ? e.message : "Failed to load commissions";
     const status = /fetch failed|Database connection failed|ENOTFOUND|ECONNREFUSED/i.test(message)
