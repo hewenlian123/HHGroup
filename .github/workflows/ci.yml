@@ -53,8 +53,11 @@ jobs:
       - name: Audit schema vs code columns
         run: npm run check:schema-vs-code
 
-      - name: Unit tests (Vitest)
-        run: npm run test:unit
+      - name: Start local Supabase
+        run: npx supabase start
+
+      - name: Standard release tests
+        run: npm run test:release:standard
 
       - name: Prettier
         run: npm run format:check
@@ -67,3 +70,7 @@ jobs:
 
       - name: Build Next.js
         run: npm run build
+
+      - name: Stop local Supabase
+        if: always()
+        run: npx supabase stop --no-backup

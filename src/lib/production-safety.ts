@@ -8,6 +8,7 @@ export const TEST_AUTH_BYPASS_HEADER = "x-hh-test-auth-bypass";
 
 const FORBIDDEN_MESSAGE =
   "This maintenance endpoint is disabled in production. Run it in a non-production environment or provide the internal admin secret from a server-side caller.";
+const NOT_FOUND_MESSAGE = "Not found.";
 
 function configuredInternalAdminSecret(): string | null {
   const primary = process.env.HH_INTERNAL_ADMIN_SECRET?.trim() ?? "";
@@ -60,6 +61,22 @@ export function guardDangerousMaintenanceRequest(request: Request): NextResponse
     },
     {
       status: 403,
+      headers: { "Cache-Control": "no-store" },
+    }
+  );
+}
+
+/** Test and schema-repair routes do not exist at runtime in Production. */
+export function guardNonProductionOnlyRequest(request: Request): NextResponse | null {
+  if (!isProductionRuntime()) return guardDangerousMaintenanceRequest(request);
+
+  return NextResponse.json(
+    {
+      ok: false,
+      message: NOT_FOUND_MESSAGE,
+    },
+    {
+      status: 404,
       headers: { "Cache-Control": "no-store" },
     }
   );

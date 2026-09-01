@@ -172,7 +172,7 @@ test("does not server-render labor worker data through a service-role client for
   const schemaRepairRoute = source(resolve(ROOT, "src/app/api/ensure-schema/route.ts"));
   assert.match(
     schemaRepairRoute,
-    /requireSupabaseOwnerOrAdmin\(request\)[\s\S]*?guardDangerousMaintenanceRequest\(request\)/
+    /guardNonProductionOnlyRequest\(request\)[\s\S]*?requireSupabaseOwnerOrAdmin\(request\)[\s\S]*?await import\("@\/lib\/ensure-schema-auto-repair"\)/
   );
 
   const financialWorkflowRoute = source(
@@ -180,7 +180,7 @@ test("does not server-render labor worker data through a service-role client for
   );
   assert.match(
     financialWorkflowRoute,
-    /requireSupabaseOwnerOrAdmin\(req\)[\s\S]*?getServerSupabaseAdmin\(\)/
+    /guardNonProductionOnlyRequest\(req\)[\s\S]*?requireSupabaseOwnerOrAdmin\(req\)[\s\S]*?getServerSupabaseAdmin\(\)/
   );
 
   for (const relativePath of [

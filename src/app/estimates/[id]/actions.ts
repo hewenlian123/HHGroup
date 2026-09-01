@@ -33,11 +33,8 @@ import {
 } from "@/lib/estimates-db";
 import { normalizeEstimateNoteBlocks } from "@/lib/estimate-notes";
 import { allocateTaxInclusiveMilestoneToInvoice } from "@/lib/estimate-milestone-invoice-allocation";
-import {
-  estimateActivityActorFromAuth,
-  linkEstimateMilestoneInvoiceWithActivityWithClient,
-  type EstimateActivityActor,
-} from "@/lib/estimate-activity";
+import { estimateActivityActorFromAuth, type EstimateActivityActor } from "@/lib/estimate-activity";
+import { createEstimateMilestoneInvoiceAtomicWithClient } from "@/lib/invoices-db";
 import {
   convertEstimateSnapshotToProject,
   convertEstimateToProjectWithSetup,
@@ -175,27 +172,6 @@ function safeSupabaseActionError(
   return safeEstimateActionError(error?.message ? new Error(error.message) : null, fallback);
 }
 
-function isUniqueInvoiceNoError(error: { code?: string; message?: string } | null): boolean {
-  const message = error?.message ?? "";
-  return error?.code === "23505" || /invoice_no|invoices_invoice_no_key/i.test(message);
-}
-
-function isQuantityColumnUnsupported(error: { message?: string } | null): boolean {
-  const message = error?.message ?? "";
-  return /quantity/i.test(message) && /column|generated|schema cache|could not find/i.test(message);
-}
-
-async function deleteDraftInvoiceGraph(c: SupabaseClient, invoiceId: string): Promise<void> {
-  const itemsDelete = await c.from("invoice_items").delete().eq("invoice_id", invoiceId);
-  if (itemsDelete.error) {
-    throw new Error("Draft Invoice cleanup failed after Estimate linkage was rejected.");
-  }
-  const invoiceDelete = await c.from("invoices").delete().eq("id", invoiceId);
-  if (invoiceDelete.error) {
-    throw new Error("Draft Invoice cleanup failed after Estimate linkage was rejected.");
-  }
-}
-
 async function resolveProjectForScheduleInvoice(
   c: SupabaseClient,
   estimateId: string,
@@ -265,83 +241,6 @@ async function resolveCustomerIdForScheduleInvoice(
   ]);
   if (matches.length !== 1) throw new Error(CUSTOMER_LINK_ERROR);
   return cleanText(matches[0].id);
-}
-
-async function nextInvoiceNo(c: SupabaseClient, attempt: number): Promise<string> {
-  const { count } = await c.from("invoices").select("id", { count: "exact", head: true });
-  return `INV-${String((count ?? 0) + 1 + attempt).padStart(4, "0")}`;
-}
-
-async function insertScheduleInvoice(
-  c: SupabaseClient,
-  payload: {
-    projectId: string;
-    customerId: string;
-    clientName: string;
-    title: string;
-    notes: string;
-    issueDate: string;
-    dueDate: string;
-    subtotal: number;
-    taxPct: number;
-    taxAmount: number;
-    total: number;
-  }
-): Promise<string> {
-  let lastError: { message?: string } | null = null;
-  for (let attempt = 0; attempt < 3; attempt++) {
-    const invoiceNo = await nextInvoiceNo(c, attempt);
-    const { data, error } = await c
-      .from("invoices")
-      .insert({
-        invoice_no: invoiceNo,
-        project_id: payload.projectId,
-        customer_id: payload.customerId,
-        client_name: payload.clientName,
-        issue_date: payload.issueDate,
-        due_date: payload.dueDate,
-        status: "Draft",
-        notes: payload.notes,
-        tax_pct: payload.taxPct,
-        subtotal: payload.subtotal,
-        tax_amount: payload.taxAmount,
-        total: payload.total,
-      })
-      .select("id")
-      .single();
-    if (!error && data?.id) return String(data.id);
-    lastError = error;
-    if (!isUniqueInvoiceNoError(error)) break;
-  }
-  throw new Error(lastError?.message ?? "Failed to create invoice.");
-}
-
-async function insertScheduleInvoiceLine(
-  c: SupabaseClient,
-  invoiceId: string,
-  description: string,
-  amount: number
-): Promise<void> {
-  const row = {
-    invoice_id: invoiceId,
-    description,
-    qty: 1,
-    quantity: 1,
-    unit_price: amount,
-    amount,
-  };
-  let { error } = await c.from("invoice_items").insert(row);
-  if (error && isQuantityColumnUnsupported(error)) {
-    const fallback = await c.from("invoice_items").insert({
-      invoice_id: row.invoice_id,
-      description: row.description,
-      qty: row.qty,
-      unit_price: row.unit_price,
-      amount: row.amount,
-    });
-    error = fallback.error;
-  }
-  if (error) throw new Error(error.message ?? "Failed to create invoice line item.");
 }
 
 export async function approveEstimateAction(formData: FormData) {
@@ -980,42 +879,31 @@ export async function createInvoiceFromPaymentScheduleItemAction(
     const today = new Date().toISOString().slice(0, 10);
     const invoiceTitle = `Payment Schedule - ${scheduleTitle}`;
     const notes = `Generated from Estimate ${estimateNumber}, Payment Schedule ${scheduleTitle}.`;
-    const invoiceId = await insertScheduleInvoice(db, {
-      projectId,
-      customerId,
-      clientName,
-      title: invoiceTitle,
-      notes,
-      issueDate: today,
-      dueDate: cleanText(item.due_date) || today,
-      subtotal: allocation.subtotal,
-      taxPct: allocation.taxPct,
-      taxAmount: allocation.taxAmount,
-      total: allocation.total,
-    });
-
-    try {
-      await insertScheduleInvoiceLine(db, invoiceId, invoiceTitle, allocation.subtotal);
-      const linked = await linkEstimateMilestoneInvoiceWithActivityWithClient(db, {
+    const created = await createEstimateMilestoneInvoiceAtomicWithClient(
+      {
+        idempotencyKey: `invoice-milestone:${safeEstimateId}:${safeScheduleItemId}`,
+        projectId,
+        customerId,
+        clientName,
+        issueDate: today,
+        dueDate: cleanText(item.due_date) || today,
+        taxPct: allocation.taxPct,
+        notes,
+        lineItems: [
+          {
+            description: invoiceTitle,
+            qty: 1,
+            unitPrice: allocation.subtotal,
+            amount: allocation.subtotal,
+          },
+        ],
         estimateId: safeEstimateId,
         scheduleItemId: safeScheduleItemId,
-        invoiceId,
         actor,
-      });
-      if (!linked.linked) {
-        await deleteDraftInvoiceGraph(db, invoiceId);
-        const concurrentInvoiceId = cleanText(linked.invoiceId);
-        if (concurrentInvoiceId) {
-          revalidateEstimatePaths(safeEstimateId);
-          revalidatePath(`/financial/invoices/${concurrentInvoiceId}`);
-          return { ok: true, invoiceId: concurrentInvoiceId };
-        }
-        return { ok: false, error: "Could not link invoice to payment schedule." };
-      }
-    } catch (error) {
-      await deleteDraftInvoiceGraph(db, invoiceId);
-      throw error;
-    }
+      },
+      db
+    );
+    const invoiceId = created.id;
 
     revalidateEstimatePaths(safeEstimateId);
     revalidatePath("/estimates");

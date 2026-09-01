@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import {
   guardedInternalFetchHeaders,
-  guardDangerousMaintenanceRequest,
+  guardNonProductionOnlyRequest,
 } from "@/lib/production-safety";
 
 export const dynamic = "force-dynamic";
@@ -72,7 +72,7 @@ function shapedRows(
  * Returns { ok, totalExecutionTimeMs, tests: RunAllTestRow[] }.
  */
 export async function POST(req: Request) {
-  const blocked = guardDangerousMaintenanceRequest(req);
+  const blocked = guardNonProductionOnlyRequest(req);
   if (blocked) return blocked;
 
   const host = req.headers.get("host") ?? "localhost:3000";

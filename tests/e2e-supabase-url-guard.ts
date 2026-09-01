@@ -3,10 +3,9 @@ const LOCAL_E2E_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]", "::1"]);
 const LOCAL_SUPABASE_API_PORT = "54321";
 const LOCAL_SUPABASE_DATABASE_PORT = "54322";
 
-const PRODUCTION_READ_ONLY_SPECS = [
-  /(?:^|\/)tests\/production-safety\.spec\.ts$/,
-  /(?:^|\/)tests\/production-add-flows\.spec\.ts$/,
-] as const;
+const PRODUCTION_NEVER_RUN_SPECS = [/(?:^|\/)tests\/production-safety\.spec\.ts$/] as const;
+
+const PRODUCTION_READ_ONLY_SPECS = [/(?:^|\/)tests\/production-add-flows\.spec\.ts$/] as const;
 
 export function productionTestWritesAllowed(): boolean {
   return process.env[PROD_WRITE_OVERRIDE] === "1";
@@ -43,9 +42,22 @@ export function assertPlaywrightProductionRunSafeForWrites(params: {
   baseURL: string | undefined | null;
   argv?: readonly string[];
 }): void {
-  if (!isProductionAppUrl(params.baseURL) || productionTestWritesAllowed()) return;
+  if (!isProductionAppUrl(params.baseURL)) return;
 
   const specArgs = explicitPlaywrightSpecArgs(params.argv ?? []);
+  const localOnlySpecs = specArgs.filter((arg) =>
+    PRODUCTION_NEVER_RUN_SPECS.some((pattern) => pattern.test(arg))
+  );
+  if (localOnlySpecs.length > 0) {
+    throw new Error(
+      `[E2E] Refusing to run ${localOnlySpecs.join(", ")} against production app target ${params.baseURL}. ` +
+        "This destructive-route guard contract is localhost-only and cannot be overridden. " +
+        "Run it against a local production build instead."
+    );
+  }
+
+  if (productionTestWritesAllowed()) return;
+
   const allExplicitSpecsAreReadOnly =
     specArgs.length > 0 &&
     specArgs.every((arg) => PRODUCTION_READ_ONLY_SPECS.some((pattern) => pattern.test(arg)));

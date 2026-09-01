@@ -2,6 +2,8 @@
 
 begin;
 
+select plan(1);
+
 do $test$
 declare
   v_estimate_id constant uuid := '11111111-1111-4111-8111-111111111163';
@@ -293,5 +295,11 @@ begin
     v_remaining;
 end
 $test$;
+
+select pass(
+  'Estimate financial persistence preserves amounts, validation, rollback, retry, and status guards'
+);
+
+select * from finish();
 
 rollback;

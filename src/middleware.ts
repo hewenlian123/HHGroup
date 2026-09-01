@@ -90,6 +90,21 @@ function isProductionSafetyLocked(request: NextRequest): boolean {
   );
 }
 
+function isProductionRuntime(): boolean {
+  return process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production";
+}
+
+function isProductionRuntimeDisabledPath(pathname: string): boolean {
+  return (
+    pathname === "/api/test" ||
+    pathname.startsWith("/api/test/") ||
+    pathname === "/api/ensure-schema" ||
+    pathname.startsWith("/api/ensure-schema/") ||
+    pathname === "/system-tests" ||
+    pathname.startsWith("/system-tests/")
+  );
+}
+
 function hasInternalAdminSecret(request: NextRequest): boolean {
   const primary = process.env.HH_INTERNAL_ADMIN_SECRET?.trim() ?? "";
   const fallback = process.env.INTERNAL_ADMIN_SECRET?.trim() ?? "";
@@ -134,6 +149,16 @@ function forbiddenMaintenancePageResponse(): NextResponse {
     },
     {
       status: 403,
+      headers: { "Cache-Control": "no-store" },
+    }
+  );
+}
+
+function productionRuntimeNotFoundResponse(): NextResponse {
+  return NextResponse.json(
+    { ok: false, message: "Not found." },
+    {
+      status: 404,
       headers: { "Cache-Control": "no-store" },
     }
   );
@@ -320,6 +345,10 @@ export async function middleware(request: NextRequest) {
       return staleDevAssetResponse();
     }
     return NextResponse.next();
+  }
+
+  if (isProductionRuntime() && isProductionRuntimeDisabledPath(pathname)) {
+    return productionRuntimeNotFoundResponse();
   }
 
   const apiPath = isApiPath(pathname);

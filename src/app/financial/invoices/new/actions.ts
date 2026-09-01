@@ -4,30 +4,15 @@ import { revalidatePath } from "next/cache";
 import { requireSupabaseOwnerOrAdminServerActionWithClient } from "@/lib/auth-boundary";
 import { createServerSupabaseClient, getServerSupabaseAdmin } from "@/lib/supabase-server";
 import { getEstimateInvoicePrefill } from "./estimate-prefill";
+import { estimateActivityActorFromAuth } from "@/lib/estimate-activity";
 import {
-  estimateActivityActorFromAuth,
-  linkEstimateMilestoneInvoiceWithActivityWithClient,
-} from "@/lib/estimate-activity";
-import { createInvoiceAtomicWithClient } from "@/lib/invoices-db";
+  createEstimateMilestoneInvoiceAtomicWithClient,
+  createInvoiceAtomicWithClient,
+} from "@/lib/invoices-db";
 
 function toNum(v: unknown): number {
   const n = typeof v === "number" ? v : Number(v);
   return Number.isFinite(n) ? n : 0;
-}
-
-async function removeRejectedEstimateInvoice(
-  db: Awaited<ReturnType<typeof createServerSupabaseClient>>,
-  invoiceId: string
-): Promise<void> {
-  if (!db) throw new Error("Draft Invoice cleanup is unavailable.");
-  const itemsDelete = await db.from("invoice_items").delete().eq("invoice_id", invoiceId);
-  if (itemsDelete.error) {
-    throw new Error("Draft Invoice cleanup failed after Estimate linkage was rejected.");
-  }
-  const invoiceDelete = await db.from("invoices").delete().eq("id", invoiceId);
-  if (invoiceDelete.error) {
-    throw new Error("Draft Invoice cleanup failed after Estimate linkage was rejected.");
-  }
 }
 
 export async function createInvoiceDraftAction(payload: {
@@ -128,97 +113,37 @@ export async function createInvoiceDraftAction(payload: {
     }
 
     const idempotencyKey =
-      payload.idempotencyKey?.trim() ||
-      (sourceEstimateId && paymentScheduleItemId
+      sourceEstimateId && paymentScheduleItemId
         ? `invoice-milestone:${sourceEstimateId}:${paymentScheduleItemId}`
-        : globalThis.crypto.randomUUID());
-    const created = await createInvoiceAtomicWithClient(
-      {
-        idempotencyKey,
-        invoiceNo: payload.invoiceNo,
-        projectId,
-        customerId,
-        clientName,
-        issueDate: safeIssueDate,
-        dueDate: safeDueDate,
-        taxPct,
-        notes: payload.notes,
-        lineItems: items.map((item) => ({
-          ...item,
-          amount: Math.max(0, item.qty) * Math.max(0, item.unitPrice),
-        })),
-      },
-      supabase
-    );
-    const invoiceId = created.id;
-
-    if (sourceEstimateId && paymentScheduleItemId) {
-      let linked: { invoiceId: string; linked: boolean };
-      try {
-        linked = await linkEstimateMilestoneInvoiceWithActivityWithClient(supabase, {
-          estimateId: sourceEstimateId,
-          scheduleItemId: paymentScheduleItemId,
-          invoiceId,
-          actor: activityActor,
-        });
-      } catch (error) {
-        let linkageCheck: Awaited<ReturnType<typeof getEstimateInvoicePrefill>>;
-        try {
-          linkageCheck = await getEstimateInvoicePrefill(
-            sourceEstimateId,
-            paymentScheduleItemId,
+        : payload.idempotencyKey?.trim() || globalThis.crypto.randomUUID();
+    const invoiceCreatePayload = {
+      idempotencyKey,
+      invoiceNo: payload.invoiceNo,
+      projectId,
+      customerId,
+      clientName,
+      issueDate: safeIssueDate,
+      dueDate: safeDueDate,
+      taxPct,
+      notes: payload.notes,
+      lineItems: items.map((item) => ({
+        ...item,
+        amount: Math.max(0, item.qty) * Math.max(0, item.unitPrice),
+      })),
+    };
+    const created =
+      sourceEstimateId && paymentScheduleItemId
+        ? await createEstimateMilestoneInvoiceAtomicWithClient(
+            {
+              ...invoiceCreatePayload,
+              estimateId: sourceEstimateId,
+              scheduleItemId: paymentScheduleItemId,
+              actor: activityActor,
+            },
             supabase
-          );
-        } catch {
-          return {
-            ok: false,
-            error: "Invoice linkage could not be verified after an ambiguous response.",
-          };
-        }
-        if (!linkageCheck.ok) {
-          const linkedInvoiceId = linkageCheck.existingInvoiceId?.trim() ?? "";
-          if (linkedInvoiceId === invoiceId) {
-            revalidatePath(`/estimates/${sourceEstimateId}`);
-            revalidatePath(`/financial/invoices/${linkedInvoiceId}`);
-            return { ok: true, invoiceId: linkedInvoiceId };
-          }
-          return {
-            ok: false,
-            error: "Invoice linkage could not be verified after an ambiguous response.",
-          };
-        }
-        try {
-          await removeRejectedEstimateInvoice(supabase, invoiceId);
-        } catch (cleanupError) {
-          return {
-            ok: false,
-            error:
-              cleanupError instanceof Error
-                ? cleanupError.message
-                : "Draft Invoice cleanup failed after Estimate linkage was rejected.",
-          };
-        }
-        return {
-          ok: false,
-          error: error instanceof Error ? error.message : "Failed to link estimate milestone.",
-        };
-      }
-      if (!linked.linked) {
-        const existingInvoiceId = linked.invoiceId.trim();
-        if (existingInvoiceId === invoiceId) {
-          revalidatePath(`/estimates/${sourceEstimateId}`);
-          revalidatePath(`/financial/invoices/${existingInvoiceId}`);
-          return { ok: true, invoiceId: existingInvoiceId };
-        }
-        await removeRejectedEstimateInvoice(supabase, invoiceId);
-        if (existingInvoiceId) {
-          revalidatePath(`/estimates/${sourceEstimateId}`);
-          revalidatePath(`/financial/invoices/${existingInvoiceId}`);
-          return { ok: true, invoiceId: existingInvoiceId };
-        }
-        return { ok: false, error: "Could not link invoice to estimate milestone." };
-      }
-    }
+          )
+        : await createInvoiceAtomicWithClient(invoiceCreatePayload, supabase);
+    const invoiceId = created.id;
 
     revalidatePath("/financial/invoices");
     revalidatePath(`/financial/invoices/${invoiceId}`);

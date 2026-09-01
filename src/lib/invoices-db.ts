@@ -1113,6 +1113,63 @@ export async function createInvoiceAtomicWithClient(
   return saved;
 }
 
+export async function createEstimateMilestoneInvoiceAtomicWithClient(
+  payload: {
+    idempotencyKey: string;
+    invoiceNo?: string;
+    projectId: string;
+    customerId?: string | null;
+    clientName: string;
+    issueDate: string;
+    dueDate: string;
+    lineItems: InvoiceLineItem[];
+    taxPct?: number;
+    notes?: string;
+    estimateId: string;
+    scheduleItemId: string;
+    actor: { userId: string; label: string };
+  },
+  explicitClient: SupabaseClient
+): Promise<{ id: string; reused: boolean; linked: boolean }> {
+  const { data, error } = await explicitClient.rpc("create_estimate_milestone_invoice_atomic", {
+    p_idempotency_key: payload.idempotencyKey.trim(),
+    p_header: {
+      invoice_no: payload.invoiceNo?.trim() || null,
+      project_id: payload.projectId || null,
+      customer_id: payload.customerId || null,
+      client_name: payload.clientName ?? "",
+      issue_date: payload.issueDate.slice(0, 10),
+      due_date: payload.dueDate.slice(0, 10),
+      status: "Draft",
+      notes: payload.notes ?? null,
+      tax_pct: payload.taxPct ?? 0,
+    },
+    p_items: payload.lineItems.map((item) => ({
+      description: item.description,
+      qty: item.qty,
+      unit_price: item.unitPrice,
+    })),
+    p_estimate_id: payload.estimateId,
+    p_schedule_item_id: payload.scheduleItemId,
+    p_actor_user_id: payload.actor.userId,
+    p_actor_label: payload.actor.label.trim(),
+  });
+  if (error) throw new Error(error.message ?? "Failed to create milestone invoice atomically.");
+
+  const result = data as {
+    invoice_id?: unknown;
+    reused?: unknown;
+    linked?: unknown;
+  } | null;
+  const invoiceId = String(result?.invoice_id ?? "").trim();
+  if (!invoiceId) throw new Error("Atomic milestone invoice create returned no invoice id.");
+  return {
+    id: invoiceId,
+    reused: result?.reused === true,
+    linked: result?.linked === true,
+  };
+}
+
 export async function updateInvoice(
   invoiceId: string,
   payload: Partial<{

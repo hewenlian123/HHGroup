@@ -27,6 +27,16 @@ if (!process.env.E2E_BASE_URL) {
 assertPlaywrightProductionRunSafeForWrites({ baseURL: resolvedBase, argv: process.argv });
 
 const isLocalE2eBase = /^(https?:\/\/)?(localhost|127\.0\.0\.1)(:\d+)?$/i.test(resolvedBase);
+const localWebServerUsesProductionRuntime =
+  isLocalE2eBase &&
+  process.env.E2E_WEB_SERVER !== "off" &&
+  process.env.CI === "true" &&
+  process.env.E2E_WEB_SERVER !== "dev";
+if (!process.env.E2E_SERVER_RUNTIME) {
+  process.env.E2E_SERVER_RUNTIME = localWebServerUsesProductionRuntime
+    ? "production"
+    : "development";
+}
 
 /**
  * Worker-payment + delete-mutation files must **always** have a matching project.

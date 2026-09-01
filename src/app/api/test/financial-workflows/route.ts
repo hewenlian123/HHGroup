@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
-import { guardDangerousMaintenanceRequest } from "@/lib/production-safety";
+import { guardNonProductionOnlyRequest } from "@/lib/production-safety";
 import {
   SUPABASE_MISSING_SERVER_ADMIN_ENV_MESSAGE,
   getServerSupabaseAdmin,
@@ -41,11 +41,11 @@ const TEST_IDS = [
  * Returns { ok, tests: [{ name, ok, steps? }] }.
  */
 export async function POST(req: Request) {
+  const blocked = guardNonProductionOnlyRequest(req);
+  if (blocked) return blocked;
+
   const strictGuard = await requireSupabaseOwnerOrAdmin(req);
   if (!strictGuard.ok) return strictGuard.response;
-
-  const blocked = guardDangerousMaintenanceRequest(req);
-  if (blocked) return blocked;
 
   const host = req.headers.get("host") ?? "localhost:3000";
   const protocol = req.headers.get("x-forwarded-proto") === "https" ? "https" : "http";

@@ -239,6 +239,69 @@ describe("financial data-layer atomicity failure injection", () => {
     expect(state.invoices).toHaveLength(0);
   });
 
+  it("uses one RPC for milestone Invoice create, linkage, and activity", async () => {
+    const rpc = vi.fn(async () => ({
+      data: { invoice_id: "44444444-4444-4444-8444-444444444444", reused: false, linked: true },
+      error: null,
+    }));
+    const fake = {
+      rpc,
+      from() {
+        throw new Error("milestone Invoice contract must not issue follow-up table writes");
+      },
+    } as unknown as SupabaseClient;
+
+    const { createEstimateMilestoneInvoiceAtomicWithClient } = await import("@/lib/invoices-db");
+    await expect(
+      createEstimateMilestoneInvoiceAtomicWithClient(
+        {
+          idempotencyKey: "invoice-milestone:estimate-1:milestone-1",
+          invoiceNo: "INV-ATOMIC-MILESTONE-001",
+          projectId: "11111111-1111-4111-8111-111111111111",
+          customerId: "22222222-2222-4222-8222-222222222222",
+          clientName: "Atomic Customer",
+          issueDate: "2026-08-31",
+          dueDate: "2026-09-30",
+          taxPct: 5,
+          notes: "Atomic milestone",
+          lineItems: [{ description: "Deposit", qty: 1, unitPrice: 476.19, amount: 476.19 }],
+          estimateId: "33333333-3333-4333-8333-333333333333",
+          scheduleItemId: "55555555-5555-4555-8555-555555555555",
+          actor: {
+            userId: "66666666-6666-4666-8666-666666666666",
+            label: "owner@example.com",
+          },
+        },
+        fake
+      )
+    ).resolves.toEqual({
+      id: "44444444-4444-4444-8444-444444444444",
+      reused: false,
+      linked: true,
+    });
+
+    expect(rpc).toHaveBeenCalledTimes(1);
+    expect(rpc).toHaveBeenCalledWith("create_estimate_milestone_invoice_atomic", {
+      p_idempotency_key: "invoice-milestone:estimate-1:milestone-1",
+      p_header: {
+        invoice_no: "INV-ATOMIC-MILESTONE-001",
+        project_id: "11111111-1111-4111-8111-111111111111",
+        customer_id: "22222222-2222-4222-8222-222222222222",
+        client_name: "Atomic Customer",
+        issue_date: "2026-08-31",
+        due_date: "2026-09-30",
+        status: "Draft",
+        notes: "Atomic milestone",
+        tax_pct: 5,
+      },
+      p_items: [{ description: "Deposit", qty: 1, unit_price: 476.19 }],
+      p_estimate_id: "33333333-3333-4333-8333-333333333333",
+      p_schedule_item_id: "55555555-5555-4555-8555-555555555555",
+      p_actor_user_id: "66666666-6666-4666-8666-666666666666",
+      p_actor_label: "owner@example.com",
+    });
+  });
+
   it("preserves the invoice header and old items when atomic replacement insertion fails", async () => {
     const state = {
       invoice: {

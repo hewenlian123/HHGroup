@@ -74,6 +74,44 @@ describe("middleware Auth rollout behavior", () => {
   });
 
   it.each([
+    "/api/test/full-system-test",
+    "/api/test/financial-workflows",
+    "/api/test/run-all",
+    "/api/test/run-all-tests",
+    "/api/test/run-ui-tests",
+    "/api/ensure-schema",
+    "/system-tests",
+    "/system-tests/ui",
+  ])(
+    "hides production-only test and schema-maintenance surfaces in Production: %s",
+    async (path) => {
+      process.env.HH_INTERNAL_ADMIN_SECRET = "server-secret";
+
+      const response = await middleware(
+        request(path, {
+          method: path.startsWith("/api/") ? "POST" : "GET",
+          headers: { "x-internal-admin-secret": "server-secret" },
+        })
+      );
+
+      expect(response.status).toBe(404);
+      expect(response.headers.get("x-middleware-next")).toBeNull();
+    }
+  );
+
+  it("keeps the test harness reachable in explicitly enabled local development", async () => {
+    process.env = { ...process.env, NODE_ENV: "development" };
+    delete process.env.VERCEL_ENV;
+    process.env.HH_REQUIRE_LOGIN = "false";
+    process.env.HH_ALLOW_LOCAL_NO_LOGIN = "1";
+
+    const response = await middleware(request("/api/test/run-all", { method: "POST" }));
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-middleware-next")).toBe("1");
+  });
+
+  it.each([
     ["/upload-receipt", "GET"],
     ["/api/upload-receipt/options", "GET"],
     ["/api/upload-receipt/upload", "POST"],

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { guardDangerousMaintenanceRequest } from "@/lib/production-safety";
+import { guardNonProductionOnlyRequest } from "@/lib/production-safety";
 import { getServerSupabase } from "@/lib/supabase-server";
 import {
   insertWorkerReceiptWithClient,
@@ -27,7 +27,7 @@ type StepResult = { step: string; ok: boolean; detail?: string; error?: string }
  * 7. Log [workflow test] workflow passed
  */
 export async function POST(req: Request) {
-  const blocked = guardDangerousMaintenanceRequest(req);
+  const blocked = guardNonProductionOnlyRequest(req);
   if (blocked) return blocked;
 
   const steps: StepResult[] = [];

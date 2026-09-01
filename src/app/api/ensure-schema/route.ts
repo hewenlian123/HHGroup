@@ -1,7 +1,6 @@
 import { ensureConstructionSchema } from "@/lib/ensure-construction-schema";
-import { runSchemaAutoRepair } from "@/lib/ensure-schema-auto-repair";
 import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
-import { guardDangerousMaintenanceRequest } from "@/lib/production-safety";
+import { guardNonProductionOnlyRequest } from "@/lib/production-safety";
 import { NextResponse } from "next/server";
 
 /**
@@ -11,11 +10,11 @@ import { NextResponse } from "next/server";
  * Returns combined status for the UI.
  */
 export async function POST(request: Request) {
+  const blocked = guardNonProductionOnlyRequest(request);
+  if (blocked) return blocked;
+
   const strictGuard = await requireSupabaseOwnerOrAdmin(request);
   if (!strictGuard.ok) return strictGuard.response;
-
-  const blocked = guardDangerousMaintenanceRequest(request);
-  if (blocked) return blocked;
 
   const url = process.env.SUPABASE_DATABASE_URL ?? process.env.DATABASE_URL;
   if (!url) {
@@ -29,6 +28,8 @@ export async function POST(request: Request) {
       { status: 200 }
     );
   }
+
+  const { runSchemaAutoRepair } = await import("@/lib/ensure-schema-auto-repair");
 
   let constructionOk = true;
   let constructionMessage = "";
