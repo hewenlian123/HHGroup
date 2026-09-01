@@ -1,7 +1,7 @@
 # HH Group step 11 operator, window, and backup record
 
-**Status:** BLOCKED — Supabase Dashboard restore access is not yet verified;
-window closed.
+**Status:** READY FOR EXPLICIT AUTHORIZATION — Dashboard restore operability
+verified; window closed.
 
 This record identifies the operator and recovery inputs for step 11. It does
 not authorize a Production write, migration, restore, or deployment.
@@ -89,11 +89,21 @@ reconfirmed against the official Supabase Database Backups documentation:
 
 - The named authenticated CLI profile can list physical backups for the exact
   Production project.
-- A read-only browser check of the exact Production project's Database Backups
-  page found an expired Supabase Dashboard session. Backup rows, the selected
-  completed backup, the named operator's Dashboard role, and restore-control
-  availability could not be verified. CLI backup-list access is not accepted
-  as proof of Dashboard restore permission.
+- At `2026-09-01T09:20:15Z`, WEN authenticated to the Supabase Dashboard and
+  opened project `rzublljldebswurgdqxp`, shown as `HH Main Project Sofeware /`
+  `main Production`, at **Database > Backups > Scheduled backups**.
+- The newest visible row was the physical backup at
+  `2026-09-01T08:21:45.998Z` (`01 Sep 2026 08:21:45 (+0000)` in the
+  Dashboard), matching CLI backup ID `1544411622`. Its initial `Restore`
+  control was visible and enabled.
+- WEN selected that initial control and successfully entered the
+  `Restore from backup` confirmation dialog. The dialog named the exact same
+  backup timestamp, displayed the downtime/data-loss warning, and exposed the
+  final `Restore` control. This proves the named operator can enter the restore
+  workflow for the selected completed backup.
+- The final `Restore` control was **not clicked**. WEN selected `Cancel`; the
+  confirmation dialog closed and the browser remained on the scheduled-backup
+  page. No restore was started or confirmed.
 - PITR is disabled, so `supabase backups restore --timestamp ...` is not this
   release's recovery path. Use the Supabase Dashboard physical-backup restore
   flow for the selected completed backup.
@@ -101,11 +111,9 @@ reconfirmed against the official Supabase Database Backups documentation:
   the selected backup. It is incident recovery, not routine migration rollback.
 - No restore was executed because that is a destructive Production operation
   outside this pre-deploy scope.
-- Before a `GO`, WEN must authenticate to the Dashboard, confirm the exact
-  project ref, confirm the newest eligible `COMPLETED` backup is selectable,
-  and confirm the restore control is available to the named operator. Preserve
-  read-only evidence without starting or confirming a restore. Until then the
-  Production migration authorization is blocked.
+- Immediately before any separately authorized incident restore, WEN must
+  repeat the backup listing and Dashboard selection check. This operability
+  verification does not grant restore authorization.
 - An incident restore requires separate explicit authorization, the selected
   backup ID/timestamp, announced downtime, and captured completion evidence.
 
@@ -125,5 +133,4 @@ destructive recovery and downtime.
 - Scoped milestone-Invoice write freeze: **NOT ACTIVATED — window closed**.
 - Production restore authorization: **NOT GRANTED**.
 - Window start/end: **NOT OPENED**.
-- Dashboard restore permission/selectability evidence: **NOT VERIFIED —
-  BLOCKING**.
+- Dashboard restore permission/selectability evidence: **VERIFIED — PASS**.

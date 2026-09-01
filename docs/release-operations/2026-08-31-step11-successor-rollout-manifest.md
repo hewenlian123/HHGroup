@@ -1,8 +1,9 @@
 # HH Group step 11 successor rollout manifest
 
-**Status:** PRE-DEPLOY BLOCKED — non-authorizing. The named operator's
-Dashboard restore access remains unverified. This manifest does not authorize a
-Production migration, data write, restore, or application deployment.
+**Status:** PRE-DEPLOY READY — non-authorizing. The named operator's Dashboard
+backup visibility, selection, and restore-flow access are verified. This
+manifest does not authorize a Production migration, data write, restore, or
+application deployment.
 
 **Release lineage:** parent commit
 `a625bec077fc2fde5d14e33787209022a0a6f4ea` already contains the certified HH
@@ -157,8 +158,9 @@ Before any authorized write session, attach redacted read-only evidence that:
   states required by the wrapper;
 - the Production application remains compatible with steps 1–10 while the
   wrapper is absent, and the exact successor application is not deployed;
-- the named operator can list the selected completed physical backup and has
-  recorded the restore limitation in the linked operator record.
+- the named operator can list and see the selected completed physical backup,
+  can enter its Dashboard restore confirmation flow, and has recorded the
+  canceled non-restoring verification in the linked operator record.
 
 The canonical SQL begins with `SET TRANSACTION READ ONLY`, ends with
 `ROLLBACK`, returns no business rows, and records the exact migration counts,
