@@ -444,8 +444,10 @@ export async function deleteCommitment(id: string): Promise<boolean> {
   return commitmentsDb.deleteCommitment(id);
 }
 
-export async function getLaborWorkers(): Promise<import("../labor-db").LaborWorker[]> {
-  return laborDb.getLaborWorkers();
+export async function getLaborWorkers(
+  explicitClient?: SupabaseClient
+): Promise<import("../labor-db").LaborWorker[]> {
+  return laborDb.getLaborWorkers(explicitClient);
 }
 
 export async function getWorkers(): Promise<import("../labor-db").Worker[]> {
@@ -902,8 +904,8 @@ export async function getLaborEntriesWithJoins(
 ) {
   return dailyLaborDb.getLaborEntriesWithJoins(filters, explicitClient);
 }
-export async function getLaborWorkersList() {
-  return dailyLaborDb.getLaborWorkersList();
+export async function getLaborWorkersList(explicitClient?: SupabaseClient) {
+  return dailyLaborDb.getLaborWorkersList(explicitClient);
 }
 export async function getLaborWorkerById(id: string) {
   return dailyLaborDb.getLaborWorkerById(id);

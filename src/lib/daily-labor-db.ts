@@ -578,8 +578,10 @@ export async function getLaborEntriesWithJoins(
 }
 
 /** List labor_workers for filters/dropdowns. Supabase only. */
-export async function getLaborWorkersList(): Promise<{ id: string; name: string }[]> {
-  const c = client();
+export async function getLaborWorkersList(
+  explicitClient?: SupabaseClient
+): Promise<{ id: string; name: string }[]> {
+  const c = client(explicitClient);
   const { data: rows, error } = await c.from("labor_workers").select("id, name").order("name");
   if (error) throw new Error(error.message ?? "Failed to load labor workers.");
   return (rows ?? []).map((r: { id: string; name: string }) => ({ id: r.id, name: r.name }));

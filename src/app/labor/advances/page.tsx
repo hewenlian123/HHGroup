@@ -10,8 +10,8 @@ export default async function WorkerAdvancesPage() {
   if (!projectSupabase) throw new Error("Authenticated project session is not configured.");
 
   const [laborWorkers, profileWorkers, projects] = await Promise.all([
-    getLaborWorkersList().catch(() => []),
-    getLaborWorkers().catch(() => []),
+    getLaborWorkersList(projectSupabase).catch(() => []),
+    getLaborWorkers(projectSupabase).catch(() => []),
     getProjects(projectSupabase),
   ]);
   const workersById = new Map<string, { id: string; name: string }>();

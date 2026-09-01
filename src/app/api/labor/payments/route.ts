@@ -82,10 +82,12 @@ export async function GET(request: Request) {
         .order("created_at", { ascending: false })
         .limit(500),
       supabase
-        .from("payment_methods")
-        .select("name,status")
-        .eq("status", "active")
-        .order("name")
+        .from("expense_options")
+        .select("name,active")
+        .eq("type", "payment_method")
+        .eq("active", true)
+        .order("sort_order", { ascending: true })
+        .order("name", { ascending: true })
         .limit(100),
     ]);
 

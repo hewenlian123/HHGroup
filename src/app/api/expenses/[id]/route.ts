@@ -164,7 +164,6 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     projectRes,
     vendorsRes,
     categoriesRes,
-    pmRes,
     optionCategoriesRes,
     optionPaymentMethodsRes,
     attachmentsRes,
@@ -185,11 +184,6 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       .limit(500),
     supabase
       .from("categories")
-      .select("id,name,status")
-      .order("created_at", { ascending: false })
-      .limit(500),
-    supabase
-      .from("payment_methods")
       .select("id,name,status")
       .order("created_at", { ascending: false })
       .limit(500),
@@ -251,9 +245,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
               name: row.name,
               status: row.active ? "active" : "inactive",
             }))
-          : pmRes.error
-            ? []
-            : (pmRes.data ?? []),
+          : [],
       attachments: attachmentsRes.error ? [] : (attachmentsRes.data ?? []),
       subcontractDeduction: deductionRes,
       subcontractDeductionOptions: subcontractOptionsRes,
@@ -585,6 +577,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
           }
           return NextResponse.json({ ok: true, name: row.name }, { headers: NO_CACHE_HEADERS });
         }
+        if (existingError && action === "add-payment-method") {
+          throw new Error("Canonical expense options are unavailable.");
+        }
         if (existingError && !isMissingTable(existingError)) throw existingError;
         if (!existingError) {
           const { data: rows } = await supabase
@@ -614,12 +609,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
           );
         }
       }
-      const table =
-        action === "add-vendor"
-          ? "vendors"
-          : action === "add-category"
-            ? "categories"
-            : "payment_methods";
+      const table = action === "add-vendor" ? "vendors" : "categories";
       const payload =
         action === "add-category"
           ? { name, type: "expense", status: "active" }

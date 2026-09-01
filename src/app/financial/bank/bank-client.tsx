@@ -454,18 +454,32 @@ export default function BankReconcileClient() {
 
   const addPaymentMethod = async (name: string): Promise<string> => {
     const v = name.trim();
-    if (!v || !supabase) return "";
-    const { error: insErr } = await supabase
-      .from("payment_methods")
-      .insert({ name: v, status: "active" });
-    if (!insErr) {
+    if (!v) return "";
+    try {
+      const response = await fetch("/api/settings/expense-options", {
+        method: "POST",
+        cache: "no-store",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ type: "payment_method", name: v }),
+      });
+      const payload = (await response.json().catch(() => null)) as {
+        ok?: boolean;
+        message?: string;
+        row?: { name?: string | null };
+      } | null;
+      if (!response.ok || !payload?.ok) {
+        throw new Error(payload?.message || "Failed to save payment method.");
+      }
+      const savedName = payload.row?.name?.trim() || v;
       setPaymentMethodsList((prev) =>
-        prev.includes(v) ? prev : [...prev, v].sort((a, b) => a.localeCompare(b))
+        prev.includes(savedName) ? prev : [...prev, savedName].sort((a, b) => a.localeCompare(b))
       );
-      return v;
+      return savedName;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to save payment method.";
+      setToastMessage(message);
+      return "";
     }
-    setToastMessage(insErr.message);
-    return "";
   };
 
   const isExpenseCategoryDisabled = (name: string) => (name ? false : false);

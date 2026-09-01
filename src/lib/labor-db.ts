@@ -315,8 +315,8 @@ export async function getWorkers(explicitClient?: SupabaseClient): Promise<Worke
   return (rows ?? []).map((r) => toWorker(r as WorkerRow));
 }
 
-export async function getLaborWorkers(): Promise<Worker[]> {
-  const all = await getWorkers();
+export async function getLaborWorkers(explicitClient?: SupabaseClient): Promise<Worker[]> {
+  const all = await getWorkers(explicitClient);
   return all.filter((w) => w.status === "active");
 }
 

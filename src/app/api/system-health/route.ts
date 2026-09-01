@@ -61,7 +61,6 @@ const REQUIRED_TABLES: HealthTarget[] = [
 
 const OPTIONAL_TABLES: HealthTarget[] = [
   { name: "Expense options", table: "expense_options", optional: true },
-  { name: "Legacy payment methods", table: "payment_methods", optional: true },
   { name: "AP bills", table: "ap_bills", optional: true },
   { name: "AP bill payments", table: "ap_bill_payments", optional: true },
   { name: "Payments received", table: "payments_received", optional: true },
@@ -117,18 +116,11 @@ function optionalUnavailableMessage(target: HealthTarget | StorageTarget): strin
   if (target.name === "Expense options") {
     return "Expense options are not installed in this environment.";
   }
-  if (target.name === "Legacy payment methods") {
-    return "Legacy payment methods are optional and disabled; expense_options/fallbacks are active.";
-  }
   return `${target.name} is optional and is not installed in this environment.`;
 }
 
 function isOptionalDisabledTarget(target: HealthTarget | StorageTarget): boolean {
-  return (
-    target.name === "AP bills" ||
-    target.name === "AP bill payments" ||
-    target.name === "Legacy payment methods"
-  );
+  return target.name === "AP bills" || target.name === "AP bill payments";
 }
 
 function isActionableWarning(check: SystemHealthCheck): boolean {

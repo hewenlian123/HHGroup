@@ -3,7 +3,7 @@
  * Tables: project_change_orders, project_change_order_items, project_budget_items, project_change_order_attachments.
  *
  * Status flow: Draft → Pending Approval → Approved | Rejected.
- * Only Approved change orders affect revenue (canonical profit model: amount or total).
+ * Only Approved change orders affect revenue (`total`, with `total_amount` as the legacy fallback).
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -18,7 +18,6 @@ export type ChangeOrderRow = {
   status: string;
   total?: number;
   total_amount?: number;
-  amount?: number | null;
   date?: string;
   created_at?: string;
   approved_at: string | null;
@@ -142,7 +141,8 @@ function toChangeOrder(r: ChangeOrderRow): ChangeOrder {
     number: r.number,
     status: normalizeStatus(r.status),
     total,
-    amount: r.amount != null ? Number(r.amount) : null,
+    // `amount` remains a presentation-facing alias; it is never a database column.
+    amount: total,
     date,
     approvedAt: r.approved_at,
     approvedBy: r.approved_by ?? null,
@@ -181,20 +181,29 @@ function toAttachment(r: ChangeOrderAttachmentRow): ChangeOrderAttachment {
 const HINT = "Run supabase/migrations/202603111000_change_order_management.sql.";
 
 const CO_COLS =
-  "id,project_id,number,status,total,total_amount,amount,date,created_at,approved_at,approved_by,title,description,cost_impact,schedule_impact_days";
-const CO_COLS_NO_AMOUNT =
   "id,project_id,number,status,total,total_amount,date,created_at,approved_at,approved_by,title,description,cost_impact,schedule_impact_days";
 const CO_COLS_NO_DESCRIPTION =
-  "id,project_id,number,status,total,total_amount,amount,date,created_at,approved_at,approved_by,title,cost_impact,schedule_impact_days";
-const CO_COLS_NO_DESCRIPTION_NO_AMOUNT =
   "id,project_id,number,status,total,total_amount,date,created_at,approved_at,approved_by,title,cost_impact,schedule_impact_days";
-const CO_COLS_LEGACY = "id,project_id,number,status,total,total_amount,date,created_at,approved_at";
+const CO_COLS_TOTAL =
+  "id,project_id,number,status,total,date,created_at,approved_at,approved_by,title,description,cost_impact,schedule_impact_days";
+const CO_COLS_TOTAL_NO_DESCRIPTION =
+  "id,project_id,number,status,total,date,created_at,approved_at,approved_by,title,cost_impact,schedule_impact_days";
+const CO_COLS_LEGACY_TOTAL =
+  "id,project_id,number,status,total_amount,date,created_at,approved_at,approved_by,title,description,cost_impact,schedule_impact_days";
+const CO_COLS_LEGACY_TOTAL_NO_DESCRIPTION =
+  "id,project_id,number,status,total_amount,date,created_at,approved_at,approved_by,title,cost_impact,schedule_impact_days";
+const CO_COLS_TOTAL_MINIMAL = "id,project_id,number,status,total,date,created_at,approved_at";
+const CO_COLS_LEGACY_TOTAL_MINIMAL =
+  "id,project_id,number,status,total_amount,date,created_at,approved_at";
 const CO_SELECT_FALLBACKS = [
   CO_COLS,
   CO_COLS_NO_DESCRIPTION,
-  CO_COLS_NO_AMOUNT,
-  CO_COLS_NO_DESCRIPTION_NO_AMOUNT,
-  CO_COLS_LEGACY,
+  CO_COLS_TOTAL,
+  CO_COLS_TOTAL_NO_DESCRIPTION,
+  CO_COLS_LEGACY_TOTAL,
+  CO_COLS_LEGACY_TOTAL_NO_DESCRIPTION,
+  CO_COLS_TOTAL_MINIMAL,
+  CO_COLS_LEGACY_TOTAL_MINIMAL,
 ] as const;
 
 async function selectChangeOrders(
@@ -411,14 +420,32 @@ export async function createChangeOrderWithClient(
   const insertAttempts: Array<{ row: Record<string, unknown>; cols: string }> = [
     { row: payload, cols: CO_COLS },
     { row: omit(payload, ["description"]), cols: CO_COLS_NO_DESCRIPTION },
-    { row: omit(payload, ["amount"]), cols: CO_COLS_NO_AMOUNT },
+    { row: omit(payload, ["total_amount"]), cols: CO_COLS_TOTAL },
     {
-      row: omit(payload, ["description", "amount"]),
-      cols: CO_COLS_NO_DESCRIPTION_NO_AMOUNT,
+      row: omit(payload, ["description", "total_amount"]),
+      cols: CO_COLS_TOTAL_NO_DESCRIPTION,
     },
     {
-      row: omit(payload, ["title", "description", "amount", "cost_impact", "schedule_impact_days"]),
-      cols: CO_COLS_LEGACY,
+      row: omit(payload, ["total"]),
+      cols: CO_COLS_LEGACY_TOTAL,
+    },
+    {
+      row: omit(payload, ["description", "total"]),
+      cols: CO_COLS_LEGACY_TOTAL_NO_DESCRIPTION,
+    },
+    {
+      row: omit(payload, [
+        "title",
+        "description",
+        "total_amount",
+        "cost_impact",
+        "schedule_impact_days",
+      ]),
+      cols: CO_COLS_TOTAL_MINIMAL,
+    },
+    {
+      row: omit(payload, ["title", "description", "total", "cost_impact", "schedule_impact_days"]),
+      cols: CO_COLS_LEGACY_TOTAL_MINIMAL,
     },
   ];
 
@@ -549,18 +576,7 @@ export async function updateChangeOrder(
     updates.schedule_impact_days = patch.scheduleImpactDays;
   if (Object.keys(updates).length === 0) return true;
   const res = await c.from("project_change_orders").update(updates).eq("id", changeOrderId);
-  if (!res.error) return true;
-  if (isMissingColumn(res.error) && "amount" in updates) {
-    // Older schema: drop amount update and retry.
-    const retryUpdates = { ...updates };
-    delete (retryUpdates as Record<string, unknown>).amount;
-    const retry = await c
-      .from("project_change_orders")
-      .update(retryUpdates)
-      .eq("id", changeOrderId);
-    return !retry.error;
-  }
-  return false;
+  return !res.error;
 }
 
 export async function updateChangeOrderItem(
@@ -619,7 +635,7 @@ export async function deleteChangeOrderItem(
 
 /**
  * Status flow: Draft → Pending Approval → Approved | Rejected.
- * Only Approved change orders affect revenue (canonical profit: amount or total added to project.budget).
+ * Only Approved change orders affect revenue (`total`, with `total_amount` as the legacy fallback).
  */
 export async function updateChangeOrderStatus(
   changeOrderId: string,

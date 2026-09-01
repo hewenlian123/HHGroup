@@ -204,7 +204,7 @@ export async function GET(request: Request) {
       return names.length ? names : ["Other"];
     };
 
-    const loadNameList = async (table: "vendors" | "payment_methods", fallback: string[]) => {
+    const loadNameList = async (table: "vendors", fallback: string[]) => {
       const initial = await supabase
         .from(table)
         .select("name,status")
@@ -225,6 +225,25 @@ export async function GET(request: Request) {
       return names.length ? names : fallback;
     };
 
+    const loadPaymentMethods = async (): Promise<string[]> => {
+      const res = await supabase
+        .from("expense_options")
+        .select("name")
+        .eq("type", "payment_method")
+        .eq("active", true)
+        .order("sort_order", { ascending: true })
+        .order("name", { ascending: true })
+        .limit(500);
+      if (res.error) {
+        if (isMissingTableError(res.error)) return ["ACH"];
+        throw new Error(res.error.message);
+      }
+      const names = (res.data ?? [])
+        .map((row) => (row as { name?: string | null }).name?.trim() ?? "")
+        .filter(Boolean);
+      return names.length ? names : ["ACH"];
+    };
+
     const [txRes, projRes, categories, vendors, paymentMethods] = await Promise.all([
       supabase
         .from("bank_transactions")
@@ -240,7 +259,7 @@ export async function GET(request: Request) {
         .limit(500),
       loadCategories(),
       loadNameList("vendors", []),
-      loadNameList("payment_methods", ["ACH"]),
+      loadPaymentMethods(),
     ]);
 
     if (txRes.error && !isMissingTableError(txRes.error)) throw new Error(txRes.error.message);

@@ -194,9 +194,7 @@ function isOptionalModuleCheck(check: HealthCheck): boolean {
   return (
     check.category === "optionalModule" ||
     (check.code === "optional_module_disabled" &&
-      (check.name === "AP bills" ||
-        check.name === "AP bill payments" ||
-        check.name === "Legacy payment methods"))
+      (check.name === "AP bills" || check.name === "AP bill payments"))
   );
 }
 
@@ -656,7 +654,7 @@ async function buildSchemaSection(request: Request): Promise<QaSection> {
     const optionalDisabled = optional.filter(isOptionalModuleCheck);
     const storageWarnings = storage.filter((check) => check.status !== "ok");
     const driftWarnings = (summary.schemaDriftWarnings ?? []).filter(
-      (warning) => !/AP Bills module|payment_methods/i.test(warning)
+      (warning) => !/AP Bills module/i.test(warning)
     );
     const companyProfileCheck: QaCheck =
       summary.companyProfile?.code === "company_profile_e2e_marker"

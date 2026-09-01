@@ -163,53 +163,35 @@ function uniqueByLowerName(rows: ExpenseOptionPickerItem[]): ExpenseOptionPicker
 async function legacyRowsByStoredNameType(
   type: "payment_method" | "category"
 ): Promise<Array<{ name: string; active: boolean }>> {
-  const c = client();
-  if (type === "category") {
-    if (!(await publicSchemaItemAvailable("categories"))) {
-      return DEFAULT_CATEGORIES.map((name) => ({ name, active: true }));
-    }
-    const base = c.from("categories").select("*").eq("type", "expense").order("name");
-    const { data, error } = await base;
-    if (!error) {
-      return ((data ?? []) as { name?: string | null; status?: string | null }[])
-        .map((r) => ({ name: (r.name ?? "").trim(), active: (r.status ?? "active") === "active" }))
-        .filter((r) => r.name !== "");
-    }
-    if (!isMissingTable(error) && !isMissingColumn(error)) {
-      throw new Error(error.message ?? "Failed to load categories.");
-    }
-    if (isMissingColumn(error)) {
-      const retry = await c.from("categories").select("name").eq("type", "expense").order("name");
-      if (!retry.error) {
-        return ((retry.data ?? []) as { name?: string | null }[])
-          .map((r) => ({ name: (r.name ?? "").trim(), active: true }))
-          .filter((r) => r.name !== "");
-      }
-    }
-    return DEFAULT_CATEGORIES.map((name) => ({ name, active: true }));
-  }
-
-  if (!(await publicSchemaItemAvailable("payment_methods"))) {
+  if (type === "payment_method") {
+    // The legacy payment-method table is retired. Defaults are display-only when
+    // the canonical expense_options contract is unavailable or empty.
     return DEFAULT_PAYMENT_METHODS.map((name) => ({ name, active: true }));
   }
-  const { data, error } = await c.from("payment_methods").select("*").order("name");
+
+  const c = client();
+  if (!(await publicSchemaItemAvailable("categories"))) {
+    return DEFAULT_CATEGORIES.map((name) => ({ name, active: true }));
+  }
+  const base = c.from("categories").select("*").eq("type", "expense").order("name");
+  const { data, error } = await base;
   if (!error) {
     return ((data ?? []) as { name?: string | null; status?: string | null }[])
       .map((r) => ({ name: (r.name ?? "").trim(), active: (r.status ?? "active") === "active" }))
       .filter((r) => r.name !== "");
   }
   if (!isMissingTable(error) && !isMissingColumn(error)) {
-    throw new Error(error.message ?? "Failed to load payment methods.");
+    throw new Error(error.message ?? "Failed to load categories.");
   }
   if (isMissingColumn(error)) {
-    const retry = await c.from("payment_methods").select("name").order("name");
+    const retry = await c.from("categories").select("name").eq("type", "expense").order("name");
     if (!retry.error) {
       return ((retry.data ?? []) as { name?: string | null }[])
         .map((r) => ({ name: (r.name ?? "").trim(), active: true }))
         .filter((r) => r.name !== "");
     }
   }
-  return DEFAULT_PAYMENT_METHODS.map((name) => ({ name, active: true }));
+  return DEFAULT_CATEGORIES.map((name) => ({ name, active: true }));
 }
 
 async function legacyPickerItemsByStoredName(

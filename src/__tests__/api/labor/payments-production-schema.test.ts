@@ -83,7 +83,7 @@ describe("labor payments Production schema boundary", () => {
         },
       ],
       projects: [{ id: "project-1", name: "Project One" }],
-      payment_methods: [{ name: "ACH", status: "active" }],
+      expense_options: [{ name: "ACH", active: true }],
     });
 
     const { GET } = await import("@/app/api/labor/payments/route");
@@ -119,6 +119,9 @@ describe("labor payments Production schema boundary", () => {
         table: "labor_payments",
         columns: "id,worker_id,payment_date,amount,method,note,applied_start_date,applied_end_date",
       },
+    ]);
+    expect(mocks.client.selects.filter(({ table }) => table === "expense_options")).toEqual([
+      { table: "expense_options", columns: "name,active" },
     ]);
   });
 
