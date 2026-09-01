@@ -148,7 +148,7 @@ for (const viewport of VIEWPORTS) {
       expect(geometry.sidebar?.width).toBe(216);
       expect(geometry.header?.height).toBe(104);
       expect(geometry.header?.y).toBe(0);
-      expect(geometry.outline?.width).toBe(viewport.width >= 1440 ? 176 : 0);
+      expect(geometry.outline).toBeNull();
       expect(geometry.inspector?.width).toBe(360);
     }
     await capture(page, testInfo, `${viewport.name}-existing-estimate`);

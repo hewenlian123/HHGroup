@@ -64,11 +64,12 @@ test("dense Builder preserves fast keyboard entry and visible lifecycle actions"
   await addBlankSection(page);
 
   const scopeTools = page.getByRole("toolbar", { name: "Scope tools" });
-  const sectionOutline = page.getByRole("navigation", { name: "Estimate sections" });
   await expect(scopeTools).toBeVisible();
-  await expect(sectionOutline).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Estimate sections" })).toHaveCount(0);
   await expect(scopeTools.getByRole("combobox", { name: "Search scope" })).toBeVisible();
-  await expect(scopeTools.getByLabel("Jump to section")).toBeHidden();
+  const sectionJump = scopeTools.getByLabel("Jump to section");
+  await expect(sectionJump).toBeHidden();
+  await expect(sectionJump.locator("option")).toHaveCount(2);
   await expect(scopeTools.getByRole("button", { name: "Collapse all" })).toBeVisible();
   await expect(scopeTools.getByRole("button", { name: "Expand all" })).toBeVisible();
   await expect(scopeTools.getByRole("button", { name: "Add Section" })).toBeVisible();
@@ -77,13 +78,14 @@ test("dense Builder preserves fast keyboard entry and visible lifecycle actions"
   await expect(firstSection.getByRole("button", { name: "Add line to Section 1" })).toBeVisible();
 
   const gridHeader = page.getByTestId("estimate-line-item-grid-header").first();
-  await expect(gridHeader.locator(":scope > *")).toHaveCount(5);
-  await expect(gridHeader).toContainText("Item details");
-  await expect(gridHeader).toContainText("Qty / Unit");
+  await expect(gridHeader.locator(":scope > *")).toHaveCount(8);
+  await expect(gridHeader).toContainText("Item Name");
+  await expect(gridHeader).toContainText("Description");
+  await expect(gridHeader).toContainText("Qty");
+  await expect(gridHeader).toContainText("Unit");
   await expect(gridHeader).toContainText("Unit price");
   await expect(gridHeader).toContainText("Line total");
-  await expect(gridHeader).not.toContainText("Description");
-  await expect(gridHeader).not.toContainText("Actions");
+  await expect(gridHeader).toContainText("More");
 
   const title = page.getByLabel("Line item 1 title").locator("visible=true");
   const descriptionSummary = page
@@ -110,13 +112,13 @@ test("dense Builder preserves fast keyboard entry and visible lifecycle actions"
         if (!titleInput || !descriptionButton) return false;
         const titleRect = titleInput.getBoundingClientRect();
         const descriptionRect = descriptionButton.getBoundingClientRect();
-        return descriptionRect.top >= titleRect.bottom - 1;
+        return descriptionRect.left >= titleRect.right - 1;
       })
     )
     .toBe(true);
   await expect
     .poll(() => firstLine.evaluate((line) => line.getBoundingClientRect().height))
-    .toBeGreaterThanOrEqual(68);
+    .toBeGreaterThanOrEqual(52);
 
   await title.focus();
   await page.keyboard.press("Tab");
@@ -190,11 +192,13 @@ test("dense Builder preserves fast keyboard entry and visible lifecycle actions"
   await expect(page.getByRole("menuitem", { name: "Remove line item" })).toBeVisible();
   await page.getByRole("menuitem", { name: "Move to section" }).hover();
   await page.getByRole("menuitem", { name: "Section 2", exact: true }).press("Enter");
-  await sectionOutline.getByRole("button", { name: /^Section 2, 2 items/ }).click();
-  await expect(page.locator("[data-estimate-section-id]").nth(1)).toBeFocused();
-  await sectionOutline.getByRole("button", { name: /^Section 1, 1 item/ }).click();
-
   const scopeSearch = scopeTools.getByRole("combobox", { name: "Search scope" });
+  await scopeSearch.fill("Section 2");
+  await page.getByRole("option", { name: /Section 2.*2 items/i }).click();
+  await expect(page.locator("[data-estimate-section-id]").nth(1)).toBeFocused();
+  await scopeSearch.fill("Section 1");
+  await page.getByRole("option", { name: /Section 1.*1 item/i }).click();
+
   await scopeSearch.fill("Excavation");
   const searchResult = page.getByRole("option", { name: /Excavation.*Section 2/i });
   await expect(searchResult).toBeVisible();
@@ -389,9 +393,10 @@ test("P2 desktop polish keeps line entry compact, hierarchical, and visually clu
       lineHeight: "18px",
     });
 
-  const qtyUnitCluster = firstLine.locator(".eb-line-qty-unit-group");
+  const qtyInput = firstLine.getByLabel("Line item 1 quantity", { exact: true });
+  const unitInput = firstLine.getByLabel("Line item 1 unit", { exact: true });
   const unitPrice = firstLine.getByLabel("Line item 1 unit price", { exact: true });
-  for (const control of [qtyUnitCluster, unitPrice]) {
+  for (const control of [qtyInput, unitInput, unitPrice]) {
     await expect
       .poll(() =>
         control.evaluate((element) => {
@@ -412,20 +417,10 @@ test("P2 desktop polish keeps line entry compact, hierarchical, and visually clu
       });
   }
 
-  const qtyInput = firstLine.getByLabel("Line item 1 quantity", { exact: true });
-  const unitDivider = firstLine.locator(".eb-line-pricing-measure");
-  await expect
-    .poll(() => unitDivider.evaluate((element) => getComputedStyle(element).borderLeftColor))
-    .toBe("rgb(139, 146, 155)");
   await qtyInput.focus();
   await expect
-    .poll(() =>
-      Promise.all([
-        qtyUnitCluster.evaluate((element) => getComputedStyle(element).boxShadow !== "none"),
-        qtyInput.evaluate((element) => getComputedStyle(element).boxShadow),
-      ])
-    )
-    .toEqual([true, "none"]);
+    .poll(() => qtyInput.evaluate((element) => getComputedStyle(element).boxShadow !== "none"))
+    .toBe(true);
 
   const addLine = page.locator("[data-estimate-section-id] .eb-add-line").first();
   await expect
@@ -490,13 +485,30 @@ test("P2 mobile polish compresses chrome without shrinking touch targets", async
   await expect
     .poll(() =>
       page.evaluate(() => {
-        const scope = document.querySelector<HTMLElement>(".eb-scope-work-panel");
-        const notes = document.querySelector<HTMLElement>(".eb-notes-clarifications-panel");
-        if (!scope || !notes) return Number.POSITIVE_INFINITY;
-        return notes.getBoundingClientRect().top - scope.getBoundingClientRect().bottom;
+        const flow = document.querySelector<HTMLElement>(".eb-v3-worksheet-flow");
+        const scope = flow?.querySelector<HTMLElement>(".eb-scope-work-panel")?.closest("section");
+        const payment = flow?.querySelector<HTMLElement>("#estimate-payment-schedule");
+        const notes = flow
+          ?.querySelector<HTMLElement>(".eb-notes-clarifications-panel")
+          ?.closest("section");
+        if (!scope || !payment || !notes) return null;
+        const scopeBox = scope.getBoundingClientRect();
+        const paymentBox = payment.getBoundingClientRect();
+        const notesBox = notes.getBoundingClientRect();
+        return {
+          scopeBeforePayment: scopeBox.bottom <= paymentBox.top,
+          paymentBeforeNotes: paymentBox.bottom <= notesBox.top,
+          scopePaymentGap: paymentBox.top - scopeBox.bottom,
+          paymentNotesGap: notesBox.top - paymentBox.bottom,
+        };
       })
     )
-    .toBeLessThanOrEqual(16);
+    .toEqual({
+      scopeBeforePayment: true,
+      paymentBeforeNotes: true,
+      scopePaymentGap: 16,
+      paymentNotesGap: 16,
+    });
   await expect(scopePanel).toBeVisible();
 });
 
@@ -525,12 +537,9 @@ test("keyboard section operations do not animate the operational layout", async 
       targetWindow.__estimateScrollBehaviors?.push(behavior ?? "auto");
     };
   });
-  const secondOutlineItem = page
-    .getByRole("navigation", { name: "Estimate sections" })
-    .getByRole("button")
-    .nth(1);
-  await secondOutlineItem.focus();
-  await page.keyboard.press("Enter");
+  const scopeSearch = page.getByRole("combobox", { name: "Search scope" });
+  await scopeSearch.fill("Section 2");
+  await scopeSearch.press("Enter");
   await expect
     .poll(() =>
       page.evaluate(() => {
@@ -644,7 +653,7 @@ test("descriptions stay compact until the focused rich editor is opened", async 
     );
 
     return {
-      descriptionBelowTitle: description.top >= title.bottom - 1,
+      descriptionAfterTitle: description.left >= title.right - 1,
       pricingCenterSpread: Math.max(...centers) - Math.min(...centers),
       controlsWithinRow: [title, description, quantity, unitPrice, lineTotal, actions].every(
         (rect) =>
@@ -653,7 +662,7 @@ test("descriptions stay compact until the focused rich editor is opened", async 
       ),
     };
   });
-  expect(composedRowMetrics.descriptionBelowTitle).toBe(true);
+  expect(composedRowMetrics.descriptionAfterTitle).toBe(true);
   expect(composedRowMetrics.pricingCenterSpread).toBeLessThanOrEqual(4);
   expect(composedRowMetrics.controlsWithinRow).toBe(true);
 
@@ -747,8 +756,8 @@ test("desktop Scope uses one composed line-editor grid with aligned totals", asy
       rowColumns: getComputedStyle(rowNode).gridTemplateColumns,
     };
   });
-  expect(metrics.headerTracks).toBe(5);
-  expect(metrics.rowTracks).toBe(5);
+  expect(metrics.headerTracks).toBe(8);
+  expect(metrics.rowTracks).toBe(8);
   expect(metrics.rowColumns).toBe(metrics.headerColumns);
 
   const sectionTotalBox = await sectionTotal.boundingBox();
@@ -848,7 +857,7 @@ test("existing Estimate exposes the same Scope toolbar without changing save or 
 
   const scopeTools = page.getByRole("toolbar", { name: "Scope tools" });
   await expect(scopeTools).toBeVisible();
-  await expect(page.getByRole("navigation", { name: "Estimate sections" })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Estimate sections" })).toHaveCount(0);
   await expect(scopeTools.getByLabel("Jump to section")).toBeHidden();
   await expect(page.getByRole("button", { name: "Save", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Save & Preview" }).first()).toBeVisible();

@@ -1525,14 +1525,7 @@ body.estimate-builder-active [data-radix-dialog-overlay] {
   border: 0;
   background: transparent;
   color: var(--hh-text-tertiary);
-  transition:
-    color 150ms ease,
-    background 150ms ease;
-}
-
-.estimate-builder-new .eb-scope-section-drag-handle:hover {
-  color: var(--hh-text-secondary);
-  background: var(--hh-border);
+  transition: none;
 }
 
 .estimate-builder-new .eb-scope-section-drag-handle:active {
@@ -1584,14 +1577,15 @@ body.estimate-builder-active [data-radix-dialog-overlay] {
   border: 0;
   background: transparent;
   color: var(--hh-text-tertiary);
-  transition:
-    color 150ms ease,
-    background 150ms ease;
+  transition: none;
 }
 
-.estimate-builder-new .eb-scope-section-collapse-btn:hover {
-  color: var(--hh-text-secondary);
-  background: var(--hh-border);
+@media (hover: hover) and (pointer: fine) {
+  .estimate-builder-new .eb-scope-section-drag-handle:hover,
+  .estimate-builder-new .eb-scope-section-collapse-btn:hover {
+    color: var(--hh-text-secondary);
+    background: var(--hh-border);
+  }
 }
 
 .estimate-builder-new .eb-scope-section-header--collapsed {

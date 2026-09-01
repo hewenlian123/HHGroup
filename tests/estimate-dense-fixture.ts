@@ -7,6 +7,8 @@ import { assertEstimateCertificationLocalOnly } from "./e2e-supabase-url-guard";
 export const DENSE_ESTIMATE_ID = "edc68a63-cb87-4298-8231-9c668bf43ffe";
 export const DENSE_ESTIMATE_NUMBER = "[E2E]-EST-DENSE-0079";
 export const DENSE_ESTIMATE_TOTAL = 3_253_937;
+export const DENSE_ESTIMATE_TAX = 1_250;
+export const DENSE_ESTIMATE_DISCOUNT = 1_250;
 export const DENSE_ESTIMATE_ITEM_COUNT = 62;
 export const DENSE_ESTIMATE_PAYMENT_COUNT = 5;
 
@@ -145,8 +147,8 @@ export async function seedDenseEstimateFixture(): Promise<void> {
           project_name: "[E2E] Oceanfront Hospitality Renovation and Site Modernization",
           project_site_address: "79 Local Certification Way, Honolulu, Hawaiʻi 96813",
           cost_category_names: { __hh: { documentStyle: "itemized" } },
-          tax: 0,
-          discount: 0,
+          tax: DENSE_ESTIMATE_TAX,
+          discount: DENSE_ESTIMATE_DISCOUNT,
           overhead_pct: 0,
           profit_pct: 0,
           estimate_date: FIXTURE_DATE,
@@ -183,8 +185,13 @@ export async function seedDenseEstimateFixture(): Promise<void> {
       (await admin.from("estimate_payment_schedule_items").insert(payments)).error
     );
 
-    const [estimateResult, itemResult, paymentResult] = await Promise.all([
+    const [estimateResult, metaResult, itemResult, paymentResult] = await Promise.all([
       admin.from("estimates").select("id, number").eq("id", DENSE_ESTIMATE_ID).single(),
+      admin
+        .from("estimate_meta")
+        .select("tax, discount")
+        .eq("estimate_id", DENSE_ESTIMATE_ID)
+        .single(),
       admin.from("estimate_items").select("qty, unit_cost").eq("estimate_id", DENSE_ESTIMATE_ID),
       admin
         .from("estimate_payment_schedule_items")
@@ -192,9 +199,10 @@ export async function seedDenseEstimateFixture(): Promise<void> {
         .eq("estimate_id", DENSE_ESTIMATE_ID),
     ]);
     requireSuccess("verify estimates", estimateResult.error);
+    requireSuccess("verify estimate_meta", metaResult.error);
     requireSuccess("verify estimate_items", itemResult.error);
     requireSuccess("verify estimate_payment_schedule_items", paymentResult.error);
-    if (!estimateResult.data || !itemResult.data || !paymentResult.data) {
+    if (!estimateResult.data || !metaResult.data || !itemResult.data || !paymentResult.data) {
       throw new Error("[dense Estimate fixture] verification query returned no data.");
     }
 
@@ -208,6 +216,8 @@ export async function seedDenseEstimateFixture(): Promise<void> {
     );
     if (
       estimateResult.data.number !== DENSE_ESTIMATE_NUMBER ||
+      Number(metaResult.data.tax) !== DENSE_ESTIMATE_TAX ||
+      Number(metaResult.data.discount) !== DENSE_ESTIMATE_DISCOUNT ||
       itemResult.data.length !== DENSE_ESTIMATE_ITEM_COUNT ||
       paymentResult.data.length !== DENSE_ESTIMATE_PAYMENT_COUNT ||
       persistedTotal !== DENSE_ESTIMATE_TOTAL ||

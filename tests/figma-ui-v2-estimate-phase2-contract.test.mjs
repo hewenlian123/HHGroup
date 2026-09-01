@@ -33,12 +33,14 @@ test("Pricing Inspector is presentation over the existing customer-total contrac
 
   assert.match(detail, /setDetailsSurface\("pricing"\)/);
   assert.match(pricing, /data-estimate-surface=\{detailsSurface\}/);
-  assert.match(pricing, /"Advanced Pricing"/);
-  for (const field of ["tax", "discount", "overheadPct", "profitPct"]) {
+  assert.match(pricing, /"Estimate Terms"/);
+  for (const field of ["tax", "discount"]) {
     assert.match(pricing, new RegExp(`name="${field}"`));
   }
+  for (const legacyInternalField of ["overheadPct", "profitPct"]) {
+    assert.doesNotMatch(pricing, new RegExp(`name="${legacyInternalField}"`));
+  }
   assert.match(pricing, /estimateSubtotal \+ taxDraft - discountDraft/);
-  assert.match(pricing, /do\s+not change the customer subtotal, tax, discount, or total/);
   assert.match(calculations, /const total = subtotal \+ tax - discount/);
   assert.match(calculations, /markup: 0/);
 });

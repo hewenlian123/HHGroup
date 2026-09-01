@@ -312,7 +312,7 @@ test("EST-0063 keeps financial, List, Preview, Print, PDF, and responsive parity
   await header.getByRole("button", { name: "Edit", exact: true }).click();
   await header.getByRole("button", { name: "Edit details" }).click();
   const details = page.getByRole("dialog", {
-    name: "Customer / project / pricing details",
+    name: "Customer, project, and estimate details",
   });
   await details.getByRole("button", { name: "Save", exact: true }).click();
   await expect(details).toBeHidden();

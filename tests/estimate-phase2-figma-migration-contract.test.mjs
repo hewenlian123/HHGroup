@@ -4,7 +4,7 @@ import test from "node:test";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
-test("Phase 2 keeps one production-owned Estimate surface for each Figma drawer", async () => {
+test("Estimate V3 keeps production actions while payment and notes become continuous", async () => {
   const [detail, editor, customerSection, header, paymentSchedule] = await Promise.all([
     read("src/app/estimates/[id]/estimate-detail-client.tsx"),
     read("src/app/estimates/_components/estimate-editor.tsx"),
@@ -26,14 +26,17 @@ test("Phase 2 keeps one production-owned Estimate surface for each Figma drawer"
 
   assert.match(detail, /surface="activity"/);
   assert.match(detail, /surface="revision"/);
-  assert.match(editor, /surface="notes"/);
-  assert.match(editor, /surface="payment"/);
+  assert.match(editor, /className="eb-v3-worksheet-flow"/);
+  assert.match(editor, /id="estimate-payment-schedule"/);
+  assert.match(editor, /id="estimate-terms-notes"/);
+  assert.doesNotMatch(editor, /surface="notes"/);
+  assert.doesNotMatch(editor, /surface="payment"/);
   assert.match(detail, /setDetailsSurface\("information"\)/);
   assert.match(detail, /setDetailsSurface\("pricing"\)/);
   assert.match(customerSection, /estimateSurfaceSheetClassName\(detailsSurface/);
   assert.match(customerSection, /data-estimate-surface=\{detailsSurface\}/);
-  assert.match(customerSection, /"Advanced Pricing"/);
-  assert.match(customerSection, /Customer \/ project \/ pricing details/);
+  assert.match(customerSection, /"Estimate Terms"/);
+  assert.match(customerSection, /Customer, project, and estimate details/);
   assert.equal((editor.match(/<EstimateNotesClarifications/g) ?? []).length, 2);
   assert.equal((editor.match(/<EstimatePaymentSchedule/g) ?? []).length, 1);
   for (const tab of ["Customer Notes", "Terms", "Internal Notes"]) {
@@ -48,11 +51,10 @@ test("Phase 2 keeps one production-owned Estimate surface for each Figma drawer"
   assert.doesNotMatch(editor, /onChange=\{\(event\) => commitInternalNotes/);
   assert.match(customerSection, /<CustomerSelectWithAdd/);
   assert.match(customerSection, /fetch\("\/api\/projects"/);
-  assert.match(customerSection, /name="overheadPct"/);
-  assert.match(customerSection, /name="profitPct"/);
+  assert.doesNotMatch(customerSection, /name="overheadPct"/);
+  assert.doesNotMatch(customerSection, /name="profitPct"/);
   assert.match(customerSection, /data-testid="estimate-pricing-live-summary"/);
   assert.match(customerSection, /estimateSubtotal \+ taxDraft - discountDraft/);
-  assert.match(customerSection, /do\s+not change the customer subtotal, tax, discount, or total/);
   assert.match(paymentSchedule, /reorderPaymentScheduleAction/);
   assert.match(paymentSchedule, /markPaymentMilestonePaidAction/);
   assert.match(paymentSchedule, /Partial schedules are valid and may be saved/);

@@ -6,7 +6,7 @@ import {
 } from "@/components/perf/sync-router-non-blocking";
 import * as React from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { FileClock } from "lucide-react";
 import type {
   CostCode,
@@ -124,8 +124,6 @@ function EstimateDetailClientContent({
 }: EstimateDetailClientProps) {
   const { toast } = useToast();
   const router = useRouter();
-  const workflowSearchParams = useSearchParams();
-  const returnMilestoneId = workflowSearchParams.get("returnMilestone")?.trim() || null;
   const revisionLabel = revisionContext
     ? `${estimateNumber} Rev ${revisionContext.revisionNumber}`
     : estimateNumber;
@@ -135,10 +133,6 @@ function EstimateDetailClientContent({
   const [detailsOpen, setDetailsOpen] = React.useState(false);
   const [detailsSurface, setDetailsSurface] = React.useState<"information" | "pricing">(
     "information"
-  );
-  const [notesOpen, setNotesOpen] = React.useState(false);
-  const [paymentScheduleOpen, setPaymentScheduleOpen] = React.useState(
-    () => returnMilestoneId !== null
   );
   const [activityOpen, setActivityOpen] = React.useState(false);
   const [revisionHistoryOpen, setRevisionHistoryOpen] = React.useState(false);
@@ -151,9 +145,6 @@ function EstimateDetailClientContent({
   const commandSingleFlightRef = React.useRef(createEstimateMutationSingleFlight());
   const saveInFlightRef = React.useRef(false);
 
-  React.useEffect(() => {
-    if (returnMilestoneId) setPaymentScheduleOpen(true);
-  }, [returnMilestoneId]);
   const {
     state: documentSaveState,
     status: saveStatus,
@@ -244,6 +235,15 @@ function EstimateDetailClientContent({
 
   const onPreview = (): void => {
     router.push(buildEstimatePreviewHref(estimateId, captureEstimateBuilderReturnContext()));
+  };
+
+  const focusContinuousSection = (sectionId: string): void => {
+    window.requestAnimationFrame(() => {
+      const section = document.getElementById(sectionId);
+      if (!section) return;
+      section.scrollIntoView({ behavior: "auto", block: "start" });
+      section.focus({ preventScroll: true });
+    });
   };
 
   const onSaveShortcutRef = React.useRef(onSave);
@@ -467,11 +467,11 @@ function EstimateDetailClientContent({
         }
         onNotesClick={() => {
           if (!isLocked && !editing) setEditing(true);
-          setNotesOpen(true);
+          focusContinuousSection("estimate-terms-notes");
         }}
         onPaymentScheduleClick={() => {
           if (!isLocked && !editing) setEditing(true);
-          setPaymentScheduleOpen(true);
+          focusContinuousSection("estimate-payment-schedule");
         }}
         onActivityClick={() => setActivityOpen(true)}
         onRevisionHistoryClick={revisionContext ? () => setRevisionHistoryOpen(true) : undefined}
@@ -560,16 +560,12 @@ function EstimateDetailClientContent({
         onDetailsOpenChange={setDetailsOpen}
         detailsSurface={detailsSurface}
         onSaveDetails={() => void onSave()}
-        notesOpen={notesOpen}
-        onNotesOpenChange={setNotesOpen}
-        paymentScheduleOpen={paymentScheduleOpen}
-        onPaymentScheduleOpenChange={setPaymentScheduleOpen}
         onPricingInspectorDetailsClick={
           isLocked
             ? undefined
             : () => {
                 if (!editing) setEditing(true);
-                setDetailsSurface("pricing");
+                setDetailsSurface("information");
                 setDetailsOpen(true);
               }
         }

@@ -14,6 +14,7 @@ import { EstimateLineItemMobileCard } from "./estimate-line-item-mobile-card";
 import { formatEstimateCurrency, roundEstimateCurrencyValue } from "./estimate-currency";
 import { setLineItemStatusAction, toggleLineItemHideAmountOnPdfAction } from "../[id]/actions";
 import { useEstimateDocumentSave } from "./estimate-document-save-context";
+import { createEstimateSerialMutationQueue } from "./estimate-mutation-coordinator";
 import { useToast } from "@/components/toast/toast-provider";
 
 type LineItemMutationResult = { ok: boolean; itemId?: string; error?: string };
@@ -69,9 +70,24 @@ export function EstimateLineItemPersistedMobile({
   const [qty, setQty] = React.useState(row.qty);
   const [unit, setUnit] = React.useState(row.unit);
   const [unitPrice, setUnitPrice] = React.useState(roundEstimateCurrencyValue(row.unitCost));
+  const draftRef = React.useRef({
+    title: split.title,
+    description: split.description,
+    qty: row.qty,
+    unit: row.unit,
+    unitPrice: roundEstimateCurrencyValue(row.unitCost),
+  });
+  const lineSaveQueueRef = React.useRef(createEstimateSerialMutationQueue());
 
   React.useEffect(() => {
     const s = splitLineItemDesc(row.desc ?? "");
+    draftRef.current = {
+      title: s.title,
+      description: s.description,
+      qty: row.qty,
+      unit: row.unit,
+      unitPrice: roundEstimateCurrencyValue(row.unitCost),
+    };
     setTitle(s.title);
     setDescription(s.description);
     setQty(row.qty);
@@ -96,24 +112,25 @@ export function EstimateLineItemPersistedMobile({
 
   const submitUpdate = (): void => {
     if (isReadOnly) return;
+    const draft = draftRef.current;
     const formData = new FormData();
     formData.set("estimateId", estimateId);
     formData.set("itemId", row.id);
-    formData.set("desc", combinedDesc);
-    formData.set("qty", String(qty));
-    formData.set("unit", unit);
-    formData.set("unitCost", String(unitPrice));
-    void trackMutation(`line:update:${row.id}`, () => updateLineItemAction(formData)).then(
-      (result) => {
-        if (!result.ok) {
-          toast({
-            title: "Save failed",
-            description: result.error ?? "Could not save this line item.",
-            variant: "error",
-          });
-        }
+    formData.set("desc", combineLineItemDesc(draft.title, draft.description));
+    formData.set("qty", String(draft.qty));
+    formData.set("unit", draft.unit);
+    formData.set("unitCost", String(draft.unitPrice));
+    void trackMutation(`line:update:${row.id}`, () =>
+      lineSaveQueueRef.current.enqueue(() => updateLineItemAction(formData))
+    ).then((result) => {
+      if (!result.ok) {
+        toast({
+          title: "Save failed",
+          description: result.error ?? "Could not save this line item.",
+          variant: "error",
+        });
       }
-    );
+    });
   };
 
   const runLineAction = async (
@@ -139,7 +156,6 @@ export function EstimateLineItemPersistedMobile({
     });
   };
 
-  const combinedDesc = combineLineItemDesc(title, description);
   const liveTotal = formatEstimateCurrency(editorLineTotalFromParts(qty, unitPrice));
 
   if (isReadOnly) {
@@ -161,6 +177,7 @@ export function EstimateLineItemPersistedMobile({
         isLastRow={isLastRow}
         onChange={(patch) => {
           markUnsaved();
+          draftRef.current = { ...draftRef.current, ...patch };
           if (patch.title !== undefined) setTitle(patch.title);
           if (patch.description !== undefined) setDescription(patch.description);
           if (patch.qty !== undefined) setQty(patch.qty);

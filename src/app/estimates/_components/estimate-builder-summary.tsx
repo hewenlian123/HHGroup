@@ -16,7 +16,6 @@ export type EstimateBuilderPaymentSummary = {
 
 export type EstimateBuilderSummaryProps = {
   summary: EstimateSummaryResult | null;
-  showInternal?: boolean;
   /** Shown when milestones exist — compact executive line only. */
   paymentSummary?: EstimateBuilderPaymentSummary | null;
   onOpenPaymentSchedule?: () => void;
@@ -27,7 +26,6 @@ export type EstimateBuilderSummaryProps = {
 
 export function EstimateBuilderSummary({
   summary,
-  showInternal = false,
   paymentSummary = null,
   className,
   floating = true,
@@ -45,13 +43,7 @@ export function EstimateBuilderSummary({
     );
   }
 
-  const { subtotal, grandTotal, tax, discount, materialCost, laborCost, subcontractorCost } =
-    summary;
-  const internalLines = [
-    { label: "Material", value: materialCost },
-    { label: "Labor", value: laborCost },
-    { label: "Subcontractor", value: subcontractorCost },
-  ].filter(({ value }) => Math.abs(value) >= 0.005);
+  const { subtotal, grandTotal, tax, discount } = summary;
 
   return (
     <div className={shellClass} aria-label="Estimate overview">
@@ -70,21 +62,6 @@ export function EstimateBuilderSummary({
             </span>{" "}
             scheduled
           </p>
-        </div>
-      ) : null}
-
-      {showInternal ? (
-        <div className="mb-3 space-y-1 border-b border-border pb-2.5">
-          <p className={EB.summaryInternalLabel}>Internal</p>
-          {internalLines.length > 0 ? (
-            internalLines.map(({ label, value }) => (
-              <InternalLine key={label} label={label} value={value} />
-            ))
-          ) : (
-            <p className="py-0.5 text-hh-metadata leading-snug text-muted-foreground">
-              No internal costs
-            </p>
-          )}
         </div>
       ) : null}
 
@@ -113,7 +90,6 @@ export function EstimateBuilderSummary({
 
 export function EstimateBuilderCompactSummary({
   summary,
-  showInternal = false,
   paymentSummary = null,
   onOpenPaymentSchedule,
   onOpenDetails,
@@ -129,7 +105,7 @@ export function EstimateBuilderCompactSummary({
         <h2>Pricing overview</h2>
       </header>
 
-      <nav className="eb-pricing-inspector-tabs" aria-label="Pricing inspector sections">
+      <nav className="eb-pricing-inspector-tabs" aria-label="Estimate inspector sections">
         <span aria-current="page">Overview</span>
         {onOpenPaymentSchedule ? (
           <button type="button" onClick={onOpenPaymentSchedule}>
@@ -153,21 +129,6 @@ export function EstimateBuilderCompactSummary({
         <CompactAmount label="Total" value={summary?.grandTotal ?? null} total />
       </div>
 
-      {showInternal ? (
-        <section className="eb-pricing-allocation" aria-labelledby="estimate-price-allocation">
-          <h3 id="estimate-price-allocation">Estimate price allocation</h3>
-          {summary ? (
-            <div className="eb-pricing-allocation-list">
-              <InternalLine label="Material" value={summary.materialCost} />
-              <InternalLine label="Labor" value={summary.laborCost} />
-              <InternalLine label="Subcontract" value={summary.subcontractorCost} />
-            </div>
-          ) : (
-            <p className="text-hh-metadata text-muted-foreground">No internal costs</p>
-          )}
-        </section>
-      ) : null}
-
       <section className="eb-pricing-payment-card" aria-labelledby="estimate-payment-summary">
         <div className="eb-pricing-payment-card-header">
           <h3 id="estimate-payment-summary">Payment summary</h3>
@@ -184,6 +145,12 @@ export function EstimateBuilderCompactSummary({
             <p className="eb-pricing-payment-scheduled">
               <span>Scheduled</span>
               <strong>{fmt(paymentSummary.scheduledTotal)}</strong>
+            </p>
+            <p className="eb-pricing-payment-scheduled">
+              <span>Remaining</span>
+              <strong>
+                {summary ? fmt(summary.grandTotal - paymentSummary.scheduledTotal) : "—"}
+              </strong>
             </p>
           </div>
         ) : (
@@ -267,17 +234,6 @@ function SummaryLine({
           muted && EB.summaryLineValueMuted
         )}
       >
-        {fmt(value)}
-      </span>
-    </div>
-  );
-}
-
-function InternalLine({ label, value }: { label: string; value: number }): React.ReactElement {
-  return (
-    <div className="flex items-baseline justify-between gap-3 py-0.5">
-      <span className={EB.summaryLineLabel}>{label}</span>
-      <span className={cn(EB.summaryLineValue, "min-w-0 max-w-[58%] break-words text-right")}>
         {fmt(value)}
       </span>
     </div>

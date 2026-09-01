@@ -353,9 +353,8 @@ test("New Estimate persists an additional empty Section after Save and reload", 
     .getByRole("button", { name: "Delete", exact: true })
     .click();
   await expect(secondSection.locator("[data-estimate-line-item-id]")).toHaveCount(0);
-  const sectionOutline = page.getByRole("navigation", { name: "Estimate sections" });
-  const outlineSectionButtons = sectionOutline.locator("ol").getByRole("button");
-  await expect(outlineSectionButtons.nth(1)).toHaveAccessibleName(/, 0 items,/);
+  const sectionJump = page.getByLabel("Jump to section");
+  await expect(sectionJump.locator("option").nth(1)).toHaveText(/· 0 items$/);
 
   await page.getByRole("button", { name: "Save Estimate" }).click();
   await expect(page).toHaveURL(/\/estimates\/(?!new(?:\/|$))[^/?#]+/, { timeout: 60_000 });
@@ -373,8 +372,10 @@ test("New Estimate persists an additional empty Section after Save and reload", 
 
   await reloadWithE2EAuth(page);
   await page.getByRole("button", { name: "Edit", exact: true }).click();
-  await expect(outlineSectionButtons).toHaveCount(2);
-  await expect(outlineSectionButtons.nth(1)).toHaveAccessibleName(/, 0 items,/);
+  await expect(page.getByLabel("Jump to section").locator("option")).toHaveCount(2);
+  await expect(page.getByLabel("Jump to section").locator("option").nth(1)).toHaveText(
+    /· 0 items$/
+  );
 });
 
 test("60-line Estimate completes publication, continuity, revenue-readiness, and responsive stress", async ({
@@ -403,25 +404,20 @@ test("60-line Estimate completes publication, continuity, revenue-readiness, and
 
   await page.getByRole("button", { name: "Edit", exact: true }).click();
   const editorRoot = page.locator("[data-estimate-editor-mode]");
-  const sectionOutline = page.getByRole("navigation", { name: "Estimate sections" });
-  const selectedOutlineSection = sectionOutline.getByRole("button", {
-    name: /^Production Readiness Section 8, 6 items,/,
-  });
-  const firstOutlineSection = sectionOutline.getByRole("button", {
-    name: /^Production Readiness Section 1, 6 items,/,
-  });
-  await selectedOutlineSection.click();
+  const sectionJump = page.getByLabel("Jump to section");
+  const scopeSearch = page.getByRole("combobox", { name: "Search scope" });
+  await scopeSearch.fill("Production Readiness Section 8");
+  await scopeSearch.press("Enter");
   await expect(editorRoot).toHaveAttribute("data-estimate-active-section-id", "stress-08");
-  await expect(selectedOutlineSection).toHaveAttribute("aria-current", "location");
+  await expect(sectionJump).toHaveValue("stress-08");
   await waitForActiveSectionObserverTurn(page);
   await manuallyScrollEstimateToTop(page);
   await expect(editorRoot).toHaveAttribute("data-estimate-active-section-id", "stress-01");
-  await expect(firstOutlineSection).toHaveAttribute("aria-current", "location");
-  await expect(selectedOutlineSection).not.toHaveAttribute("aria-current", "location");
+  await expect(sectionJump).toHaveValue("stress-01");
 
-  await selectedOutlineSection.click();
+  await sectionJump.selectOption("stress-08");
   await expect(editorRoot).toHaveAttribute("data-estimate-active-section-id", "stress-08");
-  await expect(selectedOutlineSection).toHaveAttribute("aria-current", "location");
+  await expect(sectionJump).toHaveValue("stress-08");
   const selectedSection = page.locator('[data-estimate-section-id="stress-08"]');
   await expect(selectedSection).toBeFocused();
   const selectedPrice = selectedSection
@@ -451,14 +447,10 @@ test("60-line Estimate completes publication, continuity, revenue-readiness, and
   );
 
   await page.getByRole("button", { name: "Edit", exact: true }).click();
-  const scopeSearch = page.getByRole("combobox", { name: "Search scope" });
   await scopeSearch.fill("Construction scope line 41");
   await expect(page.getByRole("option", { name: /Construction scope line 41/ })).toBeVisible();
   await scopeSearch.press("Enter");
-  const searchedOutlineSection = page
-    .getByRole("navigation", { name: "Estimate sections" })
-    .getByRole("button", { name: /^Production Readiness Section 7, 6 items,/ });
-  await expect(searchedOutlineSection).toHaveAttribute("aria-current", "location");
+  await expect(sectionJump).toHaveValue("stress-07");
   await expect(page.locator(".eb-estimate-editor-surface")).toHaveAttribute(
     "data-estimate-active-section-id",
     "stress-07"
@@ -466,12 +458,12 @@ test("60-line Estimate completes publication, continuity, revenue-readiness, and
   await waitForActiveSectionObserverTurn(page);
   await manuallyScrollEstimateToTop(page);
   await expect(editorRoot).toHaveAttribute("data-estimate-active-section-id", "stress-01");
-  await expect(firstOutlineSection).toHaveAttribute("aria-current", "location");
-  await expect(searchedOutlineSection).not.toHaveAttribute("aria-current", "location");
+  await expect(sectionJump).toHaveValue("stress-01");
 
-  await searchedOutlineSection.click();
+  await scopeSearch.fill("Production Readiness Section 7");
+  await scopeSearch.press("Enter");
   await expect(editorRoot).toHaveAttribute("data-estimate-active-section-id", "stress-07");
-  await expect(searchedOutlineSection).toHaveAttribute("aria-current", "location");
+  await expect(sectionJump).toHaveValue("stress-07");
   await page.getByRole("button", { name: "Save & Preview" }).first().click();
   await expect(page).toHaveURL(/\/preview\?.*returnSection=stress-07/, { timeout: 60_000 });
   await page.getByTestId("estimate-preview-back-link").click();

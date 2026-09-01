@@ -30,8 +30,8 @@ export function EstimateItemSortableRow({
     <button
       type="button"
       className={cn(
-        "inline-flex h-7 min-h-7 w-7 min-w-7 cursor-grab touch-none items-center justify-center rounded-sm text-muted-foreground transition-colors",
-        "hover:bg-muted hover:text-foreground active:cursor-grabbing",
+        "eb-line-item-reorder-handle inline-flex h-7 min-h-7 w-7 min-w-7 cursor-grab touch-none items-center justify-center rounded-sm text-muted-foreground",
+        "active:cursor-grabbing",
         disabled && "cursor-wait opacity-50"
       )}
       {...attributes}

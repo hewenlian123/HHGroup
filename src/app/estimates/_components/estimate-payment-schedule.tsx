@@ -626,10 +626,7 @@ export function EstimatePaymentSchedule(props: {
                         type="submit"
                         variant="outline"
                         size="icon"
-                        className={cn(
-                          "min-h-11 min-w-11 md:h-8 md:min-h-8 md:w-8 md:min-w-8",
-                          EB.btnGhost
-                        )}
+                        className={cn("eb-payment-row-action h-8 min-h-8 w-8 min-w-8", EB.btnGhost)}
                         disabled={!orderedItemIds || paymentMutationBusy}
                         aria-label={`Move ${item.title} ${direction}`}
                       >
@@ -642,10 +639,7 @@ export function EstimatePaymentSchedule(props: {
                   type="button"
                   variant="outline"
                   size="icon"
-                  className={cn(
-                    "min-h-11 min-w-11 md:h-8 md:min-h-8 md:w-8 md:min-w-8",
-                    EB.btnGhost
-                  )}
+                  className={cn("eb-payment-row-action h-8 min-h-8 w-8 min-w-8", EB.btnGhost)}
                   aria-label={`Edit ${item.title}`}
                   onClick={() => openScheduleDrawer(item)}
                   disabled={paymentMutationBusy}
@@ -658,7 +652,7 @@ export function EstimatePaymentSchedule(props: {
                     variant="outline"
                     size="icon"
                     className={cn(
-                      "min-h-11 min-w-11 text-[var(--hh-danger)] hover:bg-[var(--hh-danger-soft-fill)] md:h-8 md:min-h-8 md:w-8 md:min-w-8",
+                      "eb-payment-row-action h-8 min-h-8 w-8 min-w-8 text-[var(--hh-danger)] hover:bg-[var(--hh-danger-soft-fill)]",
                       EB.btnGhost
                     )}
                     aria-label={`Delete ${item.title}`}

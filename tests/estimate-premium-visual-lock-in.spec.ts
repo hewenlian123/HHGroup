@@ -72,7 +72,7 @@ test.beforeEach(async ({ page }) => {
 });
 test.afterEach(({ page }) => expect(browserErrors.get(page) ?? []).toEqual([]));
 
-test("Existing Estimate exposes the Certified V2 command, outline, scope, and pricing hierarchy", async ({
+test("Existing Estimate exposes the V3 command, worksheet navigation, scope, and pricing hierarchy", async ({
   page,
 }, testInfo) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
@@ -82,15 +82,14 @@ test("Existing Estimate exposes the Certified V2 command, outline, scope, and pr
   await expect(page.getByTestId("estimate-details-summary")).toContainText(
     "[E2E] Pacific Heritage Construction Partners"
   );
-  const sectionOutline = page.getByRole("navigation", { name: "Estimate sections" });
-  await expect(sectionOutline).toBeVisible();
-  const outlineSections = sectionOutline.locator("ol").getByRole("button");
-  await expect(outlineSections).toHaveCount(10);
-  await expect(outlineSections.first()).toHaveAccessibleName(
-    /^Certified Dense Scope 1, 7 items, \$[\d,]+\.\d{2}, expanded$/
+  await expect(page.getByRole("navigation", { name: "Estimate sections" })).toHaveCount(0);
+  const scopeTools = page.getByRole("toolbar", { name: "Scope tools" });
+  await expect(scopeTools).toBeVisible();
+  const sectionJump = scopeTools.getByLabel("Jump to section");
+  await expect(sectionJump.locator("option")).toHaveCount(10);
+  await expect(sectionJump.locator("option").first()).toHaveText(
+    "Certified Dense Scope 1 · 7 items"
   );
-  await expect(outlineSections.first()).toHaveAttribute("aria-current", "location");
-  await expect(page.getByRole("toolbar", { name: "Scope tools" })).toBeVisible();
   await expect(page.getByRole("combobox", { name: "Search scope" })).toBeVisible();
   await expect(page.locator("[data-estimate-line-item-id]")).toHaveCount(62);
 

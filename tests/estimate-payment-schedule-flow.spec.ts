@@ -126,12 +126,20 @@ async function addPaymentMilestone(
 }
 
 async function openDetailPaymentSchedule(page: Page) {
-  const existing = page.getByTestId("estimate-payment-schedule-sheet");
-  if (await existing.isVisible().catch(() => false)) return existing;
-  await page.getByRole("button", { name: "Estimate actions" }).click();
-  await page.getByRole("menuitem", { name: "Payment Schedule" }).click();
-  await expect(existing).toBeVisible({ timeout: 10_000 });
-  return existing;
+  const section = page.locator("#estimate-payment-schedule");
+  await expect(section).toBeVisible({ timeout: 10_000 });
+  await section.scrollIntoViewIfNeeded();
+  const details = section.locator("details");
+  const expanded = await details.evaluate(
+    (node) => node instanceof HTMLDetailsElement && node.open
+  );
+  if (!expanded) {
+    await details.locator("summary").click();
+  }
+  await expect(section.locator('[data-estimate-payment-schedule="true"]')).toBeVisible({
+    timeout: 10_000,
+  });
+  return section;
 }
 
 async function openEstimatePreview(page: Page) {
@@ -197,7 +205,7 @@ test("estimate payment schedule persists and has customer-facing payment preview
   await expect(paymentSheet.getByText("Due: Jun 1, 2026")).toBeVisible();
   await expect(page.locator("body")).not.toContainText("Due: May 31, 2026");
   await page.keyboard.press("Escape");
-  await expect(paymentSheet).toBeHidden();
+  await expect(paymentSheet).toBeVisible();
 
   await openEstimatePreview(page);
   await expect(page).toHaveURL(/\/preview/, { timeout: 30_000 });

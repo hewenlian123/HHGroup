@@ -41,8 +41,6 @@ const metaInput = ebSheetInput("text-sm");
 export type EstimateEditCustomerMeta = {
   client: { name: string; phone: string; email: string; address: string };
   project: { name: string; siteAddress: string };
-  overheadPct?: number;
-  profitPct?: number;
   estimateDate?: string | null;
   validUntil?: string | null;
   salesPerson?: string | null;
@@ -179,8 +177,6 @@ export function EstimateEditCustomerSection({
   const [validUntil, setValidUntil] = React.useState(meta.validUntil ?? "");
   const [taxDraft, setTaxDraft] = React.useState(tax);
   const [discountDraft, setDiscountDraft] = React.useState(discount);
-  const [overheadPctDraft, setOverheadPctDraft] = React.useState(meta.overheadPct ?? 0);
-  const [profitPctDraft, setProfitPctDraft] = React.useState(meta.profitPct ?? 0);
   const [selectedCustomerId, setSelectedCustomerId] = React.useState<string | null>(
     customerId ?? null
   );
@@ -210,8 +206,6 @@ export function EstimateEditCustomerSection({
     setValidUntil(meta.validUntil ?? "");
     setTaxDraft(tax);
     setDiscountDraft(discount);
-    setOverheadPctDraft(meta.overheadPct ?? 0);
-    setProfitPctDraft(meta.profitPct ?? 0);
     setSelectedCustomerId(customerId ?? null);
     setClientNameDraft(meta.client.name);
     setClientPhoneDraft(meta.client.phone);
@@ -229,8 +223,6 @@ export function EstimateEditCustomerSection({
     meta.client.phone,
     meta.documentStyle,
     meta.estimateDate,
-    meta.overheadPct,
-    meta.profitPct,
     meta.project.name,
     meta.project.siteAddress,
     meta.validUntil,
@@ -291,8 +283,6 @@ export function EstimateEditCustomerSection({
     setValidUntil(meta.validUntil ?? "");
     setTaxDraft(tax);
     setDiscountDraft(discount);
-    setOverheadPctDraft(meta.overheadPct ?? 0);
-    setProfitPctDraft(meta.profitPct ?? 0);
     setSelectedCustomerId(customerId ?? null);
     setClientNameDraft(meta.client.name);
     setClientPhoneDraft(meta.client.phone);
@@ -351,9 +341,9 @@ export function EstimateEditCustomerSection({
               <SheetHeader className={EB.sheetHeader}>
                 <SheetTitle className={EB.sheetTitle}>
                   <span aria-hidden>
-                    {detailsSurface === "pricing" ? "Advanced Pricing" : "Estimate Information"}
+                    {detailsSurface === "pricing" ? "Estimate Terms" : "Estimate Information"}
                   </span>
-                  <span className="sr-only">Customer / project / pricing details</span>
+                  <span className="sr-only">Customer, project, and estimate details</span>
                 </SheetTitle>
                 <SheetDescription className="eb-estimate-details-subtitle">
                   {detailsSurface === "pricing"
@@ -575,7 +565,7 @@ export function EstimateEditCustomerSection({
                     aria-label="Commercial terms"
                   >
                     <p id="estimate-terms-title" className={EB.sheetSectionLabel}>
-                      Terms &amp; pricing
+                      Quote terms
                     </p>
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                       <div className={cn(EB.sheetField, "min-w-0")}>
@@ -658,42 +648,6 @@ export function EstimateEditCustomerSection({
                           className={ebSheetInput(cn("text-sm text-foreground", EB.inputNumeric))}
                         />
                       </div>
-                      <div className={cn(EB.sheetField, "min-w-0")}>
-                        <Label htmlFor="overheadPct" className={EB.sheetLabel}>
-                          Internal overhead reference %
-                        </Label>
-                        <Input
-                          id="overheadPct"
-                          name="overheadPct"
-                          type="number"
-                          step="0.01"
-                          min={0}
-                          value={overheadPctDraft}
-                          onChange={(event) => {
-                            const next = Number(event.target.value);
-                            setOverheadPctDraft(Number.isFinite(next) ? Math.max(0, next) : 0);
-                          }}
-                          className={ebSheetInput(cn("text-sm text-foreground", EB.inputNumeric))}
-                        />
-                      </div>
-                      <div className={cn(EB.sheetField, "min-w-0")}>
-                        <Label htmlFor="profitPct" className={EB.sheetLabel}>
-                          Internal profit reference %
-                        </Label>
-                        <Input
-                          id="profitPct"
-                          name="profitPct"
-                          type="number"
-                          step="0.01"
-                          min={0}
-                          value={profitPctDraft}
-                          onChange={(event) => {
-                            const next = Number(event.target.value);
-                            setProfitPctDraft(Number.isFinite(next) ? Math.max(0, next) : 0);
-                          }}
-                          className={ebSheetInput(cn("text-sm text-foreground", EB.inputNumeric))}
-                        />
-                      </div>
                     </div>
                     <div
                       className="rounded-md border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-3"
@@ -726,10 +680,6 @@ export function EstimateEditCustomerSection({
                         </p>
                       ) : null}
                     </div>
-                    <p className="eb-estimate-details-helper text-xs leading-snug">
-                      Internal overhead and profit references are stored for planning only. They do
-                      not change the customer subtotal, tax, discount, or total.
-                    </p>
                   </section>
                 </form>
               </div>

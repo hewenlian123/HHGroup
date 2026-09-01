@@ -39,21 +39,20 @@ async function capture(page: Page, testInfo: TestInfo, name: string): Promise<vo
   await testInfo.attach(name, { path, contentType: "image/png" });
 }
 
-test("dense Estimate preserves ordered V2 scope and exact financial output", async ({
+test("dense Estimate preserves ordered V3 worksheet scope and exact financial output", async ({
   page,
 }, testInfo) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await loginAsE2EOwner(page, `/estimates/${DENSE_ESTIMATE_ID}`);
 
-  await expect(page.getByRole("toolbar", { name: "Scope tools" })).toBeVisible();
-  const sectionOutline = page.getByRole("navigation", { name: "Estimate sections" });
-  await expect(sectionOutline).toBeVisible();
-  const outlineSections = sectionOutline.locator("ol").getByRole("button");
-  await expect(outlineSections).toHaveCount(10);
-  await expect(outlineSections.first()).toHaveAccessibleName(
-    /^Certified Dense Scope 1, 7 items, \$[\d,]+\.\d{2}, expanded$/
+  const scopeTools = page.getByRole("toolbar", { name: "Scope tools" });
+  await expect(scopeTools).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Estimate sections" })).toHaveCount(0);
+  const sectionJump = scopeTools.getByLabel("Jump to section");
+  await expect(sectionJump.locator("option")).toHaveCount(10);
+  await expect(sectionJump.locator("option").first()).toHaveText(
+    "Certified Dense Scope 1 · 7 items"
   );
-  await expect(outlineSections.first()).toHaveAttribute("aria-current", "location");
   await expect(page.locator("[data-estimate-line-item-id]")).toHaveCount(62);
   await expect(page.getByText("Certified Dense Scope 1", { exact: true }).first()).toBeVisible();
 
@@ -98,7 +97,7 @@ test("desktop Edit exposes keyboard-focusable current line controls", async ({
   await capture(page, testInfo, "existing-edit-1440");
 });
 
-test("New Estimate presents the current V2 command, scope, and pricing surfaces", async ({
+test("New Estimate presents the current V3 command, worksheet, and pricing surfaces", async ({
   page,
 }, testInfo) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
@@ -106,8 +105,10 @@ test("New Estimate presents the current V2 command, scope, and pricing surfaces"
 
   await expect(page.getByTestId("estimate-new-header")).toContainText("New Estimate");
   await expect(page.getByTestId("estimate-template-selector")).toBeVisible();
-  await expect(page.getByRole("toolbar", { name: "Scope tools" })).toBeVisible();
-  await expect(page.getByRole("navigation", { name: "Estimate sections" })).toBeVisible();
+  const scopeTools = page.getByRole("toolbar", { name: "Scope tools" });
+  await expect(scopeTools).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Estimate sections" })).toHaveCount(0);
+  await expect(scopeTools.getByLabel("Jump to section")).toBeHidden();
   await expect(page.getByRole("region", { name: "Estimate pricing summary" })).toBeVisible();
   await expect(page.getByRole("button", { name: /^Add Section$/i }).first()).toBeVisible();
   await expectNoHorizontalOverflow(page);
@@ -120,7 +121,7 @@ for (const viewport of [
   { name: "ipad-portrait", width: 820, height: 1180 },
   { name: "mobile-390", width: 390, height: 844 },
 ] as const) {
-  test(`dense V2 Estimate remains usable at ${viewport.name}`, async ({ page }, testInfo) => {
+  test(`dense V3 Estimate remains usable at ${viewport.name}`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
     await loginAsE2EOwner(page, `/estimates/${DENSE_ESTIMATE_ID}`);
     await page.getByRole("toolbar", { name: "Scope tools" }).scrollIntoViewIfNeeded();

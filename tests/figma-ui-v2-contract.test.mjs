@@ -104,10 +104,9 @@ test("Estimate List keeps business-owned columns inside the Figma dense-table pr
   assert.match(css, /box-shadow: inset 3px 0 0 var\(--hh-accent-primary\)/);
 });
 
-test("Estimate Workspace renders the validated 104 / 176 / 360 desktop shell", () => {
+test("Estimate V3 keeps the 104 / 360 shell and moves sections into the worksheet", () => {
   const editor = source("src/app/estimates/_components/estimate-editor.tsx");
   const header = source("src/app/estimates/_components/estimate-workspace-command-header.tsx");
-  const sectionOutline = source("src/app/estimates/_components/estimate-section-outline.tsx");
   const scopeToolbar = source("src/app/estimates/_components/estimate-scope-toolbar.tsx");
   const localLineItems = source("src/app/estimates/_components/estimate-line-items-local.tsx");
   const newEditor = source("src/app/estimates/new/new-estimate-editor.tsx");
@@ -116,28 +115,26 @@ test("Estimate Workspace renders the validated 104 / 176 / 360 desktop shell", (
   );
   const css = source("src/app/estimates/_components/estimate-builder-operational.css");
 
-  assert.match(editor, /<EstimateSectionOutline/);
+  assert.doesNotMatch(editor, /EstimateSectionOutline/);
   assert.match(editor, /<EstimateBuilderCompactSummary/);
+  assert.match(editor, /className="eb-v3-worksheet-flow"/);
   assert.match(header, /<StatusBadge/);
   assert.match(header, /showDot=\{false\}/);
   assert.match(css, /\.estimate-builder-new \.eb-estimate-command-bar\s*\{[^}]*min-height: 104px/s);
-  assert.match(css, /grid-template-columns: 176px minmax\(0, 1fr\) 360px/);
+  assert.match(
+    css,
+    /\.eb-estimate-workbench\.eb-estimate-workbench--v3[\s\S]*?grid-template-columns:\s*minmax\(0, 1fr\) 360px !important/
+  );
   assert.match(css, /grid-column: 1 \/ -1 !important/);
   assert.match(css, /background: var\(--hh-surface-workspace\)/);
-  assert.match(css, /\.eb-section-outline-row\.is-active\s*\{[^}]*--hh-surface-selected/s);
   assert.match(
     editor,
     /data-estimate-editor-mode=\{isReadOnly \? "read" : "edit"\}[\s\S]*?data-estimate-active-section-id=\{selectedCategoryId \?\? undefined\}/
   );
   assert.match(
     editor,
-    /<EstimateSectionOutline[\s\S]*?activeSectionId=\{selectedCategoryId\}[\s\S]*?onActiveSectionChange=\{handleActiveSectionChange\}/
-  );
-  assert.match(
-    editor,
     /<EstimateScopeToolbar[\s\S]*?activeSectionId=\{selectedCategoryId\}[\s\S]*?onActiveSectionChange=\{handleActiveSectionChange\}/
   );
-  assert.doesNotMatch(sectionOutline, /data-estimate-active-section-id/);
   assert.doesNotMatch(scopeToolbar, /data-estimate-active-section-id/);
   assert.match(
     localLineItems,
@@ -147,10 +144,8 @@ test("Estimate Workspace renders the validated 104 / 176 / 360 desktop shell", (
     newEditor,
     /data-estimate-editor-mode="new"[\s\S]*?data-estimate-active-section-id=\{selectedSectionId \?\? undefined\}/
   );
-  assert.match(
-    newEditor,
-    /<EstimateSectionOutline[\s\S]*?activeSectionId=\{selectedSectionId\}[\s\S]*?onActiveSectionChange=\{handleActiveSectionChange\}/
-  );
+  assert.doesNotMatch(newEditor, /EstimateSectionOutline/);
+  assert.match(newEditor, /className="eb-v3-worksheet-flow"/);
   assert.match(
     newEditor,
     /<EstimateLineItemsLocal[\s\S]*?activeSectionId=\{selectedSectionId\}[\s\S]*?explicitActiveSectionId=\{explicitActiveSectionId\}[\s\S]*?onActiveSectionChange=\{handleActiveSectionChange\}/

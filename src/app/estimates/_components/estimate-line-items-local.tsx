@@ -592,7 +592,7 @@ export function EstimateLineItemsLocal({
     [onActiveSectionChange, orderedSectionCodes, sectionDisplayName]
   );
 
-  const outlineSections = React.useMemo(
+  const worksheetSections = React.useMemo(
     () =>
       orderedSectionCodes.map((code) => {
         const rows = itemsByCode[code] ?? [];
@@ -609,7 +609,7 @@ export function EstimateLineItemsLocal({
 
   const scopeSearchEntries = React.useMemo(
     () =>
-      outlineSections.flatMap((section) => {
+      worksheetSections.flatMap((section) => {
         const rows = itemsByCode[section.id] ?? [];
         return [
           {
@@ -629,7 +629,7 @@ export function EstimateLineItemsLocal({
           })),
         ];
       }),
-    [itemsByCode, outlineSections]
+    [itemsByCode, worksheetSections]
   );
 
   const renderSectionMenu = React.useCallback(
@@ -692,7 +692,7 @@ export function EstimateLineItemsLocal({
         ) : null}
 
         <EstimateScopeToolbar
-          sections={outlineSections}
+          sections={worksheetSections}
           searchEntries={scopeSearchEntries}
           activeSectionId={activeSectionId}
           explicitActiveSectionId={explicitActiveSectionId}
@@ -859,7 +859,6 @@ export function EstimateLineItemsLocal({
                         disabled={disabled}
                         isDropTarget={overSectionId === code}
                         className={cn(
-                          "transition-colors duration-150",
                           activeSectionId === code && "eb-scope-section-current",
                           highlightSectionCode === code && EB.scopeSectionInserted
                         )}

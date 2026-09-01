@@ -3925,9 +3925,9 @@
 }
 
 /*
- * At intermediate widths the 176px Section Outline is not mounted, so the
- * compact jump control remains the single direct section-navigation affordance.
- * Desktop 1440+ continues to use the persistent Outline instead.
+ * At intermediate widths the compact jump control supplements Scope search.
+ * Desktop 1440+ keeps the continuous V3 worksheet and uses search for direct
+ * section navigation; the removed Section Outline is never remounted.
  */
 @media (min-width: 768px) and (max-width: 1439px) {
   .estimate-builder-new .eb-scope-jump-wrap {
@@ -4228,5 +4228,504 @@
 
   .estimate-builder :where(input, textarea, select)[aria-invalid="true"] {
     border-color: Mark !important;
+  }
+}
+
+/*
+ * HH Group Estimate V3 — customer-facing construction worksheet.
+ *
+ * This terminal cascade is intentionally scoped to the V3 workbench. It only
+ * changes composition: field ownership, mutation handlers, persisted values,
+ * summary calculations, and payment reconciliation remain unchanged.
+ */
+.estimate-builder-new .eb-estimate-workbench--v3 .eb-v3-worksheet-flow {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--hh-space-4);
+}
+
+.estimate-builder-new .eb-estimate-workbench--v3 .eb-v3-continuous-section {
+  min-width: 0;
+  scroll-margin-top: calc(104px + var(--hh-space-3));
+  outline: none;
+}
+
+/*
+ * V3 construction scope stays readable in its default scan state. Two lines
+ * preserve useful scope without allowing dense worksheets to grow without a
+ * bound; edit mode still expands the existing editor on demand.
+ */
+.estimate-builder-new
+  .eb-estimate-workbench--v3
+  :where(
+    .eb-line-item-title-control p,
+    .eb-scope-description-readonly,
+    .eb-description-summary-text
+  ) {
+  display: -webkit-box !important;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  white-space: normal !important;
+  text-overflow: clip;
+  overflow-wrap: anywhere;
+}
+
+.estimate-builder-new
+  .eb-estimate-workbench--v3
+  :where(.eb-scope-description-readonly, .eb-description-summary-button) {
+  height: auto;
+  min-height: var(--hh-control-height-standard);
+}
+
+.estimate-builder-new .eb-estimate-workbench--v3 .eb-description-summary-button {
+  align-items: flex-start;
+  padding-block: var(--hh-space-1);
+}
+
+.estimate-builder-new .eb-line-item-reorder-handle {
+  transition: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .estimate-builder-new .eb-line-item-reorder-handle:hover {
+    background: var(--hh-surface-hover);
+    color: var(--hh-text-primary);
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1199px) {
+  /*
+   * Tablet uses a stacked construction row: scope first, labeled financial
+   * fields second. Field ownership and DOM order remain unchanged.
+   */
+  .estimate-builder-new .eb-estimate-workbench--v3 .eb-line-item-grid-header {
+    display: none !important;
+  }
+
+  .estimate-builder-new .eb-estimate-workbench--v3 .eb-scope-section-lines .eb-line-item-card {
+    height: auto;
+    min-height: 0;
+    padding: var(--hh-space-2) var(--hh-space-3);
+  }
+
+  .estimate-builder-new .eb-estimate-workbench--v3 .eb-line-item-grid--pricing {
+    display: grid;
+    grid-template-columns: var(--hh-touch-min) minmax(0, 1fr) !important;
+    grid-template-rows: auto auto auto auto;
+    min-height: 0;
+    align-items: start;
+    column-gap: var(--hh-space-2);
+    row-gap: var(--hh-space-2);
+    padding: 0;
+  }
+
+  .estimate-builder-new
+    .eb-estimate-workbench--v3
+    .eb-line-item-grid--pricing
+    > .eb-line-item-item-cell {
+    display: contents;
+  }
+
+  .estimate-builder-new
+    .eb-estimate-workbench--v3
+    .eb-line-item-item-cell
+    > .eb-line-item-index-control {
+    grid-column: 1;
+    grid-row: 1 / 5;
+    width: var(--hh-touch-min);
+    height: var(--hh-touch-min);
+    align-self: start;
+  }
+
+  .estimate-builder-new
+    .eb-estimate-workbench--v3
+    .eb-line-item-inline-drag
+    :where(button, [role="button"]),
+  .estimate-builder-new .eb-estimate-workbench--v3 .eb-line-item-reorder-handle {
+    width: var(--hh-touch-min);
+    min-width: var(--hh-touch-min);
+    height: var(--hh-touch-min);
+    min-height: var(--hh-touch-min);
+  }
+
+  .estimate-builder-new .eb-estimate-workbench--v3 .eb-line-item-item-cell > .eb-line-title-label {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: end;
+  }
+
+  .estimate-builder-new
+    .eb-estimate-workbench--v3
+    .eb-line-item-item-cell
+    > .eb-line-title-input-wrap {
+    grid-column: 2;
+    grid-row: 2;
+    align-self: start;
+  }
+
+  .estimate-builder-new
+    .eb-estimate-workbench--v3
+    .eb-line-item-grid--pricing
+    > .eb-line-item-description-block,
+  .estimate-builder-new
+    .eb-estimate-workbench--v3
+    .eb-line-item-grid--pricing:has(
+      > .eb-line-item-description-block .eb-scope-editor-surface[data-description-expanded="true"]
+    )
+    > .eb-line-item-description-block {
+    grid-column: 2;
+    grid-row: 3;
+    align-self: start;
+    min-width: 0;
+  }
+
+  .estimate-builder-new
+    .eb-estimate-workbench--v3
+    .eb-line-item-grid--pricing
+    .eb-line-item-pricing-wrap {
+    display: grid;
+    grid-column: 2;
+    grid-row: 4;
+    grid-template-columns: minmax(9rem, 1.15fr) minmax(7rem, 0.85fr) minmax(9rem, 1fr);
+    align-items: end;
+    gap: var(--hh-space-2);
+    min-width: 0;
+  }
+
+  .estimate-builder-new
+    .eb-estimate-workbench--v3
+    .eb-line-item-grid--pricing
+    .eb-line-qty-unit-group {
+    display: grid;
+    grid-column: auto;
+    grid-row: auto;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    height: auto;
+    min-height: 0;
+    align-self: end;
+    gap: var(--hh-space-2);
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .estimate-builder-new
+    .eb-estimate-workbench--v3
+    .eb-line-item-grid--pricing
+    .eb-line-qty-unit-group:focus-within {
+    border-color: transparent;
+    box-shadow: none;
+  }
+
+  .estimate-builder-new
+    .eb-estimate-workbench--v3
+    .eb-line-item-grid--pricing
+    :where(.eb-line-pricing-qty, .eb-line-pricing-measure, .eb-line-pricing-unit) {
+    display: flex;
+    grid-column: auto;
+    grid-row: auto;
+    min-width: 0;
+    align-self: auto;
+    flex-direction: column;
+    gap: var(--hh-space-1);
+    border-left: 0;
+  }
+
+  .estimate-builder-new
+    .eb-estimate-workbench--v3
+    .eb-line-item-grid--pricing
+    .eb-line-pricing-total-col.eb-line-total-action-area {
+    display: grid;
+    grid-column: auto;
+    grid-row: auto;
+    grid-template-columns: minmax(0, 1fr) var(--hh-touch-min);
+    min-width: 0;
+    align-items: end;
+    gap: var(--hh-space-1);
+    padding: 0;
+  }
+
+  .estimate-builder-new
+    .eb-estimate-workbench--v3
+    :where(
+      .eb-line-item-item-cell > .eb-line-title-label,
+      .eb-line-item-description-block > .eb-read-label,
+      .eb-line-field-stack-contents > .eb-read-label,
+      .eb-line-total-label
+    ) {
+    display: block !important;
+  }
+
+  .estimate-builder-new
+    .eb-estimate-workbench--v3
+    .eb-line-item-grid--pricing
+    :where(input.eb-input, .eb-description-summary-button, .eb-line-item-more-trigger) {
+    height: var(--hh-touch-min) !important;
+    min-height: var(--hh-touch-min) !important;
+  }
+
+  .estimate-builder-new
+    .eb-estimate-workbench--v3
+    .eb-line-item-grid--pricing
+    .eb-line-qty-unit-group
+    :where(input.eb-line-qty-input, input.eb-line-measure-input),
+  .estimate-builder-new
+    .eb-estimate-workbench--v3
+    .eb-line-item-grid--pricing
+    .eb-line-pricing-unit
+    input.eb-line-unit-input {
+    height: var(--hh-touch-min) !important;
+    min-height: var(--hh-touch-min) !important;
+    border: 1px solid var(--hh-border-input) !important;
+    border-radius: var(--hh-radius-control) !important;
+    background: var(--hh-input-background) !important;
+  }
+
+  .estimate-builder-new
+    .eb-estimate-workbench--v3
+    .eb-line-item-grid--pricing
+    .eb-line-total-block {
+    display: flex;
+    grid-column: auto;
+    grid-row: auto;
+    min-width: 0;
+    min-height: var(--hh-touch-min);
+    flex-direction: column;
+    justify-content: flex-end;
+    gap: var(--hh-space-1);
+  }
+
+  .estimate-builder-new
+    .eb-estimate-workbench--v3
+    .eb-line-item-grid--pricing
+    .eb-line-item-more-trigger {
+    grid-column: auto;
+    grid-row: auto;
+    align-self: end;
+  }
+
+  .estimate-builder-new
+    .eb-estimate-workbench--v3
+    :where(.eb-scope-section-collapse-btn, .eb-scope-section-drag-handle),
+  .estimate-builder-new .eb-payment-row-action {
+    width: var(--hh-touch-min) !important;
+    min-width: var(--hh-touch-min) !important;
+    height: var(--hh-touch-min) !important;
+    min-height: var(--hh-touch-min) !important;
+  }
+}
+
+@media (min-width: 1200px) {
+  .estimate-builder-new .eb-estimate-workbench.eb-estimate-workbench--v3,
+  .estimate-builder-new
+    .eb-estimate-workbench.eb-estimate-workbench--new.eb-estimate-workbench--v3 {
+    grid-template-columns: minmax(0, 1fr) 360px !important;
+    grid-template-rows: auto !important;
+  }
+
+  .estimate-builder-new .eb-estimate-workbench.eb-estimate-workbench--v3 > .eb-v3-worksheet-flow {
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+  }
+
+  .estimate-builder-new
+    .eb-estimate-workbench.eb-estimate-workbench--v3
+    > .eb-pricing-summary-strip {
+    grid-column: 2 !important;
+    grid-row: 1 !important;
+  }
+
+  .estimate-builder-new
+    .eb-estimate-workbench.eb-estimate-workbench--v3:has(> .eb-estimate-details-summary-section)
+    > .eb-v3-worksheet-flow,
+  .estimate-builder-new
+    .eb-estimate-workbench.eb-estimate-workbench--v3:has(> .eb-estimate-details-summary-section)
+    > .eb-pricing-summary-strip {
+    grid-row: 2 !important;
+  }
+
+  .estimate-builder-new
+    .eb-estimate-workbench.eb-estimate-workbench--v3
+    > .eb-estimate-details-summary-section {
+    grid-column: 1 / -1 !important;
+    grid-row: 1 !important;
+  }
+
+  .estimate-builder-new .eb-estimate-workbench--v3 .eb-scope-work-panel,
+  .estimate-builder-new .eb-estimate-workbench--v3 .eb-scope-work-panel:hover {
+    min-height: 0;
+  }
+
+  .estimate-builder-new .eb-estimate-workbench--v3 .eb-line-item-grid-header,
+  .estimate-builder-new .eb-estimate-workbench--v3 .eb-line-item-grid--pricing {
+    grid-template-columns:
+      1.5rem minmax(5.75rem, 0.9fr) minmax(6.75rem, 1.1fr) 3.125rem 3.25rem
+      5.25rem 5.75rem 2.25rem;
+    column-gap: var(--hh-space-1);
+  }
+
+  .estimate-builder-new .eb-estimate-workbench--v3 .eb-line-item-grid-header {
+    display: grid !important;
+    min-height: var(--hh-row-height-standard);
+    align-items: center;
+  }
+
+  .estimate-builder-new .eb-estimate-workbench--v3 .eb-scope-section-lines .eb-line-item-card {
+    min-height: var(--hh-row-height-portrait-line-item);
+    padding: var(--hh-space-2) 10px;
+  }
+
+  .estimate-builder-new .eb-estimate-workbench--v3 .eb-line-item-grid--pricing {
+    min-height: var(--hh-control-height-standard);
+    align-items: center;
+    row-gap: 0;
+  }
+
+  .estimate-builder-new
+    .eb-estimate-workbench--v3
+    .eb-line-item-item-cell
+    > .eb-line-item-index-control {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .estimate-builder-new
+    .eb-estimate-workbench--v3
+    .eb-line-item-item-cell
+    > .eb-line-title-input-wrap {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: center;
+  }
+
+  .estimate-builder-new
+    .eb-estimate-workbench--v3
+    .eb-line-item-grid--pricing
+    > .eb-line-item-description-block,
+  .estimate-builder-new
+    .eb-estimate-workbench--v3
+    .eb-line-item-grid--pricing:has(
+      > .eb-line-item-description-block .eb-scope-editor-surface[data-description-expanded="true"]
+    )
+    > .eb-line-item-description-block {
+    grid-column: 3;
+    grid-row: 1;
+    align-self: center;
+  }
+
+  .estimate-builder-new
+    .eb-estimate-workbench--v3
+    .eb-line-item-grid--pricing:has(
+      > .eb-line-item-description-block .eb-scope-editor-surface[data-description-expanded="true"]
+    )
+    > .eb-line-item-item-cell
+    > .eb-line-title-input-wrap {
+    visibility: visible;
+  }
+
+  .estimate-builder-new
+    .eb-estimate-workbench--v3
+    .eb-line-item-grid--pricing
+    .eb-line-item-pricing-wrap,
+  .estimate-builder-new
+    .eb-estimate-workbench--v3
+    .eb-line-item-grid--pricing
+    .eb-line-qty-unit-group,
+  .estimate-builder-new
+    .eb-estimate-workbench--v3
+    .eb-line-item-grid--pricing
+    .eb-line-pricing-total-col.eb-line-total-action-area {
+    display: contents;
+  }
+
+  .estimate-builder-new
+    .eb-estimate-workbench--v3
+    .eb-line-item-grid--pricing
+    .eb-line-qty-unit-group {
+    height: auto;
+    min-height: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .estimate-builder-new
+    .eb-estimate-workbench--v3
+    .eb-line-item-grid--pricing
+    .eb-line-qty-unit-group:focus-within {
+    border-color: transparent;
+    box-shadow: none;
+  }
+
+  .estimate-builder-new
+    .eb-estimate-workbench--v3
+    .eb-line-item-grid--pricing
+    .eb-line-pricing-qty {
+    grid-column: 4;
+    grid-row: 1;
+  }
+
+  .estimate-builder-new
+    .eb-estimate-workbench--v3
+    .eb-line-item-grid--pricing
+    .eb-line-pricing-measure {
+    grid-column: 5;
+    grid-row: 1;
+    border-left: 0;
+  }
+
+  .estimate-builder-new
+    .eb-estimate-workbench--v3
+    .eb-line-item-grid--pricing
+    .eb-line-pricing-unit {
+    grid-column: 6;
+    grid-row: 1;
+  }
+
+  .estimate-builder-new
+    .eb-estimate-workbench--v3
+    .eb-line-item-grid--pricing
+    .eb-line-total-block {
+    grid-column: 7;
+    grid-row: 1;
+    align-self: center;
+  }
+
+  .estimate-builder-new
+    .eb-estimate-workbench--v3
+    .eb-line-item-grid--pricing
+    .eb-line-item-more-trigger {
+    grid-column: 8;
+    grid-row: 1;
+    align-self: center;
+    justify-self: center;
+  }
+
+  .estimate-builder-new
+    .eb-estimate-workbench--v3
+    .eb-line-item-grid--pricing
+    .eb-line-qty-unit-group
+    :where(input.eb-line-qty-input, input.eb-line-measure-input) {
+    height: var(--hh-control-height-standard) !important;
+    min-height: var(--hh-control-height-standard) !important;
+    border: 1px solid var(--hh-border-input) !important;
+    border-radius: var(--hh-radius-control) !important;
+    background: var(--hh-input-background) !important;
+    box-shadow: none !important;
+  }
+
+  .estimate-builder-new
+    .eb-estimate-workbench--v3
+    .eb-scope-section-lines
+    .eb-line-item-card
+    .eb-line-qty-unit-group
+    :where(input.eb-line-qty-input, input.eb-line-measure-input):focus-visible {
+    border-color: var(--hh-accent-primary) !important;
+    outline: 0;
+    box-shadow: 0 0 0 2px var(--hh-focus-ring) !important;
   }
 }

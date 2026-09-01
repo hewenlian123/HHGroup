@@ -34,7 +34,6 @@ import { EstimateBuilderAdvanced } from "../_components/estimate-builder-advance
 import { EstimateNewCustomerSection } from "../_components/estimate-new-customer-section";
 import { EstimateBuilderShell } from "../_components/estimate-builder-shell";
 import { EstimateLineItemsLocal } from "../_components/estimate-line-items-local";
-import { EstimateSectionOutline } from "../_components/estimate-section-outline";
 import { ProposalScopeEditor } from "../_components/proposal-scope-editor";
 import { ProposalPaymentMilestoneList } from "../_components/proposal-payment-milestone-list";
 import {
@@ -489,7 +488,7 @@ export function NewEstimateEditor({
     };
   }, [lineItems, codeToType, tax, discount]);
 
-  const outlineSections = React.useMemo(() => {
+  const worksheetSections = React.useMemo(() => {
     const orderedCodes = [
       ...sectionOrder,
       ...lineItems.map((lineItem) => lineItem.costCode),
@@ -509,9 +508,10 @@ export function NewEstimateEditor({
   }, [categoryNames, costCodes, lineItems, sectionOrder]);
 
   const selectedSectionId =
-    activeSectionState.id && outlineSections.some((section) => section.id === activeSectionState.id)
+    activeSectionState.id &&
+    worksheetSections.some((section) => section.id === activeSectionState.id)
       ? activeSectionState.id
-      : (outlineSections[0]?.id ?? null);
+      : (worksheetSections[0]?.id ?? null);
   const explicitActiveSectionId = activeSectionState.explicit ? selectedSectionId : null;
   const handleActiveSectionChange = React.useCallback(
     (sectionId: string, source: "explicit" | "inferred"): void => {
@@ -519,24 +519,15 @@ export function NewEstimateEditor({
     },
     []
   );
-  const activeSectionKey = outlineSections.map((section) => section.id).join("|");
+  const activeSectionKey = worksheetSections.map((section) => section.id).join("|");
   React.useEffect(() => {
     setActiveSectionState((current) => {
-      if (current.id && outlineSections.some((section) => section.id === current.id)) {
+      if (current.id && worksheetSections.some((section) => section.id === current.id)) {
         return current;
       }
-      return { id: outlineSections[0]?.id ?? null, explicit: false };
+      return { id: worksheetSections[0]?.id ?? null, explicit: false };
     });
-  }, [activeSectionKey, outlineSections]);
-
-  const setAllLocalSectionsCollapsed = React.useCallback((collapsed: boolean) => {
-    const label = collapsed ? "Collapse section" : "Expand section";
-    document
-      .querySelectorAll<HTMLButtonElement>(
-        `.eb-estimate-workbench--new button[aria-label="${label}"]`
-      )
-      .forEach((button) => button.click());
-  }, []);
+  }, [activeSectionKey, worksheetSections]);
 
   const hasValidLineItem = React.useMemo(
     () => lineItems.some((li) => li.title.trim().length > 0 || li.description.trim().length > 0),
@@ -1060,7 +1051,7 @@ export function NewEstimateEditor({
             </p>
           ) : null}
 
-          <div className={cn(EB.workbench, "eb-estimate-workbench--new")}>
+          <div className={cn(EB.workbench, "eb-estimate-workbench--new eb-estimate-workbench--v3")}>
             <div className="eb-estimate-details-summary-section space-y-0">
               <EstimateTemplateSelector
                 templates={templates}
@@ -1102,14 +1093,6 @@ export function NewEstimateEditor({
               />
             </div>
 
-            <EstimateSectionOutline
-              sections={outlineSections}
-              activeSectionId={selectedSectionId}
-              onActiveSectionChange={handleActiveSectionChange}
-              onCollapseAll={() => setAllLocalSectionsCollapsed(true)}
-              onExpandAll={() => setAllLocalSectionsCollapsed(false)}
-            />
-
             <EstimateBuilderCompactSummary
               summary={{
                 materialCost: summary.materialCost,
@@ -1125,298 +1108,319 @@ export function NewEstimateEditor({
                 overhead: 0,
                 profit: 0,
               }}
-              showInternal
               paymentSummary={paymentHeaderSummary}
-              onOpenPaymentSchedule={() =>
-                document
-                  .querySelector<HTMLElement>(".eb-new-payment-schedule")
-                  ?.scrollIntoView({ block: "start" })
-              }
+              onOpenPaymentSchedule={() => {
+                const section = document.getElementById("estimate-payment-schedule");
+                section?.scrollIntoView({ behavior: "auto", block: "start" });
+                section?.focus({ preventScroll: true });
+              }}
               onOpenDetails={() => setDetailsOpen(true)}
             />
 
-            <EstimateLineItemsLocal
-              costCodes={costCodes}
-              lineItems={
-                lineItems.map((li) => ({
-                  ...li,
-                  status: li.status ?? DEFAULT_LINE_ITEM_STATUS,
-                })) as EditorLineItem[]
-              }
-              onLineItemsChange={(items) =>
-                setLineItems(
-                  items.map((li) => ({
+            <div className="eb-v3-worksheet-flow">
+              <EstimateLineItemsLocal
+                costCodes={costCodes}
+                lineItems={
+                  lineItems.map((li) => ({
                     ...li,
                     status: li.status ?? DEFAULT_LINE_ITEM_STATUS,
-                  })) as LineItem[]
-                )
-              }
-              categoryNames={categoryNames}
-              onCategoryNamesChange={setCategoryNames}
-              sectionOrder={sectionOrder}
-              onSectionOrderChange={setSectionOrder}
-              activeSectionId={selectedSectionId}
-              explicitActiveSectionId={explicitActiveSectionId}
-              onActiveSectionChange={handleActiveSectionChange}
-              disabled={saving}
-              submitAttempted={submitAttempted}
-              lineItemsError={
-                submitAttempted && !hasValidLineItem ? "At least one line item is required." : null
-              }
-            />
+                  })) as EditorLineItem[]
+                }
+                onLineItemsChange={(items) =>
+                  setLineItems(
+                    items.map((li) => ({
+                      ...li,
+                      status: li.status ?? DEFAULT_LINE_ITEM_STATUS,
+                    })) as LineItem[]
+                  )
+                }
+                categoryNames={categoryNames}
+                onCategoryNamesChange={setCategoryNames}
+                sectionOrder={sectionOrder}
+                onSectionOrderChange={setSectionOrder}
+                activeSectionId={selectedSectionId}
+                explicitActiveSectionId={explicitActiveSectionId}
+                onActiveSectionChange={handleActiveSectionChange}
+                disabled={saving}
+                submitAttempted={submitAttempted}
+                lineItemsError={
+                  submitAttempted && !hasValidLineItem
+                    ? "At least one line item is required."
+                    : null
+                }
+              />
 
-            <EstimateNotesClarifications
-              notes={estimateNotes}
-              onNotesChange={setEstimateNotes}
-              disabled={saving}
-              defaultCollapsed
-            />
-
-            <EstimateBuilderAdvanced
-              title="Payment schedule"
-              defaultOpen
-              className="eb-new-payment-schedule"
-            >
-              <section className={cn(EB.paymentSchedule, EB.paymentScheduleNested)}>
-                <div className="flex flex-wrap items-start justify-between gap-3 py-2">
-                  <div className="min-w-0">
-                    <h3 className={cn(EB.paymentTitle, EB.paymentHeaderDuplicate)}>
-                      Payment schedule
-                    </h3>
-                    <p className={EB.paymentSubtitle}>Client payment milestones</p>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className={cn("min-h-11 shrink-0 px-2.5 md:min-h-8", EB.actionSecondary)}
-                    onClick={() => openPaymentMilestoneDrawer()}
-                    disabled={saving}
-                  >
-                    <Plus className="h-3.5 w-3.5 mr-1.5" aria-hidden />
-                    Schedule Payment
-                  </Button>
-                </div>
-                <div className="flex flex-wrap items-center gap-x-6 gap-y-2 py-2">
-                  <span className={EB.paymentStatLabel}>
-                    Estimate total{" "}
-                    <span className={EB.paymentStatValue}>
-                      {formatEstimateCurrency(summary.grandTotal)}
-                    </span>
-                  </span>
-                  <span className={EB.paymentStatLabel}>
-                    Scheduled{" "}
-                    <span className={EB.paymentStatValue}>
-                      {formatEstimateCurrency(totalScheduled)}
-                    </span>
-                  </span>
-                  <span className={EB.paymentStatLabel}>
-                    Remaining{" "}
-                    <span className={EB.paymentStatValue}>{formatEstimateCurrency(remaining)}</span>
-                  </span>
-                </div>
-                <ProposalPaymentMilestoneList
-                  milestones={paymentMilestones.map((m) => ({
-                    id: m.id,
-                    title: m.title,
-                    amount: m.amount,
-                    description: m.description,
-                    dueDate: m.dueDate,
-                  }))}
-                  actions={(m) => (
-                    <div className="flex gap-1">
+              <section
+                id="estimate-payment-schedule"
+                className="eb-v3-continuous-section"
+                tabIndex={-1}
+                aria-label="Payment schedule"
+              >
+                <EstimateBuilderAdvanced
+                  title="Payment schedule"
+                  defaultOpen
+                  className="eb-new-payment-schedule"
+                >
+                  <section className={cn(EB.paymentSchedule, EB.paymentScheduleNested)}>
+                    <div className="flex flex-wrap items-start justify-between gap-3 py-2">
+                      <div className="min-w-0">
+                        <h3 className={cn(EB.paymentTitle, EB.paymentHeaderDuplicate)}>
+                          Payment schedule
+                        </h3>
+                        <p className={EB.paymentSubtitle}>Client payment milestones</p>
+                      </div>
                       <Button
                         type="button"
                         variant="outline"
-                        size="icon"
-                        className={cn(
-                          "min-h-11 min-w-11 md:h-8 md:min-h-8 md:w-8 md:min-w-8",
-                          EB.btnGhost
-                        )}
-                        aria-label={`Edit ${m.title}`}
-                        onClick={() => {
-                          const full = paymentMilestones.find((x) => x.id === m.id);
-                          if (full) openPaymentMilestoneDrawer(full);
-                        }}
+                        size="sm"
+                        className={cn("min-h-11 shrink-0 px-2.5 md:min-h-8", EB.actionSecondary)}
+                        onClick={() => openPaymentMilestoneDrawer()}
+                        disabled={saving}
                       >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
-                        className={cn(
-                          "min-h-11 min-w-11 text-[var(--hh-danger)] hover:bg-[var(--hh-danger-soft-fill)] md:h-8 md:min-h-8 md:w-8 md:min-w-8",
-                          EB.btnGhost
-                        )}
-                        aria-label={`Delete ${m.title}`}
-                        onClick={() =>
-                          setPaymentMilestones((prev) => prev.filter((x) => x.id !== m.id))
-                        }
-                      >
-                        <Trash2 className="h-4 w-4" />
+                        <Plus className="h-3.5 w-3.5 mr-1.5" aria-hidden />
+                        Schedule Payment
                       </Button>
                     </div>
-                  )}
-                />
-                <Sheet
-                  open={scheduleOpen}
-                  onOpenChange={(open) => {
-                    setScheduleOpen(open);
-                    if (!open) resetPaymentDraft();
-                  }}
-                >
-                  <SheetContent side="right" className={ebSheetGlassNarrow(EB.shellNew)}>
-                    <SheetHeader className={EB.sheetHeader}>
-                      <SheetTitle className={EB.sheetTitle}>
-                        {editingPaymentMilestoneId ? "Edit Payment" : "Schedule Payment"}
-                      </SheetTitle>
-                      <SheetDescription className="sr-only">
-                        Add a payment milestone to this estimate.
-                      </SheetDescription>
-                    </SheetHeader>
-                    <div className={EB.sheetContent}>
-                      <div className={cn(EB.sheetContentInner, "max-w-none space-y-[1.125rem]")}>
-                        <div className={EB.sheetField}>
-                          <Label htmlFor="pm-title" className={EB.sheetLabel}>
-                            Payment Name
-                          </Label>
-                          <Input
-                            id="pm-title"
-                            value={pmTitle}
-                            onChange={(e) => {
-                              setPmTitle(e.target.value);
-                              if (e.target.value.trim()) setPmError(null);
+                    <div className="flex flex-wrap items-center gap-x-6 gap-y-2 py-2">
+                      <span className={EB.paymentStatLabel}>
+                        Estimate total{" "}
+                        <span className={EB.paymentStatValue}>
+                          {formatEstimateCurrency(summary.grandTotal)}
+                        </span>
+                      </span>
+                      <span className={EB.paymentStatLabel}>
+                        Scheduled{" "}
+                        <span className={EB.paymentStatValue}>
+                          {formatEstimateCurrency(totalScheduled)}
+                        </span>
+                      </span>
+                      <span className={EB.paymentStatLabel}>
+                        Remaining{" "}
+                        <span className={EB.paymentStatValue}>
+                          {formatEstimateCurrency(remaining)}
+                        </span>
+                      </span>
+                    </div>
+                    <ProposalPaymentMilestoneList
+                      milestones={paymentMilestones.map((m) => ({
+                        id: m.id,
+                        title: m.title,
+                        amount: m.amount,
+                        description: m.description,
+                        dueDate: m.dueDate,
+                      }))}
+                      actions={(m) => (
+                        <div className="flex gap-1">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            className={cn(
+                              "eb-payment-row-action h-8 min-h-8 w-8 min-w-8",
+                              EB.btnGhost
+                            )}
+                            aria-label={`Edit ${m.title}`}
+                            onClick={() => {
+                              const full = paymentMilestones.find((x) => x.id === m.id);
+                              if (full) openPaymentMilestoneDrawer(full);
                             }}
-                            placeholder="e.g. Deposit"
-                            className={ebSheetInput("text-sm")}
-                            aria-invalid={Boolean(pmError)}
-                            aria-describedby={pmError ? "pm-title-error" : undefined}
-                          />
-                          {pmError ? (
-                            <p
-                              id="pm-title-error"
-                              role="alert"
-                              className="text-hh-error text-[var(--hh-danger)]"
-                            >
-                              {pmError}
-                            </p>
-                          ) : null}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            className={cn(
+                              "eb-payment-row-action h-8 min-h-8 w-8 min-w-8 text-[var(--hh-danger)] hover:bg-[var(--hh-danger-soft-fill)]",
+                              EB.btnGhost
+                            )}
+                            aria-label={`Delete ${m.title}`}
+                            onClick={() =>
+                              setPaymentMilestones((prev) => prev.filter((x) => x.id !== m.id))
+                            }
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
-                        <div className={EB.sheetField}>
-                          <div className={EB.paymentAmountRow}>
-                            <div className={EB.paymentAmountCol}>
-                              <Label htmlFor="pm-amount" className={EB.sheetLabel}>
-                                Amount
+                      )}
+                    />
+                    <Sheet
+                      open={scheduleOpen}
+                      onOpenChange={(open) => {
+                        setScheduleOpen(open);
+                        if (!open) resetPaymentDraft();
+                      }}
+                    >
+                      <SheetContent side="right" className={ebSheetGlassNarrow(EB.shellNew)}>
+                        <SheetHeader className={EB.sheetHeader}>
+                          <SheetTitle className={EB.sheetTitle}>
+                            {editingPaymentMilestoneId ? "Edit Payment" : "Schedule Payment"}
+                          </SheetTitle>
+                          <SheetDescription className="sr-only">
+                            Add a payment milestone to this estimate.
+                          </SheetDescription>
+                        </SheetHeader>
+                        <div className={EB.sheetContent}>
+                          <div
+                            className={cn(EB.sheetContentInner, "max-w-none space-y-[1.125rem]")}
+                          >
+                            <div className={EB.sheetField}>
+                              <Label htmlFor="pm-title" className={EB.sheetLabel}>
+                                Payment Name
                               </Label>
                               <Input
-                                id="pm-amount"
-                                value={pmAmount}
-                                onChange={(e) => handlePmAmountChange(e.target.value)}
-                                type="number"
-                                step="0.01"
-                                min={0}
-                                inputMode="decimal"
-                                placeholder="0.00"
-                                className={ebSheetInput(
-                                  cn(
-                                    "text-hh-financial text-right text-foreground",
-                                    EB.inputNumeric
-                                  )
-                                )}
-                                onWheel={(event) => event.currentTarget.blur()}
+                                id="pm-title"
+                                value={pmTitle}
+                                onChange={(e) => {
+                                  setPmTitle(e.target.value);
+                                  if (e.target.value.trim()) setPmError(null);
+                                }}
+                                placeholder="e.g. Deposit"
+                                className={ebSheetInput("text-sm")}
+                                aria-invalid={Boolean(pmError)}
+                                aria-describedby={pmError ? "pm-title-error" : undefined}
+                              />
+                              {pmError ? (
+                                <p
+                                  id="pm-title-error"
+                                  role="alert"
+                                  className="text-hh-error text-[var(--hh-danger)]"
+                                >
+                                  {pmError}
+                                </p>
+                              ) : null}
+                            </div>
+                            <div className={EB.sheetField}>
+                              <div className={EB.paymentAmountRow}>
+                                <div className={EB.paymentAmountCol}>
+                                  <Label htmlFor="pm-amount" className={EB.sheetLabel}>
+                                    Amount
+                                  </Label>
+                                  <Input
+                                    id="pm-amount"
+                                    value={pmAmount}
+                                    onChange={(e) => handlePmAmountChange(e.target.value)}
+                                    type="number"
+                                    step="0.01"
+                                    min={0}
+                                    inputMode="decimal"
+                                    placeholder="0.00"
+                                    className={ebSheetInput(
+                                      cn(
+                                        "text-hh-financial text-right text-foreground",
+                                        EB.inputNumeric
+                                      )
+                                    )}
+                                    onWheel={(event) => event.currentTarget.blur()}
+                                  />
+                                </div>
+                                <div className={EB.paymentPercentCol}>
+                                  <Label htmlFor="pm-percent" className={EB.sheetLabel}>
+                                    % of estimate
+                                  </Label>
+                                  <Input
+                                    id="pm-percent"
+                                    value={pmPercent}
+                                    onChange={(e) => handlePmPercentChange(e.target.value)}
+                                    type="number"
+                                    step="0.01"
+                                    min={0}
+                                    max={100}
+                                    inputMode="decimal"
+                                    placeholder="Optional"
+                                    className={ebSheetInput(
+                                      cn(
+                                        "text-hh-financial text-right text-foreground",
+                                        EB.inputNumeric
+                                      )
+                                    )}
+                                    aria-describedby={
+                                      pmPercentHelperText ? "pm-percent-helper" : undefined
+                                    }
+                                    onWheel={(event) => event.currentTarget.blur()}
+                                  />
+                                </div>
+                              </div>
+                              {pmPercentHelperText ? (
+                                <p id="pm-percent-helper" className={EB.paymentPercentHelper}>
+                                  {pmPercentHelperText}
+                                </p>
+                              ) : null}
+                            </div>
+                            <div className={EB.sheetField}>
+                              <Label htmlFor="pm-description" className={EB.sheetLabel}>
+                                Description
+                              </Label>
+                              <ProposalScopeEditor
+                                id="pm-description"
+                                value={pmDescription}
+                                onChange={setPmDescription}
+                                density="comfortable"
+                                showHandle={false}
+                                placeholder="What this payment covers…"
+                                ariaLabel="Payment milestone description"
+                                className={cn(EB.sheetTextarea, "rounded-md px-2 py-2")}
                               />
                             </div>
-                            <div className={EB.paymentPercentCol}>
-                              <Label htmlFor="pm-percent" className={EB.sheetLabel}>
-                                % of estimate
+                            <div className={EB.sheetField}>
+                              <Label htmlFor="pm-dueDate" className={EB.sheetLabel}>
+                                Due Date
                               </Label>
                               <Input
-                                id="pm-percent"
-                                value={pmPercent}
-                                onChange={(e) => handlePmPercentChange(e.target.value)}
-                                type="number"
-                                step="0.01"
-                                min={0}
-                                max={100}
-                                inputMode="decimal"
-                                placeholder="Optional"
-                                className={ebSheetInput(
-                                  cn(
-                                    "text-hh-financial text-right text-foreground",
-                                    EB.inputNumeric
-                                  )
-                                )}
-                                aria-describedby={
-                                  pmPercentHelperText ? "pm-percent-helper" : undefined
-                                }
-                                onWheel={(event) => event.currentTarget.blur()}
+                                id="pm-dueDate"
+                                value={pmDueDate}
+                                onChange={(e) => setPmDueDate(e.target.value)}
+                                type="date"
+                                className={ebSheetInput(cn(EB.dateField, "text-sm"))}
                               />
                             </div>
                           </div>
-                          {pmPercentHelperText ? (
-                            <p id="pm-percent-helper" className={EB.paymentPercentHelper}>
-                              {pmPercentHelperText}
-                            </p>
-                          ) : null}
                         </div>
-                        <div className={EB.sheetField}>
-                          <Label htmlFor="pm-description" className={EB.sheetLabel}>
-                            Description
-                          </Label>
-                          <ProposalScopeEditor
-                            id="pm-description"
-                            value={pmDescription}
-                            onChange={setPmDescription}
-                            density="comfortable"
-                            showHandle={false}
-                            placeholder="What this payment covers…"
-                            ariaLabel="Payment milestone description"
-                            className={cn(EB.sheetTextarea, "rounded-md px-2 py-2")}
-                          />
-                        </div>
-                        <div className={EB.sheetField}>
-                          <Label htmlFor="pm-dueDate" className={EB.sheetLabel}>
-                            Due Date
-                          </Label>
-                          <Input
-                            id="pm-dueDate"
-                            value={pmDueDate}
-                            onChange={(e) => setPmDueDate(e.target.value)}
-                            type="date"
-                            className={ebSheetInput(cn(EB.dateField, "text-sm"))}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                    <SheetFooter className={EB.sheetFooter}>
-                      <div className={EB.sheetFooterActions}>
-                        <Button
-                          type="button"
-                          size="sm"
-                          className={EB.sheetPrimary}
-                          onClick={savePaymentMilestoneLocal}
-                        >
-                          Save
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className={EB.sheetSecondary}
-                          onClick={() => {
-                            setScheduleOpen(false);
-                            resetPaymentDraft();
-                          }}
-                        >
-                          Cancel
-                        </Button>
-                      </div>
-                    </SheetFooter>
-                  </SheetContent>
-                </Sheet>
+                        <SheetFooter className={EB.sheetFooter}>
+                          <div className={EB.sheetFooterActions}>
+                            <Button
+                              type="button"
+                              size="sm"
+                              className={EB.sheetPrimary}
+                              onClick={savePaymentMilestoneLocal}
+                            >
+                              Save
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className={EB.sheetSecondary}
+                              onClick={() => {
+                                setScheduleOpen(false);
+                                resetPaymentDraft();
+                              }}
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                        </SheetFooter>
+                      </SheetContent>
+                    </Sheet>
+                  </section>
+                </EstimateBuilderAdvanced>
               </section>
-            </EstimateBuilderAdvanced>
+
+              <section
+                id="estimate-terms-notes"
+                className="eb-v3-continuous-section"
+                tabIndex={-1}
+                aria-label="Terms and notes"
+              >
+                <EstimateNotesClarifications
+                  notes={estimateNotes}
+                  onNotesChange={setEstimateNotes}
+                  disabled={saving}
+                  defaultCollapsed={false}
+                />
+              </section>
+            </div>
           </div>
         </div>
       </div>
