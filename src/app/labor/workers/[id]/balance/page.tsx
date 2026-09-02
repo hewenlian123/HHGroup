@@ -183,7 +183,7 @@ function KpiTile({
     <div
       className={cn(
         "min-h-[76px] rounded-hh-task border px-3 py-3 shadow-operational",
-        "flex flex-col justify-between transition-[border-color,background-color,transform] duration-200 ease-out hover:-translate-y-px hover:border-[var(--hh-border-strong)] hover:bg-[var(--hh-l3-hover)]",
+        "flex flex-col justify-between",
         emphasisClass
       )}
     >
@@ -997,7 +997,10 @@ export default function WorkerBalanceDetailPage() {
           <div className="flex flex-col gap-4">
             {/* Summary KPI tiles */}
             {summary != null && (
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+              <div
+                data-testid="worker-balance-summary"
+                className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5"
+              >
                 <KpiTile label="Labor owed" value={formatCurrency(summary.laborOwed)} />
                 <KpiTile label="Reimbursements" value={formatCurrency(summary.reimbursements)} />
                 <KpiTile label="Payments" value={formatCurrency(summary.payments)} />

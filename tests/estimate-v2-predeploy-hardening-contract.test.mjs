@@ -38,6 +38,15 @@ test("reduced motion preserves non-spatial state feedback", () => {
   assert.match(globals, /prefers-reduced-motion:\s*reduce[\s\S]*?scroll-behavior:\s*auto/);
 });
 
+test("Estimate Preview keeps a visible focus outline in forced colors", () => {
+  const globals = source("src/app/globals.css");
+
+  assert.match(
+    globals,
+    /@media\s*\(forced-colors:\s*active\)[\s\S]*?\.estimate-preview-tool-button:focus-visible[\s\S]*?outline:\s*2px solid CanvasText\s*!important/
+  );
+});
+
 test("the Certified V2 Estimate composition does not mount superseded overview contracts", () => {
   const builderGlass = source("src/app/estimates/_components/estimate-builder-glass.css");
   const builderOperational = source(

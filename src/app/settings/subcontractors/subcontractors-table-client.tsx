@@ -236,7 +236,7 @@ export function SubcontractorsTableClient({
                     <Button
                       variant="outline"
                       size="sm"
-                      className="h-8 rounded-sm text-xs"
+                      className="min-h-11 rounded-hh-standard text-xs"
                       onClick={() => setEditFor(r)}
                       disabled={busy}
                     >
@@ -245,7 +245,7 @@ export function SubcontractorsTableClient({
                     <Button
                       variant="outline"
                       size="sm"
-                      className="h-8 rounded-hh-compact text-hh-helper text-[var(--hh-danger)]"
+                      className="min-h-11 rounded-hh-standard text-hh-helper text-[var(--hh-danger)]"
                       onClick={() => void onDelete(r)}
                       disabled={busy}
                     >
@@ -268,7 +268,7 @@ export function SubcontractorsTableClient({
               <Button
                 variant="outline"
                 size="sm"
-                className="h-8 rounded-sm"
+                className="min-h-11 rounded-hh-standard lg:min-h-0 lg:h-8"
                 onClick={() => setEditFor(null)}
                 disabled={busy}
               >
@@ -276,7 +276,7 @@ export function SubcontractorsTableClient({
               </Button>
               <Button
                 size="sm"
-                className="h-8 rounded-sm"
+                className="min-h-11 rounded-hh-standard lg:min-h-0 lg:h-8"
                 onClick={() => void onSave()}
                 disabled={busy || !name.trim()}
               >
@@ -291,7 +291,7 @@ export function SubcontractorsTableClient({
             <NeoInput
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="h-9 text-sm"
+              className="min-h-11 text-sm lg:min-h-0 lg:h-9"
               required
             />
           </div>
@@ -301,7 +301,7 @@ export function SubcontractorsTableClient({
               <NeoInput
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                className="h-9 text-sm"
+                className="min-h-11 text-sm lg:min-h-0 lg:h-9"
               />
             </div>
             <div className="space-y-1.5">
@@ -310,7 +310,7 @@ export function SubcontractorsTableClient({
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="h-9 text-sm"
+                className="min-h-11 text-sm lg:min-h-0 lg:h-9"
               />
             </div>
           </NeoFormGrid>
@@ -319,7 +319,7 @@ export function SubcontractorsTableClient({
             <NeoInput
               value={address}
               onChange={(e) => setAddress(e.target.value)}
-              className="h-9 text-sm"
+              className="min-h-11 text-sm lg:min-h-0 lg:h-9"
             />
           </div>
           <div className="space-y-1.5">
@@ -328,7 +328,7 @@ export function SubcontractorsTableClient({
               type="date"
               value={insuranceExpiration}
               onChange={(e) => setInsuranceExpiration(e.target.value)}
-              className="h-9 text-sm"
+              className="min-h-11 text-sm lg:min-h-0 lg:h-9"
             />
           </div>
           <div className="space-y-1.5">
@@ -336,7 +336,7 @@ export function SubcontractorsTableClient({
             <NeoInput
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              className="h-9 text-sm"
+              className="min-h-11 text-sm lg:min-h-0 lg:h-9"
             />
           </div>
         </NeoModal>

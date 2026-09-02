@@ -50,7 +50,7 @@ export default async function MaterialSelectionsPage() {
           title="Material Selections"
           description="Customer/project material approval sheets."
           actions={
-            <Button size="sm" asChild>
+            <Button size="sm" className="h-hh-touch" asChild>
               <Link href="/materials/new">
                 <Plus className="mr-1.5 h-4 w-4" aria-hidden />
                 New Selection

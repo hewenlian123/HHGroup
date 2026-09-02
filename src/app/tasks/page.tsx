@@ -552,11 +552,7 @@ export default function TasksPage() {
               title="Tasks"
               description="Construction tasks across all projects."
               actions={
-                <Button
-                  size="sm"
-                  className="h-9 rounded-sm bg-[#111111] text-white hover:bg-[#111111]/90"
-                  onClick={openModal}
-                >
+                <Button size="sm" onClick={openModal}>
                   + New Task
                 </Button>
               }
@@ -565,7 +561,13 @@ export default function TasksPage() {
           <div className="md:hidden">
             <MobileListHeader
               title="Tasks"
-              fab={<MobileFabButton ariaLabel="New task" onClick={openModal} />}
+              fab={
+                <MobileFabButton
+                  ariaLabel="New task"
+                  onClick={openModal}
+                  className="motion-reduce:transition-none"
+                />
+              }
             />
           </div>
         </>
@@ -593,7 +595,7 @@ export default function TasksPage() {
                 type="button"
                 variant={filter === f.value ? "default" : "outline"}
                 size="sm"
-                className="h-10 w-full justify-start rounded-sm"
+                className="h-10 w-full justify-start rounded-hh-compact"
                 onClick={() => {
                   startTransition(() => setFilter(f.value));
                 }}
@@ -605,14 +607,14 @@ export default function TasksPage() {
           <Button
             type="button"
             variant="outline"
-            className="w-full rounded-sm"
+            className="w-full rounded-hh-compact"
             onClick={() => setFiltersOpen(false)}
           >
             Done
           </Button>
         </MobileFilterSheet>
 
-        <div className="hidden flex-wrap items-center gap-2 border-b border-border/60 pb-3 md:flex">
+        <div className="hidden flex-wrap items-center gap-2 border-b border-[var(--hh-border)] pb-3 md:flex">
           <Input
             placeholder="Search tasks…"
             value={searchQuery}
@@ -625,10 +627,10 @@ export default function TasksPage() {
               type="button"
               onClick={() => startTransition(() => setFilter(f.value))}
               className={cn(
-                "rounded-sm border px-2.5 py-1.5 text-xs font-medium transition-colors",
+                "hh-focus-ring hh-touch-min rounded-hh-compact border px-2.5 py-1.5 text-xs font-medium transition-colors",
                 filter === f.value
-                  ? "border-[#111111] bg-[#111111] text-white"
-                  : "border-border/60 bg-transparent text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                  ? "border-[var(--hh-border-strong)] bg-[var(--hh-l3-selected)] text-[var(--hh-text-primary)]"
+                  : "border-[var(--hh-border)] bg-transparent text-[var(--hh-text-secondary)] hover:bg-[var(--hh-l3-hover)] hover:text-[var(--hh-text-primary)]"
               )}
             >
               {f.label}
@@ -636,7 +638,7 @@ export default function TasksPage() {
           ))}
         </div>
 
-        <div className="overflow-hidden rounded-sm border border-border/60 max-md:rounded-none max-md:border-0">
+        <div className="overflow-hidden rounded-hh-standard border border-[var(--hh-border)] max-md:rounded-none max-md:border-0">
           {loading ? (
             <div className="space-y-2 px-4 py-6" aria-busy="true" aria-label="Loading tasks">
               {Array.from({ length: 8 }).map((_, i) => (
@@ -644,7 +646,7 @@ export default function TasksPage() {
               ))}
             </div>
           ) : error ? (
-            <div className="py-10 text-center text-sm text-destructive">{error}</div>
+            <div className="py-10 text-center text-sm text-[var(--hh-danger)]">{error}</div>
           ) : filtered.length === 0 ? (
             <>
               <MobileEmptyState
@@ -657,7 +659,9 @@ export default function TasksPage() {
                 }
               />
               <div className="hidden py-10 text-center md:block">
-                <p className="text-sm text-muted-foreground">No tasks match the filter.</p>
+                <p className="text-sm text-[var(--hh-text-secondary)]">
+                  No tasks match the filter.
+                </p>
                 <Button onClick={openModal} className="mt-4" size="sm">
                   Create Task
                 </Button>
@@ -665,11 +669,11 @@ export default function TasksPage() {
             </>
           ) : (
             <>
-              <div className="divide-y divide-gray-100 dark:divide-border/60 md:hidden">
+              <div className="divide-y divide-[var(--hh-border)] md:hidden">
                 {filtered.map((t) => (
                   <div
                     key={t.id}
-                    className="flex min-h-[48px] w-full touch-manipulation items-center gap-2 border-0 bg-transparent px-0 py-2.5 transition-colors active:bg-muted/50"
+                    className="flex min-h-[48px] w-full touch-manipulation items-center gap-2 border-0 bg-transparent px-0 py-2.5 transition-colors active:bg-[var(--hh-l3-pressed)]"
                   >
                     <button
                       type="button"
@@ -678,10 +682,10 @@ export default function TasksPage() {
                     >
                       <span
                         className={cn(
-                          "inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-sm border",
+                          "inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-hh-compact border",
                           t.status === "done"
-                            ? "border-[#111111] bg-[#111111] text-white"
-                            : "border-border"
+                            ? "border-[var(--hh-text-primary)] bg-[var(--hh-text-primary)] text-[var(--hh-l2-operational-surface)]"
+                            : "border-[var(--hh-border)]"
                         )}
                         onClick={(e) => {
                           e.stopPropagation();
@@ -694,24 +698,25 @@ export default function TasksPage() {
                         <p
                           className={cn(
                             "truncate text-sm font-medium",
-                            t.status === "done" && "text-muted-foreground line-through"
+                            t.status === "done" && "text-[var(--hh-text-secondary)] line-through"
                           )}
                         >
                           {t.title || "—"}
                         </p>
-                        <p className="truncate text-xs text-text-secondary dark:text-muted-foreground">
+                        <p className="truncate text-xs text-[var(--hh-text-secondary)]">
                           {t.project_name ?? "—"} · Due{" "}
                           {t.due_date ? new Date(t.due_date).toLocaleDateString() : "—"}
                         </p>
                       </div>
                       <span
                         className={cn(
-                          "shrink-0 rounded-sm px-1.5 py-0.5 text-xs font-medium",
+                          "shrink-0 rounded-hh-compact px-1.5 py-0.5 text-xs font-medium",
                           t.priority === "high" &&
-                            "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300",
+                            "border border-[var(--hh-danger-border)] bg-[var(--hh-danger-soft-fill)] text-[var(--hh-danger)]",
                           t.priority === "medium" &&
-                            "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
-                          t.priority === "low" && "bg-muted text-muted-foreground"
+                            "border border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] text-[var(--hh-warning)]",
+                          t.priority === "low" &&
+                            "border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-secondary)]"
                         )}
                       >
                         {PRIORITY_LABEL[t.priority] ?? t.priority}
@@ -723,7 +728,7 @@ export default function TasksPage() {
                           <Button
                             variant="outline"
                             size="icon"
-                            className="btn-outline-ghost h-8 w-8 min-h-[44px] min-w-[44px] rounded-sm touch-manipulation"
+                            className="btn-outline-ghost h-8 w-8 min-h-[44px] min-w-[44px] rounded-hh-compact touch-manipulation"
                             aria-label="Task actions"
                             disabled={submitting}
                           >
@@ -732,7 +737,7 @@ export default function TasksPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent
                           align="end"
-                          className="min-w-[160px] rounded-md border border-border/60 bg-popover text-xs shadow-floating"
+                          className="min-w-[160px] rounded-hh-standard border border-[var(--hh-border-floating)] bg-[var(--hh-l2-operational-surface)] text-xs shadow-floating"
                         >
                           <DropdownMenuItem
                             onSelect={() => openDrawer(t)}
@@ -742,7 +747,7 @@ export default function TasksPage() {
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onSelect={() => handleDeleteTaskById(t.id)}
-                            className="cursor-pointer text-destructive focus:text-destructive"
+                            className="cursor-pointer text-[var(--hh-danger)] focus:text-[var(--hh-danger)]"
                           >
                             Delete
                           </DropdownMenuItem>
@@ -762,19 +767,19 @@ export default function TasksPage() {
                           className="h-8 w-9 px-2 text-left align-middle sm:px-3"
                           aria-label="Done"
                         />
-                        <th className="h-8 px-2 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] sm:px-3">
+                        <th className="h-8 px-2 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[var(--hh-text-secondary)] sm:px-3">
                           Task
                         </th>
-                        <th className="hidden h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] sm:table-cell">
+                        <th className="hidden h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[var(--hh-text-secondary)] sm:table-cell">
                           Project
                         </th>
-                        <th className="hidden h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] md:table-cell">
+                        <th className="hidden h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[var(--hh-text-secondary)] md:table-cell">
                           Assigned
                         </th>
-                        <th className="h-8 px-2 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] sm:px-3">
+                        <th className="h-8 px-2 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[var(--hh-text-secondary)] sm:px-3">
                           Due
                         </th>
-                        <th className="h-8 px-2 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] sm:px-3">
+                        <th className="h-8 px-2 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[var(--hh-text-secondary)] sm:px-3">
                           Priority
                         </th>
                         <th
@@ -797,15 +802,15 @@ export default function TasksPage() {
                             <button
                               type="button"
                               onClick={(e) => handleToggleDone(e, t)}
-                              className="rounded border-border/60 text-[#111111] focus:outline-none focus:ring-2 focus:ring-ring"
+                              className="hh-focus-ring rounded-hh-compact border-[var(--hh-border)] text-[var(--hh-text-primary)]"
                               aria-label={t.status === "done" ? "Mark not done" : "Mark done"}
                             >
                               <span
                                 className={cn(
-                                  "inline-flex h-4 w-4 items-center justify-center rounded-sm border",
+                                  "inline-flex h-4 w-4 items-center justify-center rounded-hh-compact border",
                                   t.status === "done"
-                                    ? "border-[#111111] bg-[#111111] text-white"
-                                    : "border-border"
+                                    ? "border-[var(--hh-text-primary)] bg-[var(--hh-text-primary)] text-[var(--hh-l2-operational-surface)]"
+                                    : "border-[var(--hh-border)]"
                                 )}
                               >
                                 {t.status === "done" ? "✓" : null}
@@ -816,30 +821,32 @@ export default function TasksPage() {
                             <span
                               className={cn(
                                 "font-medium",
-                                t.status === "done" && "text-muted-foreground line-through"
+                                t.status === "done" &&
+                                  "text-[var(--hh-text-secondary)] line-through"
                               )}
                             >
                               {t.title || "—"}
                             </span>
                           </td>
-                          <td className="hidden h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] text-muted-foreground sm:table-cell">
+                          <td className="hidden h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] text-[var(--hh-text-secondary)] sm:table-cell">
                             {t.project_name ?? "—"}
                           </td>
-                          <td className="hidden h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] text-muted-foreground md:table-cell">
+                          <td className="hidden h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] text-[var(--hh-text-secondary)] md:table-cell">
                             {t.worker_name ?? "—"}
                           </td>
-                          <td className="h-11 min-h-[44px] px-2 py-0 align-middle font-mono text-[13px] tabular-nums text-muted-foreground sm:px-3">
+                          <td className="h-11 min-h-[44px] px-2 py-0 align-middle font-mono text-[13px] tabular-nums text-[var(--hh-text-secondary)] sm:px-3">
                             {t.due_date ? new Date(t.due_date).toLocaleDateString() : "—"}
                           </td>
                           <td className="h-11 min-h-[44px] px-2 py-0 align-middle text-[13px] sm:px-3">
                             <span
                               className={cn(
-                                "inline-flex rounded-sm px-1.5 py-0.5 text-xs font-medium",
+                                "inline-flex rounded-hh-compact px-1.5 py-0.5 text-xs font-medium",
                                 t.priority === "high" &&
-                                  "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300",
+                                  "border border-[var(--hh-danger-border)] bg-[var(--hh-danger-soft-fill)] text-[var(--hh-danger)]",
                                 t.priority === "medium" &&
-                                  "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
-                                t.priority === "low" && "bg-muted text-muted-foreground"
+                                  "border border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] text-[var(--hh-warning)]",
+                                t.priority === "low" &&
+                                  "border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-secondary)]"
                               )}
                             >
                               {PRIORITY_LABEL[t.priority] ?? t.priority}
@@ -854,7 +861,7 @@ export default function TasksPage() {
                                 <Button
                                   variant="outline"
                                   size="icon"
-                                  className="btn-outline-ghost h-7 w-7 rounded-sm"
+                                  className="btn-outline-ghost h-7 w-7 rounded-hh-compact"
                                   aria-label="Task actions"
                                   disabled={submitting}
                                 >
@@ -863,7 +870,7 @@ export default function TasksPage() {
                               </DropdownMenuTrigger>
                               <DropdownMenuContent
                                 align="end"
-                                className="min-w-[160px] rounded-md border border-border/60 bg-popover text-xs shadow-floating"
+                                className="min-w-[160px] rounded-hh-standard border border-[var(--hh-border-floating)] bg-[var(--hh-l2-operational-surface)] text-xs shadow-floating"
                               >
                                 <DropdownMenuItem
                                   onSelect={() => openDrawer(t)}
@@ -873,7 +880,7 @@ export default function TasksPage() {
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
                                   onSelect={() => handleDeleteTaskById(t.id)}
-                                  className="cursor-pointer text-destructive focus:text-destructive"
+                                  className="cursor-pointer text-[var(--hh-danger)] focus:text-[var(--hh-danger)]"
                                 >
                                   Delete
                                 </DropdownMenuItem>
@@ -988,7 +995,7 @@ export default function TasksPage() {
               <Button
                 size="sm"
                 variant="outline"
-                className="btn-outline-destructive h-10 rounded-md max-sm:w-full"
+                className="btn-outline-destructive h-10 rounded-hh-compact max-sm:w-full"
                 onClick={handleDeleteTask}
                 disabled={submitting}
               >
@@ -998,7 +1005,7 @@ export default function TasksPage() {
                 <Button
                   size="sm"
                   variant="outline"
-                  className="h-10 rounded-md"
+                  className="h-10 rounded-hh-compact"
                   onClick={() => setDrawerOpen(false)}
                   disabled={submitting}
                 >
@@ -1006,7 +1013,7 @@ export default function TasksPage() {
                 </Button>
                 <Button
                   size="sm"
-                  className="h-10 rounded-md"
+                  className="h-10 rounded-hh-compact"
                   onClick={handleSaveDrawer}
                   disabled={submitting}
                 >
@@ -1027,14 +1034,14 @@ export default function TasksPage() {
               <Button
                 variant="outline"
                 size="sm"
-                className="h-10 rounded-md"
+                className="h-10 rounded-hh-compact"
                 onClick={() => setModalOpen(false)}
               >
                 Cancel
               </Button>
               <Button
                 size="sm"
-                className="h-10 rounded-md"
+                className="h-10 rounded-hh-compact"
                 onClick={handleSaveNew}
                 disabled={submitting}
               >

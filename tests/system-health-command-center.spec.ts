@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 
+import { loginAsE2EOwner } from "./e2e-auth-owner";
+
 const TEST_HEADERS = {
   "x-hh-test-auth-bypass": "1",
 };
@@ -242,7 +244,7 @@ test.describe("System Guardian command center", () => {
     });
 
     await page.setViewportSize({ width: 1280, height: 900 });
-    await page.goto("/system-health", { waitUntil: "domcontentloaded" });
+    await loginAsE2EOwner(page, "/system-health");
 
     await expect(page.getByRole("heading", { name: "System Guardian" })).toBeVisible({
       timeout: 30_000,
@@ -331,11 +333,24 @@ test.describe("System Guardian command center", () => {
     await expect(
       destructiveSection.getByRole("cell", { name: "GET is blocked safely." }).first()
     ).toBeVisible();
-    const headerBackground = await page
+    const headerSurface = await page
       .locator(".guardian-detail-table thead tr")
       .first()
-      .evaluate((element) => getComputedStyle(element).backgroundImage);
-    expect(headerBackground).toContain("linear-gradient");
+      .evaluate((element) => {
+        const tokenProbe = document.createElement("span");
+        tokenProbe.style.color = "var(--hh-l2-operational-surface)";
+        document.body.append(tokenProbe);
+        const tokenColor = getComputedStyle(tokenProbe).color;
+        tokenProbe.remove();
+        const styles = getComputedStyle(element);
+        return {
+          backgroundColor: styles.backgroundColor,
+          backgroundImage: styles.backgroundImage,
+          tokenColor,
+        };
+      });
+    expect(headerSurface.backgroundImage).toBe("none");
+    expect(headerSurface.backgroundColor).toBe(headerSurface.tokenColor);
 
     await page.setViewportSize({ width: 390, height: 844 });
     await expect(page.getByRole("heading", { name: "System Guardian" })).toBeVisible();
@@ -598,7 +613,7 @@ test.describe("System Guardian command center", () => {
       });
     });
 
-    await page.goto("/system-health", { waitUntil: "domcontentloaded" });
+    await loginAsE2EOwner(page, "/system-health");
     await page.getByRole("button", { name: "Run full scan" }).click();
 
     const activeIssues = page.locator("section").filter({ hasText: "Active Issues" }).first();
@@ -808,7 +823,7 @@ test.describe("System Guardian command center", () => {
       });
     });
 
-    await page.goto("/system-health", { waitUntil: "domcontentloaded" });
+    await loginAsE2EOwner(page, "/system-health");
 
     const activeIssues = page.locator("section").filter({ hasText: "Active Issues" }).first();
     await expect(activeIssues.getByText("Company Profile").first()).toBeVisible({

@@ -79,10 +79,11 @@ export function ChangeOrderAttachmentsSection({
               </span>
               {!readOnly && (
                 <Button
+                  aria-label={`Delete attachment ${att.fileName}`}
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="btn-outline-ghost h-8 w-8 shrink-0 p-0 text-[var(--hh-text-secondary)] hover:text-destructive"
+                  className="btn-outline-ghost min-h-[44px] min-w-[44px] shrink-0 p-0 text-[var(--hh-text-secondary)] hover:text-destructive xl:min-h-8 xl:min-w-8"
                   onClick={() => handleDelete(att.id)}
                   disabled={pending}
                 >
@@ -96,12 +97,13 @@ export function ChangeOrderAttachmentsSection({
       {!readOnly && (
         <form onSubmit={handleUpload} className="mt-4 flex flex-wrap items-center gap-2">
           <input
+            aria-label="Change order attachment"
             type="file"
             name="file"
             className="max-w-[220px] text-hh-body file:mr-2 file:rounded file:border-0 file:bg-muted file:px-3 file:py-1.5 file:text-hh-body"
             disabled={pending}
           />
-          <Button type="submit" size="sm" disabled={pending}>
+          <Button type="submit" size="sm" className="min-h-[44px]" disabled={pending}>
             {pending ? "Uploading…" : "Upload"}
           </Button>
           {error && <span className="text-hh-metadata text-destructive">{error}</span>}

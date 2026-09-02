@@ -84,7 +84,7 @@ export default function SystemMetricsPage() {
               label={label}
               value={
                 loading ? (
-                  <span className="block h-7 w-16 animate-pulse rounded-md bg-[var(--hh-l2-operational-surface)]" />
+                  <span className="block h-7 w-16 animate-pulse motion-reduce:animate-none rounded-hh-compact bg-[var(--hh-l2-operational-surface)]" />
                 ) : (
                   <span>{(metrics?.[key] ?? 0).toLocaleString("en-US")}</span>
                 )

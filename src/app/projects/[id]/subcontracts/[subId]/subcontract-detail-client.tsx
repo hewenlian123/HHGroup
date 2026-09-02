@@ -16,6 +16,12 @@ import {
   createApBillFromScheduleAction,
   updateSubcontractStatusAction,
 } from "./actions";
+import {
+  ProjectFinancialTableCell,
+  ProjectFinancialTableHead,
+  ProjectFinancialTableHeader,
+  projectFinancialTableClass,
+} from "../../_components/project-financial-responsive-table";
 
 const STATUSES: Array<SubcontractWithSubcontractor["status"]> = [
   "Draft",
@@ -75,10 +81,11 @@ export function SubcontractDetailClient({
     <div className="flex flex-wrap items-center gap-2">
       <span className="text-hh-metadata text-[var(--hh-text-secondary)]">Status</span>
       <select
+        aria-label="Subcontract status"
         value={status}
         onChange={(e) => handleChange(e.target.value as SubcontractWithSubcontractor["status"])}
         disabled={busy || options.length <= 1}
-        className="h-8 rounded border border-input bg-transparent px-2 text-hh-metadata"
+        className="min-h-[44px] rounded-hh-standard border border-input bg-transparent px-2 text-hh-body xl:min-h-8 xl:text-hh-metadata"
       >
         {STATUSES.filter((s) => optionsSet.has(s)).map((s) => (
           <option key={s} value={s}>
@@ -86,7 +93,7 @@ export function SubcontractDetailClient({
           </option>
         ))}
       </select>
-      <Button asChild variant="outline" size="sm" className="h-8">
+      <Button asChild variant="outline" size="sm" className="min-h-[44px] xl:min-h-8">
         <Link href={`/projects/${projectId}/subcontracts/${subcontract.id}/bills`}>Bills</Link>
       </Button>
       {error ? <span className="text-hh-metadata text-[var(--hh-danger)]">{error}</span> : null}
@@ -194,29 +201,36 @@ export function SubcontractPaymentScheduleClient({
     <NeoPanel title="Payment Schedule" bodyClassName="p-0">
       <form
         onSubmit={handleAddSchedule}
-        className="grid gap-3 border-b border-[var(--hh-border)] p-4 md:grid-cols-[1.3fr_1fr_0.8fr_0.8fr_auto]"
+        className="grid gap-3 border-b border-[var(--hh-border)] p-4 xl:grid-cols-[1.3fr_1fr_0.8fr_0.8fr_auto]"
       >
         <div className="min-w-0 space-y-1.5">
-          <NeoFieldLabel required>Title</NeoFieldLabel>
+          <NeoFieldLabel htmlFor="schedule-title" required>
+            Title
+          </NeoFieldLabel>
           <NeoInput
+            id="schedule-title"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Deposit, rough-in, final"
-            className="h-10 rounded-hh-standard"
+            className="min-h-[44px] rounded-hh-standard"
             required
           />
         </div>
         <div className="min-w-0 space-y-1.5">
-          <NeoFieldLabel>Description</NeoFieldLabel>
+          <NeoFieldLabel htmlFor="schedule-description">Description</NeoFieldLabel>
           <NeoInput
+            id="schedule-description"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            className="h-10 rounded-hh-standard"
+            className="min-h-[44px] rounded-hh-standard"
           />
         </div>
         <div className="min-w-0 space-y-1.5">
-          <NeoFieldLabel required>Amount</NeoFieldLabel>
+          <NeoFieldLabel htmlFor="schedule-amount" required>
+            Amount
+          </NeoFieldLabel>
           <NeoInput
+            id="schedule-amount"
             type="number"
             step="0.01"
             min="0"
@@ -224,21 +238,22 @@ export function SubcontractPaymentScheduleClient({
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             placeholder="0.00"
-            className="neo-amount h-10 rounded-hh-standard tabular-nums"
+            className="neo-amount min-h-[44px] rounded-hh-standard tabular-nums"
             required
           />
         </div>
         <div className="min-w-0 space-y-1.5">
-          <NeoFieldLabel>Due date</NeoFieldLabel>
+          <NeoFieldLabel htmlFor="schedule-due-date">Due date</NeoFieldLabel>
           <NeoInput
+            id="schedule-due-date"
             type="date"
             value={dueDate}
             onChange={(e) => setDueDate(e.target.value)}
-            className="h-10 rounded-hh-standard tabular-nums"
+            className="min-h-[44px] rounded-hh-standard tabular-nums"
           />
         </div>
         <div className="flex items-end">
-          <Button type="submit" size="sm" className="min-h-10 w-full" disabled={submitting}>
+          <Button type="submit" size="sm" className="min-h-[44px] w-full" disabled={submitting}>
             {submitting ? "Adding..." : "Add"}
           </Button>
         </div>
@@ -254,44 +269,90 @@ export function SubcontractPaymentScheduleClient({
           No payment schedule items yet.
         </p>
       ) : (
-        <NeoTable className="rounded-none border-0 shadow-none" tableClassName="min-w-[760px]">
-          <thead>
+        <NeoTable
+          className="rounded-none border-0 shadow-none"
+          tableClassName={projectFinancialTableClass}
+        >
+          <ProjectFinancialTableHead>
             <tr>
-              <th className={tableRawThClass}>Title</th>
-              <th className={cn(tableRawThClass, "text-right tabular-nums")}>Amount</th>
-              <th className={tableRawThClass}>Due</th>
-              <th className={tableRawThClass}>Status</th>
-              <th className={cn(tableRawThClass, "text-right")}>Action</th>
+              <ProjectFinancialTableHeader id="schedule-title-column" className={tableRawThClass}>
+                Title
+              </ProjectFinancialTableHeader>
+              <ProjectFinancialTableHeader
+                id="schedule-amount-column"
+                className={cn(tableRawThClass, "text-right tabular-nums")}
+              >
+                Amount
+              </ProjectFinancialTableHeader>
+              <ProjectFinancialTableHeader id="schedule-due-column" className={tableRawThClass}>
+                Due
+              </ProjectFinancialTableHeader>
+              <ProjectFinancialTableHeader id="schedule-status-column" className={tableRawThClass}>
+                Status
+              </ProjectFinancialTableHeader>
+              <ProjectFinancialTableHeader
+                id="schedule-action-column"
+                className={cn(tableRawThClass, "text-right")}
+              >
+                Action
+              </ProjectFinancialTableHeader>
             </tr>
-          </thead>
+          </ProjectFinancialTableHead>
           <tbody>
             {items.map((item) => {
               const billId = item.ap_bill_id ?? createdBillIds[item.id] ?? null;
               return (
                 <tr key={item.id} className="border-b border-[var(--hh-border)] last:border-b-0">
-                  <td className={cn(tableRawTdClass, "max-w-[260px]")}>
-                    <span className="block truncate font-medium text-[var(--hh-text-primary)]">
+                  <ProjectFinancialTableCell
+                    headerId="schedule-title-column"
+                    label="Title"
+                    className={cn(tableRawTdClass, "min-w-0 xl:max-w-[260px]")}
+                  >
+                    <span className="block break-words font-medium text-[var(--hh-text-primary)] xl:truncate">
                       {item.title}
                     </span>
                     {item.description ? (
-                      <span className="mt-0.5 block truncate text-hh-metadata text-[var(--hh-text-secondary)]">
+                      <span className="mt-0.5 block break-words text-hh-metadata text-[var(--hh-text-secondary)] xl:truncate">
                         {item.description}
                       </span>
                     ) : null}
-                  </td>
-                  <td className={cn(tableRawTdClass, "text-right tabular-nums")}>
+                  </ProjectFinancialTableCell>
+                  <ProjectFinancialTableCell
+                    headerId="schedule-amount-column"
+                    label="Amount"
+                    className={cn(tableRawTdClass, "text-right tabular-nums")}
+                  >
                     {formatCurrency(item.amount)}
-                  </td>
-                  <td className={tableRawTdClass}>{formatDate(item.due_date)}</td>
-                  <td className={tableRawTdClass}>
+                  </ProjectFinancialTableCell>
+                  <ProjectFinancialTableCell
+                    headerId="schedule-due-column"
+                    label="Due"
+                    className={tableRawTdClass}
+                  >
+                    {formatDate(item.due_date)}
+                  </ProjectFinancialTableCell>
+                  <ProjectFinancialTableCell
+                    headerId="schedule-status-column"
+                    label="Status"
+                    className={tableRawTdClass}
+                  >
                     <StatusBadge
                       label={billId ? "Billed" : item.status}
                       variant={billId ? "success" : "muted"}
                     />
-                  </td>
-                  <td className={cn(tableRawTdClass, "text-right")}>
+                  </ProjectFinancialTableCell>
+                  <ProjectFinancialTableCell
+                    headerId="schedule-action-column"
+                    label="Action"
+                    className={cn(tableRawTdClass, "text-right")}
+                  >
                     {billId ? (
-                      <Button asChild variant="outline" size="sm" className="h-8">
+                      <Button
+                        asChild
+                        variant="outline"
+                        size="sm"
+                        className="min-h-[44px] xl:min-h-8"
+                      >
                         <Link href={`/bills/${billId}`}>View AP Bill</Link>
                       </Button>
                     ) : (
@@ -299,14 +360,14 @@ export function SubcontractPaymentScheduleClient({
                         type="button"
                         variant="outline"
                         size="sm"
-                        className="h-8"
+                        className="min-h-[44px] xl:min-h-8"
                         disabled={creatingId === item.id}
                         onClick={() => void handleCreateBill(item.id)}
                       >
                         {creatingId === item.id ? "Creating..." : "Create AP Bill"}
                       </Button>
                     )}
-                  </td>
+                  </ProjectFinancialTableCell>
                 </tr>
               );
             })}

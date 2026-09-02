@@ -3,9 +3,11 @@
 import * as React from "react";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import Link from "next/link";
+import { NeoAmount, NeoMobileCard, NeoTable, PageLayout } from "@/components/base";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { WorkerBalanceRow } from "@/lib/data";
 import type { WorkerReimbursement } from "@/lib/worker-reimbursements-db";
 import { formatCurrency, formatDate } from "@/lib/formatters";
@@ -67,135 +69,142 @@ export default function FinancialWorkersPage() {
   }, []);
 
   return (
-    <div className="page-container page-stack py-6">
-      <PageHeader
-        title="Worker Balances"
-        subtitle="Reimbursement balances by worker. Click a worker to open their ledger."
-        actions={
-          <Link
-            href="/labor/reimbursements"
-            className="text-sm text-muted-foreground hover:text-foreground"
-          >
-            Reimbursements
-          </Link>
-        }
-      />
+    <PageLayout
+      header={
+        <PageHeader
+          title="Worker Balances"
+          subtitle="Reimbursement balances by worker. Click a worker to open their ledger."
+          actions={
+            <Button asChild variant="outline" size="sm" className="h-11 min-h-[44px]">
+              <Link href="/labor/reimbursements">Reimbursements</Link>
+            </Button>
+          }
+        />
+      }
+    >
       {message && (
-        <p className="text-sm text-destructive border-b border-border/60 pb-3">{message}</p>
+        <p
+          className="rounded-hh-standard border border-[var(--hh-danger-border)] bg-[var(--hh-danger-soft-fill)] px-3 py-2 text-hh-error text-[var(--hh-danger)]"
+          role="alert"
+        >
+          {message}
+        </p>
       )}
 
-      {/* Mobile: cards */}
-      <div className="flex flex-col gap-3 md:hidden">
+      <div className="space-y-2 md:hidden" aria-label="Worker balances">
         {loading ? (
-          <p className="py-6 text-center text-muted-foreground text-xs">Loading…</p>
+          <p className="py-6 text-center text-hh-metadata text-[var(--hh-text-secondary)]">
+            Loading…
+          </p>
         ) : balances.length === 0 ? (
-          <p className="py-6 text-center text-muted-foreground text-xs">No worker balances.</p>
+          <p className="py-6 text-center text-hh-metadata text-[var(--hh-text-secondary)]">
+            No worker balances.
+          </p>
         ) : (
           balances.map((row) => (
-            <div key={row.workerId} className="rounded-sm border border-border/60 p-3 space-y-2">
-              <div className="flex justify-between items-start">
+            <NeoMobileCard key={row.workerId} className="p-3">
+              <div className="flex items-start justify-between gap-3">
                 <button
                   type="button"
                   onClick={() => openLedger(row)}
-                  className="font-medium text-left hover:underline"
+                  className="min-h-[44px] min-w-[44px] text-left text-hh-body font-semibold text-[var(--hh-text-primary)] hover:underline lg:min-h-0"
                 >
                   {row.workerName ?? row.workerId}
                 </button>
-                <span className="text-sm font-semibold tabular-nums tracking-tight">
+                <NeoAmount className="shrink-0 whitespace-nowrap text-hh-body font-semibold">
                   {formatCurrency(row.balance)}
-                </span>
+                </NeoAmount>
               </div>
-              <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
-                <span>Pending {formatCurrency(row.pendingAmount)}</span>
-                <span>Paid {formatCurrency(row.paidAmount)}</span>
+              <div className="mt-2 grid grid-cols-2 gap-2 text-hh-metadata text-[var(--hh-text-secondary)]">
+                <span>
+                  Pending{" "}
+                  <NeoAmount className="ml-1">{formatCurrency(row.pendingAmount)}</NeoAmount>
+                </span>
+                <span>
+                  Paid <NeoAmount className="ml-1">{formatCurrency(row.paidAmount)}</NeoAmount>
+                </span>
               </div>
               <Button
                 size="sm"
                 variant="outline"
-                className="h-8 rounded-sm w-full mt-2"
+                className="mt-3 h-11 min-h-[44px] w-full"
                 onClick={() => openLedger(row)}
               >
                 View Ledger
               </Button>
-            </div>
+            </NeoMobileCard>
           ))
         )}
       </div>
 
-      {/* Desktop: table */}
-      <div className="table-responsive hidden border-b border-border/60 md:block">
-        <table className="w-full min-w-[520px] text-sm border-collapse table-row-compact md:min-w-0">
-          <thead>
-            <tr className="border-b border-border/60">
-              <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Worker
-              </th>
-              <th className="text-right py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground tabular-nums">
-                Pending
-              </th>
-              <th className="text-right py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground tabular-nums">
-                Paid
-              </th>
-              <th className="text-right py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground tabular-nums">
-                Balance
-              </th>
-              <th className="w-24" />
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr className="border-b border-border/40">
-                <td colSpan={5} className="py-6 px-3 text-center text-muted-foreground text-xs">
-                  Loading…
-                </td>
-              </tr>
-            ) : balances.length === 0 ? (
-              <tr className="border-b border-border/40">
-                <td colSpan={5} className="py-6 px-3 text-center text-muted-foreground text-xs">
-                  No worker balances.
-                </td>
-              </tr>
-            ) : (
-              balances.map((row) => (
-                <tr key={row.workerId} className="border-b border-border/40 hover:bg-muted/10">
-                  <td className="py-2 px-3">
-                    <button
-                      type="button"
-                      onClick={() => openLedger(row)}
-                      className="font-medium text-left hover:underline"
-                    >
-                      {row.workerName ?? row.workerId}
-                    </button>
-                  </td>
-                  <td className="py-2 px-3 text-right font-semibold tabular-nums tracking-tight text-zinc-950">
-                    {formatCurrency(row.pendingAmount)}
-                  </td>
-                  <td className="py-2 px-3 text-right font-semibold tabular-nums tracking-tight text-zinc-950">
-                    {formatCurrency(row.paidAmount)}
-                  </td>
-                  <td className="py-2 px-3 text-right font-semibold tabular-nums tracking-tight text-zinc-950">
-                    {formatCurrency(row.balance)}
-                  </td>
-                  <td className="py-2 px-3">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="btn-outline-ghost h-7 text-xs rounded-sm"
-                      onClick={() => openLedger(row)}
-                    >
-                      Ledger
-                    </Button>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+      <NeoTable className="hidden md:block" tableClassName="min-w-[640px] lg:min-w-0">
+        <TableHeader>
+          <TableRow>
+            <TableHead>Worker</TableHead>
+            <TableHead className="text-right">Pending</TableHead>
+            <TableHead className="text-right">Paid</TableHead>
+            <TableHead className="text-right">Balance</TableHead>
+            <TableHead className="w-24" />
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {loading ? (
+            <TableRow>
+              <TableCell
+                colSpan={5}
+                className="py-6 px-3 text-center text-muted-foreground text-xs"
+              >
+                Loading…
+              </TableCell>
+            </TableRow>
+          ) : balances.length === 0 ? (
+            <TableRow>
+              <TableCell
+                colSpan={5}
+                className="py-6 px-3 text-center text-muted-foreground text-xs"
+              >
+                No worker balances.
+              </TableCell>
+            </TableRow>
+          ) : (
+            balances.map((row) => (
+              <TableRow key={row.workerId} className="hover:bg-muted/10">
+                <TableCell className="py-2 px-3">
+                  <button
+                    type="button"
+                    onClick={() => openLedger(row)}
+                    className="min-h-[44px] min-w-[44px] text-left font-medium text-[var(--hh-text-primary)] hover:underline lg:min-h-0"
+                  >
+                    {row.workerName ?? row.workerId}
+                  </button>
+                </TableCell>
+                <TableCell className="px-3 py-2 text-right">
+                  <NeoAmount>{formatCurrency(row.pendingAmount)}</NeoAmount>
+                </TableCell>
+                <TableCell className="px-3 py-2 text-right">
+                  <NeoAmount>{formatCurrency(row.paidAmount)}</NeoAmount>
+                </TableCell>
+                <TableCell className="px-3 py-2 text-right">
+                  <NeoAmount className="font-semibold">{formatCurrency(row.balance)}</NeoAmount>
+                </TableCell>
+                <TableCell className="py-2 px-3">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-11 min-h-[44px] px-3 lg:h-9 lg:min-h-0"
+                    onClick={() => openLedger(row)}
+                  >
+                    Ledger
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))
+          )}
+        </TableBody>
+      </NeoTable>
 
-      {/* Ledger modal */}
       <Dialog open={!!ledgerWorker} onOpenChange={(open) => !open && setLedgerWorker(null)}>
-        <DialogContent className="max-w-2xl max-h-[85vh] border-border/60 rounded-sm flex flex-col">
+        <DialogContent className="flex max-h-[85vh] max-w-2xl flex-col border-[var(--hh-border)]">
           <DialogHeader>
             <DialogTitle>
               Ledger · {ledgerWorker?.workerName ?? ledgerWorker?.workerId ?? "Worker"}
@@ -205,61 +214,58 @@ export default function FinancialWorkersPage() {
             {ledgerLoading ? (
               <p className="py-6 text-center text-muted-foreground text-xs">Loading…</p>
             ) : (
-              <table className="w-full text-sm border-collapse table-row-compact">
-                <thead>
-                  <tr className="border-b border-border/60">
-                    <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                      Date
-                    </th>
-                    <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                      Project
-                    </th>
-                    <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                      Vendor
-                    </th>
-                    <th className="text-right py-2 px-3 text-xs font-medium uppercase tracking-wider text-muted-foreground tabular-nums">
-                      Amount
-                    </th>
-                    <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                      Status
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
+              <NeoTable
+                data-testid="worker-ledger-table"
+                className="border-0 shadow-none"
+                scrollClassName="max-h-[60vh]"
+                tableClassName="min-w-[640px]"
+              >
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Project</TableHead>
+                    <TableHead>Vendor</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {ledgerRows.length === 0 ? (
-                    <tr>
-                      <td
+                    <TableRow>
+                      <TableCell
                         colSpan={5}
-                        className="py-6 px-3 text-center text-muted-foreground text-xs"
+                        className="py-6 text-center text-hh-metadata text-[var(--hh-text-secondary)]"
                       >
                         No reimbursements.
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ) : (
                     ledgerRows.map((r) => (
-                      <tr key={r.id} className="border-b border-border/40">
-                        <td className="py-2 px-3 font-mono tabular-nums tracking-tight text-zinc-500">
+                      <TableRow key={r.id}>
+                        <TableCell className="text-hh-metadata text-[var(--hh-text-secondary)]">
                           {formatDate(r.createdAt)}
-                        </td>
-                        <td className="py-2 px-3 text-muted-foreground">
+                        </TableCell>
+                        <TableCell className="text-[var(--hh-text-secondary)]">
                           {r.projectName ?? r.projectId ?? "—"}
-                        </td>
-                        <td className="py-2 px-3 text-muted-foreground max-w-[120px] truncate">
+                        </TableCell>
+                        <TableCell className="max-w-[120px] truncate text-[var(--hh-text-secondary)]">
                           {r.vendor ?? "—"}
-                        </td>
-                        <td className="py-2 px-3 text-right font-semibold tabular-nums tracking-tight text-zinc-950">
-                          {formatCurrency(r.amount)}
-                        </td>
-                        <td className="py-2 px-3 text-muted-foreground">{r.status}</td>
-                      </tr>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <NeoAmount>{formatCurrency(r.amount)}</NeoAmount>
+                        </TableCell>
+                        <TableCell className="text-[var(--hh-text-secondary)]">
+                          {r.status}
+                        </TableCell>
+                      </TableRow>
                     ))
                   )}
-                </tbody>
-              </table>
+                </TableBody>
+              </NeoTable>
             )}
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageLayout>
   );
 }

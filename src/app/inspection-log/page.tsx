@@ -237,7 +237,7 @@ export default function InspectionLogPage() {
               title="Inspection Log"
               description="Track inspections by project."
               actions={
-                <Button size="sm" onClick={openModal}>
+                <Button size="sm" className="md:max-lg:min-h-11" onClick={openModal}>
                   + New Inspection
                 </Button>
               }
@@ -252,7 +252,7 @@ export default function InspectionLogPage() {
         </>
       }
     >
-      <div className="w-full space-y-3">
+      <div data-testid="operations-inspection-log" className="w-full space-y-3">
         <MobileSearchFiltersRow
           filterSheetOpen={filtersOpen}
           onOpenFilters={() => setFiltersOpen(true)}

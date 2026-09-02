@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { motion as m } from "framer-motion";
+import { motion as m, useReducedMotion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { StatusBadge } from "@/components/base";
@@ -23,11 +23,9 @@ const RQ_BTN =
 
 function fieldClass(layout: RqLayout, extra?: string): string {
   return cn(
-    "w-full min-w-0 border border-[#e5e7eb] bg-[#ffffff] text-[#111827] shadow-none transition-[border-color_box-shadow_background-color] duration-150 ease-out",
-    "hover:border-[#d1d5db] focus-visible:border-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30",
-    layout === "mobile"
-      ? "min-h-10 rounded-xl px-3 py-2 text-base leading-snug"
-      : "h-9 rounded-lg text-xs",
+    "w-full min-w-0 rounded-hh-standard border border-[var(--hh-border-default)] bg-[var(--hh-surface-workspace)] text-[var(--hh-text-primary)] shadow-none transition-[border-color,box-shadow,background-color] duration-150 ease-out",
+    "hover:border-[var(--hh-border-input)] hover:bg-[var(--hh-surface-hover)] focus-visible:border-[var(--hh-accent-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)]",
+    layout === "desktop" ? "h-9 px-2 text-xs" : "min-h-11 px-3 py-2 text-base leading-snug",
     extra
   );
 }
@@ -113,11 +111,8 @@ function propsEqual(prev: ReceiptQueueRowCardProps, next: ReceiptQueueRowCardPro
   return true;
 }
 
-const TABLET_GRID =
-  "grid min-w-[700px] w-full items-center gap-x-2 gap-y-2 [grid-template-columns:52px_72px_minmax(0_1.35fr)_minmax(0_0.95fr)_minmax(0_0.95fr)_minmax(0_1.05fr)_minmax(0_0.95fr)_minmax(0_0.95fr)_92px]";
-
 const DESKTOP_GRID =
-  "grid min-w-[920px] w-full items-center gap-x-3 gap-y-2 [grid-template-columns:60px_80px_minmax(0_1.4fr)_minmax(0_1fr)_minmax(0_1fr)_minmax(0_1.2fr)_minmax(0_1fr)_minmax(0_1fr)_100px]";
+  "grid w-full min-w-0 items-center gap-x-3 gap-y-2 [grid-template-columns:60px_72px_minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1fr)_88px]";
 
 export const ReceiptQueueRowCard = React.memo(function ReceiptQueueRowCard({
   layout,
@@ -159,10 +154,13 @@ export const ReceiptQueueRowCard = React.memo(function ReceiptQueueRowCard({
 }: ReceiptQueueRowCardProps) {
   const busy = row.status === "processing";
   const id = row.id;
+  const compact = layout !== "desktop";
+  const prefersReducedMotion = useReducedMotion();
   const fc = (e?: string) => fieldClass(layout, e);
 
-  const thumbSize =
-    layout === "mobile" ? "h-16 w-16 shrink-0 rounded-xl" : "h-[52px] w-[52px] shrink-0 rounded-lg";
+  const thumbSize = compact
+    ? "h-16 w-16 shrink-0 rounded-hh-panel"
+    : "h-[52px] w-[52px] shrink-0 rounded-hh-standard";
 
   const thumbButton = (
     <button
@@ -171,28 +169,26 @@ export const ReceiptQueueRowCard = React.memo(function ReceiptQueueRowCard({
       aria-label="Preview receipt"
       data-queue-row-id={id}
       className={cn(
-        "relative overflow-hidden border border-[#e5e7eb] text-left transition-[opacity_box-shadow] duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30",
+        "relative overflow-hidden border border-[var(--hh-border-default)] bg-[var(--hh-surface-subtle)] text-left transition-[opacity,box-shadow] duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)]",
         thumbSize,
-        busy || !prev
-          ? "cursor-not-allowed opacity-60"
-          : "cursor-pointer hover:opacity-95 hover:shadow-sm"
+        busy || !prev ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:opacity-95"
       )}
       onClick={() => onPreview(id)}
     >
       {row.mime_type === "application/pdf" || row.file_name.toLowerCase().endsWith(".pdf") ? (
-        <div className="flex h-full w-full items-center justify-center bg-white text-[9px] font-medium text-muted-foreground">
+        <div className="flex h-full w-full items-center justify-center bg-[var(--hh-surface-workspace)] text-[9px] font-medium text-[var(--hh-text-tertiary)]">
           PDF
         </div>
       ) : prev ? (
         /* eslint-disable-next-line @next/next/no-img-element */
         <img src={prev} alt="" className="h-full w-full object-cover" />
       ) : (
-        <div className="flex h-full w-full items-center justify-center text-[9px] text-muted-foreground">
+        <div className="flex h-full w-full items-center justify-center text-[9px] text-[var(--hh-text-tertiary)]">
           —
         </div>
       )}
       {busy ? (
-        <div className="absolute inset-0 flex items-center justify-center bg-white/70">
+        <div className="absolute inset-0 flex items-center justify-center bg-[var(--hh-surface-workspace)]/80">
           <InlineLoading className="h-4 w-4" size="md" aria-label="Processing" />
         </div>
       ) : null}
@@ -203,6 +199,7 @@ export const ReceiptQueueRowCard = React.memo(function ReceiptQueueRowCard({
     <Input
       ref={(el) => registerVendorRef(id, el)}
       placeholder="Vendor"
+      aria-label="Vendor"
       value={row.vendor_name}
       disabled={busy || rowLocked}
       data-queue-row-id={id}
@@ -213,15 +210,15 @@ export const ReceiptQueueRowCard = React.memo(function ReceiptQueueRowCard({
       className={cn(
         fc(),
         (vendorMissing || vendorShake) &&
-          "border-[#d92d20] bg-red-50 focus-visible:border-[#d92d20] focus-visible:ring-[#d92d20]/25",
-        vendorShake && "animate-rq-confirm-shake"
+          "border-[var(--hh-danger-border)] bg-[var(--hh-danger-soft-fill)] focus-visible:border-[var(--hh-danger)] focus-visible:ring-[var(--hh-danger-border)]",
+        vendorShake && !prefersReducedMotion && "animate-rq-confirm-shake"
       )}
       autoComplete="off"
     />
   );
 
   const vendorHintRow = (
-    <div className="min-h-[18px] text-[11px] leading-tight text-[#d92d20] dark:text-red-400">
+    <div className="min-h-[18px] text-[11px] leading-tight text-[var(--hh-danger)]">
       {vendorMissing ? <span role="status">Vendor required</span> : <span aria-hidden>&nbsp;</span>}
     </div>
   );
@@ -230,6 +227,7 @@ export const ReceiptQueueRowCard = React.memo(function ReceiptQueueRowCard({
     <Input
       ref={(el) => registerAmountRef(id, el)}
       placeholder="Amount"
+      aria-label="Amount"
       inputMode="decimal"
       value={row.amount}
       disabled={busy || rowLocked}
@@ -242,15 +240,15 @@ export const ReceiptQueueRowCard = React.memo(function ReceiptQueueRowCard({
         fc(),
         "tabular-nums",
         (showAmountHint || amountShake) &&
-          "border-[#d92d20] bg-red-50 focus-visible:border-[#d92d20] focus-visible:ring-[#d92d20]/25",
-        amountShake && "animate-rq-confirm-shake"
+          "border-[var(--hh-danger-border)] bg-[var(--hh-danger-soft-fill)] focus-visible:border-[var(--hh-danger)] focus-visible:ring-[var(--hh-danger-border)]",
+        amountShake && !prefersReducedMotion && "animate-rq-confirm-shake"
       )}
       autoComplete="off"
     />
   );
 
   const amountHintRow = (
-    <div className="min-h-[18px] text-[11px] leading-tight text-[#d92d20] dark:text-red-400">
+    <div className="min-h-[18px] text-[11px] leading-tight text-[var(--hh-danger)]">
       {showAmountHint ? (
         <span role="status">Amount required</span>
       ) : (
@@ -263,6 +261,7 @@ export const ReceiptQueueRowCard = React.memo(function ReceiptQueueRowCard({
     <Input
       ref={(el) => registerDateRef(id, el)}
       type="date"
+      aria-label="Expense date"
       value={row.expense_date.slice(0, 10)}
       disabled={busy || rowLocked}
       data-queue-row-id={id}
@@ -276,6 +275,7 @@ export const ReceiptQueueRowCard = React.memo(function ReceiptQueueRowCard({
 
   const projectSelect = (
     <select
+      aria-label="Project"
       className={fc()}
       value={row.project_id ?? ""}
       disabled={busy || rowLocked}
@@ -320,7 +320,8 @@ export const ReceiptQueueRowCard = React.memo(function ReceiptQueueRowCard({
   const workerSelect =
     workers.length > 0 ? (
       <select
-        className={cn(fc(), layout !== "mobile" && "text-[11px]")}
+        aria-label="Worker"
+        className={cn(fc(), layout === "desktop" && "text-[11px]")}
         value={row.worker_id ?? ""}
         disabled={busy || rowLocked}
         data-queue-row-id={id}
@@ -342,9 +343,9 @@ export const ReceiptQueueRowCard = React.memo(function ReceiptQueueRowCard({
       type="button"
       size="sm"
       className={cn(
-        layout === "mobile"
-          ? "h-11 min-h-10 w-full flex-1 rounded-xl border border-transparent bg-[#081225] px-4 text-sm font-semibold text-white shadow-sm transition-transform duration-150 ease-out hover:scale-[1.02] hover:border-[#0F172A] hover:bg-[#0F172A] active:scale-[0.98]"
-          : "h-9 w-full min-w-0 rounded-lg border border-transparent bg-[#081225] px-2 text-xs font-medium text-white shadow-sm transition-transform duration-150 ease-out hover:scale-[1.02] hover:border-[#0F172A] hover:bg-[#0F172A] active:scale-[0.98]",
+        compact
+          ? "h-11 min-h-11 w-full flex-1 rounded-hh-standard border border-transparent bg-[var(--hh-accent-primary)] px-4 text-sm font-semibold text-white shadow-none transition-transform duration-150 ease-out hover:bg-[var(--hh-accent-hover)] active:scale-[0.98]"
+          : "h-9 w-full min-w-0 rounded-hh-standard border border-transparent bg-[var(--hh-accent-primary)] px-2 text-xs font-medium text-white shadow-none transition-transform duration-150 ease-out hover:bg-[var(--hh-accent-hover)] active:scale-[0.98]",
         RQ_BTN
       )}
       disabled={busy || bulkAdding || captureUploading || rowLocked}
@@ -360,27 +361,25 @@ export const ReceiptQueueRowCard = React.memo(function ReceiptQueueRowCard({
       variant="outline"
       size="sm"
       className={cn(
-        layout === "mobile"
-          ? "h-11 min-h-10 min-w-[2.75rem] shrink-0 rounded-xl border-[#e5e7eb] px-3 text-[#6b7280] transition-[background-color_transform_color_box-shadow] duration-150 ease-out hover:border-rose-200/80 hover:bg-rose-50 hover:text-rose-600 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30 active:scale-[0.96]"
-          : "h-9 shrink-0 rounded-lg border-[#e5e7eb] px-2 text-[#6b7280] transition-[background-color_transform_color_box-shadow] duration-rq ease-out hover:scale-110 hover:border-rose-200/80 hover:bg-rose-50 hover:text-rose-600 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30 active:scale-[0.88] active:duration-90 active:ease-spring-out",
+        compact
+          ? "h-11 min-h-11 min-w-11 shrink-0 rounded-hh-standard border-[var(--hh-border-default)] px-3 text-[var(--hh-text-secondary)] transition-[background-color,transform,color,box-shadow] duration-150 ease-out hover:border-[var(--hh-danger-border)] hover:bg-[var(--hh-danger-soft-fill)] hover:text-[var(--hh-danger)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)] active:scale-[0.96]"
+          : "h-9 min-w-9 shrink-0 rounded-hh-standard border-[var(--hh-border-default)] px-2 text-[var(--hh-text-secondary)] transition-[background-color,transform,color,box-shadow] duration-rq ease-out hover:border-[var(--hh-danger-border)] hover:bg-[var(--hh-danger-soft-fill)] hover:text-[var(--hh-danger)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)] active:scale-[0.96] active:duration-90 active:ease-spring-out",
         RQ_BTN
       )}
       disabled={busy || rowLocked}
       onClick={() => void onRemove(id)}
       aria-label="Remove"
     >
-      <Trash2 className={layout === "mobile" ? "h-4 w-4" : "h-3.5 w-3.5"} />
+      <Trash2 className={compact ? "h-4 w-4" : "h-3.5 w-3.5"} />
     </Button>
   );
 
   const metaBlock = (
     <>
       {row.error_message ? (
-        <p className="text-[10px] text-[#d92d20] md:text-[10px] dark:text-red-400">
-          {row.error_message}
-        </p>
+        <p className="text-[10px] text-[var(--hh-danger)] md:text-[10px]">{row.error_message}</p>
       ) : null}
-      {dup ? <p className="text-[10px] text-[#6b7280] dark:text-muted-foreground">{dup}</p> : null}
+      {dup ? <p className="text-[10px] text-[var(--hh-text-tertiary)]">{dup}</p> : null}
       {row.status === "failed" ? (
         <Button
           type="button"
@@ -388,7 +387,7 @@ export const ReceiptQueueRowCard = React.memo(function ReceiptQueueRowCard({
           size="sm"
           className={cn(
             "btn-outline-ghost px-1.5",
-            layout === "mobile" ? "h-10 min-h-10 text-xs" : "h-6 text-[10px]"
+            compact ? "h-11 min-h-11 text-xs" : "h-7 text-[10px]"
           )}
           onClick={() => onReplace(id)}
         >
@@ -405,7 +404,7 @@ export const ReceiptQueueRowCard = React.memo(function ReceiptQueueRowCard({
           size="sm"
           className={cn(
             "btn-outline-ghost px-1.5",
-            layout === "mobile" ? "h-10 min-h-10 text-xs" : "h-6 text-[10px]"
+            compact ? "h-11 min-h-11 text-xs" : "h-7 text-[10px]"
           )}
           data-testid="receipt-queue-retry-ocr"
           disabled={busy || rowLocked}
@@ -417,58 +416,68 @@ export const ReceiptQueueRowCard = React.memo(function ReceiptQueueRowCard({
     </>
   );
 
-  const rowHoverMotion =
-    !motion && !rowLocked && layout === "mobile" ? ({ whileTap: { scale: 0.99 } } as const) : {};
-
   const outerClass = cn(
-    "relative shrink-0 overflow-hidden bg-[#ffffff] dark:bg-card",
-    layout === "mobile"
-      ? "max-h-none rounded-xl border border-[#e5e7eb] shadow-sm dark:border-border"
-      : "max-h-[520px] rounded-lg border border-[#e5e7eb] shadow-sm dark:border-border",
-    !!motion && "pointer-events-none will-change-[opacity_transform_max-height]",
-    motion
-      ? "transition-[transform_opacity_background-color_max-height_margin_padding_box-shadow] duration-200 ease-material-standard"
-      : "transition-all duration-150 ease-out",
-    !motion &&
-      !rowLocked &&
-      "hover:-translate-y-px hover:bg-gray-50 active:scale-[0.99] dark:hover:bg-muted/40",
-    motion === "success_check" && "bg-emerald-50 shadow-sm ring-1 ring-emerald-200/80",
-    motion === "fade" && "translate-x-2 opacity-0 !duration-200 !ease-material-standard",
+    "relative shrink-0 overflow-hidden border border-[var(--hh-border-default)] bg-[var(--hh-surface-workspace)]",
+    compact ? "max-h-none rounded-hh-panel" : "max-h-[520px] rounded-hh-panel",
+    !!motion && "pointer-events-none",
+    !!motion && !prefersReducedMotion && "will-change-[opacity,transform]",
+    motion &&
+      (prefersReducedMotion
+        ? "transition-opacity duration-150 ease-out"
+        : "transition-[transform,opacity,background-color,box-shadow] duration-200 ease-material-standard"),
+    !motion && "transition-[background-color,box-shadow] duration-150 ease-out",
+    !motion && !rowLocked && "hover:bg-[var(--hh-surface-hover)]",
+    motion === "success_check" &&
+      "bg-[var(--hh-success-soft-fill)] ring-1 ring-[var(--hh-success-border)]",
+    motion === "fade" &&
+      cn(
+        "opacity-0",
+        !prefersReducedMotion && "translate-x-2 !duration-200 !ease-material-standard"
+      ),
     motion === "collapse" &&
-      "!mb-0 !max-h-0 !translate-x-2 !py-0 !opacity-0 !duration-200 !ease-material-standard",
-    activeQueueRowId === id && "z-[1] ring-1 ring-inset ring-emerald-500/20 dark:ring-border",
-    activeQueueRowId === id && !needsHighlight && !motion && "bg-emerald-50/70 dark:bg-muted/25",
+      cn(
+        "opacity-0",
+        !prefersReducedMotion && "translate-x-2 !duration-200 !ease-material-standard"
+      ),
+    activeQueueRowId === id && "z-[1] ring-1 ring-inset ring-[var(--hh-accent-primary)]/30",
+    activeQueueRowId === id && !needsHighlight && !motion && "bg-[var(--hh-accent-soft)]",
     newRowHighlight && "animate-receipt-queue-row-new",
     needsHighlight &&
       !motion &&
-      "bg-[#f8fafc] shadow-[inset_3px_0_0_0_#10B981] dark:bg-slate-950/40 dark:shadow-[inset_3px_0_0_0_rgb(16_185_129)]",
-    needsHighlight && !motion && !rowLocked && "dark:hover:bg-slate-950/55"
+      "bg-[var(--hh-warning-soft-fill)] ring-1 ring-inset ring-[var(--hh-warning-border)]"
   );
 
-  const successOverlayRounded = layout === "mobile" ? "rounded-xl" : "rounded-lg";
+  const successOverlayRounded = "rounded-hh-panel";
 
-  if (layout === "mobile") {
+  if (compact) {
     return (
-      <m.div
+      <div
         data-testid="receipt-queue-row"
         data-receipt-queue-row={id}
         data-queue-file-name={row.file_name}
         className={outerClass}
-        {...rowHoverMotion}
       >
         {motion === "success_check" ? (
           <div
             className={cn(
-              "pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-emerald-50/92 animate-in fade-in zoom-in-95 duration-200",
+              "pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-[var(--hh-success-soft-fill)] animate-in fade-in duration-200",
+              !prefersReducedMotion && "zoom-in-95",
               successOverlayRounded
             )}
             aria-hidden
           >
             <m.div
-              className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-600 text-white shadow-sm"
-              initial={{ scale: 0.5, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ type: "spring", stiffness: 480, damping: 26 }}
+              className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--hh-success)] text-white"
+              initial={{
+                transform: prefersReducedMotion ? "scale(1)" : "scale(0.95)",
+                opacity: 0,
+              }}
+              animate={{ transform: "scale(1)", opacity: 1 }}
+              transition={
+                prefersReducedMotion
+                  ? { duration: 0.15, ease: "easeOut" }
+                  : { type: "spring", duration: 0.5, bounce: 0.2 }
+              }
             >
               <Check className="h-6 w-6" strokeWidth={2.5} aria-hidden />
             </m.div>
@@ -481,7 +490,10 @@ export const ReceiptQueueRowCard = React.memo(function ReceiptQueueRowCard({
               <StatusBadge label={statusLabel} variant={statusVariant} />
               {vendorInput}
               {vendorHintRow}
-              <p className="truncate text-[11px] font-medium text-[#111827]" title={row.file_name}>
+              <p
+                className="truncate text-[11px] font-medium text-[var(--hh-text-secondary)]"
+                title={row.file_name}
+              >
                 {row.file_name || "—"}
               </p>
               {metaBlock}
@@ -503,12 +515,12 @@ export const ReceiptQueueRowCard = React.memo(function ReceiptQueueRowCard({
             {workerSelect}
           </div>
 
-          <div className="flex items-stretch gap-2 border-t border-[#e5e7eb]/90 pt-4 dark:border-border/50">
+          <div className="flex items-stretch gap-2 border-t border-[var(--hh-border-subtle)] pt-4">
             {confirmBtn}
             {deleteBtn}
           </div>
         </div>
-      </m.div>
+      </div>
     );
   }
 
@@ -516,7 +528,10 @@ export const ReceiptQueueRowCard = React.memo(function ReceiptQueueRowCard({
     <>
       <div className="min-w-0 space-y-1">
         {thumbButton}
-        <p className="truncate text-[10px] font-medium text-[#111827]" title={row.file_name}>
+        <p
+          className="truncate text-[10px] font-medium text-[var(--hh-text-secondary)]"
+          title={row.file_name}
+        >
           {row.file_name || "—"}
         </p>
         {metaBlock}
@@ -555,36 +570,41 @@ export const ReceiptQueueRowCard = React.memo(function ReceiptQueueRowCard({
   );
 
   return (
-    <m.div
+    <div
       data-testid="receipt-queue-row"
       data-receipt-queue-row={id}
       data-queue-file-name={row.file_name}
       className={outerClass}
-      {...rowHoverMotion}
     >
       {motion === "success_check" ? (
         <div
           className={cn(
-            "pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-emerald-50/92 animate-in fade-in zoom-in-95 duration-200",
+            "pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-[var(--hh-success-soft-fill)] animate-in fade-in duration-200",
+            !prefersReducedMotion && "zoom-in-95",
             successOverlayRounded
           )}
           aria-hidden
         >
           <m.div
-            className="flex h-11 w-11 items-center justify-center rounded-full bg-emerald-600 text-white shadow-sm"
-            initial={{ scale: 0.5, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ type: "spring", stiffness: 480, damping: 26 }}
+            className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--hh-success)] text-white"
+            initial={{
+              transform: prefersReducedMotion ? "scale(1)" : "scale(0.95)",
+              opacity: 0,
+            }}
+            animate={{ transform: "scale(1)", opacity: 1 }}
+            transition={
+              prefersReducedMotion
+                ? { duration: 0.15, ease: "easeOut" }
+                : { type: "spring", duration: 0.5, bounce: 0.2 }
+            }
           >
             <Check className="h-6 w-6" strokeWidth={2.5} aria-hidden />
           </m.div>
         </div>
       ) : null}
-      <div className={cn("py-3", layout === "tablet" ? "px-2 md:px-3" : "px-3 lg:px-4")}>
-        <div className="overflow-x-auto lg:overflow-x-visible">
-          <div className={layout === "tablet" ? TABLET_GRID : DESKTOP_GRID}>{gridTable}</div>
-        </div>
+      <div className="px-3 py-3 lg:px-4">
+        <div className={DESKTOP_GRID}>{gridTable}</div>
       </div>
-    </m.div>
+    </div>
   );
 }, propsEqual);

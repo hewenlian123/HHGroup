@@ -37,13 +37,13 @@ test("TopBar removes the retired dark-theme toggle while preserving adjacent act
   assert.doesNotMatch(topbar, /Switch to (?:light|dark) mode|<Sun|<Moon/);
 });
 
-test("operational themes remain separate from protected document and viewer scopes", () => {
+test("operational themes preserve document paper while viewer chrome stays operational-light", () => {
   const shell = source("src/components/layout/app-shell.tsx");
   const generated = source("src/styles/design-tokens.generated.css");
   const globals = source("src/app/globals.css");
 
   assert.match(shell, /documentRoute\s*\?\s*"document-light"/);
-  assert.match(shell, /viewerRoute\s*\?\s*"neo-dark"/);
+  assert.match(shell, /viewerRoute\s*\?\s*"operational-light"/);
   assert.doesNotMatch(shell, /showOperationalThemeToggle|onToggleOperationalTheme/);
   assert.match(generated, /\[data-hh-theme="operational-light"\]/);
   assert.match(generated, /\[data-hh-theme="operational-dark"\]/);

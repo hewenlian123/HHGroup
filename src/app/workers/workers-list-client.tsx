@@ -95,7 +95,7 @@ const workerCenterPrimaryAction =
   "rounded-hh-standard border border-transparent bg-[var(--hh-action-primary)] text-[var(--hh-action-primary-foreground)] shadow-none hover:opacity-90 focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)]";
 
 const workerCenterFieldClass =
-  "hh-focus-ring h-10 rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-hh-body text-[var(--hh-text-primary)] shadow-none placeholder:text-[var(--hh-text-tertiary)] max-md:min-h-[44px]";
+  "hh-focus-ring h-10 rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-hh-body text-[var(--hh-text-primary)] shadow-none placeholder:text-[var(--hh-text-tertiary)] max-lg:min-h-[44px]";
 
 const workerCenterKpiIconClass =
   "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[var(--hh-border)] bg-[var(--hh-l3-selected)] text-[var(--hh-text-primary)] shadow-operational";
@@ -841,7 +841,7 @@ export function WorkersListClient({
               </div>
               <dl className="grid grid-cols-2 gap-2 text-hh-metadata">
                 <div className="rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l3-selected)] px-3 py-2">
-                  <dt className="text-hh-table-header font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]">
+                  <dt className="text-hh-table-header font-semibold uppercase tracking-normal text-[var(--hh-text-secondary)]">
                     Daily rate
                   </dt>
                   <dd className="mt-1 font-semibold tabular-nums text-[var(--hh-text-primary)]">
@@ -849,7 +849,7 @@ export function WorkersListClient({
                   </dd>
                 </div>
                 <div className="rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l3-selected)] px-3 py-2">
-                  <dt className="text-hh-table-header font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]">
+                  <dt className="text-hh-table-header font-semibold uppercase tracking-normal text-[var(--hh-text-secondary)]">
                     Unpaid labor
                   </dt>
                   <dd className="mt-1 font-semibold tabular-nums text-[var(--hh-text-primary)]">
@@ -857,7 +857,7 @@ export function WorkersListClient({
                   </dd>
                 </div>
                 <div className="rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l3-selected)] px-3 py-2">
-                  <dt className="text-hh-table-header font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]">
+                  <dt className="text-hh-table-header font-semibold uppercase tracking-normal text-[var(--hh-text-secondary)]">
                     Reimb.
                   </dt>
                   <dd className="mt-1 font-semibold tabular-nums text-[var(--hh-text-primary)]">
@@ -865,7 +865,7 @@ export function WorkersListClient({
                   </dd>
                 </div>
                 <div className="rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l3-selected)] px-3 py-2">
-                  <dt className="text-hh-table-header font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]">
+                  <dt className="text-hh-table-header font-semibold uppercase tracking-normal text-[var(--hh-text-secondary)]">
                     Advances
                   </dt>
                   <dd className="mt-1 font-semibold tabular-nums text-[var(--hh-text-primary)]">
@@ -886,12 +886,12 @@ export function WorkersListClient({
                     <LastPaymentCell payment={r.lastPayment} className="text-hh-metadata" />
                   </div>
                 </div>
-                <div className="flex min-w-0 flex-1 items-center justify-end gap-1 overflow-x-auto">
+                <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-1">
                   <Button
                     asChild
                     variant="outline"
                     size="sm"
-                    className="h-8 shrink-0 rounded-hh-compact"
+                    className="min-h-[44px] shrink-0 rounded-hh-compact"
                   >
                     <Link href={`/labor?workerId=${encodeURIComponent(r.id)}&addDaily=1`}>
                       <CalendarPlus className="mr-1 h-3.5 w-3.5" aria-hidden />
@@ -902,7 +902,7 @@ export function WorkersListClient({
                     asChild
                     variant="outline"
                     size="sm"
-                    className="h-8 shrink-0 rounded-hh-compact"
+                    className="min-h-[44px] shrink-0 rounded-hh-compact"
                   >
                     <Link href={`/upload-receipt?workerId=${encodeURIComponent(r.id)}`}>
                       <Upload className="mr-1 h-3.5 w-3.5" aria-hidden />

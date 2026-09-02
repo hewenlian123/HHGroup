@@ -134,7 +134,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               {toast.onClick ? (
                 <button
                   type="button"
-                  className="hh-focus-ring flex min-w-0 flex-1 items-start gap-hh-2 rounded-hh-compact text-left"
+                  className="hh-focus-ring hh-touch-min flex min-w-0 flex-1 items-start gap-hh-2 rounded-hh-compact text-left"
                   onClick={() => {
                     toast.onClick?.();
                     dismiss(toast.id);

@@ -11,6 +11,12 @@ import {
   createServerSupabaseClient,
   getServerSupabaseInternalNoStore,
 } from "@/lib/supabase-server";
+import {
+  ProjectFinancialTable,
+  ProjectFinancialTableCell,
+  ProjectFinancialTableHead,
+  ProjectFinancialTableHeader,
+} from "../_components/project-financial-responsive-table";
 
 function fmtUsd(n: number): string {
   return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -107,7 +113,7 @@ export default async function ProjectLaborPage({ params }: Props) {
           actions={
             <Link
               href={`/projects/${id}`}
-              className="text-hh-body text-[var(--hh-text-secondary)] hover:text-[var(--hh-text-primary)]"
+              className="inline-flex min-h-[44px] items-center text-hh-body text-[var(--hh-text-secondary)] hover:text-[var(--hh-text-primary)]"
             >
               Project
             </Link>
@@ -137,20 +143,29 @@ export default async function ProjectLaborPage({ params }: Props) {
       <SectionHeader label="By Worker" />
       <div className="airtable-table-wrap airtable-table-wrap--ruled">
         <div className="airtable-table-scroll">
-          <table className="w-full text-hh-body">
-            <thead>
+          <ProjectFinancialTable aria-label="Labor by worker">
+            <ProjectFinancialTableHead>
               <tr>
-                <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
+                <ProjectFinancialTableHeader
+                  id="labor-worker-name"
+                  className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]"
+                >
                   Worker
-                </th>
-                <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
+                </ProjectFinancialTableHeader>
+                <ProjectFinancialTableHeader
+                  id="labor-worker-days"
+                  className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums"
+                >
                   Days
-                </th>
-                <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
+                </ProjectFinancialTableHeader>
+                <ProjectFinancialTableHeader
+                  id="labor-worker-total-earned"
+                  className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums"
+                >
                   Total Earned
-                </th>
+                </ProjectFinancialTableHeader>
               </tr>
-            </thead>
+            </ProjectFinancialTableHead>
             <tbody>
               {workerRows.length === 0 ? (
                 <tr>
@@ -164,20 +179,32 @@ export default async function ProjectLaborPage({ params }: Props) {
               ) : (
                 workerRows.map((r) => (
                   <tr key={r.worker_id} className={listTableRowStaticClassName}>
-                    <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell font-medium">
+                    <ProjectFinancialTableCell
+                      headerId="labor-worker-name"
+                      label="Worker"
+                      className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell font-medium"
+                    >
                       {r.worker_name}
-                    </td>
-                    <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums">
+                    </ProjectFinancialTableCell>
+                    <ProjectFinancialTableCell
+                      headerId="labor-worker-days"
+                      label="Days"
+                      className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums"
+                    >
                       {r.days}
-                    </td>
-                    <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums">
+                    </ProjectFinancialTableCell>
+                    <ProjectFinancialTableCell
+                      headerId="labor-worker-total-earned"
+                      label="Total Earned"
+                      className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums"
+                    >
                       ${fmtUsd(r.total)}
-                    </td>
+                    </ProjectFinancialTableCell>
                   </tr>
                 ))
               )}
             </tbody>
-          </table>
+          </ProjectFinancialTable>
         </div>
       </div>
       <Divider />
@@ -186,17 +213,23 @@ export default async function ProjectLaborPage({ params }: Props) {
       <SectionHeader label="By Cost Code" />
       <div className="airtable-table-wrap airtable-table-wrap--ruled">
         <div className="airtable-table-scroll">
-          <table className="w-full text-hh-body">
-            <thead>
+          <ProjectFinancialTable aria-label="Labor by cost code">
+            <ProjectFinancialTableHead>
               <tr>
-                <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
+                <ProjectFinancialTableHeader
+                  id="labor-cost-code"
+                  className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]"
+                >
                   Cost Code
-                </th>
-                <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
+                </ProjectFinancialTableHeader>
+                <ProjectFinancialTableHeader
+                  id="labor-cost-code-total"
+                  className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums"
+                >
                   Total
-                </th>
+                </ProjectFinancialTableHeader>
               </tr>
-            </thead>
+            </ProjectFinancialTableHead>
             <tbody>
               {costCodeRows.length === 0 ? (
                 <tr>
@@ -210,17 +243,25 @@ export default async function ProjectLaborPage({ params }: Props) {
               ) : (
                 costCodeRows.map((r) => (
                   <tr key={r.cost_code} className={listTableRowStaticClassName}>
-                    <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell font-medium">
+                    <ProjectFinancialTableCell
+                      headerId="labor-cost-code"
+                      label="Cost Code"
+                      className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell font-medium"
+                    >
                       {r.cost_code}
-                    </td>
-                    <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums">
+                    </ProjectFinancialTableCell>
+                    <ProjectFinancialTableCell
+                      headerId="labor-cost-code-total"
+                      label="Total"
+                      className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums"
+                    >
                       ${fmtUsd(r.total)}
-                    </td>
+                    </ProjectFinancialTableCell>
                   </tr>
                 ))
               )}
             </tbody>
-          </table>
+          </ProjectFinancialTable>
         </div>
       </div>
     </PageLayout>

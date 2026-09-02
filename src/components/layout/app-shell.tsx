@@ -91,7 +91,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const routeTheme: HhThemeName = documentRoute
     ? "document-light"
     : viewerRoute
-      ? "neo-dark"
+      ? "operational-light"
       : authPage
         ? "auth"
         : publicWorkerIntake

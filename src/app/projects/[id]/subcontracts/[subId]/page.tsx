@@ -32,6 +32,12 @@ import {
 } from "./subcontract-detail-client";
 import { SetBreadcrumbEntityTitle } from "@/components/layout/set-breadcrumb-entity-title";
 import { cn } from "@/lib/utils";
+import {
+  ProjectFinancialTableCell,
+  ProjectFinancialTableHead,
+  ProjectFinancialTableHeader,
+  projectFinancialTableClass,
+} from "../../_components/project-financial-responsive-table";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -103,7 +109,7 @@ export default async function SubcontractDetailPage({ params }: Props) {
             <div className="flex flex-wrap items-center gap-3">
               <Link
                 href={`/projects/${projectId}/subcontracts`}
-                className="text-hh-body text-[var(--hh-text-secondary)] hover:text-[var(--hh-text-primary)]"
+                className="inline-flex min-h-[44px] items-center text-hh-body text-[var(--hh-text-secondary)] hover:text-[var(--hh-text-primary)]"
               >
                 Back to Project Subcontracts
               </Link>
@@ -196,41 +202,105 @@ export default async function SubcontractDetailPage({ params }: Props) {
             No linked AP bills yet.
           </p>
         ) : (
-          <NeoTable className="rounded-none border-0 shadow-none" tableClassName="min-w-[900px]">
-            <thead>
+          <NeoTable
+            className="rounded-none border-0 shadow-none"
+            tableClassName={projectFinancialTableClass}
+          >
+            <ProjectFinancialTableHead>
               <tr>
-                <th className={tableRawThClass}>Bill</th>
-                <th className={tableRawThClass}>Vendor</th>
-                <th className={tableRawThClass}>Project</th>
-                <th className={cn(tableRawThClass, "text-right tabular-nums")}>Amount</th>
-                <th className={cn(tableRawThClass, "text-right tabular-nums")}>Paid</th>
-                <th className={cn(tableRawThClass, "text-right tabular-nums")}>Balance</th>
-                <th className={tableRawThClass}>Status</th>
+                <ProjectFinancialTableHeader id="linked-ap-bill-bill" className={tableRawThClass}>
+                  Bill
+                </ProjectFinancialTableHeader>
+                <ProjectFinancialTableHeader id="linked-ap-bill-vendor" className={tableRawThClass}>
+                  Vendor
+                </ProjectFinancialTableHeader>
+                <ProjectFinancialTableHeader
+                  id="linked-ap-bill-project"
+                  className={tableRawThClass}
+                >
+                  Project
+                </ProjectFinancialTableHeader>
+                <ProjectFinancialTableHeader
+                  id="linked-ap-bill-amount"
+                  className={cn(tableRawThClass, "text-right tabular-nums")}
+                >
+                  Amount
+                </ProjectFinancialTableHeader>
+                <ProjectFinancialTableHeader
+                  id="linked-ap-bill-paid"
+                  className={cn(tableRawThClass, "text-right tabular-nums")}
+                >
+                  Paid
+                </ProjectFinancialTableHeader>
+                <ProjectFinancialTableHeader
+                  id="linked-ap-bill-balance"
+                  className={cn(tableRawThClass, "text-right tabular-nums")}
+                >
+                  Balance
+                </ProjectFinancialTableHeader>
+                <ProjectFinancialTableHeader id="linked-ap-bill-status" className={tableRawThClass}>
+                  Status
+                </ProjectFinancialTableHeader>
               </tr>
-            </thead>
+            </ProjectFinancialTableHead>
             <tbody>
               {linkedApBills.map((bill) => (
                 <tr key={bill.id} className="border-b border-[var(--hh-border)] last:border-b-0">
-                  <td className={tableRawTdClass}>
-                    <Link href={`/bills/${bill.id}`} className="font-medium hover:underline">
+                  <ProjectFinancialTableCell
+                    headerId="linked-ap-bill-bill"
+                    label="Bill"
+                    className={tableRawTdClass}
+                  >
+                    <Link
+                      href={`/bills/${bill.id}`}
+                      className="inline-flex min-h-[44px] items-center font-medium hover:underline xl:min-h-0"
+                    >
                       {bill.bill_no ?? "Bill"}
                     </Link>
                     <span className="mt-0.5 block text-hh-metadata text-[var(--hh-text-tertiary)]">
                       Due {formatDate(bill.due_date)}
                     </span>
-                  </td>
-                  <td className={tableRawTdClass}>{bill.vendor_name}</td>
-                  <td className={tableRawTdClass}>{bill.project_name ?? project.name}</td>
-                  <td className={cn(tableRawTdClass, "text-right tabular-nums")}>
+                  </ProjectFinancialTableCell>
+                  <ProjectFinancialTableCell
+                    headerId="linked-ap-bill-vendor"
+                    label="Vendor"
+                    className={tableRawTdClass}
+                  >
+                    {bill.vendor_name}
+                  </ProjectFinancialTableCell>
+                  <ProjectFinancialTableCell
+                    headerId="linked-ap-bill-project"
+                    label="Project"
+                    className={tableRawTdClass}
+                  >
+                    {bill.project_name ?? project.name}
+                  </ProjectFinancialTableCell>
+                  <ProjectFinancialTableCell
+                    headerId="linked-ap-bill-amount"
+                    label="Amount"
+                    className={cn(tableRawTdClass, "text-right tabular-nums")}
+                  >
                     {formatCurrency(bill.amount)}
-                  </td>
-                  <td className={cn(tableRawTdClass, "text-right tabular-nums")}>
+                  </ProjectFinancialTableCell>
+                  <ProjectFinancialTableCell
+                    headerId="linked-ap-bill-paid"
+                    label="Paid"
+                    className={cn(tableRawTdClass, "text-right tabular-nums")}
+                  >
                     {formatCurrency(bill.paid_amount)}
-                  </td>
-                  <td className={cn(tableRawTdClass, "text-right tabular-nums")}>
+                  </ProjectFinancialTableCell>
+                  <ProjectFinancialTableCell
+                    headerId="linked-ap-bill-balance"
+                    label="Balance"
+                    className={cn(tableRawTdClass, "text-right tabular-nums")}
+                  >
                     {formatCurrency(bill.balance_amount)}
-                  </td>
-                  <td className={tableRawTdClass}>
+                  </ProjectFinancialTableCell>
+                  <ProjectFinancialTableCell
+                    headerId="linked-ap-bill-status"
+                    label="Status"
+                    className={tableRawTdClass}
+                  >
                     <StatusBadge
                       label={bill.status}
                       variant={
@@ -241,7 +311,7 @@ export default async function SubcontractDetailPage({ params }: Props) {
                             : "warning"
                       }
                     />
-                  </td>
+                  </ProjectFinancialTableCell>
                 </tr>
               ))}
             </tbody>

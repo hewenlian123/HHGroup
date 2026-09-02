@@ -124,7 +124,7 @@ export function MobileSearchFiltersRow({
         type="button"
         variant="outline"
         size="sm"
-        className={cn("h-9 shrink-0 gap-1.5 rounded-sm px-2.5", filtersTriggerClassName)}
+        className={cn("h-9 shrink-0 gap-1.5 rounded-hh-compact px-2.5", filtersTriggerClassName)}
         onClick={onOpenFilters}
         aria-expanded={filterSheetOpen}
       >

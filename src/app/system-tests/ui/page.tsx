@@ -1,8 +1,10 @@
 "use client";
 
 import * as React from "react";
+import { NeoMobileCard, NeoPanel, NeoTable, StatusBadge } from "@/components/base";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
+import { tableRawTdClass, tableRawThClass } from "@/components/ui/table";
 
 type UiTestRow = {
   name: string;
@@ -28,12 +30,72 @@ const TEST_LABELS: Record<string, string> = {
   labor_receipts: "Labor Receipts",
 };
 
-function StatusDot({ ok, running }: { ok: boolean | null; running: boolean }) {
-  if (running)
-    return <span className="inline-block h-2 w-2 rounded-full bg-amber-400 animate-pulse" />;
-  if (ok === null) return <span className="inline-block h-2 w-2 rounded-full bg-border" />;
+function UiTestStatusBadge({ ok, running }: { ok: boolean | null; running: boolean }) {
+  if (running) return <StatusBadge label="Running" variant="warning" />;
+  if (ok === null) return <StatusBadge label="Not run" variant="muted" />;
+  return <StatusBadge label={ok ? "Passed" : "Failed"} variant={ok ? "success" : "danger"} />;
+}
+
+function UiTestResults({ tests, running }: { tests: UiTestRow[]; running: boolean }) {
+  const rows =
+    running && tests.length === 0
+      ? Object.keys(TEST_LABELS).map((name) => ({
+          name,
+          ok: null,
+          running: true,
+          error: undefined,
+        }))
+      : tests.map((row) => ({ ...row, running: false }));
+
+  if (rows.length === 0) {
+    return (
+      <p className="py-8 text-center text-sm text-[var(--hh-text-secondary)]">
+        Click “Run UI Tests” to start.
+      </p>
+    );
+  }
+
   return (
-    <span className={`inline-block h-2 w-2 rounded-full ${ok ? "bg-[#166534]" : "bg-red-500"}`} />
+    <>
+      <div className="space-y-2 md:hidden" data-testid="ui-system-test-cards">
+        {rows.map((row) => (
+          <NeoMobileCard key={row.name} data-testid="ui-system-test-card" className="space-y-2 p-3">
+            <div className="flex items-start justify-between gap-3">
+              <p className="min-w-0 font-medium text-[var(--hh-text-primary)]">
+                {TEST_LABELS[row.name] ?? row.name}
+              </p>
+              <UiTestStatusBadge ok={row.ok} running={row.running} />
+            </div>
+            {row.error ? (
+              <p className="break-words text-xs text-[var(--hh-text-secondary)]">{row.error}</p>
+            ) : null}
+          </NeoMobileCard>
+        ))}
+      </div>
+      <NeoTable className="hidden md:block" tableClassName="min-w-[560px]">
+        <thead>
+          <tr>
+            <th className={tableRawThClass}>Test Name</th>
+            <th className={tableRawThClass}>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.name}>
+              <td className={tableRawTdClass}>{TEST_LABELS[row.name] ?? row.name}</td>
+              <td className={tableRawTdClass}>
+                <div className="flex flex-wrap items-center gap-2">
+                  <UiTestStatusBadge ok={row.ok} running={row.running} />
+                  {row.error ? (
+                    <span className="text-xs text-[var(--hh-text-secondary)]">— {row.error}</span>
+                  ) : null}
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </NeoTable>
+    </>
   );
 }
 
@@ -85,7 +147,7 @@ export default function UiTestsPage() {
         <Button
           size="sm"
           variant="outline"
-          className="min-h-[44px] sm:min-h-0"
+          className="min-h-[44px] lg:min-h-0"
           onClick={runTests}
           disabled={running}
         >
@@ -98,13 +160,11 @@ export default function UiTestsPage() {
             {tests.length > 0 && (
               <>
                 {" · "}
-                <span className="text-hh-profit-positive dark:text-hh-profit-positive">
-                  {passed} passed
-                </span>
+                <span className="text-[var(--hh-success)]">{passed} passed</span>
                 {failed > 0 && (
                   <>
                     {" · "}
-                    <span className="text-red-600 dark:text-red-400">{failed} failed</span>
+                    <span className="text-[var(--hh-danger)]">{failed} failed</span>
                   </>
                 )}
               </>
@@ -115,90 +175,35 @@ export default function UiTestsPage() {
 
       {/* Unavailable notice */}
       {unavailable && (
-        <div className="rounded-sm border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-800/40 dark:bg-amber-950/20 dark:text-amber-300">
+        <NeoPanel
+          className="border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)]"
+          bodyClassName="px-4 py-3 text-sm text-[var(--hh-text-primary)]"
+        >
           <p className="font-medium">Puppeteer not available in this environment</p>
           <p className="mt-1 text-xs">
             UI tests require a local machine with Chrome. Run{" "}
-            <code className="rounded bg-amber-100 px-1 dark:bg-amber-900/40">npm run ui:test</code>{" "}
+            <code className="rounded-hh-compact bg-[var(--hh-l2-operational-surface)] px-1">
+              npm run ui:test
+            </code>{" "}
             from your terminal, or deploy to an environment that supports headless browsers.
           </p>
-        </div>
+        </NeoPanel>
       )}
 
       {/* Generic error */}
-      {error && !unavailable && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+      {error && !unavailable && <p className="text-sm text-[var(--hh-danger)]">{error}</p>}
 
       {/* Results table */}
-      <div className="table-responsive">
-        <table className="w-full min-w-[360px] sm:min-w-0 border-collapse text-sm">
-          <thead>
-            <tr className="border-b border-border/60 text-left text-xs uppercase tracking-wide text-muted-foreground">
-              <th className="py-2 pr-6 font-medium">Test Name</th>
-              <th className="py-2 font-medium">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {tests.length === 0 && !running ? (
-              <tr>
-                <td colSpan={2} className="py-8 text-center text-sm text-muted-foreground">
-                  Click &ldquo;Run UI Tests&rdquo; to start.
-                </td>
-              </tr>
-            ) : (
-              <>
-                {/* If tests are running and no rows yet, show placeholders */}
-                {running && tests.length === 0
-                  ? Object.keys(TEST_LABELS).map((name) => (
-                      <tr key={name} className="border-b border-border/30">
-                        <td className="py-2.5 pr-6 font-medium text-muted-foreground">
-                          {TEST_LABELS[name] ?? name}
-                        </td>
-                        <td className="py-2.5">
-                          <span className="flex items-center gap-2 text-muted-foreground">
-                            <StatusDot ok={null} running />
-                            Running…
-                          </span>
-                        </td>
-                      </tr>
-                    ))
-                  : tests.map((row) => (
-                      <tr key={row.name} className="border-b border-border/30">
-                        <td className="py-2.5 pr-6 font-medium">
-                          {TEST_LABELS[row.name] ?? row.name}
-                        </td>
-                        <td className="py-2.5">
-                          <span
-                            className={`flex items-center gap-2 ${
-                              row.ok
-                                ? "text-hh-profit-positive dark:text-hh-profit-positive"
-                                : "text-red-600 dark:text-red-400"
-                            }`}
-                          >
-                            <StatusDot ok={row.ok} running={false} />
-                            {row.ok ? "Passed" : "Failed"}
-                            {!row.ok && row.error && (
-                              <span
-                                className="ml-2 max-w-[420px] truncate text-xs text-muted-foreground"
-                                title={row.error}
-                              >
-                                — {row.error}
-                              </span>
-                            )}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-              </>
-            )}
-          </tbody>
-        </table>
-      </div>
+      <UiTestResults tests={tests} running={running} />
 
       {/* How it works note */}
       <div className="border-t border-border/60 pt-4">
         <p className="text-xs text-muted-foreground">
-          Tests run via <code className="rounded bg-muted px-1 py-0.5">npm run ui:test</code> which
-          launches a headless Chromium browser and navigates each page, checking that key UI
+          Tests run via{" "}
+          <code className="rounded-hh-compact bg-[var(--hh-l2-operational-surface)] px-1 py-0.5">
+            npm run ui:test
+          </code>{" "}
+          which launches a headless Chromium browser and navigates each page, checking that key UI
           elements render correctly. No test data is created or modified.
         </p>
       </div>

@@ -467,7 +467,11 @@ export default function WorkerBalancesPage() {
                 </div>
               ) : null}
               {filteredRows.map((r) => (
-                <NeoMobileCard key={r.workerId} className="space-y-3 p-3">
+                <NeoMobileCard
+                  key={r.workerId}
+                  data-testid={`worker-balance-card-${r.workerId}`}
+                  className="space-y-3 p-3"
+                >
                   <div className="flex items-start gap-3">
                     <span
                       className={cn(
@@ -514,7 +518,7 @@ export default function WorkerBalancesPage() {
                     </div>
                     <div className="min-w-0">
                       <dt className="text-hh-status font-medium uppercase tracking-normal text-muted-foreground">
-                        Reimb.
+                        Reimbursements
                       </dt>
                       <dd className="truncate">
                         <NeoAmount>{formatCurrency(r.reimbursements)}</NeoAmount>
@@ -585,7 +589,7 @@ export default function WorkerBalancesPage() {
                 Labor
               </th>
               <th className="whitespace-nowrap px-3 py-2 text-right text-hh-status font-medium uppercase tracking-normal text-[var(--hh-text-secondary)] tabular-nums">
-                Reimb.
+                Reimbursements
               </th>
               <th className="whitespace-nowrap px-3 py-2 text-right text-hh-status font-medium uppercase tracking-normal text-[var(--hh-text-secondary)] tabular-nums">
                 Payments
@@ -645,6 +649,7 @@ export default function WorkerBalancesPage() {
               filteredRows.map((r) => (
                 <tr
                   key={r.workerId}
+                  data-testid={`worker-balance-row-${r.workerId}`}
                   className={cn(
                     listTableRowStaticClassName,
                     "border-b border-zinc-100/70 dark:border-border/35",

@@ -55,21 +55,17 @@ const wpKpiTileLayout =
 
 const mobilePaymentListViewportClass = "min-h-[260px]";
 
-/** Zinc-only tints — payout history, not “demo” rainbow rings */
 const AVATAR_RING = [
-  "bg-zinc-200/75 text-zinc-900 dark:bg-zinc-700/45 dark:text-zinc-100",
-  "bg-zinc-300/55 text-zinc-900 dark:bg-zinc-600/35 dark:text-zinc-100",
-  "bg-zinc-200/60 text-zinc-800 dark:bg-zinc-700/40 dark:text-zinc-100",
-  "bg-zinc-100/90 text-zinc-800 dark:bg-zinc-800/50 dark:text-zinc-100",
-  "bg-zinc-300/45 text-zinc-900 dark:bg-zinc-600/30 dark:text-zinc-100",
-  "bg-zinc-200/50 text-zinc-800 dark:bg-zinc-700/38 dark:text-zinc-100",
+  "bg-[var(--hh-l3-selected)] text-[var(--hh-text-primary)]",
+  "bg-[var(--hh-l3-hover)] text-[var(--hh-text-primary)]",
+  "bg-[var(--hh-l1-workspace)] text-[var(--hh-text-primary)]",
+  "bg-[var(--hh-l3-pressed)] text-[var(--hh-text-primary)]",
 ];
 
-const workerAvatarRing =
-  "ring-1 ring-inset ring-zinc-950/[0.05] shadow-operational dark:shadow-none dark:ring-white/[0.07]";
+const workerAvatarRing = "ring-1 ring-inset ring-[var(--hh-border)] shadow-operational";
 
 const METHOD_DOT_CLASS =
-  "h-[4px] w-[4px] shrink-0 rounded-full bg-zinc-400/65 ring-1 ring-zinc-950/[0.04] dark:bg-zinc-500/55 dark:ring-white/[0.06]";
+  "h-[4px] w-[4px] shrink-0 rounded-full bg-[var(--hh-text-tertiary)] ring-1 ring-[var(--hh-border)]";
 
 function workerInitials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -104,7 +100,7 @@ function PaymentMethodLabel({ method }: { method: string }) {
   return (
     <span className="inline-flex max-w-full items-center gap-1.5">
       <span className={METHOD_DOT_CLASS} aria-hidden />
-      <span className="min-w-0 truncate text-sm font-normal leading-snug text-zinc-600 dark:text-zinc-300">
+      <span className="min-w-0 truncate text-sm font-normal leading-snug text-[var(--hh-text-secondary)]">
         {label}
       </span>
     </span>
@@ -120,9 +116,15 @@ function SortCaret({ active, dir }: { active: boolean; dir: "asc" | "desc" }) {
     );
   }
   return dir === "desc" ? (
-    <ArrowDown className="ml-0.5 inline h-3 w-3 shrink-0 text-zinc-500" aria-hidden />
+    <ArrowDown
+      className="ml-0.5 inline h-3 w-3 shrink-0 text-[var(--hh-text-tertiary)]"
+      aria-hidden
+    />
   ) : (
-    <ArrowUp className="ml-0.5 inline h-3 w-3 shrink-0 text-zinc-500" aria-hidden />
+    <ArrowUp
+      className="ml-0.5 inline h-3 w-3 shrink-0 text-[var(--hh-text-tertiary)]"
+      aria-hidden
+    />
   );
 }
 
@@ -146,8 +148,10 @@ function PaymentRowActionsMenu({
           size="icon"
           className={cn(
             "shrink-0 rounded-hh-compact text-muted-foreground/45 outline-none transition-colors",
-            "hover:bg-zinc-100/90 hover:text-foreground focus-visible:ring-2 focus-visible:ring-zinc-400/30 dark:hover:bg-muted/45 dark:hover:text-foreground",
-            layout === "mobile" ? "h-11 w-11 min-h-[44px] min-w-[44px]" : "h-8 w-8 md:h-8 md:w-8"
+            "hover:bg-[var(--hh-l3-hover)] hover:text-[var(--hh-text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)]",
+            layout === "mobile"
+              ? "h-11 w-11 min-h-[44px] min-w-[44px]"
+              : "h-11 w-11 min-h-[44px] min-w-[44px] lg:h-8 lg:w-8 lg:min-h-8 lg:min-w-8"
           )}
           aria-label={ariaLabel}
         >
@@ -168,8 +172,7 @@ function PaymentRowActionsMenu({
         </DropdownMenuItem>
         <DropdownMenuItem
           className={cn(
-            "cursor-pointer text-sm text-destructive focus:bg-destructive/10 focus:text-destructive",
-            "dark:focus:bg-destructive/15 dark:focus:text-destructive"
+            "cursor-pointer text-sm text-[var(--hh-danger)] focus:bg-[var(--hh-danger-soft-fill)] focus:text-[var(--hh-danger)]"
           )}
           onSelect={() => {
             onDelete();
@@ -344,7 +347,7 @@ export default function WorkerPaymentsPage() {
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder="Search payments, workers…"
-        className="h-11 min-h-[44px] pl-8 text-sm md:h-10 md:min-h-10"
+        className="h-11 min-h-[44px] pl-8 text-sm lg:h-10 lg:min-h-10"
         aria-label="Search payments and workers"
       />
     </div>
@@ -388,7 +391,7 @@ export default function WorkerPaymentsPage() {
               <Button
                 size="sm"
                 variant="outline"
-                className="h-9 shrink-0 gap-1.5 shadow-none"
+                className="h-11 min-h-[44px] shrink-0 gap-1.5 shadow-none lg:h-9 lg:min-h-9"
                 asChild
               >
                 <Link href="/labor/payroll">
@@ -415,7 +418,7 @@ export default function WorkerPaymentsPage() {
                 <p className="text-hh-status font-medium uppercase leading-none tracking-normal text-muted-foreground md:text-hh-status md:normal-case md:tracking-normal">
                   Total paid
                 </p>
-                <p className="mt-0.5 truncate text-base font-semibold tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
+                <p className="mt-0.5 truncate text-base font-semibold tabular-nums leading-none text-[var(--hh-text-primary)] md:text-xl">
                   {formatCurrency(summary.totalPaid)}
                 </p>
                 <p className="mt-0.5 text-hh-status leading-none text-muted-foreground">All time</p>
@@ -429,7 +432,7 @@ export default function WorkerPaymentsPage() {
                 <p className="text-hh-status font-medium uppercase leading-none tracking-normal text-muted-foreground md:text-hh-status md:normal-case md:tracking-normal">
                   Payments count
                 </p>
-                <p className="mt-0.5 text-base font-semibold tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
+                <p className="mt-0.5 text-base font-semibold tabular-nums leading-none text-[var(--hh-text-primary)] md:text-xl">
                   {summary.count}
                 </p>
                 <p className="mt-0.5 text-hh-status leading-none text-muted-foreground">
@@ -449,7 +452,7 @@ export default function WorkerPaymentsPage() {
                 <p className="text-hh-status font-medium uppercase leading-none tracking-normal text-muted-foreground md:text-hh-status md:normal-case md:tracking-normal">
                   This month
                 </p>
-                <p className="mt-0.5 truncate text-base font-semibold tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
+                <p className="mt-0.5 truncate text-base font-semibold tabular-nums leading-none text-[var(--hh-text-primary)] md:text-xl">
                   {formatCurrency(summary.thisMonthTotal)}
                 </p>
                 <p className="mt-0.5 truncate text-hh-status leading-none text-muted-foreground">
@@ -465,7 +468,7 @@ export default function WorkerPaymentsPage() {
                 <p className="text-hh-status font-medium uppercase leading-none tracking-normal text-muted-foreground md:text-hh-status md:normal-case md:tracking-normal">
                   Workers paid
                 </p>
-                <p className="mt-0.5 text-base font-semibold tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
+                <p className="mt-0.5 text-base font-semibold tabular-nums leading-none text-[var(--hh-text-primary)] md:text-xl">
                   {summary.workersPaid}
                 </p>
                 <p className="mt-0.5 text-hh-status leading-none text-muted-foreground">Unique</p>
@@ -479,7 +482,7 @@ export default function WorkerPaymentsPage() {
                 <p className="text-hh-status font-medium uppercase leading-none tracking-normal text-muted-foreground md:text-hh-status md:normal-case md:tracking-normal">
                   Avg payment
                 </p>
-                <p className="mt-0.5 truncate text-base font-semibold tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
+                <p className="mt-0.5 truncate text-base font-semibold tabular-nums leading-none text-[var(--hh-text-primary)] md:text-xl">
                   {formatCurrency(summary.avgPayment)}
                 </p>
                 <p className="mt-0.5 text-hh-status leading-none text-muted-foreground">
@@ -520,7 +523,7 @@ export default function WorkerPaymentsPage() {
               type="button"
               variant="outline"
               size="sm"
-              className="h-10 shrink-0 gap-1.5 rounded-hh-compact shadow-none"
+              className="h-11 min-h-[44px] shrink-0 gap-1.5 rounded-hh-compact shadow-none lg:h-10 lg:min-h-10"
               onClick={() => setFiltersOpen(true)}
             >
               Filters
@@ -528,7 +531,7 @@ export default function WorkerPaymentsPage() {
             <Button
               size="sm"
               variant="outline"
-              className="h-10 shrink-0 gap-1.5 shadow-none"
+              className="h-11 min-h-[44px] shrink-0 gap-1.5 shadow-none lg:h-10 lg:min-h-10"
               onClick={() => void load()}
               disabled={loading}
             >
@@ -591,7 +594,7 @@ export default function WorkerPaymentsPage() {
         </MobileFilterSheet>
 
         {message ? (
-          <p className="border-b border-zinc-200/80 pb-2 text-sm text-muted-foreground dark:border-border/60">
+          <p className="border-b border-[var(--hh-border)] pb-2 text-sm text-muted-foreground">
             {message}
           </p>
         ) : null}
@@ -669,7 +672,7 @@ export default function WorkerPaymentsPage() {
                         onDelete={() => handleDelete(r.id)}
                       />
                     </div>
-                    <div className="flex flex-wrap items-end justify-between gap-2 border-b border-zinc-100/70 pb-2 dark:border-border/40">
+                    <div className="flex flex-wrap items-end justify-between gap-2 border-b border-[var(--hh-border)] pb-2">
                       <span className="text-hh-status font-medium uppercase tracking-normal text-muted-foreground">
                         Amount
                       </span>
@@ -693,7 +696,7 @@ export default function WorkerPaymentsPage() {
                         <dt className="text-hh-status font-medium uppercase tracking-normal text-muted-foreground">
                           Date
                         </dt>
-                        <dd className="truncate pt-0.5 hh-fin text-zinc-700 dark:text-zinc-200">
+                        <dd className="truncate pt-0.5 hh-fin text-[var(--hh-text-secondary)]">
                           {formatDate(r.paymentDate)}
                         </dd>
                       </div>
@@ -701,7 +704,7 @@ export default function WorkerPaymentsPage() {
                         <dt className="text-hh-status font-medium uppercase tracking-normal text-muted-foreground">
                           Project
                         </dt>
-                        <dd className="truncate pt-0.5 text-zinc-700 dark:text-zinc-200">
+                        <dd className="truncate pt-0.5 text-[var(--hh-text-secondary)]">
                           {proj ?? "—"}
                         </dd>
                       </div>
@@ -709,7 +712,7 @@ export default function WorkerPaymentsPage() {
                         <dt className="text-hh-status font-medium uppercase tracking-normal text-muted-foreground">
                           Notes
                         </dt>
-                        <dd className="line-clamp-2 break-words pt-0.5 text-sm leading-snug text-zinc-600 dark:text-zinc-400">
+                        <dd className="line-clamp-2 break-words pt-0.5 text-sm leading-snug text-[var(--hh-text-secondary)]">
                           {r.notes?.trim() ? r.notes : "—"}
                         </dd>
                       </div>
@@ -783,7 +786,7 @@ export default function WorkerPaymentsPage() {
           <tbody>
             {initialLoading ? (
               Array.from({ length: 8 }).map((_, i) => (
-                <tr key={i} className="border-b border-zinc-100/55 dark:border-border/35">
+                <tr key={i} className="border-b border-[var(--hh-border)]">
                   <td className="px-3 py-2.5">
                     <div className="flex items-center gap-2">
                       <Skeleton className="h-8 w-8 shrink-0 rounded-full" />
@@ -807,9 +810,9 @@ export default function WorkerPaymentsPage() {
                 </tr>
               ))
             ) : rows.length === 0 ? (
-              <tr className="border-b border-zinc-100/55 dark:border-border/35">
+              <tr className="border-b border-[var(--hh-border)]">
                 <td colSpan={7} className="px-6 py-12 text-center">
-                  <p className="text-sm font-medium text-zinc-900 dark:text-foreground">
+                  <p className="text-sm font-medium text-[var(--hh-text-primary)]">
                     No payments yet
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">
@@ -818,7 +821,7 @@ export default function WorkerPaymentsPage() {
                 </td>
               </tr>
             ) : filtered.length === 0 ? (
-              <tr className="border-b border-zinc-100/55 dark:border-border/35">
+              <tr className="border-b border-[var(--hh-border)]">
                 <td colSpan={7} className="px-6 py-10 text-center text-sm text-muted-foreground">
                   No payments match your search.
                 </td>
@@ -831,10 +834,10 @@ export default function WorkerPaymentsPage() {
                     key={r.id}
                     className={cn(
                       listTableRowStaticClassName,
-                      "border-b border-zinc-100/55 dark:border-border/30",
+                      "border-b border-[var(--hh-border)]",
                       "transition-[background-color] duration-200 ease-out motion-reduce:transition-none",
-                      "hover:bg-zinc-50/40 dark:hover:bg-muted/8",
-                      "focus-within:bg-zinc-50/30 dark:focus-within:bg-muted/6"
+                      "hover:bg-[var(--hh-l3-hover)]",
+                      "focus-within:bg-[var(--hh-l3-selected)]"
                     )}
                   >
                     <td className="px-3 py-2.5 align-middle">
@@ -856,7 +859,7 @@ export default function WorkerPaymentsPage() {
                         </div>
                       </div>
                     </td>
-                    <td className="max-w-[180px] truncate px-3 py-2.5 align-middle text-sm text-zinc-600 dark:text-zinc-300">
+                    <td className="max-w-[180px] truncate px-3 py-2.5 align-middle text-sm text-[var(--hh-text-secondary)]">
                       {r.projectId ? (projectNameById.get(r.projectId) ?? r.projectId) : "—"}
                     </td>
                     <td className="whitespace-nowrap px-3 py-2.5 text-right align-middle">
@@ -867,11 +870,11 @@ export default function WorkerPaymentsPage() {
                     <td className="max-w-[160px] px-3 py-2.5 align-middle text-sm">
                       <PaymentMethodLabel method={r.paymentMethod ?? ""} />
                     </td>
-                    <td className="whitespace-nowrap px-3 py-2.5 align-middle hh-fin text-sm tabular-nums text-zinc-600 dark:text-zinc-300">
+                    <td className="whitespace-nowrap px-3 py-2.5 align-middle hh-fin text-sm tabular-nums text-[var(--hh-text-secondary)]">
                       {formatDate(r.paymentDate)}
                     </td>
                     <td
-                      className="max-w-[220px] truncate px-3 py-2.5 align-middle text-sm text-zinc-600 dark:text-zinc-400"
+                      className="max-w-[220px] truncate px-3 py-2.5 align-middle text-sm text-[var(--hh-text-secondary)]"
                       title={r.notes ?? undefined}
                     >
                       {r.notes?.trim() ? r.notes : "—"}
@@ -898,7 +901,7 @@ export default function WorkerPaymentsPage() {
 
         <div
           className={cn(
-            "flex flex-col gap-3 border-t border-zinc-200/70 pt-3 text-sm text-muted-foreground dark:border-border/60 md:border-t-0 md:pt-0",
+            "flex flex-col gap-3 border-t border-[var(--hh-border)] pt-3 text-sm text-muted-foreground md:border-t-0 md:pt-0",
             "sm:flex-row sm:items-center sm:justify-between"
           )}
         >
@@ -912,7 +915,7 @@ export default function WorkerPaymentsPage() {
             <Button
               size="sm"
               variant="outline"
-              className="h-11 min-h-[44px] flex-1 rounded-hh-compact shadow-none sm:h-8 sm:min-h-0 sm:flex-none"
+              className="h-11 min-h-[44px] flex-1 rounded-hh-compact shadow-none lg:h-8 lg:min-h-0 lg:flex-none"
               disabled={page <= 1}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
             >
@@ -921,7 +924,7 @@ export default function WorkerPaymentsPage() {
             <Button
               size="sm"
               variant="outline"
-              className="h-11 min-h-[44px] flex-1 rounded-hh-compact shadow-none sm:h-8 sm:min-h-0 sm:flex-none"
+              className="h-11 min-h-[44px] flex-1 rounded-hh-compact shadow-none lg:h-8 lg:min-h-0 lg:flex-none"
               disabled={page >= totalPages}
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
             >

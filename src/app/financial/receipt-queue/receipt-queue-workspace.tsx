@@ -1747,28 +1747,31 @@ export function ReceiptQueueWorkspace() {
   );
 
   return (
-    <div className="rq-workspace w-full bg-[#f5f7fa] dark:bg-background">
+    <div
+      data-receipt-queue-global-ui
+      className="rq-workspace hh-fin min-w-0 w-full overflow-x-hidden bg-[var(--hh-l0-canvas)] text-[var(--hh-text-secondary)]"
+    >
       <div
         className={cn(
-          "mx-auto flex max-w-6xl flex-col gap-6 px-0 py-6 sm:gap-8 sm:px-6 sm:py-8",
+          "page-shell-wide mx-auto flex w-full max-w-[1440px] flex-col gap-4 px-0 py-4 sm:px-6 sm:py-6",
           mobileListPagePaddingClass,
           "max-md:!gap-3"
         )}
       >
         <div className="hidden md:block">
           <PageHeader
-            className="items-start gap-1 border-0 pb-0 sm:items-start [&_h1]:text-3xl [&_h1]:font-bold [&_h1]:tracking-tight [&_h1]:text-[#111827] [&_p]:max-w-2xl [&_p]:text-sm [&_p]:leading-relaxed [&_p]:text-[#6b7280]"
-            title="Receipt queue (legacy)"
-            description="Internal review table for rows created via the legacy pipeline. For new receipts, use Operations → Inbox draft (/financial/inbox). Uploads here persist across sessions; Enter / Shift+Enter behave as before."
+            className="items-start gap-1 border-0 pb-0 sm:items-start"
+            title="Receipt queue"
+            description="Review captured receipts and add complete items to Expenses. Uploads persist across sessions; Enter advances fields and Shift+Enter saves pending changes."
             actions={
               <div className="flex flex-wrap items-center justify-end gap-2">
                 <Button
                   variant="outline"
                   size="sm"
                   className={cn(
-                    "h-9 rounded-md border-[#e5e7eb] bg-white px-3 text-sm font-medium text-[#111827] shadow-none",
+                    "h-11 min-h-11 rounded-hh-standard border-[var(--hh-border-default)] bg-[var(--hh-surface-workspace)] px-3 text-sm font-medium text-[var(--hh-text-primary)] shadow-none lg:h-9 lg:min-h-9",
                     RQ_BTN,
-                    "hover:bg-[#f3f4f6]"
+                    "hover:bg-[var(--hh-surface-hover)]"
                   )}
                   asChild
                 >
@@ -1779,9 +1782,9 @@ export function ReceiptQueueWorkspace() {
                   variant="outline"
                   size="sm"
                   className={cn(
-                    "h-9 rounded-md border-2 border-[#111827] bg-white px-3 text-sm font-semibold text-[#111827] shadow-none",
+                    "h-11 min-h-11 rounded-hh-standard border-[var(--hh-border-default)] bg-[var(--hh-accent-primary)] px-3 text-sm font-semibold text-white shadow-none lg:h-9 lg:min-h-9",
                     RQ_BTN,
-                    "hover:bg-[#f3f4f6]"
+                    "hover:bg-[var(--hh-accent-hover)]"
                   )}
                   disabled={bulkAdding || !supabase || addAllEligibleCount === 0}
                   onClick={() => void handleAddAll()}
@@ -1797,10 +1800,10 @@ export function ReceiptQueueWorkspace() {
           />
         </div>
         <MobileListHeader
-          title="Receipt queue (legacy)"
+          title="Receipt queue"
           fab={
             <MobileFabButton
-              ariaLabel="Legacy queue — add files"
+              ariaLabel="Receipt queue — add files"
               onClick={() => uploadInputRef.current?.click()}
             />
           }
@@ -1811,12 +1814,12 @@ export function ReceiptQueueWorkspace() {
           activeFilterCount={activeDrawerFilterCount}
           searchSlot={
             <div className="relative w-full">
-              <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--hh-text-tertiary)]" />
               <Input
                 value={vendorSearch}
                 onChange={(e) => setVendorSearch(e.target.value)}
                 placeholder="Vendor…"
-                className="h-10 border-[#e5e7eb] bg-white pl-8 text-sm dark:border-border dark:bg-background"
+                className="h-11 border-[var(--hh-border-default)] bg-[var(--hh-surface-workspace)] pl-8 text-sm text-[var(--hh-text-primary)] placeholder:text-[var(--hh-text-tertiary)]"
                 aria-label="Filter queue by vendor"
               />
             </div>
@@ -1824,13 +1827,13 @@ export function ReceiptQueueWorkspace() {
         />
         <MobileFilterSheet open={filtersOpen} onOpenChange={setFiltersOpen} title="Filters">
           <div className="space-y-2">
-            <p className="text-xs font-medium text-muted-foreground">View</p>
+            <p className="text-xs font-medium text-[var(--hh-text-secondary)]">View</p>
             <div className="flex flex-wrap gap-2">
               <Button
                 type="button"
                 size="sm"
                 variant={listFilter === "all" ? "default" : "outline"}
-                className="rounded-sm"
+                className="min-h-11 rounded-hh-standard"
                 onClick={() => {
                   setListFilter("all");
                   setFiltersOpen(false);
@@ -1842,7 +1845,7 @@ export function ReceiptQueueWorkspace() {
                 type="button"
                 size="sm"
                 variant={listFilter === "needs_fix" ? "default" : "outline"}
-                className="rounded-sm"
+                className="min-h-11 rounded-hh-standard"
                 onClick={() => {
                   setListFilter("needs_fix");
                   setFiltersOpen(false);
@@ -1852,7 +1855,11 @@ export function ReceiptQueueWorkspace() {
               </Button>
             </div>
           </div>
-          <Button type="button" className="w-full rounded-sm" onClick={() => setFiltersOpen(false)}>
+          <Button
+            type="button"
+            className="min-h-11 w-full rounded-hh-standard"
+            onClick={() => setFiltersOpen(false)}
+          >
             Done
           </Button>
         </MobileFilterSheet>
@@ -1863,7 +1870,7 @@ export function ReceiptQueueWorkspace() {
               type="button"
               variant="outline"
               size="sm"
-              className="rounded-sm"
+              className="min-h-11 rounded-hh-standard"
               disabled={captureUploading}
               onClick={() => cameraInputRef.current?.click()}
             >
@@ -1878,7 +1885,7 @@ export function ReceiptQueueWorkspace() {
               type="button"
               variant="outline"
               size="sm"
-              className="rounded-sm"
+              className="min-h-11 rounded-hh-standard"
               disabled={captureUploading}
               onClick={() => uploadInputRef.current?.click()}
             >
@@ -1893,7 +1900,7 @@ export function ReceiptQueueWorkspace() {
         ) : null}
         {supabase && captureUploading ? (
           <p
-            className="md:hidden text-xs text-[#6b7280] dark:text-muted-foreground"
+            className="text-xs text-[var(--hh-text-secondary)] md:hidden"
             role="status"
             aria-live="polite"
           >
@@ -1906,18 +1913,17 @@ export function ReceiptQueueWorkspace() {
         ) : null}
 
         {rows.some((r) => r.status === "processing") ? (
-          <p
-            className="text-xs text-[#6b7280] dark:text-muted-foreground"
-            role="status"
-            aria-live="polite"
-          >
+          <p className="text-xs text-[var(--hh-text-secondary)]" role="status" aria-live="polite">
             Receipt OCR is running in the background — you can keep working; rows update when ready.
           </p>
         ) : null}
 
         {!supabase ? (
-          <p className="text-sm text-[#6b7280] dark:text-muted-foreground">
-            Configure Supabase to upload.
+          <p
+            role="alert"
+            className="rounded-hh-standard border border-[var(--hh-danger-border)] bg-[var(--hh-danger-soft-fill)] px-3 py-2 text-sm text-[var(--hh-danger)]"
+          >
+            Receipt storage is unavailable. Configure Supabase to upload.
           </p>
         ) : (
           <>
@@ -1966,9 +1972,9 @@ export function ReceiptQueueWorkspace() {
                 type="button"
                 size="sm"
                 className={cn(
-                  "h-10 gap-2 rounded-lg border-0 bg-[#111827] px-4 text-sm font-medium text-white shadow-none",
+                  "h-11 min-h-11 gap-2 rounded-hh-standard border-0 bg-[var(--hh-text-primary)] px-4 text-sm font-medium text-[var(--hh-surface-workspace)] shadow-none lg:h-10 lg:min-h-10",
                   RQ_BTN,
-                  "hover:bg-[#1f2937]"
+                  "hover:bg-[var(--hh-text-secondary)]"
                 )}
                 disabled={captureUploading}
                 onClick={() => cameraInputRef.current?.click()}
@@ -1984,9 +1990,9 @@ export function ReceiptQueueWorkspace() {
                 type="button"
                 size="sm"
                 className={cn(
-                  "h-10 gap-2 rounded-lg border-0 bg-emerald-600 px-4 text-sm font-medium text-white shadow-none",
+                  "h-11 min-h-11 gap-2 rounded-hh-standard border-0 bg-[var(--hh-accent-primary)] px-4 text-sm font-medium text-white shadow-none lg:h-10 lg:min-h-10",
                   RQ_BTN,
-                  "hover:bg-emerald-700"
+                  "hover:bg-[var(--hh-accent-hover)]"
                 )}
                 disabled={captureUploading}
                 onClick={() => uploadInputRef.current?.click()}
@@ -2001,7 +2007,7 @@ export function ReceiptQueueWorkspace() {
             </div>
             {captureUploading ? (
               <p
-                className="text-xs text-[#6b7280] dark:text-muted-foreground"
+                className="text-xs text-[var(--hh-text-secondary)]"
                 role="status"
                 aria-live="polite"
               >
@@ -2014,8 +2020,10 @@ export function ReceiptQueueWorkspace() {
             ) : null}
             <div
               className={cn(
-                "hidden min-h-[140px] flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-[#e5e7eb] bg-white py-8 text-sm text-[#6b7280] transition-colors duration-rq ease-out md:flex",
-                dragOver && !captureUploading && "border-emerald-500/45 bg-emerald-500/[0.06]",
+                "hidden min-h-[140px] flex-col items-center justify-center gap-2 rounded-hh-panel border border-dashed border-[var(--hh-border-default)] bg-[var(--hh-surface-workspace)] py-8 text-sm text-[var(--hh-text-secondary)] transition-colors duration-rq ease-out md:flex",
+                dragOver &&
+                  !captureUploading &&
+                  "border-[var(--hh-accent-primary)] bg-[var(--hh-accent-soft)]",
                 captureUploading && "pointer-events-none opacity-60"
               )}
               onDragEnter={(e) => {
@@ -2036,8 +2044,8 @@ export function ReceiptQueueWorkspace() {
                 void enqueueFiles(e.dataTransfer.files);
               }}
             >
-              <Upload className="h-8 w-8 text-[#9ca3af]" aria-hidden />
-              <span className="text-sm font-medium text-[#6b7280]">
+              <Upload className="h-8 w-8 text-[var(--hh-text-tertiary)]" aria-hidden />
+              <span className="text-sm font-medium text-[var(--hh-text-secondary)]">
                 {captureUploading
                   ? uploadBatchProgress
                     ? `Uploading ${uploadBatchProgress.done} / ${uploadBatchProgress.total}…`
@@ -2049,8 +2057,26 @@ export function ReceiptQueueWorkspace() {
         )}
 
         {showQueueSkeleton && rows.length === 0 ? (
-          <div role="status" aria-live="polite" aria-label="Loading queue">
+          <div
+            role="status"
+            aria-live="polite"
+            aria-label="Loading queue"
+            className="rounded-hh-panel border border-[var(--hh-border-subtle)] bg-[var(--hh-surface-workspace)] p-3"
+          >
             <ReceiptQueueSkeleton rows={6} />
+          </div>
+        ) : null}
+
+        {receiptQueueError ? (
+          <div
+            data-testid="receipt-queue-error"
+            role="alert"
+            className="rounded-hh-standard border border-[var(--hh-danger-border)] bg-[var(--hh-danger-soft-fill)] px-4 py-3 text-sm text-[var(--hh-danger)]"
+          >
+            <p className="font-semibold">Unable to load receipt queue.</p>
+            <p className="mt-1 text-[var(--hh-text-secondary)]">
+              Check the connection and reload the page. No receipt data was changed.
+            </p>
           </div>
         ) : null}
 
@@ -2068,20 +2094,20 @@ export function ReceiptQueueWorkspace() {
               ref={emptyQueueRef}
               tabIndex={-1}
               data-receipt-queue-empty
-              className="hidden min-h-[min(40vh_280px)] flex-col justify-center transition-opacity duration-200 ease-out animate-in fade-in md:flex"
+              className="hidden min-h-[min(40vh_280px)] flex-col justify-center rounded-hh-panel border border-[var(--hh-border-subtle)] bg-[var(--hh-surface-workspace)] transition-opacity duration-200 ease-out animate-in fade-in md:flex"
             >
-              <p className="text-center text-sm text-[#6b7280] dark:text-muted-foreground">
+              <p className="text-center text-sm text-[var(--hh-text-secondary)]">
                 No items in the queue.
               </p>
             </div>
           </>
         ) : rows.length > 0 ? (
           <>
-            <div className="overflow-hidden rounded-lg border border-[#f4d47c] bg-[#fff8e8] dark:border-amber-800/50 dark:bg-amber-950/30">
+            <div className="overflow-hidden rounded-hh-panel border border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)]">
               <div className="flex flex-wrap items-start justify-between gap-3 px-4 py-3 sm:items-center">
-                <div className="flex min-w-0 items-center gap-2 text-sm font-medium text-[#9a5b13] dark:text-amber-100">
+                <div className="flex min-w-0 items-center gap-2 text-sm font-medium text-[var(--hh-warning)]">
                   <AlertTriangle
-                    className="h-4 w-4 shrink-0 text-[#9a5b13] dark:text-amber-400"
+                    className="h-4 w-4 shrink-0 text-[var(--hh-warning)]"
                     aria-hidden
                   />
                   <span>
@@ -2095,7 +2121,7 @@ export function ReceiptQueueWorkspace() {
                   </span>
                 </div>
                 <div className="flex w-full shrink-0 flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:items-center sm:gap-3">
-                  <p className="text-center text-[11px] text-[#9a5b13]/90 dark:text-amber-200/80 sm:text-right">
+                  <p className="text-center text-[11px] text-[var(--hh-text-secondary)] sm:text-right">
                     Enter: field → next row · Shift+Enter: save all pending
                   </p>
                   <div className="hidden justify-center gap-1 sm:justify-end md:flex">
@@ -2103,10 +2129,10 @@ export function ReceiptQueueWorkspace() {
                       type="button"
                       onClick={() => setListFilter("all")}
                       className={cn(
-                        "rounded-md px-3 py-1.5 text-xs font-medium transition-colors duration-rq ease-out",
+                        "min-h-11 min-w-11 rounded-hh-standard px-3 py-1.5 text-xs font-medium transition-colors duration-rq ease-out lg:min-h-9",
                         listFilter === "all"
-                          ? "bg-white text-[#111827] shadow-sm ring-1 ring-[#e5e7eb] dark:bg-amber-900/40 dark:text-amber-50 dark:ring-amber-700/50"
-                          : "text-[#9a5b13] hover:bg-white/70 dark:text-amber-200/90 dark:hover:bg-amber-900/30"
+                          ? "bg-[var(--hh-surface-workspace)] text-[var(--hh-text-primary)] ring-1 ring-[var(--hh-border-default)]"
+                          : "text-[var(--hh-warning)] hover:bg-[var(--hh-surface-hover)]"
                       )}
                     >
                       All
@@ -2115,10 +2141,10 @@ export function ReceiptQueueWorkspace() {
                       type="button"
                       onClick={() => setListFilter("needs_fix")}
                       className={cn(
-                        "rounded-md px-3 py-1.5 text-xs font-medium transition-colors duration-rq ease-out",
+                        "min-h-11 rounded-hh-standard px-3 py-1.5 text-xs font-medium transition-colors duration-rq ease-out lg:min-h-9",
                         listFilter === "needs_fix"
-                          ? "bg-white text-[#111827] shadow-sm ring-1 ring-[#e5e7eb] dark:bg-amber-900/40 dark:text-amber-50 dark:ring-amber-700/50"
-                          : "text-[#9a5b13] hover:bg-white/70 dark:text-amber-200/90 dark:hover:bg-amber-900/30"
+                          ? "bg-[var(--hh-surface-workspace)] text-[var(--hh-text-primary)] ring-1 ring-[var(--hh-border-default)]"
+                          : "text-[var(--hh-warning)] hover:bg-[var(--hh-surface-hover)]"
                       )}
                     >
                       Needs fix ({needsFixCount})
@@ -2126,14 +2152,19 @@ export function ReceiptQueueWorkspace() {
                   </div>
                 </div>
               </div>
-              <div className="flex items-center gap-3 border-t border-[#f4d47c]/70 px-4 py-2 dark:border-amber-800/40">
-                <div className="relative h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-[#f4d47c]/30 dark:bg-amber-900/40">
+              <div className="flex items-center gap-3 border-t border-[var(--hh-warning-border)] px-4 py-2">
+                <div className="relative h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-[var(--hh-surface-workspace)]">
                   <div
-                    className="absolute inset-y-0 left-0 rounded-full bg-emerald-500 transition-[width] duration-300"
+                    role="progressbar"
+                    aria-label="Receipt queue completion"
+                    aria-valuemin={0}
+                    aria-valuemax={queueProgress.total}
+                    aria-valuenow={queueProgress.done}
+                    className="absolute inset-y-0 left-0 rounded-full bg-[var(--hh-success)]"
                     style={{ width: `${queueProgress.pct}%` }}
                   />
                 </div>
-                <span className="shrink-0 tabular-nums text-xs font-medium text-[#9a5b13] dark:text-amber-100">
+                <span className="shrink-0 tabular-nums text-xs font-medium text-[var(--hh-warning)]">
                   {queueProgress.done} / {queueProgress.total} ({queueProgress.pct}%)
                 </span>
               </div>
@@ -2149,7 +2180,7 @@ export function ReceiptQueueWorkspace() {
                       type="button"
                       size="sm"
                       variant="outline"
-                      className="rounded-sm"
+                      className="min-h-11 rounded-hh-standard"
                       onClick={() => {
                         setListFilter("all");
                         setVendorSearch("");
@@ -2159,7 +2190,7 @@ export function ReceiptQueueWorkspace() {
                     </Button>
                   }
                 />
-                <p className="hidden py-8 text-center text-sm text-[#6b7280] dark:text-muted-foreground md:block">
+                <p className="hidden py-8 text-center text-sm text-[var(--hh-text-secondary)] md:block">
                   No rows in this view.{" "}
                   <button
                     type="button"

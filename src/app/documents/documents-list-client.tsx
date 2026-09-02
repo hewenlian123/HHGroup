@@ -11,6 +11,14 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/native-select";
 import { cn } from "@/lib/utils";
 import { listTablePrimaryCellClassName, listTableRowClassName } from "@/lib/list-table-interaction";
+import { MobileListRow, NeoTable } from "@/components/base";
+import {
+  MobileEmptyState,
+  MobileFabButton,
+  MobileFilterSheet,
+  MobileListHeader,
+  MobileSearchFiltersRow,
+} from "@/components/mobile/mobile-list-chrome";
 import {
   Dialog,
   DialogContent,
@@ -20,9 +28,9 @@ import {
 } from "@/components/ui/dialog";
 import { DocumentPreviewModal } from "@/components/documents/document-preview-modal";
 import { EmptyState } from "@/components/empty-state";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { FileUp, Filter, Plus } from "lucide-react";
+import { FileUp } from "lucide-react";
 import { Pagination } from "@/components/ui/pagination";
+import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   getDocumentPreviewUrl,
   getDocumentDownloadUrl,
@@ -205,146 +213,134 @@ export function DocumentsListClient({ documents, projects, total }: Props) {
 
   return (
     <>
-      {/* Mobile: iOS-style header + search + filter drawer */}
       <div className="md:hidden">
-        <div className="flex h-14 items-center justify-between gap-3 border-b border-gray-100 px-4 dark:border-border/60">
-          <h1 className="text-lg font-semibold text-text-primary dark:text-foreground">
-            Documents
-          </h1>
-          <button
-            type="button"
-            onClick={() => setUploadOpen(true)}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-black text-white dark:bg-foreground dark:text-background"
-            aria-label="Upload document"
-          >
-            <Plus className="h-5 w-5" strokeWidth={2} />
-          </button>
-        </div>
-        <div className="flex items-center gap-2 px-4 py-3">
-          <Input
-            type="search"
-            placeholder="Search files…"
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            onBlur={() => setFilters({ search: searchInput })}
-            onKeyDown={(e) => e.key === "Enter" && setFilters({ search: searchInput })}
-            className="h-10 flex-1 border-gray-100 dark:border-border/60"
+        <MobileListHeader
+          title="Documents"
+          fab={<MobileFabButton ariaLabel="Upload document" onClick={() => setUploadOpen(true)} />}
+        />
+        <div className="py-hh-3">
+          <MobileSearchFiltersRow
+            searchSlot={
+              <Input
+                type="search"
+                aria-label="Search documents"
+                placeholder="Search files…"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                onBlur={() => setFilters({ search: searchInput })}
+                onKeyDown={(e) => e.key === "Enter" && setFilters({ search: searchInput })}
+                className="h-hh-control-touch"
+              />
+            }
+            onOpenFilters={() => setFiltersOpen(true)}
+            activeFilterCount={activeFilterCount}
+            filterSheetOpen={filtersOpen}
+            filtersTriggerClassName="h-hh-control-touch min-h-hh-touch"
           />
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="relative h-10 shrink-0 gap-1.5 border-gray-100 px-2.5 dark:border-border/60"
-            onClick={() => setFiltersOpen(true)}
-          >
-            <Filter className="h-4 w-4" />
-            <span className="text-xs font-medium">Filters</span>
-            {activeFilterCount > 0 ? (
-              <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-black px-1 text-[10px] font-medium text-white dark:bg-foreground dark:text-background">
-                {activeFilterCount}
-              </span>
-            ) : null}
-          </Button>
         </div>
-        <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
-          <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto rounded-t-lg p-4">
-            <SheetHeader className="text-left">
-              <SheetTitle className="text-base font-semibold">Filters</SheetTitle>
-            </SheetHeader>
-            <div className="mt-4 flex flex-col gap-4 pb-6">
-              <div className="space-y-1">
-                <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
-                  Project
-                </p>
-                <Select
-                  value={projectId}
-                  onChange={(e) => {
-                    setFilters({ project_id: e.target.value });
-                  }}
-                >
-                  <option value="">All projects</option>
-                  {projects.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-              <div className="space-y-1">
-                <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
-                  Type
-                </p>
-                <Select
-                  value={fileType}
-                  onChange={(e) => setFilters({ file_type: e.target.value })}
-                >
-                  <option value="">All types</option>
-                  {DOCUMENT_FILE_TYPES.map((t) => (
-                    <option key={t} value={t}>
-                      {t}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-              <div className="space-y-1">
-                <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
-                  From
-                </p>
-                <Input
-                  type="date"
-                  value={dateFrom}
-                  onChange={(e) => setFilters({ date_from: e.target.value })}
-                  className="h-10"
-                />
-              </div>
-              <div className="space-y-1">
-                <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
-                  To
-                </p>
-                <Input
-                  type="date"
-                  value={dateTo}
-                  onChange={(e) => setFilters({ date_to: e.target.value })}
-                  className="h-10"
-                />
-              </div>
-              <Button type="button" className="w-full" onClick={() => setFiltersOpen(false)}>
-                Done
-              </Button>
+        <MobileFilterSheet open={filtersOpen} onOpenChange={setFiltersOpen}>
+          <div className="flex flex-col gap-4 pb-6">
+            <div className="space-y-1">
+              <p className="text-hh-metadata font-medium uppercase tracking-[0.2em] text-[var(--hh-text-secondary)]">
+                Project
+              </p>
+              <Select
+                value={projectId}
+                onChange={(e) => {
+                  setFilters({ project_id: e.target.value });
+                }}
+              >
+                <option value="">All projects</option>
+                {projects.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </Select>
             </div>
-          </SheetContent>
-        </Sheet>
+            <div className="space-y-1">
+              <p className="text-hh-metadata font-medium uppercase tracking-[0.2em] text-[var(--hh-text-secondary)]">
+                Type
+              </p>
+              <Select value={fileType} onChange={(e) => setFilters({ file_type: e.target.value })}>
+                <option value="">All types</option>
+                {DOCUMENT_FILE_TYPES.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <p className="text-hh-metadata font-medium uppercase tracking-[0.2em] text-[var(--hh-text-secondary)]">
+                From
+              </p>
+              <Input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setFilters({ date_from: e.target.value })}
+                className="h-hh-control-touch"
+              />
+            </div>
+            <div className="space-y-1">
+              <p className="text-hh-metadata font-medium uppercase tracking-[0.2em] text-[var(--hh-text-secondary)]">
+                To
+              </p>
+              <Input
+                type="date"
+                value={dateTo}
+                onChange={(e) => setFilters({ date_to: e.target.value })}
+                className="h-hh-control-touch"
+              />
+            </div>
+            <Button
+              type="button"
+              className="min-h-hh-touch w-full"
+              onClick={() => setFiltersOpen(false)}
+            >
+              Done
+            </Button>
+          </div>
+        </MobileFilterSheet>
       </div>
 
       <div className="hidden md:block">
         <FilterBar>
           <div className="flex w-full flex-col gap-4">
             <div className="flex flex-wrap items-center gap-2">
-              <Button variant="outline" size="sm" onClick={() => setUploadOpen(true)}>
+              <Button
+                variant="outline"
+                size="sm"
+                className="max-lg:h-hh-control-touch"
+                onClick={() => setUploadOpen(true)}
+              >
                 Upload
               </Button>
             </div>
             <div className="grid w-full gap-4 sm:grid-cols-2 lg:grid-cols-6">
               <div className="space-y-1 sm:col-span-2">
-                <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
+                <p className="text-hh-metadata font-medium uppercase tracking-[0.2em] text-[var(--hh-text-secondary)]">
                   Search
                 </p>
                 <Input
-                  type="text"
+                  type="search"
+                  aria-label="Search documents"
                   placeholder="File name…"
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
                   onBlur={() => setFilters({ search: searchInput })}
                   onKeyDown={(e) => e.key === "Enter" && setFilters({ search: searchInput })}
+                  className="max-lg:h-hh-control-touch"
                 />
               </div>
               <div className="space-y-1">
-                <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
+                <p className="text-hh-metadata font-medium uppercase tracking-[0.2em] text-[var(--hh-text-secondary)]">
                   Project
                 </p>
                 <Select
                   value={projectId}
                   onChange={(e) => setFilters({ project_id: e.target.value })}
+                  className="max-lg:h-hh-control-touch"
                 >
                   <option value="">All projects</option>
                   {projects.map((p) => (
@@ -355,12 +351,13 @@ export function DocumentsListClient({ documents, projects, total }: Props) {
                 </Select>
               </div>
               <div className="space-y-1">
-                <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
+                <p className="text-hh-metadata font-medium uppercase tracking-[0.2em] text-[var(--hh-text-secondary)]">
                   Type
                 </p>
                 <Select
                   value={fileType}
                   onChange={(e) => setFilters({ file_type: e.target.value })}
+                  className="max-lg:h-hh-control-touch"
                 >
                   <option value="">All types</option>
                   {DOCUMENT_FILE_TYPES.map((t) => (
@@ -371,23 +368,25 @@ export function DocumentsListClient({ documents, projects, total }: Props) {
                 </Select>
               </div>
               <div className="space-y-1">
-                <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
+                <p className="text-hh-metadata font-medium uppercase tracking-[0.2em] text-[var(--hh-text-secondary)]">
                   From
                 </p>
                 <Input
                   type="date"
                   value={dateFrom}
                   onChange={(e) => setFilters({ date_from: e.target.value })}
+                  className="max-lg:h-hh-control-touch"
                 />
               </div>
               <div className="space-y-1">
-                <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
+                <p className="text-hh-metadata font-medium uppercase tracking-[0.2em] text-[var(--hh-text-secondary)]">
                   To
                 </p>
                 <Input
                   type="date"
                   value={dateTo}
                   onChange={(e) => setFilters({ date_to: e.target.value })}
+                  className="max-lg:h-hh-control-touch"
                 />
               </div>
             </div>
@@ -408,148 +407,134 @@ export function DocumentsListClient({ documents, projects, total }: Props) {
               }
             />
           </div>
-          <div className="flex flex-col items-center px-4 py-10 md:hidden">
-            <FileUp
-              className="h-8 w-8 text-text-secondary dark:text-muted-foreground"
-              aria-hidden
-            />
-            <p className="mt-3 text-center text-sm text-text-secondary dark:text-muted-foreground">
-              No documents found. Upload or adjust filters.
-            </p>
-            <Button size="sm" className="mt-4" onClick={() => setUploadOpen(true)}>
-              Upload document
-            </Button>
-          </div>
+          <MobileEmptyState
+            icon={<FileUp className="h-8 w-8" aria-hidden />}
+            message="No documents found. Upload or adjust filters."
+            action={
+              <Button size="sm" onClick={() => setUploadOpen(true)}>
+                Upload document
+              </Button>
+            }
+          />
         </>
       ) : (
-        <div className="border-t border-gray-100 pt-0 dark:border-border/60 md:pt-4">
+        <div className="border-t border-[var(--hh-border)] pt-0 md:pt-4">
           {/* Mobile list */}
-          <div className="divide-y divide-gray-100 dark:divide-border/60 md:hidden">
+          <div className="divide-y divide-[var(--hh-border)] md:hidden">
             {localDocuments.map((doc) => (
-              <button
-                key={doc.id}
-                type="button"
-                onClick={() => void handlePreview(doc)}
-                className="flex min-h-[48px] w-full items-center gap-3 px-4 py-2.5 text-left active:bg-muted/30"
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-text-primary dark:text-foreground">
-                    {doc.file_name}
-                  </p>
-                  <p className="truncate text-xs text-text-secondary dark:text-muted-foreground">
-                    {doc.project_name ?? "—"} · {formatDate(doc.uploaded_at)}
-                  </p>
-                </div>
-                <div className="flex shrink-0 flex-col items-end gap-1">
-                  <span className="text-sm font-medium tabular-nums text-text-primary dark:text-foreground">
-                    {formatBytes(doc.size_bytes)}
-                  </span>
-                  <span className="max-w-[7rem] truncate text-[10px] font-medium uppercase tracking-wide text-text-secondary dark:text-muted-foreground">
-                    {doc.file_type}
-                  </span>
-                </div>
-              </button>
+              <MobileListRow key={doc.id} asChild>
+                <button
+                  type="button"
+                  onClick={() => void handlePreview(doc)}
+                  className="w-full text-left"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium text-[var(--hh-text-primary)]">
+                      {doc.file_name}
+                    </p>
+                    <p className="truncate text-hh-metadata text-[var(--hh-text-secondary)]">
+                      {doc.project_name ?? "—"} · {formatDate(doc.uploaded_at)}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 flex-col items-end gap-1">
+                    <span className="hh-fin font-medium text-[var(--hh-text-primary)]">
+                      {formatBytes(doc.size_bytes)}
+                    </span>
+                    <span className="max-w-[7rem] truncate text-hh-metadata font-medium uppercase tracking-wide text-[var(--hh-text-secondary)]">
+                      {doc.file_type}
+                    </span>
+                  </div>
+                </button>
+              </MobileListRow>
             ))}
           </div>
-          <div className="airtable-table-wrap airtable-table-wrap--ruled hidden md:block">
-            <div className="airtable-table-scroll">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr>
-                    <th className="h-8 px-3 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
-                      File
-                    </th>
-                    <th className="h-8 px-3 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
-                      Project
-                    </th>
-                    <th className="h-8 px-3 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
-                      Type
-                    </th>
-                    <th className="h-8 px-3 text-right text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
-                      Size
-                    </th>
-                    <th className="h-8 px-3 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
-                      Uploaded
-                    </th>
-                    <th className="h-8 w-40 px-1" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {localDocuments.map((doc) => {
-                    const relatedUrl = getRelatedRecordUrl(doc);
-                    return (
-                      <tr
-                        key={doc.id}
-                        className={listTableRowClassName}
-                        onClick={() => void handlePreview(doc)}
-                      >
-                        <td
-                          className={cn(
-                            "py-1.5 px-3 font-medium truncate max-w-[200px]",
-                            listTablePrimaryCellClassName
-                          )}
-                          title={doc.file_name}
+          <NeoTable className="hidden md:block" tableClassName="min-w-[880px]">
+            <TableHeader>
+              <TableRow className="hover:!bg-transparent">
+                <TableHead>File</TableHead>
+                <TableHead>Project</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead className="text-right">Size</TableHead>
+                <TableHead>Uploaded</TableHead>
+                <TableHead className="w-40" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {localDocuments.map((doc) => {
+                const relatedUrl = getRelatedRecordUrl(doc);
+                return (
+                  <TableRow
+                    key={doc.id}
+                    className={listTableRowClassName}
+                    onClick={() => void handlePreview(doc)}
+                  >
+                    <TableCell
+                      className={cn(
+                        "max-w-[200px] truncate font-medium",
+                        listTablePrimaryCellClassName
+                      )}
+                      title={doc.file_name}
+                    >
+                      {doc.file_name}
+                    </TableCell>
+                    <TableCell className="text-[var(--hh-text-secondary)]">
+                      {doc.project_name ?? "—"}
+                    </TableCell>
+                    <TableCell className="text-[var(--hh-text-secondary)]">
+                      {doc.file_type}
+                    </TableCell>
+                    <TableCell className="hh-fin text-right text-[var(--hh-text-secondary)]">
+                      {formatBytes(doc.size_bytes)}
+                    </TableCell>
+                    <TableCell className="text-[var(--hh-text-secondary)]">
+                      {formatDate(doc.uploaded_at)}
+                    </TableCell>
+                    <TableCell className="px-hh-2" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center gap-1 flex-wrap">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="max-lg:h-hh-control-touch"
+                          onClick={() => handlePreview(doc)}
+                          disabled={loadingPreview}
                         >
-                          {doc.file_name}
-                        </td>
-                        <td className="py-1.5 px-3 text-muted-foreground">
-                          {doc.project_name ?? "—"}
-                        </td>
-                        <td className="py-1.5 px-3 text-muted-foreground">{doc.file_type}</td>
-                        <td className="py-1.5 px-3 text-right tabular-nums text-muted-foreground">
-                          {formatBytes(doc.size_bytes)}
-                        </td>
-                        <td className="py-1.5 px-3 text-muted-foreground">
-                          {formatDate(doc.uploaded_at)}
-                        </td>
-                        <td className="py-1.5 px-1" onClick={(e) => e.stopPropagation()}>
-                          <div className="flex items-center gap-1 flex-wrap">
+                          Preview
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="max-lg:h-hh-control-touch"
+                          onClick={() => handleDownload(doc)}
+                        >
+                          Download
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-[var(--hh-danger)] max-lg:h-hh-control-touch"
+                          onClick={() => handleDelete(doc)}
+                          disabled={deletingId === doc.id}
+                        >
+                          {deletingId === doc.id ? "Deleting…" : "Delete"}
+                        </Button>
+                        {relatedUrl ? (
+                          <Link href={relatedUrl}>
                             <Button
                               variant="outline"
                               size="sm"
-                              className="btn-outline-ghost h-7 text-xs"
-                              onClick={() => handlePreview(doc)}
-                              disabled={loadingPreview}
+                              className="max-lg:h-hh-control-touch"
                             >
-                              Preview
+                              Open related
                             </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="btn-outline-ghost h-7 text-xs"
-                              onClick={() => handleDownload(doc)}
-                            >
-                              Download
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="btn-outline-ghost h-7 text-xs text-red-600"
-                              onClick={() => handleDelete(doc)}
-                              disabled={deletingId === doc.id}
-                            >
-                              {deletingId === doc.id ? "Deleting…" : "Delete"}
-                            </Button>
-                            {relatedUrl ? (
-                              <Link href={relatedUrl}>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="btn-outline-ghost h-7 text-xs"
-                                >
-                                  Open related
-                                </Button>
-                              </Link>
-                            ) : null}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
+                          </Link>
+                        ) : null}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </NeoTable>
         </div>
       )}
 
@@ -574,13 +559,19 @@ export function DocumentsListClient({ documents, projects, total }: Props) {
           </DialogHeader>
           <form ref={uploadFormRef} onSubmit={handleUploadSubmit} className="grid gap-3 py-2">
             <div>
-              <label className="text-xs font-medium text-muted-foreground">File</label>
+              <label
+                htmlFor="documents-upload-file"
+                className="text-xs font-medium text-muted-foreground"
+              >
+                File
+              </label>
               <input
+                id="documents-upload-file"
                 type="file"
                 name="file"
                 accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.webp,image/*"
                 capture="environment"
-                className="mt-1 block w-full min-h-[44px] text-sm file:mr-2 file:rounded file:border-0 file:bg-muted file:px-2 file:py-1.5 file:text-xs md:min-h-0"
+                className="hh-touch-min mt-1 block h-hh-control-standard w-full text-sm file:mr-2 file:rounded-hh-compact file:border-0 file:bg-[var(--hh-l3-hover)] file:px-hh-2 file:py-hh-1 file:text-hh-metadata file:text-[var(--hh-text-primary)]"
               />
             </div>
             <div>

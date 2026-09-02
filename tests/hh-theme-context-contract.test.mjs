@@ -84,7 +84,7 @@ test("route roots expose explicit contexts and a neutral sibling portal host", (
     assert.ok(shell.includes(routePattern), `missing explicit route pattern ${routePattern}`);
   }
   assert.match(shell, /<HhRouteThemeRoot context=\{routeContext\} theme=\{routeTheme\}>/);
-  assert.match(shell, /viewerRoute\s*\?\s*"neo-dark"/);
+  assert.match(shell, /viewerRoute\s*\?\s*"operational-light"/);
   assert.match(shell, /: "operational-light"/);
   assert.doesNotMatch(shell, /operationalThemeName\(operationalThemeMode\)/);
 });

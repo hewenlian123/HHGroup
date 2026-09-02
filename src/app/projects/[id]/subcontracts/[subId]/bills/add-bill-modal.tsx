@@ -69,52 +69,68 @@ export function AddBillModal({ open, onOpenChange, onSuccess, projectId, subcont
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <label className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]">
+            <label
+              htmlFor="add-subcontract-bill-date"
+              className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]"
+            >
               Bill Date
             </label>
             <Input
+              id="add-subcontract-bill-date"
               type="date"
               value={billDate}
               onChange={(e) => setBillDate(e.target.value)}
-              className="h-9 text-hh-body"
+              className="min-h-[44px] text-hh-body"
               required
             />
           </div>
           <div className="space-y-2">
-            <label className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]">
+            <label
+              htmlFor="add-subcontract-bill-due-date"
+              className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]"
+            >
               Due Date
             </label>
             <Input
+              id="add-subcontract-bill-due-date"
               type="date"
               value={dueDate}
               onChange={(e) => setDueDate(e.target.value)}
-              className="h-9 text-hh-body"
+              className="min-h-[44px] text-hh-body"
             />
           </div>
           <div className="space-y-2">
-            <label className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]">
+            <label
+              htmlFor="add-subcontract-bill-amount"
+              className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]"
+            >
               Amount (required)
             </label>
             <Input
+              id="add-subcontract-bill-amount"
               type="number"
               step="0.01"
               min="0"
               placeholder="0.00"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              className="h-9 text-hh-body tabular-nums"
+              className="min-h-[44px] text-hh-body tabular-nums"
               required
             />
           </div>
           <div className="space-y-2">
-            <label className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]">
+            <label
+              htmlFor="add-subcontract-bill-description"
+              className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]"
+            >
               Description
             </label>
             <Input
+              id="add-subcontract-bill-description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Description"
-              className="h-9 text-hh-body"
+              className="min-h-[44px] text-hh-body"
             />
           </div>
           {error ? <p className="text-hh-body text-[var(--hh-danger)]">{error}</p> : null}
@@ -122,14 +138,14 @@ export function AddBillModal({ open, onOpenChange, onSuccess, projectId, subcont
             <button
               type="button"
               onClick={() => onOpenChange(false)}
-              className="h-9 rounded-hh-standard border border-input bg-transparent px-3 text-hh-body hover:bg-accent hover:text-accent-foreground"
+              className="min-h-[44px] rounded-hh-standard border border-input bg-transparent px-3 text-hh-body hover:bg-accent hover:text-accent-foreground"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={busy}
-              className="inline-flex h-9 items-center rounded-hh-standard border border-input bg-foreground px-3 text-hh-body text-background hover:bg-foreground/90 disabled:opacity-50"
+              className="inline-flex min-h-[44px] items-center rounded-hh-standard border border-input bg-foreground px-3 text-hh-body text-background hover:bg-foreground/90 disabled:opacity-50"
             >
               <SubmitSpinner loading={busy} className="mr-2" />
               {busy ? "Saving…" : "Add Bill"}

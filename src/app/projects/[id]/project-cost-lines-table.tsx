@@ -69,36 +69,59 @@ export function ProjectCostLinesTable({
           {hint}
         </p>
       ) : null}
-      <div className="grid gap-2 md:hidden">
+      <div className="grid gap-2 xl:hidden">
         {rows.map((row) => (
           <NeoMobileCard key={row.lineId} className="overflow-hidden p-0">
-            <button
-              type="button"
-              className="flex min-h-[56px] w-full flex-col gap-1 px-3 py-3 text-left touch-manipulation"
-              onClick={() => openRow(row)}
-            >
-              <div className="flex items-start justify-between gap-2">
-                <span className="hh-fin text-hh-table-cell tabular-nums text-[var(--hh-text-secondary)]">
-                  {row.date}
-                </span>
-                <NeoAmount tone="expense" className="text-hh-table-cell">
-                  −${Math.abs(row.amount).toLocaleString()}
-                </NeoAmount>
-              </div>
-              <div className="text-hh-table-cell font-medium text-[var(--hh-text-primary)]">
+            <div className="flex min-h-[56px] w-full flex-col gap-1 px-3 py-3 text-left">
+              <div className="break-words text-hh-table-cell font-medium text-[var(--hh-text-primary)]">
                 {vendorDescription(row)}
               </div>
-              <div className="flex flex-wrap gap-x-2 text-hh-metadata text-[var(--hh-text-secondary)]">
-                <span>{row.category}</span>
-                <span aria-hidden>·</span>
-                <span>{row.paymentSource || "—"}</span>
-              </div>
-            </button>
+              <dl className="mt-2 grid gap-2 text-hh-metadata">
+                <div className="flex items-start justify-between gap-4">
+                  <dt className="font-medium uppercase text-[var(--hh-text-tertiary)]">Date</dt>
+                  <dd className="hh-fin text-right tabular-nums text-[var(--hh-text-primary)]">
+                    {row.date}
+                  </dd>
+                </div>
+                <div className="flex items-start justify-between gap-4">
+                  <dt className="font-medium uppercase text-[var(--hh-text-tertiary)]">Category</dt>
+                  <dd className="min-w-0 break-words text-right text-[var(--hh-text-primary)]">
+                    {row.category}
+                  </dd>
+                </div>
+                <div className="flex items-start justify-between gap-4">
+                  <dt className="font-medium uppercase text-[var(--hh-text-tertiary)]">
+                    Source / Payment
+                  </dt>
+                  <dd className="min-w-0 break-words text-right text-[var(--hh-text-primary)]">
+                    {row.paymentSource || "—"}
+                  </dd>
+                </div>
+                <div className="flex items-start justify-between gap-4">
+                  <dt className="font-medium uppercase text-[var(--hh-text-tertiary)]">Amount</dt>
+                  <dd className="text-right">
+                    <NeoAmount tone="expense" className="text-hh-table-cell">
+                      −${Math.abs(row.amount).toLocaleString()}
+                    </NeoAmount>
+                  </dd>
+                </div>
+              </dl>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="mt-2 min-h-[44px] w-full touch-manipulation"
+                onClick={() => openRow(row)}
+              >
+                View cost line
+                <span className="sr-only"> for {vendorDescription(row)}</span>
+              </Button>
+            </div>
           </NeoMobileCard>
         ))}
       </div>
 
-      <NeoTable className="hidden md:block" tableClassName="min-w-[640px] text-hh-body">
+      <NeoTable className="hidden xl:block" tableClassName="min-w-[640px] text-hh-body">
         <thead>
           <tr>
             <th className={tableRawThClass}>Date</th>
@@ -209,7 +232,7 @@ export function ProjectCostLinesTable({
               <div className="border-t border-[var(--hh-border)] pt-2">
                 <Link
                   href={`/financial/expenses/${selected.expenseId}`}
-                  className="text-hh-body font-medium text-[var(--hh-text-secondary)] hover:text-[var(--hh-text-primary)]"
+                  className="inline-flex min-h-[44px] items-center text-hh-body font-medium text-[var(--hh-text-secondary)] hover:text-[var(--hh-text-primary)]"
                 >
                   Open expense
                 </Link>

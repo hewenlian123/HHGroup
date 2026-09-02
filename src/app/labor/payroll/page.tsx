@@ -67,15 +67,12 @@ const psKpiIcon =
   "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[var(--hh-border)] bg-[var(--hh-l3-hover)] text-[var(--hh-text-secondary)] md:h-8 md:w-8";
 
 const AVATAR_RING = [
-  "bg-zinc-200/80 text-zinc-800 dark:bg-zinc-700/50 dark:text-zinc-100",
-  "bg-zinc-300/65 text-zinc-900 dark:bg-zinc-600/45 dark:text-zinc-100",
-  "bg-zinc-100 text-zinc-800 dark:bg-zinc-800/55 dark:text-zinc-100",
-  "bg-zinc-200/70 text-zinc-800 dark:bg-zinc-700/48 dark:text-zinc-100",
-  "bg-zinc-300/55 text-zinc-900 dark:bg-zinc-600/40 dark:text-zinc-100",
-  "bg-zinc-100/95 text-zinc-800 dark:bg-zinc-800/50 dark:text-zinc-100",
+  "bg-[var(--hh-l3-selected)] text-[var(--hh-text-primary)]",
+  "bg-[var(--hh-l3-hover)] text-[var(--hh-text-primary)]",
+  "bg-[var(--hh-l1-workspace)] text-[var(--hh-text-primary)]",
 ];
 
-const workerAvatarRing = "ring-1 ring-inset ring-zinc-950/[0.055] dark:ring-white/[0.08]";
+const workerAvatarRing = "ring-1 ring-inset ring-[var(--hh-border)]";
 
 function workerInitials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -103,13 +100,10 @@ function BalanceChip({ balance }: { balance: number }) {
       <span
         className={cn(
           base,
-          "border-[var(--hh-danger-border)] bg-[var(--hh-danger-soft-fill)] text-[var(--hh-danger)] border-[var(--hh-danger-border)] bg-[var(--hh-danger-soft-fill)] text-[var(--hh-danger)]"
+          "border-[var(--hh-danger-border)] bg-[var(--hh-danger-soft-fill)] text-[var(--hh-danger)]"
         )}
       >
-        <span
-          className="h-1 w-1 shrink-0 rounded-full bg-[var(--hh-danger-soft-fill)]"
-          aria-hidden
-        />
+        <span className="h-1 w-1 shrink-0 rounded-full bg-[var(--hh-danger)]" aria-hidden />
         Unpaid
       </span>
     );
@@ -119,13 +113,10 @@ function BalanceChip({ balance }: { balance: number }) {
       <span
         className={cn(
           base,
-          "border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] text-[var(--hh-warning)] border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] text-[var(--hh-warning)]"
+          "border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] text-[var(--hh-warning)]"
         )}
       >
-        <span
-          className="h-1 w-1 shrink-0 rounded-full bg-[var(--hh-warning-soft-fill)]"
-          aria-hidden
-        />
+        <span className="h-1 w-1 shrink-0 rounded-full bg-[var(--hh-warning)]" aria-hidden />
         Overpaid
       </span>
     );
@@ -134,13 +125,10 @@ function BalanceChip({ balance }: { balance: number }) {
     <span
       className={cn(
         base,
-        "border-[var(--hh-success-border)] bg-[var(--hh-success-soft-fill)] text-[var(--hh-success)] border-[var(--hh-success-border)] bg-[var(--hh-success-soft-fill)] text-[var(--hh-success)]"
+        "border-[var(--hh-success-border)] bg-[var(--hh-success-soft-fill)] text-[var(--hh-success)]"
       )}
     >
-      <span
-        className="h-1 w-1 shrink-0 rounded-full bg-[var(--hh-success-soft-fill)]"
-        aria-hidden
-      />
+      <span className="h-1 w-1 shrink-0 rounded-full bg-[var(--hh-success)]" aria-hidden />
       Paid
     </span>
   );
@@ -278,7 +266,7 @@ export default function PayrollSummaryPage() {
   const refreshing = loading && rows.length > 0;
 
   const selectFieldClass =
-    "h-10 w-full min-w-0 rounded-hh-compact border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 text-sm text-[var(--hh-text-primary)] shadow-none transition-colors hover:bg-[var(--hh-l3-hover)] focus-visible:border-[var(--hh-action-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)]";
+    "h-11 min-h-[44px] w-full min-w-0 rounded-hh-compact border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 text-sm text-[var(--hh-text-primary)] shadow-none transition-colors hover:bg-[var(--hh-l3-hover)] focus-visible:border-[var(--hh-action-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)] lg:h-10 lg:min-h-10";
 
   const dateInputClass = cn(
     selectFieldClass,
@@ -302,11 +290,11 @@ export default function PayrollSummaryPage() {
       >
         <div className="hidden md:block">
           <PageHeader
-            className="gap-1 border-b border-zinc-200/70 pb-2 dark:border-border/60 lg:items-baseline lg:gap-x-4 [&_p]:mt-0"
+            className="gap-1 border-b border-[var(--hh-border)] pb-2 lg:items-baseline lg:gap-x-4 [&_p]:mt-0"
             title="Payroll Summary"
             subtitle="Labor cost, reimbursements, payments, and worker balance overview."
             actions={
-              <span className="inline-flex items-center gap-1.5 rounded-hh-compact border border-zinc-200/80 bg-white px-2.5 py-1.5 text-hh-status text-muted-foreground shadow-operational dark:border-border/55 dark:bg-card">
+              <span className="inline-flex items-center gap-1.5 rounded-hh-compact border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-2.5 py-1.5 text-hh-status text-[var(--hh-text-secondary)] shadow-operational">
                 <Users className="h-3.5 w-3.5" aria-hidden />
                 Labor
               </span>
@@ -349,7 +337,7 @@ export default function PayrollSummaryPage() {
                 <p className="text-hh-status font-medium uppercase leading-none tracking-normal text-muted-foreground md:text-hh-status md:normal-case md:tracking-normal">
                   Total Earned
                 </p>
-                <p className="mt-0.5 truncate text-base font-medium tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
+                <p className="mt-0.5 truncate text-base font-medium tabular-nums leading-none text-[var(--hh-text-primary)] md:text-xl">
                   {formatCurrency(summary.earned)}
                 </p>
                 <p className="mt-0.5 text-hh-status leading-none text-muted-foreground">
@@ -370,7 +358,7 @@ export default function PayrollSummaryPage() {
                 <p className="text-hh-status font-medium uppercase leading-none tracking-normal text-muted-foreground md:text-hh-status md:normal-case md:tracking-normal">
                   Reimbursements
                 </p>
-                <p className="mt-0.5 truncate text-base font-medium tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
+                <p className="mt-0.5 truncate text-base font-medium tabular-nums leading-none text-[var(--hh-text-primary)] md:text-xl">
                   {formatCurrency(summary.reimbursements)}
                 </p>
                 <p className="mt-0.5 text-hh-status leading-none text-muted-foreground">
@@ -395,7 +383,7 @@ export default function PayrollSummaryPage() {
                 <p className="text-hh-status font-medium uppercase leading-none tracking-normal text-muted-foreground md:text-hh-status md:normal-case md:tracking-normal">
                   Should Pay
                 </p>
-                <p className="mt-0.5 truncate text-base font-medium tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
+                <p className="mt-0.5 truncate text-base font-medium tabular-nums leading-none text-[var(--hh-text-primary)] md:text-xl">
                   {formatCurrency(summary.shouldPay)}
                 </p>
                 <p className="mt-0.5 text-hh-status leading-none text-muted-foreground">
@@ -420,7 +408,7 @@ export default function PayrollSummaryPage() {
                 <p className="text-hh-status font-medium uppercase leading-none tracking-normal text-muted-foreground md:text-hh-status md:normal-case md:tracking-normal">
                   Paid
                 </p>
-                <p className="mt-0.5 truncate text-base font-medium tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
+                <p className="mt-0.5 truncate text-base font-medium tabular-nums leading-none text-[var(--hh-text-primary)] md:text-xl">
                   {formatCurrency(summary.paid)}
                 </p>
                 <p className="mt-0.5 text-hh-status leading-none text-muted-foreground">
@@ -445,8 +433,8 @@ export default function PayrollSummaryPage() {
                   className={cn(
                     "mt-0.5 truncate text-base font-medium tabular-nums leading-none md:text-xl",
                     summary.outstanding < 0
-                      ? "text-[var(--hh-danger)] text-[var(--hh-danger)]"
-                      : "text-zinc-900 dark:text-foreground"
+                      ? "text-[var(--hh-danger)]"
+                      : "text-[var(--hh-text-primary)]"
                   )}
                 >
                   {formatCurrency(summary.outstanding)}
@@ -469,7 +457,7 @@ export default function PayrollSummaryPage() {
                 <p className="text-hh-status font-medium uppercase leading-none tracking-normal text-muted-foreground md:text-hh-status md:normal-case md:tracking-normal">
                   Workers
                 </p>
-                <p className="mt-0.5 text-base font-medium tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
+                <p className="mt-0.5 text-base font-medium tabular-nums leading-none text-[var(--hh-text-primary)] md:text-xl">
                   {summary.workers}
                 </p>
                 <p className="mt-0.5 text-hh-status leading-none text-muted-foreground">Active</p>
@@ -487,7 +475,7 @@ export default function PayrollSummaryPage() {
                 onChange={(e) => {
                   if (isCompleteDateInput(e.target.value)) setFromDate(e.target.value);
                 }}
-                className={cn(dateInputClass, "h-10 sm:w-[152px]")}
+                className={cn(dateInputClass, "sm:w-[152px]")}
                 aria-label="From"
               />
               <Input
@@ -496,13 +484,13 @@ export default function PayrollSummaryPage() {
                 onChange={(e) => {
                   if (isCompleteDateInput(e.target.value)) setToDate(e.target.value);
                 }}
-                className={cn(dateInputClass, "h-10 sm:w-[152px]")}
+                className={cn(dateInputClass, "sm:w-[152px]")}
                 aria-label="To"
               />
               <select
                 value={projectId}
                 onChange={(e) => setProjectId(e.target.value)}
-                className={cn(selectFieldClass, "h-10 sm:min-w-[180px] md:min-w-[200px]")}
+                className={cn(selectFieldClass, "sm:min-w-[180px] md:min-w-[200px]")}
                 aria-label="Project"
               >
                 <option value="">All projects</option>
@@ -520,14 +508,14 @@ export default function PayrollSummaryPage() {
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Search worker…"
-                  className="h-11 min-h-[44px] border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] pl-8 text-sm text-[var(--hh-text-primary)] shadow-none hover:bg-[var(--hh-l3-hover)] focus-visible:border-[var(--hh-action-primary)] focus-visible:ring-[var(--hh-focus-ring)] md:h-10 md:min-h-10"
+                  className="h-11 min-h-[44px] border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] pl-8 text-sm text-[var(--hh-text-primary)] shadow-none hover:bg-[var(--hh-l3-hover)] focus-visible:border-[var(--hh-action-primary)] focus-visible:ring-[var(--hh-focus-ring)] lg:h-10 lg:min-h-10"
                 />
               </div>
             </div>
             <Button
               size="sm"
               variant="outline"
-              className="h-10 w-full shrink-0 gap-1.5 rounded-hh-compact border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-none hover:bg-[var(--hh-l3-hover)] lg:ml-auto lg:w-auto"
+              className="h-11 min-h-[44px] w-full shrink-0 gap-1.5 rounded-hh-compact border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-none hover:bg-[var(--hh-l3-hover)] lg:ml-auto lg:h-10 lg:min-h-10 lg:w-auto"
               onClick={load}
               disabled={loading}
             >
@@ -560,9 +548,7 @@ export default function PayrollSummaryPage() {
             </div>
           ) : filtered.length === 0 ? (
             <div className={cn(psShell, "px-4 py-10 text-center")}>
-              <p className="text-sm font-medium text-zinc-900 dark:text-foreground">
-                No workers found
-              </p>
+              <p className="text-sm font-medium text-[var(--hh-text-primary)]">No workers found</p>
               <p className="mt-1 text-xs text-muted-foreground">
                 Try adjusting your date range, project, or search query.
               </p>
@@ -573,7 +559,7 @@ export default function PayrollSummaryPage() {
                 key={r.workerId}
                 className={cn(
                   psShell,
-                  "space-y-3 p-3 transition-[box-shadow,border-color] duration-200 ease-out hover:border-zinc-200/70 dark:hover:border-border/60"
+                  "space-y-3 p-3 transition-[box-shadow,border-color] duration-200 ease-out motion-reduce:transition-none supports-[hover:hover]:hover:border-[var(--hh-border-strong)]"
                 )}
               >
                 <div className="flex items-start justify-between gap-2">
@@ -593,7 +579,7 @@ export default function PayrollSummaryPage() {
                       {workerInitials(r.workerName)}
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block line-clamp-2 text-hh-table-cell font-medium leading-snug tracking-normal text-zinc-900 dark:text-foreground">
+                      <span className="block line-clamp-2 text-hh-table-cell font-medium leading-snug tracking-normal text-[var(--hh-text-primary)]">
                         {r.workerName}
                       </span>
                     </span>
@@ -645,7 +631,7 @@ export default function PayrollSummaryPage() {
                     <dt className="text-hh-status uppercase tracking-normal text-muted-foreground">
                       Earned
                     </dt>
-                    <dd className="min-w-0 break-words text-hh-metadata text-zinc-700 dark:text-zinc-200">
+                    <dd className="min-w-0 break-words text-hh-metadata text-[var(--hh-text-secondary)]">
                       {formatCurrency(r.earned)}
                     </dd>
                   </div>
@@ -653,7 +639,7 @@ export default function PayrollSummaryPage() {
                     <dt className="text-hh-status uppercase tracking-normal text-muted-foreground">
                       Reimb.
                     </dt>
-                    <dd className="min-w-0 break-words text-hh-metadata text-zinc-700 dark:text-zinc-200">
+                    <dd className="min-w-0 break-words text-hh-metadata text-[var(--hh-text-secondary)]">
                       {formatCurrency(r.reimbursements)}
                     </dd>
                   </div>
@@ -661,7 +647,7 @@ export default function PayrollSummaryPage() {
                     <dt className="text-hh-status uppercase tracking-normal text-muted-foreground">
                       Should pay
                     </dt>
-                    <dd className="min-w-0 break-words text-hh-metadata text-zinc-700 dark:text-zinc-200">
+                    <dd className="min-w-0 break-words text-hh-metadata text-[var(--hh-text-secondary)]">
                       {formatCurrency(r.shouldPay)}
                     </dd>
                   </div>
@@ -669,7 +655,7 @@ export default function PayrollSummaryPage() {
                     <dt className="text-hh-status uppercase tracking-normal text-muted-foreground">
                       Paid
                     </dt>
-                    <dd className="min-w-0 break-words text-hh-metadata text-zinc-700 dark:text-zinc-200">
+                    <dd className="min-w-0 break-words text-hh-metadata text-[var(--hh-text-secondary)]">
                       {formatCurrency(r.paid)}
                     </dd>
                   </div>
@@ -677,7 +663,7 @@ export default function PayrollSummaryPage() {
                     <dt className="text-hh-status uppercase tracking-normal text-muted-foreground">
                       Balance
                     </dt>
-                    <dd className="min-w-0 font-medium leading-snug text-zinc-900 dark:text-foreground">
+                    <dd className="min-w-0 font-medium leading-snug text-[var(--hh-text-primary)]">
                       <span className="block text-hh-section-title tabular-nums tracking-normal">
                         {formatCurrency(r.balance)}
                       </span>
@@ -692,7 +678,7 @@ export default function PayrollSummaryPage() {
                     <Button
                       size="sm"
                       variant="outline"
-                      className="h-11 min-h-[44px] rounded-hh-compact shadow-none md:h-8 md:min-h-0"
+                      className="h-11 min-h-[44px] rounded-hh-compact shadow-none lg:h-8 lg:min-h-0"
                       onClick={() => {
                         setPayTarget(r);
                         setPayOpen(true);
@@ -703,7 +689,7 @@ export default function PayrollSummaryPage() {
                     <Button
                       size="sm"
                       variant="outline"
-                      className="h-11 min-h-[44px] rounded-hh-compact shadow-none md:h-8 md:min-h-0"
+                      className="h-11 min-h-[44px] rounded-hh-compact shadow-none lg:h-8 lg:min-h-0"
                       asChild
                     >
                       <Link
@@ -728,14 +714,14 @@ export default function PayrollSummaryPage() {
           aria-busy={refreshing && rows.length > 0 ? true : undefined}
         >
           {refreshing && rows.length > 0 ? (
-            <div className="flex justify-center border-b border-zinc-100/90 py-1 dark:border-border/50">
+            <div className="flex justify-center border-b border-[var(--hh-border)] py-1">
               <span className="text-xs text-muted-foreground">Updating…</span>
             </div>
           ) : null}
           <div className="overflow-x-auto pb-1 md:pb-3">
             <table className="w-full min-w-[980px] border-collapse text-sm lg:min-w-0">
               <thead>
-                <tr className="border-b border-zinc-100/90 bg-zinc-50/90 dark:border-border/60 dark:bg-muted/20">
+                <tr className="border-b border-[var(--hh-border)] bg-[var(--hh-l1-workspace)]">
                   <th
                     className={cn(
                       "min-w-[240px] px-3 py-2 text-left cursor-pointer select-none",
@@ -799,7 +785,7 @@ export default function PayrollSummaryPage() {
               <tbody className="[&_tr:last-child]:border-b-0">
                 {loading ? (
                   Array.from({ length: 8 }).map((_, i) => (
-                    <tr key={i} className="border-b border-zinc-100/55 dark:border-border/35">
+                    <tr key={i} className="border-b border-[var(--hh-border)]">
                       <td className="px-3 py-2.5">
                         <div className="flex items-center gap-2">
                           <Skeleton className="h-8 w-8 shrink-0 rounded-full" />
@@ -823,9 +809,9 @@ export default function PayrollSummaryPage() {
                     </tr>
                   ))
                 ) : filtered.length === 0 ? (
-                  <tr className="border-b border-zinc-100/55 dark:border-border/35">
+                  <tr className="border-b border-[var(--hh-border)]">
                     <td colSpan={8} className="px-6 py-12 text-center">
-                      <p className="text-sm font-medium text-zinc-900 dark:text-foreground">
+                      <p className="text-sm font-medium text-[var(--hh-text-primary)]">
                         No results
                       </p>
                       <p className="mt-1 text-xs text-muted-foreground">
@@ -839,10 +825,10 @@ export default function PayrollSummaryPage() {
                       key={r.workerId}
                       className={cn(
                         listTableRowClassName,
-                        "border-b border-zinc-100/45 dark:border-border/22",
+                        "border-b border-[var(--hh-border)]",
                         "!transition-colors duration-150 ease-out motion-reduce:!transition-none",
-                        "hover:!bg-zinc-50/[0.38] dark:hover:!bg-muted/[0.06]",
-                        "focus-within:!bg-zinc-50/28 dark:focus-within:!bg-muted/[0.05]"
+                        "supports-[hover:hover]:hover:!bg-[var(--hh-l3-hover)]",
+                        "focus-within:!bg-[var(--hh-l3-hover)]"
                       )}
                       tabIndex={0}
                       role="link"
@@ -868,7 +854,7 @@ export default function PayrollSummaryPage() {
                             {workerInitials(r.workerName)}
                           </span>
                           <div className="min-w-0">
-                            <p className="line-clamp-2 text-hh-table-cell font-medium leading-snug tracking-normal text-zinc-900 dark:text-foreground">
+                            <p className="line-clamp-2 text-hh-table-cell font-medium leading-snug tracking-normal text-[var(--hh-text-primary)]">
                               {r.workerName}
                             </p>
                           </div>
@@ -912,7 +898,7 @@ export default function PayrollSummaryPage() {
                           listTableAmountCellClassName
                         )}
                       >
-                        <div className="text-base font-semibold tabular-nums tracking-normal text-zinc-800 dark:text-zinc-100">
+                        <div className="text-base font-semibold tabular-nums tracking-normal text-[var(--hh-text-primary)]">
                           {formatCurrency(r.balance)}
                         </div>
                         <div className="mt-0.5 flex justify-end">
@@ -926,7 +912,7 @@ export default function PayrollSummaryPage() {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="h-8 rounded-hh-compact border-zinc-200/80 bg-transparent text-muted-foreground shadow-none hover:bg-zinc-50 hover:text-foreground dark:border-border dark:hover:bg-muted/30"
+                          className="h-11 min-h-[44px] rounded-hh-compact border-[var(--hh-border)] bg-transparent text-[var(--hh-text-secondary)] shadow-none hover:bg-[var(--hh-l3-hover)] hover:text-[var(--hh-text-primary)] lg:h-8 lg:min-h-0"
                           onClick={() => {
                             setPayTarget(r);
                             setPayOpen(true);
@@ -994,7 +980,7 @@ export default function PayrollSummaryPage() {
             </table>
           </div>
 
-          <div className="border-t border-zinc-100/90 px-3 py-3 text-sm text-muted-foreground dark:border-border/50">
+          <div className="border-t border-[var(--hh-border)] px-3 py-3 text-sm text-muted-foreground">
             <div className="flex flex-col gap-3 max-md:[&_button]:min-h-11 sm:flex-row sm:items-center sm:justify-between">
               <span className="tabular-nums">
                 {filtered.length === 0
@@ -1006,7 +992,7 @@ export default function PayrollSummaryPage() {
                 <Button
                   size="sm"
                   variant="outline"
-                  className="h-8 flex-1 rounded-hh-compact shadow-none sm:flex-none"
+                  className="h-11 min-h-[44px] flex-1 rounded-hh-compact shadow-none sm:flex-none lg:h-8 lg:min-h-0"
                   disabled={page <= 1}
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                 >
@@ -1015,7 +1001,7 @@ export default function PayrollSummaryPage() {
                 <Button
                   size="sm"
                   variant="outline"
-                  className="h-8 flex-1 rounded-hh-compact shadow-none sm:flex-none"
+                  className="h-11 min-h-[44px] flex-1 rounded-hh-compact shadow-none sm:flex-none lg:h-8 lg:min-h-0"
                   disabled={page >= totalPages}
                   onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 >

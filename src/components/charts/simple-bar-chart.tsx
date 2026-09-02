@@ -39,7 +39,10 @@ export function SimpleBarChart({
           </div>
           <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
             <div
-              className={cn("h-full rounded-full transition-all", item.color ?? "bg-primary")}
+              className={cn(
+                "h-full rounded-full transition-[width,height] motion-reduce:transition-none",
+                item.color ?? "bg-primary"
+              )}
               style={{ width: `${Math.min(100, item.value * scale)}%` }}
             />
           </div>

@@ -37,6 +37,7 @@ export function BillRowActions({
   netPayable?: number;
 }) {
   const router = useRouter();
+  const formId = React.useId();
   const [editOpen, setEditOpen] = React.useState(false);
   const [payOpen, setPayOpen] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
@@ -153,7 +154,7 @@ export function BillRowActions({
           <Button
             variant="outline"
             size="sm"
-            className="btn-outline-ghost h-7 text-hh-metadata"
+            className="btn-outline-ghost min-h-[44px] text-hh-metadata xl:min-h-7"
             onClick={() => setEditOpen(true)}
           >
             Edit
@@ -161,7 +162,7 @@ export function BillRowActions({
           <Button
             variant="outline"
             size="sm"
-            className="btn-outline-ghost h-7 text-hh-metadata text-[var(--hh-danger)]"
+            className="btn-outline-ghost min-h-[44px] text-hh-metadata text-[var(--hh-danger)] xl:min-h-7"
             onClick={handleDelete}
             disabled={busy}
           >
@@ -174,7 +175,7 @@ export function BillRowActions({
           <Button
             variant="outline"
             size="sm"
-            className="btn-outline-ghost h-7 text-hh-metadata"
+            className="btn-outline-ghost min-h-[44px] text-hh-metadata xl:min-h-7"
             onClick={() => setPayOpen(true)}
           >
             Record payment
@@ -182,7 +183,7 @@ export function BillRowActions({
           <Button
             variant="outline"
             size="sm"
-            className="btn-outline-ghost h-7 text-hh-metadata text-[var(--hh-text-secondary)]"
+            className="btn-outline-ghost min-h-[44px] text-hh-metadata text-[var(--hh-text-secondary)] xl:min-h-7"
             onClick={handleVoid}
             disabled={busy}
           >
@@ -201,50 +202,66 @@ export function BillRowActions({
           </DialogHeader>
           <div className="grid gap-3 py-2">
             <div>
-              <label className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]">
+              <label
+                htmlFor={formId + "-edit-bill-date"}
+                className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]"
+              >
                 Bill date
               </label>
               <Input
+                id={formId + "-edit-bill-date"}
                 type="date"
                 value={billDate}
                 onChange={(e) => setBillDate(e.target.value)}
-                className="mt-1 h-9"
+                className="mt-1 min-h-[44px]"
                 required
               />
             </div>
             <div>
-              <label className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]">
+              <label
+                htmlFor={formId + "-edit-due-date"}
+                className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]"
+              >
                 Due date
               </label>
               <Input
+                id={formId + "-edit-due-date"}
                 type="date"
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
-                className="mt-1 h-9"
+                className="mt-1 min-h-[44px]"
               />
             </div>
             <div>
-              <label className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]">
+              <label
+                htmlFor={formId + "-edit-amount"}
+                className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]"
+              >
                 Amount
               </label>
               <Input
+                id={formId + "-edit-amount"}
                 type="number"
                 step="0.01"
                 min="0"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                className="mt-1 h-9"
+                className="mt-1 min-h-[44px]"
                 required
               />
             </div>
             <div>
-              <label className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]">
+              <label
+                htmlFor={formId + "-edit-description"}
+                className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]"
+              >
                 Description
               </label>
               <Input
+                id={formId + "-edit-description"}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="mt-1 h-9"
+                className="mt-1 min-h-[44px]"
               />
             </div>
             {error ? (
@@ -258,12 +275,19 @@ export function BillRowActions({
               type="button"
               variant="outline"
               size="sm"
+              className="min-h-[44px]"
               onClick={() => setEditOpen(false)}
               disabled={busy}
             >
               Cancel
             </Button>
-            <Button type="button" size="sm" onClick={handleEditSave} disabled={busy}>
+            <Button
+              type="button"
+              size="sm"
+              className="min-h-[44px]"
+              onClick={handleEditSave}
+              disabled={busy}
+            >
               <SubmitSpinner loading={busy} className="mr-2" />
               {busy ? "Saving…" : "Save"}
             </Button>
@@ -296,51 +320,66 @@ export function BillRowActions({
               </div>
             </div>
             <div>
-              <label className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]">
+              <label
+                htmlFor={formId + "-payment-date"}
+                className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]"
+              >
                 Payment date
               </label>
               <Input
+                id={formId + "-payment-date"}
                 type="date"
                 value={paymentDate}
                 onChange={(e) => setPaymentDate(e.target.value)}
-                className="mt-1 h-9"
+                className="mt-1 min-h-[44px]"
                 required
               />
             </div>
             <div>
-              <label className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]">
+              <label
+                htmlFor={formId + "-payment-amount"}
+                className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]"
+              >
                 Amount
               </label>
               <Input
+                id={formId + "-payment-amount"}
                 type="number"
-                aria-label="Payment amount"
                 step="0.01"
                 min="0"
                 value={paymentAmount}
                 onChange={(e) => setPaymentAmount(e.target.value)}
-                className="mt-1 h-9"
+                className="mt-1 min-h-[44px]"
                 required
               />
             </div>
             <div>
-              <label className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]">
+              <label
+                htmlFor={formId + "-payment-method"}
+                className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]"
+              >
                 Method
               </label>
               <Input
+                id={formId + "-payment-method"}
                 value={paymentMethod}
                 onChange={(e) => setPaymentMethod(e.target.value)}
-                className="mt-1 h-9"
+                className="mt-1 min-h-[44px]"
                 placeholder="e.g. ACH, Check"
               />
             </div>
             <div>
-              <label className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]">
+              <label
+                htmlFor={formId + "-payment-note"}
+                className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]"
+              >
                 Note
               </label>
               <Input
+                id={formId + "-payment-note"}
                 value={paymentNote}
                 onChange={(e) => setPaymentNote(e.target.value)}
-                className="mt-1 h-9"
+                className="mt-1 min-h-[44px]"
               />
             </div>
             {error ? (
@@ -354,12 +393,19 @@ export function BillRowActions({
               type="button"
               variant="outline"
               size="sm"
+              className="min-h-[44px]"
               onClick={() => setPayOpen(false)}
               disabled={busy}
             >
               Cancel
             </Button>
-            <Button type="button" size="sm" onClick={handleRecordPayment} disabled={busy}>
+            <Button
+              type="button"
+              size="sm"
+              className="min-h-[44px]"
+              onClick={handleRecordPayment}
+              disabled={busy}
+            >
               <SubmitSpinner loading={busy} className="mr-2" />
               {busy ? "Saving…" : "Record"}
             </Button>

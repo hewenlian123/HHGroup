@@ -111,68 +111,88 @@ export function ChangeOrderEditClient({
         className="mb-6 grid gap-3 rounded border border-border/60 p-4 sm:grid-cols-2 lg:grid-cols-4"
       >
         <div>
-          <label className="mb-1 block text-hh-metadata text-[var(--hh-text-secondary)]">
+          <label
+            htmlFor="change-order-edit-title"
+            className="mb-1 block text-hh-metadata text-[var(--hh-text-secondary)]"
+          >
             Title
           </label>
           <Input
+            id="change-order-edit-title"
             name="title"
             defaultValue={changeOrder.title ?? ""}
             placeholder="Title"
-            className="h-8 text-hh-body"
+            className="min-h-[44px] text-hh-body xl:min-h-8"
           />
         </div>
         <div className="sm:col-span-2">
-          <label className="mb-1 block text-hh-metadata text-[var(--hh-text-secondary)]">
+          <label
+            htmlFor="change-order-edit-description"
+            className="mb-1 block text-hh-metadata text-[var(--hh-text-secondary)]"
+          >
             Description
           </label>
           <Input
+            id="change-order-edit-description"
             name="description"
             defaultValue={changeOrder.description ?? ""}
             placeholder="Description"
-            className="h-8 text-hh-body"
+            className="min-h-[44px] text-hh-body xl:min-h-8"
           />
         </div>
         <div>
-          <label className="mb-1 block text-hh-metadata text-[var(--hh-text-secondary)]">
+          <label
+            htmlFor="change-order-edit-amount"
+            className="mb-1 block text-hh-metadata text-[var(--hh-text-secondary)]"
+          >
             Amount (revenue)
           </label>
           <Input
+            id="change-order-edit-amount"
             name="amount"
             type="number"
             step="0.01"
             defaultValue={changeOrder.amount ?? ""}
             placeholder="0"
-            className="h-8 text-hh-body"
+            className="min-h-[44px] text-hh-body xl:min-h-8"
           />
         </div>
         <div>
-          <label className="mb-1 block text-hh-metadata text-[var(--hh-text-secondary)]">
+          <label
+            htmlFor="change-order-edit-cost-impact"
+            className="mb-1 block text-hh-metadata text-[var(--hh-text-secondary)]"
+          >
             Cost impact
           </label>
           <Input
+            id="change-order-edit-cost-impact"
             name="costImpact"
             type="number"
             step="0.01"
             defaultValue={changeOrder.costImpact ?? ""}
             placeholder="0"
-            className="h-8 text-hh-body"
+            className="min-h-[44px] text-hh-body xl:min-h-8"
           />
         </div>
         <div>
-          <label className="mb-1 block text-hh-metadata text-[var(--hh-text-secondary)]">
+          <label
+            htmlFor="change-order-edit-schedule-impact"
+            className="mb-1 block text-hh-metadata text-[var(--hh-text-secondary)]"
+          >
             Schedule impact (days)
           </label>
           <Input
+            id="change-order-edit-schedule-impact"
             name="scheduleImpactDays"
             type="number"
             step="1"
             defaultValue={changeOrder.scheduleImpactDays ?? ""}
             placeholder="0"
-            className="h-8 text-hh-body"
+            className="min-h-[44px] text-hh-body xl:min-h-8"
           />
         </div>
         <div className="flex items-end">
-          <Button type="submit" size="sm" disabled={pending}>
+          <Button type="submit" size="sm" className="min-h-[44px] xl:min-h-8" disabled={pending}>
             Save details
           </Button>
         </div>
@@ -181,35 +201,52 @@ export function ChangeOrderEditClient({
       <SectionHeader
         label="Line items"
         action={
-          <form onSubmit={handleAdd} className="flex flex-wrap items-center gap-2">
-            <Input name="costCode" placeholder="Cost code" className="h-8 w-24 text-hh-metadata" />
+          <form
+            onSubmit={handleAdd}
+            className="grid w-full grid-cols-1 gap-2 sm:grid-cols-2 xl:flex xl:w-auto xl:flex-wrap xl:items-center"
+          >
             <Input
-              name="description"
-              placeholder="Description"
-              className="h-8 min-w-[120px] text-hh-metadata"
+              aria-label="Line item cost code"
+              name="costCode"
+              placeholder="Cost code"
+              className="min-h-[44px] w-full text-hh-body xl:min-h-8 xl:w-24 xl:text-hh-metadata"
             />
             <Input
+              aria-label="Line item description"
+              name="description"
+              placeholder="Description"
+              className="min-h-[44px] min-w-0 text-hh-body sm:col-span-2 xl:min-h-8 xl:min-w-[120px] xl:text-hh-metadata"
+            />
+            <Input
+              aria-label="Line item quantity"
               name="qty"
               type="number"
               step="any"
               placeholder="Qty"
-              className="h-8 w-16 text-hh-metadata"
+              className="min-h-[44px] w-full text-hh-body xl:min-h-8 xl:w-16 xl:text-hh-metadata"
               defaultValue={1}
             />
             <Input
+              aria-label="Line item unit"
               name="unit"
               placeholder="Unit"
-              className="h-8 w-14 text-hh-metadata"
+              className="min-h-[44px] w-full text-hh-body xl:min-h-8 xl:w-14 xl:text-hh-metadata"
               defaultValue="EA"
             />
             <Input
+              aria-label="Line item unit price"
               name="unitPrice"
               type="number"
               step="0.01"
               placeholder="Unit price"
-              className="h-8 w-24 text-hh-metadata"
+              className="min-h-[44px] w-full text-hh-body xl:min-h-8 xl:w-24 xl:text-hh-metadata"
             />
-            <Button type="submit" size="sm" className="h-8 text-hh-metadata" disabled={pending}>
+            <Button
+              type="submit"
+              size="sm"
+              className="min-h-[44px] text-hh-body xl:min-h-8 xl:text-hh-metadata"
+              disabled={pending}
+            >
               Add
             </Button>
             {validationError && (
@@ -224,17 +261,20 @@ export function ChangeOrderEditClient({
           No line items. Add one above.
         </p>
       ) : (
-        <DataTable<ChangeOrderItem>
-          columns={lineColumns}
-          data={items}
-          getRowId={(r) => r.id}
-          rowActions={(row) => [
-            {
-              label: "Delete",
-              onClick: () => handleDelete(row.id),
-            },
-          ]}
-        />
+        <div className="max-xl:[&>div:first-child]:!hidden max-xl:[&>div:nth-child(2)]:!grid xl:[&>div:first-child]:!block xl:[&>div:nth-child(2)]:!hidden">
+          <DataTable<ChangeOrderItem>
+            columns={lineColumns}
+            data={items}
+            getRowId={(r) => r.id}
+            mobileTitleKey="description"
+            rowActions={(row) => [
+              {
+                label: "Delete",
+                onClick: () => handleDelete(row.id),
+              },
+            ]}
+          />
+        </div>
       )}
       <div className="mt-6 flex flex-col items-end gap-1 text-hh-body">
         <div className="flex gap-8">

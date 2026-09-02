@@ -314,7 +314,7 @@ export function Topbar({
         </Button>
         <button
           type="button"
-          className="hh-focus-ring group relative hidden h-9 min-w-0 items-center rounded-hh-standard outline-none sm:flex sm:w-[210px] md:w-[260px]"
+          className="hh-focus-ring group relative hidden h-11 min-w-0 items-center rounded-hh-standard outline-none sm:flex sm:w-[210px] md:w-[260px] lg:h-9"
           aria-label="Open command palette"
           onClick={onOpenCommandPalette}
         >
@@ -325,7 +325,7 @@ export function Topbar({
           />
           <span
             className={cn(
-              "flex h-9 w-full min-w-0 items-center justify-between rounded-hh-standard border border-[var(--hh-border-default)] bg-[var(--hh-surface-subtle)] pl-8 pr-1.5 text-[var(--hh-text-muted)] shadow-none group-hover:border-[var(--hh-border-input)] group-hover:bg-[var(--hh-surface-workspace)]",
+              "flex h-11 w-full min-w-0 items-center justify-between rounded-hh-standard border border-[var(--hh-border-default)] bg-[var(--hh-surface-subtle)] pl-8 pr-1.5 text-[var(--hh-text-muted)] shadow-none group-hover:border-[var(--hh-border-input)] group-hover:bg-[var(--hh-surface-workspace)] lg:h-9",
               TYPO.tableCell,
               "transition-[background,border-color,box-shadow] duration-150"
             )}
@@ -343,7 +343,7 @@ export function Topbar({
             asChild
             size="sm"
             className={cn(
-              "h-9 min-h-[44px] rounded-hh-standard border-transparent !bg-[var(--hh-accent-primary)] px-3.5 py-2.5 !text-[var(--hh-action-primary-foreground)] shadow-none hover:!bg-[var(--hh-accent-hover)] sm:min-h-0",
+              "h-11 min-h-[44px] rounded-hh-standard border-transparent !bg-[var(--hh-accent-primary)] px-3.5 py-2.5 !text-[var(--hh-action-primary-foreground)] shadow-none hover:!bg-[var(--hh-accent-hover)] lg:h-9 lg:min-h-0",
               TYPO.button
             )}
           >
@@ -359,7 +359,7 @@ export function Topbar({
               <Button
                 size="sm"
                 className={cn(
-                  "h-9 min-h-[44px] rounded-hh-standard border-transparent !bg-[var(--hh-accent-primary)] px-3.5 py-2.5 !text-[var(--hh-action-primary-foreground)] shadow-none hover:!bg-[var(--hh-accent-hover)] sm:min-h-0",
+                  "h-11 min-h-[44px] rounded-hh-standard border-transparent !bg-[var(--hh-accent-primary)] px-3.5 py-2.5 !text-[var(--hh-action-primary-foreground)] shadow-none hover:!bg-[var(--hh-accent-hover)] lg:h-9 lg:min-h-0",
                   TYPO.button
                 )}
               >
@@ -419,7 +419,7 @@ export function Topbar({
           <Button
             variant="outline"
             size="icon"
-            className="flex h-11 w-11 min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-hh-standard border-[var(--hh-border-default)] bg-[var(--hh-surface-workspace)] text-[var(--hh-text-secondary)] shadow-none hover:bg-[var(--hh-surface-hover)] hover:text-[var(--hh-text-primary)] sm:h-9 sm:w-9 sm:min-h-9 sm:min-w-9"
+            className="flex h-11 w-11 min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-hh-standard border-[var(--hh-border-default)] bg-[var(--hh-surface-workspace)] text-[var(--hh-text-secondary)] shadow-none hover:bg-[var(--hh-surface-hover)] hover:text-[var(--hh-text-primary)] lg:h-9 lg:w-9 lg:min-h-9 lg:min-w-9"
             aria-label="Notifications"
           >
             <Bell className="h-4 w-4" />
@@ -437,7 +437,8 @@ export function Topbar({
           <DropdownMenuTrigger asChild>
             <Button
               variant="outline"
-              className="relative h-11 w-11 min-h-[44px] min-w-[44px] shrink-0 rounded-full border-[var(--hh-border-default)] bg-[var(--hh-surface-workspace)] p-0 shadow-none hover:bg-[var(--hh-surface-hover)] sm:h-9 sm:w-9 sm:min-h-9 sm:min-w-9"
+              className="relative h-11 w-11 min-h-[44px] min-w-[44px] shrink-0 rounded-full border-[var(--hh-border-default)] bg-[var(--hh-surface-workspace)] p-0 shadow-none hover:bg-[var(--hh-surface-hover)] lg:h-9 lg:w-9 lg:min-h-9 lg:min-w-9"
+              aria-label="Open account menu"
             >
               <Avatar className="h-8 w-8">
                 {logoUrl ? (

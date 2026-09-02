@@ -926,10 +926,10 @@
   [data-revenue-ar-v2]::after,
   [data-revenue-ar-v2] *::before,
   [data-revenue-ar-v2] *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
+    animation: none !important;
     scroll-behavior: auto !important;
-    transition-duration: 0.01ms !important;
+    transition-duration: 0s !important;
+    transition-property: none !important;
   }
 }
 
@@ -1244,6 +1244,14 @@
   box-shadow:
     0 0 0 2px var(--hh-surface-workspace, #ffffff),
     0 0 0 4px var(--hh-focus-ring, #2563eb) !important;
+}
+
+@media (forced-colors: active) {
+  .estimate-preview-tool-button:focus-visible {
+    outline: 2px solid CanvasText !important;
+    outline-offset: 2px !important;
+    box-shadow: none !important;
+  }
 }
 
 .estimate-preview-tool-button--primary {

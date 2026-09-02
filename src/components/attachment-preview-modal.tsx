@@ -943,13 +943,13 @@ const ReceiptImageCanvas = React.forwardRef<ReceiptViewerCanvasHandle, ReceiptIm
         {showLoadingSkeleton ? (
           <Skeleton
             data-testid="attachment-preview-viewport-skeleton"
-            className="pointer-events-none absolute inset-0 z-[2] rounded-sm bg-zinc-800/90"
+            className="pointer-events-none absolute inset-0 z-[2] rounded-sm bg-[var(--hh-l2-operational-surface)]"
           />
         ) : null}
         {zoomIndicator ? (
           <div
             className={cn(
-              "pointer-events-none absolute left-1/2 top-3 z-[2] -translate-x-1/2 rounded-sm bg-black/55 px-2.5 py-1 text-xs font-medium tabular-nums text-zinc-100 transition-opacity duration-300 ease-out",
+              "pointer-events-none absolute left-1/2 top-3 z-[2] -translate-x-1/2 rounded-sm bg-[var(--hh-l4-floating-surface)] px-2.5 py-1 text-xs font-medium tabular-nums text-[var(--hh-text-primary)] shadow-floating transition-opacity duration-300 ease-out",
               zoomIndicatorOpaque ? "opacity-100" : "opacity-0"
             )}
             aria-live="polite"
@@ -963,7 +963,7 @@ const ReceiptImageCanvas = React.forwardRef<ReceiptViewerCanvasHandle, ReceiptIm
             data-visible={panIndicatorVisible ? "true" : "false"}
             aria-hidden="true"
             className={cn(
-              "pointer-events-none absolute bottom-2 z-[3] h-[3px] rounded-full bg-zinc-500/65 transition-opacity duration-200 ease-out motion-reduce:transition-none",
+              "pointer-events-none absolute bottom-2 z-[3] h-[3px] rounded-full bg-[var(--hh-accent-primary)] transition-opacity duration-200 ease-out motion-reduce:transition-none",
               panIndicatorVisible ? "opacity-100" : "opacity-0"
             )}
             style={{
@@ -993,7 +993,7 @@ const ReceiptImageCanvas = React.forwardRef<ReceiptViewerCanvasHandle, ReceiptIm
             data-visible={panIndicatorVisible ? "true" : "false"}
             aria-hidden="true"
             className={cn(
-              "pointer-events-none absolute right-2 z-[3] w-[3px] rounded-full bg-zinc-500/65 transition-opacity duration-200 ease-out motion-reduce:transition-none",
+              "pointer-events-none absolute right-2 z-[3] w-[3px] rounded-full bg-[var(--hh-accent-primary)] transition-opacity duration-200 ease-out motion-reduce:transition-none",
               panIndicatorVisible ? "opacity-100" : "opacity-0"
             )}
             style={{
@@ -1017,7 +1017,7 @@ const ReceiptImageCanvas = React.forwardRef<ReceiptViewerCanvasHandle, ReceiptIm
             }}
           />
         ) : null}
-        <div className="relative z-[1] h-full w-full rounded-sm bg-zinc-900/35 p-[1px] shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_22px_56px_-14px_rgba(0,0,0,0.72)] ring-1 ring-white/10">
+        <div className="relative z-[1] h-full w-full rounded-sm bg-[var(--hh-l2-operational-surface)] p-[1px] shadow-floating ring-1 ring-[var(--hh-border)]">
           <div
             role="presentation"
             onDoubleClick={onDoubleClick}
@@ -1054,7 +1054,7 @@ const ReceiptImageCanvas = React.forwardRef<ReceiptViewerCanvasHandle, ReceiptIm
           </div>
         </div>
         {imgPhase === "ready" && scale <= ZOOM_MIN + 0.02 ? (
-          <p className="pointer-events-none absolute bottom-1 left-1/2 z-[1] max-w-[90vw] -translate-x-1/2 rounded-sm bg-black/50 px-2.5 py-1 text-center text-[10px] leading-snug text-zinc-300/95">
+          <p className="pointer-events-none absolute bottom-1 left-1/2 z-[1] max-w-[90vw] -translate-x-1/2 rounded-sm bg-[var(--hh-l4-floating-surface)] px-2.5 py-1 text-center text-[10px] leading-snug text-[var(--hh-text-secondary)] shadow-floating">
             <span className="md:hidden">Pinch to zoom · double-tap</span>
             <span className="hidden md:inline">
               Scroll wheel to zoom (cursor-centered) · double-click · drag when zoomed
@@ -1095,7 +1095,7 @@ function PdfPreviewFrame({
       data-hh-context="evidence"
       data-hh-theme="document-light"
       className={cn(
-        "relative flex shrink-0 flex-col rounded-sm bg-zinc-900/40 p-[1px] shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_22px_56px_-14px_rgba(0,0,0,0.72)] ring-1 ring-white/10",
+        "relative flex shrink-0 flex-col rounded-sm bg-[var(--hh-l2-operational-surface)] p-[1px] shadow-floating ring-1 ring-[var(--hh-border)]",
         viewerMode ? "h-full min-h-0 w-full max-w-none" : PREVIEW_VIEWPORT_CLASS
       )}
     >
@@ -1108,22 +1108,24 @@ function PdfPreviewFrame({
           setShowFallback(false);
         }}
         className={cn(
-          "h-full w-full flex-1 rounded-sm border-0 bg-zinc-950 transition-opacity duration-200 ease-out",
+          "h-full w-full flex-1 rounded-sm border-0 bg-[var(--hh-l1-workspace)] transition-opacity duration-200 ease-out",
           loaded ? "opacity-100" : "opacity-0"
         )}
       />
       {!loaded && !showFallback ? (
-        <Skeleton className="pointer-events-none absolute inset-[1px] rounded-sm bg-zinc-800/90" />
+        <Skeleton className="pointer-events-none absolute inset-[1px] rounded-sm bg-[var(--hh-l2-operational-surface)]" />
       ) : null}
       {showFallback ? (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/80 px-4 text-center">
-          <p className="text-sm text-zinc-300">PDF preview is unavailable in-app.</p>
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-[var(--hh-l1-workspace)] px-4 text-center">
+          <p className="text-sm text-[var(--hh-text-secondary)]">
+            PDF preview is unavailable in-app.
+          </p>
           <div className="flex flex-wrap justify-center gap-2">
             <Button
               type="button"
               size="sm"
               variant="outline"
-              className="border-white/20 bg-white/10 text-white hover:bg-white/15"
+              className="border-[var(--hh-border)] bg-[var(--hh-l1-workspace)] text-[var(--hh-text-primary)] hover:bg-[var(--hh-l3-hover)]"
               onClick={() => window.open(src, "_blank", "noopener,noreferrer")}
             >
               <ExternalLink className="mr-2 h-3.5 w-3.5" />
@@ -1133,7 +1135,7 @@ function PdfPreviewFrame({
               type="button"
               size="sm"
               variant="outline"
-              className="border-white/20 bg-white/10 text-white hover:bg-white/15"
+              className="border-[var(--hh-border)] bg-[var(--hh-l1-workspace)] text-[var(--hh-text-primary)] hover:bg-[var(--hh-l3-hover)]"
               onClick={() => void downloadPreviewBlob(src, title)}
             >
               <Download className="mr-2 h-3.5 w-3.5" />
@@ -1273,7 +1275,7 @@ function ReceiptPreviewImageArea({
         type="button"
         size="sm"
         variant="outline"
-        className="touch-manipulation border-white/20 bg-white/5 text-zinc-100 hover:bg-white/10"
+        className="touch-manipulation border-[var(--hh-border)] bg-[var(--hh-l1-workspace)] text-[var(--hh-text-primary)] hover:bg-[var(--hh-l3-hover)]"
         onClick={openTab}
       >
         <ExternalLink className="mr-2 h-3.5 w-3.5" />
@@ -1283,7 +1285,7 @@ function ReceiptPreviewImageArea({
         type="button"
         size="sm"
         variant="outline"
-        className="touch-manipulation border-white/20 bg-white/5 text-zinc-100 hover:bg-white/10"
+        className="touch-manipulation border-[var(--hh-border)] bg-[var(--hh-l1-workspace)] text-[var(--hh-text-primary)] hover:bg-[var(--hh-l3-hover)]"
         disabled={downloadBusy || !effectiveUrl}
         onClick={() => void runDownload()}
       >
@@ -1315,7 +1317,7 @@ function ReceiptPreviewImageArea({
             )}
             aria-busy
           >
-            <Skeleton className="pointer-events-none absolute inset-0 rounded-sm bg-zinc-800/90" />
+            <Skeleton className="pointer-events-none absolute inset-0 rounded-sm bg-[var(--hh-l2-operational-surface)]" />
             <span className="sr-only">Checking preview URL</span>
           </div>
         ) : null}
@@ -1328,7 +1330,7 @@ function ReceiptPreviewImageArea({
             )}
             data-testid="receipt-preview-preflight-error"
           >
-            <p className="text-sm text-zinc-400">
+            <p className="text-sm text-[var(--hh-text-secondary)]">
               Receipt could not be loaded
               {preflightResult?.status != null ? ` (HTTP ${preflightResult.status})` : ""}.
             </p>
@@ -1338,7 +1340,7 @@ function ReceiptPreviewImageArea({
                 type="button"
                 size="sm"
                 variant="ghost"
-                className="touch-manipulation text-zinc-200 hover:bg-white/10 hover:text-white"
+                className="touch-manipulation text-[var(--hh-text-secondary)] hover:bg-[var(--hh-l3-hover)] hover:text-[var(--hh-text-primary)]"
                 onClick={() => {
                   setPreflightPhase("checking");
                   void (async () => {
@@ -1370,13 +1372,13 @@ function ReceiptPreviewImageArea({
                 )}
                 data-testid="receipt-preview-img-error"
               >
-                <p className="text-sm text-zinc-400">Unable to load receipt</p>
+                <p className="text-sm text-[var(--hh-text-secondary)]">Unable to load receipt</p>
                 {failureActions}
                 <Button
                   type="button"
                   size="sm"
                   variant="ghost"
-                  className="touch-manipulation text-zinc-200 hover:bg-white/10 hover:text-white"
+                  className="touch-manipulation text-[var(--hh-text-secondary)] hover:bg-[var(--hh-l3-hover)] hover:text-[var(--hh-text-primary)]"
                   onClick={() => {
                     setImgPhase("loading");
                     setRetryKey((k) => k + 1);
@@ -1664,7 +1666,7 @@ export function AttachmentPreviewModal({
         className="relative flex h-full min-h-0 w-full items-center justify-center overflow-hidden"
         aria-busy
       >
-        <Skeleton className="absolute inset-0 rounded-xl bg-zinc-800/80" />
+        <Skeleton className="absolute inset-0 rounded-xl bg-[var(--hh-l2-operational-surface)]" />
         <span className="sr-only">Loading preview</span>
       </div>
     ) : unsupported ? (
@@ -1679,7 +1681,7 @@ export function AttachmentPreviewModal({
         className="relative flex h-full min-h-0 w-full items-center justify-center overflow-hidden"
         aria-busy
       >
-        <Skeleton className="absolute inset-0 rounded-xl bg-zinc-800/80" />
+        <Skeleton className="absolute inset-0 rounded-xl bg-[var(--hh-l2-operational-surface)]" />
         <span className="sr-only">Loading receipt preview</span>
       </div>
     ) : !fileUrl && signedUrlResolveFailed ? (
@@ -1690,7 +1692,7 @@ export function AttachmentPreviewModal({
             type="button"
             size="sm"
             variant="outline"
-            className="min-h-11 touch-manipulation border-white/15 bg-white/5 text-[var(--hh-text-primary)] hover:bg-white/10"
+            className="min-h-11 touch-manipulation border-[var(--hh-border)] bg-[var(--hh-l1-workspace)] text-[var(--hh-text-primary)] hover:bg-[var(--hh-l3-hover)]"
             onClick={onRetrySignedUrlResolve}
           >
             <RefreshCw className="mr-2 h-4 w-4" aria-hidden />
@@ -1737,7 +1739,7 @@ export function AttachmentPreviewModal({
             type="button"
             variant="outline"
             size="sm"
-            className="min-h-11 touch-manipulation border-white/15 bg-white/5 text-[var(--hh-text-primary)] hover:bg-white/10 lg:min-h-9"
+            className="min-h-11 touch-manipulation border-[var(--hh-border)] bg-[var(--hh-l1-workspace)] text-[var(--hh-text-primary)] hover:bg-[var(--hh-l3-hover)] lg:min-h-9"
             disabled={replaceBusy}
             onClick={onReplaceClick}
           >
@@ -1786,10 +1788,10 @@ export function AttachmentPreviewModal({
     Boolean(showReplace && replaceInputRef && onReplaceClick && onReplaceInputChange);
 
   const navBtnClass =
-    "h-12 w-12 shrink-0 touch-manipulation rounded-lg border border-white/15 bg-[rgb(10_13_16_/_0.72)] text-[var(--hh-text-primary)] shadow-[0_2px_12px_rgba(0,0,0,0.35)] backdrop-blur-sm hover:border-[rgb(184_137_45_/_0.35)] hover:bg-[rgb(184_137_45_/_0.12)] max-md:h-[3.35rem] max-md:w-[3.35rem]";
+    "h-12 w-12 shrink-0 touch-manipulation rounded-hh-standard border border-[var(--hh-border-floating)] bg-[var(--hh-l4-floating-surface)] text-[var(--hh-text-primary)] shadow-floating hover:border-[var(--hh-border-strong)] hover:bg-[var(--hh-l3-hover)] max-md:h-[3.35rem] max-md:w-[3.35rem]";
 
   const toolbarIconBtn =
-    "h-12 w-12 min-h-12 min-w-12 touch-manipulation text-[var(--hh-text-primary)] hover:bg-white/10 hover:text-[#d2b77f] max-md:h-[3.35rem] max-md:w-[3.35rem] max-md:min-h-[3.35rem] max-md:min-w-[3.35rem]";
+    "h-12 w-12 min-h-12 min-w-12 touch-manipulation text-[var(--hh-text-primary)] hover:bg-[var(--hh-l3-hover)] max-md:h-[3.35rem] max-md:w-[3.35rem] max-md:min-h-[3.35rem] max-md:min-w-[3.35rem]";
 
   return createPortal(
     <AnimatePresence>
@@ -1801,8 +1803,8 @@ export function AttachmentPreviewModal({
           aria-labelledby="attachment-preview-title"
           data-attachment-preview-modal
           data-hh-context="viewer"
-          data-hh-theme="neo-dark"
-          className="fixed inset-0 z-[201] flex min-h-0 flex-col bg-[#07090d] text-[var(--hh-text-primary)]"
+          data-hh-theme="operational-light"
+          className="fixed inset-0 z-[201] flex min-h-0 flex-col bg-[var(--hh-l0-canvas)] text-[var(--hh-text-primary)]"
           style={{ zIndex: 10000, pointerEvents: "auto" }}
           initial={fastPreviewMotion ? { opacity: 1 } : { opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -1815,7 +1817,7 @@ export function AttachmentPreviewModal({
             fastPreviewMotion ? { duration: 0 } : { duration: 0.18, ease: [0.22, 1, 0.36, 1] }
           }
         >
-          <header className="relative z-10 flex shrink-0 items-center gap-3 border-b border-white/10 bg-[#0b0f15]/70 px-3 py-3 pt-[max(0.5rem,env(safe-area-inset-top))] backdrop-blur-md">
+          <header className="relative z-10 flex shrink-0 items-center gap-3 border-b border-[var(--hh-border)] bg-[var(--hh-l1-workspace)] px-3 py-3 pt-[max(0.5rem,env(safe-area-inset-top))]">
             <div className="min-w-0 flex-1">
               <h2
                 id="attachment-preview-title"
@@ -1845,7 +1847,11 @@ export function AttachmentPreviewModal({
                 onClick={() => void handleDownload()}
               >
                 {downloadBusy ? (
-                  <InlineLoading className="text-zinc-100" size="md" aria-label="Downloading" />
+                  <InlineLoading
+                    className="text-[var(--hh-text-primary)]"
+                    size="md"
+                    aria-label="Downloading"
+                  />
                 ) : (
                   <Download className="h-5 w-5 max-md:h-6 max-md:w-6" />
                 )}
@@ -1861,7 +1867,11 @@ export function AttachmentPreviewModal({
                   onClick={() => void handleDelete()}
                 >
                   {deleteBusy ? (
-                    <InlineLoading className="text-zinc-100" size="md" aria-label="Deleting" />
+                    <InlineLoading
+                      className="text-[var(--hh-text-primary)]"
+                      size="md"
+                      aria-label="Deleting"
+                    />
                   ) : (
                     <Trash2 className="h-5 w-5 max-md:h-6 max-md:w-6" />
                   )}
@@ -1922,30 +1932,42 @@ export function AttachmentPreviewModal({
                   className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 px-4"
                   aria-busy
                 >
-                  <Skeleton className={cn("rounded-sm bg-zinc-800/90", PREVIEW_VIEWPORT_CLASS)} />
+                  <Skeleton
+                    className={cn(
+                      "rounded-sm bg-[var(--hh-l2-operational-surface)]",
+                      PREVIEW_VIEWPORT_CLASS
+                    )}
+                  />
                   <span className="sr-only">Loading preview</span>
                 </div>
               ) : unsupported ? (
                 <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-4 text-center">
-                  <p className="text-sm text-zinc-400">Preview not available for this file type.</p>
+                  <p className="text-sm text-[var(--hh-text-secondary)]">
+                    Preview not available for this file type.
+                  </p>
                 </div>
               ) : !fileUrl && pendingSignedUrl ? (
                 <div
                   className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 px-4"
                   aria-busy
                 >
-                  <Skeleton className={cn("rounded-sm bg-zinc-800/90", PREVIEW_VIEWPORT_CLASS)} />
+                  <Skeleton
+                    className={cn(
+                      "rounded-sm bg-[var(--hh-l2-operational-surface)]",
+                      PREVIEW_VIEWPORT_CLASS
+                    )}
+                  />
                   <span className="sr-only">Loading receipt preview</span>
                 </div>
               ) : !fileUrl && signedUrlResolveFailed ? (
                 <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 px-4 text-center">
-                  <p className="text-sm text-zinc-400">Unable to load receipt</p>
+                  <p className="text-sm text-[var(--hh-text-secondary)]">Unable to load receipt</p>
                   {onRetrySignedUrlResolve ? (
                     <Button
                       type="button"
                       size="sm"
                       variant="outline"
-                      className="touch-manipulation border-white/15 bg-white/5 text-[var(--hh-text-primary)] hover:bg-[rgb(184_137_45_/_0.12)]"
+                      className="touch-manipulation border-[var(--hh-border)] bg-[var(--hh-l1-workspace)] text-[var(--hh-text-primary)] hover:bg-[var(--hh-l3-hover)]"
                       onClick={() => onRetrySignedUrlResolve()}
                     >
                       <RefreshCw className="mr-2 h-3.5 w-3.5" />
@@ -1955,7 +1977,7 @@ export function AttachmentPreviewModal({
                 </div>
               ) : !fileUrl ? (
                 <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-4">
-                  <p className="text-sm text-zinc-400">Receipt not available.</p>
+                  <p className="text-sm text-[var(--hh-text-secondary)]">Receipt not available.</p>
                 </div>
               ) : (
                 <div className="relative flex min-h-0 w-full flex-1 flex-col">
@@ -2001,7 +2023,7 @@ export function AttachmentPreviewModal({
           </div>
 
           {showFooter ? (
-            <footer className="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-white/10 bg-[#0b0f15]/70 px-3 py-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] backdrop-blur-md">
+            <footer className="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-[var(--hh-border)] bg-[var(--hh-l1-workspace)] px-3 py-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))]">
               {extraFooter}
               {showReplace && replaceInputRef && onReplaceClick && onReplaceInputChange ? (
                 <>
@@ -2017,7 +2039,7 @@ export function AttachmentPreviewModal({
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="h-9 touch-manipulation border-white/15 bg-white/5 text-[var(--hh-text-primary)] hover:bg-[rgb(184_137_45_/_0.12)] max-md:min-h-11"
+                    className="h-9 touch-manipulation border-[var(--hh-border)] bg-[var(--hh-l1-workspace)] text-[var(--hh-text-primary)] hover:bg-[var(--hh-l3-hover)] max-md:min-h-11"
                     disabled={replaceBusy}
                     onClick={onReplaceClick}
                   >

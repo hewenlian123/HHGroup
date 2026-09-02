@@ -17,8 +17,17 @@ import {
 } from "@/components/ui/table";
 import { SplitLinesEditor, type SplitLineRow } from "@/components/split-lines-editor";
 import { CreatableSelect } from "@/components/ui/creatable-select";
-import { Upload, CheckSquare } from "lucide-react";
-import { MatchStatusBadge, bankTransactionMatchKind } from "@/components/base";
+import { Upload, CheckSquare, Square } from "lucide-react";
+import {
+  MatchStatusBadge,
+  NeoMobileCard,
+  NeoToolbar,
+  bankTransactionMatchKind,
+} from "@/components/base";
+import {
+  MobileListHeader,
+  mobileListPagePaddingClass,
+} from "@/components/mobile/mobile-list-chrome";
 import { cn } from "@/lib/utils";
 import { createBrowserClient } from "@/lib/supabase";
 import { formatCurrency } from "@/lib/formatters";
@@ -691,88 +700,110 @@ export default function BankReconcileClient() {
   const isLinkedToExpense = !!selectedTxFromList?.linkedExpenseId;
 
   return (
-    <div className="page-container page-stack py-6 text-[var(--hh-text-secondary)]">
-      <PageHeader title="Bank Reconcile" subtitle="Import CSV and reconcile each transaction." />
+    <div
+      data-testid="bank-reconciliation-workspace"
+      className={cn(
+        "page-container page-shell-wide page-stack min-w-0 max-w-full py-4 text-[var(--hh-text-secondary)] md:py-6",
+        mobileListPagePaddingClass
+      )}
+    >
+      <MobileListHeader title="Bank Reconcile" tone="page" fab={null} />
+      <div className="hidden md:block">
+        <PageHeader
+          title="Bank Reconcile"
+          subtitle="Import bank activity, review matches, and reconcile each transaction."
+        />
+      </div>
 
       {error ? (
-        <Card className="p-5">
+        <Card
+          role="alert"
+          className="border-[var(--hh-danger-border)] bg-[var(--hh-danger-soft-fill)] p-4 shadow-none"
+        >
           <p className="text-sm text-[var(--hh-danger)]">{error}</p>
         </Card>
       ) : null}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
         <Card
           ref={bankListRef}
           tabIndex={0}
-          className="hh-focus-ring overflow-hidden p-4"
+          className="hh-focus-ring min-w-0 overflow-hidden p-3 shadow-none md:p-4"
           onKeyDown={handleBankListKeyDown}
         >
-          <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between mb-4">
-            <div className="flex items-center gap-2 w-full sm:w-auto">
-              <input
-                type="file"
-                accept=".csv"
-                className="hidden"
-                id="bank-csv-upload"
-                onChange={handleFileChange}
-              />
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => document.getElementById("bank-csv-upload")?.click()}
-                disabled={busy || !configured}
-              >
-                <Upload className="h-4 w-4 mr-2" />
-                Upload CSV
-              </Button>
-            </div>
-            <Input
-              aria-label="Search bank transactions"
-              placeholder="Search description..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="max-w-xs"
-            />
-          </div>
-          {importMessage ? (
-            <p className="mb-2 text-sm text-text-primary dark:text-foreground">{importMessage}</p>
-          ) : null}
-          {toastMessage ? (
-            <p className="mb-2 text-sm text-text-primary dark:text-foreground">{toastMessage}</p>
-          ) : null}
-
-          <div className="flex gap-2 mb-3">
-            {(["unmatched", "reconciled", "all"] as const).map((t) => (
-              <button
-                key={t}
-                type="button"
-                onClick={() => setTab(t)}
-                className={cn(
-                  "min-h-11 rounded-hh-standard px-3 py-1.5 text-sm font-medium capitalize transition-colors md:min-h-8",
-                  tab === t
-                    ? "bg-[var(--hh-l3-selected)] text-[var(--hh-text-primary)]"
-                    : "bg-[var(--hh-l3-selected)] text-[var(--hh-text-secondary)] hover:bg-[var(--hh-l2-operational-surface)] hover:text-[var(--hh-text-primary)]"
-                )}
-              >
-                {t}
-              </button>
-            ))}
-            {unmatchedInFiltered.length > 0 ? (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="ml-auto"
-                onClick={selectAllUnmatched}
-                disabled={busy}
-              >
-                <CheckSquare className="h-4 w-4 mr-2" />
-                Select all Unmatched
-              </Button>
+          <section aria-label="Bank transaction filters">
+            <NeoToolbar className="mb-3 p-2 md:flex-row md:items-center md:justify-between">
+              <div className="flex w-full items-center gap-2 md:w-auto">
+                <input
+                  type="file"
+                  accept=".csv"
+                  className="hidden"
+                  id="bank-csv-upload"
+                  onChange={handleFileChange}
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0"
+                  onClick={() => document.getElementById("bank-csv-upload")?.click()}
+                  disabled={busy || !configured}
+                >
+                  <Upload className="mr-2 h-4 w-4" aria-hidden />
+                  Upload CSV
+                </Button>
+                <Input
+                  aria-label="Search bank transactions"
+                  placeholder="Search description…"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="min-w-0 flex-1 md:w-64 md:flex-none"
+                />
+              </div>
+            </NeoToolbar>
+            {importMessage ? (
+              <p className="mb-2 text-sm text-[var(--hh-text-primary)]">{importMessage}</p>
             ) : null}
-          </div>
+            {toastMessage ? (
+              <p className="mb-2 text-sm text-[var(--hh-text-primary)]">{toastMessage}</p>
+            ) : null}
 
-          <div className="overflow-x-auto rounded-hh-standard border border-[var(--hh-border)]">
+            <div className="mb-3 flex flex-wrap gap-2">
+              {(["unmatched", "reconciled", "all"] as const).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  aria-pressed={tab === t}
+                  onClick={() => setTab(t)}
+                  className={cn(
+                    "hh-focus-ring hh-touch-min min-w-11 rounded-hh-standard border px-3 py-1.5 text-sm font-medium capitalize transition-colors",
+                    tab === t
+                      ? "border-[var(--hh-border-strong)] bg-[var(--hh-l3-selected)] text-[var(--hh-text-primary)]"
+                      : "border-transparent bg-[var(--hh-l3-selected)] text-[var(--hh-text-secondary)] hover:border-[var(--hh-border)] hover:bg-[var(--hh-l2-operational-surface)] hover:text-[var(--hh-text-primary)]"
+                  )}
+                >
+                  {t}
+                </button>
+              ))}
+              {unmatchedInFiltered.length > 0 ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="w-full sm:ml-auto sm:w-auto"
+                  onClick={selectAllUnmatched}
+                  disabled={busy}
+                >
+                  <CheckSquare className="h-4 w-4 mr-2" />
+                  Select all Unmatched
+                </Button>
+              ) : null}
+            </div>
+          </section>
+
+          <div
+            data-testid="bank-transactions-dense-table"
+            className="hidden overflow-hidden rounded-hh-standard border border-[var(--hh-border)] lg:block"
+          >
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
@@ -797,13 +828,15 @@ export default function BankReconcileClient() {
                 {loading ? (
                   <TableRow>
                     <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                      Loading...
+                      <span role="status" aria-live="polite">
+                        Loading bank transactions…
+                      </span>
                     </TableCell>
                   </TableRow>
                 ) : filtered.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                      No data yet.
+                      No bank transactions match these filters.
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -824,6 +857,7 @@ export default function BankReconcileClient() {
                           onClick={(e) => e.stopPropagation()}
                         >
                           <input
+                            aria-label={`Select transaction ${tx.description}`}
                             type="checkbox"
                             checked={selectedIds.has(tx.id)}
                             onChange={() => toggleSelectedId(tx.id)}
@@ -852,9 +886,90 @@ export default function BankReconcileClient() {
               </TableBody>
             </Table>
           </div>
+
+          <div data-testid="bank-transactions-stacked-list" className="space-y-2 lg:hidden">
+            {loading ? (
+              <div
+                role="status"
+                aria-live="polite"
+                className="py-10 text-center text-sm text-[var(--hh-text-secondary)]"
+              >
+                Loading bank transactions…
+              </div>
+            ) : filtered.length === 0 ? (
+              <div className="py-10 text-center text-sm text-[var(--hh-text-secondary)]">
+                No bank transactions match these filters.
+              </div>
+            ) : (
+              filtered.map((tx) => {
+                const matchSt = bankTransactionMatchKind(tx.status);
+                const isSelected = selectedIds.has(tx.id);
+                return (
+                  <NeoMobileCard
+                    key={tx.id}
+                    className={cn(
+                      "hh-row-interactive p-3",
+                      isSelected && "border-[var(--hh-border-strong)] bg-[var(--hh-l3-selected)]"
+                    )}
+                    onClick={() => setSelectedIds(new Set([tx.id]))}
+                  >
+                    <div className="flex min-w-0 items-start gap-2">
+                      <button
+                        type="button"
+                        aria-label={`Select transaction ${tx.description}`}
+                        aria-pressed={isSelected}
+                        className="hh-focus-ring flex h-11 w-11 shrink-0 items-center justify-center rounded-hh-compact text-[var(--hh-text-secondary)]"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          toggleSelectedId(tx.id);
+                        }}
+                      >
+                        {isSelected ? (
+                          <CheckSquare className="h-5 w-5" aria-hidden />
+                        ) : (
+                          <Square className="h-5 w-5" aria-hidden />
+                        )}
+                      </button>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex min-w-0 items-start justify-between gap-3">
+                          <p className="min-w-0 truncate text-hh-body-strong text-[var(--hh-text-primary)]">
+                            {tx.description}
+                          </p>
+                          <MatchStatusBadge kind={matchSt.kind} />
+                        </div>
+                        <dl className="mt-3 grid grid-cols-2 gap-3 text-hh-metadata text-[var(--hh-text-secondary)]">
+                          <div>
+                            <dt className="text-hh-label text-[var(--hh-text-tertiary)]">Date</dt>
+                            <dd className={cn("mt-1", LEDGER_DATE_CLASS)}>
+                              {formatLedgerDate(tx.date)}
+                            </dd>
+                          </div>
+                          <div className="text-right">
+                            <dt className="text-hh-label text-[var(--hh-text-tertiary)]">Amount</dt>
+                            <dd
+                              className={cn(
+                                "mt-1 whitespace-nowrap",
+                                amountClass(tx.amount >= 0 ? "income" : "expense")
+                              )}
+                            >
+                              {formatCurrency(tx.amount)}
+                            </dd>
+                          </div>
+                        </dl>
+                      </div>
+                    </div>
+                  </NeoMobileCard>
+                );
+              })
+            )}
+          </div>
         </Card>
 
-        <Card className="overflow-hidden p-6" onKeyDown={handlePanelKeyDown} tabIndex={0}>
+        <Card
+          className="hh-focus-ring min-w-0 overflow-hidden p-4 shadow-none md:p-6"
+          onKeyDown={handlePanelKeyDown}
+          tabIndex={0}
+        >
           {selectedList.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
               <p className="text-sm">Select a bank transaction to reconcile.</p>

@@ -1954,38 +1954,71 @@ export default function WorkerDashboardPage() {
             {rateHistory.length === 0 ? (
               <EmptyPanel>No daily rate history yet.</EmptyPanel>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[460px] border-collapse text-sm table-row-compact">
-                  <thead>
-                    <tr className="border-b border-border/60">
-                      <th className="px-2 py-2 text-left text-xs font-medium uppercase tracking-normal text-muted-foreground">
-                        Rate
-                      </th>
-                      <th className="px-2 py-2 text-left text-xs font-medium uppercase tracking-normal text-muted-foreground">
-                        Effective
-                      </th>
-                      <th className="px-2 py-2 text-left text-xs font-medium uppercase tracking-normal text-muted-foreground">
-                        Note
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rateHistory.map((row) => (
-                      <tr key={row.id} className="border-b border-border/40">
-                        <td className="px-2 py-1.5 font-medium tabular-nums">
+              <>
+                <div className="space-y-2 md:hidden" data-testid="worker-rate-history-mobile">
+                  {rateHistory.map((row) => (
+                    <dl
+                      key={row.id}
+                      className="rounded-hh-compact border border-border/60 bg-background/80 px-3 py-2.5 text-sm"
+                    >
+                      <div className="flex items-baseline justify-between gap-3">
+                        <dt className="text-hh-table-header font-semibold uppercase tracking-normal text-muted-foreground">
+                          Daily rate
+                        </dt>
+                        <dd className="font-medium tabular-nums text-foreground">
                           {fmtUsd(row.dailyRate)} / day
-                        </td>
-                        <td className="px-2 py-1.5 tabular-nums text-muted-foreground">
-                          {fmtRateRange(row)}
-                        </td>
-                        <td className="px-2 py-1.5 text-muted-foreground">
+                        </dd>
+                      </div>
+                      <div className="mt-2 grid gap-1">
+                        <dt className="text-hh-table-header font-semibold uppercase tracking-normal text-muted-foreground">
+                          Effective
+                        </dt>
+                        <dd className="tabular-nums text-muted-foreground">{fmtRateRange(row)}</dd>
+                      </div>
+                      <div className="mt-2 grid gap-1">
+                        <dt className="text-hh-table-header font-semibold uppercase tracking-normal text-muted-foreground">
+                          Note
+                        </dt>
+                        <dd className="break-words text-muted-foreground">
                           {row.notes?.trim() ? row.notes : "—"}
-                        </td>
+                        </dd>
+                      </div>
+                    </dl>
+                  ))}
+                </div>
+                <div className="hidden overflow-x-auto md:block">
+                  <table className="w-full min-w-[460px] border-collapse text-sm table-row-compact">
+                    <thead>
+                      <tr className="border-b border-border/60">
+                        <th className="px-2 py-2 text-left text-xs font-medium uppercase tracking-normal text-muted-foreground">
+                          Rate
+                        </th>
+                        <th className="px-2 py-2 text-left text-xs font-medium uppercase tracking-normal text-muted-foreground">
+                          Effective
+                        </th>
+                        <th className="px-2 py-2 text-left text-xs font-medium uppercase tracking-normal text-muted-foreground">
+                          Note
+                        </th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {rateHistory.map((row) => (
+                        <tr key={row.id} className="border-b border-border/40">
+                          <td className="px-2 py-1.5 font-medium tabular-nums">
+                            {fmtUsd(row.dailyRate)} / day
+                          </td>
+                          <td className="px-2 py-1.5 tabular-nums text-muted-foreground">
+                            {fmtRateRange(row)}
+                          </td>
+                          <td className="px-2 py-1.5 text-muted-foreground">
+                            {row.notes?.trim() ? row.notes : "—"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             )}
           </DetailSection>
         </TabsContent>

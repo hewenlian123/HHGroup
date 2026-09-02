@@ -24,6 +24,12 @@ import {
   createServerSupabaseClient,
   getServerSupabaseInternalNoStore,
 } from "@/lib/supabase-server";
+import {
+  ProjectFinancialTable,
+  ProjectFinancialTableCell,
+  ProjectFinancialTableHead,
+  ProjectFinancialTableHeader,
+} from "../_components/project-financial-responsive-table";
 
 function fmtUsd(n: number): string {
   return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -200,7 +206,7 @@ export default async function ProjectProfitPage({ params }: Props) {
           actions={
             <Link
               href={`/projects/${id}`}
-              className="text-hh-body text-[var(--hh-text-secondary)] hover:text-[var(--hh-text-primary)]"
+              className="inline-flex min-h-[44px] items-center text-hh-body text-[var(--hh-text-secondary)] hover:text-[var(--hh-text-primary)]"
             >
               Project
             </Link>
@@ -259,29 +265,47 @@ export default async function ProjectProfitPage({ params }: Props) {
       <SectionHeader label="Forecast by Cost Code" />
       <div className="airtable-table-wrap airtable-table-wrap--ruled">
         <div className="airtable-table-scroll">
-          <table className="w-full text-hh-body">
-            <thead>
+          <ProjectFinancialTable aria-label="Forecast by cost code">
+            <ProjectFinancialTableHead>
               <tr>
-                <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
+                <ProjectFinancialTableHeader
+                  id="profit-forecast-cost-code"
+                  className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]"
+                >
                   Cost Code
-                </th>
-                <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
+                </ProjectFinancialTableHeader>
+                <ProjectFinancialTableHeader
+                  id="profit-forecast-budget"
+                  className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums"
+                >
                   Budget
-                </th>
-                <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
+                </ProjectFinancialTableHeader>
+                <ProjectFinancialTableHeader
+                  id="profit-forecast-actual"
+                  className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums"
+                >
                   Actual
-                </th>
-                <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
+                </ProjectFinancialTableHeader>
+                <ProjectFinancialTableHeader
+                  id="profit-forecast-remaining"
+                  className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums"
+                >
                   Remaining
-                </th>
-                <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
+                </ProjectFinancialTableHeader>
+                <ProjectFinancialTableHeader
+                  id="profit-forecast-final"
+                  className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums"
+                >
                   Forecast
-                </th>
-                <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
+                </ProjectFinancialTableHeader>
+                <ProjectFinancialTableHeader
+                  id="profit-forecast-variance"
+                  className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums"
+                >
                   Variance
-                </th>
+                </ProjectFinancialTableHeader>
               </tr>
-            </thead>
+            </ProjectFinancialTableHead>
             <tbody>
               {forecastByCostCodeRows.length === 0 ? (
                 <tr>
@@ -300,105 +324,178 @@ export default async function ProjectProfitPage({ params }: Props) {
                     : "text-hh-profit-positive dark:text-hh-profit-positive";
                   return (
                     <tr key={r.costCode} className={listTableRowStaticClassName}>
-                      <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell font-medium">
+                      <ProjectFinancialTableCell
+                        headerId="profit-forecast-cost-code"
+                        label="Cost Code"
+                        className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell font-medium"
+                      >
                         {r.costCode}
-                      </td>
-                      <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums">
+                      </ProjectFinancialTableCell>
+                      <ProjectFinancialTableCell
+                        headerId="profit-forecast-budget"
+                        label="Budget"
+                        className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums"
+                      >
                         ${fmtUsd(r.budget)}
-                      </td>
-                      <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums">
+                      </ProjectFinancialTableCell>
+                      <ProjectFinancialTableCell
+                        headerId="profit-forecast-actual"
+                        label="Actual"
+                        className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums"
+                      >
                         ${fmtUsd(r.actual)}
-                      </td>
-                      <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums">
+                      </ProjectFinancialTableCell>
+                      <ProjectFinancialTableCell
+                        headerId="profit-forecast-remaining"
+                        label="Remaining"
+                        className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums"
+                      >
                         ${fmtUsd(r.remaining)}
-                      </td>
-                      <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums">
+                      </ProjectFinancialTableCell>
+                      <ProjectFinancialTableCell
+                        headerId="profit-forecast-final"
+                        label="Forecast"
+                        className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums"
+                      >
                         ${fmtUsd(r.forecast)}
-                      </td>
-                      <td
-                        className={`h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums ${varianceClass}`}
+                      </ProjectFinancialTableCell>
+                      <ProjectFinancialTableCell
+                        headerId="profit-forecast-variance"
+                        label="Variance"
+                        className={cn(
+                          "h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums",
+                          varianceClass
+                        )}
                       >
                         ${fmtUsd(r.variance)}
-                      </td>
+                      </ProjectFinancialTableCell>
                     </tr>
                   );
                 })
               )}
             </tbody>
-          </table>
+          </ProjectFinancialTable>
         </div>
       </div>
       <Divider />
       <SectionHeader label="Cost breakdown" />
       <div className="airtable-table-wrap airtable-table-wrap--ruled">
         <div className="airtable-table-scroll">
-          <table className="w-full text-hh-body">
-            <thead>
+          <ProjectFinancialTable aria-label="Cost breakdown">
+            <ProjectFinancialTableHead>
               <tr>
-                <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
+                <ProjectFinancialTableHeader
+                  id="profit-cost-category"
+                  className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]"
+                >
                   Category
-                </th>
-                <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
+                </ProjectFinancialTableHeader>
+                <ProjectFinancialTableHeader
+                  id="profit-cost-budget"
+                  className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums"
+                >
                   Budget
-                </th>
-                <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
+                </ProjectFinancialTableHeader>
+                <ProjectFinancialTableHeader
+                  id="profit-cost-actual"
+                  className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums"
+                >
                   Actual
-                </th>
-                <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
+                </ProjectFinancialTableHeader>
+                <ProjectFinancialTableHeader
+                  id="profit-cost-variance"
+                  className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums"
+                >
                   Variance
-                </th>
-                <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
+                </ProjectFinancialTableHeader>
+                <ProjectFinancialTableHeader
+                  id="profit-cost-impact"
+                  className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums"
+                >
                   Impact on Profit
-                </th>
+                </ProjectFinancialTableHeader>
               </tr>
-            </thead>
+            </ProjectFinancialTableHead>
             <tbody>
               {rows.map((r) => (
                 <tr key={r.category} className={listTableRowStaticClassName}>
-                  <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell font-medium">
+                  <ProjectFinancialTableCell
+                    headerId="profit-cost-category"
+                    label="Category"
+                    className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell font-medium"
+                  >
                     {r.category}
-                  </td>
-                  <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums">
+                  </ProjectFinancialTableCell>
+                  <ProjectFinancialTableCell
+                    headerId="profit-cost-budget"
+                    label="Budget"
+                    className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums"
+                  >
                     {r.budget != null ? `$${fmtUsd(r.budget)}` : "—"}
-                  </td>
-                  <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums">
+                  </ProjectFinancialTableCell>
+                  <ProjectFinancialTableCell
+                    headerId="profit-cost-actual"
+                    label="Actual"
+                    className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums"
+                  >
                     ${fmtUsd(r.actual)}
-                  </td>
-                  <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums">
+                  </ProjectFinancialTableCell>
+                  <ProjectFinancialTableCell
+                    headerId="profit-cost-variance"
+                    label="Variance"
+                    className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums"
+                  >
                     {r.variance != null ? `$${fmtUsd(r.variance)}` : "—"}
-                  </td>
-                  <td
-                    className={`h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums ${r.impactOnProfit <= 0 ? "text-destructive" : ""}`}
+                  </ProjectFinancialTableCell>
+                  <ProjectFinancialTableCell
+                    headerId="profit-cost-impact"
+                    label="Impact on Profit"
+                    className={cn(
+                      "h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums",
+                      r.impactOnProfit <= 0 && "text-destructive"
+                    )}
                   >
                     ${fmtUsd(r.impactOnProfit)}
-                  </td>
+                  </ProjectFinancialTableCell>
                 </tr>
               ))}
             </tbody>
-          </table>
+          </ProjectFinancialTable>
         </div>
       </div>
       <Divider />
       <SectionHeader label="Subcontracts" />
       <div className="airtable-table-wrap airtable-table-wrap--ruled">
         <div className="airtable-table-scroll">
-          <table className="w-full text-hh-body">
-            <thead>
+          <ProjectFinancialTable aria-label="Subcontract exposure">
+            <ProjectFinancialTableHead>
               <tr>
-                <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
+                <ProjectFinancialTableHeader
+                  id="profit-subcontract-name"
+                  className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]"
+                >
                   Subcontractor
-                </th>
-                <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
+                </ProjectFinancialTableHeader>
+                <ProjectFinancialTableHeader
+                  id="profit-subcontract-revised"
+                  className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums"
+                >
                   Revised Contract
-                </th>
-                <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
+                </ProjectFinancialTableHeader>
+                <ProjectFinancialTableHeader
+                  id="profit-subcontract-paid"
+                  className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums"
+                >
                   Paid
-                </th>
-                <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
+                </ProjectFinancialTableHeader>
+                <ProjectFinancialTableHeader
+                  id="profit-subcontract-exposure"
+                  className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums"
+                >
                   Exposure
-                </th>
+                </ProjectFinancialTableHeader>
               </tr>
-            </thead>
+            </ProjectFinancialTableHead>
             <tbody>
               {subcontractRows.length === 0 ? (
                 <tr>
@@ -420,26 +517,47 @@ export default async function ProjectProfitPage({ params }: Props) {
                       : "";
                   return (
                     <tr key={s.id} className={cn(listTableRowStaticClassName, rowClass)}>
-                      <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell font-medium">
+                      <ProjectFinancialTableCell
+                        headerId="profit-subcontract-name"
+                        label="Subcontractor"
+                        className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell font-medium"
+                      >
                         {s.subcontractor_name}
-                      </td>
-                      <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums">
+                      </ProjectFinancialTableCell>
+                      <ProjectFinancialTableCell
+                        headerId="profit-subcontract-revised"
+                        label="Revised Contract"
+                        className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums"
+                      >
                         ${fmtUsd(s.revised)}
-                      </td>
-                      <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums">
+                      </ProjectFinancialTableCell>
+                      <ProjectFinancialTableCell
+                        headerId="profit-subcontract-paid"
+                        label="Paid"
+                        className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums"
+                      >
                         ${fmtUsd(s.paid)}
-                      </td>
-                      <td
-                        className={`h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums ${exposurePositive ? "text-[var(--hh-warning)] dark:text-[var(--hh-warning)]" : paidInFull ? "text-hh-profit-positive dark:text-hh-profit-positive" : ""}`}
+                      </ProjectFinancialTableCell>
+                      <ProjectFinancialTableCell
+                        headerId="profit-subcontract-exposure"
+                        label="Exposure"
+                        className={cn(
+                          "h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums",
+                          exposurePositive
+                            ? "text-[var(--hh-warning)] dark:text-[var(--hh-warning)]"
+                            : paidInFull
+                              ? "text-hh-profit-positive dark:text-hh-profit-positive"
+                              : ""
+                        )}
                       >
                         ${fmtUsd(s.exposure)}
-                      </td>
+                      </ProjectFinancialTableCell>
                     </tr>
                   );
                 })
               )}
             </tbody>
-          </table>
+          </ProjectFinancialTable>
         </div>
       </div>
     </PageLayout>

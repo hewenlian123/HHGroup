@@ -18,6 +18,12 @@ import {
 import { AddSubcontractButton } from "./add-subcontract-button";
 import { SetBreadcrumbEntityTitle } from "@/components/layout/set-breadcrumb-entity-title";
 import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
+import {
+  ProjectFinancialTable,
+  ProjectFinancialTableCell,
+  ProjectFinancialTableHead,
+  ProjectFinancialTableHeader,
+} from "../_components/project-financial-responsive-table";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -88,7 +94,7 @@ export default async function ProjectSubcontractsPage({ params }: Props) {
           actions={
             <Link
               href={`/projects/${id}`}
-              className="text-hh-body text-[var(--hh-text-secondary)] hover:text-[var(--hh-text-primary)]"
+              className="inline-flex min-h-[44px] items-center text-hh-body text-[var(--hh-text-secondary)] hover:text-[var(--hh-text-primary)]"
             >
               Project
             </Link>
@@ -105,41 +111,71 @@ export default async function ProjectSubcontractsPage({ params }: Props) {
 
       <div className="airtable-table-wrap airtable-table-wrap--ruled">
         <div className="airtable-table-scroll">
-          <table className="w-full min-w-[1180px] text-hh-body">
-            <thead>
+          <ProjectFinancialTable aria-label="Project subcontracts">
+            <ProjectFinancialTableHead>
               <tr>
-                <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
+                <ProjectFinancialTableHeader
+                  id="subcontract-subcontractor"
+                  className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]"
+                >
                   Subcontractor
-                </th>
-                <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
+                </ProjectFinancialTableHeader>
+                <ProjectFinancialTableHeader
+                  id="subcontract-cost-code"
+                  className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]"
+                >
                   Cost Code
-                </th>
-                <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
+                </ProjectFinancialTableHeader>
+                <ProjectFinancialTableHeader
+                  id="subcontract-contract-amount"
+                  className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums"
+                >
                   Contract Amount
-                </th>
-                <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
+                </ProjectFinancialTableHeader>
+                <ProjectFinancialTableHeader
+                  id="subcontract-scheduled"
+                  className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums"
+                >
                   Scheduled
-                </th>
-                <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
+                </ProjectFinancialTableHeader>
+                <ProjectFinancialTableHeader
+                  id="subcontract-billed"
+                  className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums"
+                >
                   Billed To Date
-                </th>
-                <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
+                </ProjectFinancialTableHeader>
+                <ProjectFinancialTableHeader
+                  id="subcontract-paid"
+                  className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums"
+                >
                   Paid To Date
-                </th>
-                <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
+                </ProjectFinancialTableHeader>
+                <ProjectFinancialTableHeader
+                  id="subcontract-ap-outstanding"
+                  className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums"
+                >
                   AP Outstanding
-                </th>
-                <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
+                </ProjectFinancialTableHeader>
+                <ProjectFinancialTableHeader
+                  id="subcontract-remaining"
+                  className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums"
+                >
                   Remaining Contract
-                </th>
-                <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
+                </ProjectFinancialTableHeader>
+                <ProjectFinancialTableHeader
+                  id="subcontract-status"
+                  className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]"
+                >
                   Status
-                </th>
-                <th className="h-8 px-3 text-right align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
+                </ProjectFinancialTableHeader>
+                <ProjectFinancialTableHeader
+                  id="subcontract-actions"
+                  className="h-8 px-3 text-right align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]"
+                >
                   Actions
-                </th>
+                </ProjectFinancialTableHeader>
               </tr>
-            </thead>
+            </ProjectFinancialTableHead>
             <tbody>
               {subcontracts.length === 0 ? (
                 <tr>
@@ -153,55 +189,95 @@ export default async function ProjectSubcontractsPage({ params }: Props) {
               ) : (
                 rows.map((r) => (
                   <tr key={r.id} className={listTableRowStaticClassName}>
-                    <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell font-medium">
+                    <ProjectFinancialTableCell
+                      headerId="subcontract-subcontractor"
+                      label="Subcontractor"
+                      className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell font-medium"
+                    >
                       <Link
                         href={`/projects/${id}/subcontracts/${r.id}`}
-                        className="hover:text-[var(--hh-text-primary)] hover:underline"
+                        className="inline-flex min-h-[44px] min-w-0 items-center break-words hover:text-[var(--hh-text-primary)] hover:underline xl:min-h-0"
                       >
                         {r.subcontractor_name}
                       </Link>
-                    </td>
-                    <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell text-[var(--hh-text-secondary)]">
+                    </ProjectFinancialTableCell>
+                    <ProjectFinancialTableCell
+                      headerId="subcontract-cost-code"
+                      label="Cost Code"
+                      className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell text-[var(--hh-text-secondary)]"
+                    >
                       {r.cost_code ?? "—"}
-                    </td>
-                    <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums">
+                    </ProjectFinancialTableCell>
+                    <ProjectFinancialTableCell
+                      headerId="subcontract-contract-amount"
+                      label="Contract Amount"
+                      className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums"
+                    >
                       <NeoAmount>${fmtUsd(r.financials.contractAmount)}</NeoAmount>
-                    </td>
-                    <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums">
+                    </ProjectFinancialTableCell>
+                    <ProjectFinancialTableCell
+                      headerId="subcontract-scheduled"
+                      label="Scheduled"
+                      className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums"
+                    >
                       <NeoAmount>${fmtUsd(r.financials.scheduledAmount)}</NeoAmount>
-                    </td>
-                    <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums">
+                    </ProjectFinancialTableCell>
+                    <ProjectFinancialTableCell
+                      headerId="subcontract-billed"
+                      label="Billed To Date"
+                      className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums"
+                    >
                       <NeoAmount>${fmtUsd(r.financials.billedToDate)}</NeoAmount>
-                    </td>
-                    <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums">
+                    </ProjectFinancialTableCell>
+                    <ProjectFinancialTableCell
+                      headerId="subcontract-paid"
+                      label="Paid To Date"
+                      className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums"
+                    >
                       <NeoAmount tone="income">${fmtUsd(r.financials.paidToDate)}</NeoAmount>
-                    </td>
-                    <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums">
+                    </ProjectFinancialTableCell>
+                    <ProjectFinancialTableCell
+                      headerId="subcontract-ap-outstanding"
+                      label="AP Outstanding"
+                      className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums"
+                    >
                       <NeoAmount tone={r.financials.apOutstanding > 0 ? "expense" : "neutral"}>
                         ${fmtUsd(r.financials.apOutstanding)}
                       </NeoAmount>
-                    </td>
-                    <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums">
+                    </ProjectFinancialTableCell>
+                    <ProjectFinancialTableCell
+                      headerId="subcontract-remaining"
+                      label="Remaining Contract"
+                      className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums"
+                    >
                       <NeoAmount tone={r.financials.remainingContract < 0 ? "expense" : "neutral"}>
                         ${fmtUsd(r.financials.remainingContract)}
                       </NeoAmount>
-                    </td>
-                    <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell">
+                    </ProjectFinancialTableCell>
+                    <ProjectFinancialTableCell
+                      headerId="subcontract-status"
+                      label="Status"
+                      className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell"
+                    >
                       {r.status ?? "Draft"}
-                    </td>
-                    <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle text-hh-table-cell">
+                    </ProjectFinancialTableCell>
+                    <ProjectFinancialTableCell
+                      headerId="subcontract-actions"
+                      label="Actions"
+                      className="h-11 min-h-[44px] px-3 py-0 text-right align-middle text-hh-table-cell"
+                    >
                       <Link
                         href={`/projects/${id}/subcontracts/${r.id}/bills`}
-                        className="text-hh-body text-[var(--hh-text-secondary)] hover:text-[var(--hh-text-primary)]"
+                        className="inline-flex min-h-[44px] items-center text-hh-body text-[var(--hh-text-secondary)] hover:text-[var(--hh-text-primary)] xl:min-h-0"
                       >
                         View Bills
                       </Link>
-                    </td>
+                    </ProjectFinancialTableCell>
                   </tr>
                 ))
               )}
             </tbody>
-          </table>
+          </ProjectFinancialTable>
         </div>
       </div>
     </PageLayout>

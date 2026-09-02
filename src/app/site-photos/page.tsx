@@ -4,7 +4,7 @@ import * as React from "react";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { Download, ImageIcon, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { PageLayout, PageHeader, Drawer } from "@/components/base";
+import { PageLayout, PageHeader, Drawer, NeoTextarea } from "@/components/base";
 import { Button } from "@/components/ui/button";
 import { RowActionsMenu } from "@/components/base/row-actions-menu";
 import { FilterBar } from "@/components/filter-bar";
@@ -76,6 +76,7 @@ export default function SitePhotosPage() {
     uploaded_by: "",
   });
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const uploadFocusReturnRef = React.useRef<HTMLElement | null>(null);
   const [failedPhotoIds, setFailedPhotoIds] = React.useState<Set<string>>(new Set());
   const [deleteConfirmPhoto, setDeleteConfirmPhoto] = React.useState<PhotoRow | null>(null);
   const [deleting, setDeleting] = React.useState(false);
@@ -305,6 +306,8 @@ export default function SitePhotosPage() {
   };
 
   const openUpload = () => {
+    uploadFocusReturnRef.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setUploadForm({
       project_id: projects[0]?.id ?? "",
       description: "",
@@ -450,7 +453,7 @@ export default function SitePhotosPage() {
                       <Button
                         size="sm"
                         variant="outline"
-                        className="rounded-sm"
+                        className="rounded-hh-compact"
                         onClick={toggleEditMode}
                         disabled={bulkDeleting}
                       >
@@ -473,7 +476,7 @@ export default function SitePhotosPage() {
                       <Button
                         size="sm"
                         variant="outline"
-                        className="btn-outline-destructive rounded-sm"
+                        className="btn-outline-destructive rounded-hh-compact"
                         onClick={openBulkDeleteConfirm}
                         disabled={selectedIds.size === 0 || bulkDeleting}
                       >
@@ -485,7 +488,7 @@ export default function SitePhotosPage() {
                       <Button size="sm" variant="outline" onClick={toggleEditMode}>
                         Edit
                       </Button>
-                      <Button size="sm" onClick={openUpload}>
+                      <Button size="sm" className="md:max-lg:min-h-11" onClick={openUpload}>
                         + Upload Photo
                       </Button>
                     </>
@@ -503,7 +506,7 @@ export default function SitePhotosPage() {
         </>
       }
     >
-      <div className="w-full space-y-3">
+      <div data-testid="operations-site-photos" className="w-full space-y-3">
         <MobileSearchFiltersRow
           filterSheetOpen={filtersOpen}
           onOpenFilters={() => setFiltersOpen(true)}
@@ -542,7 +545,7 @@ export default function SitePhotosPage() {
             <Button
               type="button"
               variant="outline"
-              className="w-full rounded-sm"
+              className="min-h-11 w-full rounded-hh-standard"
               onClick={toggleEditMode}
             >
               Select photos
@@ -553,7 +556,7 @@ export default function SitePhotosPage() {
                 type="button"
                 variant="outline"
                 size="sm"
-                className="rounded-sm"
+                className="min-h-11 rounded-hh-standard"
                 onClick={toggleEditMode}
                 disabled={bulkDeleting}
               >
@@ -563,7 +566,7 @@ export default function SitePhotosPage() {
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="rounded-sm"
+                className="min-h-11 rounded-hh-standard"
                 onClick={selectAllPhotos}
               >
                 Select all
@@ -572,7 +575,7 @@ export default function SitePhotosPage() {
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="rounded-sm"
+                className="min-h-11 rounded-hh-standard"
                 onClick={clearSelection}
               >
                 Clear
@@ -580,7 +583,7 @@ export default function SitePhotosPage() {
               <Button
                 type="button"
                 variant="outline"
-                className="btn-outline-destructive rounded-sm"
+                className="btn-outline-destructive min-h-11 rounded-hh-standard"
                 onClick={openBulkDeleteConfirm}
                 disabled={selectedIds.size === 0 || bulkDeleting}
               >
@@ -588,7 +591,11 @@ export default function SitePhotosPage() {
               </Button>
             </div>
           )}
-          <Button type="button" className="w-full rounded-sm" onClick={() => setFiltersOpen(false)}>
+          <Button
+            type="button"
+            className="min-h-11 w-full rounded-hh-standard"
+            onClick={() => setFiltersOpen(false)}
+          >
             Done
           </Button>
         </MobileFilterSheet>
@@ -656,7 +663,7 @@ export default function SitePhotosPage() {
                     }}
                     className="flex min-w-0 flex-1 items-center gap-3 text-left"
                   >
-                    <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-sm border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)]">
+                    <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-hh-compact border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)]">
                       {editMode && (
                         <span className="absolute left-1 top-1 z-10 flex h-5 w-5 items-center justify-center rounded-hh-compact border border-[var(--hh-border-strong)] bg-[var(--hh-l3-selected)] text-hh-status text-[var(--hh-text-primary)]">
                           {selectedIds.has(p.id) ? "✓" : ""}
@@ -694,7 +701,7 @@ export default function SitePhotosPage() {
                         appearance="list"
                         ariaLabel="Photo actions"
                         touchFriendly={false}
-                        className="h-8 w-8 rounded-sm bg-[var(--hh-l2-operational-surface)] hover:bg-[var(--hh-l2-operational-surface)]"
+                        className="h-8 w-8 rounded-hh-compact bg-[var(--hh-l2-operational-surface)] hover:bg-[var(--hh-l2-operational-surface)]"
                         actions={[
                           { label: "View", onClick: () => openViewer(p) },
                           { label: "Edit", onClick: () => openDetail(p) },
@@ -729,7 +736,7 @@ export default function SitePhotosPage() {
               {filteredPhotos.map((p) => (
                 <div
                   key={p.id}
-                  className={`group relative text-left rounded-sm border overflow-hidden transition-colors focus-within:ring-2 focus-within:ring-ring ${
+                  className={`group relative text-left rounded-hh-standard border overflow-hidden transition-colors focus-within:ring-2 focus-within:ring-ring ${
                     editMode && selectedIds.has(p.id)
                       ? "border-foreground/80 ring-1 ring-foreground/20"
                       : "border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] hover:bg-[var(--hh-l2-operational-surface)]"
@@ -779,7 +786,7 @@ export default function SitePhotosPage() {
                               togglePhotoSelection(e as unknown as React.MouseEvent, p.id);
                             }
                           }}
-                          className="absolute top-1.5 left-1.5 z-10 flex h-5 w-5 items-center justify-center rounded-sm border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] shadow-sm"
+                          className="absolute top-1.5 left-1.5 z-10 flex h-5 w-5 items-center justify-center rounded-hh-compact border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] shadow-sm"
                         >
                           {selectedIds.has(p.id) ? (
                             <span className="text-hh-label text-[var(--hh-text-secondary)]">✓</span>
@@ -795,7 +802,7 @@ export default function SitePhotosPage() {
                             appearance="list"
                             ariaLabel={`Actions for photo`}
                             touchFriendly={false}
-                            className="h-8 w-8 bg-[var(--hh-l2-operational-surface)] hover:bg-[var(--hh-l2-operational-surface)] rounded-sm"
+                            className="h-8 w-8 bg-[var(--hh-l2-operational-surface)] hover:bg-[var(--hh-l2-operational-surface)] rounded-hh-compact"
                             actions={[
                               { label: "View", onClick: () => openViewer(p) },
                               { label: "Edit", onClick: () => openDetail(p) },
@@ -868,18 +875,18 @@ export default function SitePhotosPage() {
         open={!!deleteConfirmPhoto}
         onOpenChange={(open) => !open && setDeleteConfirmPhoto(null)}
       >
-        <DialogContent className="max-w-sm border-border/60 rounded-sm">
+        <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="text-base font-semibold">Delete Photo</DialogTitle>
             <p className="text-sm text-muted-foreground">
               Are you sure you want to delete this photo? This action cannot be undone.
             </p>
           </DialogHeader>
-          <DialogFooter className="gap-2 pt-3 border-t border-border/60">
+          <DialogFooter className="gap-2 pt-3">
             <Button
               variant="outline"
               size="sm"
-              className="rounded-sm"
+              className="rounded-hh-standard"
               onClick={() => setDeleteConfirmPhoto(null)}
               disabled={deleting}
             >
@@ -888,7 +895,7 @@ export default function SitePhotosPage() {
             <Button
               variant="outline"
               size="sm"
-              className="btn-outline-destructive rounded-sm"
+              className="btn-outline-destructive rounded-hh-standard"
               onClick={handleConfirmDelete}
               disabled={deleting}
             >
@@ -902,7 +909,7 @@ export default function SitePhotosPage() {
         open={bulkDeleteConfirmOpen}
         onOpenChange={(open) => !open && setBulkDeleteConfirmOpen(false)}
       >
-        <DialogContent className="max-w-sm border-border/60 rounded-sm">
+        <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="text-base font-semibold">Delete photos</DialogTitle>
             <p className="text-sm text-muted-foreground">
@@ -910,11 +917,11 @@ export default function SitePhotosPage() {
               be undone.
             </p>
           </DialogHeader>
-          <DialogFooter className="gap-2 pt-3 border-t border-border/60">
+          <DialogFooter className="gap-2 pt-3">
             <Button
               variant="outline"
               size="sm"
-              className="rounded-sm"
+              className="rounded-hh-standard"
               onClick={() => setBulkDeleteConfirmOpen(false)}
               disabled={bulkDeleting}
             >
@@ -923,7 +930,7 @@ export default function SitePhotosPage() {
             <Button
               variant="outline"
               size="sm"
-              className="btn-outline-destructive rounded-sm"
+              className="btn-outline-destructive rounded-hh-standard"
               onClick={handleBulkDelete}
               disabled={bulkDeleting}
             >
@@ -934,13 +941,13 @@ export default function SitePhotosPage() {
       </Dialog>
 
       <Dialog open={!!viewerPhoto} onOpenChange={(open) => !open && setViewerPhoto(null)}>
-        <DialogContent className="max-w-4xl border-border/60 rounded-sm p-2 flex flex-col max-h-[90vh]">
+        <DialogContent className="max-w-4xl rounded-hh-standard p-2 flex flex-col max-h-[90vh]">
           <DialogHeader className="sr-only">
             <DialogTitle>Photo</DialogTitle>
           </DialogHeader>
           {viewerPhoto && (
             <>
-              <div className="flex-1 min-h-0 flex items-center justify-center bg-muted/30 rounded-sm overflow-auto p-2">
+              <div className="flex-1 min-h-0 flex items-center justify-center bg-[var(--hh-l2-operational-surface)] rounded-hh-standard overflow-auto p-2">
                 {failedPhotoIds.has(viewerPhoto.id) ? (
                   <p className="text-sm text-muted-foreground">Photo unavailable</p>
                 ) : (
@@ -953,11 +960,11 @@ export default function SitePhotosPage() {
                   />
                 )}
               </div>
-              <DialogFooter className="gap-2 pt-3 border-t border-border/60 shrink-0">
+              <DialogFooter className="gap-2 pt-3 border-t border-[var(--hh-border)] shrink-0">
                 <Button
                   variant="outline"
                   size="sm"
-                  className="rounded-sm"
+                  className="rounded-hh-compact"
                   onClick={handleDownload}
                   disabled={downloading || failedPhotoIds.has(viewerPhoto.id)}
                 >
@@ -967,7 +974,7 @@ export default function SitePhotosPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="rounded-sm"
+                  className="rounded-hh-compact"
                   onClick={() => setViewerPhoto(null)}
                 >
                   Close
@@ -979,13 +986,13 @@ export default function SitePhotosPage() {
       </Dialog>
 
       <Dialog open={!!punchIssuePhoto} onOpenChange={(open) => !open && setPunchIssuePhoto(null)}>
-        <DialogContent className="max-w-lg border-border/60 rounded-sm p-0 flex flex-col max-h-[90vh] overflow-hidden">
-          <DialogHeader className="px-4 pt-4 pb-2 border-b border-border/60 shrink-0">
+        <DialogContent className="max-w-lg rounded-hh-standard p-0 flex flex-col max-h-[90vh] overflow-hidden">
+          <DialogHeader className="px-4 pt-4 pb-2 border-b border-[var(--hh-border)] shrink-0">
             <DialogTitle className="text-base font-semibold">Create Punch Issue</DialogTitle>
           </DialogHeader>
           {punchIssuePhoto && (
             <>
-              <div className="px-4 py-3 bg-muted/20 flex items-center justify-center min-h-[200px] max-h-[280px] shrink-0">
+              <div className="px-4 py-3 bg-[var(--hh-l2-operational-surface)] flex items-center justify-center min-h-[200px] max-h-[280px] shrink-0">
                 {failedPhotoIds.has(punchIssuePhoto.id) ? (
                   <p className="text-sm text-muted-foreground">Photo unavailable</p>
                 ) : (
@@ -993,7 +1000,7 @@ export default function SitePhotosPage() {
                   <img
                     src={photoImageUrl(punchIssuePhoto.photo_url)}
                     alt={punchIssuePhoto.description || "Site photo"}
-                    className="max-w-full max-h-[260px] w-auto h-auto object-contain rounded-sm"
+                    className="max-w-full max-h-[260px] w-auto h-auto object-contain rounded-hh-compact"
                   />
                 )}
               </div>
@@ -1008,7 +1015,7 @@ export default function SitePhotosPage() {
                     value={punchIssueForm.issue}
                     onChange={(e) => setPunchIssueForm((f) => ({ ...f, issue: e.target.value }))}
                     placeholder="Short title"
-                    className="mt-1 h-9 rounded-sm border-border/60"
+                    className="mt-1 h-9 rounded-hh-compact border-[var(--hh-border)]"
                   />
                 </div>
                 <div>
@@ -1017,19 +1024,19 @@ export default function SitePhotosPage() {
                     value={punchIssueForm.location}
                     onChange={(e) => setPunchIssueForm((f) => ({ ...f, location: e.target.value }))}
                     placeholder="e.g. Room 101"
-                    className="mt-1 h-9 rounded-sm border-border/60"
+                    className="mt-1 h-9 rounded-hh-compact border-[var(--hh-border)]"
                   />
                 </div>
                 <div>
                   <label className="text-xs font-medium text-muted-foreground">Description</label>
-                  <textarea
+                  <NeoTextarea
                     value={punchIssueForm.description}
                     onChange={(e) =>
                       setPunchIssueForm((f) => ({ ...f, description: e.target.value }))
                     }
                     placeholder="Optional details"
                     rows={2}
-                    className="mt-1 w-full rounded-sm border border-border/60 px-2.5 py-2 text-sm"
+                    className="mt-1"
                   />
                 </div>
                 <div>
@@ -1066,7 +1073,7 @@ export default function SitePhotosPage() {
                 </div>
                 {error && <p className="text-sm text-destructive">{error}</p>}
               </div>
-              <DialogFooter className="gap-2 px-4 py-3 border-t border-border/60 shrink-0">
+              <DialogFooter className="gap-2 px-4 py-3 border-t border-[var(--hh-border)] shrink-0">
                 <Button
                   variant="outline"
                   size="sm"
@@ -1096,7 +1103,7 @@ export default function SitePhotosPage() {
       >
         {selectedPhoto && (
           <div className="space-y-4">
-            <div className="rounded-sm border border-[var(--hh-border)] overflow-hidden bg-[var(--hh-l2-operational-surface)] min-h-[8rem] flex items-center justify-center">
+            <div className="rounded-hh-standard border border-[var(--hh-border)] overflow-hidden bg-[var(--hh-l2-operational-surface)] min-h-[8rem] flex items-center justify-center">
               {failedPhotoIds.has(selectedPhoto.id) ? (
                 <span className="text-sm text-muted-foreground">Photo unavailable</span>
               ) : (
@@ -1111,11 +1118,11 @@ export default function SitePhotosPage() {
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground">Description</label>
-              <textarea
+              <NeoTextarea
                 value={detailForm.description}
                 onChange={(e) => setDetailForm((f) => ({ ...f, description: e.target.value }))}
                 rows={2}
-                className="mt-1 w-full rounded-sm border border-border/60 px-2.5 py-2 text-sm"
+                className="mt-1"
               />
             </div>
             <div>
@@ -1124,7 +1131,7 @@ export default function SitePhotosPage() {
                 value={detailForm.tags}
                 onChange={(e) => setDetailForm((f) => ({ ...f, tags: e.target.value }))}
                 placeholder="e.g. foundation, framing"
-                className="mt-1 h-9 rounded-sm border-border/60"
+                className="mt-1 h-9 rounded-hh-compact border-[var(--hh-border)]"
               />
             </div>
             <div>
@@ -1132,7 +1139,7 @@ export default function SitePhotosPage() {
               <Input
                 value={detailForm.uploaded_by}
                 onChange={(e) => setDetailForm((f) => ({ ...f, uploaded_by: e.target.value }))}
-                className="mt-1 h-9 rounded-sm border-border/60"
+                className="mt-1 h-9 rounded-hh-compact border-[var(--hh-border)]"
               />
             </div>
             <p className="text-xs text-muted-foreground">
@@ -1170,16 +1177,26 @@ export default function SitePhotosPage() {
         className="hidden"
         onChange={handleFileSelect}
       />
-      {uploadOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-hh-4"
-          onClick={() => setUploadOpen(false)}
+      <Dialog
+        open={uploadOpen}
+        onOpenChange={(open) => {
+          setUploadOpen(open);
+          if (!open) setError(null);
+        }}
+      >
+        <DialogContent
+          className="max-w-sm"
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            if (uploadFocusReturnRef.current?.isConnected) {
+              uploadFocusReturnRef.current.focus();
+            }
+          }}
         >
-          <div
-            className="w-full max-w-sm space-y-hh-3 rounded-hh-task border border-[var(--hh-border-strong)] bg-[var(--hh-l5-task-surface)] p-hh-task-mobile text-[var(--hh-text-primary)] shadow-task md:p-hh-task-desktop"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <p className="text-sm font-medium">Upload Photo</p>
+          <DialogHeader>
+            <DialogTitle>Upload Photo</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
             <div>
               <label className="text-xs font-medium text-muted-foreground">Project</label>
               <Select
@@ -1201,7 +1218,7 @@ export default function SitePhotosPage() {
                 value={uploadForm.description}
                 onChange={(e) => setUploadForm((f) => ({ ...f, description: e.target.value }))}
                 placeholder="Optional"
-                className="mt-1 h-9 rounded-sm border-border/60"
+                className="mt-1"
               />
             </div>
             <div>
@@ -1210,7 +1227,7 @@ export default function SitePhotosPage() {
                 value={uploadForm.tags}
                 onChange={(e) => setUploadForm((f) => ({ ...f, tags: e.target.value }))}
                 placeholder="Optional"
-                className="mt-1 h-9 rounded-sm border-border/60"
+                className="mt-1"
               />
             </div>
             <div>
@@ -1219,35 +1236,35 @@ export default function SitePhotosPage() {
                 value={uploadForm.uploaded_by}
                 onChange={(e) => setUploadForm((f) => ({ ...f, uploaded_by: e.target.value }))}
                 placeholder="Your name"
-                className="mt-1 h-9 rounded-sm border-border/60"
+                className="mt-1"
               />
             </div>
             {error && <p className="text-sm text-destructive">{error}</p>}
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  setUploadOpen(false);
-                  setError(null);
-                }}
-              >
-                Cancel
-              </Button>
-              <Button
-                size="sm"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploading || !uploadForm.project_id}
-              >
-                {uploading ? "Uploading…" : "Choose file or capture"}
-              </Button>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Select a project, then choose file. On mobile, you can capture from camera.
-            </p>
           </div>
-        </div>
-      )}
+          <DialogFooter>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setUploadOpen(false);
+                setError(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading || !uploadForm.project_id}
+            >
+              {uploading ? "Uploading…" : "Choose file or capture"}
+            </Button>
+          </DialogFooter>
+          <p className="text-xs text-muted-foreground">
+            Select a project, then choose file. On mobile, you can capture from camera.
+          </p>
+        </DialogContent>
+      </Dialog>
     </PageLayout>
   );
 }

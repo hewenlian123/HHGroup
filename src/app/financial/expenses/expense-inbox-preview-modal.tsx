@@ -1514,31 +1514,35 @@ export function ExpenseInboxPreviewModal({
           ) : null}
         </div>
         <div className="min-h-0 flex-1 p-3 pt-0">
-          <div className="flex h-full min-h-[280px] items-center justify-center overflow-hidden rounded-lg border border-[var(--hh-border-floating)] bg-white">
+          <div className="flex h-full min-h-[280px] items-center justify-center overflow-hidden rounded-lg border border-[var(--hh-border-floating)] bg-[var(--hh-l1-workspace)]">
             {!embeddedReceiptItem ? (
               <div className="max-w-xs px-6 text-center">
                 <span className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-[var(--hh-warning-soft-fill)] text-[var(--hh-warning)]">
                   <FileText className="h-5 w-5" aria-hidden />
                 </span>
-                <p className="mt-3 text-sm font-semibold text-zinc-900">No receipt attached</p>
-                <p className="mt-1 text-xs leading-relaxed text-zinc-600">
+                <p className="mt-3 text-sm font-semibold text-[var(--hh-text-primary)]">
+                  No receipt attached
+                </p>
+                <p className="mt-1 text-xs leading-relaxed text-[var(--hh-text-secondary)]">
                   Add evidence from Edit before completing this review.
                 </p>
               </div>
             ) : embeddedReceiptUrl === undefined ? (
-              <Skeleton className="h-full min-h-[280px] w-full rounded-none bg-zinc-100" />
+              <Skeleton className="h-full min-h-[280px] w-full rounded-none bg-[var(--hh-l2-operational-surface)]" />
             ) : embeddedReceiptUrl === null || embeddedReceiptFailed ? (
               <div className="max-w-xs px-6 text-center">
-                <FileText className="mx-auto h-6 w-6 text-zinc-500" aria-hidden />
-                <p className="mt-3 text-sm font-semibold text-zinc-900">Preview unavailable</p>
-                <p className="mt-1 text-xs leading-relaxed text-zinc-600">
+                <FileText className="mx-auto h-6 w-6 text-[var(--hh-text-muted)]" aria-hidden />
+                <p className="mt-3 text-sm font-semibold text-[var(--hh-text-primary)]">
+                  Preview unavailable
+                </p>
+                <p className="mt-1 text-xs leading-relaxed text-[var(--hh-text-secondary)]">
                   Open the protected full preview to retry this attachment.
                 </p>
                 <Button
                   type="button"
                   size="sm"
                   variant="outline"
-                  className="mt-4 bg-white text-zinc-900"
+                  className="mt-4 border-[var(--hh-border)] bg-[var(--hh-l1-workspace)] text-[var(--hh-text-primary)] hover:bg-[var(--hh-l3-hover)]"
                   onClick={() => void openReceiptItemPreview(embeddedReceiptItem)}
                 >
                   Open full preview
@@ -1561,7 +1565,7 @@ export function ExpenseInboxPreviewModal({
               <iframe
                 src={embeddedReceiptUrl}
                 title="Receipt evidence"
-                className="h-full min-h-[420px] w-full border-0 bg-white"
+                className="h-full min-h-[420px] w-full border-0 bg-[var(--hh-l1-workspace)]"
                 onError={() =>
                   setPreviewThumbErrorByKey((current) => ({
                     ...current,
@@ -2746,7 +2750,7 @@ export function ExpenseInboxPreviewModal({
       <DialogContent
         data-expense-component-surface="receipt-review"
         data-hh-context="viewer"
-        data-hh-theme="neo-dark"
+        data-hh-theme="operational-light"
         onPointerDownOutside={(event) => {
           if (eventTargetsAttachmentPreviewModal(event)) event.preventDefault();
         }}

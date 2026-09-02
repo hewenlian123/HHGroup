@@ -24,7 +24,7 @@ type Props = {
 };
 
 const receiptPreviewButtonClass =
-  "min-h-[44px] rounded-lg border-white/[0.12] bg-white/[0.035] px-3 text-[var(--hh-text-secondary)] shadow-operational hover:border-white/[0.2] hover:bg-white/[0.08] hover:text-[var(--hh-text-primary)] sm:min-h-9";
+  "min-h-[44px] rounded-hh-standard border-[var(--hh-border)] bg-[var(--hh-l1-workspace)] px-3 text-[var(--hh-text-secondary)] shadow-operational hover:border-[var(--hh-border-strong)] hover:bg-[var(--hh-l3-hover)] hover:text-[var(--hh-text-primary)] sm:min-h-9";
 
 export function WorkerPaymentReceiptPreviewModal({ paymentId, open, onOpenChange }: Props) {
   const portalContainer = useHhPortalContainer();
@@ -87,11 +87,11 @@ export function WorkerPaymentReceiptPreviewModal({ paymentId, open, onOpenChange
         />
         <DialogPrimitive.Content
           data-hh-context="viewer"
-          data-hh-theme="neo-dark"
+          data-hh-theme="operational-light"
           onEscapeKeyDown={() => onOpenChange(false)}
           onPointerDownOutside={() => onOpenChange(false)}
           className={cn(
-            "receipt-preview-dialog-root fixed left-1/2 top-1/2 z-50 flex max-h-[min(88vh_880px)] w-[min(720px_94vw)] -translate-x-1/2 -translate-y-1/2 flex-col rounded-[1.5rem] border border-white/10 bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-[0_30px_90px_rgb(0_0_0_/_0.46),inset_0_1px_0_rgb(255_255_255_/_0.05)] outline-none",
+            "receipt-preview-dialog-root fixed left-1/2 top-1/2 z-50 flex max-h-[min(88vh_880px)] w-[min(720px_94vw)] -translate-x-1/2 -translate-y-1/2 flex-col rounded-hh-task border border-[var(--hh-border-floating)] bg-[var(--hh-l5-task-surface)] text-[var(--hh-text-primary)] shadow-task outline-none",
             hhNeoFocusRevealDialog,
             "max-md:inset-x-2 max-md:bottom-0 max-md:top-auto max-md:max-h-[calc(100dvh-0.75rem)] max-md:w-auto max-md:max-w-none max-md:translate-x-0 max-md:translate-y-0 max-md:rounded-b-none max-md:rounded-t-[1.5rem] max-md:border-b-0",
             hhNeoFocusRevealMobileSheet
@@ -101,7 +101,7 @@ export function WorkerPaymentReceiptPreviewModal({ paymentId, open, onOpenChange
             Worker payment receipt preview. Open the clean print view or download a server-generated
             PDF.
           </DialogPrimitive.Description>
-          <div className="modal-header flex shrink-0 flex-col gap-3 border-b border-white/[0.08] bg-[var(--hh-l2-operational-surface)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="modal-header flex shrink-0 flex-col gap-3 border-b border-[var(--hh-border)] bg-[var(--hh-l5-task-surface)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
             <DialogPrimitive.Title className="text-sm font-semibold text-[var(--hh-text-primary)]">
               Receipt preview
             </DialogPrimitive.Title>

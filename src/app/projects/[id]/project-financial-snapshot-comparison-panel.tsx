@@ -60,11 +60,11 @@ function ComparisonMetric({
   tone?: "default" | "positive" | "negative";
 }) {
   return (
-    <div className={cn(OS.card, "px-3 py-2")}>
+    <div className={cn(OS.card, "min-w-0 px-3 py-2")}>
       <p className={cn(TYPO.kpiLabel, "text-hh-status")}>{label}</p>
       <p
         className={cn(
-          "mt-1 hh-fin text-hh-table-cell font-semibold tabular-nums text-[var(--hh-text-primary)]",
+          "mt-1 hh-fin break-words text-hh-table-cell font-semibold tabular-nums text-[var(--hh-text-primary)] [overflow-wrap:anywhere]",
           tone === "positive" && "text-[var(--hh-success)]",
           tone === "negative" && "text-[var(--hh-danger)]"
         )}
@@ -236,11 +236,11 @@ export function ProjectFinancialSnapshotComparisonPanel({ projectId }: { project
       open
       className="rounded-hh-task border border-dashed border-[var(--hh-border-strong)] bg-[var(--hh-l2-operational-surface)] p-3 text-hh-body text-[var(--hh-text-primary)]"
     >
-      <summary className="cursor-pointer list-none">
+      <summary className="flex min-h-[44px] cursor-pointer list-none flex-wrap items-center gap-2">
         <span className="font-medium text-[var(--hh-text-primary)]">
           Financial Snapshot Comparison
         </span>
-        <span className="ml-2 rounded-full border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-2 py-0.5 text-hh-status font-semibold uppercase tracking-normal text-[var(--hh-text-secondary)]">
+        <span className="rounded-full border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-2 py-0.5 text-hh-status font-semibold uppercase tracking-normal text-[var(--hh-text-secondary)]">
           Internal comparison only
         </span>
       </summary>

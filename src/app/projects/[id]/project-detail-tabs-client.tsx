@@ -912,7 +912,7 @@ export function ProjectDetailTabsClient({
         <div className="space-y-4">
           <Link
             href="/projects"
-            className="inline-flex min-h-[36px] items-center gap-1.5 rounded-hh-standard px-1 text-hh-metadata font-medium text-[var(--hh-text-secondary)] hover:text-[var(--hh-text-primary)]"
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-hh-standard px-1 text-hh-metadata font-medium text-[var(--hh-text-secondary)] hover:text-[var(--hh-text-primary)] lg:min-h-9"
           >
             <ArrowLeft className="h-4 w-4" />
             Projects
@@ -999,7 +999,11 @@ export function ProjectDetailTabsClient({
                   onClick={goToCostTab}
                   className="min-w-0 border-t border-[var(--hh-border)] pt-3 text-left outline-none transition-colors hover:bg-[var(--hh-l2-operational-surface)] focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)] sm:border-l sm:border-t-0 sm:pl-4 sm:pt-0"
                 >
-                  <p className={cn(TYPO.kpiLabel, "text-hh-status")}>Actual Cost</p>
+                  <p
+                    className={cn(TYPO.kpiLabel, "text-hh-status text-[var(--hh-text-secondary)]")}
+                  >
+                    Actual Cost
+                  </p>
                   <p
                     data-testid="project-header-actual-cost"
                     className={cn(
@@ -1856,7 +1860,7 @@ export function ProjectDetailTabsClient({
                 <div className="mt-3">
                   <Link
                     href="/financial/invoices"
-                    className="text-hh-metadata font-medium text-[var(--hh-action-primary)] hover:underline"
+                    className="inline-flex min-h-11 items-center text-hh-metadata font-medium text-[var(--hh-action-primary)] hover:underline lg:min-h-0"
                   >
                     View all invoices →
                   </Link>

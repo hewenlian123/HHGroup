@@ -824,6 +824,7 @@ export function WorkerInvoicesClient({
                 return (
                   <div
                     key={r.id}
+                    data-testid={`worker-invoice-card-${r.id}`}
                     className={cn(
                       invShell,
                       "space-y-3 p-3 transition-[box-shadow,border-color] duration-200 ease-out hover:border-zinc-200/70 dark:hover:border-border/60"
@@ -1010,6 +1011,7 @@ export function WorkerInvoicesClient({
                     return (
                       <tr
                         key={r.id}
+                        data-testid={`worker-invoice-row-${r.id}`}
                         className={cn(
                           listTableRowStaticClassName,
                           "border-b border-zinc-100/45 dark:border-border/22",
