@@ -354,12 +354,7 @@ function PaymentsReceivedPageInner() {
       const res = await voidPaymentReceivedAction(id);
       if (!res.ok) {
         if (snapshot) setPayments(snapshot);
-        toast({
-          title: "Void failed",
-          description: res.error ?? "Could not delete payment.",
-          variant: "error",
-        });
-        return;
+        throw new Error(res.error ?? "Could not void payment.");
       }
       toast({ title: "Payment voided", variant: "success" });
       void load();
@@ -419,6 +414,7 @@ function PaymentsReceivedPageInner() {
 
   return (
     <div
+      data-revenue-ar-v2
       className={cn("min-w-0 overflow-x-hidden text-[var(--hh-text-secondary)]", "flex flex-col")}
     >
       <div
@@ -485,10 +481,10 @@ function PaymentsReceivedPageInner() {
 
         {/* KPI summary */}
         <section className="border-b border-border/60 pb-4">
-          <p className="mb-3 text-hh-table-header font-medium uppercase tracking-normal text-text-secondary/75 dark:text-muted-foreground">
+          <p className="mb-3 text-hh-table-header font-medium uppercase tracking-normal text-text-secondary/75">
             Summary
           </p>
-          <div className="grid grid-cols-2 gap-2 md:grid-cols-5">
+          <div className="grid grid-cols-2 gap-2 lg:grid-cols-5">
             <div className={cn(kpiTile, "flex items-center gap-2 px-3 py-2.5")}>
               <span className={kpiIcon}>
                 <Wallet className="h-4 w-4" aria-hidden />
@@ -561,7 +557,7 @@ function PaymentsReceivedPageInner() {
         <div className={cn(paymentsShell, "p-3")}>
           <div className="flex w-full flex-wrap items-end gap-3 md:flex-nowrap">
             <div className="flex min-w-[240px] flex-1 flex-col gap-1">
-              <label className="text-hh-table-header font-medium uppercase tracking-normal text-text-secondary/75 dark:text-muted-foreground">
+              <label className="text-hh-table-header font-medium uppercase tracking-normal text-text-secondary/75">
                 Search
               </label>
               <div className="relative w-full">
@@ -577,14 +573,14 @@ function PaymentsReceivedPageInner() {
             </div>
 
             <div className="flex min-w-[180px] flex-1 flex-col gap-1 sm:flex-initial">
-              <label className="text-hh-table-header font-medium uppercase tracking-normal text-text-secondary/75 dark:text-muted-foreground">
+              <label className="text-hh-table-header font-medium uppercase tracking-normal text-text-secondary/75">
                 Method
               </label>
               <Select
                 aria-label="Filter payments by method"
                 value={methodFilter}
                 onChange={(e) => setMethodFilter(e.target.value)}
-                className="h-10 min-h-[44px] min-w-0 sm:min-h-10 sm:w-[200px]"
+                className="h-11 min-h-[44px] min-w-0 lg:h-10 lg:min-h-10 sm:w-[200px]"
               >
                 <option value="">All methods</option>
                 {methodOptions.map((m) => (
@@ -596,14 +592,14 @@ function PaymentsReceivedPageInner() {
             </div>
 
             <div className="flex min-w-[180px] flex-1 flex-col gap-1 sm:flex-initial">
-              <label className="text-hh-table-header font-medium uppercase tracking-normal text-text-secondary/75 dark:text-muted-foreground">
+              <label className="text-hh-table-header font-medium uppercase tracking-normal text-text-secondary/75">
                 Account
               </label>
               <Select
                 aria-label="Filter payments by account"
                 value={accountFilter}
                 onChange={(e) => setAccountFilter(e.target.value)}
-                className="h-10 min-h-[44px] min-w-0 sm:min-h-10 sm:w-[200px]"
+                className="h-11 min-h-[44px] min-w-0 lg:h-10 lg:min-h-10 sm:w-[200px]"
               >
                 <option value="">All accounts</option>
                 {accountOptions.map((a) => (
@@ -617,7 +613,7 @@ function PaymentsReceivedPageInner() {
 
           <div className="mt-3 flex flex-wrap items-end gap-3 border-t border-[var(--hh-border)] pt-3">
             <div className="flex flex-1 flex-col gap-1 sm:flex-initial">
-              <label className="text-hh-table-header font-medium uppercase tracking-normal text-text-secondary/75 dark:text-muted-foreground">
+              <label className="text-hh-table-header font-medium uppercase tracking-normal text-text-secondary/75">
                 Date from
               </label>
               <Input
@@ -625,11 +621,11 @@ function PaymentsReceivedPageInner() {
                 type="date"
                 value={dateFrom}
                 onChange={(e) => setDateFrom(e.target.value)}
-                className="h-10 min-h-[44px] tabular-nums sm:min-h-10 sm:w-[170px]"
+                className="h-11 min-h-[44px] tabular-nums lg:h-10 lg:min-h-10 sm:w-[170px]"
               />
             </div>
             <div className="flex flex-1 flex-col gap-1 sm:flex-initial">
-              <label className="text-hh-table-header font-medium uppercase tracking-normal text-text-secondary/75 dark:text-muted-foreground">
+              <label className="text-hh-table-header font-medium uppercase tracking-normal text-text-secondary/75">
                 Date to
               </label>
               <Input
@@ -637,7 +633,7 @@ function PaymentsReceivedPageInner() {
                 type="date"
                 value={dateTo}
                 onChange={(e) => setDateTo(e.target.value)}
-                className="h-10 min-h-[44px] tabular-nums sm:min-h-10 sm:w-[170px]"
+                className="h-11 min-h-[44px] tabular-nums lg:h-10 lg:min-h-10 sm:w-[170px]"
               />
             </div>
 
@@ -646,7 +642,7 @@ function PaymentsReceivedPageInner() {
                 type="button"
                 size="sm"
                 variant="outline"
-                className="h-10 min-h-[44px] rounded-hh-compact shadow-none sm:h-9 sm:min-h-0"
+                className="h-11 min-h-[44px] lg:h-9 lg:min-h-0 rounded-hh-compact shadow-none"
                 onClick={() => void load()}
               >
                 Refresh
@@ -670,7 +666,7 @@ function PaymentsReceivedPageInner() {
             </p>
             <Button
               size="sm"
-              className="mt-4 h-9 rounded-hh-compact shadow-none"
+              className="mt-4 h-11 min-h-[44px] lg:h-9 lg:min-h-0 rounded-hh-compact shadow-none"
               onClick={openReceivePayment}
             >
               <Plus className="mr-2 h-3.5 w-3.5" aria-hidden />
@@ -686,7 +682,7 @@ function PaymentsReceivedPageInner() {
               <Button
                 size="sm"
                 variant="outline"
-                className="h-9 rounded-hh-compact shadow-none"
+                className="h-11 min-h-[44px] lg:h-9 lg:min-h-0 rounded-hh-compact shadow-none"
                 onClick={() => {
                   setSearchQuery("");
                   setMethodFilter("");
@@ -702,7 +698,7 @@ function PaymentsReceivedPageInner() {
         ) : (
           <section className={cn(paymentsShell, "overflow-hidden p-0")}>
             {/* Desktop header row */}
-            <div className="hidden md:grid grid-cols-[minmax(170px,1.1fr)_minmax(150px,1fr)_minmax(72px,0.45fr)_minmax(110px,0.55fr)_minmax(90px,0.45fr)_minmax(110px,0.55fr)_minmax(102px,0.5fr)_minmax(184px,0.75fr)] gap-3 border-b border-border/60 px-3 py-2.5 text-hh-status font-medium uppercase tracking-normal text-muted-foreground/70">
+            <div className="hidden lg:grid grid-cols-[minmax(170px,1.1fr)_minmax(150px,1fr)_minmax(72px,0.45fr)_minmax(110px,0.55fr)_minmax(90px,0.45fr)_minmax(110px,0.55fr)_minmax(102px,0.5fr)_minmax(184px,0.75fr)] gap-3 border-b border-border/60 px-3 py-2.5 text-hh-status font-medium uppercase tracking-normal text-muted-foreground/70">
               <div>Customer</div>
               <div>Project</div>
               <div>Invoice #</div>
@@ -721,7 +717,7 @@ function PaymentsReceivedPageInner() {
                   <div
                     key={row.id}
                     className={cn(
-                      "group px-3 py-3 transition-colors hover:bg-muted/25 md:grid md:grid-cols-[minmax(170px,1.1fr)_minmax(150px,1fr)_minmax(72px,0.45fr)_minmax(110px,0.55fr)_minmax(90px,0.45fr)_minmax(110px,0.55fr)_minmax(102px,0.5fr)_minmax(184px,0.75fr)] md:items-center md:gap-3",
+                      "group px-3 py-3 transition-colors hover:bg-muted/25 lg:grid lg:grid-cols-[minmax(170px,1.1fr)_minmax(150px,1fr)_minmax(72px,0.45fr)_minmax(110px,0.55fr)_minmax(90px,0.45fr)_minmax(110px,0.55fr)_minmax(102px,0.5fr)_minmax(184px,0.75fr)] lg:items-center lg:gap-3",
                       paymentVoided && "bg-muted/20 opacity-80",
                       highlighted && "ring-2 ring-[var(--hh-border-strong)] ring-inset"
                     )}
@@ -737,23 +733,23 @@ function PaymentsReceivedPageInner() {
                           </span>
                         ) : null}
                       </div>
-                      <div className="mt-0.5 truncate text-xs text-muted-foreground md:hidden">
+                      <div className="mt-0.5 truncate text-xs text-muted-foreground lg:hidden">
                         {row.project_name ?? "—"} · Inv {row.invoice_no ?? "—"}
                       </div>
                     </div>
 
-                    <div className="hidden min-w-0 md:block">
+                    <div className="hidden min-w-0 lg:block">
                       <div className="truncate text-sm text-foreground">
                         {row.project_name ?? "—"}
                       </div>
                     </div>
 
-                    <div className="hidden md:block text-sm text-muted-foreground hh-fin tabular-nums">
+                    <div className="hidden lg:block text-sm text-muted-foreground hh-fin tabular-nums">
                       {row.invoice_no ?? "—"}
                     </div>
 
-                    <div className="mt-2 flex items-center justify-between gap-3 md:mt-0 md:block md:text-right">
-                      <div className="md:hidden text-xs text-muted-foreground">
+                    <div className="mt-2 flex items-center justify-between gap-3 lg:mt-0 lg:block lg:text-right">
+                      <div className="lg:hidden text-xs text-muted-foreground">
                         {formatDate(row.payment_date)}
                       </div>
                       <div className={cn(TYPO.amount, "text-sm text-[var(--hh-success)]")}>
@@ -761,16 +757,19 @@ function PaymentsReceivedPageInner() {
                       </div>
                     </div>
 
-                    <div className="hidden min-w-0 md:block">
+                    <div className="hidden min-w-0 lg:block">
                       <div className="text-sm text-muted-foreground">
                         {row.payment_method ?? "—"}
                       </div>
                       {(row.attachments ?? []).length > 0 ? (
-                        <button
+                        <Button
                           type="button"
+                          variant="quiet"
+                          size="sm"
+                          data-testid="payment-attachment-action"
                           disabled={openingPaymentAttachmentsId === row.id}
                           onClick={() => void openPaymentAttachments(row.id, row.attachments)}
-                          className="mt-1 inline-flex max-w-full items-center gap-1 rounded-full border border-border/60 bg-background px-2 py-0.5 text-hh-status font-medium text-muted-foreground transition-colors hover:border-foreground/20 hover:bg-muted/40 hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
+                          className="mt-1 h-11 min-h-11 max-w-full rounded-full border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-2.5 text-hh-status font-medium text-[var(--hh-text-secondary)] lg:h-7 lg:min-h-0"
                         >
                           <Paperclip className="h-3 w-3 shrink-0" strokeWidth={1.7} />
                           <span className="truncate">
@@ -778,29 +777,32 @@ function PaymentsReceivedPageInner() {
                               ? "Opening..."
                               : `${row.attachments.length} file${row.attachments.length === 1 ? "" : "s"}`}
                           </span>
-                        </button>
+                        </Button>
                       ) : null}
                     </div>
 
-                    <div className="hidden md:block min-w-0 text-sm text-muted-foreground truncate">
+                    <div className="hidden lg:block min-w-0 text-sm text-muted-foreground truncate">
                       {row.deposit_account ?? "—"}
                     </div>
 
-                    <div className="hidden md:block text-sm hh-fin tabular-nums text-muted-foreground">
+                    <div className="hidden lg:block text-sm hh-fin tabular-nums text-muted-foreground">
                       {formatDate(row.payment_date)}
                     </div>
 
-                    <div className="mt-2 flex items-center justify-between gap-2 md:mt-0 md:flex md:justify-end">
-                      <div className="md:hidden text-xs text-muted-foreground">
+                    <div className="mt-2 flex items-center justify-between gap-2 lg:mt-0 lg:flex lg:justify-end">
+                      <div className="lg:hidden text-xs text-muted-foreground">
                         <div>
                           {(row.payment_method ?? "—") + " · " + (row.deposit_account ?? "—")}
                         </div>
                         {(row.attachments ?? []).length > 0 ? (
-                          <button
+                          <Button
                             type="button"
+                            variant="quiet"
+                            size="sm"
+                            data-testid="payment-attachment-action"
                             disabled={openingPaymentAttachmentsId === row.id}
                             onClick={() => void openPaymentAttachments(row.id, row.attachments)}
-                            className="mt-1 inline-flex max-w-full items-center gap-1 rounded-full border border-border/60 bg-background px-2 py-0.5 text-hh-status font-medium text-muted-foreground transition-colors hover:border-foreground/20 hover:bg-muted/40 hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
+                            className="mt-1 h-11 min-h-11 max-w-full rounded-full border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-2.5 text-hh-status font-medium text-[var(--hh-text-secondary)] lg:h-7 lg:min-h-0"
                           >
                             <Paperclip className="h-3 w-3 shrink-0" strokeWidth={1.7} />
                             <span className="truncate">
@@ -810,7 +812,7 @@ function PaymentsReceivedPageInner() {
                                     row.attachments.length === 1 ? "" : "s"
                                   }`}
                             </span>
-                          </button>
+                          </Button>
                         ) : null}
                       </div>
                       <div className="flex flex-wrap items-center justify-end gap-1.5">
@@ -820,7 +822,7 @@ function PaymentsReceivedPageInner() {
                               asChild
                               size="sm"
                               variant="outline"
-                              className="h-8 rounded-hh-compact px-2 text-xs shadow-none"
+                              className="h-11 min-h-[44px] lg:h-8 lg:min-h-0 rounded-hh-compact px-2 text-xs shadow-none"
                             >
                               <Link
                                 href={`/financial/payments?editPayment=${encodeURIComponent(row.id)}`}
@@ -833,7 +835,7 @@ function PaymentsReceivedPageInner() {
                               asChild
                               size="sm"
                               variant="outline"
-                              className="h-8 rounded-hh-compact px-2 text-xs shadow-none"
+                              className="h-11 min-h-[44px] lg:h-8 lg:min-h-0 rounded-hh-compact px-2 text-xs shadow-none"
                             >
                               <Link
                                 href={`/financial/payments?receipt=${encodeURIComponent(row.id)}`}
@@ -847,7 +849,7 @@ function PaymentsReceivedPageInner() {
                                 type="button"
                                 size="sm"
                                 variant="outline"
-                                className="h-8 rounded-hh-compact px-2 text-xs shadow-none"
+                                className="h-11 min-h-[44px] lg:h-8 lg:min-h-0 rounded-hh-compact px-2 text-xs shadow-none"
                                 disabled
                               >
                                 <Mail className="mr-1 h-3.5 w-3.5" />
@@ -858,7 +860,7 @@ function PaymentsReceivedPageInner() {
                                 asChild
                                 size="sm"
                                 variant="outline"
-                                className="h-8 rounded-hh-compact px-2 text-xs shadow-none"
+                                className="h-11 min-h-[44px] lg:h-8 lg:min-h-0 rounded-hh-compact px-2 text-xs shadow-none"
                               >
                                 <Link
                                   href={`/financial/payments?sendReceipt=${encodeURIComponent(row.id)}`}
@@ -913,7 +915,7 @@ function PaymentsReceivedPageInner() {
                     </div>
 
                     {row.notes ? (
-                      <div className="mt-2 text-xs text-muted-foreground line-clamp-2 md:hidden">
+                      <div className="mt-2 text-xs text-muted-foreground line-clamp-2 lg:hidden">
                         {row.notes}
                       </div>
                     ) : null}
@@ -941,7 +943,6 @@ function PaymentsReceivedPageInner() {
           onConfirm={async () => {
             const row = voidTarget;
             if (!row) return;
-            setVoidTarget(null);
             await voidPayment(row);
           }}
         />

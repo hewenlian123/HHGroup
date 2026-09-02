@@ -182,6 +182,70 @@ describe("financial data-layer atomicity failure injection", () => {
     expect(state.allocations).toHaveLength(0);
   });
 
+  it("voids Payment Received through exactly one atomic RPC without direct table writes", async () => {
+    const rpcResult = {
+      payment_id: "payment-void-1",
+      invoice_id: "invoice-void-1",
+      project_id: "project-void-1",
+      deposit_id: "deposit-void-1",
+      invoice_payment_id: "allocation-void-1",
+      invoice_status: "Sent",
+      paid_total: 0,
+      balance_due: 100,
+      reused: false,
+    };
+    const rpc = vi.fn(async () => ({ data: rpcResult, error: null }));
+    const from = vi.fn(() => {
+      throw new Error("Payment Void must not issue direct table reads or writes");
+    });
+    const fake = { rpc, from } as unknown as SupabaseClient;
+
+    const { voidPaymentReceived } = await import("@/lib/payments-received-db");
+    await expect(voidPaymentReceived("payment-void-1", fake)).resolves.toEqual(rpcResult);
+
+    expect(rpc).toHaveBeenCalledTimes(1);
+    expect(rpc).toHaveBeenCalledWith("void_payment_received_atomic", {
+      p_payment_id: "payment-void-1",
+    });
+    expect(from).not.toHaveBeenCalled();
+  });
+
+  it("preserves an atomic Payment Void RPC failure and never falls through to table writes", async () => {
+    const rpc = vi.fn(async () => ({
+      data: null,
+      error: { message: "injected atomic Payment Void failure" },
+    }));
+    const from = vi.fn(() => {
+      throw new Error("Payment Void must not issue direct table reads or writes");
+    });
+    const fake = { rpc, from } as unknown as SupabaseClient;
+
+    const { voidPaymentReceived } = await import("@/lib/payments-received-db");
+    await expect(voidPaymentReceived("payment-void-2", fake)).rejects.toThrow(
+      "injected atomic Payment Void failure"
+    );
+
+    expect(rpc).toHaveBeenCalledTimes(1);
+    expect(from).not.toHaveBeenCalled();
+  });
+
+  it("fails closed when the atomic Payment Void RPC returns a malformed success payload", async () => {
+    const rpc = vi.fn(async () => ({
+      data: {
+        payment_id: "payment-void-3",
+        invoice_id: "invoice-void-3",
+        reused: false,
+      },
+      error: null,
+    }));
+    const fake = { rpc } as unknown as SupabaseClient;
+
+    const { voidPaymentReceived } = await import("@/lib/payments-received-db");
+    await expect(voidPaymentReceived("payment-void-3", fake)).rejects.toThrow(
+      "Atomic Payment Void RPC returned an invalid result."
+    );
+  });
+
   it("rolls back the invoice header when atomic item insertion fails", async () => {
     const state = { invoices: [] as Array<Record<string, unknown>> };
     runtime.client = {

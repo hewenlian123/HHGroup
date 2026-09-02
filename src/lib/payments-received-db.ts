@@ -131,6 +131,18 @@ export type PaymentReceivedDeleteDependenciesResult = {
   safeChildRecords: PaymentReceivedDeleteSafeChildRecord[];
 };
 
+export type VoidPaymentReceivedAtomicResult = {
+  payment_id: string;
+  invoice_id: string;
+  project_id: string | null;
+  deposit_id: string;
+  invoice_payment_id: string;
+  invoice_status: string;
+  paid_total: number;
+  balance_due: number;
+  reused: boolean;
+};
+
 function client(explicitClient?: SupabaseClient) {
   const c = explicitClient ?? getSupabaseClient();
   if (!c) throw new Error("Supabase is not configured.");
@@ -688,64 +700,56 @@ export async function getPaymentReceivedById(
   };
 }
 
+function parseVoidPaymentReceivedAtomicResult(data: unknown): VoidPaymentReceivedAtomicResult {
+  const result = (Array.isArray(data) ? data[0] : data) as Record<string, unknown> | null;
+  const requiredIds = [
+    result?.payment_id,
+    result?.invoice_id,
+    result?.deposit_id,
+    result?.invoice_payment_id,
+  ];
+  const validProjectId = result?.project_id === null || typeof result?.project_id === "string";
+  if (
+    !result ||
+    requiredIds.some((value) => typeof value !== "string" || value.trim() === "") ||
+    !validProjectId ||
+    typeof result.invoice_status !== "string" ||
+    result.invoice_status.trim() === "" ||
+    typeof result.paid_total !== "number" ||
+    !Number.isFinite(result.paid_total) ||
+    typeof result.balance_due !== "number" ||
+    !Number.isFinite(result.balance_due) ||
+    typeof result.reused !== "boolean"
+  ) {
+    throw new Error("Atomic Payment Void RPC returned an invalid result.");
+  }
+
+  return {
+    payment_id: result.payment_id as string,
+    invoice_id: result.invoice_id as string,
+    project_id: result.project_id as string | null,
+    deposit_id: result.deposit_id as string,
+    invoice_payment_id: result.invoice_payment_id as string,
+    invoice_status: result.invoice_status,
+    paid_total: result.paid_total,
+    balance_due: result.balance_due,
+    reused: result.reused,
+  };
+}
+
 export async function voidPaymentReceived(
   paymentId: string,
   explicitClient?: SupabaseClient
-): Promise<PaymentReceivedDbRow | null> {
+): Promise<VoidPaymentReceivedAtomicResult> {
+  const normalizedPaymentId = paymentId.trim();
+  if (!normalizedPaymentId) throw new Error("Payment id is required.");
+
   const c = client(explicitClient);
-  const payment = await fetchPaymentReceivedDbRow(c, paymentId);
-  if (!payment) return null;
-
-  const depRes = await c.from("deposits").select("id, status").eq("payment_id", paymentId);
-  if (depRes.error && !isMissingTable(depRes.error) && !isMissingColumn(depRes.error)) {
-    throw new Error(depRes.error.message ?? "Failed to load deposit.");
-  }
-  const hasDeposits = !depRes.error && (depRes.data ?? []).length > 0;
-  if (hasDeposits) {
-    const { error: depVoidErr } = await c
-      .from("deposits")
-      .update({ status: "void" })
-      .eq("payment_id", paymentId);
-    if (depVoidErr && !isMissingTable(depVoidErr) && !isMissingColumn(depVoidErr)) {
-      throw new Error(depVoidErr.message ?? "Failed to void deposit.");
-    }
-  }
-
-  if (payment.invoice_id) {
-    try {
-      const direct = await c
-        .from("invoice_payments")
-        .update({ status: "Voided" })
-        .eq("payment_received_id", paymentId);
-      if (!direct.error || !isMissingColumn(direct.error)) {
-        if (direct.error) throw direct.error;
-      }
-    } catch {
-      // Missing link or older schema: fall back to legacy matching below.
-    }
-    try {
-      const paidAt = normalizeDate(payment.payment_date);
-      const amount = Number(payment.amount ?? 0);
-      let q = c
-        .from("invoice_payments")
-        .update({ status: "Voided" })
-        .eq("invoice_id", payment.invoice_id)
-        .eq("amount", amount);
-      if (paidAt) q = q.eq("paid_at", paidAt);
-      const memo = memoForPayment(payment);
-      if (memo) q = q.eq("memo", memo);
-      await q;
-    } catch {
-      // schema or match may differ; continue
-    }
-  }
-
-  const { error: updErr } = await c
-    .from("payments_received")
-    .update({ status: "void" })
-    .eq("id", paymentId);
-  if (updErr) throw new Error(updErr.message ?? "Failed to void payment.");
-  return { ...payment, status: "void" };
+  const { data, error } = await c.rpc("void_payment_received_atomic", {
+    p_payment_id: normalizedPaymentId,
+  });
+  if (error) throw new Error(error.message ?? "Failed to void payment atomically.");
+  return parseVoidPaymentReceivedAtomicResult(data);
 }
 
 export async function getPaymentReceivedDeleteDependencies(

@@ -498,7 +498,10 @@ export function EditPaymentReceivedModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[92vh] max-w-lg overflow-y-auto rounded-hh-compact border-border/60">
+      <DialogContent
+        data-revenue-ar-v2
+        className="max-h-[92vh] max-w-lg overflow-y-auto rounded-hh-compact border-border/60"
+      >
         <DialogHeader className="border-b border-border/60 pb-3">
           <DialogTitle className="text-base font-medium">Edit Payment</DialogTitle>
         </DialogHeader>

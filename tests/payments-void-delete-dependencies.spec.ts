@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
+import { loginAsE2EOwner } from "./e2e-auth-owner";
 import { assertE2ESupabaseUrlSafeForMutations } from "./e2e-supabase-url-guard";
 
 const createdInvoiceIds = new Set<string>();
@@ -202,14 +203,14 @@ async function openPaymentActions(page: Page, invoiceNo: string): Promise<void> 
 }
 
 async function openPaymentPage(page: Page, paymentId: string, invoiceId: string): Promise<void> {
-  await page.goto(`/financial/payments?paymentId=${paymentId}&invoiceId=${invoiceId}`);
+  await loginAsE2EOwner(page, `/financial/payments?paymentId=${paymentId}&invoiceId=${invoiceId}`);
   await expect(page.getByRole("heading", { name: "Payments Received" })).toBeVisible({
     timeout: 30_000,
   });
 }
 
 async function voidInvoiceFromDetail(page: Page, invoiceId: string): Promise<void> {
-  await page.goto(`/financial/invoices/${invoiceId}`);
+  await loginAsE2EOwner(page, `/financial/invoices/${invoiceId}`);
   await expect(page.getByTestId("invoice-detail-status")).not.toContainText("Void", {
     timeout: 30_000,
   });
@@ -252,6 +253,144 @@ test("active payment cannot be permanently deleted directly", async ({ page }) =
   await openPaymentActions(page, fixture.invoiceNo);
   await expect(page.getByRole("menuitem", { name: "Void payment" })).toBeVisible();
   await expect(page.getByRole("menuitem", { name: "Delete payment" })).toHaveCount(0);
+});
+
+test("Payment Void atomically reconciles payment, deposit, allocation, and invoice through the UI", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  const supabase = db();
+  if (!supabase) test.skip(true, "Supabase env is required.");
+  const fixture = await createInvoiceFixture(supabase!, { suffix: Date.now(), status: "Paid" });
+  const paymentId = await addPaymentLinks(supabase!, fixture);
+
+  await openPaymentPage(page, paymentId, fixture.invoiceId);
+  await openPaymentActions(page, fixture.invoiceNo);
+  await page.getByRole("menuitem", { name: "Void payment" }).click();
+  const dialog = page.getByRole("dialog", { name: "Void payment?" });
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("button", { name: "Void" }).click();
+  await expect(dialog).toBeHidden({ timeout: 30_000 });
+  await expect(page.getByText("Voided").first()).toBeVisible({ timeout: 30_000 });
+
+  const [{ data: payment }, { data: deposit }, { data: allocation }, { data: invoice }] =
+    await Promise.all([
+      supabase!
+        .from("payments_received")
+        .select("id,status,amount,invoice_id,project_id,customer_name")
+        .eq("id", paymentId)
+        .single(),
+      supabase!
+        .from("deposits")
+        .select("id,status,amount,payment_id,invoice_id,project_id,customer_name")
+        .eq("payment_id", paymentId)
+        .single(),
+      supabase!
+        .from("invoice_payments")
+        .select("id,status,amount,payment_received_id,invoice_id")
+        .eq("payment_received_id", paymentId)
+        .single(),
+      supabase!
+        .from("invoices")
+        .select("id,status,total,paid_total,balance_due")
+        .eq("id", fixture.invoiceId)
+        .single(),
+    ]);
+
+  expect(payment).toMatchObject({
+    id: paymentId,
+    status: "void",
+    amount: fixture.total,
+    invoice_id: fixture.invoiceId,
+    project_id: fixture.projectId,
+    customer_name: fixture.customerName,
+  });
+  expect(deposit).toMatchObject({
+    status: "void",
+    amount: fixture.total,
+    payment_id: paymentId,
+    invoice_id: fixture.invoiceId,
+    project_id: fixture.projectId,
+    customer_name: fixture.customerName,
+  });
+  expect(allocation).toMatchObject({
+    status: "Voided",
+    amount: fixture.total,
+    payment_received_id: paymentId,
+    invoice_id: fixture.invoiceId,
+  });
+  expect(invoice).toMatchObject({
+    id: fixture.invoiceId,
+    status: "Sent",
+    total: fixture.total,
+    paid_total: 0,
+    balance_due: fixture.total,
+  });
+
+  const { data: retry, error: retryError } = await supabase!.rpc("void_payment_received_atomic", {
+    p_payment_id: paymentId,
+  });
+  expect(retryError).toBeNull();
+  expect(retry).toMatchObject({
+    payment_id: paymentId,
+    invoice_id: fixture.invoiceId,
+    invoice_status: "Sent",
+    paid_total: 0,
+    balance_due: fixture.total,
+    reused: true,
+  });
+
+  await page.reload();
+  await expect(page.getByText("Voided").first()).toBeVisible({ timeout: 30_000 });
+  await page.goto(`/financial/invoices/${fixture.invoiceId}`);
+  // The persisted lifecycle returns to Sent; the existing presentation authority
+  // renders a Sent invoice with no active allocations as Unpaid.
+  await expect(page.getByTestId("invoice-detail-status")).toContainText("Unpaid");
+  await expect(page.getByTestId("invoice-detail-balance")).toContainText(
+    fixture.total.toLocaleString("en-US", { style: "currency", currency: "USD" })
+  );
+});
+
+test("duplicate concurrent Payment Void retries serialize to one canonical effect", async () => {
+  const supabase = db();
+  if (!supabase) test.skip(true, "Supabase env is required.");
+  const fixture = await createInvoiceFixture(supabase!, {
+    suffix: Date.now(),
+    status: "Paid",
+    total: 4321.09,
+  });
+  const paymentId = await addPaymentLinks(supabase!, fixture);
+
+  const calls = await Promise.all([
+    supabase!.rpc("void_payment_received_atomic", { p_payment_id: paymentId }),
+    supabase!.rpc("void_payment_received_atomic", { p_payment_id: paymentId }),
+  ]);
+  expect(calls.map((call) => call.error)).toEqual([null, null]);
+  expect(calls.map((call) => Boolean(call.data?.reused)).sort()).toEqual([false, true]);
+
+  const [{ data: payment }, { data: deposit }, { data: allocation }, { data: invoice }] =
+    await Promise.all([
+      supabase!.from("payments_received").select("status,amount").eq("id", paymentId).single(),
+      supabase!.from("deposits").select("status,amount").eq("payment_id", paymentId).single(),
+      supabase!
+        .from("invoice_payments")
+        .select("status,amount")
+        .eq("payment_received_id", paymentId)
+        .single(),
+      supabase!
+        .from("invoices")
+        .select("status,paid_total,balance_due")
+        .eq("id", fixture.invoiceId)
+        .single(),
+    ]);
+  expect(payment).toMatchObject({ status: "void", amount: fixture.total });
+  expect(deposit).toMatchObject({ status: "void", amount: fixture.total });
+  expect(allocation).toMatchObject({ status: "Voided", amount: fixture.total });
+  expect(invoice).toMatchObject({
+    status: "Sent",
+    paid_total: 0,
+    balance_due: fixture.total,
+  });
 });
 
 test("voided payment linked to an active invoice is blocked from permanent delete", async ({

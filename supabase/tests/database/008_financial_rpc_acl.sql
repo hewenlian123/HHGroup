@@ -1,6 +1,6 @@
 begin;
 
-select plan(13);
+select plan(16);
 
 create function pg_temp.function_execute_grantees(p_signature text)
 returns text[]
@@ -38,11 +38,12 @@ select ok(
       'public.create_paid_reimbursement_expense()',
       'public.record_worker_reimbursement_payment_atomic(text,uuid,text,date,text,uuid[])',
       'public.create_invoice_atomic(text,jsonb,jsonb)',
-      'public.update_invoice_atomic(uuid,jsonb,jsonb)'
+      'public.update_invoice_atomic(uuid,jsonb,jsonb)',
+      'public.void_payment_received_atomic(uuid)'
     ]) signature
     where pg_catalog.to_regprocedure(signature) is null
   ),
-  'All eight protected financial functions exist with the audited signatures'
+  'All nine protected financial functions exist with the audited signatures'
 );
 
 select ok(
@@ -57,11 +58,29 @@ select ok(
       'public.create_paid_reimbursement_expense()'::regprocedure,
       'public.record_worker_reimbursement_payment_atomic(text,uuid,text,date,text,uuid[])'::regprocedure,
       'public.create_invoice_atomic(text,jsonb,jsonb)'::regprocedure,
-      'public.update_invoice_atomic(uuid,jsonb,jsonb)'::regprocedure
+      'public.update_invoice_atomic(uuid,jsonb,jsonb)'::regprocedure,
+      'public.void_payment_received_atomic(uuid)'::regprocedure
     ]::oid[])
       and procedure.prosecdef
   ),
-  'All eight protected financial functions remain security invoker'
+  'All nine protected financial functions remain security invoker'
+);
+
+select is(
+  pg_temp.function_execute_grantees('public.void_payment_received_atomic(uuid)'),
+  array['authenticated', 'service_role']::text[],
+  'Payment Void RPC is executable only by authenticated and service_role'
+);
+
+select ok(
+  not pg_catalog.has_function_privilege('anon', 'public.void_payment_received_atomic(uuid)', 'EXECUTE'),
+  'Payment Void RPC denies anon execution'
+);
+
+select ok(
+  pg_catalog.has_function_privilege('authenticated', 'public.void_payment_received_atomic(uuid)', 'EXECUTE')
+    and pg_catalog.has_function_privilege('service_role', 'public.void_payment_received_atomic(uuid)', 'EXECUTE'),
+  'Payment Void RPC allows the existing owner/admin session and server roles'
 );
 
 select is(

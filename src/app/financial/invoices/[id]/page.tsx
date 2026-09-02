@@ -61,6 +61,7 @@ import {
   updateInvoiceAction,
 } from "../actions";
 import { InvoiceDeleteDependenciesDialog } from "../invoice-delete-dependencies-dialog";
+import { InvoiceDetailPresentation } from "./invoice-detail-presentation";
 import { InvoiceStatusBadge } from "@/components/invoice-status-badge";
 import { useBreadcrumbEntityLabel } from "@/contexts/breadcrumb-override-context";
 import { useAttachmentPreview } from "@/contexts/attachment-preview-context";
@@ -601,9 +602,9 @@ export default function InvoiceDetailPage() {
   const primaryActionBusy = actionBusy || editSaving;
   const projectName = project?.name ?? invoice.projectId;
   const toolbarButtonClass =
-    "h-9 min-h-[44px] rounded-hh-standard border-0 bg-transparent px-3 text-hh-table-cell font-medium text-[var(--hh-text-secondary)] shadow-none transition-all duration-150 ease-out hover:!translate-y-0 hover:bg-[var(--hh-l3-hover)] hover:text-[var(--hh-text-primary)] hover:shadow-none focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)] sm:min-h-9";
+    "h-9 min-h-[44px] rounded-hh-standard border-0 bg-transparent px-3 text-hh-table-cell font-medium text-[var(--hh-text-secondary)] shadow-none hover:!translate-y-0 hover:bg-[var(--hh-l3-hover)] hover:text-[var(--hh-text-primary)] hover:shadow-none focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)] xl:min-h-9";
   const primaryToolbarButtonClass =
-    "h-9 min-h-[44px] rounded-hh-standard border border-[var(--hh-border-strong)] bg-[var(--hh-action-primary)] px-3.5 text-hh-table-cell font-semibold text-[var(--hh-action-primary-foreground)] shadow-none transition-all duration-150 ease-out hover:bg-[var(--hh-action-primary)] hover:opacity-100 focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)] sm:min-h-9";
+    "h-9 min-h-[44px] rounded-hh-standard border border-[var(--hh-border-strong)] bg-[var(--hh-action-primary)] px-3.5 text-hh-table-cell font-semibold text-[var(--hh-action-primary-foreground)] shadow-none hover:bg-[var(--hh-action-primary)] hover:opacity-100 focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)] xl:min-h-9";
   const displayedSubtotal = editing ? editSubtotal : invoice.subtotal;
   const displayedTax = editing ? editTaxAmount : (invoice.taxAmount ?? 0);
   const displayedTotal = editing ? editTotal : invoice.total;
@@ -614,6 +615,7 @@ export default function InvoiceDetailPage() {
 
   return (
     <div
+      data-revenue-ar-v2
       data-testid="invoice-detail"
       className="hh-fin bg-[var(--hh-l0-canvas)] page-container page-shell-wide page-stack flex w-full flex-col gap-4 py-4 text-[var(--hh-text-secondary)] sm:gap-5 lg:py-6"
     >
@@ -678,7 +680,7 @@ export default function InvoiceDetailPage() {
               </div>
             ) : (
               <>
-                <div className="inline-flex min-h-[44px] items-center gap-1 rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-1 shadow-operational sm:min-h-0">
+                <div className="inline-flex min-h-[44px] items-center gap-1 rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-1 shadow-operational xl:min-h-0">
                   <Button asChild variant="ghost" size="sm" className={toolbarButtonClass}>
                     <Link
                       href={appendEstimateReturnPath(
@@ -821,8 +823,11 @@ export default function InvoiceDetailPage() {
         <section className={cn(invoicePanelClass, "p-4")}>
           <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <label className={invoiceLabelClass}>Client name</label>
+              <label htmlFor="invoice-edit-client-name" className={invoiceLabelClass}>
+                Client name
+              </label>
               <Input
+                id="invoice-edit-client-name"
                 value={editClientName}
                 onChange={(e) => setEditClientName(e.target.value)}
                 placeholder="Client"
@@ -842,8 +847,11 @@ export default function InvoiceDetailPage() {
               </p>
             </div>
             <div>
-              <label className={invoiceLabelClass}>Issue date</label>
+              <label htmlFor="invoice-edit-issue-date" className={invoiceLabelClass}>
+                Issue date
+              </label>
               <Input
+                id="invoice-edit-issue-date"
                 type="date"
                 value={editIssueDate}
                 onChange={(e) => setEditIssueDate((e.target.value || editIssueDate).slice(0, 10))}
@@ -854,8 +862,11 @@ export default function InvoiceDetailPage() {
               />
             </div>
             <div>
-              <label className={invoiceLabelClass}>Due date</label>
+              <label htmlFor="invoice-edit-due-date" className={invoiceLabelClass}>
+                Due date
+              </label>
               <Input
+                id="invoice-edit-due-date"
                 type="date"
                 value={editDueDate}
                 onChange={(e) => setEditDueDate((e.target.value || editDueDate).slice(0, 10))}
@@ -864,8 +875,11 @@ export default function InvoiceDetailPage() {
               />
             </div>
             <div>
-              <label className={invoiceLabelClass}>Tax %</label>
+              <label htmlFor="invoice-edit-tax-pct" className={invoiceLabelClass}>
+                Tax %
+              </label>
               <Input
+                id="invoice-edit-tax-pct"
                 type="number"
                 min="0"
                 step="0.01"
@@ -875,8 +889,11 @@ export default function InvoiceDetailPage() {
               />
             </div>
             <div>
-              <label className={invoiceLabelClass}>Notes</label>
+              <label htmlFor="invoice-edit-notes" className={invoiceLabelClass}>
+                Notes
+              </label>
               <Input
+                id="invoice-edit-notes"
                 value={editNotes}
                 onChange={(e) => setEditNotes(e.target.value)}
                 placeholder="Terms / notes"
@@ -890,22 +907,33 @@ export default function InvoiceDetailPage() {
         </section>
       ) : null}
 
-      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <DetailMetric label="Balance due" value={formatCurrency(displayedBalance)} />
-        <DetailMetric label="Total" value={formatCurrency(displayedTotal)} />
-        <DetailMetric label="Paid" value={formatCurrency(invoice.paidTotal)} tone="positive" />
-        <DetailMetric
-          label={invoice.daysOverdue > 0 ? "Overdue" : "Due date"}
-          value={
-            invoice.daysOverdue > 0 ? `${invoice.daysOverdue} days` : formatDate(invoice.dueDate)
-          }
-          tone={invoice.daysOverdue > 0 ? "danger" : "muted"}
-        />
+      <section aria-labelledby="invoice-overview-heading">
+        <h2
+          id="invoice-overview-heading"
+          className="mb-3 text-hh-section-title font-semibold text-[var(--hh-text-primary)]"
+        >
+          Overview
+        </h2>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <DetailMetric label="Balance due" value={formatCurrency(displayedBalance)} />
+          <DetailMetric label="Total" value={formatCurrency(displayedTotal)} />
+          <DetailMetric label="Paid" value={formatCurrency(invoice.paidTotal)} tone="positive" />
+          <DetailMetric
+            label={invoice.daysOverdue > 0 ? "Overdue" : "Due date"}
+            value={
+              invoice.daysOverdue > 0 ? `${invoice.daysOverdue} days` : formatDate(invoice.dueDate)
+            }
+            tone={invoice.daysOverdue > 0 ? "danger" : "muted"}
+          />
+        </div>
       </section>
 
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <main className="min-w-0 space-y-5">
-          <section className={cn(invoicePanelClass, "overflow-hidden")}>
+      <InvoiceDetailPresentation>
+        <main className="min-w-0 space-y-5" aria-label="Invoice overview and activity">
+          <section
+            aria-label="Invoice overview line items"
+            className={cn(invoicePanelClass, "overflow-hidden")}
+          >
             <div className={cn(invoicePanelHeaderClass, "flex items-center justify-between gap-3")}>
               <div>
                 <h2 className={invoiceSectionTitleClass}>Line items</h2>
@@ -1086,16 +1114,22 @@ export default function InvoiceDetailPage() {
             </div>
           </section>
 
-          <section className={cn(invoicePanelClass, "p-4")}>
+          <section
+            aria-labelledby="invoice-activity-heading"
+            className={cn(invoicePanelClass, "p-4")}
+          >
             <div className="mb-4 flex items-center justify-between">
               <div>
-                <h2 className={invoiceSectionTitleClass}>Activity ledger</h2>
+                <h2 id="invoice-activity-heading" className={invoiceSectionTitleClass}>
+                  Activity
+                </h2>
                 <p className={invoiceSectionDescriptionClass}>
                   Payments, deposits, and receipt records tied to this invoice.
                 </p>
               </div>
             </div>
 
+            <h3 className={cn(invoiceLabelClass, "mb-2")}>Payments</h3>
             <div className="grid gap-3 lg:grid-cols-3">
               <div>
                 <h3 className={cn(invoiceLabelClass, "mb-2")}>Payments history</h3>
@@ -1118,11 +1152,11 @@ export default function InvoiceDetailPage() {
                             <td className="px-3 py-2 text-right font-semibold tabular-nums text-[var(--hh-success)]">
                               {formatCurrency(p.amount)}
                             </td>
-                            <td className="w-10 px-2 py-2 text-right">
+                            <td className="w-16 px-2 py-2 text-right xl:w-10">
                               <Button
                                 variant="outline"
                                 size="sm"
-                                className="h-8 rounded-hh-standard border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-danger)] hover:bg-[var(--hh-danger-soft-fill)] hover:text-[var(--hh-danger)]"
+                                className="h-11 min-h-11 xl:h-8 xl:min-h-8 rounded-hh-standard border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-danger)] hover:bg-[var(--hh-danger-soft-fill)] hover:text-[var(--hh-danger)]"
                                 onClick={() => handleDeletePayment(p.id)}
                                 disabled={deletingPaymentId === p.id}
                                 title="Delete payment"
@@ -1156,11 +1190,14 @@ export default function InvoiceDetailPage() {
                                 {p.payment_method ?? "No method"}
                               </p>
                               {(p.attachments ?? []).length > 0 ? (
-                                <button
+                                <Button
                                   type="button"
+                                  variant="quiet"
+                                  size="sm"
+                                  data-testid="invoice-payment-attachment-action"
                                   disabled={openingPaymentAttachmentsId === p.id}
                                   onClick={() => void openPaymentAttachments(p.id, p.attachments)}
-                                  className="mt-1 inline-flex max-w-full items-center gap-1 rounded-full border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-2 py-0.5 text-hh-status font-medium text-[var(--hh-text-secondary)] transition-colors hover:bg-[var(--hh-l3-hover)] hover:text-[var(--hh-text-primary)] disabled:pointer-events-none disabled:opacity-50"
+                                  className="mt-1 h-11 min-h-11 max-w-full rounded-full border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-2.5 text-hh-status font-medium text-[var(--hh-text-secondary)] lg:h-7 lg:min-h-0"
                                 >
                                   <Paperclip className="h-3 w-3 shrink-0" strokeWidth={1.7} />
                                   <span className="truncate">
@@ -1170,7 +1207,7 @@ export default function InvoiceDetailPage() {
                                           p.attachments.length === 1 ? "" : "s"
                                         }`}
                                   </span>
-                                </button>
+                                </Button>
                               ) : null}
                             </td>
                             <td className="px-3 py-2 text-right font-semibold tabular-nums text-[var(--hh-success)]">
@@ -1216,7 +1253,7 @@ export default function InvoiceDetailPage() {
           </section>
         </main>
 
-        <aside className="space-y-4">
+        <aside aria-label="Invoice context" className="space-y-4">
           <section className={cn(invoicePanelClass, "p-4")}>
             <h2 className={invoiceSectionTitleClass}>Invoice summary</h2>
             <div className="mt-4 space-y-2 text-hh-body">
@@ -1267,7 +1304,7 @@ export default function InvoiceDetailPage() {
           </section>
 
           <section className={cn(invoicePanelClass, "p-4")}>
-            <h2 className={invoiceSectionTitleClass}>Record</h2>
+            <h2 className={invoiceSectionTitleClass}>Invoice context</h2>
             <div className="mt-4 space-y-3 text-hh-body">
               <div>
                 <p className={invoiceLabelClass}>Client</p>
@@ -1296,7 +1333,7 @@ export default function InvoiceDetailPage() {
             </div>
           </section>
         </aside>
-      </div>
+      </InvoiceDetailPresentation>
 
       <ConfirmDialog
         open={deleteConfirmOpen}
@@ -1325,7 +1362,10 @@ export default function InvoiceDetailPage() {
       />
 
       <Dialog open={deleteBlockedOpen} onOpenChange={setDeleteBlockedOpen}>
-        <DialogContent className="max-w-sm rounded-hh-task border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-5 text-[var(--hh-text-primary)]">
+        <DialogContent
+          data-revenue-ar-v2
+          className="max-w-sm rounded-hh-task border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-5 text-[var(--hh-text-primary)]"
+        >
           <DialogHeader>
             <DialogTitle className="hh-type-text-entry font-semibold">
               Cannot delete invoice

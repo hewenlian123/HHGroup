@@ -131,6 +131,7 @@ function DepositsPageInner() {
 
   return (
     <div
+      data-revenue-ar-v2
       className={cn(
         "min-w-0 overflow-x-hidden pb-[max(1rem,env(safe-area-inset-bottom,0px))] pt-[max(0.35rem,env(safe-area-inset-top,0px))] text-[var(--hh-text-secondary)]",
         "flex flex-col"
@@ -232,10 +233,10 @@ function DepositsPageInner() {
 
         {/* KPI summary */}
         <section className="border-b border-border/60 pb-4">
-          <p className="mb-3 text-hh-table-header font-medium uppercase tracking-normal text-text-secondary/75 dark:text-muted-foreground">
+          <p className="mb-3 text-hh-table-header font-medium uppercase tracking-normal text-text-secondary/75">
             Summary
           </p>
-          <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+          <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
             <div className={cn(kpiTile, "flex items-center gap-2 px-3 py-2.5")}>
               <span className={kpiIcon}>
                 <Wallet className="h-4 w-4" aria-hidden />
@@ -294,8 +295,8 @@ function DepositsPageInner() {
         {/* Filter/search surface */}
         <div className={cn(depositsShell, "p-3")}>
           <div className="flex w-full flex-wrap items-end gap-3 md:flex-nowrap">
-            <div className="flex min-w-[240px] flex-1 flex-col gap-1">
-              <label className="text-hh-table-header font-medium uppercase tracking-normal text-text-secondary/75 dark:text-muted-foreground">
+            <div className="hidden min-w-[240px] flex-1 flex-col gap-1 md:flex">
+              <label className="text-hh-table-header font-medium uppercase tracking-normal text-text-secondary/75">
                 Search
               </label>
               <div className="relative w-full">
@@ -310,14 +311,14 @@ function DepositsPageInner() {
               </div>
             </div>
             <div className="flex min-w-[180px] flex-1 flex-col gap-1 sm:flex-initial">
-              <label className="text-hh-table-header font-medium uppercase tracking-normal text-text-secondary/75 dark:text-muted-foreground">
+              <label className="text-hh-table-header font-medium uppercase tracking-normal text-text-secondary/75">
                 Project
               </label>
               <Select
                 aria-label="Filter deposits by project"
                 value={projectFilter}
                 onChange={(e) => setProjectFilter(e.target.value)}
-                className="h-10 min-h-[44px] min-w-0 sm:min-h-10 sm:w-[220px]"
+                className="h-11 min-h-[44px] min-w-0 lg:h-10 lg:min-h-10 sm:w-[220px]"
               >
                 <option value="">All projects</option>
                 {projectOptions.map((p) => (
@@ -328,14 +329,14 @@ function DepositsPageInner() {
               </Select>
             </div>
             <div className="flex min-w-[180px] flex-1 flex-col gap-1 sm:flex-initial">
-              <label className="text-hh-table-header font-medium uppercase tracking-normal text-text-secondary/75 dark:text-muted-foreground">
+              <label className="text-hh-table-header font-medium uppercase tracking-normal text-text-secondary/75">
                 Account
               </label>
               <Select
                 aria-label="Filter deposits by account"
                 value={accountFilter}
                 onChange={(e) => setAccountFilter(e.target.value)}
-                className="h-10 min-h-[44px] min-w-0 sm:min-h-10 sm:w-[220px]"
+                className="h-11 min-h-[44px] min-w-0 lg:h-10 lg:min-h-10 sm:w-[220px]"
               >
                 <option value="">All accounts</option>
                 {accountOptions.map((a) => (
@@ -348,7 +349,7 @@ function DepositsPageInner() {
           </div>
           <div className="mt-3 flex flex-wrap items-end gap-3 border-t border-[var(--hh-border)] pt-3">
             <div className="flex flex-1 flex-col gap-1 sm:flex-initial">
-              <label className="text-hh-table-header font-medium uppercase tracking-normal text-text-secondary/75 dark:text-muted-foreground">
+              <label className="text-hh-table-header font-medium uppercase tracking-normal text-text-secondary/75">
                 Date from
               </label>
               <Input
@@ -356,11 +357,11 @@ function DepositsPageInner() {
                 type="date"
                 value={dateFrom}
                 onChange={(e) => setDateFrom(e.target.value)}
-                className="h-10 min-h-[44px] tabular-nums sm:min-h-10 sm:w-[170px]"
+                className="h-11 min-h-[44px] tabular-nums lg:h-10 lg:min-h-10 sm:w-[170px]"
               />
             </div>
             <div className="flex flex-1 flex-col gap-1 sm:flex-initial">
-              <label className="text-hh-table-header font-medium uppercase tracking-normal text-text-secondary/75 dark:text-muted-foreground">
+              <label className="text-hh-table-header font-medium uppercase tracking-normal text-text-secondary/75">
                 Date to
               </label>
               <Input
@@ -368,7 +369,7 @@ function DepositsPageInner() {
                 type="date"
                 value={dateTo}
                 onChange={(e) => setDateTo(e.target.value)}
-                className="h-10 min-h-[44px] tabular-nums sm:min-h-10 sm:w-[170px]"
+                className="h-11 min-h-[44px] tabular-nums lg:h-10 lg:min-h-10 sm:w-[170px]"
               />
             </div>
             <div className="ml-auto flex items-center gap-2">
@@ -376,7 +377,7 @@ function DepositsPageInner() {
                 type="button"
                 size="sm"
                 variant="outline"
-                className="h-10 min-h-[44px] rounded-hh-compact shadow-none sm:h-9 sm:min-h-0"
+                className="h-11 min-h-[44px] lg:h-9 lg:min-h-0 rounded-hh-compact shadow-none"
                 onClick={() => void load()}
               >
                 Refresh
@@ -408,7 +409,7 @@ function DepositsPageInner() {
               <Button
                 size="sm"
                 variant="outline"
-                className="h-9 rounded-hh-compact shadow-none"
+                className="h-11 min-h-[44px] lg:h-9 lg:min-h-0 rounded-hh-compact shadow-none"
                 onClick={() => {
                   setSearchQuery("");
                   setProjectFilter("");
@@ -423,7 +424,7 @@ function DepositsPageInner() {
           />
         ) : (
           <section className={cn(depositsShell, "overflow-hidden p-0")}>
-            <div className="hidden md:grid grid-cols-[minmax(120px,0.7fr)_minmax(180px,1.1fr)_minmax(180px,1fr)_minmax(120px,0.75fr)_minmax(160px,0.9fr)_minmax(120px,0.7fr)_minmax(110px,0.6fr)_44px] gap-3 border-b border-border/60 px-3 py-2.5 text-hh-status font-medium uppercase tracking-normal text-muted-foreground/70">
+            <div className="hidden lg:grid grid-cols-[minmax(120px,0.7fr)_minmax(180px,1.1fr)_minmax(180px,1fr)_minmax(120px,0.75fr)_minmax(160px,0.9fr)_minmax(120px,0.7fr)_minmax(110px,0.6fr)_44px] gap-3 border-b border-border/60 px-3 py-2.5 text-hh-status font-medium uppercase tracking-normal text-muted-foreground/70">
               <div>Date</div>
               <div>Customer</div>
               <div>Project</div>
@@ -438,7 +439,7 @@ function DepositsPageInner() {
               {filteredDeposits.map((row) => (
                 <div
                   key={row.id}
-                  className="group px-3 py-3 transition-colors hover:bg-muted/25 md:grid md:grid-cols-[minmax(120px,0.7fr)_minmax(180px,1.1fr)_minmax(180px,1fr)_minmax(120px,0.75fr)_minmax(160px,0.9fr)_minmax(120px,0.7fr)_minmax(110px,0.6fr)_44px] md:items-center md:gap-3"
+                  className="group px-3 py-3 transition-colors hover:bg-muted/25 lg:grid lg:grid-cols-[minmax(120px,0.7fr)_minmax(180px,1.1fr)_minmax(180px,1fr)_minmax(120px,0.75fr)_minmax(160px,0.9fr)_minmax(120px,0.7fr)_minmax(110px,0.6fr)_44px] lg:items-center lg:gap-3"
                 >
                   <div className="hh-fin text-sm tabular-nums text-muted-foreground md:text-sm">
                     {formatDate(row.date)}
@@ -447,23 +448,23 @@ function DepositsPageInner() {
                     <div className="truncate text-sm font-semibold text-foreground">
                       {row.description ?? "—"}
                     </div>
-                    <div className="mt-0.5 truncate text-xs text-muted-foreground md:hidden">
+                    <div className="mt-0.5 truncate text-xs text-muted-foreground lg:hidden">
                       {row.project_name ?? "—"} · Payment {row.payment_id?.slice(0, 8) ?? "—"}
                     </div>
                   </div>
-                  <div className="hidden min-w-0 md:block">
+                  <div className="hidden min-w-0 lg:block">
                     <div className="truncate text-sm text-foreground">
                       {row.project_name ?? "—"}
                     </div>
                   </div>
-                  <div className="hidden md:block hh-fin text-sm tabular-nums text-muted-foreground">
+                  <div className="hidden lg:block hh-fin text-sm tabular-nums text-muted-foreground">
                     {row.payment_id ? row.payment_id.slice(0, 8) : "—"}
                   </div>
-                  <div className="hidden md:block min-w-0 truncate text-sm text-muted-foreground">
+                  <div className="hidden lg:block min-w-0 truncate text-sm text-muted-foreground">
                     {row.account ?? "—"}
                   </div>
-                  <div className="mt-2 flex items-center justify-between gap-3 md:mt-0 md:block md:text-right">
-                    <div className="md:hidden text-xs text-muted-foreground">
+                  <div className="mt-2 flex items-center justify-between gap-3 lg:mt-0 lg:block lg:text-right">
+                    <div className="lg:hidden text-xs text-muted-foreground">
                       {(row.payment_method ?? "—") + " · " + (row.account ?? "—")}
                     </div>
                     <div className={cn(TYPO.amount, "text-sm text-[var(--hh-success)]")}>

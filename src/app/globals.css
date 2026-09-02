@@ -919,6 +919,18 @@
     opacity: 1 !important;
     transform: none !important;
   }
+
+  [data-revenue-ar-v2],
+  [data-revenue-ar-v2] *,
+  [data-revenue-ar-v2]::before,
+  [data-revenue-ar-v2]::after,
+  [data-revenue-ar-v2] *::before,
+  [data-revenue-ar-v2] *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 @layer components {

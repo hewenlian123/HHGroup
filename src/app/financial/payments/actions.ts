@@ -15,6 +15,7 @@ import {
   type PaymentReceivedDeleteDependenciesResult,
   type PaymentReceivedDetail,
   type UpdatePaymentReceivedPayload,
+  type VoidPaymentReceivedAtomicResult,
 } from "@/lib/payments-received-db";
 
 type PaymentReceivedDetailWithPreviewUrls = PaymentReceivedDetail & {
@@ -128,18 +129,14 @@ export async function updatePaymentReceivedAction(
 
 export async function voidPaymentReceivedAction(
   paymentId: string
-): Promise<{ ok: true } | { ok: false; error: string }> {
+): Promise<{ ok: true; result: VoidPaymentReceivedAtomicResult } | { ok: false; error: string }> {
   try {
     const clientResult = await getPaymentActionClient();
     if (!clientResult.ok) return clientResult;
 
-    const pay = await voidPaymentReceivedData(paymentId, clientResult.client);
-    if (!pay) return { ok: false, error: "Payment not found." };
-    revalidatePaymentPaths(
-      (pay as { invoice_id?: string | null }).invoice_id ?? null,
-      (pay as { project_id?: string | null }).project_id ?? null
-    );
-    return { ok: true };
+    const result = await voidPaymentReceivedData(paymentId, clientResult.client);
+    revalidatePaymentPaths(result.invoice_id, result.project_id);
+    return { ok: true, result };
   } catch (e) {
     console.error("[payments/actions] failed to void payment", e);
     return { ok: false, error: safePaymentActionError(e, "Failed to void payment.") };

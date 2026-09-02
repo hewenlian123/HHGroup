@@ -539,7 +539,10 @@ export function ReceivePaymentModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-md overflow-y-auto rounded-hh-compact border-border/60">
+      <DialogContent
+        data-revenue-ar-v2
+        className="max-h-[90vh] max-w-md overflow-y-auto rounded-hh-compact border-border/60"
+      >
         <DialogHeader className="border-b border-border/60 pb-3">
           <DialogTitle className="text-base font-medium">Receive Payment</DialogTitle>
         </DialogHeader>

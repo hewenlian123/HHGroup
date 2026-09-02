@@ -125,41 +125,32 @@ export function InvoicePreviewShell({ invoiceId, invoiceNo, children }: InvoiceP
 
   return (
     <div
+      data-revenue-ar-v2
       className="invoice-a4-shell financial-nums mx-auto w-full max-w-[calc(210mm+3rem)] px-3 py-5 sm:px-6 print:px-0 print:py-0"
       data-hh-context="viewer"
-      data-hh-theme="neo-dark"
+      data-hh-theme="operational-light"
     >
       <div className="no-print mb-4 flex flex-wrap items-center justify-between gap-3 print:hidden">
         <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="btn-outline-ghost min-h-11 rounded-sm"
-            asChild
-          >
+          <Button variant="outline" size="sm" className="min-h-11 rounded-hh-standard" asChild>
             <Link href={invoiceReturnPath} data-testid="invoice-preview-back-link">
               <ArrowLeft className="h-4 w-4 mr-1" />
               Back to invoice
             </Link>
           </Button>
           {estimateReturnPath ? (
-            <Button
-              variant="outline"
-              size="sm"
-              className="btn-outline-ghost min-h-11 rounded-sm"
-              asChild
-            >
+            <Button variant="outline" size="sm" className="min-h-11 rounded-hh-standard" asChild>
               <Link href={estimateReturnPath} data-testid="invoice-preview-return-to-estimate">
                 Return to estimate
               </Link>
             </Button>
           ) : null}
-          <div className="h-5 w-px bg-gray-200" />
+          <div className="h-5 w-px bg-[var(--hh-border)]" />
           <Button
             type="button"
             variant="outline"
             size="sm"
-            className="min-h-11 rounded-sm"
+            className="min-h-11 rounded-hh-standard"
             onClick={() => window.print()}
           >
             <Printer className="h-4 w-4 mr-1.5" />
@@ -169,7 +160,7 @@ export function InvoicePreviewShell({ invoiceId, invoiceNo, children }: InvoiceP
             type="button"
             variant="outline"
             size="sm"
-            className="min-h-11 rounded-sm"
+            className="min-h-11 rounded-hh-standard"
             disabled={pdfBusy}
             onClick={() => void handleDownloadPdf()}
           >
@@ -177,10 +168,10 @@ export function InvoicePreviewShell({ invoiceId, invoiceNo, children }: InvoiceP
             {pdfBusy ? "Generating..." : "Download PDF"}
           </Button>
         </div>
-        <span className="text-xs text-muted-foreground">A4 PDF preview</span>
+        <span className="text-hh-metadata text-[var(--hh-text-secondary)]">A4 PDF preview</span>
       </div>
 
-      <div className="flex justify-center shadow-[0_18px_55px_rgba(15,23,42,0.08)] print:shadow-none">
+      <div className="flex justify-center shadow-task print:shadow-none">
         <div
           ref={invoiceDocumentRef}
           data-invoice-document-root

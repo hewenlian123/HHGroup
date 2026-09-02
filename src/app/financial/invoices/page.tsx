@@ -206,11 +206,11 @@ function CompactSummaryMetric({ label, value }: { label: string; value: string }
 function InvoiceListSkeleton() {
   return (
     <section className={cn(invoicesShell, "overflow-hidden p-0")}>
-      <div className="hidden border-b border-[var(--hh-border)] px-5 py-3 md:flex md:items-center md:justify-between">
+      <div className="hidden border-b border-[var(--hh-border)] px-5 py-3 lg:flex lg:items-center lg:justify-between">
         <Skeleton className="h-3 w-24" />
         <Skeleton className="h-3 w-20" />
       </div>
-      <div className="hidden divide-y divide-[var(--hh-border)] md:block">
+      <div className="hidden divide-y divide-[var(--hh-border)] lg:block">
         {Array.from({ length: 5 }).map((_, index) => (
           <div
             key={`desktop-skeleton-${index}`}
@@ -237,7 +237,7 @@ function InvoiceListSkeleton() {
           </div>
         ))}
       </div>
-      <div className="space-y-3 p-3 md:hidden">
+      <div className="space-y-3 p-3 lg:hidden">
         {Array.from({ length: 4 }).map((_, index) => (
           <NeoMobileCard key={`mobile-skeleton-${index}`} className="p-4">
             <div className="flex items-start justify-between gap-3">
@@ -655,6 +655,7 @@ function InvoicesPageInner() {
 
   return (
     <div
+      data-revenue-ar-v2
       className={cn(
         "hh-fin min-w-0 overflow-x-hidden bg-[var(--hh-l0-canvas)] pb-[max(1rem,env(safe-area-inset-bottom,0px))] pt-[max(0.35rem,env(safe-area-inset-top,0px))] text-[var(--hh-text-secondary)]",
         "flex flex-col"
@@ -684,7 +685,7 @@ function InvoicesPageInner() {
               size="sm"
               className={cn(
                 OS.primaryButton,
-                "h-[34px] shrink-0 gap-1.5 rounded-hh-standard px-3.5 shadow-none",
+                "h-11 min-h-11 shrink-0 gap-1.5 rounded-hh-standard px-3.5 shadow-none xl:h-[34px] xl:min-h-[34px]",
                 financeToolbarButtonTextClass
               )}
             >
@@ -719,8 +720,11 @@ function InvoicesPageInner() {
         />
         <MobileFilterSheet open={filtersOpen} onOpenChange={setFiltersOpen} title="Filters">
           <div className="space-y-2">
-            <p className={financeControlLabelClass}>Status</p>
+            <label htmlFor="invoice-mobile-filter-status" className={financeControlLabelClass}>
+              Status
+            </label>
             <Select
+              id="invoice-mobile-filter-status"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as "" | InvoiceComputedStatus)}
               className="w-full"
@@ -733,8 +737,11 @@ function InvoicesPageInner() {
             </Select>
           </div>
           <div className="space-y-2">
-            <p className={financeControlLabelClass}>Project</p>
+            <label htmlFor="invoice-mobile-filter-project" className={financeControlLabelClass}>
+              Project
+            </label>
             <Select
+              id="invoice-mobile-filter-project"
               value={projectFilter}
               onChange={(e) => setProjectFilter(e.target.value)}
               className="w-full"
@@ -751,16 +758,18 @@ function InvoicesPageInner() {
             <p className={financeControlLabelClass}>Issue date</p>
             <div className="grid grid-cols-2 gap-2">
               <Input
+                aria-label="Issue from"
                 type="date"
                 value={dateFrom}
                 onChange={(e) => setDateFrom(e.target.value)}
-                className="h-10 tabular-nums"
+                className="h-11 min-h-11 tabular-nums"
               />
               <Input
+                aria-label="Issue to"
                 type="date"
                 value={dateTo}
                 onChange={(e) => setDateTo(e.target.value)}
-                className="h-10 tabular-nums"
+                className="h-11 min-h-11 tabular-nums"
               />
             </div>
           </div>
@@ -774,7 +783,10 @@ function InvoicesPageInner() {
         </MobileFilterSheet>
 
         {(isInitialLoading || invoices.length > 0) && !loadError ? (
-          <section className={cn(invoicesShell, "overflow-hidden p-0")}>
+          <section
+            className={cn(invoicesShell, "overflow-hidden p-0")}
+            data-testid="invoice-workspace-summary"
+          >
             <button
               type="button"
               className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors duration-150 hover:bg-[var(--hh-l3-hover)]"
@@ -875,7 +887,7 @@ function InvoicesPageInner() {
                 placeholder="Invoice #, client, project…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="h-9 border-transparent bg-[var(--hh-l2-operational-surface)] pl-8 text-hh-table-cell tracking-normal text-[var(--hh-text-primary)] placeholder:text-[var(--hh-text-tertiary)] shadow-none transition-colors focus-visible:border-[var(--hh-action-primary)] focus-visible:ring-[var(--hh-focus-ring)]"
+                className="h-11 min-h-11 border-transparent bg-[var(--hh-l2-operational-surface)] pl-8 text-hh-table-cell tracking-normal text-[var(--hh-text-primary)] placeholder:text-[var(--hh-text-tertiary)] shadow-none transition-colors focus-visible:border-[var(--hh-action-primary)] focus-visible:ring-[var(--hh-focus-ring)] xl:h-9 xl:min-h-9"
               />
             </div>
             <Button
@@ -884,7 +896,7 @@ function InvoicesPageInner() {
               variant="outline"
               className={cn(
                 OS.secondaryButton,
-                "h-9 shrink-0 gap-1.5 rounded-hh-standard border-transparent px-3.5 shadow-none",
+                "h-11 min-h-11 shrink-0 gap-1.5 rounded-hh-standard border-transparent px-3.5 shadow-none xl:h-9 xl:min-h-9",
                 financeToolbarButtonTextClass
               )}
               aria-expanded={desktopFiltersOpen}
@@ -904,7 +916,7 @@ function InvoicesPageInner() {
               variant="outline"
               className={cn(
                 NEO.buttonGhost,
-                "h-9 shrink-0 rounded-hh-standard px-3.5 shadow-none",
+                "h-11 min-h-11 shrink-0 rounded-hh-standard px-3.5 shadow-none xl:h-9 xl:min-h-9",
                 financeToolbarButtonTextClass
               )}
               onClick={() => void refresh()}
@@ -939,11 +951,14 @@ function InvoicesPageInner() {
           {desktopFiltersOpen ? (
             <div className="mt-2 grid gap-2 border-t border-[var(--hh-border)] pt-2 md:grid-cols-[168px_208px_156px_156px]">
               <div className="space-y-1">
-                <label className={financeControlLabelClass}>Status</label>
+                <label htmlFor="invoice-filter-status" className={financeControlLabelClass}>
+                  Status
+                </label>
                 <Select
+                  id="invoice-filter-status"
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value as "" | InvoiceComputedStatus)}
-                  className="h-8 w-full bg-[var(--hh-l2-operational-surface)]"
+                  className="h-11 min-h-11 w-full bg-[var(--hh-l2-operational-surface)] xl:h-8 xl:min-h-8"
                 >
                   {STATUS_OPTIONS.map((o) => (
                     <option key={o.value || "all"} value={o.value}>
@@ -953,11 +968,14 @@ function InvoicesPageInner() {
                 </Select>
               </div>
               <div className="space-y-1">
-                <label className={financeControlLabelClass}>Project</label>
+                <label htmlFor="invoice-filter-project" className={financeControlLabelClass}>
+                  Project
+                </label>
                 <Select
+                  id="invoice-filter-project"
                   value={projectFilter}
                   onChange={(e) => setProjectFilter(e.target.value)}
-                  className="h-8 w-full bg-[var(--hh-l2-operational-surface)]"
+                  className="h-11 min-h-11 w-full bg-[var(--hh-l2-operational-surface)] xl:h-8 xl:min-h-8"
                 >
                   <option value="">All projects</option>
                   {projects.map((p) => (
@@ -968,21 +986,27 @@ function InvoicesPageInner() {
                 </Select>
               </div>
               <div className="space-y-1">
-                <label className={financeControlLabelClass}>Issue from</label>
+                <label htmlFor="invoice-filter-issue-from" className={financeControlLabelClass}>
+                  Issue from
+                </label>
                 <Input
+                  id="invoice-filter-issue-from"
                   type="date"
                   value={dateFrom}
                   onChange={(e) => setDateFrom(e.target.value)}
-                  className="h-8 bg-[var(--hh-l2-operational-surface)] tabular-nums"
+                  className="h-11 min-h-11 bg-[var(--hh-l2-operational-surface)] tabular-nums xl:h-8 xl:min-h-8"
                 />
               </div>
               <div className="space-y-1">
-                <label className={financeControlLabelClass}>Issue to</label>
+                <label htmlFor="invoice-filter-issue-to" className={financeControlLabelClass}>
+                  Issue to
+                </label>
                 <Input
+                  id="invoice-filter-issue-to"
                   type="date"
                   value={dateTo}
                   onChange={(e) => setDateTo(e.target.value)}
-                  className="h-8 bg-[var(--hh-l2-operational-surface)] tabular-nums"
+                  className="h-11 min-h-11 bg-[var(--hh-l2-operational-surface)] tabular-nums xl:h-8 xl:min-h-8"
                 />
               </div>
             </div>
@@ -1080,7 +1104,7 @@ function InvoicesPageInner() {
         ) : (
           <>
             <NeoTable
-              className="hidden md:block"
+              className="hidden lg:block"
               tableClassName="min-w-[760px] table-fixed"
               busy={voidBusyId != null || deleteBusyId != null}
               data-testid="invoices-desktop-list"
@@ -1252,7 +1276,7 @@ function InvoicesPageInner() {
               </tbody>
             </NeoTable>
 
-            <div className="space-y-2 p-2.5 md:hidden">
+            <div className="space-y-2 p-2.5 lg:hidden">
               {tableInvoiceRows.map(({ invoice: inv, projectLabel }) => {
                 const isBusy =
                   voidBusyId === inv.id || deleteBusyId === inv.id || deleteCheckBusyId === inv.id;
@@ -1348,7 +1372,7 @@ function InvoicesPageInner() {
                       <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
                         <RowActionsMenu
                           ariaLabel={`Actions for ${inv.invoiceNo}`}
-                          className="h-10 w-10 min-h-10 min-w-10 rounded-hh-standard border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] shadow-none hover:bg-[var(--hh-l3-hover)]"
+                          className="h-11 w-11 min-h-11 min-w-11 rounded-hh-standard border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] shadow-none hover:bg-[var(--hh-l3-hover)]"
                           contentAvoidCollisions={false}
                           contentSide="bottom"
                           contentSideOffset={8}
@@ -1397,7 +1421,7 @@ function InvoicesPageInner() {
                         variant="outline"
                         className={cn(
                           OS.secondaryButton,
-                          "h-9 flex-1 rounded-hh-standard shadow-none",
+                          "h-11 min-h-11 flex-1 rounded-hh-standard shadow-none",
                           financeToolbarButtonTextClass
                         )}
                       >
@@ -1409,7 +1433,7 @@ function InvoicesPageInner() {
                         variant="outline"
                         className={cn(
                           OS.secondaryButton,
-                          "h-9 flex-1 rounded-hh-standard shadow-none",
+                          "h-11 min-h-11 flex-1 rounded-hh-standard shadow-none",
                           financeToolbarButtonTextClass
                         )}
                       >
