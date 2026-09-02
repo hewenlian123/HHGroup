@@ -113,6 +113,16 @@ describe("Production schema/app alignment hotfix", () => {
     expect(source).toContain("getProjects(projectSupabase)");
   });
 
+  it("passes the authenticated project client through the Project Profit worker-rate query", () => {
+    const page = readFileSync(join(process.cwd(), "src/app/projects/[id]/profit/page.tsx"), "utf8");
+    const facade = readFileSync(join(process.cwd(), "src/lib/data/index.ts"), "utf8");
+
+    expect(page).toContain("getWorkers(projectSupabase)");
+    expect(facade).toMatch(
+      /export async function getWorkers\(\s*explicitClient\?: SupabaseClient\s*\)[\s\S]*?laborDb\.getWorkers\(explicitClient\)/
+    );
+  });
+
   it("contains no production callsite or schema probe for the retired payment_methods table", () => {
     const sourceRoot = join(process.cwd(), "src");
     const offenders = productionSourceFiles(sourceRoot)

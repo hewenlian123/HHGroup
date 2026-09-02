@@ -54,10 +54,11 @@ export async function getPaymentsAll(
 
 /** Fetch all payment rows for the given subcontract ids (e.g. for one subcontractor). */
 export async function getPaymentsBySubcontractIds(
-  subcontractIds: string[]
+  subcontractIds: string[],
+  explicitClient?: SupabaseClient
 ): Promise<SubcontractPaymentRow[]> {
   if (subcontractIds.length === 0) return [];
-  const c = client();
+  const c = client(explicitClient);
   const { data: rows, error } = await c
     .from("subcontract_payments")
     .select("id, subcontract_id, bill_id, payment_date, amount, method, note, created_at")

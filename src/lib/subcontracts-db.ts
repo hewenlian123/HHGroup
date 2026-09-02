@@ -4,6 +4,7 @@
  */
 
 import { getSupabaseClient } from "@/lib/supabase";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type SubcontractRow = {
   id: string;
@@ -33,8 +34,8 @@ export type SubcontractDraft = {
   end_date?: string | null;
 };
 
-function client() {
-  const c = getSupabaseClient();
+function client(explicitClient?: SupabaseClient) {
+  const c = explicitClient ?? getSupabaseClient();
   if (!c) throw new Error("Supabase is not configured.");
   return c;
 }
@@ -104,9 +105,10 @@ export async function getSubcontractById(
 
 /** Fetch subcontracts for a project with subcontractor name. */
 export async function getSubcontractsByProject(
-  projectId: string
+  projectId: string,
+  explicitClient?: SupabaseClient
 ): Promise<SubcontractWithSubcontractor[]> {
-  const c = client();
+  const c = client(explicitClient);
   const selectCols =
     "id, project_id, subcontractor_id, cost_code, contract_amount, status, description, start_date, end_date, created_at, subcontractors(name)";
   const withoutStatusCols =

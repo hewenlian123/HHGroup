@@ -329,8 +329,11 @@ export async function getChangeOrderItems(changeOrderId: string, explicitClient?
   return coDb.getChangeOrderItems(changeOrderId, explicitClient);
 }
 
-export async function getProjectBudgetItems(projectId: string): Promise<ProjectBudgetItem[]> {
-  const rows = await coDb.getProjectBudgetItems(projectId);
+export async function getProjectBudgetItems(
+  projectId: string,
+  explicitClient?: SupabaseClient
+): Promise<ProjectBudgetItem[]> {
+  const rows = await coDb.getProjectBudgetItems(projectId, explicitClient);
   return rows.map((r) => ({
     id: r.id,
     projectId: r.project_id,
@@ -450,8 +453,10 @@ export async function getLaborWorkers(
   return laborDb.getLaborWorkers(explicitClient);
 }
 
-export async function getWorkers(): Promise<import("../labor-db").Worker[]> {
-  return laborDb.getWorkers();
+export async function getWorkers(
+  explicitClient?: SupabaseClient
+): Promise<import("../labor-db").Worker[]> {
+  return laborDb.getWorkers(explicitClient);
 }
 
 export async function createWorker(
@@ -1002,8 +1007,8 @@ export async function deleteProjectTaskWithClient(
 ) {
   return projectTasksDb.deleteProjectTaskWithClient(c, taskId);
 }
-export async function getAllScheduleWithProject() {
-  return projectScheduleDb.getAllScheduleWithProject();
+export async function getAllScheduleWithProject(explicitClient?: SupabaseClient) {
+  return projectScheduleDb.getAllScheduleWithProject(explicitClient);
 }
 export async function getProjectSchedule(projectId: string) {
   return projectScheduleDb.getProjectSchedule(projectId);
@@ -1028,14 +1033,14 @@ export async function getActivityLogsByProject(projectId: string, limit?: number
 export async function insertActivityLog(projectId: string, type: string, description: string) {
   return activityLogsDb.insertActivityLog(projectId, type, description);
 }
-export async function getPunchListAll() {
-  return punchListDb.getPunchListAll();
+export async function getPunchListAll(explicitClient?: SupabaseClient) {
+  return punchListDb.getPunchListAll(explicitClient);
 }
 export async function getPunchListByProject(projectId: string) {
   return punchListDb.getPunchListByProject(projectId);
 }
-export async function getPunchListSummary() {
-  return punchListDb.getPunchListSummary();
+export async function getPunchListSummary(explicitClient?: SupabaseClient) {
+  return punchListDb.getPunchListSummary(explicitClient);
 }
 export async function createPunchListItem(draft: import("../punch-list-db").PunchListDraft) {
   return punchListDb.createPunchListItem(draft);
@@ -1049,8 +1054,8 @@ export async function updatePunchListItem(
 export async function deletePunchListItem(id: string) {
   return punchListDb.deletePunchListItem(id);
 }
-export async function getSitePhotos(projectId?: string | null) {
-  return sitePhotosDb.getSitePhotos(projectId);
+export async function getSitePhotos(projectId?: string | null, explicitClient?: SupabaseClient) {
+  return sitePhotosDb.getSitePhotos(projectId, explicitClient);
 }
 export async function getSitePhotoById(id: string) {
   return sitePhotosDb.getSitePhotoById(id);
@@ -1625,9 +1630,10 @@ export async function deleteSubcontractor(id: string): Promise<void> {
 }
 
 export async function getSubcontractsByProject(
-  projectId: string
+  projectId: string,
+  explicitClient?: SupabaseClient
 ): Promise<import("../subcontracts-db").SubcontractWithSubcontractor[]> {
-  return subcontractsDb.getSubcontractsByProject(projectId);
+  return subcontractsDb.getSubcontractsByProject(projectId, explicitClient);
 }
 
 export async function getSubcontractsSummaryAll(): Promise<
@@ -1723,15 +1729,17 @@ export async function getBillsAll(
 }
 
 export async function getApprovedSubcontractBillsTotalByProject(
-  projectId: string
+  projectId: string,
+  explicitClient?: SupabaseClient
 ): Promise<number> {
-  return subcontractBillsDb.getApprovedSubcontractBillsTotalByProject(projectId);
+  return subcontractBillsDb.getApprovedSubcontractBillsTotalByProject(projectId, explicitClient);
 }
 
 export async function getBillsBySubcontractIds(
-  subcontractIds: string[]
+  subcontractIds: string[],
+  explicitClient?: SupabaseClient
 ): Promise<import("../subcontract-bills-db").SubcontractBillRow[]> {
-  return subcontractBillsDb.getBillsBySubcontractIds(subcontractIds);
+  return subcontractBillsDb.getBillsBySubcontractIds(subcontractIds, explicitClient);
 }
 
 export async function getPaymentScheduleBySubcontractId(
@@ -1783,9 +1791,10 @@ export async function getSubcontractPaymentsAll(
 }
 
 export async function getPaymentsBySubcontractIds(
-  subcontractIds: string[]
+  subcontractIds: string[],
+  explicitClient?: SupabaseClient
 ): Promise<import("../subcontract-payments-db").SubcontractPaymentRow[]> {
-  return subcontractPaymentsDb.getPaymentsBySubcontractIds(subcontractIds);
+  return subcontractPaymentsDb.getPaymentsBySubcontractIds(subcontractIds, explicitClient);
 }
 
 export async function getSubcontractDeductionsBySubcontractIds(
@@ -3056,7 +3065,10 @@ export function getProjectTransactions(projectId: string): ProjectTransactionRow
   return [];
 }
 
-export async function getProjectEstimate(projectId: string): Promise<
+export async function getProjectEstimate(
+  projectId: string,
+  explicitClient?: SupabaseClient
+): Promise<
   | {
       projectId: string;
       revenue: number;
@@ -3068,7 +3080,7 @@ export async function getProjectEstimate(projectId: string): Promise<
     }
   | undefined
 > {
-  const project = await getProjectById(projectId);
+  const project = await getProjectById(projectId, explicitClient);
   if (!project || !project.sourceEstimateId) return undefined;
   const b = project.snapshotBudgetBreakdown;
   return {

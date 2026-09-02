@@ -20,10 +20,7 @@ import { getCanonicalProjectProfit } from "@/lib/profit-engine";
 import { SetBreadcrumbEntityTitle } from "@/components/layout/set-breadcrumb-entity-title";
 import { cn } from "@/lib/utils";
 import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
-import {
-  createServerSupabaseClient,
-  getServerSupabaseInternalNoStore,
-} from "@/lib/supabase-server";
+import { createServerSupabaseClient } from "@/lib/supabase-server";
 import {
   ProjectFinancialTable,
   ProjectFinancialTableCell,
@@ -43,7 +40,6 @@ export default async function ProjectProfitPage({ params }: Props) {
   const { id } = await params;
   const projectSupabase = await createServerSupabaseClient();
   if (!projectSupabase) throw new Error("Authenticated project session is not configured.");
-  const supabase = getServerSupabaseInternalNoStore();
   const [
     project,
     canonical,
@@ -59,21 +55,25 @@ export default async function ProjectProfitPage({ params }: Props) {
   ] = await Promise.all([
     getProjectById(id, projectSupabase),
     getCanonicalProjectProfit(id, projectSupabase),
-    getLaborEntriesWithJoins({ project_id: id }, supabase ?? undefined),
-    getLaborActualByProject(id, supabase ?? undefined),
-    getApprovedSubcontractBillsTotalByProject(id),
-    getExpenseTotalsByProject(id),
-    getProjectEstimate(id),
-    getSubcontractsByProject(id),
-    getProjectBudgetItems(id),
-    getProjectExpenseLines(id, supabase ?? undefined),
-    getWorkers(),
+    getLaborEntriesWithJoins({ project_id: id }, projectSupabase),
+    getLaborActualByProject(id, projectSupabase),
+    getApprovedSubcontractBillsTotalByProject(id, projectSupabase),
+    getExpenseTotalsByProject(id, projectSupabase),
+    getProjectEstimate(id, projectSupabase),
+    getSubcontractsByProject(id, projectSupabase),
+    getProjectBudgetItems(id, projectSupabase),
+    getProjectExpenseLines(id, projectSupabase),
+    getWorkers(projectSupabase),
   ]);
   const rateByWorker = new Map(workers.map((w) => [w.id, w.halfDayRate / 4]));
   const subcontractIds = subcontracts.map((s) => s.id);
   const [payments, bills] = await Promise.all([
-    subcontractIds.length > 0 ? getPaymentsBySubcontractIds(subcontractIds) : Promise.resolve([]),
-    subcontractIds.length > 0 ? getBillsBySubcontractIds(subcontractIds) : Promise.resolve([]),
+    subcontractIds.length > 0
+      ? getPaymentsBySubcontractIds(subcontractIds, projectSupabase)
+      : Promise.resolve([]),
+    subcontractIds.length > 0
+      ? getBillsBySubcontractIds(subcontractIds, projectSupabase)
+      : Promise.resolve([]),
   ]);
 
   if (!project) notFound();

@@ -4,6 +4,7 @@
  */
 
 import { getSupabaseClient } from "@/lib/supabase";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type ProjectScheduleItem = {
   id: string;
@@ -23,8 +24,8 @@ export type ProjectScheduleItemDraft = {
   status?: string;
 };
 
-function client() {
-  const c = getSupabaseClient();
+function client(explicitClient?: SupabaseClient) {
+  const c = explicitClient ?? getSupabaseClient();
   if (!c) throw new Error("Supabase is not configured.");
   return c;
 }
@@ -44,10 +45,10 @@ function toItem(r: Record<string, unknown>): ProjectScheduleItem {
 }
 
 /** Get all schedule items across all projects (for Operations Schedule page), with project name. */
-export async function getAllScheduleWithProject(): Promise<
-  (ProjectScheduleItem & { project_name: string | null })[]
-> {
-  const c = client();
+export async function getAllScheduleWithProject(
+  explicitClient?: SupabaseClient
+): Promise<(ProjectScheduleItem & { project_name: string | null })[]> {
+  const c = client(explicitClient);
   const { data: rows, error } = await c
     .from("project_schedule")
     .select(COLS)
@@ -56,7 +57,11 @@ export async function getAllScheduleWithProject(): Promise<
   const items = (rows ?? []).map((r) => toItem(r as Record<string, unknown>));
   const projectIds = Array.from(new Set(items.map((i) => i.project_id)));
   if (projectIds.length === 0) return items.map((i) => ({ ...i, project_name: null }));
-  const { data: projects } = await c.from("projects").select("id, name").in("id", projectIds);
+  const { data: projects, error: projectsError } = await c
+    .from("projects")
+    .select("id, name")
+    .in("id", projectIds);
+  if (projectsError) throw new Error(projectsError.message ?? "Failed to load schedule projects.");
   const projectNames = new Map<string, string>(
     ((projects ?? []) as { id: string; name: string }[]).map((p) => [p.id, p.name ?? ""])
   );

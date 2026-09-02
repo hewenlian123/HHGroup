@@ -203,15 +203,25 @@ function requestCookies(request: Request | NextRequest): RouteCookie[] {
 export function createRouteSupabaseClient(
   request: Request | NextRequest,
   response: NextResponse,
-  options: { persistent?: boolean; noStore?: boolean } = {}
+  options: { persistent?: boolean; noStore?: boolean; forwardAuthorization?: boolean } = {}
 ): SupabaseClient | null {
   const url = envUrl();
   const anon = envAnon();
   if (!url || !anon) return null;
   const persistent = options.persistent === true;
+  const requestAuthorization = options.forwardAuthorization
+    ? request.headers.get("authorization")
+    : null;
+  const forwardedAuthorization = requestAuthorization?.startsWith("Bearer ")
+    ? requestAuthorization
+    : null;
+  const globalOptions = {
+    ...(options.noStore ? { fetch: noStoreFetch } : {}),
+    ...(forwardedAuthorization ? { headers: { Authorization: forwardedAuthorization } } : {}),
+  };
 
   return createServerClient(url, anon, {
-    ...(options.noStore ? { global: { fetch: noStoreFetch } } : {}),
+    ...(Object.keys(globalOptions).length > 0 ? { global: globalOptions } : {}),
     cookies: {
       getAll() {
         return requestCookies(request);

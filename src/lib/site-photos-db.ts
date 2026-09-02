@@ -3,6 +3,7 @@
  */
 
 import { getSupabaseClient } from "@/lib/supabase";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type SitePhoto = {
   id: string;
@@ -26,8 +27,8 @@ export type SitePhotoDraft = {
   uploaded_by?: string | null;
 };
 
-function client() {
-  const c = getSupabaseClient();
+function client(explicitClient?: SupabaseClient) {
+  const c = explicitClient ?? getSupabaseClient();
   if (!c) throw new Error("Supabase is not configured.");
   return c;
 }
@@ -47,8 +48,11 @@ function toRow(r: Record<string, unknown>): SitePhoto {
 }
 
 /** Get site photos, optionally filtered by project_id. */
-export async function getSitePhotos(projectId?: string | null): Promise<SitePhotoWithProject[]> {
-  const c = client();
+export async function getSitePhotos(
+  projectId?: string | null,
+  explicitClient?: SupabaseClient
+): Promise<SitePhotoWithProject[]> {
+  const c = client(explicitClient);
   let q = c.from("site_photos").select(COLS).order("created_at", { ascending: false });
   if (projectId?.trim()) {
     q = q.eq("project_id", projectId.trim());
@@ -58,7 +62,11 @@ export async function getSitePhotos(projectId?: string | null): Promise<SitePhot
   const items = (rows ?? []).map((r) => toRow(r as Record<string, unknown>));
   const projectIds = Array.from(new Set(items.map((i) => i.project_id)));
   if (projectIds.length === 0) return items.map((i) => ({ ...i, project_name: null }));
-  const { data: projects } = await c.from("projects").select("id, name").in("id", projectIds);
+  const { data: projects, error: projectsError } = await c
+    .from("projects")
+    .select("id, name")
+    .in("id", projectIds);
+  if (projectsError) throw new Error(projectsError.message ?? "Failed to load photo projects.");
   const projectNames = new Map<string, string>(
     ((projects ?? []) as { id: string; name: string }[]).map((p) => [p.id, p.name ?? ""])
   );

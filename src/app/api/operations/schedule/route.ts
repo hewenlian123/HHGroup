@@ -1,14 +1,48 @@
 import { NextResponse } from "next/server";
 import { getAllScheduleWithProject, getProjects, createProjectScheduleItem } from "@/lib/data";
+import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
+import { createRouteSupabaseClient } from "@/lib/supabase-server";
 
-export async function GET() {
+const NO_CACHE_HEADERS = {
+  "Cache-Control": "private, no-store, no-cache, must-revalidate",
+  Pragma: "no-cache",
+};
+
+function withSessionCookies(response: NextResponse, sessionResponse: NextResponse): NextResponse {
+  for (const cookie of sessionResponse.cookies.getAll()) response.cookies.set(cookie);
+  return response;
+}
+
+export async function GET(request: Request) {
+  const guard = await requireSupabaseOwnerOrAdmin(request);
+  if (!guard.ok) return guard.response;
+  const sessionResponse = NextResponse.next();
+  const supabase = createRouteSupabaseClient(request, sessionResponse, {
+    noStore: true,
+    forwardAuthorization: true,
+  });
+  if (!supabase) {
+    return NextResponse.json(
+      { ok: false as const, message: "Authenticated schedule session is not configured." },
+      { status: 503 }
+    );
+  }
   try {
-    const [schedule, projects] = await Promise.all([getAllScheduleWithProject(), getProjects()]);
-    return NextResponse.json({
-      ok: true as const,
-      schedule,
-      projects: projects.map((p) => ({ id: p.id, name: p.name })),
-    });
+    const [schedule, projects] = await Promise.all([
+      getAllScheduleWithProject(supabase),
+      getProjects(supabase),
+    ]);
+    return withSessionCookies(
+      NextResponse.json(
+        {
+          ok: true as const,
+          schedule,
+          projects: projects.map((p) => ({ id: p.id, name: p.name })),
+        },
+        { headers: NO_CACHE_HEADERS }
+      ),
+      sessionResponse
+    );
   } catch (e) {
     const message = e instanceof Error ? e.message : "Failed to load schedule.";
     return NextResponse.json({ ok: false as const, message }, { status: 500 });

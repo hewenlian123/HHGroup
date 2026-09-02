@@ -289,9 +289,10 @@ export async function getBillsAll(
 
 /** Sum of approved/paid bill amounts for a project. */
 export async function getApprovedSubcontractBillsTotalByProject(
-  projectId: string
+  projectId: string,
+  explicitClient?: SupabaseClient
 ): Promise<number> {
-  const c = client();
+  const c = client(explicitClient);
   const { data: rows, error } = await c
     .from("subcontract_bills")
     .select("amount, status")
@@ -303,10 +304,11 @@ export async function getApprovedSubcontractBillsTotalByProject(
 
 /** Fetch all bills for the given subcontract ids (e.g. for one subcontractor). */
 export async function getBillsBySubcontractIds(
-  subcontractIds: string[]
+  subcontractIds: string[],
+  explicitClient?: SupabaseClient
 ): Promise<SubcontractBillRow[]> {
   if (subcontractIds.length === 0) return [];
-  const c = client();
+  const c = client(explicitClient);
   const first = await c
     .from("subcontract_bills")
     .select(COLS_FULL)

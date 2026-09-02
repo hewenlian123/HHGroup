@@ -323,8 +323,11 @@ export async function getChangeOrderAttachments(
   return (rows ?? []).map((r) => toAttachment(r as ChangeOrderAttachmentRow));
 }
 
-export async function getProjectBudgetItems(projectId: string): Promise<ProjectBudgetItemRow[]> {
-  const c = client();
+export async function getProjectBudgetItems(
+  projectId: string,
+  explicitClient?: SupabaseClient
+): Promise<ProjectBudgetItemRow[]> {
+  const c = client(explicitClient);
   const { data: rows, error } = await c
     .from("project_budget_items")
     .select("id, project_id, change_order_id, cost_code, description, qty, unit, unit_price, total")

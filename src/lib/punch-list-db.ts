@@ -4,6 +4,7 @@
  */
 
 import { getSupabaseClient } from "@/lib/supabase";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type PunchListPriority = "Low" | "Medium" | "High" | "Urgent";
 export type PunchListStatus = "open" | "assigned" | "completed";
@@ -48,8 +49,8 @@ export type PunchListDraft = {
 
 export type PunchListSummary = { open: number; assigned: number; completed: number };
 
-function client() {
-  const c = getSupabaseClient();
+function client(explicitClient?: SupabaseClient) {
+  const c = explicitClient ?? getSupabaseClient();
   if (!c) throw new Error("Supabase is not configured.");
   return c;
 }
@@ -102,6 +103,15 @@ async function joinItems(
       ? c.from("site_photos").select("id, photo_url").in("id", photoIds)
       : { data: [] },
   ]);
+  for (const [label, result] of [
+    ["projects", projectsRes],
+    ["workers", workersRes],
+    ["site photos", sitePhotosRes],
+  ] as const) {
+    if ("error" in result && result.error) {
+      throw new Error(result.error.message ?? `Failed to load punch-list ${label}.`);
+    }
+  }
   const projectNames = new Map<string, string>(
     ((projectsRes.data ?? []) as { id: string; name: string }[]).map((p) => [p.id, p.name ?? ""])
   );
@@ -123,8 +133,10 @@ async function joinItems(
 }
 
 /** Get all punch list items with project and worker names. */
-export async function getPunchListAll(): Promise<PunchListItemWithJoins[]> {
-  const c = client();
+export async function getPunchListAll(
+  explicitClient?: SupabaseClient
+): Promise<PunchListItemWithJoins[]> {
+  const c = client(explicitClient);
   let rows: unknown[] | null = null;
   let error: { message?: string } | null = null;
   let extended = true;
@@ -176,10 +188,12 @@ export async function getPunchListByProject(projectId: string): Promise<PunchLis
 }
 
 /** Get counts by status for dashboard summary. */
-export async function getPunchListSummary(): Promise<PunchListSummary> {
-  const c = client();
+export async function getPunchListSummary(
+  explicitClient?: SupabaseClient
+): Promise<PunchListSummary> {
+  const c = client(explicitClient);
   const { data: rows, error } = await c.from("punch_list").select("status");
-  if (error) return { open: 0, assigned: 0, completed: 0 };
+  if (error) throw new Error(error.message ?? "Failed to load punch-list summary.");
   const list = (rows ?? []) as { status: string }[];
   const norm = (s: string) =>
     s === "in_progress" ? "assigned" : s === "resolved" ? "completed" : s;
