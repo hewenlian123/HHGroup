@@ -36,7 +36,8 @@ export const OWNER_NAV_PREFETCH_ROUTES = [
 export const BOTTOM_NAV_VISIBLE_MEDIA_QUERY = "(max-width: 639px)";
 export const QUICK_ACTION_FAB_VISIBLE_MEDIA_QUERY = "(max-width: 1023px)";
 
-export function shouldBulkPrefetchOwnerNav(_pathname: string): boolean {
+export function shouldBulkPrefetchOwnerNav(pathname: string): boolean {
+  void pathname;
   return false;
 }
 
