@@ -1,27 +1,26 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  createRouteSupabaseClient: vi.fn(),
+  createInspectionLog: vi.fn(),
   getAllScheduleWithProject: vi.fn(),
+  getInspectionLogs: vi.fn(),
   getProjects: vi.fn(),
   getPunchListAll: vi.fn(),
   getPunchListSummary: vi.fn(),
   getSitePhotos: vi.fn(),
   getWorkers: vi.fn(),
-  requireSupabaseOwnerOrAdmin: vi.fn(),
+  requireSupabaseOwnerOrAdminRequestClient: vi.fn(),
   strictClient: { from: vi.fn() },
 }));
 
 vi.mock("@/lib/auth-boundary", () => ({
-  requireSupabaseOwnerOrAdmin: mocks.requireSupabaseOwnerOrAdmin,
-}));
-
-vi.mock("@/lib/supabase-server", () => ({
-  createRouteSupabaseClient: mocks.createRouteSupabaseClient,
+  requireSupabaseOwnerOrAdminRequestClient: mocks.requireSupabaseOwnerOrAdminRequestClient,
 }));
 
 vi.mock("@/lib/data", () => ({
   getAllScheduleWithProject: mocks.getAllScheduleWithProject,
+  getInspectionLogs: mocks.getInspectionLogs,
+  createInspectionLog: mocks.createInspectionLog,
   getProjects: mocks.getProjects,
   getPunchListAll: mocks.getPunchListAll,
   getPunchListSummary: mocks.getPunchListSummary,
@@ -51,19 +50,30 @@ const readRoutes = [
     "/api/operations/site-photos",
     () => import("@/app/api/operations/site-photos/route"),
   ],
+  [
+    "inspection-log",
+    "/api/operations/inspection-log",
+    () => import("@/app/api/operations/inspection-log/route"),
+  ],
 ] as const;
 
 describe("Operations API authenticated session client wiring", () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
-    mocks.requireSupabaseOwnerOrAdmin.mockResolvedValue({ ok: true, context: authContext });
-    mocks.createRouteSupabaseClient.mockReturnValue(mocks.strictClient);
+    mocks.requireSupabaseOwnerOrAdminRequestClient.mockResolvedValue({
+      ok: true,
+      context: authContext,
+      client: mocks.strictClient,
+      sessionResponse: { cookies: { getAll: () => [] } },
+    });
     mocks.getAllScheduleWithProject.mockResolvedValue([]);
     mocks.getProjects.mockResolvedValue([]);
     mocks.getPunchListAll.mockResolvedValue([]);
     mocks.getPunchListSummary.mockResolvedValue({ open: 0, assigned: 0, completed: 0 });
     mocks.getSitePhotos.mockResolvedValue([]);
+    mocks.getInspectionLogs.mockResolvedValue([]);
+    mocks.createInspectionLog.mockResolvedValue({});
     mocks.getWorkers.mockResolvedValue([]);
   });
 
@@ -74,10 +84,8 @@ describe("Operations API authenticated session client wiring", () => {
     const response = await GET(req);
 
     expect(response.status).toBe(200);
-    expect(mocks.requireSupabaseOwnerOrAdmin).toHaveBeenCalledWith(req);
-    expect(mocks.createRouteSupabaseClient).toHaveBeenCalledWith(req, expect.anything(), {
+    expect(mocks.requireSupabaseOwnerOrAdminRequestClient).toHaveBeenCalledWith(req, {
       noStore: true,
-      forwardAuthorization: true,
     });
     expect(mocks.getAllScheduleWithProject).toHaveBeenCalledWith(mocks.strictClient);
     expect(mocks.getProjects).toHaveBeenCalledWith(mocks.strictClient);
@@ -90,10 +98,8 @@ describe("Operations API authenticated session client wiring", () => {
     const response = await GET(req);
 
     expect(response.status).toBe(200);
-    expect(mocks.requireSupabaseOwnerOrAdmin).toHaveBeenCalledWith(req);
-    expect(mocks.createRouteSupabaseClient).toHaveBeenCalledWith(req, expect.anything(), {
+    expect(mocks.requireSupabaseOwnerOrAdminRequestClient).toHaveBeenCalledWith(req, {
       noStore: true,
-      forwardAuthorization: true,
     });
     expect(mocks.getPunchListAll).toHaveBeenCalledWith(mocks.strictClient);
     expect(mocks.getPunchListSummary).toHaveBeenCalledWith(mocks.strictClient);
@@ -108,10 +114,8 @@ describe("Operations API authenticated session client wiring", () => {
     const response = await GET(req);
 
     expect(response.status).toBe(200);
-    expect(mocks.requireSupabaseOwnerOrAdmin).toHaveBeenCalledWith(req);
-    expect(mocks.createRouteSupabaseClient).toHaveBeenCalledWith(req, expect.anything(), {
+    expect(mocks.requireSupabaseOwnerOrAdminRequestClient).toHaveBeenCalledWith(req, {
       noStore: true,
-      forwardAuthorization: true,
     });
     expect(mocks.getSitePhotos).toHaveBeenCalledWith("project-1", mocks.strictClient);
     expect(mocks.getProjects).toHaveBeenCalledWith(mocks.strictClient);
@@ -120,7 +124,7 @@ describe("Operations API authenticated session client wiring", () => {
   it.each(readRoutes)(
     "rejects unauthenticated %s reads before any data access",
     async (_, path, load) => {
-      mocks.requireSupabaseOwnerOrAdmin.mockResolvedValueOnce({
+      mocks.requireSupabaseOwnerOrAdminRequestClient.mockResolvedValueOnce({
         ok: false,
         response: Response.json(
           { ok: false, message: "Authentication required." },
@@ -132,15 +136,17 @@ describe("Operations API authenticated session client wiring", () => {
       const response = await GET(request(path));
 
       expect(response.status).toBe(401);
-      expect(mocks.createRouteSupabaseClient).not.toHaveBeenCalled();
       expect(mocks.getProjects).not.toHaveBeenCalled();
     }
   );
 
   it.each(readRoutes)(
-    "fails closed when the %s request client is unavailable",
+    "fails closed when the %s request client boundary is unavailable",
     async (_, path, load) => {
-      mocks.createRouteSupabaseClient.mockReturnValueOnce(null);
+      mocks.requireSupabaseOwnerOrAdminRequestClient.mockResolvedValueOnce({
+        ok: false,
+        response: Response.json({ ok: false, message: "Unavailable." }, { status: 503 }),
+      });
       const { GET } = await load();
 
       const response = await GET(request(path));
@@ -151,4 +157,31 @@ describe("Operations API authenticated session client wiring", () => {
       expect(mocks.getProjects).not.toHaveBeenCalled();
     }
   );
+
+  it("uses the same verified client for Inspection Log reads", async () => {
+    const { GET } = await import("@/app/api/operations/inspection-log/route");
+    const req = request("/api/operations/inspection-log");
+
+    const response = await GET(req);
+
+    expect(response.status).toBe(200);
+    expect(mocks.getInspectionLogs).toHaveBeenCalledWith(mocks.strictClient);
+    expect(mocks.getProjects).toHaveBeenCalledWith(mocks.strictClient);
+  });
+
+  it("uses the same verified client for Inspection Log writes", async () => {
+    const { POST } = await import("@/app/api/operations/inspection-log/route");
+    const req = request("/api/operations/inspection-log", {
+      method: "POST",
+      body: JSON.stringify({ project_id: "project-1", inspection_type: "Final" }),
+    });
+
+    const response = await POST(req);
+
+    expect(response.status).toBe(200);
+    expect(mocks.createInspectionLog).toHaveBeenCalledWith(
+      expect.objectContaining({ project_id: "project-1" }),
+      mocks.strictClient
+    );
+  });
 });

@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSitePhotos, getProjects, createSitePhoto } from "@/lib/data";
-import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
-import { createRouteSupabaseClient } from "@/lib/supabase-server";
+import { requireSupabaseOwnerOrAdminRequestClient } from "@/lib/auth-boundary";
 
 const NO_CACHE_HEADERS = {
   "Cache-Control": "private, no-store, no-cache, must-revalidate",
@@ -14,19 +13,9 @@ function withSessionCookies(response: NextResponse, sessionResponse: NextRespons
 }
 
 export async function GET(req: Request) {
-  const guard = await requireSupabaseOwnerOrAdmin(req);
+  const guard = await requireSupabaseOwnerOrAdminRequestClient(req, { noStore: true });
   if (!guard.ok) return guard.response;
-  const sessionResponse = NextResponse.next();
-  const supabase = createRouteSupabaseClient(req, sessionResponse, {
-    noStore: true,
-    forwardAuthorization: true,
-  });
-  if (!supabase) {
-    return NextResponse.json(
-      { ok: false as const, message: "Authenticated site-photo session is not configured." },
-      { status: 503 }
-    );
-  }
+  const { client: supabase, sessionResponse } = guard;
   try {
     const url = new URL(req.url);
     const projectId = url.searchParams.get("project_id") || undefined;
@@ -52,6 +41,8 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  const guard = await requireSupabaseOwnerOrAdminRequestClient(req, { noStore: true });
+  if (!guard.ok) return guard.response;
   try {
     const body = await req.json();
     const project_id = body.project_id as string | undefined;
@@ -68,14 +59,17 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
-    await createSitePhoto({
-      project_id,
-      photo_url,
-      description: body.description?.trim() ?? null,
-      tags: body.tags?.trim() ?? null,
-      uploaded_by: body.uploaded_by?.trim() ?? null,
-    });
-    return NextResponse.json({ ok: true as const });
+    await createSitePhoto(
+      {
+        project_id,
+        photo_url,
+        description: body.description?.trim() ?? null,
+        tags: body.tags?.trim() ?? null,
+        uploaded_by: body.uploaded_by?.trim() ?? null,
+      },
+      guard.client
+    );
+    return withSessionCookies(NextResponse.json({ ok: true as const }), guard.sessionResponse);
   } catch (e) {
     const message = e instanceof Error ? e.message : "Failed to create site photo.";
     return NextResponse.json({ ok: false as const, message }, { status: 500 });

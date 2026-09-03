@@ -5,6 +5,7 @@
  */
 
 import { getSupabaseClient } from "@/lib/supabase";
+import { financialDataUnavailable } from "@/lib/financial-availability";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type DepositRow = {
@@ -92,8 +93,7 @@ export async function getDeposits(explicitClient?: SupabaseClient): Promise<Depo
     error = r.error as { message?: string } | null;
   }
   if (error) {
-    if (isMissingTable(error)) return [];
-    throw new Error(error.message ?? "Failed to load deposits.");
+    financialDataUnavailable("deposits", error);
   }
   const raw = (rows ?? []) as DepositsDbRow[];
   if (raw.length === 0) return [];
@@ -107,6 +107,12 @@ export async function getDeposits(explicitClient?: SupabaseClient): Promise<Depo
       ? c.from("invoices").select("id, invoice_no").in("id", invoiceIds)
       : Promise.resolve({ data: [] }),
   ]);
+  if ("error" in projRes && projRes.error) {
+    financialDataUnavailable("deposit projects", projRes.error);
+  }
+  if ("error" in invRes && invRes.error) {
+    financialDataUnavailable("deposit invoices", invRes.error);
+  }
   const projectNameById = new Map(
     (projRes.data ?? []).map((r: { id: string; name?: string }) => [r.id, r.name ?? null])
   );
@@ -160,8 +166,7 @@ export async function getDepositsByInvoiceId(
     error = r.error as { message?: string } | null;
   }
   if (error) {
-    if (isMissingTable(error)) return [];
-    throw new Error(error.message ?? "Failed to load deposits.");
+    financialDataUnavailable("deposits", error);
   }
   return ((rows ?? []) as DepositsDbRow[]).map(mapDepositDbRow);
 }
@@ -170,7 +175,8 @@ export async function getDepositsByInvoiceId(
 export async function getTotalDepositsAmount(explicitClient?: SupabaseClient): Promise<number> {
   const c = client(explicitClient);
   const { data: rows, error } = await c.from("deposits").select("amount");
-  if (error || !rows) return 0;
+  if (error) financialDataUnavailable("deposit total", error);
+  if (!rows) financialDataUnavailable("deposit total", null);
   return (rows as { amount: number }[]).reduce((s, r) => s + Number(r.amount ?? 0), 0);
 }
 

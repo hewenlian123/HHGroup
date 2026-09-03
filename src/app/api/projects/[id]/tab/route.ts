@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
+import { requireSupabaseOwnerOrAdminRequestClient } from "@/lib/auth-boundary";
 import {
   getProjectBillingSummary,
   getProjectTransactions,
@@ -25,7 +25,6 @@ import {
   getPunchListByProject,
 } from "@/lib/data";
 import { getApBillsByProject } from "@/lib/ap-bills-db";
-import { createRouteSupabaseClient, getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
 import { getCanonicalProjectProfit } from "@/lib/profit-engine";
 
 type TabKey =
@@ -51,8 +50,9 @@ function jsonError(message: string, status = 400) {
 }
 
 export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
-  const guard = await requireSupabaseOwnerOrAdmin(_req);
+  const guard = await requireSupabaseOwnerOrAdminRequestClient(_req, { noStore: true });
   if (!guard.ok) return guard.response;
+  const supabase = guard.client;
 
   const { id } = await ctx.params;
   const url = new URL(_req.url);
@@ -62,11 +62,9 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
 
   try {
     if (key === "financial") {
-      const supabase = getServerSupabaseInternalNoStore();
-      if (!supabase) return jsonError("Supabase is not configured.", 503);
       const [canonical, billingSummary] = await Promise.all([
         getCanonicalProjectProfit(id, supabase),
-        getProjectBillingSummary(id),
+        getProjectBillingSummary(id, supabase),
       ]);
       return NextResponse.json({ ok: true as const, key, canonical, billingSummary });
     }
@@ -74,7 +72,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     if (key === "overview") {
       const [transactions, expenseLines] = await Promise.all([
         Promise.resolve(getProjectTransactions(id)),
-        getProjectExpenseLines(id),
+        getProjectExpenseLines(id, supabase),
       ]);
       return NextResponse.json({
         ok: true as const,
@@ -85,22 +83,23 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     }
 
     if (key === "tasks") {
-      const [tasks, workers] = await Promise.all([getProjectTasks(id), getWorkers()]);
+      const [tasks, workers] = await Promise.all([
+        getProjectTasks(id, supabase),
+        getWorkers(supabase),
+      ]);
       return NextResponse.json({ ok: true as const, key, tasks, workers });
     }
 
     if (key === "schedule") {
-      const schedule = await getProjectSchedule(id);
+      const schedule = await getProjectSchedule(id, supabase);
       return NextResponse.json({ ok: true as const, key, schedule });
     }
 
     if (key === "budget") {
-      const supabase = getServerSupabaseInternalNoStore();
-      if (!supabase) return jsonError("Supabase is not configured.", 503);
       const [canonical, billingSummary, sourceFromEstimate] = await Promise.all([
         getCanonicalProjectProfit(id, supabase),
-        getProjectBillingSummary(id),
-        getSourceForProject(id),
+        getProjectBillingSummary(id, supabase),
+        getSourceForProject(id, supabase),
       ]);
       return NextResponse.json({
         ok: true as const,
@@ -112,7 +111,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     }
 
     if (key === "expenses") {
-      const expenseLines = await getProjectExpenseLines(id);
+      const expenseLines = await getProjectExpenseLines(id, supabase);
       return NextResponse.json({ ok: true as const, key, expenseLines });
     }
 
@@ -130,36 +129,32 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     }
 
     if (key === "change-orders") {
-      const sessionResponse = NextResponse.next();
-      const supabase = createRouteSupabaseClient(_req, sessionResponse, { noStore: true });
-      if (!supabase) return jsonError("Authenticated project session is not configured.", 503);
       const changeOrders = await getChangeOrdersByProject(id, supabase);
       const response = NextResponse.json({ ok: true as const, key, changeOrders });
-      for (const cookie of sessionResponse.cookies.getAll()) response.cookies.set(cookie);
+      for (const cookie of guard.sessionResponse.cookies.getAll()) response.cookies.set(cookie);
       return response;
     }
 
     if (key === "labor") {
       const [laborBreakdownRows, laborEntries] = await Promise.all([
-        getProjectLaborBreakdown(id),
-        getLaborEntriesWithJoins({ project_id: id }).catch(() => []),
+        getProjectLaborBreakdown(id, supabase),
+        getLaborEntriesWithJoins({ project_id: id }, supabase),
       ]);
       return NextResponse.json({ ok: true as const, key, laborBreakdownRows, laborEntries });
     }
 
     if (key === "subcontracts") {
-      const subcontracts = await getSubcontractsByProject(id);
+      const subcontracts = await getSubcontractsByProject(id, supabase);
       const subcontractIds = subcontracts.map((s) => s.id);
       const [bills, payments] = await Promise.all([
-        getBillsBySubcontractIds(subcontractIds),
-        getPaymentsBySubcontractIds(subcontractIds),
+        getBillsBySubcontractIds(subcontractIds, supabase),
+        getPaymentsBySubcontractIds(subcontractIds, supabase),
       ]);
       return NextResponse.json({ ok: true as const, key, subcontracts, bills, payments });
     }
 
     if (key === "bills") {
-      const supabase = getServerSupabaseInternalNoStore();
-      const projectBills = supabase ? await getApBillsByProject(id, supabase).catch(() => []) : [];
+      const projectBills = await getApBillsByProject(id, supabase);
       return NextResponse.json({ ok: true as const, key, projectBills });
     }
 
@@ -181,17 +176,17 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     }
 
     if (key === "commission") {
-      const sessionResponse = NextResponse.next();
-      const supabase = createRouteSupabaseClient(_req, sessionResponse, { noStore: true });
-      if (!supabase) return jsonError("Authenticated project session is not configured.", 503);
       const commissions = await getCommissionsByProject(id, supabase);
       const response = NextResponse.json({ ok: true as const, key, commissions });
-      for (const cookie of sessionResponse.cookies.getAll()) response.cookies.set(cookie);
+      for (const cookie of guard.sessionResponse.cookies.getAll()) response.cookies.set(cookie);
       return response;
     }
 
     if (key === "punch-list") {
-      const [punchItems, workers] = await Promise.all([getPunchListByProject(id), getWorkers()]);
+      const [punchItems, workers] = await Promise.all([
+        getPunchListByProject(id, supabase),
+        getWorkers(supabase),
+      ]);
       return NextResponse.json({ ok: true as const, key, punchItems, workers });
     }
 

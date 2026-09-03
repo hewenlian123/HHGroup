@@ -5,6 +5,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseClient } from "@/lib/supabase";
+import { financialDataUnavailable } from "@/lib/financial-availability";
 import { dedupeExpenseAttachmentsByStorageKey } from "@/lib/expense-attachment-dedupe";
 import { expenseHasReceiptSignal } from "@/lib/expense-receipt-items";
 import { expenseCountsTowardCanonicalProjectCost } from "@/lib/expense-canonical-cost";
@@ -152,6 +153,11 @@ function nullableMoney(value: unknown): number | null {
   if (value == null || value === "") return null;
   const n = typeof value === "string" ? Number(value.trim()) : Number(value);
   return Number.isFinite(n) ? n : null;
+}
+
+function isAvailableNumericValue(value: unknown): boolean {
+  if (value == null || (typeof value === "string" && value.trim() === "")) return false;
+  return Number.isFinite(Number(value));
 }
 
 function roundCurrency(value: number): number {
@@ -845,85 +851,64 @@ export async function getExpenseById(
   explicitClient?: SupabaseClient
 ): Promise<Expense | null> {
   const c = client(explicitClient);
-  const res = await c.from("expenses").select("*").eq("id", expenseId).maybeSingle();
   let row: ExpenseRow | null = null;
-  if (res.error) {
-    if (!isMissingColumn(res.error)) {
-      if (isMissingTable(res.error)) throw new Error(`Expenses table not found. ${HINT}`);
-      return null;
-    }
-    const coreTry = await c
-      .from("expenses")
-      .select(EXPENSE_COLS_FULL_LEGACY_META)
-      .eq("id", expenseId)
-      .maybeSingle();
-    if (!coreTry.error && coreTry.data) {
-      row = coreTry.data as ExpenseRow;
-    } else if (coreTry.error && !isMissingColumn(coreTry.error)) {
-      return null;
-    } else {
-      const fallback = await c
-        .from("expenses")
-        .select(EXPENSE_COLS_FULL_NO_PAYMENT_METHOD)
-        .eq("id", expenseId)
-        .maybeSingle();
-      if (fallback.error && isMissingColumn(fallback.error)) {
-        const legacy = await c
-          .from("expenses")
-          .select(EXPENSE_COLS_LEGACY)
-          .eq("id", expenseId)
-          .maybeSingle();
-        if (legacy.error && isMissingColumn(legacy.error)) {
-          const minimal = await c
-            .from("expenses")
-            .select(EXPENSE_COLS_MINIMAL)
-            .eq("id", expenseId)
-            .maybeSingle();
-          if (minimal.error && isMissingColumn(minimal.error)) {
-            const minimalLegacy = await c
-              .from("expenses")
-              .select(EXPENSE_COLS_MINIMAL_LEGACY)
-              .eq("id", expenseId)
-              .maybeSingle();
-            if (minimalLegacy.error && isMissingColumn(minimalLegacy.error)) {
-              const noTotal = await c
-                .from("expenses")
-                .select(EXPENSE_COLS_NO_TOTAL)
-                .eq("id", expenseId)
-                .maybeSingle();
-              if (!noTotal.error && noTotal.data) row = noTotal.data as ExpenseRow;
-              else if (noTotal.error && isMissingColumn(noTotal.error)) {
-                const noTotalLegacy = await c
-                  .from("expenses")
-                  .select(EXPENSE_COLS_NO_TOTAL_LEGACY)
-                  .eq("id", expenseId)
-                  .maybeSingle();
-                if (!noTotalLegacy.error && noTotalLegacy.data)
-                  row = noTotalLegacy.data as ExpenseRow;
-              }
-            } else if (!minimalLegacy.error && minimalLegacy.data) {
-              row = minimalLegacy.data as ExpenseRow;
-            }
-          } else if (!minimal.error && minimal.data) {
-            row = minimal.data as ExpenseRow;
-          }
-        } else if (!legacy.error && legacy.data) {
-          row = legacy.data as ExpenseRow;
-        }
-      } else if (!fallback.error && fallback.data) {
-        row = fallback.data as ExpenseRow;
+  let lastMissingColumnError: { message?: string } | null = null;
+  for (const columns of [
+    "*",
+    EXPENSE_COLS_FULL_LEGACY_META,
+    EXPENSE_COLS_FULL_NO_PAYMENT_METHOD,
+    EXPENSE_COLS_LEGACY,
+    EXPENSE_COLS_MINIMAL,
+    EXPENSE_COLS_MINIMAL_LEGACY,
+    EXPENSE_COLS_NO_TOTAL,
+    EXPENSE_COLS_NO_TOTAL_LEGACY,
+  ]) {
+    const result = await c.from("expenses").select(columns).eq("id", expenseId).maybeSingle();
+    if (!result.error) {
+      if (result.data == null) return null;
+      if (
+        typeof result.data !== "object" ||
+        typeof (result.data as { id?: unknown }).id !== "string" ||
+        (result.data as { id: string }).id !== expenseId ||
+        typeof (result.data as { expense_date?: unknown }).expense_date !== "string" ||
+        !(result.data as { expense_date: string }).expense_date
+      ) {
+        financialDataUnavailable("expense header", null);
       }
+      row = result.data as ExpenseRow;
+      break;
     }
-  } else {
-    row = res.data as ExpenseRow | null;
+    if (!isMissingColumn(result.error)) {
+      financialDataUnavailable("expense header", result.error);
+    }
+    lastMissingColumnError = result.error;
   }
-  if (!row) return null;
+  if (!row) financialDataUnavailable("expense header", lastMissingColumnError);
   const paymentNameMap = await fetchPaymentAccountNameMap(
     [(row as ExpenseRow).payment_account_id],
     explicitClient
   );
-  const { data: lineRows } = await c.from("expense_lines").select("*").eq("expense_id", expenseId);
-  const lines = (lineRows ?? []) as ExpenseLineRow[];
+  const { data: lineRows, error: lineError } = await c
+    .from("expense_lines")
+    .select("*")
+    .eq("expense_id", expenseId);
+  if (lineError) financialDataUnavailable("expense lines", lineError);
+  if (!Array.isArray(lineRows)) financialDataUnavailable("expense lines", null);
+  const lines = lineRows as ExpenseLineRow[];
+  if (
+    lines.some(
+      (line) =>
+        !line ||
+        typeof line !== "object" ||
+        typeof line.id !== "string" ||
+        !line.id ||
+        typeof line.expense_id !== "string" ||
+        line.expense_id !== expenseId ||
+        (!isAvailableNumericValue(line.amount) && !isAvailableNumericValue(line.total))
+    )
+  ) {
+    financialDataUnavailable("expense lines", null);
+  }
   const attachments = await getAttachments(expenseId, explicitClient);
   const linkedBankTxId = await getLinkedBankTxId(expenseId, explicitClient);
   const deductionsByExpenseId = await getSubcontractDeductionsByExpenseIds([expenseId], c);
@@ -2069,6 +2054,39 @@ type ExpenseHeaderForProjectCost = {
   receipt_url?: string | null;
 };
 
+function requireProjectExpenseLineRows(
+  data: unknown,
+  projectId: string
+): (ExpenseLineRow & { expense_id: string })[] {
+  if (!Array.isArray(data)) financialDataUnavailable("project expense lines", null);
+  const rows = data as (ExpenseLineRow & { expense_id: string })[];
+  if (
+    rows.some(
+      (row) =>
+        !row ||
+        typeof row !== "object" ||
+        typeof row.id !== "string" ||
+        !row.id ||
+        typeof row.expense_id !== "string" ||
+        !row.expense_id ||
+        typeof row.project_id !== "string" ||
+        row.project_id !== projectId ||
+        !isAvailableNumericValue(row.amount)
+    )
+  ) {
+    financialDataUnavailable("project expense lines", null);
+  }
+  return rows;
+}
+
+function projectExpenseHeaderVendorName(header: ExpenseHeaderForProjectCost): string {
+  const vendorValue = String(header.vendor ?? "").trim();
+  const vendorNameValue = String(header.vendor_name ?? "").trim();
+  return vendorNameValue && /^unknown(?: vendor)?$/i.test(vendorValue)
+    ? vendorNameValue
+    : vendorValue || vendorNameValue;
+}
+
 async function fetchExpenseHeadersByIds(
   c: SupabaseClient,
   ids: string[]
@@ -2078,12 +2096,23 @@ async function fetchExpenseHeadersByIds(
   for (let i = 0; i < ids.length; i += PAYMENT_METHOD_LIST_HYDRATE_CHUNK) {
     const slice = ids.slice(i, i + PAYMENT_METHOD_LIST_HYDRATE_CHUNK);
     const { data, error } = await c.from("expenses").select("*").in("id", slice);
-    if (error) throw new Error(`Financial data unavailable: expenses. ${error.message}`);
-    if (!data) continue;
+    if (error) financialDataUnavailable("project expense headers", error);
+    if (!Array.isArray(data)) financialDataUnavailable("project expense headers", null);
     for (const r of data as ExpenseHeaderForProjectCost[]) {
+      if (
+        !r ||
+        typeof r !== "object" ||
+        typeof r.id !== "string" ||
+        !slice.includes(r.id) ||
+        typeof r.expense_date !== "string" ||
+        !r.expense_date
+      ) {
+        financialDataUnavailable("project expense headers", null);
+      }
       map.set(r.id, r);
     }
   }
+  if (ids.some((id) => !map.has(id))) financialDataUnavailable("project expense headers", null);
   return map;
 }
 
@@ -2152,15 +2181,15 @@ export async function getProjectExpenseLinesBundle(
     .from("expense_lines")
     .select("id, expense_id, project_id, category, description, amount")
     .eq("project_id", projectId);
-  if (error) throw new Error(`Financial data unavailable: expense_lines. ${error.message}`);
-  if (!lineRows?.length) {
+  if (error) financialDataUnavailable("project expense lines", error);
+  const lines = requireProjectExpenseLineRows(lineRows, projectId);
+  if (lines.length === 0) {
     return {
       doneCostLines: [],
       allDisplayLines: [],
       alerts: { needsReviewCount: 0, missingReceiptCount: 0, missingClassificationCount: 0 },
     };
   }
-  const lines = lineRows as ExpenseLineRow[];
   const expenseIds = [...new Set(lines.map((l) => l.expense_id).filter(Boolean))];
   const [expMap, attachCounts] = await Promise.all([
     fetchExpenseHeadersByIds(c, expenseIds),
@@ -2282,20 +2311,25 @@ export async function getExpenseLinesByProject(
   explicitClient?: SupabaseClient
 ): Promise<Array<{ expenseId: string; date: string; vendorName: string; line: ExpenseLine }>> {
   const c = client(explicitClient);
-  const { data: lineRows } = await c
+  const { data: lineRows, error } = await c
     .from("expense_lines")
     .select("id, expense_id, project_id, category, cost_code, description, amount")
     .eq("project_id", projectId);
-  const lines = (lineRows ?? []) as (ExpenseLineRow & { expense_id: string })[];
+  if (error) financialDataUnavailable("project expense lines", error);
+  const lines = requireProjectExpenseLineRows(lineRows, projectId).slice(0, limit * 2);
+  if (lines.length === 0) return [];
+  const headers = await fetchExpenseHeadersByIds(c, [
+    ...new Set(lines.map((line) => line.expense_id)),
+  ]);
   const result: Array<{ expenseId: string; date: string; vendorName: string; line: ExpenseLine }> =
     [];
-  for (const l of lines.slice(0, limit * 2)) {
-    const exp = await getExpenseById(l.expense_id, explicitClient);
-    if (!exp) continue;
+  for (const l of lines) {
+    const header = headers.get(l.expense_id);
+    if (!header) financialDataUnavailable("project expense headers", null);
     result.push({
-      expenseId: exp.id,
-      date: exp.date,
-      vendorName: exp.vendorName,
+      expenseId: header.id,
+      date: String(header.expense_date ?? "").slice(0, 10),
+      vendorName: projectExpenseHeaderVendorName(header),
       line: toExpenseLine(l as ExpenseLineRow),
     });
   }
@@ -2309,20 +2343,25 @@ export async function getProjectExpenseLines(
   explicitClient?: SupabaseClient
 ): Promise<Array<{ expenseId: string; date: string; vendorName: string; line: ExpenseLine }>> {
   const c = client(explicitClient);
-  const { data: lineRows } = await c
+  const { data: lineRows, error } = await c
     .from("expense_lines")
     .select("id, expense_id, project_id, category, cost_code, description, amount")
     .eq("project_id", projectId);
-  const lines = (lineRows ?? []) as (ExpenseLineRow & { expense_id: string })[];
+  if (error) financialDataUnavailable("project expense lines", error);
+  const lines = requireProjectExpenseLineRows(lineRows, projectId);
+  if (lines.length === 0) return [];
+  const headers = await fetchExpenseHeadersByIds(c, [
+    ...new Set(lines.map((line) => line.expense_id)),
+  ]);
   const result: Array<{ expenseId: string; date: string; vendorName: string; line: ExpenseLine }> =
     [];
   for (const l of lines) {
-    const exp = await getExpenseById(l.expense_id, explicitClient);
-    if (!exp) continue;
+    const header = headers.get(l.expense_id);
+    if (!header) financialDataUnavailable("project expense headers", null);
     result.push({
-      expenseId: exp.id,
-      date: exp.date,
-      vendorName: exp.vendorName,
+      expenseId: header.id,
+      date: String(header.expense_date ?? "").slice(0, 10),
+      vendorName: projectExpenseHeaderVendorName(header),
       line: toExpenseLine(l as ExpenseLineRow),
     });
   }
@@ -2335,19 +2374,40 @@ export async function getExpenseTotalsByProject(
   explicitClient?: SupabaseClient
 ): Promise<number> {
   const c = client(explicitClient);
-  const { data: rows } = await c
+  const { data: rows, error: lineError } = await c
     .from("expense_lines")
     .select("amount, expense_id")
     .eq("project_id", projectId);
-  if (!rows?.length) return 0;
+  if (lineError) financialDataUnavailable("project expense lines", lineError);
+  if (!Array.isArray(rows)) financialDataUnavailable("project expense lines", null);
+  if (rows.length === 0) return 0;
   const lineRows = rows as Array<{ amount?: unknown; expense_id?: string }>;
+  if (
+    lineRows.some(
+      (row) =>
+        !row ||
+        typeof row !== "object" ||
+        typeof row.expense_id !== "string" ||
+        !row.expense_id ||
+        !isAvailableNumericValue(row.amount)
+    )
+  ) {
+    financialDataUnavailable("project expense lines", null);
+  }
   const eids = [...new Set(lineRows.map((r) => r.expense_id).filter((id): id is string => !!id))];
   const { data: hdrs, error: hdrErr } = await c
     .from("expenses")
     .select("id, status, reference_no")
     .in("id", eids);
-  if (hdrErr || !hdrs) {
-    return lineRows.reduce((s, row) => s + Number(row.amount || 0), 0);
+  if (hdrErr) financialDataUnavailable("project expense headers", hdrErr);
+  if (!Array.isArray(hdrs)) financialDataUnavailable("project expense headers", null);
+  const returnedHeaderIds = new Set(
+    hdrs
+      .map((header: { id?: unknown }) => header?.id)
+      .filter((id): id is string => typeof id === "string" && id.length > 0)
+  );
+  if (eids.some((id) => !returnedHeaderIds.has(id))) {
+    financialDataUnavailable("project expense headers", null);
   }
   const allow = new Set(
     hdrs
@@ -2369,7 +2429,10 @@ export async function getTotalExpenses(explicitClient?: SupabaseClient): Promise
   const { data: rows, error } = await c.from("expenses").select("total");
   if (error) {
     if (isMissingColumn(error)) {
-      const { data: lineRows } = await c.from("expense_lines").select("expense_id, amount");
+      const { data: lineRows, error: lineError } = await c
+        .from("expense_lines")
+        .select("expense_id, amount");
+      if (lineError) financialDataUnavailable("expense lines", lineError);
       if (!lineRows?.length) return 0;
       const byExpense = new Map<string, number>();
       for (const r of lineRows as { expense_id: string; amount?: number }[]) {
@@ -2378,41 +2441,50 @@ export async function getTotalExpenses(explicitClient?: SupabaseClient): Promise
       }
       return Array.from(byExpense.values()).reduce((s, v) => s + v, 0);
     }
-    return 0;
+    financialDataUnavailable("expense totals", error);
   }
   return (rows ?? []).reduce((s, r) => s + Number((r as { total?: number }).total || 0), 0);
 }
 
 /** Sum of all expense_lines amounts (amount or total column). For finance overview. */
-export async function getTotalExpenseLinesSum(): Promise<number> {
-  const c = client();
+export async function getTotalExpenseLinesSum(explicitClient?: SupabaseClient): Promise<number> {
+  const c = client(explicitClient);
   const { data: rows, error } = await c.from("expense_lines").select("amount");
   if (error) {
-    return 0;
+    financialDataUnavailable("expense line totals", error);
   }
   return (rows ?? []).reduce((s, r) => s + Number((r as { amount?: number }).amount ?? 0), 0);
 }
 
 /** Sum of expense line amounts for expenses with expense_date in the given month. For dashboard "Expenses This Month". */
-export async function getExpensesTotalForMonth(year: number, month: number): Promise<number> {
-  const c = client();
+export async function getExpensesTotalForMonth(
+  year: number,
+  month: number,
+  explicitClient?: SupabaseClient
+): Promise<number> {
+  const c = client(explicitClient);
   const y = String(year);
   const m = String(month).padStart(2, "0");
   const start = `${y}-${m}-01`;
   const lastDay = new Date(year, month, 0).getDate();
   const end = `${y}-${m}-${String(lastDay).padStart(2, "0")}`;
-  const { data: expenseRows } = await c
+  const { data: expenseRows, error: expenseError } = await c
     .from("expenses")
     .select("id, status, reference_no")
     .gte("expense_date", start)
     .lte("expense_date", end);
+  if (expenseError) financialDataUnavailable("monthly expenses", expenseError);
   const ids = (expenseRows ?? [])
     .filter((r: { id?: string; status?: string | null; reference_no?: string | null }) =>
       expenseCountsTowardCanonicalProjectCost(r)
     )
     .map((r: { id: string }) => r.id);
   if (ids.length === 0) return 0;
-  const { data: lineRows } = await c.from("expense_lines").select("amount").in("expense_id", ids);
+  const { data: lineRows, error: lineError } = await c
+    .from("expense_lines")
+    .select("amount")
+    .in("expense_id", ids);
+  if (lineError) financialDataUnavailable("monthly expense lines", lineError);
   return (lineRows ?? []).reduce((s, r) => s + Number((r as { amount?: number }).amount || 0), 0);
 }
 
@@ -2422,16 +2494,22 @@ export async function getExpensesTotalForMonth(year: number, month: number): Pro
  */
 export async function countExpensesWithoutReceiptUrlInRange(
   start: string,
-  end: string
+  end: string,
+  explicitClient?: SupabaseClient
 ): Promise<number> {
-  const c = client();
+  const c = client(explicitClient);
   const { data: rows, error } = await c
     .from("expenses")
     .select("*")
     .gte("expense_date", start.slice(0, 10))
     .lte("expense_date", end.slice(0, 10));
-  if (error) return 0;
-  if ((rows ?? []).some((r) => !Object.prototype.hasOwnProperty.call(r, "receipt_url"))) return 0;
+  if (error) financialDataUnavailable("expense receipt availability", error);
+  if ((rows ?? []).some((r) => !Object.prototype.hasOwnProperty.call(r, "receipt_url"))) {
+    financialDataUnavailable("expense receipt availability", {
+      code: "42703",
+      message: "receipt_url is unavailable from the expenses schema.",
+    });
+  }
   let n = 0;
   for (const r of rows ?? []) {
     if (

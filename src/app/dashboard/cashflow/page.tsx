@@ -14,51 +14,51 @@ import {
   getTotalDepositsAmount,
 } from "@/lib/data";
 import { formatCurrency } from "@/lib/formatters";
-import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
+import { authorizedAppRole } from "@/lib/auth-role";
+import { FinancialDataUnavailableError } from "@/lib/financial-availability";
+import { createServerSupabaseClient } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
 
 export default async function CashflowPage() {
-  let invoicesWithDerived: Awaited<ReturnType<typeof getInvoicesWithDerived>> = [];
-  let subcontractPaymentsSummary: Awaited<ReturnType<typeof getPaymentsSummaryAll>> = [];
-  let billsAll: Awaited<ReturnType<typeof getBillsAll>> = [];
-  let subcontractPaymentsAll: Awaited<ReturnType<typeof getSubcontractPaymentsAll>> = [];
-  let laborPayments: Awaited<ReturnType<typeof getLaborPayments>> = [];
-  let totalExpenses = 0;
-  let projects: Awaited<ReturnType<typeof getProjects>> = [];
-  let subcontractsDetails: Awaited<ReturnType<typeof getSubcontractsWithDetailsAll>> = [];
-  let depositsTotal = 0;
-  let depositsList: Awaited<ReturnType<typeof getDeposits>> = [];
-  let dataLoadWarning: string | null = null;
-
-  try {
-    [
-      invoicesWithDerived,
-      subcontractPaymentsSummary,
-      billsAll,
-      subcontractPaymentsAll,
-      laborPayments,
-      totalExpenses,
-      projects,
-      subcontractsDetails,
-      depositsTotal,
-      depositsList,
-    ] = await Promise.all([
-      getInvoicesWithDerived(),
-      getPaymentsSummaryAll(),
-      getBillsAll(),
-      getSubcontractPaymentsAll(),
-      getLaborPayments(),
-      getTotalExpenses(),
-      getProjects(),
-      getSubcontractsWithDetailsAll().catch(() => []),
-      getTotalDepositsAmount(),
-      getDeposits(),
-    ]);
-  } catch (e) {
-    logServerPageDataError("dashboard/cashflow", e);
-    dataLoadWarning = serverDataLoadWarning(e, "cashflow data");
+  const supabase = await createServerSupabaseClient({ noStore: true });
+  if (!supabase) throw new FinancialDataUnavailableError("cashflow session", null);
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+  if (authError) throw new FinancialDataUnavailableError("cashflow session", authError);
+  if (!user || !authorizedAppRole(user)) {
+    throw new FinancialDataUnavailableError("cashflow session", {
+      code: "42501",
+      message: "Owner or admin authentication required.",
+    });
   }
+  const dataLoadWarning: string | null = null;
+
+  const [
+    invoicesWithDerived,
+    subcontractPaymentsSummary,
+    billsAll,
+    subcontractPaymentsAll,
+    laborPayments,
+    totalExpenses,
+    projects,
+    subcontractsDetails,
+    depositsTotal,
+    depositsList,
+  ] = await Promise.all([
+    getInvoicesWithDerived(undefined, supabase),
+    getPaymentsSummaryAll(supabase),
+    getBillsAll(supabase),
+    getSubcontractPaymentsAll(supabase),
+    getLaborPayments(undefined, undefined, undefined, supabase),
+    getTotalExpenses(supabase),
+    getProjects(supabase),
+    getSubcontractsWithDetailsAll(supabase),
+    getTotalDepositsAmount(supabase),
+    getDeposits(supabase),
+  ]);
 
   const cashIn = depositsTotal;
   const subcontractOut = subcontractPaymentsSummary.reduce((s, p) => s + p.amount, 0);
@@ -92,18 +92,9 @@ export default async function CashflowPage() {
     const projectId = subcontractIdToProjectId.get(p.subcontract_id) ?? "";
     cashOutByProject.set(projectId, (cashOutByProject.get(projectId) ?? 0) + p.amount);
   }
-  let projectExpenseTotals: number[] = [];
-  if (projects.length > 0) {
-    try {
-      projectExpenseTotals = await Promise.all(
-        projects.map((p) => getExpenseTotalsByProject(p.id))
-      );
-    } catch (e) {
-      logServerPageDataError("dashboard/cashflow expense totals", e);
-      dataLoadWarning = dataLoadWarning ?? serverDataLoadWarning(e, "expense totals by project");
-      projectExpenseTotals = projects.map(() => 0);
-    }
-  }
+  const projectExpenseTotals = await Promise.all(
+    projects.map((p) => getExpenseTotalsByProject(p.id, supabase))
+  );
   projects.forEach((p, i) => {
     const exp = projectExpenseTotals[i] ?? 0;
     cashOutByProject.set(p.id, (cashOutByProject.get(p.id) ?? 0) + exp);

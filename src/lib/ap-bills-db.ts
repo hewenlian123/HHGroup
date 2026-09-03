@@ -6,6 +6,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseClient } from "@/lib/supabase";
+import { financialDataUnavailable } from "@/lib/financial-availability";
 
 const BILLS_TABLE = "ap_bills";
 const AP_BILLS_BASE_SELECT =
@@ -261,8 +262,7 @@ async function sumApBillPayments(billId: string, explicitClient: SupabaseLike): 
     .select("amount")
     .eq("bill_id", billId);
   if (error) {
-    if (isMissingTable(error)) return 0;
-    throw new Error(error.message ?? "Failed to load bill payments.");
+    financialDataUnavailable("AP bill payments", error);
   }
   return money(
     (data ?? []).reduce((sum, row) => sum + toNum((row as { amount?: unknown }).amount), 0)
@@ -313,8 +313,7 @@ export async function getApBillById(
     }
   }
   if (error) {
-    if (isMissingTable(error)) return null;
-    throw new Error(error.message ?? "Failed to load bill.");
+    financialDataUnavailable("AP bill", error);
   }
   if (!row) return null;
   return mapBillWithProject(row as Record<string, unknown>);
@@ -365,8 +364,7 @@ export async function getApBills(
     error = retryResult.error;
   }
   if (error) {
-    if (isMissingTable(error)) return [];
-    throw new Error(error.message ?? "Failed to load bills.");
+    financialDataUnavailable("AP bills", error);
   }
   let list = (rows ?? []).map((r: Record<string, unknown>) => mapBillWithProject(r));
   if (filters.search?.trim()) {
@@ -401,10 +399,11 @@ export async function getApBillsBySubcontractIds(
     .select(AP_BILLS_LINKED_SELECT)
     .in("subcontract_id", subcontractIds)
     .order("created_at", { ascending: false });
-  if (error && isMissingLinkedApColumns(error)) return [];
+  if (error && isMissingLinkedApColumns(error)) {
+    financialDataUnavailable("subcontract AP bill linkage", error);
+  }
   if (error) {
-    if (isMissingTable(error)) return [];
-    throw new Error(error.message ?? "Failed to load subcontract AP bills.");
+    financialDataUnavailable("subcontract AP bills", error);
   }
   return (rows ?? []).map((r: Record<string, unknown>) => mapBillWithProject(r));
 }
@@ -430,8 +429,7 @@ export async function getApBillsRecent(
     error = retry.error;
   }
   if (error) {
-    if (isMissingTable(error)) return [];
-    throw new Error(error.message ?? "Failed to load recent bills.");
+    financialDataUnavailable("recent AP bills", error);
   }
   return (rows ?? []).map((r: Record<string, unknown>) => mapBillWithProject(r));
 }
@@ -450,8 +448,7 @@ export async function getApBillPayments(
     .eq("bill_id", billId)
     .order("payment_date", { ascending: false });
   if (error) {
-    if (isMissingTable(error)) return [];
-    throw new Error(error.message ?? "Failed to load payments.");
+    financialDataUnavailable("AP bill payments", error);
   }
   return (rows ?? []).map((r) => mapPayment(r as Record<string, unknown>));
 }
@@ -673,37 +670,24 @@ export async function deleteApBillDraft(
   explicitClient?: SupabaseLike
 ): Promise<boolean> {
   const c = client(explicitClient);
-  const { data: bill, error: billErr } = await c
-    .from(BILLS_TABLE)
-    .select("id,status")
-    .eq("id", id)
-    .maybeSingle();
-  if (billErr) {
-    if (isMissingTable(billErr)) return false;
-    throw new Error(billErr.message ?? "Failed to load bill.");
+  const billId = id.trim();
+  if (!billId) return false;
+  const { data, error } = await c.rpc("delete_ap_bill_draft_atomic", {
+    p_bill_id: billId,
+    p_idempotency_key: `ap-bill-delete:${billId}`,
+  });
+  if (error) {
+    if (error.code === "P0002" || /^Bill not found\.?$/i.test(error.message ?? "")) return false;
+    throw new Error(error.message ?? "Failed to delete bill.");
   }
-  if (!bill) return false;
-  const status = ((bill as { status?: unknown })?.status ?? "").toString();
-  if (status !== "Draft") throw new Error("Only Draft bills can be deleted");
-
-  try {
-    const { count, error: payErr } = await c
-      .from("ap_bill_payments")
-      .select("id", { count: "exact", head: true })
-      .eq("bill_id", id);
-    if (!payErr && (count ?? 0) > 0) throw new Error("Cannot delete a bill with payments");
-  } catch (e) {
-    if (e instanceof Error && e.message === "Cannot delete a bill with payments") throw e;
-    // ap_bill_payments may not exist; allow delete
+  if (!data || typeof data !== "object") {
+    throw new Error("Atomic Draft AP Bill delete returned an invalid result.");
   }
-
-  const { data: deleted, error: delErr } = await c
-    .from(BILLS_TABLE)
-    .delete()
-    .eq("id", id)
-    .select("id");
-  if (delErr) throw new Error(delErr.message ?? "Failed to delete bill.");
-  return (deleted ?? []).length > 0;
+  const result = data as Record<string, unknown>;
+  if (result.bill_id !== billId || typeof result.reused !== "boolean") {
+    throw new Error("Atomic Draft AP Bill delete returned an invalid result.");
+  }
+  return true;
 }
 
 /** Total amount of all non-void bills (for finance overview). */
@@ -713,8 +697,7 @@ export async function getTotalBillsAmount(explicitClient?: SupabaseLike): Promis
     .from(BILLS_TABLE)
     .select("amount")
     .not("status", "eq", "Void");
-  if (error && isMissingTable(error)) return 0;
-  if (error) throw new Error(error.message ?? "Failed to load bills.");
+  if (error) financialDataUnavailable("AP Bill total", error);
   return (rows ?? []).reduce((s, r) => s + toNum((r as { amount?: number }).amount), 0);
 }
 
@@ -743,35 +726,23 @@ export async function getApBillsSummary(explicitClient?: SupabaseLike): Promise<
     .select("id, amount, paid_amount, balance_amount, status, due_date")
     .not("status", "eq", "Void");
   if (error) {
-    // Table missing or other error — return zeroed summary rather than crashing.
-    return {
-      totalOutstanding: 0,
-      overdueCount: 0,
-      overdueAmount: 0,
-      dueThisWeekCount: 0,
-      dueThisWeekAmount: 0,
-      paidThisMonthAmount: 0,
-    };
+    financialDataUnavailable("AP Bill summary", error);
   }
   const list = (bills ?? []) as ApSummaryBill[];
 
-  let paidThisMonthAmount = 0;
-  try {
-    const { data: payments } = await c
-      .from("ap_bill_payments")
-      .select("amount")
-      .gte("payment_date", startOfMonth)
-      .lte(
-        "payment_date",
-        new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10)
-      );
-    paidThisMonthAmount = (payments ?? []).reduce(
-      (s, p) => s + toNum((p as { amount?: number }).amount),
-      0
+  const { data: payments, error: paymentError } = await c
+    .from("ap_bill_payments")
+    .select("amount")
+    .gte("payment_date", startOfMonth)
+    .lte(
+      "payment_date",
+      new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10)
     );
-  } catch {
-    // ap_bill_payments may not exist
-  }
+  if (paymentError) financialDataUnavailable("AP Bill payment summary", paymentError);
+  const paidThisMonthAmount = (payments ?? []).reduce(
+    (s, p) => s + toNum((p as { amount?: number }).amount),
+    0
+  );
 
   return summarizeApBillsForDashboard(list, {
     today,

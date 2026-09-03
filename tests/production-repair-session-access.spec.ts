@@ -8,6 +8,8 @@ const ENDPOINTS = [
   "/api/operations/schedule",
   "/api/operations/punch-list",
   "/api/operations/site-photos",
+  "/api/operations/inspection-log",
+  "/api/operations/tasks",
 ] as const;
 
 async function expectNoHorizontalOverflow(page: Page, width: number) {
@@ -35,7 +37,7 @@ test.describe("Production repair request-session access", () => {
     }, ENDPOINTS);
 
     for (const result of authenticatedResults) {
-      expect(result.status, result.path).toBe(200);
+      expect(result.status, `${result.path}: ${JSON.stringify(result.body)}`).toBe(200);
       expect(result.body, result.path).toMatchObject({ ok: true });
     }
 

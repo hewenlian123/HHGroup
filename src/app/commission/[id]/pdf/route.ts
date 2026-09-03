@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCommissionById, getPaymentRecordsByCommissionId, getProjectById } from "@/lib/data";
 import { fetchDocumentCompanyProfile } from "@/lib/document-company-profile";
+import { requireSupabaseOwnerOrAdminRequestClient } from "@/lib/auth-boundary";
 import {
   generateCommissionSummaryPdfBuffer,
   type CommissionSummaryPaymentRow,
@@ -42,21 +43,23 @@ async function fetchLogoForPdf(
  * Query: ?download=1 — Content-Disposition: attachment (otherwise inline for iframe preview).
  */
 export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
+  const guard = await requireSupabaseOwnerOrAdminRequestClient(req, { noStore: true });
+  if (!guard.ok) return guard.response;
   const { id: rawId } = await ctx.params;
   const id = rawId?.trim();
   if (!id) {
     return NextResponse.json({ ok: false, message: "Missing commission id" }, { status: 400 });
   }
 
-  const commission = await getCommissionById(id);
+  const commission = await getCommissionById(id, guard.client);
   if (!commission) {
     return NextResponse.json({ ok: false, message: "Commission not found" }, { status: 404 });
   }
 
   const [project, paymentRows, company] = await Promise.all([
-    getProjectById(commission.project_id),
-    getPaymentRecordsByCommissionId(id),
-    fetchDocumentCompanyProfile(),
+    getProjectById(commission.project_id, guard.client),
+    getPaymentRecordsByCommissionId(id, guard.client),
+    fetchDocumentCompanyProfile(guard.client),
   ]);
 
   const payments: CommissionSummaryPaymentRow[] = paymentRows.map((p) => ({

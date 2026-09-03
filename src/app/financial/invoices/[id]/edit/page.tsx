@@ -4,15 +4,18 @@ import { ServerDataLoadFallback } from "@/components/server-data-load-fallback";
 import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
 import { SetBreadcrumbEntityTitle } from "@/components/layout/set-breadcrumb-entity-title";
 import EditInvoiceClient from "./edit-invoice-client";
+import { requireSupabaseOwnerOrAdminServerActionClient } from "@/lib/auth-boundary";
 
 export const dynamic = "force-dynamic";
 
 export default async function EditInvoicePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const guard = await requireSupabaseOwnerOrAdminServerActionClient({ noStore: true });
+  if (!guard.ok) notFound();
   let invoice: Awaited<ReturnType<typeof getInvoiceById>> | null = null;
 
   try {
-    invoice = await getInvoiceById(id);
+    invoice = await getInvoiceById(id, guard.client);
   } catch (e) {
     logServerPageDataError(`financial/invoices/${id}/edit`, e);
     return (
@@ -28,7 +31,7 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
 
   let initialProjectName = invoice.projectId;
   try {
-    const project = await getProjectById(invoice.projectId);
+    const project = await getProjectById(invoice.projectId, guard.client);
     initialProjectName = project?.name ?? invoice.projectId;
   } catch {
     initialProjectName = invoice.projectId;

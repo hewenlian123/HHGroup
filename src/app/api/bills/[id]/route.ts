@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
+import { requireSupabaseOwnerOrAdminRequestClient } from "@/lib/auth-boundary";
 import {
   AP_BILL_STATUSES,
   AP_BILL_TYPES,
@@ -14,10 +14,6 @@ import {
   type ApBillStatus,
   type ApBillType,
 } from "@/lib/ap-bills-db";
-import {
-  SUPABASE_MISSING_SERVER_ENV_MESSAGE,
-  createRouteSupabaseClient,
-} from "@/lib/supabase-server";
 import { safeErrorMessage } from "@/lib/system-response-safety";
 
 export const dynamic = "force-dynamic";
@@ -31,6 +27,11 @@ const NO_CACHE_HEADERS: Record<string, string> = {
 
 function apiError(status: number, message: string): NextResponse {
   return NextResponse.json({ ok: false, message }, { status, headers: NO_CACHE_HEADERS });
+}
+
+function withSessionCookies(response: NextResponse, sessionResponse: NextResponse): NextResponse {
+  for (const cookie of sessionResponse.cookies.getAll()) response.cookies.set(cookie);
+  return response;
 }
 
 function logBillsError(action: string, error: unknown) {
@@ -96,10 +97,9 @@ async function readJson(request: Request): Promise<Record<string, unknown> | nul
 }
 
 export async function GET(request: Request, ctx: { params: Promise<{ id: string }> }) {
-  const guard = await requireSupabaseOwnerOrAdmin(request);
+  const guard = await requireSupabaseOwnerOrAdminRequestClient(request, { noStore: true });
   if (!guard.ok) return guard.response;
-  const supabase = createRouteSupabaseClient(request, NextResponse.next());
-  if (!supabase) return apiError(503, SUPABASE_MISSING_SERVER_ENV_MESSAGE);
+  const { client: supabase, sessionResponse } = guard;
 
   const { id } = await ctx.params;
   if (!id?.trim()) return apiError(400, "Missing bill id.");
@@ -110,7 +110,10 @@ export async function GET(request: Request, ctx: { params: Promise<{ id: string 
       getApBillPayments(id, supabase),
     ]);
     if (!bill) return apiError(404, "Bill not found.");
-    return NextResponse.json({ ok: true, bill, payments }, { headers: NO_CACHE_HEADERS });
+    return withSessionCookies(
+      NextResponse.json({ ok: true, bill, payments }, { headers: NO_CACHE_HEADERS }),
+      sessionResponse
+    );
   } catch (error) {
     logBillsError("load", error);
     return apiError(500, safeFailureMessage(error, "Failed to load bill."));
@@ -118,10 +121,9 @@ export async function GET(request: Request, ctx: { params: Promise<{ id: string 
 }
 
 export async function PATCH(request: Request, ctx: { params: Promise<{ id: string }> }) {
-  const guard = await requireSupabaseOwnerOrAdmin(request);
+  const guard = await requireSupabaseOwnerOrAdminRequestClient(request, { noStore: true });
   if (!guard.ok) return guard.response;
-  const supabase = createRouteSupabaseClient(request, NextResponse.next());
-  if (!supabase) return apiError(503, SUPABASE_MISSING_SERVER_ENV_MESSAGE);
+  const { client: supabase, sessionResponse } = guard;
 
   const { id } = await ctx.params;
   if (!id?.trim()) return apiError(400, "Missing bill id.");
@@ -133,7 +135,10 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
     if (body.action === "void") {
       const ok = await voidApBill(id, supabase);
       if (!ok) return apiError(404, "Bill not found.");
-      return NextResponse.json({ ok: true }, { headers: NO_CACHE_HEADERS });
+      return withSessionCookies(
+        NextResponse.json({ ok: true }, { headers: NO_CACHE_HEADERS }),
+        sessionResponse
+      );
     }
     if (body.action === "approve") {
       const ok = await setApBillPending(id, supabase);
@@ -142,7 +147,10 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
         if (!bill) return apiError(404, "Bill not found.");
         return apiError(400, "Only Draft bills can be approved.");
       }
-      return NextResponse.json({ ok: true }, { headers: NO_CACHE_HEADERS });
+      return withSessionCookies(
+        NextResponse.json({ ok: true }, { headers: NO_CACHE_HEADERS }),
+        sessionResponse
+      );
     }
 
     const amount = numberOrUndefined(body.amount);
@@ -178,7 +186,10 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
       supabase
     );
     if (!updated) return apiError(404, "Bill not found.");
-    return NextResponse.json({ ok: true, bill: updated }, { headers: NO_CACHE_HEADERS });
+    return withSessionCookies(
+      NextResponse.json({ ok: true, bill: updated }, { headers: NO_CACHE_HEADERS }),
+      sessionResponse
+    );
   } catch (error) {
     const validationError = isBillValidationError(error);
     if (!validationError) logBillsError("update", error);
@@ -192,10 +203,9 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
 }
 
 export async function DELETE(request: Request, ctx: { params: Promise<{ id: string }> }) {
-  const guard = await requireSupabaseOwnerOrAdmin(request);
+  const guard = await requireSupabaseOwnerOrAdminRequestClient(request, { noStore: true });
   if (!guard.ok) return guard.response;
-  const supabase = createRouteSupabaseClient(request, NextResponse.next());
-  if (!supabase) return apiError(503, SUPABASE_MISSING_SERVER_ENV_MESSAGE);
+  const { client: supabase, sessionResponse } = guard;
 
   const { id } = await ctx.params;
   if (!id?.trim()) return apiError(400, "Missing bill id.");
@@ -204,7 +214,10 @@ export async function DELETE(request: Request, ctx: { params: Promise<{ id: stri
     const ok = await deleteApBillDraft(id, supabase);
     if (!ok) return apiError(404, "Bill not found.");
     const summary = await getApBillsSummary(supabase);
-    return NextResponse.json({ ok: true, summary }, { headers: NO_CACHE_HEADERS });
+    return withSessionCookies(
+      NextResponse.json({ ok: true, summary }, { headers: NO_CACHE_HEADERS }),
+      sessionResponse
+    );
   } catch (error) {
     logBillsError("delete", error);
     const message =

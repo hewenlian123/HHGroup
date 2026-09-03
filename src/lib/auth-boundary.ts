@@ -1,7 +1,7 @@
 import "server-only";
 
 import { NextResponse } from "next/server";
-import type { User } from "@supabase/supabase-js";
+import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { authorizedAppRole, type AuthorizedAppRole } from "@/lib/auth-role";
 import {
   hasInternalAdminSecret,
@@ -9,7 +9,10 @@ import {
   isProductionSafetyLocked,
 } from "@/lib/production-safety";
 import { isCompatibilityAccessEnabled } from "@/lib/owner-access-mode";
+import { parseRequestAuthorization } from "@/lib/request-authorization";
 import {
+  createRouteSupabaseClient,
+  createServerSupabaseClient,
   getSupabaseUserFromRequest,
   getSupabaseUserFromServerSession,
 } from "@/lib/supabase-server";
@@ -44,8 +47,21 @@ export type StrictClientGuardResult<T> =
   | { ok: true; context: StrictAuthContext; client: T | null }
   | { ok: false; response: NextResponse };
 
+export type StrictRequestClientGuardResult =
+  | {
+      ok: true;
+      context: StrictAuthContext;
+      client: SupabaseClient;
+      sessionResponse: NextResponse;
+    }
+  | { ok: false; response: NextResponse };
+
 export type StrictServerActionClientGuardResult<T> =
   | { ok: true; context: StrictAuthContext; client: T | null }
+  | { ok: false; status: 401 | 403; error: string };
+
+export type StrictServerActionSessionClientGuardResult =
+  | { ok: true; context: StrictAuthContext; client: SupabaseClient }
   | { ok: false; status: 401 | 403; error: string };
 
 type GuardOptions = {
@@ -119,6 +135,43 @@ export async function requireSupabaseOwnerOrAdmin(request: Request): Promise<Str
   return strictGuardForUser(user);
 }
 
+/**
+ * Build one request-scoped RLS client, verify its Supabase identity, and return
+ * that exact client for every query in the request. A presented Bearer token is
+ * authoritative: malformed or invalid Bearer credentials never fall back to cookies.
+ */
+export async function requireSupabaseOwnerOrAdminRequestClient(
+  request: Request,
+  options: { noStore?: boolean } = {}
+): Promise<StrictRequestClientGuardResult> {
+  const authorization = parseRequestAuthorization(request.headers.get("authorization"));
+  if (authorization.kind === "malformed") {
+    return { ok: false, response: jsonError(401, AUTH_REQUIRED_MESSAGE) };
+  }
+
+  const sessionResponse = NextResponse.next();
+  const client = createRouteSupabaseClient(request, sessionResponse, {
+    noStore: options.noStore,
+    forwardAuthorization: true,
+  });
+  if (!client) {
+    return {
+      ok: false,
+      response: jsonError(503, "Authenticated Supabase session is not configured."),
+    };
+  }
+
+  const authResult = await client.auth
+    .getUser(authorization.kind === "bearer" ? authorization.token : undefined)
+    .catch(() => ({ data: { user: null }, error: new Error("Authentication failed.") }));
+  if (authResult.error) {
+    return { ok: false, response: jsonError(401, AUTH_REQUIRED_MESSAGE) };
+  }
+  const guard = strictGuardForUser(authResult.data.user);
+  if (!guard.ok) return guard;
+  return { ...guard, client, sessionResponse };
+}
+
 function strictGuardForUser(user: User | null): StrictGuardResult {
   if (!user) {
     return { ok: false, response: jsonError(401, AUTH_REQUIRED_MESSAGE) };
@@ -156,6 +209,25 @@ export async function requireSupabaseOwnerOrAdminWithClient<T>(
 export async function requireSupabaseOwnerOrAdminServerAction(): Promise<StrictGuardResult> {
   const user = await getSupabaseUserFromServerSession().catch(() => null);
   return strictGuardForUser(user);
+}
+
+/** Verify the cookie identity and run Server Action queries through that exact RLS client. */
+export async function requireSupabaseOwnerOrAdminServerActionClient(
+  options: { noStore?: boolean } = {}
+): Promise<StrictServerActionSessionClientGuardResult> {
+  const client = await createServerSupabaseClient(options).catch(() => null);
+  if (!client) return { ok: false, status: 401, error: AUTH_REQUIRED_MESSAGE };
+  const authResult = await client.auth
+    .getUser()
+    .catch(() => ({ data: { user: null }, error: new Error("Authentication failed.") }));
+  if (authResult.error) return { ok: false, status: 401, error: AUTH_REQUIRED_MESSAGE };
+  const guard = strictGuardForUser(authResult.data.user);
+  if (guard.ok) return { ...guard, client };
+  return {
+    ok: false,
+    status: guard.response.status === 403 ? 403 : 401,
+    error: guard.response.status === 403 ? ADMIN_REQUIRED_MESSAGE : AUTH_REQUIRED_MESSAGE,
+  };
 }
 
 /**

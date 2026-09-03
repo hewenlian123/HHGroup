@@ -1,15 +1,11 @@
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
-import {
-  requireSupabaseOwnerOrAdmin,
-  requireSupabaseOwnerOrAdminWithClient,
-} from "@/lib/auth-boundary";
+import { requireSupabaseOwnerOrAdminRequestClient } from "@/lib/auth-boundary";
 import {
   getCommissionById,
   createPaymentRecord,
   getPaymentRecordsByCommissionId,
 } from "@/lib/data";
-import { getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
 import { uuidNormalizedEqual } from "@/lib/uuid-normalize";
 
 const PAYMENT_METHODS = ["Check", "Bank Transfer", "Cash", "Zelle", "Other"];
@@ -18,7 +14,7 @@ export async function GET(
   req: Request,
   ctx: { params: Promise<{ id: string; commissionId: string }> }
 ) {
-  const guard = await requireSupabaseOwnerOrAdmin(req);
+  const guard = await requireSupabaseOwnerOrAdminRequestClient(req, { noStore: true });
   if (!guard.ok) return guard.response;
   const { id: projectId, commissionId } = await ctx.params;
   if (!projectId || !commissionId)
@@ -27,7 +23,7 @@ export async function GET(
       { status: 400 }
     );
   try {
-    const commission = await getCommissionById(commissionId);
+    const commission = await getCommissionById(commissionId, guard.client);
     if (!commission)
       return NextResponse.json({ ok: false, message: "Commission not found" }, { status: 404 });
     if (!uuidNormalizedEqual(commission.project_id, projectId))
@@ -35,7 +31,7 @@ export async function GET(
         { ok: false, message: "Commission does not belong to this project" },
         { status: 400 }
       );
-    const records = await getPaymentRecordsByCommissionId(commissionId);
+    const records = await getPaymentRecordsByCommissionId(commissionId, guard.client);
     return NextResponse.json({ ok: true, records });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Failed to load payments";
@@ -57,7 +53,7 @@ export async function POST(
   req: Request,
   ctx: { params: Promise<{ id: string; commissionId: string }> }
 ) {
-  const guard = await requireSupabaseOwnerOrAdminWithClient(req, getServerSupabaseInternalNoStore);
+  const guard = await requireSupabaseOwnerOrAdminRequestClient(req, { noStore: true });
   if (!guard.ok) return guard.response;
   const { id: projectId, commissionId } = await ctx.params;
   if (!projectId || !commissionId)
@@ -66,7 +62,7 @@ export async function POST(
       { status: 400 }
     );
   try {
-    const commission = await getCommissionById(commissionId);
+    const commission = await getCommissionById(commissionId, guard.client);
     if (!commission)
       return NextResponse.json({ ok: false, message: "Commission not found" }, { status: 404 });
     if (!uuidNormalizedEqual(commission.project_id, projectId))
@@ -100,7 +96,7 @@ export async function POST(
         payment_method,
         note,
       },
-      guard.client ?? undefined
+      guard.client
     );
     revalidatePath(`/projects/${projectId}`);
     revalidatePath("/financial/commissions");

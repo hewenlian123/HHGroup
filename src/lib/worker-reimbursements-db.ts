@@ -7,6 +7,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseClient } from "@/lib/supabase";
+import { financialDataUnavailable } from "@/lib/financial-availability";
 import { workerRateLocalYmd } from "@/lib/worker-rate-date";
 
 export type WorkerReimbursementStatus = "pending" | "approved" | "paid" | "settled";
@@ -164,21 +165,16 @@ function isColumnMissingError(err: { message?: string }): boolean {
 
 /**
  * Sum of worker reimbursements with status `approved` (approved but not yet marked paid).
- * Safe $0 if table missing or query fails. Overlap with worker balance aggregates is possible when
- * approved rows are also counted as open reimbursements there.
+ * Overlap with worker balance aggregates is possible when approved rows are also counted as open
+ * reimbursements there. Read failures are unavailable, never a financial zero.
  */
-export async function sumUnpaidApprovedWorkerReimbursements(): Promise<number> {
-  try {
-    const c = client();
-    const { data, error } = await c.from(TABLE_NAME).select("amount").eq("status", "approved");
-    if (error) {
-      if (isTableMissingError(error)) return 0;
-      return 0;
-    }
-    return (data ?? []).reduce((s, r) => s + Number((r as { amount?: number }).amount ?? 0), 0);
-  } catch {
-    return 0;
-  }
+export async function sumUnpaidApprovedWorkerReimbursements(
+  explicitClient?: SupabaseClient
+): Promise<number> {
+  const c = client(explicitClient);
+  const { data, error } = await c.from(TABLE_NAME).select("amount").eq("status", "approved");
+  if (error) financialDataUnavailable("approved worker reimbursements", error);
+  return (data ?? []).reduce((s, r) => s + Number((r as { amount?: number }).amount ?? 0), 0);
 }
 
 /** Paid reimbursements allocated to a project. No matching rows contribute $0; failed reads reject. */
@@ -425,16 +421,16 @@ function paymentFromRow(r: Record<string, unknown>): WorkerReimbursementPayment 
 }
 
 export async function getWorkerReimbursementPayments(
-  workerId: string
+  workerId: string,
+  explicitClient?: SupabaseClient
 ): Promise<WorkerReimbursementPayment[]> {
-  const { data, error } = await client()
+  const { data, error } = await client(explicitClient)
     .from(PAYMENTS_TABLE)
     .select(PAYMENT_COLS)
     .eq("worker_id", workerId)
     .order("created_at", { ascending: false });
   if (error) {
-    if (isTableMissingError(error)) return [];
-    throw new Error(error.message ?? "Failed to load payments.");
+    financialDataUnavailable("worker reimbursement payments", error);
   }
   return ((data ?? []) as Record<string, unknown>[]).map(paymentFromRow);
 }
@@ -732,11 +728,12 @@ export async function getWorkerReimbursementBalances(
       const { data, error } = await client(explicitClient)
         .from(PAYMENTS_TABLE)
         .select("worker_id, amount");
-      if (error) return [] as { worker_id: string; amount: number }[];
+      if (error) financialDataUnavailable("worker reimbursement payment balances", error);
       return (data ?? []) as { worker_id: string; amount: number }[];
     })(),
     (async () => {
-      const { data } = await client(explicitClient).from("workers").select("id, name");
+      const { data, error } = await client(explicitClient).from("workers").select("id, name");
+      if (error) financialDataUnavailable("worker reimbursement workers", error);
       return new Map(((data ?? []) as { id: string; name: string }[]).map((w) => [w.id, w.name]));
     })(),
   ]);

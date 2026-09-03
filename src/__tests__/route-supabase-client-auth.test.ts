@@ -53,6 +53,30 @@ describe("createRouteSupabaseClient authorization forwarding", () => {
     });
   });
 
+  it.each([
+    "bearer verified-owner-token",
+    "BEARER\tverified-owner-token",
+    "Bearer   verified-owner-token",
+  ])(
+    "canonicalizes a supported Bearer spelling before binding it to queries: %s",
+    (authorization) => {
+      const request = new Request("https://app.example/api/operations/schedule", {
+        headers: { Authorization: authorization },
+      });
+
+      createRouteSupabaseClient(request, responseSink() as never, {
+        noStore: true,
+        forwardAuthorization: true,
+      });
+
+      expect(mocks.createServerClient.mock.calls[0]?.[2]).toMatchObject({
+        global: {
+          headers: { Authorization: "Bearer verified-owner-token" },
+        },
+      });
+    }
+  );
+
   it("does not forward request authorization by default", () => {
     const request = new Request("https://app.example/api/operations/schedule", {
       headers: { Authorization: "Bearer unforwarded-token" },

@@ -1,34 +1,22 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
-import {
-  requireSupabaseOwnerOrAdmin,
-  requireSupabaseOwnerOrAdminWithClient,
-} from "@/lib/auth-boundary";
+import { requireSupabaseOwnerOrAdminRequestClient } from "@/lib/auth-boundary";
 import { createCommission, getCommissionsWithPaidByProject } from "@/lib/data";
-import { createRouteSupabaseClient, getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
 
 const ROLES = ["Designer", "Sales", "Referral", "Agent", "Other"];
 const MODES = ["Auto", "Manual"];
 
 export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
-  const guard = await requireSupabaseOwnerOrAdmin(req);
+  const guard = await requireSupabaseOwnerOrAdminRequestClient(req, { noStore: true });
   if (!guard.ok) return guard.response;
   const { id: projectId } = await ctx.params;
   if (!projectId?.trim()) {
     return NextResponse.json({ ok: false, message: "Missing project id" }, { status: 400 });
   }
   try {
-    const sessionResponse = NextResponse.next();
-    const supabase = createRouteSupabaseClient(req, sessionResponse, { noStore: true });
-    if (!supabase) {
-      return NextResponse.json(
-        { ok: false, message: "Authenticated project session is not configured." },
-        { status: 503 }
-      );
-    }
-    const commissions = await getCommissionsWithPaidByProject(projectId, supabase);
+    const commissions = await getCommissionsWithPaidByProject(projectId, guard.client);
     const response = NextResponse.json({ ok: true, commissions });
-    for (const cookie of sessionResponse.cookies.getAll()) response.cookies.set(cookie);
+    for (const cookie of guard.sessionResponse.cookies.getAll()) response.cookies.set(cookie);
     return response;
   } catch (e) {
     const message = e instanceof Error ? e.message : "Failed to load commissions";
@@ -40,7 +28,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
 }
 
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
-  const guard = await requireSupabaseOwnerOrAdminWithClient(req, getServerSupabaseInternalNoStore);
+  const guard = await requireSupabaseOwnerOrAdminRequestClient(req, { noStore: true });
   if (!guard.ok) return guard.response;
   const { id } = await ctx.params;
   const projectId = String(id ?? "").trim();
@@ -83,7 +71,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
         commission_amount,
         notes,
       },
-      guard.client ?? undefined
+      guard.client
     );
     revalidatePath(`/projects/${projectId}`);
     revalidatePath("/financial/commissions");

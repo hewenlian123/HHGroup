@@ -77,11 +77,6 @@ export async function getPaymentsBySubcontractIds(
   }));
 }
 
-function isMissingFunction(err: { message?: string } | null): boolean {
-  const m = err?.message ?? "";
-  return /could not find the function|schema cache/i.test(m);
-}
-
 function subcontractBillCountsAsPayable(status: string | null | undefined): boolean {
   const normalized = (status ?? "").trim().toLowerCase();
   return (
@@ -111,7 +106,7 @@ async function assertSubcontractPaymentWithinNetPayable(
   ] = await Promise.all([
     c.from("subcontract_bills").select("amount, status").eq("subcontract_id", subcontractId),
     c.from("subcontract_payments").select("amount").eq("subcontract_id", subcontractId),
-    getSubcontractDeductionsBySubcontractIds([subcontractId]),
+    getSubcontractDeductionsBySubcontractIds([subcontractId], c),
   ]);
   if (billError) throw new Error(billError.message ?? "Failed to load subcontract bills.");
   if (paymentError) throw new Error(paymentError.message ?? "Failed to load subcontract payments.");
@@ -135,15 +130,18 @@ async function assertSubcontractPaymentWithinNetPayable(
   }
 }
 
-export async function recordSubcontractPayment(input: {
-  subcontract_id: string;
-  bill_id: string;
-  payment_date: string;
-  amount: number;
-  method?: string | null;
-  note?: string | null;
-}): Promise<void> {
-  const c = client();
+export async function recordSubcontractPayment(
+  input: {
+    subcontract_id: string;
+    bill_id: string;
+    payment_date: string;
+    amount: number;
+    method?: string | null;
+    note?: string | null;
+  },
+  explicitClient?: SupabaseClient
+): Promise<void> {
+  const c = client(explicitClient);
   await assertSubcontractPaymentWithinNetPayable(c, input);
   const { error } = await c.rpc("record_subcontract_payment", {
     p_subcontract_id: input.subcontract_id,
@@ -154,30 +152,6 @@ export async function recordSubcontractPayment(input: {
     p_note: input.note ?? null,
   });
   if (error) {
-    if (!isMissingFunction(error)) throw new Error(error.message ?? "Failed to record payment.");
-    // Fallback: insert payment row directly, then update bill status based on totals.
-    const paidAmount = Number(input.amount) || 0;
-    const { error: insErr } = await c.from("subcontract_payments").insert({
-      subcontract_id: input.subcontract_id,
-      bill_id: input.bill_id,
-      payment_date: input.payment_date.slice(0, 10),
-      amount: paidAmount,
-      method: input.method ?? null,
-      note: input.note ?? null,
-    });
-    if (insErr) throw new Error(insErr.message ?? "Failed to record payment.");
-
-    // Recalculate bill status: fetch bill amount + all payments for this bill.
-    const [{ data: billRow }, { data: payRows }] = await Promise.all([
-      c.from("subcontract_bills").select("amount").eq("id", input.bill_id).maybeSingle(),
-      c.from("subcontract_payments").select("amount").eq("bill_id", input.bill_id),
-    ]);
-    const billTotal = Number((billRow as { amount?: number } | null)?.amount) || 0;
-    const paidTotal = ((payRows ?? []) as Array<{ amount?: number }>).reduce(
-      (s, r) => s + (Number(r.amount) || 0),
-      0
-    );
-    const newStatus = paidTotal >= billTotal ? "Paid" : "Partial";
-    await c.from("subcontract_bills").update({ status: newStatus }).eq("id", input.bill_id);
+    throw new Error(error.message ?? "Failed to record payment.");
   }
 }

@@ -6,6 +6,7 @@ import {
   getProjectById,
 } from "@/lib/data";
 import { fetchDocumentCompanyProfile } from "@/lib/document-company-profile";
+import { requireSupabaseOwnerOrAdminRequestClient } from "@/lib/auth-boundary";
 import { generatePaymentReceiptDocumentPdfBuffer } from "@/lib/payment-receipt-document-pdf";
 
 export const dynamic = "force-dynamic";
@@ -44,26 +45,28 @@ async function fetchLogoForPdf(
  * Query: ?download=1 — attachment; otherwise inline for iframe.
  */
 export async function GET(req: Request, ctx: { params: Promise<{ payment_id: string }> }) {
+  const guard = await requireSupabaseOwnerOrAdminRequestClient(req, { noStore: true });
+  if (!guard.ok) return guard.response;
   const { payment_id: rawId } = await ctx.params;
   const id = rawId?.trim();
   if (!id) {
     return NextResponse.json({ ok: false, message: "Missing payment id" }, { status: 400 });
   }
 
-  const payment = await getPaymentRecordById(id);
+  const payment = await getPaymentRecordById(id, guard.client);
   if (!payment) {
     return NextResponse.json({ ok: false, message: "Payment not found" }, { status: 404 });
   }
 
-  const commission = await getCommissionById(payment.commission_id);
+  const commission = await getCommissionById(payment.commission_id, guard.client);
   if (!commission) {
     return NextResponse.json({ ok: false, message: "Commission not found" }, { status: 404 });
   }
 
   const [project, paymentRows, company] = await Promise.all([
-    getProjectById(commission.project_id),
-    getPaymentRecordsByCommissionId(commission.id),
-    fetchDocumentCompanyProfile(),
+    getProjectById(commission.project_id, guard.client),
+    getPaymentRecordsByCommissionId(commission.id, guard.client),
+    fetchDocumentCompanyProfile(guard.client),
   ]);
 
   const paidAmount = paymentRows.reduce((s, p) => s + (Number(p.amount) || 0), 0);

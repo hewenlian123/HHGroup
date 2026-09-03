@@ -153,7 +153,6 @@ export async function getSubcontractDeductionsBySubcontractIds(
   const c = client(explicitClient);
   const { data, error } = await c.from(TABLE).select("*").in("subcontract_id", ids);
   if (error) {
-    if (isMissingTable(error)) return [];
     throw new Error(error.message ?? "Failed to load subcontract deductions.");
   }
   return ((data ?? []) as Record<string, unknown>[]).map(mapDeductionRow);

@@ -18,9 +18,9 @@ import {
   getFinanceOwnerDashboard,
   type FinanceOwnerProjectRow,
 } from "@/lib/finance-owner-dashboard";
-import { getProjectContractReviewSummary } from "@/lib/financial/project-financial-review";
+import { authorizedAppRole } from "@/lib/auth-role";
+import { FinancialDataUnavailableError } from "@/lib/financial-availability";
 import { cn } from "@/lib/utils";
-import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
 import { FinanceOwnerCashFlowChart } from "./_components/finance-owner-cash-flow-chart";
 import { FinanceOwnerHeaderActions } from "./_components/finance-owner-header-actions";
 import { FinanceOwnerPendingDonut } from "./_components/finance-owner-pending-donut";
@@ -29,34 +29,6 @@ import { formatDate, formatInteger, formatPercent } from "@/lib/formatters";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
-
-const EMPTY_OWNER_DASHBOARD: Awaited<ReturnType<typeof getFinanceOwnerDashboard>> = {
-  kpis: {
-    cashCollectedThisMonth: 0,
-    invoicedThisMonth: 0,
-    expenseThisMonth: 0,
-    profitThisMonth: 0,
-    unpaidInvoices: 0,
-    pendingPayments: 0,
-    pendingPaymentsBreakdown: {
-      apOutstanding: 0,
-      workerOwed: 0,
-      approvedReimbursementsUnpaid: 0,
-    },
-  },
-  cashFlow: [],
-  topProjects: [] as FinanceOwnerProjectRow[],
-  underwaterProjects: [] as FinanceOwnerProjectRow[],
-  contractReview: getProjectContractReviewSummary([]),
-  alerts: {
-    overdueInvoiceAmount: 0,
-    overdueInvoiceCount: 0,
-    unpaidWorkersCount: 0,
-    unpaidWorkersAmount: 0,
-    missingReceiptsCount: 0,
-    projectsInLossCount: 0,
-  },
-};
 
 const pageBg = "text-[var(--hh-text-secondary)]";
 
@@ -312,16 +284,21 @@ function OwnerProjectList({
 }
 
 export default async function FinanceOwnerDashboardPage() {
-  let data = EMPTY_OWNER_DASHBOARD;
-  let dataLoadWarning: string | null = null;
-  try {
-    const supabase = await createServerSupabaseClient({ noStore: true });
-    if (!supabase) throw new Error("Authenticated finance session is not configured.");
-    data = await getFinanceOwnerDashboard(supabase);
-  } catch (e) {
-    logServerPageDataError("financial/owner", e);
-    dataLoadWarning = serverDataLoadWarning(e, "owner finance dashboard");
+  const supabase = await createServerSupabaseClient({ noStore: true });
+  if (!supabase) throw new FinancialDataUnavailableError("owner finance session", null);
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+  if (authError) throw new FinancialDataUnavailableError("owner finance session", authError);
+  if (!user || !authorizedAppRole(user)) {
+    throw new FinancialDataUnavailableError("owner finance session", {
+      code: "42501",
+      message: "Owner or admin authentication required.",
+    });
   }
+  const data = await getFinanceOwnerDashboard(supabase);
+  const dataLoadWarning: string | null = null;
 
   const reportingMonth = new Date();
   const monthLabel = formatDate(reportingMonth, "month");

@@ -55,11 +55,12 @@ describe("modern Supabase key consumer contract", () => {
     );
   });
 
-  it("uses the server-only client for authenticated project financial API reads", () => {
+  it("uses the verified request identity for authenticated project financial API reads", () => {
     const route = source("src/app/api/projects/[id]/tab/route.ts");
 
     expect(route).toMatch(
-      /const supabase = getServerSupabaseInternalNoStore\(\)[\s\S]*?getCanonicalProjectProfit\(id,\s*supabase\)/i
+      /requireSupabaseOwnerOrAdminRequestClient\(_req,[\s\S]*?const supabase = guard\.client[\s\S]*?getCanonicalProjectProfit\(id,\s*supabase\)/i
     );
+    expect(route).not.toContain("getServerSupabaseInternalNoStore");
   });
 });

@@ -5,6 +5,7 @@ import path from "node:path";
 
 import { allowDeleteMutations, e2eTargetOrigin } from "./e2e-env-helpers";
 import { assertE2ESupabaseUrlSafeForMutations } from "./e2e-supabase-url-guard";
+import { loginAsE2EOwner } from "./e2e-auth-owner";
 
 const BASE = e2eTargetOrigin();
 const MARKER_PREFIX = "FIX-BILLS-SAFE";
@@ -77,8 +78,21 @@ async function cleanupBillsByMarker(marker: string): Promise<void> {
   if (error) return;
   for (const row of rows ?? []) {
     if (!row.id) continue;
-    await supabase.from("ap_bill_payments").delete().eq("bill_id", row.id);
-    await supabase.from("ap_bills").delete().eq("id", row.id);
+    const { error: paymentDeleteError } = await supabase
+      .from("ap_bill_payments")
+      .delete()
+      .eq("bill_id", row.id);
+    if (paymentDeleteError) throw paymentDeleteError;
+    const { error: draftError } = await supabase
+      .from("ap_bills")
+      .update({ status: "Draft" })
+      .eq("id", row.id);
+    if (draftError) throw draftError;
+    const { error: deleteError } = await supabase.rpc("delete_ap_bill_draft_atomic", {
+      p_bill_id: row.id,
+      p_idempotency_key: `playwright-cleanup:${row.id}`,
+    });
+    if (deleteError) throw deleteError;
   }
 }
 
@@ -116,10 +130,11 @@ test.describe("Bills/AP guarded server boundary", () => {
 
   test("API create, edit, payment, void, and draft delete stay behind guarded endpoints", async ({
     page,
-    request,
   }, testInfo) => {
     test.setTimeout(120_000);
     test.skip(!allowDeleteMutations(testInfo), "Bills/AP mutations are disabled for this target.");
+    await loginAsE2EOwner(page);
+    const request = page.context().request;
 
     const marker = `${MARKER_PREFIX}-${Date.now()}`;
     await cleanupBillsByMarker(marker);
@@ -200,9 +215,11 @@ test.describe("Bills/AP guarded server boundary", () => {
   });
 
   test("paid and partially paid bill amount edits are rejected at the API boundary", async ({
-    request,
+    page,
   }, testInfo) => {
     test.skip(!allowDeleteMutations(testInfo), "Bills/AP mutations are disabled for this target.");
+    await loginAsE2EOwner(page);
+    const request = page.context().request;
 
     const marker = `${MARKER_PREFIX}-LOCK-${Date.now()}`;
     await cleanupBillsByMarker(marker);
@@ -291,10 +308,11 @@ test.describe("Bills/AP guarded server boundary", () => {
 
   test("Bills list approves draft rows, deletes drafts from overflow, and keeps void rows behind filter", async ({
     page,
-    request,
   }, testInfo) => {
     test.setTimeout(120_000);
     test.skip(!allowDeleteMutations(testInfo), "Bills/AP mutations are disabled for this target.");
+    await loginAsE2EOwner(page);
+    const request = page.context().request;
 
     const marker = `${MARKER_PREFIX}-ACTIONS-${Date.now()}`;
     const approveVendor = `${marker}-APPROVE`;

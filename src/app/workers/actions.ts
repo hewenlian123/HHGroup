@@ -1,21 +1,15 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireSupabaseOwnerOrAdminServerAction } from "@/lib/auth-boundary";
+import { requireSupabaseOwnerOrAdminServerActionClient } from "@/lib/auth-boundary";
+import { getWorkerUsageWithClient } from "@/lib/labor-db";
 import * as workersDb from "@/lib/workers-db";
-import {
-  SUPABASE_MISSING_SERVER_ADMIN_ENV_MESSAGE,
-  getServerSupabaseAdmin,
-} from "@/lib/supabase-server";
 import type { WorkerDraft, UpdateWorkerPatch, WorkerRow } from "@/lib/workers-db";
 
 async function workerActionClient() {
-  const guard = await requireSupabaseOwnerOrAdminServerAction();
-  if (!guard.ok) throw new Error("Authentication required.");
-
-  const client = getServerSupabaseAdmin();
-  if (!client) throw new Error(SUPABASE_MISSING_SERVER_ADMIN_ENV_MESSAGE);
-  return client;
+  const guard = await requireSupabaseOwnerOrAdminServerActionClient({ noStore: true });
+  if (!guard.ok) throw new Error(guard.error);
+  return guard.client;
 }
 
 export async function createWorkerAction(
@@ -47,7 +41,13 @@ export async function deleteWorkerAction(
   id: string
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   try {
-    await workersDb.deleteWorker(id, await workerActionClient());
+    const client = await workerActionClient();
+    const usage = await getWorkerUsageWithClient(client, id);
+    if (usage.used) {
+      const source = usage.reason === "invoices" ? "labor invoices" : "labor entries";
+      throw new Error(`Worker is used by ${source}.`);
+    }
+    await workersDb.deleteWorker(id, client);
     revalidatePath("/workers");
     return { ok: true };
   } catch (e) {

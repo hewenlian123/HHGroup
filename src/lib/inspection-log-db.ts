@@ -3,6 +3,7 @@
  */
 
 import { getSupabaseClient } from "@/lib/supabase";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type InspectionLogStatus = "passed" | "failed" | "pending";
 
@@ -30,8 +31,8 @@ export type InspectionLogDraft = {
   notes?: string | null;
 };
 
-function client() {
-  const c = getSupabaseClient();
+function client(explicitClient?: SupabaseClient) {
+  const c = explicitClient ?? getSupabaseClient();
   if (!c) throw new Error("Supabase is not configured.");
   return c;
 }
@@ -53,8 +54,10 @@ function toRow(r: Record<string, unknown>): InspectionLogEntry {
 }
 
 /** Get all inspection log entries with project name. */
-export async function getInspectionLogs(): Promise<InspectionLogEntryWithProject[]> {
-  const c = client();
+export async function getInspectionLogs(
+  explicitClient?: SupabaseClient
+): Promise<InspectionLogEntryWithProject[]> {
+  const c = client(explicitClient);
   const { data: rows, error } = await c
     .from("inspection_log")
     .select(COLS)
@@ -63,7 +66,12 @@ export async function getInspectionLogs(): Promise<InspectionLogEntryWithProject
   const items = (rows ?? []).map((r) => toRow(r as Record<string, unknown>));
   const projectIds = Array.from(new Set(items.map((i) => i.project_id)));
   if (projectIds.length === 0) return items.map((i) => ({ ...i, project_name: null }));
-  const { data: projects } = await c.from("projects").select("id, name").in("id", projectIds);
+  const { data: projects, error: projectsError } = await c
+    .from("projects")
+    .select("id, name")
+    .in("id", projectIds);
+  if (projectsError)
+    throw new Error(projectsError.message ?? "Failed to load inspection projects.");
   const projectNames = new Map<string, string>(
     ((projects ?? []) as { id: string; name: string }[]).map((p) => [p.id, p.name ?? ""])
   );
@@ -75,28 +83,34 @@ export async function getInspectionLogs(): Promise<InspectionLogEntryWithProject
 
 /** Get one inspection log entry by id. */
 export async function getInspectionLogById(
-  id: string
+  id: string,
+  explicitClient?: SupabaseClient
 ): Promise<InspectionLogEntryWithProject | null> {
-  const c = client();
+  const c = client(explicitClient);
   const { data: row, error } = await c
     .from("inspection_log")
     .select(COLS)
     .eq("id", id)
     .maybeSingle();
-  if (error || !row) return null;
+  if (error) throw new Error(error.message ?? "Failed to load inspection log entry.");
+  if (!row) return null;
   const item = toRow(row as Record<string, unknown>);
-  const { data: proj } = await c
+  const { data: proj, error: projectError } = await c
     .from("projects")
     .select("id, name")
     .eq("id", item.project_id)
     .maybeSingle();
+  if (projectError) throw new Error(projectError.message ?? "Failed to load inspection project.");
   const project_name = (proj as { name?: string } | null)?.name ?? null;
   return { ...item, project_name };
 }
 
 /** Create an inspection log entry. */
-export async function createInspectionLog(draft: InspectionLogDraft): Promise<InspectionLogEntry> {
-  const c = client();
+export async function createInspectionLog(
+  draft: InspectionLogDraft,
+  explicitClient?: SupabaseClient
+): Promise<InspectionLogEntry> {
+  const c = client(explicitClient);
   const status = (draft.status as InspectionLogStatus) ?? "pending";
   const { data: row, error } = await c
     .from("inspection_log")
@@ -122,9 +136,10 @@ export async function updateInspectionLog(
       InspectionLogEntry,
       "inspection_type" | "inspector" | "inspection_date" | "status" | "notes"
     >
-  >
+  >,
+  explicitClient?: SupabaseClient
 ): Promise<InspectionLogEntry | null> {
-  const c = client();
+  const c = client(explicitClient);
   const updates: Record<string, unknown> = {};
   if (patch.inspection_type !== undefined) updates.inspection_type = patch.inspection_type.trim();
   if (patch.inspector !== undefined) updates.inspector = patch.inspector?.trim() ?? null;
@@ -139,13 +154,17 @@ export async function updateInspectionLog(
     .eq("id", id)
     .select(COLS)
     .single();
-  if (error || !row) return null;
+  if (error) throw new Error(error.message ?? "Failed to update inspection log entry.");
+  if (!row) return null;
   return toRow(row as Record<string, unknown>);
 }
 
 /** Delete an inspection log entry. */
-export async function deleteInspectionLog(id: string): Promise<void> {
-  const c = client();
+export async function deleteInspectionLog(
+  id: string,
+  explicitClient?: SupabaseClient
+): Promise<void> {
+  const c = client(explicitClient);
   const { error } = await c.from("inspection_log").delete().eq("id", id);
   if (error) throw new Error(error.message ?? "Failed to delete inspection log entry.");
 }

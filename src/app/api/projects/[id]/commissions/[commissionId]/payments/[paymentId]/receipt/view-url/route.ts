@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireSupabaseOwnerOrAdminWithClient } from "@/lib/auth-boundary";
+import { requireSupabaseOwnerOrAdminRequestClient } from "@/lib/auth-boundary";
 import { getCommissionById, getPaymentRecordById } from "@/lib/data";
 import {
   COMMISSION_RECEIPT_BUCKETS,
@@ -8,7 +8,7 @@ import {
   isStoragePathForCommissionReceipt,
   parseCommissionReceiptStorageUrl,
 } from "@/lib/commission-receipt-storage";
-import { createServerSupabaseClient, getServerSupabaseAdmin } from "@/lib/supabase-server";
+import { getServerSupabaseAdmin } from "@/lib/supabase-server";
 import { uuidNormalizedEqual } from "@/lib/uuid-normalize";
 
 const ALLOWED_BUCKETS = new Set<string>(COMMISSION_RECEIPT_BUCKETS);
@@ -23,24 +23,16 @@ export async function GET(
   req: Request,
   ctx: { params: Promise<{ id: string; commissionId: string; paymentId: string }> }
 ) {
-  const guard = await requireSupabaseOwnerOrAdminWithClient(req, getServerSupabaseAdmin);
+  const guard = await requireSupabaseOwnerOrAdminRequestClient(req, { noStore: true });
   if (!guard.ok) return guard.response;
   const { id: projectId, commissionId, paymentId } = await ctx.params;
   if (!projectId || !commissionId || !paymentId)
     return NextResponse.json({ ok: false, message: "Missing id" }, { status: 400 });
 
   try {
-    const admin = guard.client;
-    // If service role isn't configured in the environment, fall back to the current
-    // authenticated user session (SSR cookies or Authorization header).
-    const supabase = admin ?? (await createServerSupabaseClient());
-    if (!supabase) {
-      return NextResponse.json(
-        { ok: false, message: "Supabase is not configured." },
-        { status: 500 }
-      );
-    }
-    const commission = await getCommissionById(commissionId);
+    const storageAdmin = getServerSupabaseAdmin();
+    const storageClient = storageAdmin ?? guard.client;
+    const commission = await getCommissionById(commissionId, guard.client);
     if (!commission)
       return NextResponse.json({ ok: false, message: "Commission not found" }, { status: 404 });
     if (!uuidNormalizedEqual(commission.project_id, projectId))
@@ -48,7 +40,7 @@ export async function GET(
         { ok: false, message: "Commission does not belong to this project" },
         { status: 400 }
       );
-    const existing = await getPaymentRecordById(paymentId);
+    const existing = await getPaymentRecordById(paymentId, guard.client);
     if (!existing)
       return NextResponse.json({ ok: false, message: "Payment not found" }, { status: 404 });
     if (!uuidNormalizedEqual(existing.commission_id, commissionId))
@@ -96,7 +88,7 @@ export async function GET(
       );
     }
 
-    const { data, error } = await supabase.storage
+    const { data, error } = await storageClient.storage
       .from(parsed.bucket)
       .createSignedUrl(parsed.path, VIEW_SIGNED_TTL_SEC);
     if (error || !data?.signedUrl) {
@@ -105,7 +97,7 @@ export async function GET(
           ok: false,
           message: error?.message ?? "Could not create signed URL for receipt.",
         },
-        { status: admin ? 500 : 403 }
+        { status: storageAdmin ? 500 : 403 }
       );
     }
 

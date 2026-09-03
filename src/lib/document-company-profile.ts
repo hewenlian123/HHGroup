@@ -2,6 +2,7 @@ import { unstable_noStore as noStore } from "next/cache";
 import type { CompanyProfile } from "@/lib/company-profile";
 import { getCompanyLogoPublicUrl, getCompanyProfile } from "@/lib/company-profile";
 import { getServerSupabase } from "@/lib/supabase-server";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 /**
  * Serializable company block for invoices, estimates, receipts, statements (pages + PDF).
@@ -61,9 +62,11 @@ export function companyProfileToDocumentDto(
 /**
  * Server / API: load first `company_profile` row (service role when configured).
  */
-export async function fetchDocumentCompanyProfile(): Promise<DocumentCompanyProfileDTO> {
+export async function fetchDocumentCompanyProfile(
+  explicitClient?: SupabaseClient
+): Promise<DocumentCompanyProfileDTO> {
   noStore();
-  const client = getServerSupabase();
+  const client = explicitClient ?? getServerSupabase();
   if (!client) {
     return companyProfileToDocumentDto(null);
   }

@@ -5,6 +5,7 @@
 
 import { getSupabaseClient } from "@/lib/supabase";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { financialDataUnavailable } from "@/lib/financial-availability";
 
 export type InvoiceStatus = "Draft" | "Sent" | "Partially Paid" | "Paid" | "Void";
 
@@ -114,7 +115,7 @@ type InvoiceItemRow = {
   quantity?: number;
   qty?: number;
   unit_price: number;
-  amount: number;
+  amount?: number | null;
 };
 
 type InvoicePaymentRow = {
@@ -215,6 +216,25 @@ function isoDateLike(value: unknown): string | null {
   return text ? text.slice(0, 10) : null;
 }
 
+function isAvailableInvoiceNumber(value: unknown): boolean {
+  if (value == null || (typeof value === "string" && value.trim() === "")) return false;
+  return Number.isFinite(Number(value));
+}
+
+function invoiceItemRowIsAvailable(row: InvoiceItemRow, invoiceIds: Set<string>): boolean {
+  return Boolean(
+    row &&
+    typeof row === "object" &&
+    typeof row.id === "string" &&
+    row.id &&
+    typeof row.invoice_id === "string" &&
+    invoiceIds.has(row.invoice_id) &&
+    isAvailableInvoiceNumber(row.quantity ?? row.qty) &&
+    isAvailableInvoiceNumber(row.unit_price) &&
+    (row.amount == null || isAvailableInvoiceNumber(row.amount))
+  );
+}
+
 /** Avoid appending migration HINT to connection/network errors. */
 function throwInvoiceError(error: { message?: string } | null, fallbackHint: string): never {
   const msg = error?.message ?? "";
@@ -308,10 +328,15 @@ async function getInvoiceItemsOrEmpty(
     .eq("invoice_id", invoiceId)
     .order("created_at", { ascending: true });
   if (itemRes.error) {
-    if (isMissingTable(itemRes.error)) return [];
-    throw new Error(itemRes.error.message ?? "Failed to load invoice items.");
+    financialDataUnavailable("invoice items", itemRes.error);
   }
-  return (itemRes.data ?? []) as InvoiceItemRow[];
+  if (!Array.isArray(itemRes.data)) financialDataUnavailable("invoice items", null);
+  const rows = itemRes.data as InvoiceItemRow[];
+  const invoiceIdSet = new Set([invoiceId]);
+  if (rows.some((row) => !invoiceItemRowIsAvailable(row, invoiceIdSet))) {
+    financialDataUnavailable("invoice items", null);
+  }
+  return rows;
 }
 
 /** Select columns; paid/balance are computed from invoice_payments, not stored. */
@@ -334,17 +359,18 @@ export async function getInvoices(explicitClient?: SupabaseClient): Promise<Invo
   const itemsByInvoiceId = new Map<string, InvoiceItemRow[]>();
   if (invoiceIds.length) {
     const itemsRes = await c.from("invoice_items").select("*").in("invoice_id", invoiceIds);
-    if (itemsRes.error) {
-      if (!isMissingTable(itemsRes.error)) {
-        throw new Error(itemsRes.error.message ?? "Failed to load invoice items.");
-      }
-    } else {
-      for (const it of (itemsRes.data ?? []) as InvoiceItemRow[]) {
-        const key = it.invoice_id;
-        const arr = itemsByInvoiceId.get(key) ?? [];
-        arr.push(it);
-        itemsByInvoiceId.set(key, arr);
-      }
+    if (itemsRes.error) financialDataUnavailable("invoice items", itemsRes.error);
+    if (!Array.isArray(itemsRes.data)) financialDataUnavailable("invoice items", null);
+    const itemRows = itemsRes.data as InvoiceItemRow[];
+    const invoiceIdSet = new Set(invoiceIds);
+    if (itemRows.some((row) => !invoiceItemRowIsAvailable(row, invoiceIdSet))) {
+      financialDataUnavailable("invoice items", null);
+    }
+    for (const it of itemRows) {
+      const key = it.invoice_id;
+      const arr = itemsByInvoiceId.get(key) ?? [];
+      arr.push(it);
+      itemsByInvoiceId.set(key, arr);
     }
   }
 
@@ -361,12 +387,8 @@ export async function getInvoiceById(
     .select(INVOICE_COLS)
     .eq("id", id)
     .maybeSingle();
-  if (error || !row) {
-    if (error && isMissingTable(error)) throw new Error(`invoices: table not found. ${HINT}`);
-    if (error && isNetworkError(error))
-      throw new Error(error.message ?? "Network error. Check connection and Supabase URL.");
-    return null;
-  }
+  if (error) throwInvoiceError(error, "Failed to load invoice.");
+  if (!row) return null;
   const itemRows = await getInvoiceItemsOrEmpty(id, explicitClient);
   return toInvoice(row as InvoiceRow, itemRows);
 }
@@ -409,7 +431,7 @@ export async function getPaymentsByInvoiceId(
     rows = fb.data as typeof rows;
     error = fb.error;
   }
-  if (error && !isMissingColumn(error)) return [];
+  if (error) throwInvoiceError(error, "Failed to load invoice payments.");
   return ((rows ?? []) as InvoicePaymentRow[]).map(toPayment);
 }
 
@@ -1339,7 +1361,6 @@ export async function getInvoicesRecent(limit: number): Promise<InvoiceRecentRow
     .order("created_at", { ascending: false })
     .limit(Math.max(1, Math.min(limit, 100)));
   if (error) {
-    if (isMissingTable(error)) return [];
     throwInvoiceError(error, "Failed to load recent invoices.");
   }
   return (rows ?? []).map((r) => {

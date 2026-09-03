@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { getProjects } from "@/lib/data";
-import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
-import { createRouteSupabaseClient } from "@/lib/supabase-server";
+import { requireSupabaseOwnerOrAdminRequestClient } from "@/lib/auth-boundary";
 
 export const dynamic = "force-dynamic";
 
@@ -10,21 +9,13 @@ export const dynamic = "force-dynamic";
  * Returns project list for health check and API consumers.
  */
 export async function GET(request: Request) {
-  const guard = await requireSupabaseOwnerOrAdmin(request);
+  const guard = await requireSupabaseOwnerOrAdminRequestClient(request, { noStore: true });
   if (!guard.ok) return guard.response;
 
   try {
-    const sessionResponse = NextResponse.next();
-    const supabase = createRouteSupabaseClient(request, sessionResponse);
-    if (!supabase) {
-      return NextResponse.json(
-        { ok: false, message: "Authenticated project session is not configured." },
-        { status: 503 }
-      );
-    }
-    const projects = await getProjects(supabase);
+    const projects = await getProjects(guard.client);
     const response = NextResponse.json({ ok: true, projects });
-    for (const cookie of sessionResponse.cookies.getAll()) {
+    for (const cookie of guard.sessionResponse.cookies.getAll()) {
       response.cookies.set(cookie);
     }
     return response;

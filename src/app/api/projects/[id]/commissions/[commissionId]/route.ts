@@ -1,8 +1,7 @@
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
-import { requireSupabaseOwnerOrAdminWithClient } from "@/lib/auth-boundary";
+import { requireSupabaseOwnerOrAdminRequestClient } from "@/lib/auth-boundary";
 import { updateCommission, deleteCommission, getCommissionById } from "@/lib/data";
-import { getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
 import { uuidNormalizedEqual } from "@/lib/uuid-normalize";
 
 const ROLES = ["Designer", "Sales", "Referral", "Agent", "Other"];
@@ -12,7 +11,7 @@ export async function PATCH(
   req: Request,
   ctx: { params: Promise<{ id: string; commissionId: string }> }
 ) {
-  const guard = await requireSupabaseOwnerOrAdminWithClient(req, getServerSupabaseInternalNoStore);
+  const guard = await requireSupabaseOwnerOrAdminRequestClient(req, { noStore: true });
   if (!guard.ok) return guard.response;
   const { id: projectId, commissionId } = await ctx.params;
   if (!projectId || !commissionId)
@@ -21,7 +20,7 @@ export async function PATCH(
       { status: 400 }
     );
   try {
-    const existing = await getCommissionById(commissionId);
+    const existing = await getCommissionById(commissionId, guard.client);
     if (!existing)
       return NextResponse.json({ ok: false, message: "Commission not found" }, { status: 404 });
     if (!uuidNormalizedEqual(existing.project_id, projectId))
@@ -52,7 +51,7 @@ export async function PATCH(
     const commission = await updateCommission(
       commissionId,
       updates as Parameters<typeof updateCommission>[1],
-      guard.client ?? undefined
+      guard.client
     );
     if (!commission)
       return NextResponse.json({ ok: false, message: "Commission not found" }, { status: 404 });
@@ -74,7 +73,7 @@ export async function DELETE(
   req: Request,
   ctx: { params: Promise<{ id: string; commissionId: string }> }
 ) {
-  const guard = await requireSupabaseOwnerOrAdminWithClient(req, getServerSupabaseInternalNoStore);
+  const guard = await requireSupabaseOwnerOrAdminRequestClient(req, { noStore: true });
   if (!guard.ok) return guard.response;
   const { id: projectId, commissionId } = await ctx.params;
   if (!projectId || !commissionId)
@@ -83,7 +82,7 @@ export async function DELETE(
       { status: 400 }
     );
   try {
-    const existing = await getCommissionById(commissionId);
+    const existing = await getCommissionById(commissionId, guard.client);
     if (!existing)
       return NextResponse.json({ ok: false, message: "Commission not found" }, { status: 404 });
     if (!uuidNormalizedEqual(existing.project_id, projectId))
@@ -91,7 +90,7 @@ export async function DELETE(
         { ok: false, message: "Commission does not belong to this project" },
         { status: 400 }
       );
-    await deleteCommission(commissionId, guard.client ?? undefined);
+    await deleteCommission(commissionId, guard.client);
     revalidatePath(`/projects/${projectId}`);
     revalidatePath("/financial/commissions");
     return NextResponse.json({ ok: true });

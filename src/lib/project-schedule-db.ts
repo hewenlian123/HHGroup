@@ -69,8 +69,11 @@ export async function getAllScheduleWithProject(
 }
 
 /** Get all schedule items for a project. */
-export async function getProjectSchedule(projectId: string): Promise<ProjectScheduleItem[]> {
-  const c = client();
+export async function getProjectSchedule(
+  projectId: string,
+  explicitClient?: SupabaseClient
+): Promise<ProjectScheduleItem[]> {
+  const c = client(explicitClient);
   const { data: rows, error } = await c
     .from("project_schedule")
     .select(COLS)
@@ -82,9 +85,10 @@ export async function getProjectSchedule(projectId: string): Promise<ProjectSche
 
 /** Create a schedule item. */
 export async function createProjectScheduleItem(
-  draft: ProjectScheduleItemDraft
+  draft: ProjectScheduleItemDraft,
+  explicitClient?: SupabaseClient
 ): Promise<ProjectScheduleItem> {
-  const c = client();
+  const c = client(explicitClient);
   const { data: row, error } = await c
     .from("project_schedule")
     .insert({
@@ -103,9 +107,10 @@ export async function createProjectScheduleItem(
 /** Update a schedule item. */
 export async function updateProjectScheduleItem(
   id: string,
-  patch: Partial<Pick<ProjectScheduleItem, "title" | "start_date" | "end_date" | "status">>
+  patch: Partial<Pick<ProjectScheduleItem, "title" | "start_date" | "end_date" | "status">>,
+  explicitClient?: SupabaseClient
 ): Promise<ProjectScheduleItem | null> {
-  const c = client();
+  const c = client(explicitClient);
   const updates: Record<string, unknown> = {};
   if (patch.title !== undefined) updates.title = patch.title.trim();
   if (patch.start_date !== undefined) updates.start_date = patch.start_date?.slice(0, 10) ?? null;
@@ -118,13 +123,17 @@ export async function updateProjectScheduleItem(
     .eq("id", id)
     .select(COLS)
     .single();
-  if (error || !row) return null;
+  if (error) throw new Error(error.message ?? "Failed to update schedule item.");
+  if (!row) return null;
   return toItem(row as Record<string, unknown>);
 }
 
 /** Delete a schedule item. */
-export async function deleteProjectScheduleItem(id: string): Promise<void> {
-  const c = client();
+export async function deleteProjectScheduleItem(
+  id: string,
+  explicitClient?: SupabaseClient
+): Promise<void> {
+  const c = client(explicitClient);
   const { error } = await c.from("project_schedule").delete().eq("id", id);
   if (error) throw new Error(error.message ?? "Failed to delete schedule item.");
 }

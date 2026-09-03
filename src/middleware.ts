@@ -12,6 +12,7 @@ import {
 import { workerReceiptInboxPath } from "@/lib/expense-operations-routing";
 import { isCompatibilityAccessEnabled } from "@/lib/owner-access-mode";
 import { isLocalAutoLoginEnabled, LOCAL_AUTO_LOGIN_PATH } from "@/lib/local-auto-login";
+import { parseRequestAuthorization } from "@/lib/request-authorization";
 
 const INTERNAL_ADMIN_SECRET_HEADER = "x-internal-admin-secret";
 const PRODUCTION_SAFETY_LOCK_HEADER = "x-hh-production-safety-lock";
@@ -254,7 +255,21 @@ async function hasSupabaseSessionUser(
     };
   }
 
+  const authorization = parseRequestAuthorization(request.headers.get("authorization"));
+  if (authorization.kind === "malformed") {
+    return {
+      authenticated: false,
+      authorized: false,
+      sessionId: null,
+      supabase: null,
+      userId: null,
+    };
+  }
+
   const supabase = createServerClient(url, anon, {
+    ...(authorization.kind === "bearer"
+      ? { global: { headers: { Authorization: authorization.authorization } } }
+      : {}),
     cookies: {
       getAll() {
         return request.cookies.getAll();
@@ -267,11 +282,7 @@ async function hasSupabaseSessionUser(
     },
   });
 
-  const authorization =
-    request.headers.get("authorization") ?? request.headers.get("Authorization");
-  const bearer = authorization?.startsWith("Bearer ")
-    ? authorization.slice(7).trim() || null
-    : null;
+  const bearer = authorization.kind === "bearer" ? authorization.token : null;
   const {
     data: { user },
   } = await supabase.auth.getUser(bearer ?? undefined).catch(() => ({ data: { user: null } }));

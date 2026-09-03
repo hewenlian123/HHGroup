@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAllScheduleWithProject, getProjects, createProjectScheduleItem } from "@/lib/data";
-import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
-import { createRouteSupabaseClient } from "@/lib/supabase-server";
+import { requireSupabaseOwnerOrAdminRequestClient } from "@/lib/auth-boundary";
 
 const NO_CACHE_HEADERS = {
   "Cache-Control": "private, no-store, no-cache, must-revalidate",
@@ -14,19 +13,9 @@ function withSessionCookies(response: NextResponse, sessionResponse: NextRespons
 }
 
 export async function GET(request: Request) {
-  const guard = await requireSupabaseOwnerOrAdmin(request);
+  const guard = await requireSupabaseOwnerOrAdminRequestClient(request, { noStore: true });
   if (!guard.ok) return guard.response;
-  const sessionResponse = NextResponse.next();
-  const supabase = createRouteSupabaseClient(request, sessionResponse, {
-    noStore: true,
-    forwardAuthorization: true,
-  });
-  if (!supabase) {
-    return NextResponse.json(
-      { ok: false as const, message: "Authenticated schedule session is not configured." },
-      { status: 503 }
-    );
-  }
+  const { client: supabase, sessionResponse } = guard;
   try {
     const [schedule, projects] = await Promise.all([
       getAllScheduleWithProject(supabase),
@@ -50,6 +39,8 @@ export async function GET(request: Request) {
 }
 
 export async function POST(req: Request) {
+  const guard = await requireSupabaseOwnerOrAdminRequestClient(req, { noStore: true });
+  if (!guard.ok) return guard.response;
   try {
     const body = await req.json();
     const project_id = body.project_id as string | undefined;
@@ -63,14 +54,17 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
-    await createProjectScheduleItem({
-      project_id,
-      title,
-      start_date: start_date || undefined,
-      end_date: end_date || undefined,
-      status,
-    });
-    return NextResponse.json({ ok: true as const });
+    await createProjectScheduleItem(
+      {
+        project_id,
+        title,
+        start_date: start_date || undefined,
+        end_date: end_date || undefined,
+        status,
+      },
+      guard.client
+    );
+    return withSessionCookies(NextResponse.json({ ok: true as const }), guard.sessionResponse);
   } catch (e) {
     const message = e instanceof Error ? e.message : "Failed to create schedule item.";
     return NextResponse.json({ ok: false as const, message }, { status: 500 });

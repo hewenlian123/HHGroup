@@ -1,5 +1,7 @@
 import "server-only";
 
+import type { SupabaseClient } from "@supabase/supabase-js";
+
 import {
   calculateProjectFinancialSnapshot,
   createEmptyProjectFinancialSnapshotDiagnostics,
@@ -1040,9 +1042,10 @@ function mergeById<T extends { id?: string | null }>(...lists: T[][]): T[] {
 }
 
 async function fetchProjectFinancialSnapshotRows(
-  projectId: string
+  projectId: string,
+  explicitClient?: SupabaseClient
 ): Promise<{ rows: ProjectFinancialSnapshotDbRows; warnings: ProjectFinancialWarning[] }> {
-  const supabase = getServerSupabaseInternalNoStore();
+  const supabase = explicitClient ?? getServerSupabaseInternalNoStore();
   if (!supabase) throw new Error(SUPABASE_MISSING_SERVER_ENV_MESSAGE);
 
   const [
@@ -1213,9 +1216,10 @@ async function fetchProjectFinancialSnapshotRows(
 }
 
 export async function getProjectFinancialSnapshot(
-  projectId: string
+  projectId: string,
+  explicitClient?: SupabaseClient
 ): Promise<ProjectFinancialSnapshot> {
-  const { rows, warnings } = await fetchProjectFinancialSnapshotRows(projectId);
+  const { rows, warnings } = await fetchProjectFinancialSnapshotRows(projectId, explicitClient);
   const snapshot = mapProjectFinancialRowsToSnapshot(rows);
   return { ...snapshot, warnings: [...snapshot.warnings, ...warnings] };
 }

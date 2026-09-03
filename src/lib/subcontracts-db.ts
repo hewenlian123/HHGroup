@@ -241,7 +241,7 @@ export async function getSubcontractsSummaryAll(): Promise<
 }
 
 /** Fetch all subcontracts with subcontractor name and project name for dashboard/summary. */
-export async function getSubcontractsWithDetailsAll(): Promise<
+export async function getSubcontractsWithDetailsAll(explicitClient?: SupabaseClient): Promise<
   {
     id: string;
     subcontractor_id: string;
@@ -254,7 +254,7 @@ export async function getSubcontractsWithDetailsAll(): Promise<
     description: string | null;
   }[]
 > {
-  const c = client();
+  const c = client(explicitClient);
   const selectCols =
     "id, subcontractor_id, project_id, status, cost_code, contract_amount, description, subcontractors(name), projects(name)";
   const fallbackCols =

@@ -1,6 +1,6 @@
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
-import { requireSupabaseOwnerOrAdminWithClient } from "@/lib/auth-boundary";
+import { requireSupabaseOwnerOrAdminRequestClient } from "@/lib/auth-boundary";
 import {
   getCommissionById,
   getPaymentRecordById,
@@ -8,7 +8,6 @@ import {
   updatePaymentRecord,
   deletePaymentRecord,
 } from "@/lib/data";
-import { getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
 import { uuidNormalizedEqual } from "@/lib/uuid-normalize";
 
 const PAYMENT_METHODS = ["Check", "Bank Transfer", "Cash", "Zelle", "Other"];
@@ -17,13 +16,13 @@ export async function PATCH(
   req: Request,
   ctx: { params: Promise<{ id: string; commissionId: string; paymentId: string }> }
 ) {
-  const guard = await requireSupabaseOwnerOrAdminWithClient(req, getServerSupabaseInternalNoStore);
+  const guard = await requireSupabaseOwnerOrAdminRequestClient(req, { noStore: true });
   if (!guard.ok) return guard.response;
   const { id: projectId, commissionId, paymentId } = await ctx.params;
   if (!projectId || !commissionId || !paymentId)
     return NextResponse.json({ ok: false, message: "Missing id" }, { status: 400 });
   try {
-    const commission = await getCommissionById(commissionId);
+    const commission = await getCommissionById(commissionId, guard.client);
     if (!commission)
       return NextResponse.json({ ok: false, message: "Commission not found" }, { status: 404 });
     if (!uuidNormalizedEqual(commission.project_id, projectId))
@@ -31,7 +30,7 @@ export async function PATCH(
         { ok: false, message: "Commission does not belong to this project" },
         { status: 400 }
       );
-    const existing = await getPaymentRecordById(paymentId);
+    const existing = await getPaymentRecordById(paymentId, guard.client);
     if (!existing)
       return NextResponse.json({ ok: false, message: "Payment not found" }, { status: 404 });
     if (!uuidNormalizedEqual(existing.commission_id, commissionId))
@@ -66,7 +65,7 @@ export async function PATCH(
             : null
           : undefined;
     const amountFinal = amount !== undefined ? amount : existing.amount;
-    const internalClient = guard.client ?? undefined;
+    const internalClient = guard.client;
     const paidTotal = await getSumPaidForCommission(commissionId, internalClient);
     const nextTotal = paidTotal - existing.amount + amountFinal;
     if (nextTotal > commission.commission_amount + 1e-6) {
@@ -104,13 +103,13 @@ export async function DELETE(
   req: Request,
   ctx: { params: Promise<{ id: string; commissionId: string; paymentId: string }> }
 ) {
-  const guard = await requireSupabaseOwnerOrAdminWithClient(req, getServerSupabaseInternalNoStore);
+  const guard = await requireSupabaseOwnerOrAdminRequestClient(req, { noStore: true });
   if (!guard.ok) return guard.response;
   const { id: projectId, commissionId, paymentId } = await ctx.params;
   if (!projectId || !commissionId || !paymentId)
     return NextResponse.json({ ok: false, message: "Missing id" }, { status: 400 });
   try {
-    const commission = await getCommissionById(commissionId);
+    const commission = await getCommissionById(commissionId, guard.client);
     if (!commission)
       return NextResponse.json({ ok: false, message: "Commission not found" }, { status: 404 });
     if (!uuidNormalizedEqual(commission.project_id, projectId))
@@ -118,7 +117,7 @@ export async function DELETE(
         { ok: false, message: "Commission does not belong to this project" },
         { status: 400 }
       );
-    const existing = await getPaymentRecordById(paymentId);
+    const existing = await getPaymentRecordById(paymentId, guard.client);
     if (!existing)
       return NextResponse.json({ ok: false, message: "Payment not found" }, { status: 404 });
     if (!uuidNormalizedEqual(existing.commission_id, commissionId))
@@ -126,7 +125,7 @@ export async function DELETE(
         { ok: false, message: "Payment does not match commission" },
         { status: 400 }
       );
-    await deletePaymentRecord(paymentId, guard.client ?? undefined);
+    await deletePaymentRecord(paymentId, guard.client);
     revalidatePath(`/projects/${projectId}`);
     revalidatePath("/financial/commissions");
     return NextResponse.json({ ok: true });

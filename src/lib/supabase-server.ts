@@ -9,6 +9,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { createClient, type SupabaseClient, type User } from "@supabase/supabase-js";
 import type { NextRequest, NextResponse } from "next/server";
+import { parseRequestAuthorization } from "@/lib/request-authorization";
 
 function envUrl(): string | null {
   return process.env.NEXT_PUBLIC_SUPABASE_URL ?? null;
@@ -210,11 +211,10 @@ export function createRouteSupabaseClient(
   if (!url || !anon) return null;
   const persistent = options.persistent === true;
   const requestAuthorization = options.forwardAuthorization
-    ? request.headers.get("authorization")
+    ? parseRequestAuthorization(request.headers.get("authorization"))
     : null;
-  const forwardedAuthorization = requestAuthorization?.startsWith("Bearer ")
-    ? requestAuthorization
-    : null;
+  const forwardedAuthorization =
+    requestAuthorization?.kind === "bearer" ? requestAuthorization.authorization : null;
   const globalOptions = {
     ...(options.noStore ? { fetch: noStoreFetch } : {}),
     ...(forwardedAuthorization ? { headers: { Authorization: forwardedAuthorization } } : {}),
@@ -271,17 +271,18 @@ export async function getSupabaseUserFromRequest(req: Request): Promise<User | n
   const anon = envAnon();
   if (!url || !anon) return null;
 
-  const authHeader = req.headers.get("authorization") ?? req.headers.get("Authorization");
-  const bearer = authHeader?.startsWith("Bearer ") ? authHeader.slice(7).trim() : null;
-  if (bearer) {
+  const authorization = parseRequestAuthorization(req.headers.get("authorization"));
+  if (authorization.kind !== "absent") {
+    if (authorization.kind !== "bearer") return null;
     const sb = createClient(url, anon, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
     const {
       data: { user },
       error,
-    } = await sb.auth.getUser(bearer);
+    } = await sb.auth.getUser(authorization.token);
     if (!error && user) return user;
+    return null;
   }
 
   const cookieClient = createRequestReadOnlySupabaseClient(req);

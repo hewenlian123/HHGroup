@@ -181,7 +181,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
 
   useOnAppSync(
     React.useCallback(() => {
-      syncRouterNonBlocking(router);
+      refreshRscNonBlocking(router);
     }, [router]),
     [router]
   );

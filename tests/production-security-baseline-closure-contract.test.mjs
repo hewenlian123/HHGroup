@@ -111,7 +111,7 @@ test("keeps worker mutations behind the verified server-side client", () => {
   );
   assert.match(
     workerRoute,
-    /export\s+async\s+function\s+DELETE[\s\S]*?requireSupabaseOwnerOrAdmin\(req\)[\s\S]*?const\s+admin\s*=\s+getServerSupabaseAdmin\(\)[\s\S]*?deleteWorker\(id,\s*admin\)/
+    /export\s+async\s+function\s+DELETE[\s\S]*?requireSupabaseOwnerOrAdminRequestClient\(req,[\s\S]*?deleteWorker\(id,\s*guard\.client\)/
   );
   assert.match(
     laborDb,

@@ -57,8 +57,10 @@ function client(explicitClient?: SupabaseClient) {
 
 const COLS =
   "id, project_id, issue, location, description, assigned_worker_id, priority, status, photo_url, photo_id, notes, created_by, created_at, completed_at";
-const COLS_BASE =
+const COLS_LEGACY_NOTES =
   "id, project_id, issue, location, assigned_worker_id, status, photo_url, notes, created_at";
+const COLS_BASE =
+  "id, project_id, issue, location, assigned_worker_id, status, photo_url, created_at";
 
 function isMissingColumn(err: { message?: string } | null): boolean {
   const m = (err?.message ?? "").toLowerCase();
@@ -139,20 +141,19 @@ export async function getPunchListAll(
   const c = client(explicitClient);
   let rows: unknown[] | null = null;
   let error: { message?: string } | null = null;
-  let extended = true;
-  const res = await c.from("punch_list").select(COLS).order("created_at", { ascending: false });
-  error = res.error;
-  rows = res.data;
-  if (error && isMissingColumn(error)) {
-    const fallback = await c
+  let extended = false;
+  for (const columns of [COLS, COLS_LEGACY_NOTES, COLS_BASE]) {
+    const result = await c
       .from("punch_list")
-      .select(COLS_BASE)
+      .select(columns)
       .order("created_at", { ascending: false });
-    if (!fallback.error) {
-      rows = fallback.data;
-      extended = false;
-      error = null;
+    rows = result.data;
+    error = result.error;
+    if (!error) {
+      extended = columns === COLS;
+      break;
     }
+    if (!isMissingColumn(error)) break;
   }
   if (error) throw new Error(error.message ?? "Failed to load punch list.");
   const items = (rows ?? []).map((r) => toItem(r as Record<string, unknown>, extended));
@@ -160,29 +161,29 @@ export async function getPunchListAll(
 }
 
 /** Get punch list items for a project. */
-export async function getPunchListByProject(projectId: string): Promise<PunchListItemWithJoins[]> {
-  const c = client();
+export async function getPunchListByProject(
+  projectId: string,
+  explicitClient?: SupabaseClient
+): Promise<PunchListItemWithJoins[]> {
+  const c = client(explicitClient);
   let rows: unknown[] | null = null;
-  let extended = true;
-  const res = await c
-    .from("punch_list")
-    .select(COLS)
-    .eq("project_id", projectId)
-    .order("created_at", { ascending: false });
-  if (res.error && isMissingColumn(res.error)) {
-    const fallback = await c
+  let error: { message?: string } | null = null;
+  let extended = false;
+  for (const columns of [COLS, COLS_LEGACY_NOTES, COLS_BASE]) {
+    const result = await c
       .from("punch_list")
-      .select(COLS_BASE)
+      .select(columns)
       .eq("project_id", projectId)
       .order("created_at", { ascending: false });
-    if (!fallback.error) {
-      rows = fallback.data;
-      extended = false;
+    rows = result.data;
+    error = result.error;
+    if (!error) {
+      extended = columns === COLS;
+      break;
     }
-  } else {
-    rows = res.data;
+    if (!isMissingColumn(error)) break;
   }
-  if (res.error && !rows) throw new Error(res.error.message ?? "Failed to load punch list.");
+  if (error) throw new Error(error.message ?? "Failed to load punch list.");
   const items = (rows ?? []).map((r) => toItem(r as Record<string, unknown>, extended));
   return await joinItems(c, items);
 }
@@ -205,8 +206,11 @@ export async function getPunchListSummary(
 }
 
 /** Create a punch list item. */
-export async function createPunchListItem(draft: PunchListDraft): Promise<PunchListItem> {
-  const c = client();
+export async function createPunchListItem(
+  draft: PunchListDraft,
+  explicitClient?: SupabaseClient
+): Promise<PunchListItem> {
+  const c = client(explicitClient);
   const payload: Record<string, unknown> = {
     project_id: draft.project_id,
     issue: draft.issue.trim() || "Issue",
@@ -227,7 +231,11 @@ export async function createPunchListItem(draft: PunchListDraft): Promise<PunchL
     delete base.priority;
     delete base.created_by;
     delete base.photo_id;
-    result = await c.from("punch_list").insert(base).select(COLS_BASE).single();
+    result = await c.from("punch_list").insert(base).select(COLS_LEGACY_NOTES).single();
+    if (result.error && isMissingColumn(result.error)) {
+      delete base.notes;
+      result = await c.from("punch_list").insert(base).select(COLS_BASE).single();
+    }
   }
   if (result.error || !result.data)
     throw new Error(result.error?.message ?? "Failed to create punch list item.");
@@ -250,9 +258,10 @@ export async function updatePunchListItem(
       | "photo_url"
       | "notes"
     >
-  >
+  >,
+  explicitClient?: SupabaseClient
 ): Promise<PunchListItem | null> {
-  const c = client();
+  const c = client(explicitClient);
   const updates: Record<string, unknown> = {};
   if (patch.issue !== undefined) updates.issue = patch.issue.trim();
   if (patch.location !== undefined) updates.location = patch.location?.trim() ?? null;
@@ -276,10 +285,22 @@ export async function updatePunchListItem(
     if ("photo_url" in updates) rest.photo_url = updates.photo_url;
     if ("notes" in updates) rest.notes = updates.notes;
     if (Object.keys(rest).length > 0) {
-      result = await c.from("punch_list").update(rest).eq("id", id).select(COLS_BASE).single();
+      result = await c
+        .from("punch_list")
+        .update(rest)
+        .eq("id", id)
+        .select(COLS_LEGACY_NOTES)
+        .single();
+      if (result.error && isMissingColumn(result.error)) {
+        delete rest.notes;
+        if (Object.keys(rest).length > 0) {
+          result = await c.from("punch_list").update(rest).eq("id", id).select(COLS_BASE).single();
+        }
+      }
     }
   }
-  if (result.error || !result.data) return null;
+  if (result.error) throw new Error(result.error.message ?? "Failed to update punch list item.");
+  if (!result.data) return null;
   return toItem(
     result.data as Record<string, unknown>,
     "priority" in (result.data as Record<string, unknown>)
@@ -287,8 +308,11 @@ export async function updatePunchListItem(
 }
 
 /** Delete a punch list item. */
-export async function deletePunchListItem(id: string): Promise<void> {
-  const c = client();
+export async function deletePunchListItem(
+  id: string,
+  explicitClient?: SupabaseClient
+): Promise<void> {
+  const c = client(explicitClient);
   const { error } = await c.from("punch_list").delete().eq("id", id);
   if (error) throw new Error(error.message ?? "Failed to delete punch list item.");
 }

@@ -1,11 +1,7 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
-import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
+import { requireSupabaseOwnerOrAdminRequestClient } from "@/lib/auth-boundary";
 import { addApBillPayment, getApBillById } from "@/lib/ap-bills-db";
-import {
-  SUPABASE_MISSING_SERVER_ENV_MESSAGE,
-  createRouteSupabaseClient,
-} from "@/lib/supabase-server";
 import { safeErrorMessage } from "@/lib/system-response-safety";
 
 export const dynamic = "force-dynamic";
@@ -19,6 +15,11 @@ const NO_CACHE_HEADERS: Record<string, string> = {
 
 function apiError(status: number, message: string): NextResponse {
   return NextResponse.json({ ok: false, message }, { status, headers: NO_CACHE_HEADERS });
+}
+
+function withSessionCookies(response: NextResponse, sessionResponse: NextResponse): NextResponse {
+  for (const cookie of sessionResponse.cookies.getAll()) response.cookies.set(cookie);
+  return response;
 }
 
 function logBillsError(action: string, error: unknown) {
@@ -63,10 +64,9 @@ async function readJson(request: Request): Promise<Record<string, unknown> | nul
 }
 
 export async function POST(request: Request, ctx: { params: Promise<{ id: string }> }) {
-  const guard = await requireSupabaseOwnerOrAdmin(request);
+  const guard = await requireSupabaseOwnerOrAdminRequestClient(request, { noStore: true });
   if (!guard.ok) return guard.response;
-  const supabase = createRouteSupabaseClient(request, NextResponse.next());
-  if (!supabase) return apiError(503, SUPABASE_MISSING_SERVER_ENV_MESSAGE);
+  const { client: supabase, sessionResponse } = guard;
 
   const { id } = await ctx.params;
   if (!id?.trim()) return apiError(400, "Missing bill id.");
@@ -110,9 +110,12 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
       revalidatePath(`/subcontractors/${billForRevalidation.subcontractor_id}`);
       revalidatePath("/subcontractors");
     }
-    return NextResponse.json(
-      { ok: true, payment, bill: updatedBill ?? bill },
-      { headers: NO_CACHE_HEADERS }
+    return withSessionCookies(
+      NextResponse.json(
+        { ok: true, payment, bill: updatedBill ?? bill },
+        { headers: NO_CACHE_HEADERS }
+      ),
+      sessionResponse
     );
   } catch (error) {
     logBillsError("create", error);

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
+import { requireSupabaseOwnerOrAdminRequestClient } from "@/lib/auth-boundary";
 import {
   AP_BILL_STATUSES,
   AP_BILL_TYPES,
@@ -11,10 +11,6 @@ import {
   type ApBillStatus,
   type ApBillType,
 } from "@/lib/ap-bills-db";
-import {
-  SUPABASE_MISSING_SERVER_ENV_MESSAGE,
-  createRouteSupabaseClient,
-} from "@/lib/supabase-server";
 import { safeErrorMessage } from "@/lib/system-response-safety";
 
 export const dynamic = "force-dynamic";
@@ -30,6 +26,11 @@ const AP_UNAVAILABLE_MESSAGE = "Bills/AP module is not configured in this enviro
 
 function apiError(status: number, message: string): NextResponse {
   return NextResponse.json({ ok: false, message }, { status, headers: NO_CACHE_HEADERS });
+}
+
+function withSessionCookies(response: NextResponse, sessionResponse: NextResponse): NextResponse {
+  for (const cookie of sessionResponse.cookies.getAll()) response.cookies.set(cookie);
+  return response;
 }
 
 function logBillsError(action: string, error: unknown) {
@@ -119,10 +120,9 @@ async function getProjectOptions(supabase: SupabaseClient | null) {
 }
 
 export async function GET(request: Request) {
-  const guard = await requireSupabaseOwnerOrAdmin(request);
+  const guard = await requireSupabaseOwnerOrAdminRequestClient(request, { noStore: true });
   if (!guard.ok) return guard.response;
-  const supabase = createRouteSupabaseClient(request, NextResponse.next());
-  if (!supabase) return apiError(503, SUPABASE_MISSING_SERVER_ENV_MESSAGE);
+  const { client: supabase, sessionResponse } = guard;
 
   const url = new URL(request.url);
   const includeProjects = url.searchParams.get("includeProjects") === "1";
@@ -130,23 +130,26 @@ export async function GET(request: Request) {
   try {
     const available = await apBillsAvailable(supabase);
     if (!available) {
-      return NextResponse.json(
-        {
-          ok: true,
-          available: false,
-          message: AP_UNAVAILABLE_MESSAGE,
-          bills: [],
-          summary: {
-            totalOutstanding: 0,
-            overdueCount: 0,
-            overdueAmount: 0,
-            dueThisWeekCount: 0,
-            dueThisWeekAmount: 0,
-            paidThisMonthAmount: 0,
+      return withSessionCookies(
+        NextResponse.json(
+          {
+            ok: true,
+            available: false,
+            message: AP_UNAVAILABLE_MESSAGE,
+            bills: [],
+            summary: {
+              totalOutstanding: 0,
+              overdueCount: 0,
+              overdueAmount: 0,
+              dueThisWeekCount: 0,
+              dueThisWeekAmount: 0,
+              paidThisMonthAmount: 0,
+            },
+            projects: [],
           },
-          projects: [],
-        },
-        { headers: NO_CACHE_HEADERS }
+          { headers: NO_CACHE_HEADERS }
+        ),
+        sessionResponse
       );
     }
 
@@ -156,9 +159,12 @@ export async function GET(request: Request) {
       includeProjects ? getProjectOptions(supabase) : Promise.resolve([]),
     ]);
 
-    return NextResponse.json(
-      { ok: true, available: true, bills, summary, projects },
-      { headers: NO_CACHE_HEADERS }
+    return withSessionCookies(
+      NextResponse.json(
+        { ok: true, available: true, bills, summary, projects },
+        { headers: NO_CACHE_HEADERS }
+      ),
+      sessionResponse
     );
   } catch (error) {
     logBillsError("load", error);
@@ -167,10 +173,9 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const guard = await requireSupabaseOwnerOrAdmin(request);
+  const guard = await requireSupabaseOwnerOrAdminRequestClient(request, { noStore: true });
   if (!guard.ok) return guard.response;
-  const supabase = createRouteSupabaseClient(request, NextResponse.next());
-  if (!supabase) return apiError(503, SUPABASE_MISSING_SERVER_ENV_MESSAGE);
+  const { client: supabase, sessionResponse } = guard;
 
   const body = await readJson(request);
   if (!body) return apiError(400, "Invalid bill payload.");
@@ -198,7 +203,10 @@ export async function POST(request: Request) {
       },
       supabase
     );
-    return NextResponse.json({ ok: true, bill }, { headers: NO_CACHE_HEADERS });
+    return withSessionCookies(
+      NextResponse.json({ ok: true, bill }, { headers: NO_CACHE_HEADERS }),
+      sessionResponse
+    );
   } catch (error) {
     logBillsError("create", error);
     return apiError(500, "Failed to create bill.");

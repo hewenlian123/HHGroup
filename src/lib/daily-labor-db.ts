@@ -991,9 +991,10 @@ export type ProjectLaborBreakdownRow = {
 
 /** Aggregate labor entries for a project by worker. Supabase RPC only. */
 export async function getProjectLaborBreakdown(
-  projectId: string
+  projectId: string,
+  explicitClient?: SupabaseClient
 ): Promise<ProjectLaborBreakdownRow[]> {
-  const c = client();
+  const c = client(explicitClient);
   const { data: rows, error } = await c.rpc("get_project_labor_breakdown", {
     p_project_id: projectId,
   });
@@ -1002,7 +1003,7 @@ export async function getProjectLaborBreakdown(
       throw new Error(error.message ?? "Failed to load project labor breakdown.");
 
     // Fallback for environments missing the RPC: aggregate from labor_entries directly.
-    const entries = await getLaborEntriesWithJoins({ project_id: projectId });
+    const entries = await getLaborEntriesWithJoins({ project_id: projectId }, explicitClient);
     const byWorker = new Map<
       string,
       { worker_name: string | null; days: Set<string>; total_labor_cost: number }

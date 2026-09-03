@@ -1,6 +1,6 @@
 /**
  * Project tasks — Supabase only. Table: project_tasks.
- * Uses service_role admin client so GET and DELETE see the same data (RLS bypass).
+ * Authenticated Operations callers pass one request-scoped RLS client.
  * Test data: tasks created by system tests use title prefix "Workflow Test" and are excluded from UI list / protected from UI delete.
  */
 
@@ -34,7 +34,8 @@ export type ProjectTaskDraft = {
 
 export type ProjectTaskWithWorker = ProjectTask & { worker_name: string | null };
 
-function client(): SupabaseClient {
+function client(explicitClient?: SupabaseClient): SupabaseClient {
+  if (explicitClient) return explicitClient;
   // Prefer admin (service role) when configured; otherwise fall back to server client (anon/service role depending on env).
   const admin = getServerSupabaseAdmin();
   const server = getServerSupabase();
@@ -101,8 +102,11 @@ export async function getAllTasksWithProject(): Promise<
 }
 
 /** Get all tasks for a project, with worker names when assigned_worker_id is set. */
-export async function getProjectTasks(projectId: string): Promise<ProjectTaskWithWorker[]> {
-  const c = client();
+export async function getProjectTasks(
+  projectId: string,
+  explicitClient?: SupabaseClient
+): Promise<ProjectTaskWithWorker[]> {
+  const c = client(explicitClient);
   const { data: rows, error } = await c
     .from("project_tasks")
     .select(COLS)
@@ -115,7 +119,11 @@ export async function getProjectTasks(projectId: string): Promise<ProjectTaskWit
   ) as string[];
   const workerNames = new Map<string, string>();
   if (workerIds.length > 0) {
-    const { data: workers } = await c.from("workers").select("id, name").in("id", workerIds);
+    const { data: workers, error: workersError } = await c
+      .from("workers")
+      .select("id, name")
+      .in("id", workerIds);
+    if (workersError) throw new Error(workersError.message ?? "Failed to load task workers.");
     (workers ?? []).forEach((w: { id: string; name: string }) =>
       workerNames.set(w.id, w.name ?? "")
     );

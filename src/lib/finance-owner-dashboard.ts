@@ -10,9 +10,9 @@ import { getProjectContractReviewSummary } from "@/lib/financial/project-financi
 import type { ProjectContractReviewSummary } from "@/lib/financial/project-financial-review";
 import type { ProjectFinancialSnapshot } from "@/lib/financial/project-financial-snapshot";
 import { getCanonicalProjectProfitBatch } from "@/lib/profit-engine";
-import { getServerSupabaseInternal } from "@/lib/supabase-server";
 import { fetchWorkerBalances } from "@/lib/worker-balances-list";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { FinancialDataUnavailableError } from "@/lib/financial-availability";
 
 export type FinanceOwnerCashFlowPoint = {
   label: string;
@@ -105,24 +105,24 @@ async function mapWithConcurrency<T, R>(
 }
 
 async function getProjectFinancialSnapshotMap(
-  projectIds: string[]
+  projectIds: string[],
+  explicitClient: SupabaseClient
 ): Promise<Map<string, ProjectFinancialSnapshot>> {
   const snapshots = await mapWithConcurrency(projectIds, 4, async (projectId) => {
-    try {
-      return { projectId, snapshot: await getProjectFinancialSnapshot(projectId) };
-    } catch {
-      return { projectId, snapshot: null };
+    const snapshot = await getProjectFinancialSnapshot(projectId, explicitClient);
+    const unavailable = snapshot.warnings.find((item) =>
+      /unavailable|missing_schema/i.test(item.code)
+    );
+    if (unavailable) {
+      throw new FinancialDataUnavailableError(`project financial snapshot ${projectId}`, {
+        code: "PGRST204",
+        message: unavailable.message,
+      });
     }
+    return { projectId, snapshot };
   });
 
-  return new Map(
-    snapshots
-      .filter(
-        (row): row is { projectId: string; snapshot: ProjectFinancialSnapshot } =>
-          row.snapshot != null
-      )
-      .map((row) => [row.projectId, row.snapshot])
-  );
+  return new Map(snapshots.map((row) => [row.projectId, row.snapshot]));
 }
 
 /**
@@ -130,7 +130,7 @@ async function getProjectFinancialSnapshotMap(
  * top projects by profit, and alert counts. Batches shared queries to limit round-trips.
  */
 export async function getFinanceOwnerDashboard(
-  explicitClient?: SupabaseClient
+  explicitClient: SupabaseClient
 ): Promise<FinanceOwnerDashboard> {
   const now = new Date();
   const cy = now.getFullYear();
@@ -150,20 +150,11 @@ export async function getFinanceOwnerDashboard(
     cashFlowMonths,
     approvedReimbursementsUnpaid,
   ] = await Promise.all([
-    invoicesDb.getInvoicesWithDerived(),
-    invoicesDb.getInvoicePayments(),
-    apBillsDb.getApBillsSummary(explicitClient).catch(() => ({
-      totalOutstanding: 0,
-      overdueCount: 0,
-      overdueAmount: 0,
-      dueThisWeekCount: 0,
-      dueThisWeekAmount: 0,
-      paidThisMonthAmount: 0,
-    })),
-    projectsDb
-      .getProjects(explicitClient)
-      .catch(() => [] as Awaited<ReturnType<typeof projectsDb.getProjects>>),
-    expensesDb.countExpensesWithoutReceiptUrlInRange(receiptStartStr, monthEnd).catch(() => 0),
+    invoicesDb.getInvoicesWithDerived(undefined, explicitClient),
+    invoicesDb.getInvoicePayments(explicitClient),
+    apBillsDb.getApBillsSummary(explicitClient),
+    projectsDb.getProjects(explicitClient),
+    expensesDb.countExpensesWithoutReceiptUrlInRange(receiptStartStr, monthEnd, explicitClient),
     Promise.all(
       [5, 4, 3, 2, 1, 0]
         .map((back) => {
@@ -172,13 +163,13 @@ export async function getFinanceOwnerDashboard(
         })
         .map(async ({ y, m, start, end }) => {
           const [ex, lab] = await Promise.all([
-            expensesDb.getExpensesTotalForMonth(y, m).catch(() => 0),
-            laborDb.getLaborCostForDateRange(start, end).catch(() => 0),
+            expensesDb.getExpensesTotalForMonth(y, m, explicitClient),
+            laborDb.getLaborCostForDateRange(start, end, explicitClient),
           ]);
           return { y, m, start, end, monthSpend: ex + lab };
         })
     ),
-    workerReimbursementsDb.sumUnpaidApprovedWorkerReimbursements().catch(() => 0),
+    workerReimbursementsDb.sumUnpaidApprovedWorkerReimbursements(explicitClient),
   ]);
 
   const today = now.toISOString().slice(0, 10);
@@ -208,8 +199,8 @@ export async function getFinanceOwnerDashboard(
   }
 
   const [expenseLinesMonth, laborMonth] = await Promise.all([
-    expensesDb.getExpensesTotalForMonth(cy, cm).catch(() => 0),
-    laborDb.getLaborCostForDateRange(monthStart, monthEnd).catch(() => 0),
+    expensesDb.getExpensesTotalForMonth(cy, cm, explicitClient),
+    laborDb.getLaborCostForDateRange(monthStart, monthEnd, explicitClient),
   ]);
   const expenseThisMonth = expenseLinesMonth + laborMonth;
 
@@ -239,7 +230,7 @@ export async function getFinanceOwnerDashboard(
   const projectIds = projects.map((p) => p.id);
   const [profitMap, snapshotMap] = await Promise.all([
     getCanonicalProjectProfitBatch(projectIds, explicitClient),
-    getProjectFinancialSnapshotMap(projectIds),
+    getProjectFinancialSnapshotMap(projectIds, explicitClient),
   ]);
   const contractReview = getProjectContractReviewSummary(
     projects.map((project) => ({
@@ -282,20 +273,13 @@ export async function getFinanceOwnerDashboard(
     .sort((a, b) => a.profit - b.profit)
     .slice(0, 5);
 
-  const sb = getServerSupabaseInternal();
   let unpaidWorkersCount = 0;
   let unpaidWorkersAmount = 0;
-  if (sb) {
-    try {
-      const balances = await fetchWorkerBalances(sb);
-      for (const row of balances) {
-        if (row.balance > 0.01) {
-          unpaidWorkersCount += 1;
-          unpaidWorkersAmount += row.balance;
-        }
-      }
-    } catch {
-      // balances optional for dashboard
+  const balances = await fetchWorkerBalances(explicitClient);
+  for (const row of balances) {
+    if (row.balance > 0.01) {
+      unpaidWorkersCount += 1;
+      unpaidWorkersAmount += row.balance;
     }
   }
 

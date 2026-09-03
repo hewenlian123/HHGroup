@@ -232,6 +232,50 @@ describe("middleware Auth rollout behavior", () => {
     expect(response.headers.get("x-middleware-next")).toBe("1");
   });
 
+  it("uses a normalized alternate-case Bearer for both middleware verification and queries", async () => {
+    process.env.HH_REQUIRE_LOGIN = "false";
+    process.env.NEXT_PUBLIC_SUPABASE_URL = "https://supabase.test";
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "publishable-test-key";
+    getUserMock.mockResolvedValue({
+      data: { user: { app_metadata: { role: "owner" }, id: "bearer-owner-id", user_metadata: {} } },
+    });
+
+    const response = await middleware(
+      request("/api/settings/security/pin", {
+        method: "POST",
+        headers: {
+          Authorization: "bEaReR\tverified-owner-access-token",
+          Cookie: "sb-session=conflicting-cookie-user",
+        },
+      })
+    );
+
+    expect(response.status).toBe(200);
+    expect(getUserMock).toHaveBeenCalledWith("verified-owner-access-token");
+    expect(getSessionMock).not.toHaveBeenCalled();
+    expect(createServerClientMock.mock.calls[0]?.[2]).toMatchObject({
+      global: { headers: { Authorization: "Bearer verified-owner-access-token" } },
+    });
+  });
+
+  it("does not use a cookie session after malformed Bearer credentials are presented", async () => {
+    process.env.HH_REQUIRE_LOGIN = "true";
+    process.env.NEXT_PUBLIC_SUPABASE_URL = "https://supabase.test";
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "publishable-test-key";
+
+    const response = await middleware(
+      request("/api/expenses", {
+        headers: {
+          Authorization: "Basic conflicting-cookie-token",
+          Cookie: "sb-session=owner-cookie",
+        },
+      })
+    );
+
+    expect(response.status).toBe(401);
+    expect(getUserMock).not.toHaveBeenCalled();
+  });
+
   it("keeps the non-receipt OCR writeback workflow available in compatibility mode", async () => {
     process.env = { ...process.env, NODE_ENV: "development" };
     delete process.env.VERCEL_ENV;

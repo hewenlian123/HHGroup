@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { getPunchListAll, getPunchListSummary, getProjects, getWorkers } from "@/lib/data";
-import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
-import { createRouteSupabaseClient } from "@/lib/supabase-server";
+import { requireSupabaseOwnerOrAdminRequestClient } from "@/lib/auth-boundary";
 
 const NO_CACHE_HEADERS = {
   "Cache-Control": "private, no-store, no-cache, must-revalidate",
@@ -18,19 +17,9 @@ function normStatus(s: string): string {
 }
 
 export async function GET(req: Request) {
-  const guard = await requireSupabaseOwnerOrAdmin(req);
+  const guard = await requireSupabaseOwnerOrAdminRequestClient(req, { noStore: true });
   if (!guard.ok) return guard.response;
-  const sessionResponse = NextResponse.next();
-  const supabase = createRouteSupabaseClient(req, sessionResponse, {
-    noStore: true,
-    forwardAuthorization: true,
-  });
-  if (!supabase) {
-    return NextResponse.json(
-      { ok: false as const, message: "Authenticated punch-list session is not configured." },
-      { status: 503 }
-    );
-  }
+  const { client: supabase, sessionResponse } = guard;
   const url = new URL(req.url);
   const projectId = url.searchParams.get("project_id")?.trim() || null;
   const statusFilter = url.searchParams.get("status")?.trim()?.toLowerCase() || null;

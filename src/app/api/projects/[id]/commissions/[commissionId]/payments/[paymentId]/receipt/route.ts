@@ -1,6 +1,6 @@
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
-import { requireSupabaseOwnerOrAdminWithClient } from "@/lib/auth-boundary";
+import { requireSupabaseOwnerOrAdminRequestClient } from "@/lib/auth-boundary";
 import { getCommissionById, getPaymentRecordById, updatePaymentRecord } from "@/lib/data";
 import {
   parseCommissionReceiptStorageUrl,
@@ -32,21 +32,21 @@ export async function POST(
   req: Request,
   ctx: { params: Promise<{ id: string; commissionId: string; paymentId: string }> }
 ) {
-  const guard = await requireSupabaseOwnerOrAdminWithClient(req, getServerSupabaseAdmin);
+  const guard = await requireSupabaseOwnerOrAdminRequestClient(req, { noStore: true });
   if (!guard.ok) return guard.response;
   const { id: projectId, commissionId, paymentId } = await ctx.params;
   if (!projectId || !commissionId || !paymentId)
     return NextResponse.json({ ok: false, message: "Missing id" }, { status: 400 });
 
-  const supabase = guard.client;
-  if (!supabase)
+  const storageClient = getServerSupabaseAdmin();
+  if (!storageClient)
     return NextResponse.json(
       { ok: false, message: "Supabase service role is not configured." },
       { status: 500 }
     );
 
   try {
-    const commission = await getCommissionById(commissionId);
+    const commission = await getCommissionById(commissionId, guard.client);
     if (!commission)
       return NextResponse.json({ ok: false, message: "Commission not found" }, { status: 404 });
     if (!uuidNormalizedEqual(commission.project_id, projectId))
@@ -54,7 +54,7 @@ export async function POST(
         { ok: false, message: "Commission does not belong to this project" },
         { status: 400 }
       );
-    const existing = await getPaymentRecordById(paymentId);
+    const existing = await getPaymentRecordById(paymentId, guard.client);
     if (!existing)
       return NextResponse.json({ ok: false, message: "Payment not found" }, { status: 404 });
     if (!uuidNormalizedEqual(existing.commission_id, commissionId))
@@ -85,7 +85,7 @@ export async function POST(
 
     const ext = extFromMime(mime);
     const path = `commission-payments/${paymentId}/${crypto.randomUUID()}.${ext}`;
-    const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, f, {
+    const { error: upErr } = await storageClient.storage.from(BUCKET).upload(path, f, {
       contentType: mime,
       upsert: false,
     });
@@ -100,7 +100,7 @@ export async function POST(
         { status: 500 }
       );
     }
-    const { data: signed, error: signErr } = await supabase.storage
+    const { data: signed, error: signErr } = await storageClient.storage
       .from(BUCKET)
       .createSignedUrl(path, RECEIPT_SIGNED_URL_TTL_SEC);
     if (signErr || !signed?.signedUrl) {
@@ -118,7 +118,7 @@ export async function POST(
     const record = await updatePaymentRecord(
       paymentId,
       { receipt_url: signed.signedUrl },
-      supabase
+      guard.client
     );
     if (!record)
       return NextResponse.json(
@@ -145,21 +145,21 @@ export async function DELETE(
   req: Request,
   ctx: { params: Promise<{ id: string; commissionId: string; paymentId: string }> }
 ) {
-  const guard = await requireSupabaseOwnerOrAdminWithClient(req, getServerSupabaseAdmin);
+  const guard = await requireSupabaseOwnerOrAdminRequestClient(req, { noStore: true });
   if (!guard.ok) return guard.response;
   const { id: projectId, commissionId, paymentId } = await ctx.params;
   if (!projectId || !commissionId || !paymentId)
     return NextResponse.json({ ok: false, message: "Missing id" }, { status: 400 });
 
-  const supabase = guard.client;
-  if (!supabase)
+  const storageClient = getServerSupabaseAdmin();
+  if (!storageClient)
     return NextResponse.json(
       { ok: false, message: "Supabase service role is not configured." },
       { status: 500 }
     );
 
   try {
-    const commission = await getCommissionById(commissionId);
+    const commission = await getCommissionById(commissionId, guard.client);
     if (!commission)
       return NextResponse.json({ ok: false, message: "Commission not found" }, { status: 404 });
     if (!uuidNormalizedEqual(commission.project_id, projectId))
@@ -167,7 +167,7 @@ export async function DELETE(
         { ok: false, message: "Commission does not belong to this project" },
         { status: 400 }
       );
-    const existing = await getPaymentRecordById(paymentId);
+    const existing = await getPaymentRecordById(paymentId, guard.client);
     if (!existing)
       return NextResponse.json({ ok: false, message: "Payment not found" }, { status: 404 });
     if (!uuidNormalizedEqual(existing.commission_id, commissionId))
@@ -180,12 +180,14 @@ export async function DELETE(
     if (url) {
       const parsed = parseCommissionReceiptStorageUrl(url);
       if (parsed && isStoragePathForCommissionReceipt(paymentId, parsed.path)) {
-        const { error: rmErr } = await supabase.storage.from(parsed.bucket).remove([parsed.path]);
+        const { error: rmErr } = await storageClient.storage
+          .from(parsed.bucket)
+          .remove([parsed.path]);
         if (rmErr) console.error("[commission receipt DELETE] storage:", rmErr.message);
       }
     }
 
-    const record = await updatePaymentRecord(paymentId, { receipt_url: null }, supabase);
+    const record = await updatePaymentRecord(paymentId, { receipt_url: null }, guard.client);
     if (!record)
       return NextResponse.json({ ok: false, message: "Failed to clear receipt." }, { status: 500 });
 

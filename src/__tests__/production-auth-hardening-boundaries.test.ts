@@ -115,6 +115,7 @@ const strictServerActionFiles = [
   "src/app/financial/invoices/new/actions.ts",
   "src/app/financial/payments/actions.ts",
   "src/app/workers/actions.ts",
+  "src/app/punch-list/actions.ts",
 ];
 
 const paymentMutationFiles = [
@@ -137,7 +138,9 @@ describe("production financial authorization boundaries", () => {
     "creates a direct privileged client only after a strict gate in %s",
     (path) => {
       const text = source(path);
-      const strictGateAt = text.search(/await\s+requireSupabaseOwnerOrAdmin(?:WithClient)?\s*\(/);
+      const strictGateAt = text.search(
+        /await\s+requireSupabaseOwnerOrAdmin(?:WithClient|RequestClient)?\s*\(/
+      );
       expect(strictGateAt).toBeGreaterThanOrEqual(0);
       for (const match of text.matchAll(PRIVILEGED_CLIENT_CALL)) {
         expect(match.index).toBeGreaterThan(strictGateAt);
@@ -154,7 +157,7 @@ describe("production financial authorization boundaries", () => {
     (path) => {
       const text = source(path);
       const strictGateAt = text.search(
-        /await\s+requireSupabaseOwnerOrAdminServerAction(?:WithClient)?\s*\(/
+        /await\s+requireSupabaseOwnerOrAdminServerAction(?:WithClient|Client)?\s*\(/
       );
       expect(strictGateAt).toBeGreaterThanOrEqual(0);
       for (const match of text.matchAll(PRIVILEGED_CLIENT_CALL)) {

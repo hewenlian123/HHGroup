@@ -1,6 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { authorizedAppRole } from "@/lib/auth-role";
+import { FinancialDataUnavailableError } from "@/lib/financial-availability";
+import { createServerSupabaseClient } from "@/lib/supabase-server";
 import {
   insertSubcontractBill,
   approveSubcontractBill,
@@ -9,6 +12,23 @@ import {
   voidSubcontractBill,
   recordSubcontractPayment,
 } from "@/lib/data";
+
+async function authenticatedFinancialClient() {
+  const client = await createServerSupabaseClient({ noStore: true });
+  if (!client) throw new FinancialDataUnavailableError("subcontract payment session", null);
+  const {
+    data: { user },
+    error,
+  } = await client.auth.getUser();
+  if (error) throw new FinancialDataUnavailableError("subcontract payment session", error);
+  if (!user || !authorizedAppRole(user)) {
+    throw new FinancialDataUnavailableError("subcontract payment session", {
+      code: "42501",
+      message: "Owner or admin authentication required.",
+    });
+  }
+  return client;
+}
 
 export async function addSubcontractBillAction(draft: {
   subcontract_id: string;
@@ -99,7 +119,7 @@ export async function recordSubcontractPaymentAction(
   }
 ): Promise<{ ok: boolean; error?: string }> {
   try {
-    await recordSubcontractPayment(input);
+    await recordSubcontractPayment(input, await authenticatedFinancialClient());
     revalidatePath(`/projects/${projectId}/subcontracts/${subcontractId}/bills`);
     return { ok: true };
   } catch (e) {

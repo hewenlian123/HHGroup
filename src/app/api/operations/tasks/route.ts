@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
-import { getServerSupabaseAdmin } from "@/lib/supabase-server";
+import { requireSupabaseOwnerOrAdminRequestClient } from "@/lib/auth-boundary";
 import { isTestTask } from "@/lib/project-tasks-db";
 
 export const dynamic = "force-dynamic";
@@ -18,29 +17,27 @@ function timeoutReject<T>(ms: number, message: string): Promise<T> {
   });
 }
 
-/** GET: Tasks, projects, workers — query with admin client directly so UI sees same data as DELETE/clear-data. */
-export async function GET(request: Request) {
-  const guard = await requireSupabaseOwnerOrAdmin(request);
-  if (!guard.ok) return guard.response;
+function withSessionCookies(response: NextResponse, sessionResponse: NextResponse): NextResponse {
+  for (const cookie of sessionResponse.cookies.getAll()) response.cookies.set(cookie);
+  return response;
+}
 
-  const admin = getServerSupabaseAdmin();
-  if (!admin) {
-    return NextResponse.json(
-      { ok: false as const, message: "Supabase not configured" },
-      { status: 500 }
-    );
-  }
+/** GET: Tasks, projects, workers through the exact owner/admin request identity. */
+export async function GET(request: Request) {
+  const guard = await requireSupabaseOwnerOrAdminRequestClient(request, { noStore: true });
+  if (!guard.ok) return guard.response;
+  const client = guard.client;
   try {
     const fetchData = async () => {
       const [tasksRes, projectsRes, workersRes] = await Promise.all([
-        admin
+        client
           .from("project_tasks")
           .select(
             "id, project_id, title, description, status, assigned_worker_id, due_date, priority, created_at"
           )
           .order("created_at", { ascending: false }),
-        admin.from("projects").select("id, name").order("name"),
-        admin.from("workers").select("id, name").order("name"),
+        client.from("projects").select("id, name").order("name"),
+        client.from("workers").select("id, name").order("name"),
       ]);
       return { tasksRes, projectsRes, workersRes };
     };
@@ -77,9 +74,12 @@ export async function GET(request: Request) {
         created_at: t.created_at,
       }));
 
-    return NextResponse.json(
-      { ok: true as const, tasks, projects, workers },
-      { headers: NO_CACHE_HEADERS }
+    return withSessionCookies(
+      NextResponse.json(
+        { ok: true as const, tasks, projects, workers },
+        { headers: NO_CACHE_HEADERS }
+      ),
+      guard.sessionResponse
     );
   } catch (e) {
     const message = e instanceof Error ? e.message : "Failed to load tasks.";
