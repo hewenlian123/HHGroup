@@ -147,9 +147,10 @@ export default async function ProjectDetailPage({
   let canonical: Awaited<ReturnType<typeof getCanonicalProjectProfit>>;
   let costDashboard: Awaited<ReturnType<typeof getProjectCostDashboard>>;
   try {
+    const canonicalPromise = getCanonicalProjectProfit(id, projectSupabase);
     [canonical, costDashboard] = await Promise.all([
-      getCanonicalProjectProfit(id, projectSupabase),
-      getProjectCostDashboard(id, projectSupabase),
+      canonicalPromise,
+      getProjectCostDashboard(id, projectSupabase, canonicalPromise),
     ]);
   } catch (e) {
     logServerPageDataError(`projects/${id}/financial`, e);

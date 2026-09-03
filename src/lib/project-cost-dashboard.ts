@@ -3,7 +3,7 @@ import {
   type ProjectExpenseAlertSummary,
   type ProjectExpenseCostLineRow,
 } from "@/lib/expenses-db";
-import { getCanonicalProjectProfit } from "@/lib/profit-engine";
+import { getCanonicalProjectProfit, type CanonicalProjectProfit } from "@/lib/profit-engine";
 import { sumPaidWorkerReimbursementsForProject } from "@/lib/worker-reimbursements-db";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -76,11 +76,12 @@ function toCostTableRow(r: ProjectExpenseCostLineRow): ProjectCostTableRow {
  */
 export async function getProjectCostDashboard(
   projectId: string,
-  explicitClient?: SupabaseClient
+  explicitClient?: SupabaseClient,
+  canonicalInput?: CanonicalProjectProfit | Promise<CanonicalProjectProfit>
 ): Promise<ProjectCostDashboardPayload> {
   const [bundle, canonical, reimb] = await Promise.all([
     getProjectExpenseLinesBundle(projectId, explicitClient),
-    getCanonicalProjectProfit(projectId, explicitClient),
+    canonicalInput ?? getCanonicalProjectProfit(projectId, explicitClient),
     sumPaidWorkerReimbursementsForProject(projectId, explicitClient),
   ]);
 
