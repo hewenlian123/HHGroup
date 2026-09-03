@@ -232,6 +232,7 @@ const HINT = "Run supabase/migrations/202602280008_create_expenses.sql";
 
 /** Batch PostgREST `expense_lines` by header ids (avoids N+1 in `getExpenses`). */
 const EXPENSE_LINES_IN_CHUNK = 120;
+const EXPENSE_ATTACHMENTS_IN_CHUNK = 120;
 
 function isBrowserRuntime(): boolean {
   return typeof window !== "undefined";
@@ -395,6 +396,92 @@ async function getAttachments(
     getExpenseAttachmentRows(expenseId, explicitClient),
   ]);
   return dedupeExpenseAttachmentsByStorageKey([...legacy, ...dedicated]);
+}
+
+/** Batch both attachment tables for expense lists; single-detail reads keep using `getAttachments`. */
+async function fetchExpenseAttachmentsGroupedByExpenseId(
+  c: SupabaseClient,
+  expenseIds: string[]
+): Promise<Map<string, ExpenseAttachment[]>> {
+  const unique = [...new Set(expenseIds.filter(Boolean))];
+  const legacyByExpenseId = new Map<string, ExpenseAttachment[]>();
+  const dedicatedByExpenseId = new Map<string, ExpenseAttachment[]>();
+
+  for (let i = 0; i < unique.length; i += EXPENSE_ATTACHMENTS_IN_CHUNK) {
+    const slice = unique.slice(i, i + EXPENSE_ATTACHMENTS_IN_CHUNK);
+    const [legacyResult, dedicatedResult] = await Promise.all([
+      c
+        .from("attachments")
+        .select("id, entity_id, file_name, mime_type, size_bytes, file_path, created_at")
+        .eq("entity_type", "expense")
+        .in("entity_id", slice),
+      c
+        .from("expense_attachments")
+        .select("id, expense_id, file_url, file_type, created_at")
+        .in("expense_id", slice),
+    ]);
+
+    for (const raw of legacyResult.data ?? []) {
+      const row = raw as {
+        id: string;
+        entity_id?: string | null;
+        file_name?: string | null;
+        mime_type?: string | null;
+        size_bytes?: number | string | null;
+        file_path?: string | null;
+        created_at?: string | null;
+      };
+      const expenseId = row.entity_id;
+      if (!expenseId) continue;
+      const attachments = legacyByExpenseId.get(expenseId) ?? [];
+      attachments.push({
+        id: row.id,
+        fileName: row.file_name ?? "",
+        mimeType: row.mime_type ?? "",
+        size: Number(row.size_bytes) || 0,
+        url: row.file_path ?? "",
+        createdAt: row.created_at ?? new Date().toISOString(),
+      });
+      legacyByExpenseId.set(expenseId, attachments);
+    }
+
+    if (!dedicatedResult.error) {
+      for (const raw of dedicatedResult.data ?? []) {
+        const row = raw as {
+          id: string;
+          expense_id?: string | null;
+          file_url?: string | null;
+          file_type?: string | null;
+          created_at?: string | null;
+        };
+        const expenseId = row.expense_id;
+        if (!expenseId) continue;
+        const fileType = row.file_type === "pdf" ? "pdf" : "image";
+        const attachments = dedicatedByExpenseId.get(expenseId) ?? [];
+        attachments.push({
+          id: row.id,
+          fileName: fileType === "pdf" ? "attachment.pdf" : "attachment.jpg",
+          mimeType: fileType === "pdf" ? "application/pdf" : "image/jpeg",
+          size: 0,
+          url: row.file_url ?? "",
+          createdAt: row.created_at ?? new Date().toISOString(),
+        });
+        dedicatedByExpenseId.set(expenseId, attachments);
+      }
+    }
+  }
+
+  const byExpenseId = new Map<string, ExpenseAttachment[]>();
+  for (const expenseId of unique) {
+    byExpenseId.set(
+      expenseId,
+      dedupeExpenseAttachmentsByStorageKey([
+        ...(legacyByExpenseId.get(expenseId) ?? []),
+        ...(dedicatedByExpenseId.get(expenseId) ?? []),
+      ])
+    );
+  }
+  return byExpenseId;
 }
 
 function toExpenseLine(r: ExpenseLineRow): ExpenseLine {
@@ -812,25 +899,30 @@ export async function getExpenses(
   await hydrateExpenseListPaymentMethods(c, rowModels);
   sortExpenseRowsInPlace(rowModels, sort);
 
-  const paymentNameMap = await fetchPaymentAccountNameMap(
-    rowModels.map((r) => r.payment_account_id),
-    explicitClient
-  );
-  const linesByExpenseId = await fetchExpenseLinesGroupedByExpenseId(
-    c,
-    rowModels.map((r) => r.id).filter(Boolean)
-  );
   const expenseIds = rowModels.map((r) => r.id).filter(Boolean);
-  const linkedBankTxIdByExpenseId =
+  const [
+    paymentNameMap,
+    linesByExpenseId,
+    linkedBankTxIdByExpenseId,
+    deductionsByExpenseId,
+    attachmentsByExpenseId,
+  ] = await Promise.all([
+    fetchPaymentAccountNameMap(
+      rowModels.map((r) => r.payment_account_id),
+      c
+    ),
+    fetchExpenseLinesGroupedByExpenseId(c, expenseIds),
     options.includeLinkedBankTx === false
-      ? new Map<string, string>()
-      : await fetchLinkedBankTxIdMap(c, expenseIds);
-  const deductionsByExpenseId = await getSubcontractDeductionsByExpenseIds(expenseIds, c);
+      ? Promise.resolve(new Map<string, string>())
+      : fetchLinkedBankTxIdMap(c, expenseIds),
+    getSubcontractDeductionsByExpenseIds(expenseIds, c),
+    fetchExpenseAttachmentsGroupedByExpenseId(c, expenseIds),
+  ]);
   const result: Expense[] = [];
   for (const row of rowModels) {
     const r = row;
     const lines = linesByExpenseId.get(r.id) ?? [];
-    const attachments = await getAttachments(r.id, explicitClient);
+    const attachments = attachmentsByExpenseId.get(r.id) ?? [];
     const linkedBankTxId = linkedBankTxIdByExpenseId.get(r.id) ?? null;
     result.push(
       await toExpense(
