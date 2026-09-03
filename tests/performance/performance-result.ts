@@ -1,7 +1,6 @@
 export const SLOW_REQUEST_THRESHOLD_MS = 1_000;
-export const SETTLE_QUIET_WINDOW_MS = 2_700;
+export const SETTLE_QUIET_WINDOW_MS = 500;
 export const SETTLE_TIMEOUT_MS = 5_000;
-export const SAMPLE_SEQUENCE = ["cold", "warm", "repeat"] as const;
 
 export const PERFORMANCE_VIEWPORTS = [
   { name: "desktop", width: 1440, height: 900 },
@@ -47,13 +46,7 @@ export const CORE_NAVIGATION_MATRIX: readonly CoreNavigationTarget[] = [
     href: "/projects/:visible-record",
     discoveryParent: "/projects",
     pathPrefix: "/projects/",
-    staticExclusions: [
-      "/projects",
-      "/projects/new",
-      "/projects/daily-logs",
-      "/projects/documents",
-      "/projects/schedule",
-    ],
+    staticExclusions: ["/projects", "/projects/new"],
     usefulContentLocator: "[aria-label='Project workspace sections']",
     workflow: true,
   },
@@ -164,7 +157,7 @@ export type NavigationPerformanceMetadata = {
   browser: string;
   commit: string;
   timestamp: string;
-  cacheMode: "native" | "disabled-by-production-interception";
+  cacheMode: "native" | "disabled-by-production-interception" | "observation-only";
   sample: "cold" | "warm" | "repeat";
 };
 export type NavigationPerformanceResult = {
@@ -175,7 +168,6 @@ export type NavigationPerformanceResult = {
   metadata: NavigationPerformanceMetadata;
   clickToFeedbackMs: number;
   clickToRouteStartMs: number;
-  routeStartSource: "target-request" | "url-change-fallback";
   routeStartToUsefulContentMs: number;
   fullSettleMs: number;
   settle: {
@@ -195,7 +187,7 @@ export type NavigationPerformanceResult = {
 export type NavigationPerformanceUnavailable = {
   status: "unavailable";
   blocker: {
-    code: "NO_VISIBLE_DETAIL_LINK" | "NO_VISIBLE_STATIC_LINK" | "ROUTE_START_NOT_OBSERVED";
+    code: "NO_VISIBLE_DETAIL_LINK" | "ROUTE_START_NOT_OBSERVED";
     target: string;
     discoveryParent?: string;
   };
@@ -249,7 +241,9 @@ function isMetadata(value: unknown): value is NavigationPerformanceMetadata {
     typeof value.browser === "string" &&
     typeof value.commit === "string" &&
     typeof value.timestamp === "string" &&
-    (value.cacheMode === "native" || value.cacheMode === "disabled-by-production-interception") &&
+    (value.cacheMode === "native" ||
+      value.cacheMode === "disabled-by-production-interception" ||
+      value.cacheMode === "observation-only") &&
     (value.sample === "cold" || value.sample === "warm" || value.sample === "repeat")
   );
 }
@@ -321,23 +315,10 @@ export function resolveVisibleDynamicDetail(
 export function classifyReadOnlyRequest(
   method: string,
   requestUrl: string
-):
-  | { allowed: true }
-  | { allowed: false; code: "NON_READ_METHOD" | "MUTATING_ACTION" | "MUTATING_GET_FAMILY" } {
+): { allowed: true } | { allowed: false; code: "NON_READ_METHOD" | "MUTATING_ACTION" } {
   if (!/^(GET|HEAD)$/i.test(method)) return { allowed: false, code: "NON_READ_METHOD" };
   try {
-    const url = new URL(requestUrl);
-    if (
-      /^\/api\/(?:ensure[^/]*|seed[^/]*|test[^/]*|production\/(?:wipe|cleanup))(?:\/|$)/i.test(
-        url.pathname
-      )
-    ) {
-      return { allowed: false, code: "MUTATING_GET_FAMILY" };
-    }
-    const action =
-      ["action", "operation", "intent", "command"]
-        .map((name) => url.searchParams.get(name)?.toLowerCase() || "")
-        .find(Boolean) || "";
+    const action = new URL(requestUrl).searchParams.get("action")?.toLowerCase() || "";
     if (
       /^(create|update|delete|remove|save|submit|approve|reject|void|archive|restore|upload|pay)$/i.test(
         action
@@ -351,69 +332,6 @@ export function classifyReadOnlyRequest(
 }
 export function isMutatingNavigationRequest(method: string, requestUrl: string): boolean {
   return !classifyReadOnlyRequest(method, requestUrl).allowed;
-}
-
-export type NavigationPlan =
-  | { kind: "visible-link"; href: string }
-  | {
-      kind: "direct-route";
-      href: string;
-      blocker: { code: "NO_VISIBLE_STATIC_LINK"; target: string };
-    }
-  | { kind: "direct-route-fixture"; href: string; target: string }
-  | NavigationPerformanceUnavailable;
-
-export function buildNavigationPlan(
-  target: CoreNavigationTarget,
-  visibleHrefs: readonly string[],
-  options: { production: boolean; localFixturePath?: string }
-): NavigationPlan {
-  if (target.kind === "dynamic") {
-    if (!options.production && options.localFixturePath?.startsWith(target.pathPrefix)) {
-      return { kind: "direct-route-fixture", href: options.localFixturePath, target: target.label };
-    }
-    const detail = resolveVisibleDynamicDetail(target, visibleHrefs);
-    return detail.status === "available" ? { kind: "visible-link", href: detail.href } : detail;
-  }
-  if (visibleHrefs.includes(target.href)) return { kind: "visible-link", href: target.href };
-  return {
-    kind: "direct-route",
-    href: target.href,
-    blocker: { code: "NO_VISIBLE_STATIC_LINK", target: target.label },
-  };
-}
-
-export function resolveRouteStart(input: {
-  requestAtMs: number | null;
-  urlChangeAtMs: number | null;
-}): { atMs: number; source: "target-request" | "url-change-fallback" } | null {
-  if (input.requestAtMs !== null) return { atMs: input.requestAtMs, source: "target-request" };
-  return input.urlChangeAtMs === null
-    ? null
-    : { atMs: input.urlChangeAtMs, source: "url-change-fallback" };
-}
-
-export function buildPerformanceOutputDir(
-  root: string,
-  environment: "local" | "production",
-  utcStamp: string
-): string {
-  return `${root.replace(/\/$/, "")}/test-results/performance/${environment}-${utcStamp.replace(/[:.]/g, "-")}`;
-}
-
-export function validateWorkflowHop(value: unknown): { ok: true } | { ok: false; reason: string } {
-  if (
-    !isRecord(value) ||
-    typeof value.target !== "string" ||
-    typeof value.href !== "string" ||
-    (value.status !== "measured" && value.status !== "unavailable")
-  ) {
-    return {
-      ok: false,
-      reason: "Workflow hop must contain target, href, and measured or unavailable status",
-    };
-  }
-  return { ok: true };
 }
 
 export function classifyNavigationPerformanceResult(
@@ -466,8 +384,6 @@ export function classifyNavigationPerformanceResult(
     !isNonNegativeNumber(candidate.viewport.width) ||
     !isNonNegativeNumber(candidate.viewport.height) ||
     !Number.isInteger(candidate.run) ||
-    (candidate.routeStartSource !== "target-request" &&
-      candidate.routeStartSource !== "url-change-fallback") ||
     !isRecord(candidate.navigation) ||
     typeof candidate.navigation.fromPath !== "string" ||
     typeof candidate.navigation.toPath !== "string" ||
@@ -485,7 +401,6 @@ export function classifyNavigationPerformanceResult(
       metadata: candidate.metadata,
       clickToFeedbackMs,
       clickToRouteStartMs,
-      routeStartSource: candidate.routeStartSource,
       routeStartToUsefulContentMs,
       fullSettleMs,
       settle: candidate.settle as NavigationPerformanceResult["settle"],

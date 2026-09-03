@@ -3,15 +3,10 @@ import { describe, expect, it } from "vitest";
 import {
   classifyNavigationPerformanceResult,
   classifyReadOnlyRequest,
-  buildNavigationPlan,
-  buildPerformanceOutputDir,
   CORE_NAVIGATION_MATRIX,
   PERFORMANCE_VIEWPORTS,
   resolveVisibleDynamicDetail,
-  resolveRouteStart,
-  SAMPLE_SEQUENCE,
   settleDecision,
-  validateWorkflowHop,
 } from "../../../tests/performance/performance-result";
 
 const routeResult = {
@@ -34,7 +29,6 @@ const routeResult = {
   },
   clickToFeedbackMs: 16,
   clickToRouteStartMs: 9,
-  routeStartSource: "target-request",
   routeStartToUsefulContentMs: 82,
   fullSettleMs: 150,
   settle: {
@@ -198,14 +192,6 @@ describe("navigation performance result contract", () => {
         blocker: { code: "NO_VISIBLE_DETAIL_LINK", target: label, discoveryParent: parent },
       });
     }
-    const project = CORE_NAVIGATION_MATRIX.find((target) => target.label === "Project Detail")!;
-    expect(
-      resolveVisibleDynamicDetail(project, [
-        "/projects/daily-logs",
-        "/projects/documents",
-        "/projects/schedule",
-      ])
-    ).toMatchObject({ status: "unavailable" });
   });
 
   it("permits safe GET nouns and blocks non-read methods and mutating actions", () => {
@@ -226,68 +212,5 @@ describe("navigation performance result contract", () => {
     expect(
       classifyReadOnlyRequest("GET", "https://hhprojectgroup.com/api/items?action=delete")
     ).toMatchObject({ allowed: false, code: "MUTATING_ACTION" });
-    expect(
-      classifyReadOnlyRequest("GET", "https://hhprojectgroup.com/api/items?operation=archive")
-    ).toMatchObject({ allowed: false, code: "MUTATING_ACTION" });
-  });
-
-  it("builds a visible-link plan and labels unavailable static routes separately from detail blockers", () => {
-    const payments = CORE_NAVIGATION_MATRIX.find((target) => target.label === "Payments")!;
-    expect(buildNavigationPlan(payments, ["/financial/payments"], { production: false })).toEqual({
-      kind: "visible-link",
-      href: "/financial/payments",
-    });
-    expect(buildNavigationPlan(payments, [], { production: false })).toEqual({
-      kind: "direct-route",
-      href: "/financial/payments",
-      blocker: { code: "NO_VISIBLE_STATIC_LINK", target: "Payments" },
-    });
-  });
-
-  it("uses one truthful cold, warm, repeat sequence and records a route-start fallback", () => {
-    expect(SAMPLE_SEQUENCE).toEqual(["cold", "warm", "repeat"]);
-    expect(resolveRouteStart({ requestAtMs: null, urlChangeAtMs: 42 })).toEqual({
-      atMs: 42,
-      source: "url-change-fallback",
-    });
-    expect(
-      classifyNavigationPerformanceResult({
-        ...routeResult,
-        routeStartSource: "url-change-fallback",
-      })
-    ).toMatchObject({ ok: true });
-  });
-
-  it("blocks Production GET mutation families without false-positive page nouns", () => {
-    expect(
-      classifyReadOnlyRequest("GET", "https://hhprojectgroup.com/api/ensure-owner")
-    ).toMatchObject({
-      allowed: false,
-      code: "MUTATING_GET_FAMILY",
-    });
-    expect(
-      classifyReadOnlyRequest("GET", "https://hhprojectgroup.com/api/production/cleanup")
-    ).toMatchObject({
-      allowed: false,
-      code: "MUTATING_GET_FAMILY",
-    });
-    expect(classifyReadOnlyRequest("GET", "https://hhprojectgroup.com/financial/payments")).toEqual(
-      {
-        allowed: true,
-      }
-    );
-  });
-
-  it("uses a UTC environment-stamped output directory and a complete workflow-hop result", () => {
-    expect(buildPerformanceOutputDir("/workspace", "production", "2026-09-02T12:34:56.000Z")).toBe(
-      "/workspace/test-results/performance/production-2026-09-02T12-34-56-000Z"
-    );
-    expect(
-      validateWorkflowHop({
-        target: "Payments",
-        href: "/financial/payments?tab=open",
-        status: "measured",
-      })
-    ).toEqual({ ok: true });
   });
 });
