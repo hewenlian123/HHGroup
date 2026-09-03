@@ -4,7 +4,8 @@ import { resolve } from "node:path";
 import { defineConfig, devices } from "@playwright/test";
 
 import { loadE2EProcessEnv } from "../e2e-load-env";
-import { PERFORMANCE_VIEWPORTS } from "./performance-result";
+import { isProductionAppUrl } from "../e2e-supabase-url-guard";
+import { buildPerformanceOutputDir, PERFORMANCE_VIEWPORTS } from "./performance-result";
 
 loadE2EProcessEnv();
 
@@ -13,7 +14,11 @@ const storageState = resolve(
   process.cwd(),
   process.env.E2E_PERFORMANCE_STORAGE_STATE || "tests/.auth/ui-readonly-owner.json"
 );
-const outputDir = resolve(process.cwd(), "test-results/performance");
+const outputDir = buildPerformanceOutputDir(
+  process.cwd(),
+  isProductionAppUrl(baseURL) ? "production" : "local",
+  new Date().toISOString()
+);
 
 if (!existsSync(storageState)) {
   throw new Error(

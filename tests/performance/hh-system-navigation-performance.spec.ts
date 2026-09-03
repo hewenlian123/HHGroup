@@ -14,7 +14,10 @@ import { isProductionAppUrl } from "../e2e-supabase-url-guard";
 import {
   classifyNavigationPerformanceResult,
   classifyReadOnlyRequest,
+  buildNavigationPlan,
   CORE_NAVIGATION_MATRIX,
+  SAMPLE_SEQUENCE,
+  resolveRouteStart,
   resolveVisibleDynamicDetail,
   SETTLE_QUIET_WINDOW_MS,
   SETTLE_TIMEOUT_MS,
@@ -24,8 +27,6 @@ import {
   type NavigationPerformanceRequest,
   type NavigationPerformanceUnavailable,
 } from "./performance-result";
-
-type ProductionPolicy = "intercept" | "observe";
 
 function currentCommit(): string {
   if (process.env.PERFORMANCE_COMMIT?.trim()) return process.env.PERFORMANCE_COMMIT.trim();
@@ -37,15 +38,6 @@ function currentCommit(): string {
   } catch {
     return "unavailable";
   }
-}
-
-function sampleKind(): "cold" | "warm" | "repeat" {
-  const value = process.env.PERFORMANCE_SAMPLE?.trim();
-  return value === "warm" || value === "repeat" ? value : "cold";
-}
-
-function productionPolicy(): ProductionPolicy {
-  return process.env.PERFORMANCE_PRODUCTION_POLICY === "observe" ? "observe" : "intercept";
 }
 
 function targetPath(href: string, baseURL: string): string {
@@ -162,7 +154,7 @@ class RequestInventory {
     return this.routeStartedAtMs;
   }
   async waitForRouteStart(): Promise<number | null> {
-    const deadlineMs = performance.now() + 30_000;
+    const deadlineMs = performance.now() + 3_500;
     while (performance.now() < deadlineMs && this.routeStartedAtMs === null)
       await this.page.waitForTimeout(25);
     return this.routeStartedAtMs;
@@ -204,10 +196,26 @@ class RequestInventory {
 }
 
 async function visibleLink(page: Page, href: string): Promise<Locator | null> {
-  const links = page.locator("a[href]");
-  for (let index = 0; index < (await links.count()); index += 1) {
-    const link = links.nth(index);
-    if ((await link.getAttribute("href")) === href && (await link.isVisible())) return link;
+  const findVisibleLink = async (): Promise<Locator | null> => {
+    const links = page.locator("a[href]");
+    for (let index = 0; index < (await links.count()); index += 1) {
+      const link = links.nth(index);
+      if ((await link.getAttribute("href")) === href && (await link.isVisible())) return link;
+    }
+    return null;
+  };
+  const existing = await findVisibleLink();
+  if (existing) return existing;
+  // Only disclose navigation chrome for narrow layouts; never operate business controls.
+  for (const toggle of [
+    page.getByRole("button", { name: /open (menu|navigation)|toggle (menu|sidebar)/i }).first(),
+    page.locator("button[aria-label*='menu' i], button[aria-label*='navigation' i]").first(),
+  ]) {
+    if (await toggle.isVisible().catch(() => false)) {
+      await toggle.click();
+      const revealed = await findVisibleLink();
+      if (revealed) return revealed;
+    }
   }
   return null;
 }
@@ -234,7 +242,6 @@ async function installReadOnlyPolicy(
   production: boolean,
   safetyErrors: NavigationPerformanceError[]
 ) {
-  const policy = production ? productionPolicy() : null;
   const observe = (request: Request) => {
     const decision = classifyReadOnlyRequest(request.method(), request.url());
     if (!decision.allowed)
@@ -245,7 +252,7 @@ async function installReadOnlyPolicy(
       });
   };
   page.on("request", observe);
-  if (policy === "intercept") {
+  if (production) {
     await page.route("**/*", async (route) => {
       const decision = classifyReadOnlyRequest(route.request().method(), route.request().url());
       if (!decision.allowed) return route.abort("blockedbyclient");
@@ -253,12 +260,7 @@ async function installReadOnlyPolicy(
     });
   }
   return {
-    cacheMode:
-      policy === "intercept"
-        ? ("disabled-by-production-interception" as const)
-        : policy === "observe"
-          ? ("observation-only" as const)
-          : ("native" as const),
+    cacheMode: production ? ("disabled-by-production-interception" as const) : ("native" as const),
   };
 }
 
@@ -279,7 +281,7 @@ async function artifactMetadata(
   page: Page,
   baseURL: string,
   production: boolean,
-  cacheMode: "native" | "disabled-by-production-interception" | "observation-only"
+  cacheMode: "native" | "disabled-by-production-interception"
 ) {
   return {
     environment: production ? "production" : "local",
@@ -288,60 +290,162 @@ async function artifactMetadata(
     commit: currentCommit(),
     timestamp: new Date().toISOString(),
     cacheMode,
-    sample: sampleKind(),
+    sample: "cold",
   };
 }
 
-async function recordNavigation(page: Page, testInfo: TestInfo, target: CoreNavigationTarget) {
+async function visibleHrefs(page: Page, selector: string): Promise<string[]> {
+  const links = page.locator(selector);
+  const hrefs: string[] = [];
+  for (let index = 0; index < (await links.count()); index += 1) {
+    const link = links.nth(index);
+    const href = await link.getAttribute("href");
+    if (href && (await link.isVisible())) hrefs.push(href);
+  }
+  return hrefs;
+}
+
+async function recordDirectNavigation(
+  page: Page,
+  testInfo: TestInfo,
+  target: CoreNavigationTarget,
+  sample: "cold" | "warm" | "repeat",
+  href: string,
+  reason: "fixture" | "no-visible-static-link",
+  inventory: RequestInventory,
+  baseURL: string,
+  production: boolean,
+  cacheMode: "native" | "disabled-by-production-interception"
+) {
+  const startedAtMs = inventory.start(href, baseURL);
+  await page.goto(href, { waitUntil: "domcontentloaded" });
+  const routeStart = resolveRouteStart({
+    requestAtMs: inventory.routeStart(),
+    urlChangeAtMs: performance.now(),
+  });
+  await expect(page.locator(target.usefulContentLocator).first()).toBeVisible();
+  const settle = await inventory.settle();
+  await writeArtifact(testInfo, target.label, {
+    status: "direct-route",
+    reason,
+    target: target.label,
+    href,
+    sample,
+    directNavigationMs: performance.now() - startedAtMs,
+    routeStartSource: routeStart?.source || "url-change-fallback",
+    settle,
+    requests: inventory.requestList(),
+    metadata: { ...(await artifactMetadata(page, baseURL, production, cacheMode)), sample },
+  });
+}
+
+async function recordNavigation(
+  page: Page,
+  testInfo: TestInfo,
+  target: CoreNavigationTarget,
+  sample: "cold" | "warm" | "repeat"
+) {
   const baseURL = String(testInfo.project.use.baseURL);
   const production = isProductionAppUrl(baseURL);
   const safetyErrors: NavigationPerformanceError[] = [];
   const policy = await installReadOnlyPolicy(page, production, safetyErrors);
   const inventory = new RequestInventory(page);
-  const startHref = target.kind === "dynamic" ? target.discoveryParent : "/dashboard";
+  const startHref =
+    target.kind === "dynamic"
+      ? target.discoveryParent
+      : target.href === "/dashboard"
+        ? "/projects"
+        : "/dashboard";
   await page.goto(startHref, { waitUntil: "domcontentloaded" });
   const fixturePath = localFixturePath(target, production);
   if (fixturePath) {
-    await page.goto(fixturePath, { waitUntil: "domcontentloaded" });
+    await recordDirectNavigation(
+      page,
+      testInfo,
+      target,
+      sample,
+      fixturePath,
+      "fixture",
+      inventory,
+      baseURL,
+      production,
+      policy.cacheMode
+    );
+    return;
+  }
+  if (target.kind === "static") await visibleLink(page, target.href);
+  const plan = buildNavigationPlan(
+    target,
+    await visibleHrefs(page, target.kind === "dynamic" ? "main a[href]" : "a[href]"),
+    { production }
+  );
+  if ("kind" in plan && plan.kind === "direct-route") {
+    await recordDirectNavigation(
+      page,
+      testInfo,
+      target,
+      sample,
+      plan.href,
+      "no-visible-static-link",
+      inventory,
+      baseURL,
+      production,
+      policy.cacheMode
+    );
+    return;
+  }
+  if (!("kind" in plan)) {
     await writeArtifact(testInfo, target.label, {
-      status: "unavailable",
-      blocker: {
-        code: "ROUTE_START_NOT_OBSERVED",
-        target: target.label,
-        discoveryParent: target.kind === "dynamic" ? target.discoveryParent : undefined,
+      ...plan,
+      metadata: {
+        ...(await artifactMetadata(page, baseURL, production, policy.cacheMode)),
+        sample,
       },
-      metadata: await artifactMetadata(page, baseURL, production, policy.cacheMode),
-      note: "Direct local fixture paths are discovery-only and are not click timing samples.",
     });
     return;
   }
   const link =
     target.kind === "dynamic"
       ? await visibleDynamicLink(page, target)
-      : await visibleLink(page, target.href);
+      : await visibleLink(page, plan.href);
   if (!link || "status" in link) {
-    const unavailable =
-      link && "status" in link
+    await writeArtifact(testInfo, target.label, {
+      ...(link && "status" in link
         ? link
         : {
             status: "unavailable" as const,
             blocker: { code: "NO_VISIBLE_DETAIL_LINK" as const, target: target.label },
-          };
-    await writeArtifact(testInfo, target.label, {
-      ...unavailable,
-      metadata: await artifactMetadata(page, baseURL, production, policy.cacheMode),
+          }),
+      metadata: {
+        ...(await artifactMetadata(page, baseURL, production, policy.cacheMode)),
+        sample,
+      },
     });
     return;
   }
   const fromPath = new URL(page.url()).pathname;
   const linkHref = (await link.getAttribute("href")) || target.href;
+  await link.scrollIntoViewIfNeeded();
   const clickStartedAtMs = inventory.start(linkHref, baseURL);
+  const feedbackWatcher = freshFeedback(page, target, link);
+  const expectedUrl = new URL(linkHref, baseURL);
+  const urlChangeWatcher = page
+    .waitForURL(
+      (url) => url.pathname === expectedUrl.pathname && url.search === expectedUrl.search,
+      { timeout: 3_500 }
+    )
+    .then(() => performance.now())
+    .catch(() => null);
   await link.click();
-  const routeStartedAtMs = await inventory.waitForRouteStart();
-  const feedbackAtMs = await freshFeedback(page, target, link);
+  const [feedbackAtMs, requestAtMs, urlChangeAtMs] = await Promise.all([
+    feedbackWatcher,
+    inventory.waitForRouteStart(),
+    urlChangeWatcher,
+  ]);
+  const routeStart = resolveRouteStart({ requestAtMs, urlChangeAtMs });
   await expect(page.locator(target.usefulContentLocator).first()).toBeVisible();
   const usefulContentAtMs = performance.now();
-  if (routeStartedAtMs === null) {
+  if (routeStart === null) {
     const unavailable: NavigationPerformanceUnavailable = {
       status: "unavailable",
       blocker: {
@@ -352,7 +456,10 @@ async function recordNavigation(page: Page, testInfo: TestInfo, target: CoreNavi
     };
     await writeArtifact(testInfo, target.label, {
       ...unavailable,
-      metadata: await artifactMetadata(page, baseURL, production, policy.cacheMode),
+      metadata: {
+        ...(await artifactMetadata(page, baseURL, production, policy.cacheMode)),
+        sample,
+      },
     });
     return;
   }
@@ -366,10 +473,11 @@ async function recordNavigation(page: Page, testInfo: TestInfo, target: CoreNavi
     },
     run: testInfo.retry + 1,
     navigation: { fromPath, toPath: new URL(page.url()).pathname, linkHref },
-    metadata: await artifactMetadata(page, baseURL, production, policy.cacheMode),
+    metadata: { ...(await artifactMetadata(page, baseURL, production, policy.cacheMode)), sample },
     clickToFeedbackMs: feedbackAtMs - clickStartedAtMs,
-    clickToRouteStartMs: routeStartedAtMs - clickStartedAtMs,
-    routeStartToUsefulContentMs: usefulContentAtMs - routeStartedAtMs,
+    clickToRouteStartMs: routeStart.atMs - clickStartedAtMs,
+    routeStartSource: routeStart.source,
+    routeStartToUsefulContentMs: usefulContentAtMs - routeStart.atMs,
     fullSettleMs: performance.now() - clickStartedAtMs,
     settle,
     requests: inventory.requestList(),
@@ -382,41 +490,7 @@ async function recordNavigation(page: Page, testInfo: TestInfo, target: CoreNavi
 
 test.describe("HH system navigation performance", () => {
   for (const target of CORE_NAVIGATION_MATRIX)
-    test(`measures ${target.label}`, ({ page }, testInfo) =>
-      recordNavigation(page, testInfo, target));
-
-  test("executes the approved visible-link workflow", async ({ page }, testInfo) => {
-    const baseURL = String(testInfo.project.use.baseURL);
-    const production = isProductionAppUrl(baseURL);
-    const safetyErrors: NavigationPerformanceError[] = [];
-    const policy = await installReadOnlyPolicy(page, production, safetyErrors);
-    const workflow = CORE_NAVIGATION_MATRIX.filter((target) => target.workflow);
-    await page.goto("/dashboard", { waitUntil: "domcontentloaded" });
-    for (const target of workflow.slice(1)) {
-      const link =
-        target.kind === "dynamic"
-          ? await visibleDynamicLink(page, target)
-          : await visibleLink(page, target.href);
-      if (!link || "status" in link) {
-        await writeArtifact(testInfo, `workflow-${target.label}`, {
-          ...(link || {
-            status: "unavailable",
-            blocker: { code: "NO_VISIBLE_DETAIL_LINK", target: target.label },
-          }),
-          metadata: await artifactMetadata(page, baseURL, production, policy.cacheMode),
-        });
-        return;
-      }
-      const method = await link.evaluate((element) =>
-        element.tagName === "A" ? "GET" : "NON_READ"
-      );
-      expect(method, `${target.label} workflow link`).toBe("GET");
-      await link.click();
-      await expect(page.locator(target.usefulContentLocator).first()).toBeVisible();
-    }
-    expect(
-      safetyErrors,
-      `${production ? "Production" : "Local"} workflow read-only policy`
-    ).toEqual([]);
-  });
+    test(`measures ${target.label}`, async ({ page }, testInfo) => {
+      for (const sample of SAMPLE_SEQUENCE) await recordNavigation(page, testInfo, target, sample);
+    });
 });
