@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { classifyNavigationPerformanceResult } from "../../../tests/performance/performance-result";
+import {
+  classifyNavigationPerformanceResult,
+  classifyReadOnlyRequest,
+  CORE_NAVIGATION_MATRIX,
+  PERFORMANCE_VIEWPORTS,
+  resolveVisibleDynamicDetail,
+  settleDecision,
+} from "../../../tests/performance/performance-result";
 
 const routeResult = {
   target: { label: "Projects", href: "/projects" },
@@ -11,10 +18,25 @@ const routeResult = {
     toPath: "/projects",
     linkHref: "/projects",
   },
+  metadata: {
+    environment: "local",
+    baseURL: "http://localhost:3000",
+    browser: "Chromium 123",
+    commit: "abc123",
+    timestamp: "2026-09-02T00:00:00.000Z",
+    cacheMode: "native",
+    sample: "cold",
+  },
   clickToFeedbackMs: 16,
   clickToRouteStartMs: 9,
   routeStartToUsefulContentMs: 82,
   fullSettleMs: 150,
+  settle: {
+    outcome: "settled",
+    quietWindowMs: 500,
+    timeoutMs: 5000,
+    inFlightAtEnd: 0,
+  },
   requests: [
     {
       method: "GET",
@@ -74,5 +96,121 @@ describe("navigation performance result contract", () => {
         },
       },
     });
+  });
+
+  it("defines the required core route matrix, workflow, and exact viewport widths", () => {
+    expect(CORE_NAVIGATION_MATRIX.map((target) => [target.label, target.href])).toEqual([
+      ["Dashboard", "/dashboard"],
+      ["Projects", "/projects"],
+      ["Project Detail", "/projects/:visible-record"],
+      ["Estimates", "/estimates"],
+      ["Estimate Detail", "/estimates/:visible-record"],
+      ["Revenue/AR", "/financial/ar"],
+      ["Invoice Detail", "/financial/invoices/:visible-record"],
+      ["Payments", "/financial/payments"],
+      ["Expenses", "/financial/expenses"],
+      ["Workers", "/workers"],
+      ["Payroll", "/reports/workforce?tab=payroll"],
+      ["Documents", "/documents"],
+      ["Tasks", "/tasks"],
+      ["Schedule", "/schedule"],
+      ["Settings", "/settings/company"],
+    ]);
+    expect(
+      CORE_NAVIGATION_MATRIX.filter((target) => target.workflow).map((target) => target.label)
+    ).toEqual([
+      "Dashboard",
+      "Projects",
+      "Project Detail",
+      "Estimate Detail",
+      "Invoice Detail",
+      "Payments",
+      "Expenses",
+      "Workers",
+      "Schedule",
+    ]);
+    expect(PERFORMANCE_VIEWPORTS.map((viewport) => viewport.width)).toEqual([1440, 820, 390]);
+  });
+
+  it("rejects impossible timing relationships and missing artifact metadata", () => {
+    expect(
+      classifyNavigationPerformanceResult({ ...routeResult, fullSettleMs: 80, metadata: {} })
+    ).toEqual({
+      ok: false,
+      reason: "Navigation performance fullSettleMs must include every measured timing",
+    });
+    const { metadata: _metadata, ...withoutMetadata } = routeResult;
+    expect(classifyNavigationPerformanceResult(withoutMetadata)).toEqual({
+      ok: false,
+      reason: "Missing required navigation performance field: metadata",
+    });
+  });
+
+  it("models in-flight-aware settle completion and timeout", () => {
+    expect(
+      settleDecision({
+        nowMs: 700,
+        lastActivityAtMs: 100,
+        inFlight: 1,
+        deadlineMs: 1_000,
+        quietWindowMs: 500,
+      })
+    ).toEqual({ outcome: "waiting" });
+    expect(
+      settleDecision({
+        nowMs: 700,
+        lastActivityAtMs: 100,
+        inFlight: 0,
+        deadlineMs: 1_000,
+        quietWindowMs: 500,
+      })
+    ).toEqual({ outcome: "settled" });
+    expect(
+      settleDecision({
+        nowMs: 1_000,
+        lastActivityAtMs: 900,
+        inFlight: 2,
+        deadlineMs: 1_000,
+        quietWindowMs: 500,
+      })
+    ).toEqual({ outcome: "timeout" });
+  });
+
+  it("reports unavailable Project, Estimate, and Invoice details after excluding static routes", () => {
+    for (const [label, staticHref, parent] of [
+      ["Project Detail", "/projects/new", "/projects"],
+      ["Estimate Detail", "/estimates/new", "/estimates"],
+      ["Invoice Detail", "/financial/invoices/new", "/financial/invoices"],
+    ] as const) {
+      expect(
+        resolveVisibleDynamicDetail(
+          CORE_NAVIGATION_MATRIX.find((target) => target.label === label)!,
+          [staticHref, parent, `${parent}/abc/edit`]
+        )
+      ).toEqual({
+        status: "unavailable",
+        blocker: { code: "NO_VISIBLE_DETAIL_LINK", target: label, discoveryParent: parent },
+      });
+    }
+  });
+
+  it("permits safe GET nouns and blocks non-read methods and mutating actions", () => {
+    expect(classifyReadOnlyRequest("GET", "https://hhprojectgroup.com/financial/payments")).toEqual(
+      {
+        allowed: true,
+      }
+    );
+    expect(classifyReadOnlyRequest("GET", "https://hhprojectgroup.com/upload-receipt")).toEqual({
+      allowed: true,
+    });
+    expect(
+      classifyReadOnlyRequest("POST", "https://hhprojectgroup.com/api/payments")
+    ).toMatchObject({
+      allowed: false,
+      code: "NON_READ_METHOD",
+    });
+    expect(
+      classifyReadOnlyRequest("GET", "https://hhprojectgroup.com/api/items?action=delete")
+    ).toMatchObject({ allowed: false, code: "MUTATING_ACTION" });
   });
 });

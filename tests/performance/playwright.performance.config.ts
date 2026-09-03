@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import { defineConfig, devices } from "@playwright/test";
 
 import { loadE2EProcessEnv } from "../e2e-load-env";
+import { PERFORMANCE_VIEWPORTS } from "./performance-result";
 
 loadE2EProcessEnv();
 
@@ -38,10 +39,8 @@ export default defineConfig({
     trace: "retain-on-failure",
   },
   projects: [
-    {
-      name: "desktop",
-      use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } },
-    },
-    { name: "mobile", use: { ...devices["iPhone 14"] } },
+    { name: "desktop", use: { ...devices["Desktop Chrome"], viewport: PERFORMANCE_VIEWPORTS[0] } },
+    { name: "tablet", use: { ...devices["iPad Pro 11"], viewport: PERFORMANCE_VIEWPORTS[1] } },
+    { name: "mobile", use: { ...devices["iPhone 14"], viewport: PERFORMANCE_VIEWPORTS[2] } },
   ],
 });
