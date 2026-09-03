@@ -4,6 +4,7 @@ import * as React from "react";
 import { useSystemHealth } from "@/contexts/system-health-context";
 import { useToast } from "@/components/toast/toast-provider";
 import { usePathname, useRouter } from "next/navigation";
+import { scheduleInitialSystemHealthPoll } from "./system-health-poll-scheduler";
 import { shouldShowSystemHealthToast } from "./system-health-toast-policy";
 
 const POLL_INTERVAL_MS = 60_000;
@@ -84,10 +85,11 @@ export function SystemHealthPoller() {
       }
     };
 
-    void run();
+    const cancelInitialPoll = scheduleInitialSystemHealthPoll(run);
     const interval = setInterval(run, POLL_INTERVAL_MS);
     return () => {
       cancelled = true;
+      cancelInitialPoll();
       clearInterval(interval);
     };
   }, [pathname, setSystemHealth, toast, router]);
