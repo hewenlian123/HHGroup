@@ -36,8 +36,8 @@ export const OWNER_NAV_PREFETCH_ROUTES = [
 export const BOTTOM_NAV_VISIBLE_MEDIA_QUERY = "(max-width: 639px)";
 export const QUICK_ACTION_FAB_VISIBLE_MEDIA_QUERY = "(max-width: 1023px)";
 
-export function shouldBulkPrefetchOwnerNav(pathname: string): boolean {
-  return pathname === "/dashboard" || pathname === "/financial";
+export function shouldBulkPrefetchOwnerNav(_pathname: string): boolean {
+  return false;
 }
 
 export function shouldBulkPrefetchMobileNav(

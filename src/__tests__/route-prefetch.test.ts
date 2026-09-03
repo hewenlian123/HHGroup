@@ -11,10 +11,12 @@ afterEach(() => {
 });
 
 describe("owner navigation bulk prefetch policy", () => {
-  it("warms owner routes only from stable hub pages", () => {
-    expect(shouldBulkPrefetchOwnerNav("/dashboard")).toBe(true);
-    expect(shouldBulkPrefetchOwnerNav("/financial")).toBe(true);
-  });
+  it.each(["/dashboard", "/financial"])(
+    "does not start automatic owner-route fan-out from hub %s",
+    (pathname) => {
+      expect(shouldBulkPrefetchOwnerNav(pathname)).toBe(false);
+    }
+  );
 
   it.each([
     "/estimate-templates",
@@ -30,9 +32,9 @@ describe("owner navigation bulk prefetch policy", () => {
 
 describe("mobile navigation bulk prefetch policy", () => {
   it.each(["/dashboard", "/financial"])(
-    "warms mobile navigation routes from visible stable hub %s",
+    "does not start automatic mobile-route fan-out from visible hub %s",
     (pathname) => {
-      expect(shouldBulkPrefetchMobileNav(pathname, true)).toBe(true);
+      expect(shouldBulkPrefetchMobileNav(pathname, true)).toBe(false);
     }
   );
 
