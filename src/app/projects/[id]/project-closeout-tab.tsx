@@ -296,10 +296,14 @@ export function ProjectCloseoutTab({
                 ref={punchDateInputRef}
                 type="date"
                 value={punchForm.inspection_date}
-                onChange={(e) => setPunchForm((p) => ({ ...p, inspection_date: e.target.value }))}
-                onInput={(e) =>
-                  setPunchForm((p) => ({ ...p, inspection_date: e.currentTarget.value }))
-                }
+                onChange={(event) => {
+                  const value = event.currentTarget.value;
+                  setPunchForm((p) => ({ ...p, inspection_date: value }));
+                }}
+                onInput={(event) => {
+                  const value = event.currentTarget.value;
+                  setPunchForm((p) => ({ ...p, inspection_date: value }));
+                }}
                 className="mt-1 h-9 rounded-hh-compact border-border/60"
               />
             </div>
@@ -461,10 +465,14 @@ export function ProjectCloseoutTab({
                 ref={warrantyDateInputRef}
                 type="date"
                 value={warrantyForm.start_date}
-                onChange={(e) => setWarrantyForm((p) => ({ ...p, start_date: e.target.value }))}
-                onInput={(e) =>
-                  setWarrantyForm((p) => ({ ...p, start_date: e.currentTarget.value }))
-                }
+                onChange={(event) => {
+                  const value = event.currentTarget.value;
+                  setWarrantyForm((p) => ({ ...p, start_date: value }));
+                }}
+                onInput={(event) => {
+                  const value = event.currentTarget.value;
+                  setWarrantyForm((p) => ({ ...p, start_date: value }));
+                }}
                 className="mt-1 h-10 rounded-hh-standard border-[var(--hh-border)]"
               />
             </div>
@@ -572,12 +580,14 @@ export function ProjectCloseoutTab({
               ref={completionDateInputRef}
               type="date"
               value={completionForm.completion_date}
-              onChange={(e) =>
-                setCompletionForm((p) => ({ ...p, completion_date: e.target.value }))
-              }
-              onInput={(e) =>
-                setCompletionForm((p) => ({ ...p, completion_date: e.currentTarget.value }))
-              }
+              onChange={(event) => {
+                const value = event.currentTarget.value;
+                setCompletionForm((p) => ({ ...p, completion_date: value }));
+              }}
+              onInput={(event) => {
+                const value = event.currentTarget.value;
+                setCompletionForm((p) => ({ ...p, completion_date: value }));
+              }}
               className="mt-1 h-10 rounded-hh-standard border-[var(--hh-border)]"
             />
           </div>

@@ -19,14 +19,6 @@ function adminClient(): SupabaseClient | null {
 
 const CLOSEOUT_DATE = "2026-09-03";
 
-async function setNativeDateWithoutReactChange(input: Locator, value: string) {
-  await input.evaluate((element, nextValue) => {
-    const descriptor = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value");
-    descriptor?.set?.call(element, nextValue);
-  }, value);
-  await expect(input).toHaveValue(value);
-}
-
 async function saveSection(section: Locator) {
   const page = section.page();
   const responsePromise = page.waitForResponse(
@@ -71,6 +63,13 @@ test.describe("Project Closeout canonical persistence", () => {
     });
     expect(projectInsert.error, projectInsert.error?.message).toBeNull();
 
+    const consoleErrors: string[] = [];
+    const pageErrors: string[] = [];
+    page.on("console", (message) => {
+      if (message.type() === "error") consoleErrors.push(message.text());
+    });
+    page.on("pageerror", (error) => pageErrors.push(error.message));
+
     try {
       await loginAsE2EOwner(page, `/projects/${projectId}?tab=closeout`);
       await expect(page.getByText("Final Punch List", { exact: true })).toBeVisible({
@@ -84,7 +83,8 @@ test.describe("Project Closeout canonical persistence", () => {
       await punch.locator("tbody input").last().fill(`${marker} Item`);
       await punch.locator("tbody select").last().selectOption("done");
       const punchDate = punch.locator('input[type="date"]');
-      await setNativeDateWithoutReactChange(punchDate, CLOSEOUT_DATE);
+      await punchDate.fill(CLOSEOUT_DATE);
+      await expect(punchDate).toHaveValue(CLOSEOUT_DATE);
       expect((await saveSection(punch)).inspection_date).toBe(CLOSEOUT_DATE);
       await reloadWithE2EAuth(page);
       await expect(page.getByText("Final Punch List", { exact: true })).toBeVisible({
@@ -97,7 +97,8 @@ test.describe("Project Closeout canonical persistence", () => {
       await warranty.locator('input[type="number"]').fill("18");
       await warranty.getByPlaceholder("Notes").fill(`${marker} Warranty Notes`);
       const warrantyDate = warranty.locator('input[type="date"]');
-      await setNativeDateWithoutReactChange(warrantyDate, CLOSEOUT_DATE);
+      await warrantyDate.fill(CLOSEOUT_DATE);
+      await expect(warrantyDate).toHaveValue(CLOSEOUT_DATE);
       expect((await saveSection(warranty)).start_date).toBe(CLOSEOUT_DATE);
       await reloadWithE2EAuth(page);
       await expect(page.getByText("Final Punch List", { exact: true })).toBeVisible({
@@ -112,7 +113,8 @@ test.describe("Project Closeout canonical persistence", () => {
       await completion.getByPlaceholder("Signature").nth(0).fill(`${marker} Contractor Sign`);
       await completion.getByPlaceholder("Signature").nth(1).fill(`${marker} Client Sign`);
       const completionDate = completion.locator('input[type="date"]');
-      await setNativeDateWithoutReactChange(completionDate, CLOSEOUT_DATE);
+      await completionDate.fill(CLOSEOUT_DATE);
+      await expect(completionDate).toHaveValue(CLOSEOUT_DATE);
       expect((await saveSection(completion)).completion_date).toBe(CLOSEOUT_DATE);
 
       await reloadWithE2EAuth(page);
@@ -175,6 +177,8 @@ test.describe("Project Closeout canonical persistence", () => {
         .eq("punch_list_id", String(punchRow.data!.id));
       expect(items.error, items.error?.message).toBeNull();
       expect(items.data).toEqual([{ item: `${marker} Item`, status: "done" }]);
+      expect(consoleErrors).toEqual([]);
+      expect(pageErrors).toEqual([]);
     } finally {
       const punchRows = await admin!
         .from("final_punch_lists")
