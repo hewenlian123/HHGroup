@@ -6,6 +6,10 @@ import { Button } from "@/components/ui/button";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { Input } from "@/components/ui/input";
 import type { CloseoutPunch, CloseoutWarranty, CloseoutCompletion } from "@/lib/data";
+import {
+  deriveWarrantyExpirationDateOnly,
+  formatWarrantyDateOnly,
+} from "@/lib/closeout-warranty-date";
 import { cn } from "@/lib/utils";
 import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
 
@@ -97,10 +101,7 @@ export function ProjectCloseoutTab({
   }, [completion]);
 
   const warrantyExpiration = React.useMemo(() => {
-    if (!warrantyForm.start_date || !warrantyForm.period_months) return null;
-    const d = new Date(warrantyForm.start_date);
-    d.setMonth(d.getMonth() + warrantyForm.period_months);
-    return d.toISOString().slice(0, 10);
+    return deriveWarrantyExpirationDateOnly(warrantyForm.start_date, warrantyForm.period_months);
   }, [warrantyForm.start_date, warrantyForm.period_months]);
 
   const savePunch = async () => {
@@ -497,7 +498,7 @@ export function ProjectCloseoutTab({
           {warrantyExpiration && (
             <p className="text-hh-body text-[var(--hh-text-secondary)]">
               <span className="font-medium">Warranty expiration:</span>{" "}
-              {new Date(warrantyExpiration).toLocaleDateString()}
+              {formatWarrantyDateOnly(warrantyExpiration)}
             </p>
           )}
           <div>

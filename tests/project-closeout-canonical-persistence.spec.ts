@@ -46,6 +46,7 @@ async function saveSection(section: Locator) {
 
 test.describe("Project Closeout canonical persistence", () => {
   test.describe.configure({ timeout: 180_000 });
+  test.use({ timezoneId: "Pacific/Honolulu" });
 
   test("Open -> Edit/Save -> reload persists the canonical closeout model", async ({ page }) => {
     test.skip(!isLocalE2eTarget(), "Closeout persistence is local-fixture only.");
@@ -193,6 +194,57 @@ test.describe("Project Closeout canonical persistence", () => {
         admin!.from("warranties").delete().eq("project_id", projectId),
         admin!.from("completion_certificates").delete().eq("project_id", projectId),
       ]);
+      await admin!.from("projects").delete().eq("id", projectId);
+    }
+  });
+
+  test("warranty expiration is identical across UTC SSR and Honolulu hydration", async ({
+    page,
+  }) => {
+    test.skip(!isLocalE2eTarget(), "Warranty date-only verification is local-fixture only.");
+    const admin = adminClient();
+    test.skip(!admin, "Local Supabase service role is required.");
+
+    const projectId = randomUUID();
+    const marker = `E2E-WARRANTY-DATE-${Date.now().toString(36).toUpperCase()}`;
+    const projectInsert = await admin!.from("projects").insert({
+      id: projectId,
+      name: `[E2E] ${marker}`,
+      status: "active",
+      budget: 9000,
+      contract_amount: 9000,
+    });
+    expect(projectInsert.error, projectInsert.error?.message).toBeNull();
+    const warrantyInsert = await admin!.from("warranties").insert({
+      project_id: projectId,
+      start_date: "2026-01-31",
+      period_months: 1,
+    });
+    expect(warrantyInsert.error, warrantyInsert.error?.message).toBeNull();
+
+    const consoleErrors: string[] = [];
+    const pageErrors: string[] = [];
+    page.on("console", (message) => {
+      if (message.type() === "error") consoleErrors.push(message.text());
+    });
+    page.on("pageerror", (error) => pageErrors.push(error.message));
+
+    try {
+      await loginAsE2EOwner(page, `/projects/${projectId}?tab=closeout`);
+      const warranty = page
+        .getByText("Warranty Information", { exact: true })
+        .locator("xpath=ancestor::div[contains(@class,'rounded-hh-task')][1]");
+      const expiration = warranty.locator("p").filter({ hasText: "Warranty expiration:" });
+
+      await expect(expiration).toContainText("3/3/2026");
+      await warranty.locator('input[type="date"]').fill("2026-09-01");
+      await expect(expiration).toContainText("10/1/2026");
+      await warranty.locator('input[type="date"]').fill("2026-01-31");
+      await expect(expiration).toContainText("3/3/2026");
+      expect(consoleErrors).toEqual([]);
+      expect(pageErrors).toEqual([]);
+    } finally {
+      await admin!.from("warranties").delete().eq("project_id", projectId);
       await admin!.from("projects").delete().eq("id", projectId);
     }
   });
