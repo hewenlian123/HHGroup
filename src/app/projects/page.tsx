@@ -2,6 +2,7 @@ import { getProjects } from "@/lib/data";
 import { getCanonicalProjectProfitBatch, type CanonicalProjectProfit } from "@/lib/profit-engine";
 import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
+import { emitRscTiming } from "@/lib/performance/server-timing";
 import {
   ProjectsListClient,
   type ProjectListStatusFilter,
@@ -15,6 +16,7 @@ export default async function ProjectsPage({
 }: {
   searchParams?: Promise<{ status?: string }>;
 }) {
+  const pageStartedAt = performance.now();
   const sp = (await searchParams) ?? {};
   const statusParam = String(sp.status ?? "all").toLowerCase();
   const initialStatusFilter: ProjectListStatusFilter = [
@@ -29,13 +31,23 @@ export default async function ProjectsPage({
   let projects: Awaited<ReturnType<typeof getProjects>> = [];
   let dataLoadWarning: string | null = null;
   let projectSupabase: Awaited<ReturnType<typeof createServerSupabaseClient>> = null;
+  const authStartedAt = performance.now();
   try {
     projectSupabase = await createServerSupabaseClient({ noStore: true });
     if (!projectSupabase) throw new Error("Authenticated project session is not configured.");
-    projects = await getProjects(projectSupabase);
   } catch (e) {
     logServerPageDataError("projects", e);
     dataLoadWarning = serverDataLoadWarning(e, "projects");
+  }
+  const authDuration = performance.now() - authStartedAt;
+  const serverDataStartedAt = performance.now();
+  if (projectSupabase) {
+    try {
+      projects = await getProjects(projectSupabase);
+    } catch (e) {
+      logServerPageDataError("projects", e);
+      dataLoadWarning = serverDataLoadWarning(e, "projects");
+    }
   }
   let profitMap = new Map<string, CanonicalProjectProfit>();
   if (projectSupabase && projects.length > 0) {
@@ -50,6 +62,7 @@ export default async function ProjectsPage({
       projects = [];
     }
   }
+  const serverDataCompletedAt = performance.now();
 
   const rows: ProjectsListRow[] = projects.map((p) => {
     const c = profitMap.get(p.id);
@@ -85,6 +98,13 @@ export default async function ProjectsPage({
       financialSource: "legacy" as const,
       updatedAt,
     };
+  });
+  const rscPreparedAt = performance.now();
+  emitRscTiming("projects", {
+    authMs: authDuration,
+    serverDataMs: serverDataCompletedAt - serverDataStartedAt,
+    rscPrepareMs: rscPreparedAt - serverDataCompletedAt,
+    totalMs: rscPreparedAt - pageStartedAt,
   });
 
   return (

@@ -1,7 +1,7 @@
 "use client";
 
 import { dispatchClientDataSync } from "@/lib/sync-router-client";
-import { syncRouterNonBlocking } from "@/components/perf/sync-router-non-blocking";
+import { refreshRscNonBlocking } from "@/components/perf/sync-router-non-blocking";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import * as React from "react";
 import { useRouter } from "next/navigation";
@@ -67,9 +67,12 @@ export function SubcontractorsTableClient({
   }, [editFor]);
 
   useOnAppSync(
-    React.useCallback(() => {
-      syncRouterNonBlocking(router);
-    }, [router]),
+    React.useCallback(
+      (detail) => {
+        if (!detail.refreshScheduled) refreshRscNonBlocking(router);
+      },
+      [router]
+    ),
     [router]
   );
 

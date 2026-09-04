@@ -17,13 +17,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  defaultExpenseListSort,
   getExpenseTotal,
-  getPaymentAccounts,
-  updateExpenseForReview,
-  type Expense,
-  type PaymentAccountRow,
-} from "@/lib/data";
-import { createBrowserClient } from "@/lib/supabase";
+  isDefaultExpenseListSort,
+} from "@/lib/expense-domain";
+import type { Expense } from "@/lib/expenses-db";
+import type { PaymentAccountRow } from "@/lib/payment-accounts-db";
+import type { SubcontractDeductionOption } from "@/lib/subcontract-deductions-db";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   AlertCircle,
   ChevronLeft,
@@ -67,12 +68,11 @@ import {
   fetchSubcontractDeductionOptions,
   fetchWorkers,
   subcontractDeductionOptionsQueryKey,
+  type ExpensesInitialData,
   type ExpenseListSort,
   workersQueryKey,
 } from "@/lib/queries/expenses";
-import type { SubcontractDeductionOption } from "@/lib/data";
 import { fetchFinancialProjects, financialProjectsQueryKey } from "@/lib/queries/receiptQueue";
-import { defaultExpenseListSort, isDefaultExpenseListSort } from "@/lib/expenses-db";
 import { cn } from "@/lib/utils";
 import { cleanExpenseDescriptionForDisplay } from "@/lib/expense-form-system";
 import { ExpensesListSkeleton } from "@/components/financial/expenses-list-skeleton";
@@ -119,7 +119,6 @@ import {
   type ExpenseReceiptApiItem,
   type ExpenseReceiptApiManifest,
 } from "@/lib/expense-receipt-api-client";
-import { UploadReceiptsQueueModal } from "./upload-receipts-queue-modal";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import { OS } from "@/lib/typography";
 import { hawaiiTodayYmd } from "@/lib/hawaii-calendar-date";
@@ -160,6 +159,33 @@ type ExpenseApiResponse = {
 type ExpenseMutationApiResponse = ExpenseApiResponse & {
   expense?: Expense;
 };
+
+type ExpenseReviewStatusPatch = Partial<{
+  date: string;
+  vendorName: string;
+  notes: string;
+  status: NonNullable<Expense["status"]>;
+  workerId: string | null;
+  projectId: string | null;
+  category: string;
+  amount: number;
+  sourceType: Expense["sourceType"];
+  paymentAccountId: string | null;
+  paymentMethod: string;
+}>;
+
+async function loadPaymentAccounts(): Promise<PaymentAccountRow[]> {
+  const { getPaymentAccounts } = await import("@/lib/data");
+  return getPaymentAccounts();
+}
+
+async function updateExpenseForReviewLazy(
+  expenseId: string,
+  patch: ExpenseReviewStatusPatch
+): Promise<Expense | null> {
+  const { updateExpenseForReview } = await import("@/lib/data");
+  return updateExpenseForReview(expenseId, patch);
+}
 
 async function saveExpenseReviewViaApi(payload: ExpenseReviewApiPayload): Promise<void> {
   const response = await fetch(`/api/expenses/${encodeURIComponent(payload.expenseId)}`, {
@@ -238,6 +264,10 @@ const ExpenseInboxPreviewModal = dynamic(
 const ExpenseInboxTransactionList = dynamic(
   () => import("./expense-inbox-transaction-list").then((m) => m.ExpenseInboxTransactionList),
   { ssr: false, loading: () => <ExpensesListSkeleton /> }
+);
+const UploadReceiptsQueueModal = dynamic(
+  () => import("./upload-receipts-queue-modal").then((m) => m.UploadReceiptsQueueModal),
+  { ssr: false }
 );
 
 /** HH Finance OS — visual parity with Finance Owner dashboard (presentation only). */
@@ -536,7 +566,13 @@ function TransactionInboxEntryActions({
   );
 }
 
-export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
+export function ExpensesPageClient({
+  pool,
+  initialData,
+}: {
+  pool: "inbox" | "expenses";
+  initialData?: ExpensesInitialData;
+}) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -547,14 +583,26 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   const configured = Boolean(url && anon);
-  const supabase = React.useMemo(
-    () => (configured ? createBrowserClient(url as string, anon as string) : null),
-    [configured, url, anon]
-  );
+  const supabaseRef = React.useRef<SupabaseClient | null>(null);
+  const [supabase, setSupabase] = React.useState<SupabaseClient | null>(null);
+  const loadBrowserSupabase = React.useCallback(async (): Promise<SupabaseClient | null> => {
+    if (!configured || !url || !anon) return null;
+    if (supabaseRef.current) return supabaseRef.current;
+    const { createBrowserClient } = await import("@/lib/supabase");
+    const client = createBrowserClient(url, anon);
+    supabaseRef.current = client;
+    setSupabase(client);
+    return client;
+  }, [configured, url, anon]);
+
+  React.useEffect(() => {
+    void loadBrowserSupabase();
+  }, [loadBrowserSupabase]);
 
   const [expenseSort, setExpenseSort] = React.useState<ExpenseListSort>(() =>
     readStoredExpenseSort()
   );
+  const initialSortMatches = Boolean(initialData && isDefaultExpenseListSort(expenseSort));
 
   const readCachedCategories = React.useCallback(
     () => queryClient.getQueryData<string[]>(expenseCategoriesQueryKey),
@@ -564,19 +612,25 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
     () => queryClient.getQueryData<WorkerRow[]>(workersQueryKey),
     [queryClient]
   );
-  const [workers, setWorkers] = React.useState<WorkerRow[]>(() => readCachedWorkers() ?? []);
+  const [workers, setWorkers] = React.useState<WorkerRow[]>(
+    () => readCachedWorkers() ?? initialData?.workers ?? []
+  );
   const [subcontractDeductionOptions, setSubcontractDeductionOptions] = React.useState<
     SubcontractDeductionOption[]
   >(
     () =>
       queryClient.getQueryData<SubcontractDeductionOption[]>(subcontractDeductionOptionsQueryKey) ??
+      initialData?.subcontractDeductionOptions ??
       []
   );
   const [expenses, setExpenses] = React.useState<Expense[]>(
-    () => queryClient.getQueryData<Expense[]>(buildExpensesQueryKey(readStoredExpenseSort())) ?? []
+    () =>
+      queryClient.getQueryData<Expense[]>(buildExpensesQueryKey(readStoredExpenseSort())) ??
+      (initialSortMatches ? initialData?.expenses : undefined) ??
+      []
   );
   const [categoriesList, setCategoriesList] = React.useState<string[]>(
-    () => readCachedCategories() ?? []
+    () => readCachedCategories() ?? initialData?.categories ?? []
   );
 
   const {
@@ -592,6 +646,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
     placeholderData: keepPreviousData,
     staleTime: expenseListQueryStaleMs,
     refetchOnMount: false,
+    initialData: initialSortMatches ? initialData?.expenses : undefined,
   });
 
   React.useEffect(() => {
@@ -607,6 +662,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
     placeholderData: keepPreviousData,
     staleTime: expenseListQueryStaleMs,
     refetchOnMount: false,
+    initialData: initialData?.categories,
   });
   const { data: workersQueryData } = useQuery({
     queryKey: workersQueryKey,
@@ -614,6 +670,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
     placeholderData: keepPreviousData,
     staleTime: expenseListQueryStaleMs,
     refetchOnMount: false,
+    initialData: initialData?.workers,
   });
   const { data: subcontractDeductionOptionsQueryData } = useQuery({
     queryKey: subcontractDeductionOptionsQueryKey,
@@ -621,6 +678,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
     placeholderData: keepPreviousData,
     staleTime: expenseListQueryStaleMs,
     refetchOnMount: false,
+    initialData: initialData?.subcontractDeductionOptions,
   });
 
   const {
@@ -629,11 +687,16 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
     error: projectsQueryError,
   } = useQuery({
     queryKey: financialProjectsQueryKey,
-    queryFn: () => fetchFinancialProjects(supabase!),
-    enabled: configured && Boolean(supabase),
+    queryFn: async () => {
+      const client = await loadBrowserSupabase();
+      if (!client) throw new Error("Supabase is not configured.");
+      return fetchFinancialProjects(client);
+    },
+    enabled: configured,
     placeholderData: keepPreviousData,
     staleTime: expenseListQueryStaleMs,
     refetchOnMount: false,
+    initialData: initialData?.projects,
   });
 
   const projectsError = React.useMemo(() => {
@@ -1473,7 +1536,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
       try {
         const saved = inboxRef
           ? await approveInboxDraftViaApi(expense.id)
-          : await updateExpenseForReview(expense.id, { status: targetStatus });
+          : await updateExpenseForReviewLazy(expense.id, { status: targetStatus });
         const final = saved ?? { ...expense, status: targetStatus };
         flushSync(() => {
           setExpenses((list) => list.map((e) => (e.id === expense.id ? final : e)));
@@ -1787,7 +1850,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
           const saved =
             inboxRef && next === "approved"
               ? await approveInboxDraftViaApi(expense.id)
-              : await updateExpenseForReview(expense.id, { status: next });
+              : await updateExpenseForReviewLazy(expense.id, { status: next });
           if (!saved) throw new Error("Failed");
           const persisted = (saved.status ?? "pending") === next;
           if (persisted) {
@@ -1818,13 +1881,14 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
   );
 
   const [paymentAccountsForBulk, setPaymentAccountsForBulk] = React.useState<PaymentAccountRow[]>(
-    []
+    initialData?.paymentAccounts ?? []
   );
   React.useEffect(() => {
-    void getPaymentAccounts()
+    if (initialData?.paymentAccounts) return;
+    void loadPaymentAccounts()
       .then(setPaymentAccountsForBulk)
       .catch(() => setPaymentAccountsForBulk([]));
-  }, []);
+  }, [initialData?.paymentAccounts]);
 
   const [bulkBusy, setBulkBusy] = React.useState(false);
 
@@ -1868,7 +1932,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
           try {
             const saved = inboxRef
               ? await approveInboxDraftViaApi(id)
-              : await updateExpenseForReview(id, { status: targetStatus });
+              : await updateExpenseForReviewLazy(id, { status: targetStatus });
             if (saved && (saved.status ?? "pending") === targetStatus) {
               mergeSavedExpenseInCaches(saved);
               ok++;
@@ -1904,7 +1968,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
       let ok = 0;
       try {
         for (const id of ids) {
-          const saved = await updateExpenseForReview(id, { projectId });
+          const saved = await updateExpenseForReviewLazy(id, { projectId });
           if (saved) {
             mergeSavedExpenseInCaches(saved);
             ok++;
@@ -1935,7 +1999,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
       let ok = 0;
       try {
         for (const id of ids) {
-          const saved = await updateExpenseForReview(id, { category });
+          const saved = await updateExpenseForReviewLazy(id, { category });
           if (saved) {
             mergeSavedExpenseInCaches(saved);
             ok++;
@@ -1966,7 +2030,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
       let ok = 0;
       try {
         for (const id of ids) {
-          const saved = await updateExpenseForReview(id, { paymentAccountId });
+          const saved = await updateExpenseForReviewLazy(id, { paymentAccountId });
           if (saved) {
             mergeSavedExpenseInCaches(saved);
             ok++;

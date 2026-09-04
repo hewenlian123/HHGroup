@@ -3,6 +3,7 @@
  */
 
 import { getSupabaseClient } from "@/lib/supabase";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type MaterialCatalogRow = {
   id: string;
@@ -24,8 +25,8 @@ export type MaterialCatalogDraft = {
   description?: string | null;
 };
 
-function client() {
-  const c = getSupabaseClient();
+function client(explicitClient?: SupabaseClient) {
+  const c = explicitClient ?? getSupabaseClient();
   if (!c) throw new Error("Supabase is not configured.");
   return c;
 }
@@ -46,8 +47,10 @@ function toRow(r: Record<string, unknown>): MaterialCatalogRow {
 }
 
 /** Get all materials in the catalog. */
-export async function getMaterialCatalog(): Promise<MaterialCatalogRow[]> {
-  const c = client();
+export async function getMaterialCatalog(
+  explicitClient?: SupabaseClient
+): Promise<MaterialCatalogRow[]> {
+  const c = client(explicitClient);
   const { data, error } = await c
     .from("material_catalog")
     .select(COLS)

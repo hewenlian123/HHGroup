@@ -5,6 +5,7 @@
  */
 
 import { getSupabaseClient } from "@/lib/supabase";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type ActivityLog = {
   id: string;
@@ -14,8 +15,8 @@ export type ActivityLog = {
   created_at: string;
 };
 
-function client() {
-  const c = getSupabaseClient();
+function client(explicitClient?: SupabaseClient) {
+  const c = explicitClient ?? getSupabaseClient();
   if (!c) throw new Error("Supabase is not configured.");
   return c;
 }
@@ -28,19 +29,18 @@ function isMissingTable(err: { message?: string } | null): boolean {
 /** Get activity logs for a project, newest first. Returns [] if table does not exist. */
 export async function getActivityLogsByProject(
   projectId: string,
-  limit = 100
+  limit = 100,
+  explicitClient?: SupabaseClient
 ): Promise<ActivityLog[]> {
-  const c = client();
+  const c = client(explicitClient);
   const { data: rows, error } = await c
     .from("activity_logs")
     .select("id, project_id, type, description, created_at")
     .eq("project_id", projectId)
     .order("created_at", { ascending: false })
     .limit(limit);
-  if (error) {
-    if (isMissingTable(error)) return [];
-    throw new Error(error.message ?? "Failed to load activity.");
-  }
+  if (error) throw new Error(error.message ?? "Failed to load activity.");
+  if (!Array.isArray(rows)) throw new Error("Project activity is unavailable.");
   return (rows ?? []).map((r) => ({
     id: (r.id as string) ?? "",
     project_id: (r.project_id as string) ?? "",

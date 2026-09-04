@@ -59,6 +59,9 @@ describe("middleware Auth rollout behavior", () => {
     expect(response.headers.get("location")).toBe(
       "https://preview.hh.test/login?redirect=%2Fdashboard%3Fview%3Dactive"
     );
+    expect(response.headers.get("Server-Timing")).toMatch(
+      /hh_auth;dur=\d+\.\d, hh_middleware;dur=\d+\.\d/
+    );
   });
 
   it("returns 401 for an anonymous protected API in strict mode", async () => {

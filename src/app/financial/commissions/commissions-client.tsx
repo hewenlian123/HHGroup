@@ -313,9 +313,12 @@ export function CommissionsClient({
 
   // Rows come from RSC props — refresh only, no full sync (avoids duplicate hh:app-sync).
   useOnAppSync(
-    React.useCallback(() => {
-      refreshRscNonBlocking(router);
-    }, [router]),
+    React.useCallback(
+      (detail) => {
+        if (!detail.refreshScheduled) refreshRscNonBlocking(router);
+      },
+      [router]
+    ),
     [router]
   );
 

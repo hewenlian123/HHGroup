@@ -8,6 +8,7 @@ const source = (path) => readFileSync(resolve(ROOT, path), "utf8");
 
 test("Figma v2 shell consumes the white workspace, compact navigation, and header contracts", () => {
   const shell = source("src/components/layout/app-shell.tsx");
+  const shellChrome = source("src/components/layout/app-shell-chrome.tsx");
   const sidebar = source("src/components/layout/sidebar.tsx");
   const topbar = source("src/components/layout/topbar.tsx");
   const css = source("src/styles/hh-design-system-v2.css");
@@ -15,7 +16,7 @@ test("Figma v2 shell consumes the white workspace, compact navigation, and heade
   assert.match(shell, /bg-\[var\(--hh-surface-workspace\)\]/);
   assert.match(shell, /bg-\[var\(--hh-surface-canvas\)\]/);
   assert.doesNotMatch(shell, /sm:gap-(?:3|hh-3)/);
-  assert.match(shell, /w-hh-sidebar-expanded max-w-\[85vw\]/);
+  assert.match(shellChrome, /w-hh-sidebar-expanded max-w-\[85vw\]/);
   assert.match(sidebar, /w-hh-sidebar-collapsed/);
   assert.match(sidebar, /w-hh-sidebar-expanded/);
   assert.doesNotMatch(sidebar, /w-\[210px\]|w-\[72px\]/);

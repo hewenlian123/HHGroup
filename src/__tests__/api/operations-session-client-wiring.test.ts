@@ -87,7 +87,10 @@ describe("Operations API authenticated session client wiring", () => {
     expect(mocks.requireSupabaseOwnerOrAdminRequestClient).toHaveBeenCalledWith(req, {
       noStore: true,
     });
-    expect(mocks.getAllScheduleWithProject).toHaveBeenCalledWith(mocks.strictClient);
+    expect(mocks.getAllScheduleWithProject).toHaveBeenCalledWith(
+      mocks.strictClient,
+      expect.any(Promise)
+    );
     expect(mocks.getProjects).toHaveBeenCalledWith(mocks.strictClient);
   });
 

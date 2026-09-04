@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
+import { requireSupabaseOwnerOrAdminRequestClient } from "@/lib/auth-boundary";
 import {
   getProjectFinancialSnapshotComparison,
   type ProjectFinancialSnapshotComparison,
@@ -56,7 +56,7 @@ function jsonError(status: number, message: string): NextResponse {
 }
 
 export async function GET(request: Request) {
-  const guard = await requireSupabaseOwnerOrAdmin(request);
+  const guard = await requireSupabaseOwnerOrAdminRequestClient(request, { noStore: true });
   if (!guard.ok) return guard.response;
 
   const ids = parseProjectIds(request);
@@ -67,7 +67,7 @@ export async function GET(request: Request) {
     SNAPSHOT_BATCH_CONCURRENCY,
     async (id) => {
       try {
-        const comparison = await getProjectFinancialSnapshotComparison(id);
+        const comparison = await getProjectFinancialSnapshotComparison(id, guard.client);
         return { id, ok: true, comparison };
       } catch (error) {
         const message =

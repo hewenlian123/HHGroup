@@ -1,33 +1,15 @@
 import type { Metadata, Viewport } from "next";
-import dynamic from "next/dynamic";
 import localFont from "next/font/local";
 import { Inter } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
 import { ensureConstructionSchema } from "@/lib/ensure-construction-schema";
 import { ServiceWorkerCleanup } from "@/components/service-worker-cleanup";
-import { Skeleton } from "@/components/ui/skeleton";
+import { AppShell } from "@/components/layout/app-shell";
 import { Providers } from "./providers";
 import { OPERATIONAL_THEME_BOOTSTRAP_SCRIPT } from "@/lib/operational-theme";
 
 const LEGACY_SERVICE_WORKER_CLEANUP_SCRIPT = `(function(){var key="hh-sw-cleanup-reload-v1";var hadController=typeof navigator!=="undefined"&&"serviceWorker" in navigator&&Boolean(navigator.serviceWorker.controller);var unregister=typeof navigator!=="undefined"&&"serviceWorker" in navigator?navigator.serviceWorker.getRegistrations().then(function(registrations){return Promise.all(registrations.map(function(registration){return registration.unregister();}));}).catch(function(){return[];}):Promise.resolve([]);unregister.then(function(){if(typeof caches==="undefined")return[];return caches.keys().then(function(keys){return Promise.all(keys.map(function(cacheName){return caches.delete(cacheName);}));}).catch(function(){return[];});}).then(function(){if(hadController){try{if(sessionStorage.getItem(key)!=="1"){sessionStorage.setItem(key,"1");location.reload();return;}}catch(_error){}}try{sessionStorage.removeItem(key);}catch(_error){}});})();`;
-
-const AppShell = dynamic(() => import("@/components/layout/app-shell").then((m) => m.AppShell), {
-  ssr: false,
-  loading: () => (
-    <div className="flex min-h-screen bg-page">
-      <Skeleton
-        className="hidden w-[72px] shrink-0 rounded-none md:block lg:w-[210px]"
-        aria-hidden
-      />
-      <div className="flex min-w-0 flex-1 flex-col gap-4 p-4">
-        <Skeleton className="h-10 w-full max-w-xl rounded-md" />
-        <Skeleton className="h-9 w-48 rounded-md" />
-        <Skeleton className="min-h-[240px] w-full flex-1 rounded-md" />
-      </div>
-    </div>
-  ),
-});
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",

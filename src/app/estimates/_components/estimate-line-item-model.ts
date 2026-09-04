@@ -1,5 +1,5 @@
 import type { EstimateItemRow } from "@/lib/data";
-import { estimateLineTotal } from "@/lib/data";
+import { lineTotal as estimateLineTotal } from "@/lib/estimate-domain";
 import { roundEstimateCurrencyValue } from "./estimate-currency";
 import type { LineItemPresetInput } from "./estimate-builder-draft-storage";
 import { DEFAULT_LINE_ITEM_STATUS, type EstimateLineItemStatus } from "./estimate-line-item-status";

@@ -1,4 +1,5 @@
-import { getExpenseTotal, type Expense } from "@/lib/data";
+import { getExpenseTotal } from "@/lib/expense-domain";
+import type { Expense } from "@/lib/expenses-db";
 import { getExpenseReceiptItems } from "@/lib/expense-receipt-items";
 
 export type ExpenseDateGroup = {

@@ -1,6 +1,9 @@
 "use client";
 
-import { syncRouterNonBlocking } from "@/components/perf/sync-router-non-blocking";
+import {
+  refreshRscNonBlocking,
+  syncRouterNonBlocking,
+} from "@/components/perf/sync-router-non-blocking";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { useRouter } from "next/navigation";
 import { useTransition, useState, useCallback, type FormEvent } from "react";
@@ -33,9 +36,12 @@ export function ChangeOrderEditClient({
   const [pending, startTransition] = useTransition();
 
   useOnAppSync(
-    useCallback(() => {
-      syncRouterNonBlocking(router);
-    }, [router]),
+    useCallback(
+      (detail) => {
+        if (!detail.refreshScheduled) refreshRscNonBlocking(router);
+      },
+      [router]
+    ),
     [router]
   );
 

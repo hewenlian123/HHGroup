@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { syncRouterNonBlocking } from "@/components/perf/sync-router-non-blocking";
+import { refreshRscNonBlocking } from "@/components/perf/sync-router-non-blocking";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { runOptimisticPersist } from "@/lib/optimistic-save";
 import { Button } from "@/components/ui/button";
@@ -451,10 +451,13 @@ export function WorkersListClient({
   }, [rows]);
 
   useOnAppSync(
-    React.useCallback(() => {
-      syncRouterNonBlocking(router);
-      void loadWorkerCenterMetrics();
-    }, [router, loadWorkerCenterMetrics]),
+    React.useCallback(
+      (detail) => {
+        if (!detail.refreshScheduled) refreshRscNonBlocking(router);
+        void loadWorkerCenterMetrics();
+      },
+      [router, loadWorkerCenterMetrics]
+    ),
     [router, loadWorkerCenterMetrics]
   );
 

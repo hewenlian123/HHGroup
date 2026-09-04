@@ -166,25 +166,17 @@ export async function getPunchListByProject(
   explicitClient?: SupabaseClient
 ): Promise<PunchListItemWithJoins[]> {
   const c = client(explicitClient);
-  let rows: unknown[] | null = null;
-  let error: { message?: string } | null = null;
-  let extended = false;
-  for (const columns of [COLS, COLS_LEGACY_NOTES, COLS_BASE]) {
-    const result = await c
-      .from("punch_list")
-      .select(columns)
-      .eq("project_id", projectId)
-      .order("created_at", { ascending: false });
-    rows = result.data;
-    error = result.error;
-    if (!error) {
-      extended = columns === COLS;
-      break;
-    }
-    if (!isMissingColumn(error)) break;
-  }
+  const { data: rows, error } = await c
+    .from("punch_list")
+    .select("*")
+    .eq("project_id", projectId)
+    .order("created_at", { ascending: false });
   if (error) throw new Error(error.message ?? "Failed to load punch list.");
-  const items = (rows ?? []).map((r) => toItem(r as Record<string, unknown>, extended));
+  if (!Array.isArray(rows)) throw new Error("Project punch list is unavailable.");
+  const items = rows.map((r) => {
+    const row = r as Record<string, unknown>;
+    return toItem(row, "description" in row || "priority" in row || "photo_id" in row);
+  });
   return await joinItems(c, items);
 }
 

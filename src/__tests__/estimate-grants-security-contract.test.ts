@@ -122,8 +122,11 @@ describe("Estimate least-privilege grants closure", () => {
     expect(snapshotPage).toContain("getEstimateById(id, readClient)");
     expect(snapshotPage).toContain("getEstimateMeta(id, readClient)");
     expect(versionPage).toContain("getEstimateSnapshot(id, v, readClient)");
-    expect(projectPage).toContain("requireSupabaseOwnerOrAdminServerAction()");
-    expect(projectPage).toContain("createServerSupabaseClient({ noStore: true })");
+    expect(projectPage).toContain(
+      "requireSupabaseOwnerOrAdminServerActionClient({ noStore: true })"
+    );
+    expect(projectPage).toContain("const projectSupabase = guard.client");
+    expect(projectPage).not.toContain("createServerSupabaseClient({ noStore: true })");
     expect(projectPage).toContain("getEstimateList(projectSupabase)");
   });
 });

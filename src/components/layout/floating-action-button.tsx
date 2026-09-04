@@ -85,6 +85,7 @@ function QuickActionNavButton({
 
 export function FloatingActionButton() {
   const [open, setOpen] = React.useState(false);
+  const quickActionTriggerRef = React.useRef<HTMLButtonElement | null>(null);
   const router = useRouter();
   const pathname = usePathname();
   const laborAddEntry = useLaborAddEntry();
@@ -115,17 +116,25 @@ export function FloatingActionButton() {
     return null;
   }
 
+  const handleOpenChange = (nextOpen: boolean) => {
+    setOpen(nextOpen);
+    if (!nextOpen) {
+      window.requestAnimationFrame(() => quickActionTriggerRef.current?.focus());
+    }
+  };
+
   return (
     <>
       <div
         className={cn(
           "fixed right-3 z-40 lg:hidden sm:right-4",
           /* Keep the quick action clear of the bottom nav, toast stack, and iOS home indicator. */
-          "bottom-[calc(5.5rem+env(safe-area-inset-bottom_0px))] sm:bottom-[calc(5.25rem+env(safe-area-inset-bottom_0px))]"
+          "bottom-[calc(5.5rem+env(safe-area-inset-bottom,0px))] sm:bottom-[calc(5.25rem+env(safe-area-inset-bottom,0px))]"
         )}
         aria-label="Quick actions"
       >
         <button
+          ref={quickActionTriggerRef}
           type="button"
           onClick={() => {
             setOpen(true);
@@ -140,13 +149,13 @@ export function FloatingActionButton() {
         </button>
       </div>
 
-      <Sheet open={open} onOpenChange={setOpen}>
+      <Sheet open={open} onOpenChange={handleOpenChange}>
         <SheetContent
           side="bottom"
           onOpenAutoFocus={(e) => e.preventDefault()}
           className={cn(
             "rounded-t-xl border-t border-border/60 p-0 max-lg:max-h-[85vh]",
-            "pb-[env(safe-area-inset-bottom_0px)]",
+            "pb-[env(safe-area-inset-bottom,0px)]",
             "[&>button]:max-lg:min-h-[44px] [&>button]:max-lg:min-w-[44px]"
           )}
         >

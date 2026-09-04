@@ -1,5 +1,5 @@
 import { PageHeader, PageLayout } from "@/components/base";
-import { SecurityClient } from "./security-client";
+import { SecurityClientBoundary } from "./security-client-boundary";
 
 export default function SettingsSecurityPage() {
   return (
@@ -13,7 +13,7 @@ export default function SettingsSecurityPage() {
         />
       }
     >
-      <SecurityClient />
+      <SecurityClientBoundary />
     </PageLayout>
   );
 }

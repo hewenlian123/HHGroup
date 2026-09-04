@@ -276,12 +276,29 @@ export async function getProjects(explicitClient?: SupabaseClient): Promise<Proj
 export async function getProjectsDashboard(
   limit = 200,
   explicitClient?: SupabaseClient
-): Promise<Array<Pick<Project, "id" | "name" | "status" | "budget" | "updated">>> {
+): Promise<
+  Array<
+    Pick<
+      Project,
+      | "id"
+      | "name"
+      | "status"
+      | "budget"
+      | "updated"
+      | "sourceEstimateId"
+      | "snapshotRevenue"
+      | "snapshotBudgetCost"
+      | "snapshotBudgetBreakdown"
+    >
+  >
+> {
   const c = client(explicitClient);
   const cap = Math.max(1, Math.min(limit, 1000));
   const { data: rows, error } = await c
     .from("projects")
-    .select("id,name,status,budget,updated_at,created_at")
+    .select(
+      "id,name,status,budget,updated_at,created_at,source_estimate_id,snapshot_revenue,snapshot_budget_cost,snapshot_breakdown"
+    )
     .order("updated_at", { ascending: false })
     .limit(cap);
   if (error) {
@@ -296,6 +313,10 @@ export async function getProjectsDashboard(
       budget: number | null;
       updated_at: string | null;
       created_at: string | null;
+      source_estimate_id: string | null;
+      snapshot_revenue: number | null;
+      snapshot_budget_cost: number | null;
+      snapshot_breakdown: Project["snapshotBudgetBreakdown"];
     };
     const status = (
       row.status === "active" || row.status === "pending" || row.status === "completed"
@@ -308,6 +329,11 @@ export async function getProjectsDashboard(
       status,
       budget: Number(row.budget) || 0,
       updated: row.updated_at ?? row.created_at ?? new Date().toISOString().slice(0, 10),
+      sourceEstimateId: row.source_estimate_id,
+      snapshotRevenue: row.snapshot_revenue == null ? null : Number(row.snapshot_revenue),
+      snapshotBudgetCost:
+        row.snapshot_budget_cost == null ? null : Number(row.snapshot_budget_cost),
+      snapshotBudgetBreakdown: row.snapshot_breakdown,
     };
   });
 }

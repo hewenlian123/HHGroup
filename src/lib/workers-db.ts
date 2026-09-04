@@ -122,32 +122,34 @@ function mapMinRow(r: Record<string, unknown>): WorkerRow {
   return { ...row, trade: null, daily_rate: 0, default_ot_rate: 0 };
 }
 
-/** Fetch all workers, ordered by name. */
+function mapWorkerRow(r: Record<string, unknown>): WorkerRow {
+  const hasDailyRate = Object.prototype.hasOwnProperty.call(r, "daily_rate");
+  const dailyRateSource = hasDailyRate ? r.daily_rate : r.half_day_rate;
+  return {
+    id: (r.id as string) ?? "",
+    name: (r.name as string) ?? "",
+    phone: (r.phone as string | null) ?? null,
+    trade: ((r.trade ?? r.role) as string | null) ?? null,
+    daily_rate: Number(dailyRateSource) || 0,
+    default_ot_rate: Number(r.default_ot_rate) || 0,
+    status: (r.status === "Active" || r.status === "Inactive"
+      ? r.status
+      : r.status === "active"
+        ? "Active"
+        : "Inactive") as WorkerStatus,
+    notes: (r.notes as string | null) ?? null,
+    created_at: (r.created_at as string) ?? "",
+  };
+}
+
+/** Fetch all workers, ordered by name without schema-probe requests. */
 export async function getWorkers(explicitClient?: SupabaseClient): Promise<WorkerRow[]> {
   const c = client(explicitClient);
   const byName = (a: WorkerRow, b: WorkerRow) => a.name.localeCompare(b.name);
-  const { data: rows, error } = await c.from("workers").select(COLS_EXT);
-  if (error) {
-    if (isMissingTable(error)) return [];
-    if (isMissingColumn(error)) {
-      // fall back to old schema
-      const { data: rows2, error: err2 } = await c.from("workers").select(COLS_BASE);
-      if (!err2)
-        return (rows2 ?? []).map((r: Record<string, unknown>) => mapBaseRow(r)).sort(byName);
-      if (isMissingTable(err2)) return [];
-      if (isMissingColumn(err2)) {
-        const { data: rows3, error: err3 } = await c.from("workers").select(COLS_MIN);
-        if (err3) {
-          if (isMissingTable(err3)) return [];
-          throw new Error(err3.message ?? "Failed to load workers.");
-        }
-        return (rows3 ?? []).map((r: Record<string, unknown>) => mapMinRow(r)).sort(byName);
-      }
-      throw new Error(err2.message ?? "Failed to load workers.");
-    }
-    throw new Error(error.message ?? "Failed to load workers.");
-  }
-  return (rows ?? []).map((r: Record<string, unknown>) => mapExtRow(r)).sort(byName);
+  const { data: rows, error } = await c.from("workers").select("*");
+  if (error) throw new Error(error.message ?? "Failed to load workers.");
+  if (!Array.isArray(rows)) throw new Error("Workers are unavailable.");
+  return rows.map((r: Record<string, unknown>) => mapWorkerRow(r)).sort(byName);
 }
 
 /** Fetch one worker by id. Returns null if not found. */

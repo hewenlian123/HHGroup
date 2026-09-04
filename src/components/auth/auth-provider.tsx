@@ -151,7 +151,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setInitialized(true);
       return;
     }
-    void loadAuthState();
     const { data: sub } = supabase.auth.onAuthStateChange(() => {
       void loadAuthState();
     });

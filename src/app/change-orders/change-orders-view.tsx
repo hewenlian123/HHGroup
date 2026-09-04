@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { syncRouterNonBlocking } from "@/components/perf/sync-router-non-blocking";
+import { refreshRscNonBlocking } from "@/components/perf/sync-router-non-blocking";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import Link from "next/link";
 import { ChevronDown, FileStack, Plus } from "lucide-react";
@@ -84,9 +84,12 @@ export function ChangeOrdersView({
   const [newOpen, setNewOpen] = React.useState(false);
 
   useOnAppSync(
-    React.useCallback(() => {
-      syncRouterNonBlocking(router);
-    }, [router]),
+    React.useCallback(
+      (detail) => {
+        if (!detail.refreshScheduled) refreshRscNonBlocking(router);
+      },
+      [router]
+    ),
     [router]
   );
 

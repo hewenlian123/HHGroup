@@ -180,9 +180,12 @@ export function BillsListClient({ bills, summary, projects }: Props) {
   React.useEffect(() => setShowVoidInput(showVoidBills), [showVoidBills]);
 
   useOnAppSync(
-    React.useCallback(() => {
-      refreshRscNonBlocking(router);
-    }, [router]),
+    React.useCallback(
+      (detail) => {
+        if (!detail.refreshScheduled) refreshRscNonBlocking(router);
+      },
+      [router]
+    ),
     [router]
   );
 

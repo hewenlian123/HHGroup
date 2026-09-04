@@ -1,11 +1,12 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { omitE2ESeedWorkerFromBalanceWorkers } from "@/lib/e2e-seed-worker";
+import { financialDataUnavailable } from "@/lib/financial-availability";
 import {
   isLaborUnpaidForWorkerPayroll,
   isWorkerAdvanceOpenForBalance,
   laborEntryPaymentIdMapFromWorkerPayments,
+  normWorkerBalanceName,
   workerOutstandingBalanceFromUnsettledItems,
-  workerIdsForLaborBalanceFinancialQueries,
 } from "@/lib/labor-balance-shared";
 
 export type WorkerBalanceRow = {
@@ -50,32 +51,98 @@ export async function fetchWorkerBalanceRowForDelete(
  * from the unpaid totals and unlinked legacy payments cannot prove which rows they settled.
  * Worker list comes from labor_workers; payments/advances aggregate by worker_id (same ids as labor_workers when synced).
  * Also unions worker_id from labor_entries, worker_reimbursements, worker_payments, worker_advances so orphans still appear.
- * Names are resolved via labor_workers first, then `workers` (full-table name map + targeted lookups).
+ * Names are resolved via labor_workers first, then the batched `workers` name map.
  * In production builds, the fixed E2E seed UUID is omitted from this list (`omitE2ESeedWorkerFromBalanceWorkers`).
  */
 export async function fetchWorkerBalances(c: SupabaseClient): Promise<WorkerBalanceRow[]> {
-  // Canonical source is labor_workers, but some environments still write entries using workers(id).
-  // To avoid missing rows in Worker Balances, include any worker_id that appears in labor_entries.
-  // Also include any worker_id that appears in financial tables (reimbursements/payments/advances),
-  // otherwise balances can show all $0 while money exists for workers not present in labor tables.
-  const [
-    workersRes,
-    entryWorkerIdsRes,
-    reimbWorkerIdsRes,
-    paymentWorkerIdsRes,
-    advanceWorkerIdsRes,
-    workersNameRes,
-  ] = await Promise.all([
-    c.from("labor_workers").select("id, name").order("name"),
-    c.from("labor_entries").select("worker_id"),
-    c.from("worker_reimbursements").select("worker_id"),
-    c.from("worker_payments").select("worker_id"),
-    c.from("worker_advances").select("worker_id"),
-    c.from("workers").select("id, name"),
-  ]);
+  type WorkerRaw = { id: string; name: string | null };
+  type LaborRaw = {
+    id?: string | null;
+    worker_id?: string | null;
+    amount_snapshot?: number | null;
+    labor_cost_snapshot?: number | null;
+    cost_amount?: number | null;
+    status?: string | null;
+    worker_payment_id?: string | null;
+  };
+  type PaymentRaw = {
+    id?: string | null;
+    worker_id?: string | null;
+    total_amount?: number | null;
+    labor_entry_ids?: unknown;
+  };
+  type ReimbursementRaw = {
+    worker_id?: string | null;
+    amount?: number | null;
+    status?: string | null;
+  };
+  type AdvanceRaw = {
+    worker_id?: string | null;
+    amount?: number | null;
+    status?: string | null;
+  };
 
-  const rawLaborWorkers = (workersRes.data ?? []) as { id: string; name: string | null }[];
-  const workersById = new Map<string, { id: string; name: string | null }>();
+  const [workersRes, laborRes, reimbRes, paymentRes, advanceRes, workersNameRes] =
+    await Promise.all([
+      c.from("labor_workers").select("id, name", { count: "exact" }).order("name"),
+      c
+        .from("labor_entries")
+        .select(
+          "id, worker_id, labor_cost_snapshot, amount_snapshot, cost_amount, status, worker_payment_id",
+          { count: "exact" }
+        ),
+      c
+        .from("worker_reimbursements")
+        .select("worker_id, amount, status", { count: "exact" }),
+      c
+        .from("worker_payments")
+        .select("id, worker_id, total_amount, labor_entry_ids", { count: "exact" }),
+      c.from("worker_advances").select("worker_id, amount, status", { count: "exact" }),
+      c.from("workers").select("id, name", { count: "exact" }),
+    ]);
+
+  const rowsOrFail = <T>(
+    source: string,
+    result: { data: T[] | null; error: unknown; count?: number | null }
+  ): T[] => {
+    if (result.error) financialDataUnavailable(source, result.error);
+    if (!Array.isArray(result.data)) financialDataUnavailable(source, null);
+    const rows = result.data;
+    if (typeof result.count === "number" && result.count > rows.length) {
+      financialDataUnavailable(
+        source,
+        new Error(`Protected result was truncated (${rows.length} of ${result.count} rows).`)
+      );
+    }
+    return rows;
+  };
+
+  const rawLaborWorkers = rowsOrFail<WorkerRaw>(
+    "labor_workers (worker balances)",
+    workersRes as { data: WorkerRaw[] | null; error: unknown; count?: number | null }
+  );
+  const laborRows = rowsOrFail<LaborRaw>(
+    "labor_entries (worker balances)",
+    laborRes as { data: LaborRaw[] | null; error: unknown; count?: number | null }
+  );
+  const reimbursementRows = rowsOrFail<ReimbursementRaw>(
+    "worker_reimbursements (worker balances)",
+    reimbRes as { data: ReimbursementRaw[] | null; error: unknown; count?: number | null }
+  );
+  const paymentRows = rowsOrFail<PaymentRaw>(
+    "worker_payments (worker balances)",
+    paymentRes as { data: PaymentRaw[] | null; error: unknown; count?: number | null }
+  );
+  const advanceRows = rowsOrFail<AdvanceRaw>(
+    "worker_advances (worker balances)",
+    advanceRes as { data: AdvanceRaw[] | null; error: unknown; count?: number | null }
+  );
+  const workerNameRows = rowsOrFail<WorkerRaw>(
+    "workers (worker balances)",
+    workersNameRes as { data: WorkerRaw[] | null; error: unknown; count?: number | null }
+  );
+
+  const workersById = new Map<string, WorkerRaw>();
   for (const w of rawLaborWorkers) {
     const id = String(w.id ?? "").trim();
     if (!id) continue;
@@ -83,50 +150,72 @@ export async function fetchWorkerBalances(c: SupabaseClient): Promise<WorkerBala
   }
 
   const workersNameById = new Map<string, string | null>();
-  for (const w of (workersNameRes.data ?? []) as Array<{ id: string; name: string | null }>) {
+  for (const w of workerNameRows) {
     const id = String(w.id ?? "").trim();
     if (!id) continue;
     workersNameById.set(id, w.name ?? null);
   }
 
-  for (const r of (entryWorkerIdsRes.data ?? []) as Array<{ worker_id?: string | null }>) {
-    const id = String(r.worker_id ?? "").trim();
-    if (!id || workersById.has(id)) continue;
-    workersById.set(id, { id, name: workersNameById.get(id) ?? null });
-  }
-
-  for (const src of [reimbWorkerIdsRes, paymentWorkerIdsRes, advanceWorkerIdsRes] as const) {
-    for (const r of (src.data ?? []) as Array<{ worker_id?: string | null }>) {
+  for (const rows of [laborRows, reimbursementRows, paymentRows, advanceRows]) {
+    for (const r of rows) {
       const id = String(r.worker_id ?? "").trim();
       if (!id || workersById.has(id)) continue;
       workersById.set(id, { id, name: workersNameById.get(id) ?? null });
     }
   }
 
-  // `workers` can be large; a full-table select may be paginated by PostgREST.
-  // Backfill any missing names by fetching the specific ids we care about.
-  const missingNameIds = [...workersById.values()]
-    .filter(
-      (w) => w.id && (w.name == null || String(w.name).trim() === "") && !workersNameById.has(w.id)
-    )
-    .map((w) => w.id);
-  if (missingNameIds.length > 0) {
-    const { data: nameRows, error } = await c
-      .from("workers")
-      .select("id, name")
-      .in("id", missingNameIds);
-    if (!error && nameRows) {
-      for (const row of nameRows as Array<{ id: string; name: string | null }>) {
-        const id = String(row.id ?? "").trim();
-        if (!id) continue;
-        workersNameById.set(id, row.name ?? null);
-        const cur = workersById.get(id);
-        if (cur && (!cur.name || String(cur.name).trim() === "")) {
-          workersById.set(id, { id, name: row.name ?? null });
+  const laborWorkersById = new Map(rawLaborWorkers.map((worker) => [worker.id, worker]));
+  const financialWorkerIdsFor = (workerId: string): string[] => {
+    const ids = new Set([workerId]);
+    const rawName = laborWorkersById.get(workerId)?.name ?? workersNameById.get(workerId);
+    const name = String(rawName ?? "").trim();
+    if (!name) return [...ids];
+
+    for (const worker of workerNameRows) {
+      const candidateName = String(worker.name ?? "").trim();
+      if (
+        candidateName === name ||
+        candidateName.toLocaleLowerCase() === name.toLocaleLowerCase()
+      ) {
+        ids.add(String(worker.id));
+      }
+    }
+
+    const hasSiblingId = [...ids].some((id) => id !== workerId);
+    if (!hasSiblingId) {
+      const lowerName = name.toLocaleLowerCase();
+      const normalizedName = normWorkerBalanceName(name);
+      for (const worker of workerNameRows) {
+        const candidateName = String(worker.name ?? "");
+        if (
+          candidateName.toLocaleLowerCase().includes(lowerName) &&
+          normWorkerBalanceName(candidateName) === normalizedName
+        ) {
+          ids.add(String(worker.id));
         }
       }
     }
-  }
+    return [...ids];
+  };
+
+  const groupByWorkerId = <T extends { worker_id?: string | null }>(rows: T[]) => {
+    const grouped = new Map<string, T[]>();
+    for (const row of rows) {
+      const workerId = String(row.worker_id ?? "").trim();
+      if (!workerId) continue;
+      const group = grouped.get(workerId) ?? [];
+      group.push(row);
+      grouped.set(workerId, group);
+    }
+    return grouped;
+  };
+
+  const laborByWorkerId = groupByWorkerId(laborRows);
+  const reimbursementsByWorkerId = groupByWorkerId(reimbursementRows);
+  const paymentsByWorkerId = groupByWorkerId(paymentRows);
+  const advancesByWorkerId = groupByWorkerId(advanceRows);
+  const rowsForWorkerIds = <T>(grouped: Map<string, T[]>, ids: string[]): T[] =>
+    ids.flatMap((id) => grouped.get(id) ?? []);
 
   const workers = omitE2ESeedWorkerFromBalanceWorkers(
     [...workersById.values()].sort((a, b) =>
@@ -134,189 +223,73 @@ export async function fetchWorkerBalances(c: SupabaseClient): Promise<WorkerBala
     )
   );
 
-  // Robust per-worker aggregation (matches detail page behavior and avoids cross-table id drift issues).
-  return Promise.all(
-    workers.map(async (w) => {
-      const workerId = w.id;
-      const workerKey = normalizeWorkerId(workerId);
+  return workers.map((w) => {
+    const workerId = w.id;
+    const workerKey = normalizeWorkerId(workerId);
+    const ids = financialWorkerIdsFor(workerId);
+    const workerLaborRows = laborByWorkerId.get(workerId) ?? [];
+    const payRows = rowsForWorkerIds(paymentsByWorkerId, ids);
+    const paymentIdByLaborEntryId = laborEntryPaymentIdMapFromWorkerPayments(payRows);
+    const effectiveWorkerPaymentIdForLabor = (r: LaborRaw) =>
+      String(r.worker_payment_id ?? "").trim() ||
+      (r.id ? paymentIdByLaborEntryId.get(String(r.id)) : undefined) ||
+      null;
 
-      const ids = await workerIdsForLaborBalanceFinancialQueries(c, workerId).catch(() => [
-        workerId,
-      ]);
-
-      const hasFunction = (v: unknown, key: string): v is Record<string, unknown> => {
-        if (!v || typeof v !== "object") return false;
-        const maybe = (v as Record<string, unknown>)[key];
-        return typeof maybe === "function";
-      };
-      type QueryResult = { data: unknown[] | null; error: { message?: string } | null };
-      const queryByIds = async (table: string, cols: string): Promise<QueryResult> => {
-        const base = c.from(table).select(cols) as unknown;
-        // Test mocks may return a thenable without query helpers (eq/in). Fall back to awaiting the base.
-        if (ids.length <= 1) {
-          if (hasFunction(base, "eq")) {
-            return (await (base as { eq: (col: string, val: string) => unknown }).eq(
-              "worker_id",
-              ids[0] ?? workerId
-            )) as QueryResult;
-          }
-          return (await (base as PromiseLike<unknown>)) as QueryResult;
-        }
-        if (hasFunction(base, "in")) {
-          return (await (base as { in: (col: string, vals: string[]) => unknown }).in(
-            "worker_id",
-            ids
-          )) as QueryResult;
-        }
-        // As a safe fallback, try a single eq (best-effort) or just await.
-        if (hasFunction(base, "eq")) {
-          return (await (base as { eq: (col: string, val: string) => unknown }).eq(
-            "worker_id",
-            workerId
-          )) as QueryResult;
-        }
-        return (await (base as PromiseLike<unknown>)) as QueryResult;
-      };
-
-      function isMissingColumn(err: { message?: string } | null): boolean {
-        return /column .* does not exist|could not find the .* column|schema cache/i.test(
-          err?.message ?? ""
-        );
-      }
-      type LaborRaw = {
-        id?: string | null;
-        worker_id?: string | null;
-        amount_snapshot?: number | null;
-        labor_cost_snapshot?: number | null;
-        cost_amount?: number | null;
-        status?: string | null;
-        worker_payment_id?: string | null;
-      };
-      let laborRows: LaborRaw[] = [];
-      let laborSettlementMode: "payment_link" | "status_fallback" = "payment_link";
-
-      for (const cols of [
-        "id, worker_id, labor_cost_snapshot, amount_snapshot, cost_amount, status, worker_payment_id",
-        "id, worker_id, cost_amount, status, worker_payment_id",
-        "id, worker_id, cost_amount, status",
-        "id, worker_id, cost_amount",
-      ]) {
-        const base = c.from("labor_entries").select(cols) as unknown;
-        const res = (await (hasFunction(base, "eq")
-          ? (base as { eq: (col: string, val: string) => unknown }).eq("worker_id", workerId)
-          : (base as PromiseLike<unknown>))) as {
-          data: unknown[] | null;
-          error: { message?: string } | null;
-        };
-        if (!res.error || !isMissingColumn(res.error)) {
-          laborRows = (res.data ?? []) as LaborRaw[];
-          laborSettlementMode = /\bworker_payment_id\b/.test(cols)
-            ? "payment_link"
-            : "status_fallback";
-          break;
-        }
-      }
-
-      let payRows: Array<{
-        id?: string | null;
-        total_amount?: number | null;
-        amount?: number | null;
-        labor_entry_ids?: unknown;
-      }> = [];
-      let payRes = await queryByIds(
-        "worker_payments",
-        "id, worker_id, total_amount, labor_entry_ids"
-      );
-      if (payRes.error && isMissingColumn(payRes.error)) {
-        payRes = await queryByIds("worker_payments", "id, worker_id, total_amount");
-      }
-      if (!payRes.error) {
-        payRows = (payRes.data ?? []) as typeof payRows;
-      } else {
-        let payFb = await queryByIds("worker_payments", "id, worker_id, amount, labor_entry_ids");
-        if (payFb.error && isMissingColumn(payFb.error)) {
-          payFb = await queryByIds("worker_payments", "id, worker_id, amount");
-        }
-        payRows = (payFb.data ?? []) as typeof payRows;
-      }
-      const paymentIdByLaborEntryId = laborEntryPaymentIdMapFromWorkerPayments(payRows);
-      const effectiveWorkerPaymentIdForLabor = (r: LaborRaw) =>
-        String(r.worker_payment_id ?? "").trim() ||
-        (r.id ? paymentIdByLaborEntryId.get(String(r.id)) : undefined) ||
-        null;
-
-      const laborOwed = laborRows.reduce((s, r) => {
-        if (
-          !isLaborUnpaidForWorkerPayroll(
-            r.status,
-            effectiveWorkerPaymentIdForLabor(r),
-            laborSettlementMode
-          )
+    const laborOwed = workerLaborRows.reduce((s, r) => {
+      if (
+        !isLaborUnpaidForWorkerPayroll(
+          r.status,
+          effectiveWorkerPaymentIdForLabor(r),
+          "payment_link"
         )
-          return s;
-        return s + (Number(r.labor_cost_snapshot ?? r.amount_snapshot ?? r.cost_amount) || 0);
-      }, 0);
+      )
+        return s;
+      return s + (Number(r.labor_cost_snapshot ?? r.amount_snapshot ?? r.cost_amount) || 0);
+    }, 0);
 
-      const reimbRes = await queryByIds("worker_reimbursements", "worker_id, amount, status");
-      if (reimbRes.error && !isMissingColumn(reimbRes.error)) {
-        throw new Error(
-          `worker_reimbursements query failed for worker ${workerId}: ${reimbRes.error.message ?? "unknown error"}`
-        );
-      }
-      const reimbRows = (reimbRes.data ?? []) as Array<{
-        worker_id?: string | null;
-        amount?: number | null;
-        status?: string | null;
-      }>;
-      const reimbursements = reimbRows.reduce((s, r) => {
-        if (
-          String(r.status ?? "")
-            .trim()
-            .toLowerCase() === "paid"
-        )
-          return s;
-        return s + (Number(r.amount) || 0);
-      }, 0);
+    const reimbRows = rowsForWorkerIds(reimbursementsByWorkerId, ids);
+    const reimbursements = reimbRows.reduce((s, r) => {
+      if (
+        String(r.status ?? "")
+          .trim()
+          .toLowerCase() === "paid"
+      )
+        return s;
+      return s + (Number(r.amount) || 0);
+    }, 0);
 
-      const payments = payRows.reduce((s, r) => s + (Number(r.total_amount ?? r.amount) || 0), 0);
+    const payments = payRows.reduce((s, r) => s + (Number(r.total_amount) || 0), 0);
 
-      // Advances: always use the same Supabase path as detail page to avoid env DB URL drift.
-      const advRes = await queryByIds("worker_advances", "worker_id, amount, status");
-      const advRows = (advRes.data ?? []) as Array<{
-        worker_id?: string | null;
-        amount?: number | null;
-        status?: string | null;
-      }>;
-      const advances = advRows.reduce((s, r) => {
-        if (!isWorkerAdvanceOpenForBalance(r.status)) return s;
-        return s + (Number(r.amount) || 0);
-      }, 0);
+    const advRows = rowsForWorkerIds(advancesByWorkerId, ids);
+    const advances = advRows.reduce((s, r) => {
+      if (!isWorkerAdvanceOpenForBalance(r.status)) return s;
+      return s + (Number(r.amount) || 0);
+    }, 0);
 
-      const balance = workerOutstandingBalanceFromUnsettledItems({
-        laborOwed,
-        reimbursements,
-        advances,
-      });
-      const payRowsCount = payRows.length;
-      const deletable =
-        Math.abs(balance) < BAL_EPS &&
-        laborRows.length === 0 &&
-        payRowsCount === 0 &&
-        Math.abs(laborOwed) < BAL_EPS &&
-        Math.abs(reimbursements) < BAL_EPS &&
-        Math.abs(payments) < BAL_EPS &&
-        Math.abs(advances) < BAL_EPS;
+    const balance = workerOutstandingBalanceFromUnsettledItems({
+      laborOwed,
+      reimbursements,
+      advances,
+    });
+    const payRowsCount = payRows.length;
+    const deletable =
+      Math.abs(balance) < BAL_EPS &&
+      workerLaborRows.length === 0 &&
+      payRowsCount === 0 &&
+      Math.abs(laborOwed) < BAL_EPS &&
+      Math.abs(reimbursements) < BAL_EPS &&
+      Math.abs(payments) < BAL_EPS &&
+      Math.abs(advances) < BAL_EPS;
 
-      return {
-        workerId: workerKey,
-        workerName: (w.name ?? "").trim() || "—",
-        laborOwed,
-        reimbursements,
-        payments,
-        advances,
-        balance,
-        deletable,
-      };
-    })
-  );
+    return {
+      workerId: workerKey,
+      workerName: (w.name ?? "").trim() || "—",
+      laborOwed,
+      reimbursements,
+      payments,
+      advances,
+      balance,
+      deletable,
+    };
+  });
 }

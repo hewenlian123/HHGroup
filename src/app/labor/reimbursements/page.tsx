@@ -191,6 +191,32 @@ function ReimbursementStatusChip({ status }: { status: WorkerReimbursementStatus
 }
 
 export default function WorkerReimbursementsPage() {
+  return (
+    <React.Suspense fallback={<WorkerReimbursementsPageFallback />}>
+      <WorkerReimbursementsPageContent />
+    </React.Suspense>
+  );
+}
+
+function WorkerReimbursementsPageFallback() {
+  return (
+    <div
+      data-reimbursements-workspace
+      aria-busy="true"
+      className={cn(
+        "expenses-ui reimbursements-ui page-shell-wide mx-auto flex min-h-[calc(100dvh-1rem)] w-full !max-w-none flex-col gap-1 bg-[var(--hh-l0-canvas)] px-4 py-1 pb-2.5 text-[color:var(--hh-text-secondary)] md:gap-2 md:px-6 md:pb-3 md:pt-0.5",
+        mobileListPagePaddingClass,
+        "max-md:!gap-1"
+      )}
+    >
+      <div className="flex min-h-[260px] items-center justify-center text-sm text-[color:var(--hh-text-tertiary)]">
+        Loading reimbursements…
+      </div>
+    </div>
+  );
+}
+
+function WorkerReimbursementsPageContent() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();

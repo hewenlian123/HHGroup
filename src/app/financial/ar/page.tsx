@@ -12,19 +12,15 @@ import {
   type StatusBadgeVariant,
 } from "@/components/base";
 import { MobileFabPlus, MobileListHeader } from "@/components/mobile/mobile-list-chrome";
-import {
-  getARSummary,
-  getOutstandingInvoices,
-  getProjects,
-  type InvoiceComputedStatus,
-} from "@/lib/data";
-import { requireSupabaseOwnerOrAdminServerAction } from "@/lib/auth-boundary";
-import { createServerSupabaseClient } from "@/lib/supabase-server";
+import { type InvoiceComputedStatus } from "@/lib/data";
+import { requireSupabaseOwnerOrAdminServerActionClient } from "@/lib/auth-boundary";
+import { loadARPageReadModel } from "@/lib/financial/invoice-read-model";
 import { CreditCard, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/formatters";
 import { OS, TYPO } from "@/lib/typography";
 import { formatLedgerDate, LEDGER_DATE_CLASS } from "@/lib/ledger-date";
+import { emitRscTiming } from "@/lib/performance/server-timing";
 
 function getAgingBucket(dueDate: string): string {
   const today = new Date().toISOString().slice(0, 10);
@@ -54,15 +50,14 @@ export default async function ARPage({
 }: {
   searchParams: Promise<{ invoice?: string }>;
 }) {
-  const guard = await requireSupabaseOwnerOrAdminServerAction();
+  const pageStartedAt = performance.now();
+  const authStartedAt = performance.now();
+  const guard = await requireSupabaseOwnerOrAdminServerActionClient({ noStore: true });
+  const authDuration = performance.now() - authStartedAt;
   if (!guard.ok) notFound();
-  const supabase = await createServerSupabaseClient({ noStore: true });
-  if (!supabase) notFound();
-  const [summary, outstanding, projects] = await Promise.all([
-    getARSummary(supabase),
-    getOutstandingInvoices(supabase),
-    getProjects(supabase),
-  ]);
+  const serverDataStartedAt = performance.now();
+  const { summary, outstanding, projects } = await loadARPageReadModel(guard.client);
+  const serverDataCompletedAt = performance.now();
   const projectNameById = new Map(projects.map((p) => [p.id, p.name]));
 
   const byBucket: Record<string, typeof outstanding> = {};
@@ -77,6 +72,14 @@ export default async function ARPage({
   const requestedInvoiceId = (await searchParams).invoice;
   const selectedInvoice =
     outstanding.find((invoice) => invoice.id === requestedInvoiceId) ?? outstanding[0] ?? null;
+
+  const rscPreparedAt = performance.now();
+  emitRscTiming("financial/ar", {
+    authMs: authDuration,
+    serverDataMs: serverDataCompletedAt - serverDataStartedAt,
+    rscPrepareMs: rscPreparedAt - serverDataCompletedAt,
+    totalMs: rscPreparedAt - pageStartedAt,
+  });
 
   return (
     <div

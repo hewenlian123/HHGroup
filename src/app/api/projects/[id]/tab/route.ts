@@ -116,14 +116,14 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     }
 
     if (key === "documents") {
-      const documents = await getDocumentsByProject(id);
+      const documents = await getDocumentsByProject(id, supabase);
       return NextResponse.json({ ok: true as const, key, documents });
     }
 
     if (key === "activity") {
       const [transactions, activityLogs] = await Promise.all([
         Promise.resolve(getProjectTransactions(id)),
-        getActivityLogsByProject(id, 100),
+        getActivityLogsByProject(id, 100, supabase),
       ]);
       return NextResponse.json({ ok: true as const, key, transactions, activityLogs });
     }
@@ -160,17 +160,17 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
 
     if (key === "materials") {
       const [selections, catalog] = await Promise.all([
-        getSelectionsByProject(id),
-        getMaterialCatalog(),
+        getSelectionsByProject(id, supabase),
+        getMaterialCatalog(supabase),
       ]);
       return NextResponse.json({ ok: true as const, key, selections, catalog });
     }
 
     if (key === "closeout") {
       const [punch, warranty, completion] = await Promise.all([
-        getCloseoutPunch(id).catch(() => null),
-        getCloseoutWarranty(id).catch(() => null),
-        getCloseoutCompletion(id).catch(() => null),
+        getCloseoutPunch(id, supabase),
+        getCloseoutWarranty(id, supabase),
+        getCloseoutCompletion(id, supabase),
       ]);
       return NextResponse.json({ ok: true as const, key, punch, warranty, completion });
     }

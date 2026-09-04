@@ -258,10 +258,10 @@ export async function deleteSubcontractBillDraft(billId: string): Promise<void> 
 }
 
 /** Fetch all bills for summary: subcontract_id, amount, status. */
-export async function getBillsSummaryAll(): Promise<
+export async function getBillsSummaryAll(explicitClient?: SupabaseClient): Promise<
   { subcontract_id: string; amount: number; status: string }[]
 > {
-  const c = client();
+  const c = client(explicitClient);
   const { data: rows, error } = await c
     .from("subcontract_bills")
     .select("subcontract_id, amount, status");

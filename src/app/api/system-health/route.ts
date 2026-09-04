@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
 import { getServerSupabaseInternal } from "@/lib/supabase-server";
+import { runSchemaCheck } from "@/lib/schema-check";
 import { safeErrorMessage } from "@/lib/system-response-safety";
 
 export const dynamic = "force-dynamic";
@@ -424,21 +425,9 @@ function collectSchemaDriftWarnings(checks: SystemHealthCheck[]): string[] {
   return Array.from(new Set(warnings));
 }
 
-async function fetchSchemaCheck(request: Request): Promise<string[] | undefined> {
+async function fetchSchemaCheck(): Promise<string[] | undefined> {
   try {
-    const origin = new URL(request.url).origin;
-    const headers = new Headers();
-    const cookie = request.headers.get("cookie");
-    if (cookie) headers.set("cookie", cookie);
-    const lock = request.headers.get("x-hh-production-safety-lock");
-    if (lock) headers.set("x-hh-production-safety-lock", lock);
-    const bypass = request.headers.get("x-hh-test-auth-bypass");
-    if (bypass) headers.set("x-hh-test-auth-bypass", bypass);
-    const schemaRes = await fetch(`${origin}/api/schema-check`, { cache: "no-store", headers });
-    const schemaData = (await schemaRes.json().catch(() => ({}))) as {
-      status?: string;
-      missing?: string[];
-    };
+    const { body: schemaData } = await runSchemaCheck();
     if (
       schemaData.status === "error" &&
       Array.isArray(schemaData.missing) &&
@@ -492,7 +481,7 @@ export async function GET(request: Request) {
     ["AP bills", "AP bill payments"].includes(check.name)
   );
   const projectFinancialSnapshot = summarizeProjectFinancialSnapshot(requiredTables);
-  const schemaMissing = await fetchSchemaCheck(request);
+  const schemaMissing = await fetchSchemaCheck();
 
   const checks = [
     appCheck,

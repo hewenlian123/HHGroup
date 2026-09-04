@@ -84,10 +84,13 @@ export function ProjectFinancialSnapshotComparisonPanel({ projectId }: { project
     async function loadComparison() {
       setState({ status: "loading" });
       try {
-        const response = await fetch(`/api/projects/${projectId}/financial-snapshot`, {
+        const response = await fetch(
+          `/api/projects/${projectId}/financial-snapshot?debugFinancial=1`,
+          {
           cache: "no-store",
           signal: controller.signal,
-        });
+          }
+        );
         const body = (await response.json().catch(() => null)) as SnapshotComparisonResponse | null;
         if (!response.ok || !body?.ok) {
           throw new Error("Financial snapshot comparison unavailable.");

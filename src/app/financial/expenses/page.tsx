@@ -1,11 +1,48 @@
-"use client";
-
 import "./expenses-ui-theme.css";
 import * as React from "react";
+import { notFound } from "next/navigation";
 import { ExpensesListSkeleton } from "@/components/financial/expenses-list-skeleton";
+import { ServerDataLoadFallback } from "@/components/server-data-load-fallback";
+import { requireSupabaseOwnerOrAdminServerActionClient } from "@/lib/auth-boundary";
+import { loadExpensesInitialData } from "@/lib/financial/expenses-initial-read";
+import { emitRscTiming } from "@/lib/performance/server-timing";
+import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
 import { ExpensesPageClient } from "./expenses-client";
 
-export default function ExpensesPage() {
+export const dynamic = "force-dynamic";
+
+export default async function ExpensesPage() {
+  const pageStartedAt = performance.now();
+  const authStartedAt = performance.now();
+  const guard = await requireSupabaseOwnerOrAdminServerActionClient({ noStore: true });
+  const authDuration = performance.now() - authStartedAt;
+  if (!guard.ok) notFound();
+
+  const serverDataStartedAt = performance.now();
+  const initial = await loadExpensesInitialData(guard.client)
+    .then((data) => ({ data }))
+    .catch((error: unknown) => ({ error }));
+
+  if ("error" in initial) {
+    logServerPageDataError("financial/expenses", initial.error);
+    return (
+      <ServerDataLoadFallback
+        message={serverDataLoadWarning(initial.error, "expenses")}
+        backHref="/financial"
+        backLabel="Back to financial"
+      />
+    );
+  }
+
+  const serverDataCompletedAt = performance.now();
+  const rscPreparedAt = performance.now();
+  emitRscTiming("financial/expenses", {
+    authMs: authDuration,
+    serverDataMs: serverDataCompletedAt - serverDataStartedAt,
+    rscPrepareMs: rscPreparedAt - serverDataCompletedAt,
+    totalMs: rscPreparedAt - pageStartedAt,
+  });
+
   return (
     <React.Suspense
       fallback={
@@ -16,7 +53,7 @@ export default function ExpensesPage() {
         </div>
       }
     >
-      <ExpensesPageClient pool="expenses" />
+      <ExpensesPageClient pool="expenses" initialData={initial.data} />
     </React.Suspense>
   );
 }

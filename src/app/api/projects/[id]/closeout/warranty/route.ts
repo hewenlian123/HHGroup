@@ -1,19 +1,55 @@
 import { NextResponse } from "next/server";
 import { upsertCloseoutWarranty } from "@/lib/data";
+import { requireSupabaseOwnerOrAdminRequestClient } from "@/lib/auth-boundary";
+import {
+  getServerSupabaseAdmin,
+  SUPABASE_MISSING_SERVER_ADMIN_ENV_MESSAGE,
+} from "@/lib/supabase-server";
+import { parseCloseoutWarrantyInput } from "@/lib/project-closeout-validation";
+
+function withSessionCookies(response: NextResponse, sessionResponse: NextResponse): NextResponse {
+  for (const cookie of sessionResponse.cookies.getAll()) response.cookies.set(cookie);
+  return response;
+}
 
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
+  const guard = await requireSupabaseOwnerOrAdminRequestClient(req, { noStore: true });
+  if (!guard.ok) return guard.response;
   const { id } = await ctx.params;
-  if (!id) return NextResponse.json({ ok: false, message: "Missing project id" }, { status: 400 });
+  if (!id)
+    return withSessionCookies(
+      NextResponse.json({ ok: false, message: "Missing project id" }, { status: 400 }),
+      guard.sessionResponse
+    );
+  const admin = getServerSupabaseAdmin();
+  if (!admin)
+    return withSessionCookies(
+      NextResponse.json(
+        { ok: false, message: SUPABASE_MISSING_SERVER_ADMIN_ENV_MESSAGE },
+        { status: 503 }
+      ),
+      guard.sessionResponse
+    );
+  let input: ReturnType<typeof parseCloseoutWarrantyInput>;
   try {
-    const body = await req.json();
-    await upsertCloseoutWarranty(id, {
-      start_date: body.start_date ?? null,
-      period_months: body.period_months ?? 12,
-      notes: body.notes ?? null,
-    });
-    return NextResponse.json({ ok: true });
+    input = parseCloseoutWarrantyInput(await req.json());
+  } catch {
+    input = { ok: false, message: "Invalid closeout input." };
+  }
+  if (!input.ok) {
+    return withSessionCookies(
+      NextResponse.json({ ok: false, message: input.message }, { status: 400 }),
+      guard.sessionResponse
+    );
+  }
+  try {
+    await upsertCloseoutWarranty(id, input.value, admin);
+    return withSessionCookies(NextResponse.json({ ok: true }), guard.sessionResponse);
   } catch (e) {
     const message = e instanceof Error ? e.message : "Failed to save";
-    return NextResponse.json({ ok: false, message }, { status: 500 });
+    return withSessionCookies(
+      NextResponse.json({ ok: false, message }, { status: 500 }),
+      guard.sessionResponse
+    );
   }
 }

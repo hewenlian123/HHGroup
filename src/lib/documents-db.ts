@@ -214,21 +214,21 @@ export async function getDocumentsPaged(
 }
 
 /** Get documents for a single project. */
-export async function getDocumentsByProject(projectId: string): Promise<DocumentRow[]> {
-  try {
-    const c = client();
-    const { data: rows, error } = await c
-      .from("documents")
-      .select(
-        "id, file_name, file_path, file_type, mime_type, size_bytes, project_id, related_module, related_id, uploaded_by, uploaded_at, notes"
-      )
-      .eq("project_id", projectId)
-      .order("uploaded_at", { ascending: false });
-    if (error) return [];
-    return (rows ?? []).map((r: Record<string, unknown>) => mapRow(r));
-  } catch {
-    return [];
-  }
+export async function getDocumentsByProject(
+  projectId: string,
+  explicitClient?: SupabaseClient
+): Promise<DocumentRow[]> {
+  const c = client(explicitClient);
+  const { data: rows, error } = await c
+    .from("documents")
+    .select(
+      "id, file_name, file_path, file_type, mime_type, size_bytes, project_id, related_module, related_id, uploaded_by, uploaded_at, notes"
+    )
+    .eq("project_id", projectId)
+    .order("uploaded_at", { ascending: false });
+  if (error) throw new Error(error.message ?? "Failed to load project documents.");
+  if (!Array.isArray(rows)) throw new Error("Project documents are unavailable.");
+  return rows.map((r: Record<string, unknown>) => mapRow(r));
 }
 
 /** Get one document by id. */

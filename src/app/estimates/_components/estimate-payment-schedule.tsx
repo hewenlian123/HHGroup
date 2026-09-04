@@ -24,7 +24,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import type { PaymentScheduleItem, PaymentScheduleTemplate } from "@/lib/data";
-import { paymentMilestoneAmount } from "@/lib/data";
+import { paymentMilestoneAmount } from "@/lib/estimate-domain";
 import { ArrowDown, ArrowUp, CheckCircle2, Pencil, Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatEstimateCurrency } from "./estimate-currency";

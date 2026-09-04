@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
-import { syncRouterNonBlocking } from "@/components/perf/sync-router-non-blocking";
+import { refreshRscNonBlocking } from "@/components/perf/sync-router-non-blocking";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -248,10 +248,13 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
   }, [load]);
 
   useOnAppSync(
-    React.useCallback(() => {
-      syncRouterNonBlocking(router);
-      void load();
-    }, [router, load]),
+    React.useCallback(
+      (detail) => {
+        if (!detail.refreshScheduled) refreshRscNonBlocking(router);
+        void load();
+      },
+      [router, load]
+    ),
     [router, load]
   );
 

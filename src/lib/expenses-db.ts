@@ -5,6 +5,12 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseClient } from "@/lib/supabase";
+import {
+  defaultExpenseListSort,
+  getExpenseTotal as sumExpenseLines,
+  isDefaultExpenseListSort,
+  type ExpenseListSort,
+} from "@/lib/expense-domain";
 import { financialDataUnavailable } from "@/lib/financial-availability";
 import { dedupeExpenseAttachmentsByStorageKey } from "@/lib/expense-attachment-dedupe";
 import { expenseHasReceiptSignal } from "@/lib/expense-receipt-items";
@@ -78,14 +84,13 @@ export type Expense = {
 };
 
 /** List sort for `/financial/expenses` (Supabase + stable in-memory pass). */
-export type ExpenseSortField = "date" | "amount" | "vendor";
-export type ExpenseSortOrder = "asc" | "desc";
-export type ExpenseListSort = { field: ExpenseSortField; order: ExpenseSortOrder };
-
-export const defaultExpenseListSort: ExpenseListSort = {
-  field: "date",
-  order: "desc",
-};
+export {
+  defaultExpenseListSort,
+  isDefaultExpenseListSort,
+  type ExpenseListSort,
+  type ExpenseSortField,
+  type ExpenseSortOrder,
+} from "@/lib/expense-domain";
 
 export type ExpenseListFetchOptions = {
   includeLinkedBankTx?: boolean;
@@ -101,10 +106,6 @@ export type ExpenseHeaderAmountLineOverride = {
   lineId?: string | null;
   amount?: number | string | null;
 };
-
-export function isDefaultExpenseListSort(sort: ExpenseListSort): boolean {
-  return sort.field === "date" && sort.order === "desc";
-}
 
 type ExpenseRow = {
   id: string;
@@ -561,7 +562,7 @@ export function expenseStatusShouldSyncHeaderFromLines(status: string | null | u
   return isConfirmedExpenseStatus(status);
 }
 
-async function fetchPaymentAccountNameMap(
+export async function fetchPaymentAccountNameMap(
   ids: (string | null | undefined)[],
   explicitClient?: SupabaseClient
 ): Promise<Map<string, string>> {
@@ -578,18 +579,15 @@ async function fetchPaymentAccountNameMap(
   }
   const missing = unique.filter((id) => !m.has(id));
   if (missing.length === 0) return m;
-  await Promise.all(
-    missing.map(async (id) => {
-      const { data: row, error: rowErr } = await c
-        .from("payment_accounts")
-        .select("name")
-        .eq("id", id)
-        .maybeSingle();
-      if (rowErr || !row) return;
-      const name = (row as { name?: string }).name;
-      if (typeof name === "string" && name.length > 0) m.set(id, name);
-    })
-  );
+  const { data: retryRows, error: retryError } = await c
+    .from("payment_accounts")
+    .select("id,name")
+    .in("id", missing);
+  if (!retryError && retryRows) {
+    for (const row of retryRows as { id: string; name: string }[]) {
+      if (typeof row.name === "string" && row.name.length > 0) m.set(row.id, row.name);
+    }
+  }
   return m;
 }
 
@@ -2114,7 +2112,7 @@ export async function deleteExpenseAttachment(
 }
 
 export function getExpenseTotal(expense: Expense): number {
-  return expense.lines.reduce((sum, l) => sum + l.amount, 0);
+  return sumExpenseLines(expense);
 }
 
 /** Single batched load for project detail cost dashboard + alerts + expense tab lists. */
@@ -2647,16 +2645,19 @@ export type ExpenseRecentRow = {
 };
 
 /** Recent expenses for dashboard activity feed. Ordered by created_at desc, limit. Resolves first line's project for project_name. */
-export async function getExpensesRecent(limit: number): Promise<ExpenseRecentRow[]> {
-  const c = client();
+export async function getExpensesRecent(
+  limit: number,
+  explicitClient?: SupabaseClient
+): Promise<ExpenseRecentRow[]> {
+  const c = client(explicitClient);
   const cols = "id,expense_date,vendor,vendor_name,notes,total,created_at";
   const colsLegacy = "id,expense_date,vendor,notes,total,created_at";
   const colsNoTotal = "id,expense_date,vendor,vendor_name,notes,created_at";
   const colsNoTotalLegacy = "id,expense_date,vendor,notes,created_at";
   const safeLimit = Math.max(1, Math.min(limit, 100));
 
-  let rows: Array<Record<string, unknown>> = [];
-  let error: { message?: string } | null = null;
+  let rows: Array<Record<string, unknown>> | null = null;
+  let error: { code?: string; message?: string } | null = null;
   let needTotalFromLines = false;
 
   const primary = await c
@@ -2703,20 +2704,20 @@ export async function getExpensesRecent(limit: number): Promise<ExpenseRecentRow
   } else {
     error = primary.error;
   }
-  if (error) {
-    if (isMissingTable(error)) return [];
-    return [];
-  }
-  const list = rows ?? [];
+  if (error) financialDataUnavailable("recent expenses", error);
+  if (!Array.isArray(rows)) financialDataUnavailable("recent expenses", null);
+  const list = rows;
   if (list.length === 0) return [];
   const ids = list.map((r) => r.id as string);
   const totalByExpenseId = new Map<string, number>();
-  const { data: lineRows } = await c
+  const { data: lineRows, error: lineError } = await c
     .from("expense_lines")
     .select(needTotalFromLines ? "expense_id, project_id, amount" : "expense_id, project_id")
     .in("expense_id", ids);
+  if (lineError) financialDataUnavailable("recent expense lines", lineError);
+  if (!Array.isArray(lineRows)) financialDataUnavailable("recent expense lines", null);
   const firstProjectByExpenseId = new Map<string, string>();
-  for (const l of (lineRows ?? []) as unknown as Array<{
+  for (const l of lineRows as unknown as Array<{
     expense_id: string;
     project_id: string | null;
     amount?: number;
@@ -2731,12 +2732,14 @@ export async function getExpensesRecent(limit: number): Promise<ExpenseRecentRow
   const projectIds = Array.from(firstProjectByExpenseId.values());
   let projectNameById = new Map<string, string>();
   if (projectIds.length > 0) {
-    const { data: projRows } = await c.from("projects").select("id, name").in("id", projectIds);
+    const { data: projRows, error: projectError } = await c
+      .from("projects")
+      .select("id, name")
+      .in("id", projectIds);
+    if (projectError) financialDataUnavailable("recent expense projects", projectError);
+    if (!Array.isArray(projRows)) financialDataUnavailable("recent expense projects", null);
     projectNameById = new Map(
-      ((projRows ?? []) as Array<{ id: string; name: string | null }>).map((p) => [
-        p.id,
-        p.name ?? "",
-      ])
+      (projRows as Array<{ id: string; name: string | null }>).map((p) => [p.id, p.name ?? ""])
     );
   }
   return list.map((r) => {

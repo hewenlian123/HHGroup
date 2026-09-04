@@ -14,6 +14,7 @@ import {
 } from "@/lib/labor-overtime-notes";
 import { buildLaborEntryRateSnapshotWithClient } from "@/lib/worker-rate-history-db";
 import { isHiddenLaborEntryStatus } from "@/lib/labor-entry-status";
+import { financialDataUnavailable } from "@/lib/financial-availability";
 
 export type LaborEntryStatus = "Draft" | "Submitted" | "Approved" | "Locked";
 
@@ -1180,8 +1181,11 @@ export type LaborEntryRecentRow = {
 };
 
 /** Recent labor entries for dashboard activity feed. Ordered by created_at desc (fallback work_date), limit. */
-export async function getLaborEntriesRecent(limit: number): Promise<LaborEntryRecentRow[]> {
-  const c = client();
+export async function getLaborEntriesRecent(
+  limit: number,
+  explicitClient?: SupabaseClient
+): Promise<LaborEntryRecentRow[]> {
+  const c = client(explicitClient);
   const limitNum = Math.max(1, Math.min(limit, 100));
   let rows: Array<Record<string, unknown>> | null = null;
   const selWithCreated =
@@ -1191,7 +1195,8 @@ export async function getLaborEntriesRecent(limit: number): Promise<LaborEntryRe
     .select(selWithCreated)
     .order("created_at", { ascending: false })
     .limit(limitNum);
-  if (!errCreated && dataWithCreated?.length) {
+  if (!errCreated) {
+    if (!Array.isArray(dataWithCreated)) financialDataUnavailable("recent labor entries", null);
     rows = dataWithCreated as Array<Record<string, unknown>>;
   }
   if (
@@ -1199,12 +1204,14 @@ export async function getLaborEntriesRecent(limit: number): Promise<LaborEntryRe
     (isMissingColumn(errCreated) ||
       (errCreated?.message ?? "").includes("more than one relationship"))
   ) {
-    const { data: dataFallback } = await c
+    const { data: dataFallback, error: fallbackError } = await c
       .from("labor_entries")
       .select("id, project_id, work_date, cost_amount, notes")
       .order("work_date", { ascending: false })
       .limit(limitNum);
-    rows = (dataFallback ?? []) as Array<Record<string, unknown>>;
+    if (fallbackError) financialDataUnavailable("recent labor entries", fallbackError);
+    if (!Array.isArray(dataFallback)) financialDataUnavailable("recent labor entries", null);
+    rows = dataFallback as Array<Record<string, unknown>>;
     for (const r of rows) {
       r.created_at = (r as { work_date?: string }).work_date ?? new Date().toISOString();
     }
@@ -1212,11 +1219,15 @@ export async function getLaborEntriesRecent(limit: number): Promise<LaborEntryRe
       const projectIds = Array.from(
         new Set(rows.map((r) => (r as { project_id?: string }).project_id).filter(Boolean))
       ) as string[];
-      const { data: projRows } = projectIds.length
+      const projectResult = projectIds.length
         ? await c.from("projects").select("id, name").in("id", projectIds)
-        : { data: [] };
+        : { data: [], error: null };
+      if (projectResult.error)
+        financialDataUnavailable("recent labor projects", projectResult.error);
+      if (!Array.isArray(projectResult.data))
+        financialDataUnavailable("recent labor projects", null);
       const projectNameById = new Map(
-        ((projRows ?? []) as Array<{ id: string; name: string | null }>).map((p) => [
+        (projectResult.data as Array<{ id: string; name: string | null }>).map((p) => [
           p.id,
           p.name ?? null,
         ])
@@ -1228,8 +1239,8 @@ export async function getLaborEntriesRecent(limit: number): Promise<LaborEntryRe
           : null;
       }
     }
-  } else if (!rows?.length && dataWithCreated !== undefined) {
-    rows = (dataWithCreated ?? []) as Array<Record<string, unknown>>;
+  } else if (errCreated) {
+    financialDataUnavailable("recent labor entries", errCreated);
   }
   if (!rows?.length) return [];
   return rows.map((r) => {

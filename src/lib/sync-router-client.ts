@@ -10,7 +10,7 @@
  */
 export const HH_APP_SYNC_EVENT = "hh:app-sync";
 
-export type AppSyncDetail = { reason?: string; at: number };
+export type AppSyncDetail = { reason?: string; at: number; refreshScheduled?: boolean };
 
 /**
  * Dispatched after an optimistic project edit on the detail page.
@@ -32,7 +32,7 @@ export async function syncRouterAndClients(
   router: MinimalAppRouter,
   reason?: string
 ): Promise<void> {
-  dispatchClientDataSync({ reason });
+  dispatchClientDataSync({ reason, refreshScheduled: true });
   await Promise.resolve(router.refresh());
 }
 
@@ -46,7 +46,7 @@ export function syncClientsThenRefreshInBackground(
   reason?: string,
   delayMs = 120
 ): void {
-  dispatchClientDataSync({ reason });
+  dispatchClientDataSync({ reason, refreshScheduled: true });
   setTimeout(
     () => {
       void Promise.resolve(router.refresh());

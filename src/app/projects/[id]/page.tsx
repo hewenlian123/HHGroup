@@ -1,8 +1,7 @@
 import { notFound } from "next/navigation";
-import { requireSupabaseOwnerOrAdminServerAction } from "@/lib/auth-boundary";
+import { requireSupabaseOwnerOrAdminServerActionClient } from "@/lib/auth-boundary";
 import {
   getProjectById,
-  getProjectBillingSummary,
   getProjectTasks,
   getWorkers,
   getDocumentsByProject,
@@ -18,19 +17,16 @@ import {
   getCloseoutWarranty,
   getCloseoutCompletion,
   getProjectSchedule,
-  getInvoicesWithDerived,
   getEstimateList,
 } from "@/lib/data";
 import { getApBillsByProject } from "@/lib/ap-bills-db";
 import { getLaborEntriesWithJoins } from "@/lib/daily-labor-db";
 import { getCanonicalProjectProfit } from "@/lib/profit-engine";
 import { getProjectCostDashboard } from "@/lib/project-cost-dashboard";
-import {
-  createServerSupabaseClient,
-  getServerSupabaseInternalNoStore,
-} from "@/lib/supabase-server";
 import { ServerDataLoadFallback } from "@/components/server-data-load-fallback";
 import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
+import { loadProjectInvoiceReadModel } from "@/lib/financial/invoice-read-model";
+import { emitRscTiming } from "@/lib/performance/server-timing";
 import { ProjectDetailTabsClient } from "./project-detail-tabs-client";
 import type { RecentExpenseLineRow } from "./recent-expense-lines";
 
@@ -75,6 +71,18 @@ type TabKey =
   | "commission"
   | "punch-list";
 
+type WorkspaceTabKey =
+  | "overview"
+  | "financial"
+  | "schedule"
+  | "tasks"
+  | "people"
+  | "documents"
+  | "photos"
+  | "materials"
+  | "inspections"
+  | "closeout";
+
 type ProjectDetailSearchParams = {
   tab?: string | string[];
   debugFinancial?: string | string[];
@@ -84,6 +92,33 @@ function firstSearchParam(value: string | string[] | undefined): string | undefi
   return Array.isArray(value) ? value[0] : value;
 }
 
+function normalizeWorkspaceTab(tab: TabKey): WorkspaceTabKey {
+  if (
+    tab === "cost" ||
+    tab === "budget" ||
+    tab === "expenses" ||
+    tab === "labor" ||
+    tab === "subcontracts" ||
+    tab === "bills" ||
+    tab === "change-orders" ||
+    tab === "commission" ||
+    tab === "financial"
+  ) {
+    return "financial";
+  }
+  if (tab === "tasks" || tab === "activity" || tab === "punch-list" || tab === "work") {
+    return "tasks";
+  }
+  if (tab === "schedule") return "schedule";
+  if (tab === "people") return "people";
+  if (tab === "photos") return "photos";
+  if (tab === "inspections") return "inspections";
+  if (tab === "materials") return "materials";
+  if (tab === "closeout") return "closeout";
+  if (tab === "docs" || tab === "documents") return "documents";
+  return "overview";
+}
+
 export default async function ProjectDetailPage({
   params,
   searchParams,
@@ -91,8 +126,13 @@ export default async function ProjectDetailPage({
   params: Promise<{ id: string }>;
   searchParams?: Promise<ProjectDetailSearchParams>;
 }) {
-  const guard = await requireSupabaseOwnerOrAdminServerAction();
+  const pageStartedAt = performance.now();
+  const authStartedAt = performance.now();
+  const guard = await requireSupabaseOwnerOrAdminServerActionClient({ noStore: true });
+  const authDuration = performance.now() - authStartedAt;
   if (!guard.ok) notFound();
+  const serverDataStartedAt = performance.now();
+  const projectSupabase = guard.client;
   const { id } = await params;
   const sp = (await searchParams) ?? {};
   const rawTab = (firstSearchParam(sp.tab) ?? "overview").toString().toLowerCase();
@@ -123,13 +163,9 @@ export default async function ProjectDetailPage({
     "punch-list",
   ];
   const tab: TabKey = validTabs.includes(tabParam as TabKey) ? (tabParam as TabKey) : "overview";
-  const internalSupabase = getServerSupabaseInternalNoStore();
-
+  const workspaceTab = normalizeWorkspaceTab(tab);
   let project: Awaited<ReturnType<typeof getProjectById>> | undefined;
-  let projectSupabase: Awaited<ReturnType<typeof createServerSupabaseClient>> = null;
   try {
-    projectSupabase = await createServerSupabaseClient({ noStore: true });
-    if (!projectSupabase) throw new Error("Authenticated project session is not configured.");
     project = await getProjectById(id, projectSupabase);
   } catch (e) {
     logServerPageDataError(`projects/${id}`, e);
@@ -142,7 +178,6 @@ export default async function ProjectDetailPage({
     );
   }
   if (!project) notFound();
-  if (!projectSupabase) notFound();
 
   let canonical: Awaited<ReturnType<typeof getCanonicalProjectProfit>>;
   let costDashboard: Awaited<ReturnType<typeof getProjectCostDashboard>>;
@@ -163,79 +198,101 @@ export default async function ProjectDetailPage({
     );
   }
 
-  /** Wrap a fetch in try/catch so missing tables or other DB errors don't crash the page. */
-  const safe = async <T,>(fn: () => Promise<T>, fallback: T): Promise<T> => {
-    try {
-      return await fn();
-    } catch {
-      return fallback;
+  let invoiceModel: Awaited<ReturnType<typeof loadProjectInvoiceReadModel>>;
+  let tasks: Awaited<ReturnType<typeof getProjectTasks>> = [];
+  let workers: Awaited<ReturnType<typeof getWorkers>> = [];
+  let laborEntries: Awaited<ReturnType<typeof getLaborEntriesWithJoins>> = [];
+  let documents: Awaited<ReturnType<typeof getDocumentsByProject>> = [];
+  let commissions: Awaited<ReturnType<typeof getCommissionsWithPaidByProject>> = [];
+  let materialSelections: Awaited<ReturnType<typeof getSelectionsByProject>> = [];
+  let materialCatalog: Awaited<ReturnType<typeof getMaterialCatalog>> = [];
+  let punchItems: Awaited<ReturnType<typeof getPunchListByProject>> = [];
+  let subcontracts: Awaited<ReturnType<typeof getSubcontractsByProject>> = [];
+  let bills: Awaited<ReturnType<typeof getApBillsByProject>> = [];
+  let activityLogs: Awaited<ReturnType<typeof getActivityLogsByProject>> = [];
+  const changeOrders: Awaited<ReturnType<typeof getChangeOrdersByProject>> = [];
+  const budgetItems: Awaited<ReturnType<typeof getProjectBudgetItems>> = [];
+  let closeoutPunch: Awaited<ReturnType<typeof getCloseoutPunch>> = null;
+  let closeoutWarranty: Awaited<ReturnType<typeof getCloseoutWarranty>> = null;
+  let closeoutCompletion: Awaited<ReturnType<typeof getCloseoutCompletion>> = null;
+  let scheduleItems: Awaited<ReturnType<typeof getProjectSchedule>> = [];
+  let estimatesRaw: Awaited<ReturnType<typeof getEstimateList>> = [];
+
+  try {
+    // Billing is shown in the persistent project header for every workspace tab.
+    invoiceModel = await loadProjectInvoiceReadModel(id, projectSupabase);
+
+    switch (workspaceTab) {
+      case "overview":
+        [tasks, scheduleItems, punchItems, activityLogs] = await Promise.all([
+          getProjectTasks(id, projectSupabase),
+          getProjectSchedule(id, projectSupabase),
+          getPunchListByProject(id, projectSupabase),
+          getActivityLogsByProject(id, 20, projectSupabase),
+        ]);
+        break;
+      case "financial":
+        [commissions, bills, estimatesRaw] = await Promise.all([
+          getCommissionsWithPaidByProject(id, projectSupabase),
+          getApBillsByProject(id, projectSupabase),
+          getEstimateList(projectSupabase),
+        ]);
+        break;
+      case "tasks":
+        [tasks, workers, scheduleItems, punchItems, activityLogs] = await Promise.all([
+          getProjectTasks(id, projectSupabase),
+          getWorkers(projectSupabase),
+          getProjectSchedule(id, projectSupabase),
+          getPunchListByProject(id, projectSupabase),
+          getActivityLogsByProject(id, 20, projectSupabase),
+        ]);
+        break;
+      case "schedule":
+        scheduleItems = await getProjectSchedule(id, projectSupabase);
+        break;
+      case "people":
+        [tasks, laborEntries, subcontracts, bills, commissions] = await Promise.all([
+          getProjectTasks(id, projectSupabase),
+          getLaborEntriesWithJoins({ project_id: id }, projectSupabase),
+          getSubcontractsByProject(id, projectSupabase),
+          getApBillsByProject(id, projectSupabase),
+          getCommissionsWithPaidByProject(id, projectSupabase),
+        ]);
+        break;
+      case "documents":
+        documents = await getDocumentsByProject(id, projectSupabase);
+        break;
+      case "materials":
+        [materialSelections, materialCatalog] = await Promise.all([
+          getSelectionsByProject(id, projectSupabase),
+          getMaterialCatalog(projectSupabase),
+        ]);
+        break;
+      case "closeout":
+        [closeoutPunch, closeoutWarranty, closeoutCompletion] = await Promise.all([
+          getCloseoutPunch(id, projectSupabase),
+          getCloseoutWarranty(id, projectSupabase),
+          getCloseoutCompletion(id, projectSupabase),
+        ]);
+        break;
+      case "photos":
+      case "inspections":
+        break;
     }
-  };
-  const [
-    billingSummary,
-    tasks,
-    workers,
-    laborEntries,
-    documents,
-    commissions,
-    materialSelections,
-    materialCatalog,
-    punchItems,
-    subcontracts,
-    bills,
-    activityLogs,
-    changeOrders,
-    budgetItems,
-    closeoutPunch,
-    closeoutWarranty,
-    closeoutCompletion,
-    scheduleItems,
-    projectInvoicesRaw,
-    estimatesRaw,
-  ] = await Promise.all([
-    safe(() => getProjectBillingSummary(id), {
-      paidTotal: 0,
-      invoicedTotal: 0,
-      arBalance: 0,
-      lastPaymentDate: null,
-    }),
-    safe(() => getProjectTasks(id), []),
-    safe(() => getWorkers(), []),
-    safe(
-      () =>
-        internalSupabase
-          ? getLaborEntriesWithJoins({ project_id: id }, internalSupabase)
-          : getLaborEntriesWithJoins({ project_id: id }),
-      []
-    ),
-    safe(() => getDocumentsByProject(id), []),
-    (async () => {
-      try {
-        return await getCommissionsWithPaidByProject(id, projectSupabase);
-      } catch (e) {
-        logServerPageDataError(`projects/${id}/commissions`, e);
-        return [];
-      }
-    })(),
-    safe(() => getSelectionsByProject(id), []),
-    safe(() => getMaterialCatalog(), []),
-    safe(() => getPunchListByProject(id), []),
-    safe(() => getSubcontractsByProject(id), []),
-    safe(
-      () =>
-        internalSupabase ? getApBillsByProject(id, internalSupabase) : getApBillsByProject(id),
-      []
-    ),
-    safe(() => getActivityLogsByProject(id, 20), []),
-    safe(() => getChangeOrdersByProject(id, projectSupabase), []),
-    safe(() => getProjectBudgetItems(id), []),
-    safe(() => getCloseoutPunch(id), null),
-    safe(() => getCloseoutWarranty(id), null),
-    safe(() => getCloseoutCompletion(id), null),
-    safe(() => getProjectSchedule(id), []),
-    safe(() => getInvoicesWithDerived({ projectId: id }), []),
-    safe(() => getEstimateList(projectSupabase), []),
-  ]);
+  } catch (error) {
+    logServerPageDataError(`projects/${id}/workspace/${workspaceTab}`, error);
+    return (
+      <ServerDataLoadFallback
+        message={serverDataLoadWarning(error, "project workspace data")}
+        backHref="/projects"
+        backLabel="Back to projects"
+      />
+    );
+  }
+  const serverDataCompletedAt = performance.now();
+
+  const billingSummary = invoiceModel.billingSummary;
+  const projectInvoices = invoiceModel.projectInvoices;
 
   const recentExpenseLines: RecentExpenseLineRow[] = costDashboard.recentDoneRows.map((r) => ({
     id: r.lineId,
@@ -247,17 +304,6 @@ export default async function ProjectDetailPage({
     amount: r.amount,
   }));
 
-  const expenseLineRowsAll: RecentExpenseLineRow[] = costDashboard.allExpenseLineRows.map((r) => ({
-    id: r.id,
-    expenseId: r.expenseId,
-    date: r.date,
-    vendorName: r.vendorName,
-    category: r.category,
-    memo: r.memo,
-    amount: r.amount,
-  }));
-
-  const projectInvoices = (projectInvoicesRaw ?? []).filter((i) => i.computedStatus !== "Void");
   const sameText = (a: string | null | undefined, b: string | null | undefined) =>
     a != null && b != null && a.trim().toLowerCase() === b.trim().toLowerCase();
   const relatedEstimates = (estimatesRaw ?? []).filter(
@@ -276,6 +322,24 @@ export default async function ProjectDetailPage({
     outstanding: Math.max(0, billingSummary.invoicedTotal - billingSummary.paidTotal),
     cashflow: billingSummary.paidTotal - costDashboard.spentTotal,
   };
+  const projectCostForClient = {
+    breakdown: costDashboard.breakdown,
+    spentTotal: costDashboard.spentTotal,
+    profit: costDashboard.profit,
+    margin: costDashboard.margin,
+    revenue: costDashboard.revenue,
+    doneCostRows: costDashboard.doneCostRows,
+    recentDoneRows: costDashboard.recentDoneRows,
+    alerts: costDashboard.alerts,
+  };
+
+  const rscPreparedAt = performance.now();
+  emitRscTiming("projects/[id]", {
+    authMs: authDuration,
+    serverDataMs: serverDataCompletedAt - serverDataStartedAt,
+    rscPrepareMs: rscPreparedAt - serverDataCompletedAt,
+    totalMs: rscPreparedAt - pageStartedAt,
+  });
 
   return (
     <ProjectDetailTabsClient
@@ -284,15 +348,16 @@ export default async function ProjectDetailPage({
       financialSummary={financialSummary}
       billingSummary={billingSummary}
       canonicalProfit={canonical}
-      projectCost={costDashboard}
+      projectCost={projectCostForClient}
       showFinancialSnapshotComparison={showFinancialSnapshotComparison}
       initialTab={tab}
+      loadedWorkspaceTab={workspaceTab}
       tasks={tasks ?? []}
       workers={workers ?? []}
       recentExpenseLines={recentExpenseLines}
-      expenseLineRows={expenseLineRowsAll}
+      expenseLineRows={[]}
       scheduleItems={scheduleItems ?? []}
-      projectInvoices={projectInvoices}
+      projectInvoices={workspaceTab === "financial" ? projectInvoices : []}
       relatedEstimates={relatedEstimates}
       laborEntries={laborEntries ?? []}
       documents={documents ?? []}

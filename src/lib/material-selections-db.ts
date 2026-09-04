@@ -3,6 +3,7 @@
  */
 
 import { getSupabaseClient } from "@/lib/supabase";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type MaterialSelectionStatus = "Selected" | "Pending" | "Ordered";
 
@@ -34,8 +35,8 @@ export type ProjectMaterialSelectionDraft = {
   notes?: string | null;
 };
 
-function client() {
-  const c = getSupabaseClient();
+function client(explicitClient?: SupabaseClient) {
+  const c = explicitClient ?? getSupabaseClient();
   if (!c) throw new Error("Supabase is not configured.");
   return c;
 }
@@ -44,14 +45,15 @@ const COLS =
   "id, project_id, item, category, material_id, material_name, supplier, status, notes, created_at";
 
 function toRow(r: Record<string, unknown>): ProjectMaterialSelection {
+  const catalog = r.material_catalog as Record<string, unknown> | null | undefined;
   return {
     id: (r.id as string) ?? "",
     project_id: (r.project_id as string) ?? "",
-    item: (r.item as string) ?? "",
-    category: (r.category as string) ?? "",
-    material_id: (r.material_id as string | null) ?? null,
-    material_name: (r.material_name as string) ?? "",
-    supplier: (r.supplier as string | null) ?? null,
+    item: ((r.item ?? r.item_name) as string) ?? "",
+    category: ((r.category ?? catalog?.category) as string) ?? "",
+    material_id: ((r.material_id ?? r.catalog_id) as string | null) ?? null,
+    material_name: ((r.material_name ?? catalog?.material_name ?? r.item_name) as string) ?? "",
+    supplier: ((r.supplier ?? catalog?.supplier) as string | null) ?? null,
     status: (r.status as MaterialSelectionStatus) ?? "Pending",
     notes: (r.notes as string | null) ?? null,
     created_at: (r.created_at as string) ?? "",
@@ -60,16 +62,49 @@ function toRow(r: Record<string, unknown>): ProjectMaterialSelection {
 
 /** Get all selections for a project, with material photo_url when material_id is set. */
 export async function getSelectionsByProject(
-  projectId: string
+  projectId: string,
+  explicitClient?: SupabaseClient
 ): Promise<ProjectMaterialSelectionWithMaterial[]> {
-  const c = client();
+  const c = client(explicitClient);
   const { data: rows, error } = await c
     .from("project_material_selections")
-    .select(`${COLS}, material_catalog(photo_url)`)
+    .select("*")
     .eq("project_id", projectId)
     .order("created_at", { ascending: true });
   if (error) throw new Error(error.message ?? "Failed to load selections.");
-  return (rows ?? []).map((r: Record<string, unknown>) => {
+  if (!Array.isArray(rows)) throw new Error("Project material selections are unavailable.");
+
+  const catalogIds = [
+    ...new Set(
+      rows
+        .map((row: Record<string, unknown>) => row.material_id ?? row.catalog_id)
+        .filter((value): value is string => typeof value === "string" && value.length > 0)
+    ),
+  ];
+  const catalogById = new Map<string, Record<string, unknown>>();
+  if (catalogIds.length > 0) {
+    const catalogResult = await c
+      .from("material_catalog")
+      .select("id,category,material_name,supplier,photo_url")
+      .in("id", catalogIds);
+    if (catalogResult.error) {
+      throw new Error(catalogResult.error.message ?? "Failed to load selected materials.");
+    }
+    if (!Array.isArray(catalogResult.data)) {
+      throw new Error("Selected material details are unavailable.");
+    }
+    for (const material of catalogResult.data as Record<string, unknown>[]) {
+      if (typeof material.id === "string") catalogById.set(material.id, material);
+    }
+  }
+
+  return rows.map((source: Record<string, unknown>) => {
+    const catalogId = source.material_id ?? source.catalog_id;
+    const r = {
+      ...source,
+      material_catalog:
+        typeof catalogId === "string" ? (catalogById.get(catalogId) ?? null) : null,
+    };
     const sel = toRow(r);
     const catalog = r.material_catalog as { photo_url?: string | null } | null;
     return {

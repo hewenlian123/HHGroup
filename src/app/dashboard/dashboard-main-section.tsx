@@ -2,101 +2,124 @@ import {
   getBillsSummaryAll,
   getPaymentsSummaryAll,
   getSubcontractsWithDetailsAll,
-  type ProjectRiskOverview,
   type RecentTransaction,
 } from "@/lib/data";
 import { DollarSign, FolderKanban, TrendingUp, Wallet } from "lucide-react";
-import type { CanonicalProjectProfit } from "@/lib/profit-engine";
 import { formatCompactCurrency } from "@/lib/formatters";
 import {
-  emptyDashboardContractReview,
   getApBillsSummaryCached,
   getExpensesThisMonthCached,
   getLaborCostThisWeekCached,
   getOverdueInvoicesCached,
-  getProjectRiskOverviewCached,
   getRecentTransactionsCached,
   loadDashboardProjectsBundle,
 } from "./dashboard-bundle";
 import { DashboardView } from "./dashboard-view";
-import type { ProjectContractReviewSummary } from "@/lib/financial/project-financial-review";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
+import { emitRscTiming } from "@/lib/performance/server-timing";
+import {
+  FinancialDataUnavailableError,
+  classifyFinancialAvailabilityFailure,
+  type FinancialAvailabilityFailureKind,
+} from "@/lib/financial-availability";
+import { ServerDataLoadFallback } from "@/components/server-data-load-fallback";
 
-const EMPTY_RISK_OVERVIEW: ProjectRiskOverview = {
-  summary: {
-    highCount: 0,
-    overBudgetCount: 0,
-    laborOverCount: 0,
-    lowRunwayCount: 0,
-  },
-  projects: [],
+const FAILURE_LABEL: Record<FinancialAvailabilityFailureKind, string> = {
+  permission_denied: "unavailable because access was denied",
+  schema_failure: "unavailable because the data contract is not available",
+  network_failure: "temporarily unavailable because the data service could not be reached",
+  unavailable_source: "unavailable because a required source did not return data",
+  unknown_failure: "temporarily unavailable",
 };
+
+function dashboardUnavailableMessage(error: unknown): string {
+  const kind =
+    error instanceof FinancialDataUnavailableError
+      ? error.kind
+      : classifyFinancialAvailabilityFailure(error);
+  return `Dashboard data is ${FAILURE_LABEL[kind]}. Financial values were not displayed.`;
+}
 
 export async function DashboardMainSection({
   searchParamsPromise: _searchParamsPromise,
 }: {
   searchParamsPromise?: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
+  const pageStartedAt = performance.now();
+  const serverDataStartedAt = performance.now();
   void _searchParamsPromise;
-  let stats: Awaited<ReturnType<typeof loadDashboardProjectsBundle>>["stats"] = {
-    totalProjects: 0,
-    activeProjects: 0,
-    totalBudget: 0,
-    totalSpent: 0,
-    totalProfit: 0,
+  let requiredData: {
+    transactions: RecentTransaction[];
+    bundle: Awaited<ReturnType<typeof loadDashboardProjectsBundle>>;
+    subcontractsDetails: Awaited<ReturnType<typeof getSubcontractsWithDetailsAll>>;
+    billsSummary: Awaited<ReturnType<typeof getBillsSummaryAll>>;
+    paymentsSummary: Awaited<ReturnType<typeof getPaymentsSummaryAll>>;
+    apBillsSummary: Awaited<ReturnType<typeof getApBillsSummaryCached>>;
+    laborCostThisWeek: number;
+    expensesThisMonth: number;
+    overdueInvoices: Awaited<ReturnType<typeof getOverdueInvoicesCached>>;
   };
-  let transactions: RecentTransaction[] = [];
-  let riskOverview: ProjectRiskOverview = EMPTY_RISK_OVERVIEW;
-  let projects: Awaited<ReturnType<typeof loadDashboardProjectsBundle>>["projects"] = [];
-  let profitMap = new Map<string, CanonicalProjectProfit>();
-  let contractReview: ProjectContractReviewSummary = emptyDashboardContractReview;
-  let dataLoadWarning: string | null = null;
-  let projectSupabase: Awaited<ReturnType<typeof createServerSupabaseClient>> = null;
-
   try {
-    projectSupabase = await createServerSupabaseClient({ noStore: true });
+    const projectSupabase = await createServerSupabaseClient({ noStore: true });
     if (!projectSupabase) throw new Error("Authenticated project session is not configured.");
-    const [tx, risk, bundle] = await Promise.all([
-      getRecentTransactionsCached(20),
-      getProjectRiskOverviewCached(projectSupabase),
+    const primaryDataPromise = Promise.all([
+      getRecentTransactionsCached(20, projectSupabase),
       loadDashboardProjectsBundle(projectSupabase),
     ]);
-    transactions = tx;
-    riskOverview = risk;
-    stats = bundle.stats;
-    projects = bundle.projects;
-    profitMap = bundle.profitMap;
-    contractReview = bundle.contractReview;
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    console.error("[dashboard] primary data load failed", e);
-    dataLoadWarning =
-      msg.includes("Supabase is not configured") || msg.includes("not configured")
-        ? "Database connection is not configured. Check NEXT_PUBLIC_SUPABASE_URL and keys in the deployment environment."
-        : `Could not load dashboard data: ${msg}`;
-  }
-
-  let subcontractsDetails: Awaited<ReturnType<typeof getSubcontractsWithDetailsAll>> = [];
-  let billsSummary: Awaited<ReturnType<typeof getBillsSummaryAll>> = [];
-  let paymentsSummary: Awaited<ReturnType<typeof getPaymentsSummaryAll>> = [];
-  try {
-    [subcontractsDetails, billsSummary, paymentsSummary] = await Promise.all([
-      getSubcontractsWithDetailsAll(),
-      getBillsSummaryAll(),
-      getPaymentsSummaryAll(),
+    const subcontractDataPromise = Promise.all([
+      getSubcontractsWithDetailsAll(projectSupabase),
+      getBillsSummaryAll(projectSupabase),
+      getPaymentsSummaryAll(projectSupabase),
     ]);
-  } catch {
-    // Subcontract/bills/payments tables may not exist yet; use empty data.
-  }
-
-  const [apBillsSummary, laborCostThisWeek, expensesThisMonth, overdueInvoices] = await Promise.all(
-    [
+    const metricDataPromise = Promise.all([
       getApBillsSummaryCached(projectSupabase),
-      getLaborCostThisWeekCached(),
-      getExpensesThisMonthCached(),
-      getOverdueInvoicesCached(),
-    ]
-  );
+      getLaborCostThisWeekCached(projectSupabase),
+      getExpensesThisMonthCached(projectSupabase),
+      getOverdueInvoicesCached(projectSupabase),
+    ]);
+
+    const [primaryData, subcontractData, metricData] = await Promise.all([
+      primaryDataPromise,
+      subcontractDataPromise,
+      metricDataPromise,
+    ]);
+    const [transactions, bundle] = primaryData;
+    const [subcontractsDetails, billsSummary, paymentsSummary] = subcontractData;
+    const [apBillsSummary, laborCostThisWeek, expensesThisMonth, overdueInvoices] = metricData;
+    requiredData = {
+      transactions,
+      bundle,
+      subcontractsDetails,
+      billsSummary,
+      paymentsSummary,
+      apBillsSummary,
+      laborCostThisWeek,
+      expensesThisMonth,
+      overdueInvoices,
+    };
+  } catch (error) {
+    console.error("[dashboard] required data load failed", error);
+    return (
+      <ServerDataLoadFallback
+        message={dashboardUnavailableMessage(error)}
+        backHref="/dashboard"
+        backLabel="Retry dashboard"
+      />
+    );
+  }
+  const {
+    transactions,
+    bundle,
+    subcontractsDetails,
+    billsSummary,
+    paymentsSummary,
+    apBillsSummary,
+    laborCostThisWeek,
+    expensesThisMonth,
+    overdueInvoices,
+  } = requiredData;
+  const { stats, riskOverview, projects, profitMap, contractReview } = bundle;
+  const serverDataCompletedAt = performance.now();
 
   const riskByProjectId = new Map(
     riskOverview.projects.map((r) => [r.projectId, r.riskLevel] as const)
@@ -219,6 +242,15 @@ export async function DashboardMainSection({
   const budgetUsagePct =
     stats.totalBudget > 0 ? Math.min(100, (stats.totalSpent / stats.totalBudget) * 100) : 0;
   const profitPositive = stats.totalProfit >= 0;
+  const rscPreparedAt = performance.now();
+
+  // Dashboard has no second page-level auth call. Middleware auth is exposed on
+  // the RSC response; this event intentionally reports only the page data/render stages.
+  emitRscTiming("dashboard", {
+    serverDataMs: serverDataCompletedAt - serverDataStartedAt,
+    rscPrepareMs: rscPreparedAt - serverDataCompletedAt,
+    totalMs: rscPreparedAt - pageStartedAt,
+  });
 
   return (
     <DashboardView
@@ -241,7 +273,7 @@ export async function DashboardMainSection({
       recentActivity={recentActivity}
       budgetUsagePct={budgetUsagePct}
       profitPositive={profitPositive}
-      dataLoadWarning={dataLoadWarning}
+      dataLoadWarning={null}
       contractReview={contractReview}
     />
   );

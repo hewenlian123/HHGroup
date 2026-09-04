@@ -1,5 +1,6 @@
 import * as expenseOpts from "@/lib/expense-options-db";
 import { getSupabaseClient } from "@/lib/supabase";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type PaymentAccountType = "card" | "cash" | "bank";
 
@@ -12,8 +13,8 @@ export type PaymentAccountRow = {
 
 export type PaymentAccountPickerRow = PaymentAccountRow & { archived?: boolean };
 
-function client() {
-  const c = getSupabaseClient();
+function client(explicitClient?: SupabaseClient) {
+  const c = explicitClient ?? getSupabaseClient();
   if (!c) throw new Error("Supabase is not configured.");
   return c;
 }
@@ -23,8 +24,10 @@ function isMissingTable(err: { message?: string } | null): boolean {
   return /schema cache|relation.*does not exist|could not find the table/i.test(m);
 }
 
-export async function getPaymentAccounts(): Promise<PaymentAccountRow[]> {
-  const rows = await getPaymentAccountsForExpensePicker(null);
+export async function getPaymentAccounts(
+  explicitClient?: SupabaseClient
+): Promise<PaymentAccountRow[]> {
+  const rows = await getPaymentAccountsForExpensePicker(null, explicitClient);
   return rows.map((r) => ({
     id: r.id,
     name: r.name,
@@ -35,9 +38,10 @@ export async function getPaymentAccounts(): Promise<PaymentAccountRow[]> {
 
 /** Active accounts for pickers; includes current selection even when archived. */
 export async function getPaymentAccountsForExpensePicker(
-  currentAccountId: string | null | undefined
+  currentAccountId: string | null | undefined,
+  explicitClient?: SupabaseClient
 ): Promise<PaymentAccountPickerRow[]> {
-  const c = client();
+  const c = client(explicitClient);
   const { data, error } = await c
     .from("payment_accounts")
     .select("id,name,type,created_at")
@@ -47,11 +51,11 @@ export async function getPaymentAccountsForExpensePicker(
     throw new Error(error.message ?? "Failed to load payment accounts.");
   }
   const all = (data ?? []) as PaymentAccountRow[];
-  const available = await expenseOpts.expenseOptionsTableAvailable();
+  const available = await expenseOpts.expenseOptionsTableAvailable(explicitClient);
   if (!available) return all.map((r) => ({ ...r, archived: false }));
-  const optionRows = await expenseOpts.listExpenseOptionsByType("payment_account");
+  const optionRows = await expenseOpts.listExpenseOptionsByType("payment_account", explicitClient);
   if (optionRows.length === 0) return all.map((r) => ({ ...r, archived: false }));
-  const activeKeys = await expenseOpts.activePaymentAccountIds();
+  const activeKeys = await expenseOpts.activePaymentAccountIds(explicitClient);
   const cur = (currentAccountId ?? "").trim();
   return all
     .filter((r) => activeKeys.has(r.id) || (cur !== "" && r.id === cur))
