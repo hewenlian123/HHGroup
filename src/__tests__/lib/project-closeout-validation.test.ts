@@ -20,14 +20,14 @@ describe("Project Closeout write validation", () => {
     ).toMatchObject({ ok: true });
     expect(
       parseCloseoutWarrantyInput({
-        start_date: "2026-09-04",
+        start_date: "2026-09-03",
         period_months: 18,
         notes: "Warranty notes",
       })
     ).toMatchObject({ ok: true });
     expect(
       parseCloseoutCompletionInput({
-        completion_date: "2026-09-05",
+        completion_date: "2026-09-03",
         contractor_name: "Contractor",
         client_name: "Client",
         contractor_signature: "Signed",
@@ -37,6 +37,9 @@ describe("Project Closeout write validation", () => {
   });
 
   it("rejects malformed, oversized, and invalid-date service-role payloads", () => {
+    expect(parseCloseoutPunchInput({ inspection_date: "2026-02-31" })).toMatchObject({
+      ok: false,
+    });
     expect(parseCloseoutWarrantyInput({ period_months: -1 })).toMatchObject({ ok: false });
     expect(parseCloseoutWarrantyInput({ period_months: "12" })).toMatchObject({ ok: false });
     expect(parseCloseoutWarrantyInput({ start_date: "2026-02-31" })).toMatchObject({ ok: false });
@@ -45,8 +48,26 @@ describe("Project Closeout write validation", () => {
     expect(parseCloseoutCompletionInput({ client_signature: "x".repeat(2001) })).toMatchObject({
       ok: false,
     });
+    expect(parseCloseoutCompletionInput({ completion_date: "09/03/2026" })).toMatchObject({
+      ok: false,
+    });
     expect(parseCloseoutPunchInput({ items: [{ item: "x", status: "unknown" }] })).toMatchObject({
       ok: false,
+    });
+  });
+
+  it("maps only explicit blank date-only inputs to null", () => {
+    expect(parseCloseoutPunchInput({ inspection_date: "", items: [] })).toMatchObject({
+      ok: true,
+      value: { inspection_date: null },
+    });
+    expect(parseCloseoutWarrantyInput({ start_date: "", period_months: 12 })).toMatchObject({
+      ok: true,
+      value: { start_date: null },
+    });
+    expect(parseCloseoutCompletionInput({ completion_date: "" })).toMatchObject({
+      ok: true,
+      value: { completion_date: null },
     });
   });
 });

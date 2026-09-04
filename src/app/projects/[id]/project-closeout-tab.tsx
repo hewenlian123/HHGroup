@@ -12,6 +12,11 @@ import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
 const fmtUsd = (n: number) =>
   n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+function dateOnlyPayload(input: HTMLInputElement | null, stateValue: string): string | null {
+  const value = input ? input.value : stateValue;
+  return value || null;
+}
+
 export function ProjectCloseoutTab({
   projectId,
   projectName,
@@ -54,6 +59,9 @@ export function ProjectCloseoutTab({
   const [saving, setSaving] = React.useState<string | null>(null);
   const [generating, setGenerating] = React.useState<string | null>(null);
   const [message, setMessage] = React.useState<string | null>(null);
+  const punchDateInputRef = React.useRef<HTMLInputElement>(null);
+  const warrantyDateInputRef = React.useRef<HTMLInputElement>(null);
+  const completionDateInputRef = React.useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
     if (punch) {
@@ -103,7 +111,7 @@ export function ProjectCloseoutTab({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          inspection_date: punchForm.inspection_date || null,
+          inspection_date: dateOnlyPayload(punchDateInputRef.current, punchForm.inspection_date),
           inspector: punchForm.inspector || null,
           notes: punchForm.notes || null,
           contractor_signature: punchForm.contractor_signature || null,
@@ -129,7 +137,7 @@ export function ProjectCloseoutTab({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          start_date: warrantyForm.start_date || null,
+          start_date: dateOnlyPayload(warrantyDateInputRef.current, warrantyForm.start_date),
           period_months: warrantyForm.period_months,
           notes: warrantyForm.notes || null,
         }),
@@ -152,7 +160,10 @@ export function ProjectCloseoutTab({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          completion_date: completionForm.completion_date || null,
+          completion_date: dateOnlyPayload(
+            completionDateInputRef.current,
+            completionForm.completion_date
+          ),
           contractor_name: completionForm.contractor_name || null,
           client_name: completionForm.client_name || null,
           contractor_signature: completionForm.contractor_signature || null,
@@ -282,9 +293,13 @@ export function ProjectCloseoutTab({
                 Inspection date
               </label>
               <Input
+                ref={punchDateInputRef}
                 type="date"
                 value={punchForm.inspection_date}
                 onChange={(e) => setPunchForm((p) => ({ ...p, inspection_date: e.target.value }))}
+                onInput={(e) =>
+                  setPunchForm((p) => ({ ...p, inspection_date: e.currentTarget.value }))
+                }
                 className="mt-1 h-9 rounded-hh-compact border-border/60"
               />
             </div>
@@ -443,9 +458,13 @@ export function ProjectCloseoutTab({
                 Start date
               </label>
               <Input
+                ref={warrantyDateInputRef}
                 type="date"
                 value={warrantyForm.start_date}
                 onChange={(e) => setWarrantyForm((p) => ({ ...p, start_date: e.target.value }))}
+                onInput={(e) =>
+                  setWarrantyForm((p) => ({ ...p, start_date: e.currentTarget.value }))
+                }
                 className="mt-1 h-10 rounded-hh-standard border-[var(--hh-border)]"
               />
             </div>
@@ -550,10 +569,14 @@ export function ProjectCloseoutTab({
               Completion date
             </label>
             <Input
+              ref={completionDateInputRef}
               type="date"
               value={completionForm.completion_date}
               onChange={(e) =>
                 setCompletionForm((p) => ({ ...p, completion_date: e.target.value }))
+              }
+              onInput={(e) =>
+                setCompletionForm((p) => ({ ...p, completion_date: e.currentTarget.value }))
               }
               className="mt-1 h-10 rounded-hh-standard border-[var(--hh-border)]"
             />
