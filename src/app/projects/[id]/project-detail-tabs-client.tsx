@@ -762,7 +762,7 @@ export function ProjectDetailTabsClient({
       : profitReadinessWarning != null
         ? profitReadinessWarning
         : null;
-  const topCollectedValue = financialSummary?.collected ?? billingSummary.paidTotal;
+  const topCollectedValue = snapshotCostSummary.paidAmount;
   const topNeedCollectValue = snapshotCostSummary.openAR;
   const topProfitTone =
     headerProfitValue == null ? "attention" : headerProfitValue >= 0 ? "positive" : "negative";
