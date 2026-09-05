@@ -164,6 +164,14 @@ export function Sidebar({
     [prefetchFinancialNav, router]
   );
   const [openSections, setOpenSections] = React.useState<Record<string, boolean>>(() => ({}));
+  React.useEffect(() => {
+    if (pathname !== "/dashboard" || onNavigate) return;
+    return runWhenIdle(() => {
+      if (window.matchMedia("(min-width: 640px)").matches) {
+        prefetchNavRoute("/projects");
+      }
+    }, 600);
+  }, [pathname, onNavigate, prefetchNavRoute]);
   const { data: companyProfile } = useQuery({
     queryKey: companyProfileQueryKey,
     queryFn: () => fetchCompanyProfileForNav(prefetchSupabase!),
