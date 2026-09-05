@@ -1,4 +1,4 @@
-import NewInvoiceClient from "./new-invoice-client";
+import NewInvoiceClient from "./new-invoice-runtime";
 import { getEstimateInvoicePrefill } from "./estimate-prefill";
 import { getProjectByIdWithClient } from "@/lib/projects-db";
 import { getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
