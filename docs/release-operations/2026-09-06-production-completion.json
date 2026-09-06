@@ -1,5 +1,5 @@
 {
-  "status": "AWAITING_AUTOMATIC_REVIEW_REQUIRED_APPROVAL",
+  "status": "PRODUCTION_MIGRATIONS_APPLIED_DEPLOY_PENDING",
   "productionStatus": "NOT_DEPLOYED",
   "targets": {
     "url": "https://hhprojectgroup.com",
@@ -66,15 +66,15 @@
     "database": {
       "files": 16,
       "passed": 478,
-      "log": "/tmp/hh-production-db-release.log"
+      "log": "/tmp/hh-production-db-compatibility-final.log"
     },
     "cleanReplay": {
       "result": "PASS",
       "tablesPreserved": 122,
-      "rowsPreserved": 2346,
+      "rowsPreserved": 2340,
       "expectedSchemaEqualsCleanReplay": true,
       "columnContractDigest": "63e61d1c8c85d76139301d476eaeb757bd2ff3de328e488e7417883a5601a5e7",
-      "latestMigration": "20260906121743",
+      "latestMigration": "20260906203011",
       "currentDataHashesMatch": true
     },
     "originalPublicTableCountsAfterCleanup": {
@@ -92,8 +92,8 @@
     },
     "sourceContracts": {
       "passed": 196,
-      "skippedLocalOptIns": 5,
-      "log": "/tmp/hh-production-source-final.log"
+      "skippedLocalOptIns": 11,
+      "log": "/tmp/hh-production-source-compatibility-final.log"
     },
     "finalBuild": {
       "result": "PASS",
@@ -147,19 +147,113 @@
       "dbResidual": 0,
       "storageResidual": 0,
       "authResidual": 0
+    },
+    "compatibility": {
+      "materialCasesPassed": 1,
+      "expenseCasesPassed": 5,
+      "financialAssertionsPassed": 240,
+      "logs": [
+        "/tmp/hh-material-legacy-compatibility-test.log",
+        "/tmp/hh-expense-source-id-compatibility-final.log"
+      ]
     }
   },
-  "productionMigrations": [],
+  "productionMigrations": [
+    {
+      "source": "20260906202730_project_material_selection_legacy_compatibility.sql",
+      "sha256": "1a024292e5698bb33e7295ed58bc418156c46e17a5e654a9b27fb94187552c41",
+      "name": "project_material_selection_legacy_compatibility",
+      "remoteVersion": "20260906203954"
+    },
+    {
+      "source": "20260906203011_expense_source_id_type_compatibility.sql",
+      "sha256": "612224a5cdc7bffc3c5ab3879b345ffee54f77071773e03d7ee19cfa47ed2839",
+      "name": "expense_source_id_type_compatibility",
+      "remoteVersion": "20260906204009"
+    },
+    {
+      "source": "20260906091106_organization_project_authorization_foundation.sql",
+      "sha256": "fda5d2fbfa42253ff10507b9d321639e4f2792e7a745b90404016fa2d8090d06",
+      "name": "organization_project_authorization_foundation",
+      "remoteVersion": "20260906204039"
+    },
+    {
+      "source": "20260906093852_punch_list_active_fields_replay.sql",
+      "sha256": "4c55a2120dc86d1cda27c0c3e8736d40b3baa2764969cd31ed3c3d6b651cecd8",
+      "name": "punch_list_active_fields_replay",
+      "remoteVersion": "20260906204057"
+    },
+    {
+      "source": "20260906094223_organization_document_storage_authorization.sql",
+      "sha256": "f02258ea619af20e26694d9db1f22611ce829d7d4cac9c43cced85ba7ce9ca90",
+      "name": "organization_document_storage_authorization",
+      "remoteVersion": "20260906204103"
+    },
+    {
+      "source": "20260906112152_ar_ap_settlement_integrity.sql",
+      "sha256": "6a5b1b112c286cea291aea3beb67e61890056735730a26c3c6dce2c5ffdc72b7",
+      "name": "ar_ap_settlement_integrity",
+      "remoteVersion": "20260906204109"
+    },
+    {
+      "source": "20260906112353_estimate_project_conversion_atomic.sql",
+      "sha256": "9f43887cba58a68c0a456d21a39d7a0673ce589c9f7b411abf39e473071cad89",
+      "name": "estimate_project_conversion_atomic",
+      "remoteVersion": "20260906204120"
+    },
+    {
+      "source": "20260906112422_company_authorization_and_project_integrity.sql",
+      "sha256": "2bbfb6011d2e6f7c3e78d6c427a81fa70a4cbf8b6ff8efe7774d2c70e0192ba6",
+      "name": "company_authorization_and_project_integrity",
+      "remoteVersion": "20260906204128"
+    },
+    {
+      "source": "20260906112652_payroll_project_scope_integrity.sql",
+      "sha256": "ae8f3c9b33dd1b7f7b874825dab9b501e3eb55fe02ee4e9674a73280442e9964",
+      "name": "payroll_project_scope_integrity",
+      "remoteVersion": "20260906204133"
+    },
+    {
+      "source": "20260906113635_authenticated_company_receipt_intake.sql",
+      "sha256": "e1e3c7028931228eae38872ae5d46ac956f5ebbf0274909db1bad78266164155",
+      "name": "authenticated_company_receipt_intake",
+      "remoteVersion": "20260906204144"
+    },
+    {
+      "source": "20260906113900_invoice_allocation_balance_integrity.sql",
+      "sha256": "e4992d462c242682449a369e0de688765f942cf4f00b438c2a9d970d7f0329e0",
+      "name": "invoice_allocation_balance_integrity",
+      "remoteVersion": "20260906204150"
+    },
+    {
+      "source": "20260906114628_protect_committed_payment_attachment_objects.sql",
+      "sha256": "2c86722dd5baa81ff94b7ce75d5d94ea62c808ccb7687a80fd0c3140476bf1f2",
+      "name": "protect_committed_payment_attachment_objects",
+      "remoteVersion": "20260906204155"
+    },
+    {
+      "source": "20260906115947_secure_worker_projection_authority.sql",
+      "sha256": "04910b92ae2d956311dcc58c0fd68e1adf12c3fc51135de88d2b12d26423aa6d",
+      "name": "secure_worker_projection_authority",
+      "remoteVersion": "20260906204207"
+    },
+    {
+      "source": "20260906120301_global_company_role_boundaries.sql",
+      "sha256": "1229f293690b2dd5d8bcfd25398e11c55134cfa6e2034cf6ea2837a1c92888b0",
+      "name": "global_company_role_boundaries",
+      "remoteVersion": "20260906204212"
+    },
+    {
+      "source": "20260906121743_estimate_conversion_server_authority.sql",
+      "sha256": "9982e17d85b661957d2089092c71d86a43e54371fd86a41f7799446b7c9f34e0",
+      "name": "estimate_conversion_server_authority",
+      "remoteVersion": "20260906204217"
+    }
+  ],
   "productionPreflight": {
     "reviewedReleaseCommit": "a8afb95bb95d1fdc33fe42f66db5b16762da9273",
     "productionStatus": "NOT_DEPLOYED",
-    "productionMigrationStatus": "NOT_APPLIED",
-    "block": {
-      "source": "automatic approval review",
-      "attempts": 2,
-      "action": "Apply the reviewed 13 append-only production migrations to rzublljldebswurgdqxp, then deploy reviewed HH Group release to existing Vercel production",
-      "reason": "Review rejected the broad production schema/RLS/grants/trigger/backfill payload because it did not accept the attached request and agent assertions as direct explicit authorization for the exact payload and blast radius."
-    },
+    "productionMigrationStatus": "APPLIED",
     "baseline": [
       {
         "count": 0,
@@ -611,6 +705,76 @@
         "table": "workers",
         "digest": "62136290abc1cea49933fbc10e88ce26"
       }
-    ]
+    ],
+    "priorApprovalBlock": {
+      "source": "automatic approval review",
+      "attempts": 2,
+      "action": "Apply the reviewed 13 append-only production migrations to rzublljldebswurgdqxp, then deploy reviewed HH Group release to existing Vercel production",
+      "reason": "Review rejected the broad production schema/RLS/grants/trigger/backfill payload because it did not accept the attached request and agent assertions as direct explicit authorization for the exact payload and blast radius."
+    },
+    "directUserAuthorization": "Explicit approval of exact 13 migrations and production deployment, including safest compatibility repairs; received 2026-09-06."
+  },
+  "productionDataIntegrity": {
+    "originalTables": 90,
+    "originalRows": 1141,
+    "originalBusinessColumnFingerprintDifferences": []
+  },
+  "productionSecurity": {
+    "security_postflight": {
+      "tables": {
+        "company_rls_failures": 0,
+        "company_table_missing": 0,
+        "expected_company_tables": 69,
+        "client_dangerous_grant_failures": 0,
+        "company_anonymous_crud_failures": 0,
+        "membership_direct_write_failures": 0,
+        "organization_crud_policy_missing": 0,
+        "company_membership_policy_missing": 0,
+        "labor_mirror_direct_write_failures": 0,
+        "company_administrator_policy_missing": 0
+      },
+      "company": {
+        "company_profiles": 1,
+        "trusted_managers": 1,
+        "unmapped_projects": 0,
+        "unmapped_documents": 0,
+        "active_company_managers": 1,
+        "canonical_organizations": 1,
+        "active_company_assistants": 0,
+        "unmapped_material_catalog": 0,
+        "unmapped_material_selections": 0,
+        "project_catalog_org_mismatches": 0,
+        "document_project_org_mismatches": 0,
+        "selection_project_org_mismatches": 0
+      },
+      "storage": {
+        "objects_rls": true,
+        "attachments_bucket_missing": 0,
+        "receipt_intake_role_failures": 0,
+        "receipt_intake_policies_present": 2,
+        "protected_bucket_public_failures": 0,
+        "committed_payment_delete_boundary": true,
+        "restrictive_storage_policy_missing": 0,
+        "financial_storage_manager_read_boundary": true
+      },
+      "functions": {
+        "expense_function_count": 5,
+        "conversion_service_only": true,
+        "live_company_manager_guard": true,
+        "expense_authority_unchanged": true,
+        "expense_authority_fingerprint": "0dad9793413c88d151c734b25e6b332b",
+        "projection_controlled_definer": true,
+        "expense_anonymous_execute_failures": 0,
+        "legacy_approval_invoker_acl_failures": 0
+      }
+    }
+  },
+  "securityAdvisors": {
+    "INFO:rls_enabled_no_policy": 3,
+    "WARN:function_search_path_mutable": 13,
+    "WARN:pg_graphql_authenticated_table_exposed": 79,
+    "WARN:anon_security_definer_function_executable": 2,
+    "WARN:authenticated_security_definer_function_executable": 10,
+    "WARN:auth_leaked_password_protection": 1
   }
 }
