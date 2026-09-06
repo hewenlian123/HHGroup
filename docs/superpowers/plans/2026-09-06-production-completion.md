@@ -23,8 +23,8 @@
 - [x] Browser matrix: Projects/Materials/Documents, AR/AP/Labor, Expenses/Accounts and critical navigation at 1440x900, 768x1024, 390x844. Check persistence, empty/unavailable/write failure states, overflow and console/page errors. Existing HH/Figma intent is authoritative; no redesign or new palette.
 - [x] Verify exact fixture ownership cleanup: DB, Storage, Auth residuals zero.
 - [x] Audit final diff, secrets/debug/generated files, runtime/env/routes, production migration/data compatibility and recovery approach.
-- [ ] Apply only reviewed data-safe production migrations; deploy current reviewed app to the verified existing production target.
-- [ ] Read-only production smoke: health, login/session, Projects, Estimates, Finance, Invoice, Payables, Labor, Contacts, runtime and browser errors, critical responsive routes.
-- [ ] Report every requested completion gate with evidence; claim PASS only when all gates pass.
+- [x] Apply only reviewed data-safe production migrations; deploy current reviewed app to the verified existing production target.
+- [x] Read-only production smoke: health, login/session, Projects, Estimates, Finance, Invoice, Payables, Labor, Contacts, runtime and browser errors, critical responsive routes.
+- [x] Report every requested completion gate with evidence; claim PASS only when all gates pass.
 
 Initial source hashes and existing uncommitted work manifest: /tmp/hh-production-start-manifest.json. Detailed commands/artifacts are kept under /tmp until consolidated into this record.

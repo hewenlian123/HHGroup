@@ -1,5 +1,5 @@
 {
-  "status": "DEPLOYED_POST_SMOKE_REPAIR_REDEPLOY_PENDING",
+  "status": "PRODUCTION_READY",
   "productionStatus": "DEPLOYED",
   "targets": {
     "url": "https://hhprojectgroup.com",
@@ -97,7 +97,7 @@
     },
     "finalBuild": {
       "result": "PASS",
-      "log": "/tmp/hh-production-build-certified.log"
+      "log": "/tmp/hh-production-final-guardian-build.log"
     },
     "diffAudit": {
       "files": 438,
@@ -274,7 +274,7 @@
   ],
   "productionPreflight": {
     "reviewedReleaseCommit": "a8afb95bb95d1fdc33fe42f66db5b16762da9273",
-    "productionStatus": "NOT_DEPLOYED",
+    "productionStatus": "DEPLOYED",
     "productionMigrationStatus": "APPLIED",
     "baseline": [
       {
@@ -739,7 +739,15 @@
   "productionDataIntegrity": {
     "originalTables": 90,
     "originalRows": 1141,
-    "originalBusinessColumnFingerprintDifferences": []
+    "originalBusinessColumnFingerprintDifferences": [],
+    "finalAudit": {
+      "tables": 93,
+      "unexpectedBusinessChanges": 0,
+      "expectedCacheRepairRows": 1,
+      "expectedAdditionalSecurityAuditEvents": {
+        "login_succeeded": 1
+      }
+    }
   },
   "productionSecurity": {
     "security_postflight": {
@@ -801,12 +809,13 @@
   },
   "deployment": {
     "provider": "Vercel",
-    "id": "dpl_8m5uL6rfVxeUrkcgHrAHcnM9N6ve",
-    "url": "https://hh-group-ah8lnoacp-hhwilliamhe-4916s-projects.vercel.app",
+    "id": "dpl_BUj4a9gvEfKjtUZVSRra1M5fwt31",
+    "url": "https://hh-group-emzhu44sh-hhwilliamhe-4916s-projects.vercel.app",
     "domain": "https://hhprojectgroup.com",
     "readyState": "READY",
-    "commit": "2dcc1180e3ad07b491be57e316b3d67430525edb",
-    "branch": "codex/production-certified-20260906"
+    "commit": "3ae22f2391aee056d359723ebfefbbfcaabdeae1",
+    "branch": "codex/production-certified-20260906",
+    "aliases": ["hhprojectgroup.com", "hh-group-inky.vercel.app"]
   },
   "productionFinancialPostflight": {
     "triggers": [
@@ -1011,7 +1020,66 @@
     },
     "legacyIntegrityWarnings": 14,
     "pinWarning": "Optional PIN not initialized; strict Supabase authentication remains enabled.",
-    "technicalErrorFalsePositive": "fixed locally; redeploy pending",
-    "draftInvoiceFalsePositive": "fixed locally; redeploy pending"
+    "technicalErrorFalsePositive": "FIXED_AND_VERIFIED_IN_PRODUCTION",
+    "draftInvoiceFalsePositive": "FIXED_AND_VERIFIED_IN_PRODUCTION",
+    "status": "PASS",
+    "finalCommit": "3ae22f2391aee056d359723ebfefbbfcaabdeae1",
+    "pageChecksPassed": 22,
+    "pageChecksTotal": 22,
+    "qa": {
+      "critical": 0,
+      "warnings": 15,
+      "passed": 56,
+      "total": 71
+    },
+    "dataQuality": {
+      "critical": 0,
+      "warnings": 57,
+      "invoiceIssues": 0
+    },
+    "responsiveChecks": 26,
+    "viewports": [
+      [1440, 900],
+      [768, 1024],
+      [390, 844]
+    ],
+    "threeViewportRoutes": [
+      "dashboard",
+      "projects",
+      "financial/ar",
+      "financial/payables",
+      "labor",
+      "invoice detail",
+      "estimates",
+      "customers"
+    ],
+    "additionalReadRoutes": ["financial", "financial/expenses", "financial/accounts/overview"],
+    "horizontalOverflow": 0,
+    "unavailablePages": 0,
+    "browserErrors": [],
+    "productionRuntimeErrors": []
+  },
+  "finalCertification": "PRODUCTION READY",
+  "previousReleaseDeployment": {
+    "provider": "Vercel",
+    "id": "dpl_8m5uL6rfVxeUrkcgHrAHcnM9N6ve",
+    "url": "https://hh-group-ah8lnoacp-hhwilliamhe-4916s-projects.vercel.app",
+    "domain": "https://hhprojectgroup.com",
+    "readyState": "READY",
+    "commit": "2dcc1180e3ad07b491be57e316b3d67430525edb",
+    "branch": "codex/production-certified-20260906"
+  },
+  "remaining": {
+    "releaseBlockers": [],
+    "historicalBusinessReview": "Existing contract placeholders, expense/reimbursement review items and historical marked records remain unchanged; no inferred contract values, approvals, payments or destructive cleanup.",
+    "optionalConfiguration": "PIN is not initialized; strict Supabase login and authorization are enforced. Existing security-advisor warnings are recorded above."
+  },
+  "testDataResidual": {
+    "scope": "Fixtures created by this release task",
+    "database": 0,
+    "storage": 0,
+    "auth": 0,
+    "productionBusinessTestRecordsCreated": 0,
+    "preexistingHistoricalMarkedRecords": "Preserved"
   }
 }

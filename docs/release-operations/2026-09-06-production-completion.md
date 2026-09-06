@@ -1,53 +1,42 @@
-# HH Group production completion — September 6, 2026
+# HH Group production certification — 2026-09-06
 
-Status: **Production deployed. Final smoke identified two scanner false positives; verified repairs await redeployment.**
+Status: **PRODUCTION READY · DEPLOYED**
 
-## Authorization and scope
+Production: [hhprojectgroup.com](https://hhprojectgroup.com). Provider: Vercel `hh-group`. Deployment: `dpl_BUj4a9gvEfKjtUZVSRra1M5fwt31`, READY, source commit `3ae22f2391aee056d359723ebfefbbfcaabdeae1`. Both existing production aliases point to this release. The verified GitHub repository contains the release on `codex/production-certified-20260906`; existing remote work and history were preserved.
 
-The user explicitly authorized the complete system audit, necessary repairs, local mutation fixtures and exact cleanup, append-only data-safe production migrations, deployment to the existing environment and read-only production smoke. Existing correct uncommitted work is preserved. AR, AP and Labor remain separate ledgers; singleton company branding and trusted membership remain authoritative.
+## Scope and repairs
 
-## Repairs and evidence
+The user directly authorized the reviewed 13 production migrations, production deployment and safest necessary repairs. Supabase target: `rzublljldebswurgdqxp`. Preserve singleton company finance, organization-specific project access, separate AR/AP/Labor ledgers, canonical project profit, existing business values and explicit failure behavior.
 
-- AR/AP: serialized allocation and parent locks, overpayment protection, stable request identities, lost-acknowledgement recovery and explicit write failure.
-- Estimate conversion: one authorized transaction links the estimate, project, customer, pricing snapshot and activity; concurrent retries return one project.
-- Labor: stable worker IDs, same-name separation, project attribution before pagination, live role checks and protected worker projection.
-- Expenses/Accounts: unavailable rather than zero on failed reads, exact affected-row checks, receipt attachment recovery and immutable retry uploads.
-- Projects/Security: live organization membership, shared-company finance authorization, private attachments, assistant scope and explicit anonymous/wrong-organization denial.
+The release closes atomicity, retry/idempotency, overpayment, invoice allocation, estimate conversion, company/project authorization, worker identity, receipt attachment and Storage integrity defects. Two append-only compatibility prerequisites accommodate the verified legacy material shape and UUID expense source IDs while preserving business data and function authority. A later narrowly guarded migration corrects exactly one historical unpaid issued-invoice balance cache; totals, status, payments and allocations are unchanged. The health scanner now distinguishes actual technical failures from explanatory RLS text and recognizes the valid zero-AR representation of unpaid legacy drafts without weakening issued-invoice or payment assertions.
 
-The companion JSON records migration source checksums and verification evidence. Local full database regression passed 478 tests; clean replay through `20260906203011` preserved the immediate existing-data snapshot and matched the expected schema. The final application production build passed. Browser certification passed on production builds against local Supabase with strict login: Security/Projects 111 checks, all AR/AP/Estimate and Labor/Expenses/Accounts workflows across the three required viewports. The final isolated Accounts refresh correction passed 26 targeted tests and affected browser workflows.
+## Database and data integrity
 
-## Production safety
+All original 13 migrations and three verified forward repairs were applied successfully. The companion JSON contains every immutable local filename/checksum and actual remote ledger version. The material and expense compatibility prerequisites precede the original 13, whose relative order and contents are unchanged. The first attempted foundation migration failed on the legacy missing column and rolled back completely before compatibility repair.
 
-The existing Vercel `hh-group` project and `hhprojectgroup.com` domain are verified. Supabase target is `rzublljldebswurgdqxp`. Node 22 is configured. Secret values are not included in this record. All destructive or financial mutation verification is local only.
+Clean local replay through `20260906205201` matched the expected schema and preserved all 122 tables and 2,340 current local rows. Full database regression: 16 files, 478 tests passed. Legacy compatibility adds one material test, five expense cases with 240 financial assertions, and six invoice-cache repair cases. All local mutation fixtures were rolled back or cleaned exactly.
 
-Read-only production preflight found a singleton company and one trusted named administrator, no orphan project references, no AR/AP overpayments and no partial estimate-conversion/customer linkage conflicts. Fingerprints of the original business columns will be captured immediately before migrations and compared after applying them; new ownership/backfill fields and their update timestamps are accounted for separately.
+Production migration verification initially preserved all original business-column fingerprints across 90 tables and 1,141 rows. After the explicit one-row balance/timestamp repair, all protected business fields across the resulting 93 tables remained unchanged. Final smoke added only one expected `login_succeeded` security-audit event through normal user login. No production test business, payment, payroll, settlement, Storage or Auth fixtures were created.
 
-Apply only the reviewed migration files in order. The Supabase Management API assigns remote migration versions; retain a source filename/checksum-to-remote-version crosswalk without editing local applied migration names or repairing unrelated history.
+## Verification evidence
 
-## Recovery
+- Local unit certification: 218 files and 1,465 tests passed; isolated receipt checks passed separately. Source contracts: 196 passed, with 12 local-only opt-ins separately verified. Final health fixes passed 227 security/technical-error tests and 12 data-quality tests.
+- Final typecheck, lint, format and production build passed. The application was rebuilt remotely with production environment variables; local secrets and generated output were excluded from deployment.
+- Local production-build E2E passed the required three-viewports matrix: Security/Projects 111 checks, AR/AP allocations and retry behavior, full estimate/project/invoice workflow, and Labor/Expenses/Accounts persistence and exact cleanup.
+- Production security postflight passed all company, organization, RPC, projection and private Storage boundaries. Final financial postflight reports zero violations across 19 aggregate invariants, with required triggers, unique indexes, FK and function permissions verified.
+- Authenticated production UI smoke passed Dashboard, Projects, Estimates, Finance, Billing, Invoice detail, Payables, Labor, Contacts, Expenses, Accounts and System Health. Twenty-six rendered checks across 1440×900, 768×1024 and 390×844 reported no horizontal overflow or unavailable pages. Browser console errors: zero.
+- Final deployed System QA: 22/22 page checks passed, zero critical results. Guardian: 25/25 routes; previews: 10/10; destructive GET guards: 7/7 blocked. Financial reconciliation: zero critical/high issues. Data quality: zero critical issues and zero invoice issues. Final deployment runtime error/fatal logs: none.
 
-Previous ready deployment: `dpl_ATCPWSUmZKay7XobMs73QJuHhGJV`. Retain it as application recovery evidence. A failed application release requires a compatible rollback or repair and redeployment. Database recovery preserves business rows and strengthened access controls; use reviewed forward fixes rather than destructive schema rollback or restoration of anonymous financial access.
+## Retained business review items
 
-## Remaining completion gates
+There are no release blockers. Production intentionally continues to show existing business-review warnings: contract placeholders, pending or unassigned expense/reimbursement items, historical marked records and estimate schedule review. The full financial scan has 45 medium and three informational findings; the number check has 57 warnings. These require source-business decisions and are not silently converted into financial writes or deleted. Optional PIN configuration remains uninitialized; strict named Supabase authentication and company/project authorization remain enforced. Existing non-ERROR security-advisor findings are listed in the companion JSON.
 
-Local browser rendering, receipt review and exact cleanup are complete. All 92 original public tables retain their 61 original rows and exact content hashes; Auth retains its two original users and Storage has zero objects. Record the release commit; revalidate production preflight and apply migrations; deploy using production environment variables; run authenticated read-only production smoke at all three viewports and inspect runtime/browser errors. No final PASS is claimed until these gates are complete.
+Test residuals created by this task: **DB 0 · Storage 0 · Auth 0**. Pre-existing historical marked records are preserved.
 
-## Production migration execution
+## Recovery and provenance
 
-The user supplied direct approval of the exact 13 migrations and deployment after the earlier automatic-review block. The first permitted attempt failed on a missing legacy material column and rolled back completely. Read-only schema comparison identified two minimal compatibility prerequisites: canonical fields for the empty legacy material table, and UUID source-ID handling in five expense functions. Neither changes existing business rows or financial column types. The material alias constraint prevents fallback references from bypassing authorization. The expense patch preserves function ownership, ACLs and execution configuration and rejects unknown definitions.
+The preceding production deployments are `dpl_8m5uL6rfVxeUrkcgHrAHcnM9N6ve` and the pre-release `dpl_ATCPWSUmZKay7XobMs73QJuHhGJV`. Any recovery must preserve business data and strengthened authorization; use a compatible app rollback or reviewed forward repair rather than destructive database rollback. The complete migration crosswalk, aggregate checks and final deployment metadata are in the adjacent JSON record.
 
-Both compatibility migrations and the original unchanged 13 migrations succeeded on production. Their source checksums and actual Management API ledger versions appear in the companion JSON. The prerequisites were applied before the original 13 in their original relative order; local filenames remain immutable. A clean local replay through both new migrations preserved all 122 tables and 2,340 current local rows. All 478 database regressions and 196 source contracts passed; six added opt-in compatibility cases passed separately, including 240 financial assertions on both text and UUID schemas.
+FINAL CERTIFICATION: PRODUCTION READY
 
-Post-migration fingerprints match all 90 original production tables and 1,141 rows. Added authorization tables contain one organization and one trusted membership; the new attachment table is empty. Security postflight verifies all 69 company boundaries, organization mappings, protected Storage rules and unchanged expense-function authority. Security advisors report no ERROR-level findings. Existing warnings include mutable search paths, authenticated GraphQL exposure governed by RLS, and disabled leaked-password protection; the two anonymous definer notices refer to trigger-returning functions, not directly callable financial RPCs.
-
-The Mac is unlocked. The inspection browser login page has been handed to the user for normal authentication; no password or session extraction is used. Application deployment and authenticated read-only smoke remain pending.
-
-## Post-deploy repair and verification
-
-Deployment `dpl_8m5uL6rfVxeUrkcgHrAHcnM9N6ve` reached READY and aliased both existing domains from release commit `2dcc1180`. The current origin was verified against Vercel’s existing GitHub link before pushing the release to `codex/production-certified-20260906`; no remote history was overwritten.
-
-A read-only financial audit identified one historical unpaid issued invoice with a zero balance cache. Migration `20260906205201` locks the parent, requires the exact verified root cause and at most one affected row, updates only the cache, and validates every other business field. Six local transactional regression cases, a full clean replay and all 478 database regressions passed before production application. Production issued-cache mismatches are now zero; fingerprints of all 93 tables match when excluding this explicit balance/timestamp repair. Payment, allocation, total and status values were preserved.
-
-Authenticated production smoke reached Dashboard, Projects, Estimates, Finance, Billing, Invoice detail, Payables, Labor, Contacts and System Health. Guardian reported 25/25 routes, 10/10 preview checks and 7/7 destructive GET guards passing. Financial reconciliation reports zero critical/high issues; historical medium/info business-review items are preserved. The optional PIN is not initialized; strict named Supabase authentication and company/project authorization remain enforced. No production test records were created. Pre-existing test-marked historical business records were not deleted.
-
-The full health UI exposed two scanner defects: its bare RLS acronym pattern matched explanatory text, and its invoice data check rejected the valid zero-AR representation of unpaid legacy drafts. Minimal fixes retain actual RLS/runtime/HTTP error detection and all issued-invoice/payment assertions. Targeted tests (227 security/technical-error and 12 data-quality), typecheck, lint, format and production build passed. Redeploy these source fixes and rerun the affected production scans before certification.
+PRODUCTION STATUS: DEPLOYED
