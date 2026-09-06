@@ -1,6 +1,6 @@
 # HH Group production completion — September 6, 2026
 
-Status: **Local certification and production migrations passed. Application deployment pending.**
+Status: **Production deployed. Final smoke identified two scanner false positives; verified repairs await redeployment.**
 
 ## Authorization and scope
 
@@ -41,3 +41,13 @@ Both compatibility migrations and the original unchanged 13 migrations succeeded
 Post-migration fingerprints match all 90 original production tables and 1,141 rows. Added authorization tables contain one organization and one trusted membership; the new attachment table is empty. Security postflight verifies all 69 company boundaries, organization mappings, protected Storage rules and unchanged expense-function authority. Security advisors report no ERROR-level findings. Existing warnings include mutable search paths, authenticated GraphQL exposure governed by RLS, and disabled leaked-password protection; the two anonymous definer notices refer to trigger-returning functions, not directly callable financial RPCs.
 
 The Mac is unlocked. The inspection browser login page has been handed to the user for normal authentication; no password or session extraction is used. Application deployment and authenticated read-only smoke remain pending.
+
+## Post-deploy repair and verification
+
+Deployment `dpl_8m5uL6rfVxeUrkcgHrAHcnM9N6ve` reached READY and aliased both existing domains from release commit `2dcc1180`. The current origin was verified against Vercel’s existing GitHub link before pushing the release to `codex/production-certified-20260906`; no remote history was overwritten.
+
+A read-only financial audit identified one historical unpaid issued invoice with a zero balance cache. Migration `20260906205201` locks the parent, requires the exact verified root cause and at most one affected row, updates only the cache, and validates every other business field. Six local transactional regression cases, a full clean replay and all 478 database regressions passed before production application. Production issued-cache mismatches are now zero; fingerprints of all 93 tables match when excluding this explicit balance/timestamp repair. Payment, allocation, total and status values were preserved.
+
+Authenticated production smoke reached Dashboard, Projects, Estimates, Finance, Billing, Invoice detail, Payables, Labor, Contacts and System Health. Guardian reported 25/25 routes, 10/10 preview checks and 7/7 destructive GET guards passing. Financial reconciliation reports zero critical/high issues; historical medium/info business-review items are preserved. The optional PIN is not initialized; strict named Supabase authentication and company/project authorization remain enforced. No production test records were created. Pre-existing test-marked historical business records were not deleted.
+
+The full health UI exposed two scanner defects: its bare RLS acronym pattern matched explanatory text, and its invoice data check rejected the valid zero-AR representation of unpaid legacy drafts. Minimal fixes retain actual RLS/runtime/HTTP error detection and all issued-invoice/payment assertions. Targeted tests (227 security/technical-error and 12 data-quality), typecheck, lint, format and production build passed. Redeploy these source fixes and rerun the affected production scans before certification.

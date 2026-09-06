@@ -1,6 +1,6 @@
 {
-  "status": "PRODUCTION_MIGRATIONS_APPLIED_DEPLOY_PENDING",
-  "productionStatus": "NOT_DEPLOYED",
+  "status": "DEPLOYED_POST_SMOKE_REPAIR_REDEPLOY_PENDING",
+  "productionStatus": "DEPLOYED",
   "targets": {
     "url": "https://hhprojectgroup.com",
     "vercelProject": "prj_dXVKe7VCa2dq0Odze5Uff9PRaG6g",
@@ -66,7 +66,7 @@
     "database": {
       "files": 16,
       "passed": 478,
-      "log": "/tmp/hh-production-db-compatibility-final.log"
+      "log": "/tmp/hh-production-db-cache-final.log"
     },
     "cleanReplay": {
       "result": "PASS",
@@ -74,7 +74,7 @@
       "rowsPreserved": 2340,
       "expectedSchemaEqualsCleanReplay": true,
       "columnContractDigest": "63e61d1c8c85d76139301d476eaeb757bd2ff3de328e488e7417883a5601a5e7",
-      "latestMigration": "20260906203011",
+      "latestMigration": "20260906205201",
       "currentDataHashesMatch": true
     },
     "originalPublicTableCountsAfterCleanup": {
@@ -92,8 +92,8 @@
     },
     "sourceContracts": {
       "passed": 196,
-      "skippedLocalOptIns": 11,
-      "log": "/tmp/hh-production-source-compatibility-final.log"
+      "skippedLocalOptIns": 12,
+      "log": "/tmp/hh-production-source-cache-final.log"
     },
     "finalBuild": {
       "result": "PASS",
@@ -156,6 +156,22 @@
         "/tmp/hh-material-legacy-compatibility-test.log",
         "/tmp/hh-expense-source-id-compatibility-final.log"
       ]
+    },
+    "cacheRepair": {
+      "localCasesPassed": 6,
+      "productionIssuedCacheMismatchesBefore": 1,
+      "productionIssuedCacheMismatchesAfter": 0,
+      "protectedTableFingerprintsCompared": 93,
+      "protectedBusinessColumnDifferences": [],
+      "changedFields": ["one invoices.balance_due", "that row updated_at"]
+    },
+    "healthScannerRepairs": {
+      "technicalErrorAndAuthTestsPassed": 227,
+      "dataQualityTestsPassed": 12,
+      "typecheck": "PASS",
+      "lint": "PASS",
+      "format": "PASS",
+      "build": "PASS"
     }
   },
   "productionMigrations": [
@@ -248,6 +264,12 @@
       "sha256": "9982e17d85b661957d2089092c71d86a43e54371fd86a41f7799446b7c9f34e0",
       "name": "estimate_conversion_server_authority",
       "remoteVersion": "20260906204217"
+    },
+    {
+      "source": "20260906205201_repair_issued_invoice_balance_cache.sql",
+      "sha256": "ebbd58f58dabc1db62db322ef3a782bdc482e2eb832bc03edb63e11c29e39303",
+      "name": "repair_issued_invoice_balance_cache",
+      "remoteVersion": "20260906205759"
     }
   ],
   "productionPreflight": {
@@ -776,5 +798,220 @@
     "WARN:anon_security_definer_function_executable": 2,
     "WARN:authenticated_security_definer_function_executable": 10,
     "WARN:auth_leaked_password_protection": 1
+  },
+  "deployment": {
+    "provider": "Vercel",
+    "id": "dpl_8m5uL6rfVxeUrkcgHrAHcnM9N6ve",
+    "url": "https://hh-group-ah8lnoacp-hhwilliamhe-4916s-projects.vercel.app",
+    "domain": "https://hhprojectgroup.com",
+    "readyState": "READY",
+    "commit": "2dcc1180e3ad07b491be57e316b3d67430525edb",
+    "branch": "codex/production-certified-20260906"
+  },
+  "productionFinancialPostflight": {
+    "triggers": [
+      {
+        "name": "guard_ap_bill_payment",
+        "table": "ap_bill_payments",
+        "enabled": "O",
+        "definition": "CREATE TRIGGER guard_ap_bill_payment BEFORE INSERT OR DELETE OR UPDATE ON public.ap_bill_payments FOR EACH ROW EXECUTE FUNCTION guard_ap_bill_payment()"
+      },
+      {
+        "name": "trg_ap_bill_payments_recompute",
+        "table": "ap_bill_payments",
+        "enabled": "O",
+        "definition": "CREATE TRIGGER trg_ap_bill_payments_recompute AFTER INSERT OR DELETE OR UPDATE ON public.ap_bill_payments FOR EACH ROW EXECUTE FUNCTION recompute_ap_bill_totals_trigger()"
+      },
+      {
+        "name": "guard_ap_bill_header",
+        "table": "ap_bills",
+        "enabled": "O",
+        "definition": "CREATE TRIGGER guard_ap_bill_header BEFORE INSERT OR UPDATE ON public.ap_bills FOR EACH ROW EXECUTE FUNCTION guard_ap_bill_header()"
+      },
+      {
+        "name": "guard_invoice_allocation_balance",
+        "table": "invoice_payments",
+        "enabled": "O",
+        "definition": "CREATE TRIGGER guard_invoice_allocation_balance BEFORE INSERT OR DELETE OR UPDATE ON public.invoice_payments FOR EACH ROW EXECUTE FUNCTION guard_invoice_allocation_balance()"
+      },
+      {
+        "name": "refresh_invoice_allocation_balance",
+        "table": "invoice_payments",
+        "enabled": "O",
+        "definition": "CREATE TRIGGER refresh_invoice_allocation_balance AFTER INSERT OR DELETE OR UPDATE ON public.invoice_payments FOR EACH ROW EXECUTE FUNCTION refresh_invoice_allocation_balance()"
+      },
+      {
+        "name": "derive_invoice_balance",
+        "table": "invoices",
+        "enabled": "O",
+        "definition": "CREATE TRIGGER derive_invoice_balance BEFORE INSERT OR UPDATE ON public.invoices FOR EACH ROW EXECUTE FUNCTION derive_invoice_balance()"
+      }
+    ],
+    "checked_at": "2026-09-06T21:00:56.04884+00:00",
+    "violations": {
+      "ap_overpaid": 0,
+      "orphan_ap_payment": 0,
+      "invalid_ap_payment": 0,
+      "invoice_overallocated": 0,
+      "invalid_active_allocation": 0,
+      "orphan_invoice_allocation": 0,
+      "ap_cached_balance_mismatch": 0,
+      "ap_subcontract_link_mismatch": 0,
+      "invoice_paid_status_mismatch": 0,
+      "orphan_estimate_project_links": 0,
+      "converted_project_wrong_company": 0,
+      "duplicate_estimate_project_links": 0,
+      "receipt_invoice_project_mismatch": 0,
+      "active_receipt_allocation_mismatch": 0,
+      "converted_estimate_missing_project": 0,
+      "explicit_receipt_customer_mismatch": 0,
+      "converted_project_customer_mismatch": 0,
+      "active_receipt_deposit_count_mismatch": 0,
+      "invoice_issued_cached_balance_mismatch": 0
+    },
+    "project_ref": "rzublljldebswurgdqxp",
+    "unique_indexes": [
+      {
+        "name": "ap_bill_payments_intent_unique",
+        "ready": true,
+        "valid": true,
+        "unique": true,
+        "definition": "CREATE UNIQUE INDEX ap_bill_payments_intent_unique ON public.ap_bill_payments USING btree (idempotency_key) WHERE (idempotency_key IS NOT NULL)"
+      },
+      {
+        "name": "idx_invoice_payments_payment_received_id_unique",
+        "ready": true,
+        "valid": true,
+        "unique": true,
+        "definition": "CREATE UNIQUE INDEX idx_invoice_payments_payment_received_id_unique ON public.invoice_payments USING btree (payment_received_id) WHERE (payment_received_id IS NOT NULL)"
+      },
+      {
+        "name": "idx_payments_received_idempotency_key",
+        "ready": true,
+        "valid": true,
+        "unique": true,
+        "definition": "CREATE UNIQUE INDEX idx_payments_received_idempotency_key ON public.payments_received USING btree (idempotency_key) WHERE (idempotency_key IS NOT NULL)"
+      },
+      {
+        "name": "projects_source_estimate_id_unique",
+        "ready": true,
+        "valid": true,
+        "unique": true,
+        "definition": "CREATE UNIQUE INDEX projects_source_estimate_id_unique ON public.projects USING btree (source_estimate_id) WHERE (source_estimate_id IS NOT NULL)"
+      }
+    ],
+    "rpc_permissions": [
+      {
+        "config": ["search_path=public"],
+        "signature": "approve_subcontract_bill(uuid)",
+        "anon_execute": false,
+        "public_execute": false,
+        "security_definer": false,
+        "service_role_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "config": ["search_path=\"\""],
+        "signature": "convert_estimate_to_project_atomic(uuid,jsonb,uuid,text)",
+        "anon_execute": false,
+        "public_execute": false,
+        "security_definer": true,
+        "service_role_execute": true,
+        "authenticated_execute": false
+      },
+      {
+        "config": ["search_path=public"],
+        "signature": "create_subcontract_bill_guard(uuid,uuid,date,numeric,text)",
+        "anon_execute": false,
+        "public_execute": false,
+        "security_definer": false,
+        "service_role_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "config": ["search_path=public"],
+        "signature": "create_subcontract_bill_guard(uuid,uuid,date,date,numeric,text)",
+        "anon_execute": false,
+        "public_execute": false,
+        "security_definer": false,
+        "service_role_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "config": ["search_path=\"\""],
+        "signature": "record_ap_bill_payment_atomic(uuid,text,date,numeric,text,text,text)",
+        "anon_execute": false,
+        "public_execute": false,
+        "security_definer": false,
+        "service_role_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "config": ["search_path=\"\""],
+        "signature": "record_invoice_receipt_atomic(text,uuid,uuid,text,date,numeric,text,text,text,text,jsonb,uuid)",
+        "anon_execute": false,
+        "public_execute": false,
+        "security_definer": false,
+        "service_role_execute": true,
+        "authenticated_execute": true
+      },
+      {
+        "config": ["search_path=\"\""],
+        "signature": "record_payment_received_atomic(text,uuid,uuid,text,date,numeric,text,text,text,text,jsonb)",
+        "anon_execute": false,
+        "public_execute": false,
+        "security_definer": false,
+        "service_role_execute": true,
+        "authenticated_execute": true
+      }
+    ],
+    "receipt_customer_fk": [
+      {
+        "name": "payments_received_customer_id_fkey",
+        "validated": true,
+        "definition": "FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL"
+      }
+    ],
+    "invoice_cache_summary": {
+      "issued_balance_mismatch": 0,
+      "issued_paid_cache_mismatch": 0,
+      "issued_legacy_zero_cache_candidates": 0,
+      "draft_void_excluded_from_ar_cache_metric": true
+    },
+    "transaction_read_only": "on",
+    "comparison_to_before": {
+      "before_evidence": "/tmp/hh-production-financial-postflight.json",
+      "before_issued_balance_mismatch": 1,
+      "after_issued_balance_mismatch": 0,
+      "repair_migration_remote_version": "20260906205759",
+      "draft_void_policy": "Excluded from AR cache violation metrics; historical evidence retained unchanged."
+    }
+  },
+  "productionSmoke": {
+    "authenticatedNativeRoutes": [
+      "dashboard",
+      "projects",
+      "estimates",
+      "financial",
+      "financial/ar",
+      "invoice detail",
+      "financial/payables",
+      "labor",
+      "customers",
+      "system-health"
+    ],
+    "guardianRoutesPassed": 25,
+    "previewChecksPassed": 10,
+    "destructiveGetGuardsPassed": 7,
+    "financialReconciliation": {
+      "critical": 0,
+      "high": 0,
+      "medium": 45,
+      "info": 3
+    },
+    "legacyIntegrityWarnings": 14,
+    "pinWarning": "Optional PIN not initialized; strict Supabase authentication remains enabled.",
+    "technicalErrorFalsePositive": "fixed locally; redeploy pending",
+    "draftInvoiceFalsePositive": "fixed locally; redeploy pending"
   }
 }

@@ -176,8 +176,9 @@ const STORAGE_BUCKETS = [
   "attachments",
 ] as const;
 
+// RLS is also explanatory UI copy; require an actual failure phrase for the acronym.
 const RAW_TECHNICAL_ERROR_RE =
-  /permission denied|row-level security|\brls\b|schema cache|could not find (?:the )?(?:table|column)|pgrst\d+|TypeError:|ReferenceError:|Unhandled Runtime Error|Application error|Internal Server Error/i;
+  /permission denied|row-level security|\brls(?:\s+(?:policy|check))?[\s:]+(?:violation|error|denied|failed|failure)\b|\bviolates\s+(?:an?\s+)?rls\b|schema cache|could not find (?:the )?(?:table|column)|pgrst\d+|TypeError:|ReferenceError:|Unhandled Runtime Error|Application error|Internal Server Error/i;
 const RAW_CURRENCY_RE = /\$\s*-?\d[\d,]*\.\d{3,}\b/;
 const BAD_VALUE_RE = /\b(?:NaN|Infinity|undefined|null)\b/i;
 const TEST_COPY_RE = /E2E-ST|E2E-ZIP|E2E test marker|sample data|test data/i;
