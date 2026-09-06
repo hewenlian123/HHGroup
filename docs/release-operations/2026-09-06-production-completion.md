@@ -1,6 +1,6 @@
 # HH Group production completion — September 6, 2026
 
-Status: **Local certification passed. Production deployment is next.**
+Status: **Local certification passed. Production migration blocked by automatic approval review; not deployed.**
 
 ## Authorization and scope
 
@@ -31,3 +31,11 @@ Previous ready deployment: `dpl_ATCPWSUmZKay7XobMs73QJuHhGJV`. Retain it as appl
 ## Remaining completion gates
 
 Local browser rendering, receipt review and exact cleanup are complete. All 92 original public tables retain their 61 original rows and exact content hashes; Auth retains its two original users and Storage has zero objects. Record the release commit; revalidate production preflight and apply migrations; deploy using production environment variables; run authenticated read-only production smoke at all three viewports and inspect runtime/browser errors. No final PASS is claimed until these gates are complete.
+
+## Automatic approval review block
+
+Release commit: `a8afb95bb95d1fdc33fe42f66db5b16762da9273`. The automatic approval reviewer rejected the first production migration twice, including after exact target, checksum, existing-data preconditions and local certification evidence were supplied. Its stated reason is insufficient direct authorization for this exact broad production schema/RLS/grants/trigger/backfill payload. The attached user request already authorized these categories and deployment; the reviewer did not accept that evidence. No workaround or alternate execution was attempted. The production ledger was confirmed unchanged; the organization foundation is absent.
+
+The pending reviewable action is the 13 migration sources and checksums in the companion JSON, applied in order to `rzublljldebswurgdqxp`, followed by the reviewed application release to the existing Vercel `hh-group` project. The first migration adds two authorization tables and ownership fields, bootstraps one trusted named administrator for the singleton company, backfills 12 projects and one catalog row, and tightens access using live membership. It deletes no business rows. Later migrations harden financial transactions, role and Storage boundaries and restore required workflow schema.
+
+Production read-only authenticated smoke additionally requires the existing browser session; the Mac remains locked. No test credentials or privileged impersonation will be used in production.

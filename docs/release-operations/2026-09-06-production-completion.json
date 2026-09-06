@@ -1,5 +1,5 @@
 {
-  "status": "LOCAL_CERTIFIED",
+  "status": "AWAITING_AUTOMATIC_REVIEW_REQUIRED_APPROVAL",
   "productionStatus": "NOT_DEPLOYED",
   "targets": {
     "url": "https://hhprojectgroup.com",
@@ -149,5 +149,468 @@
       "authResidual": 0
     }
   },
-  "productionMigrations": []
+  "productionMigrations": [],
+  "productionPreflight": {
+    "reviewedReleaseCommit": "a8afb95bb95d1fdc33fe42f66db5b16762da9273",
+    "productionStatus": "NOT_DEPLOYED",
+    "productionMigrationStatus": "NOT_APPLIED",
+    "block": {
+      "source": "automatic approval review",
+      "attempts": 2,
+      "action": "Apply the reviewed 13 append-only production migrations to rzublljldebswurgdqxp, then deploy reviewed HH Group release to existing Vercel production",
+      "reason": "Review rejected the broad production schema/RLS/grants/trigger/backfill payload because it did not accept the attached request and agent assertions as direct explicit authorization for the exact payload and blast radius."
+    },
+    "baseline": [
+      {
+        "count": 0,
+        "table": "accounting_periods",
+        "digest": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "count": 1,
+        "table": "accounts",
+        "digest": "0443504b55c6ce6ab709bc305ef65727"
+      },
+      {
+        "count": 1,
+        "table": "activity_logs",
+        "digest": "ffd20a55d32a4ba20f1eb11940bcf23d"
+      },
+      {
+        "count": 0,
+        "table": "ap_bill_deletions",
+        "digest": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "count": 1,
+        "table": "ap_bill_payments",
+        "digest": "2be7c7b7ba9ae89fc640e049a4840204"
+      },
+      {
+        "count": 2,
+        "table": "ap_bills",
+        "digest": "f46030d0629fef5d7145e46528e2c214"
+      },
+      {
+        "count": 1,
+        "table": "app_security_settings",
+        "digest": "c90b6d1e047dcd476407c71794bb4cc4"
+      },
+      {
+        "count": 1,
+        "table": "app_user_security_settings",
+        "digest": "ea92b71e91210e30d0971ec009b66bf8"
+      },
+      {
+        "count": 31,
+        "table": "attachments",
+        "digest": "34992704c82747edc10ad1fa81a84702"
+      },
+      {
+        "count": 0,
+        "table": "audit_logs",
+        "digest": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "count": 0,
+        "table": "bank_transactions",
+        "digest": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "count": 1,
+        "table": "bills",
+        "digest": "3fdb62cddf95485a299a27b0236a9bbf"
+      },
+      {
+        "count": 10,
+        "table": "categories",
+        "digest": "5497998a1c5d4fd1b396efd440f38d2a"
+      },
+      {
+        "count": 0,
+        "table": "clients",
+        "digest": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "count": 0,
+        "table": "commission_payment_records",
+        "digest": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "count": 0,
+        "table": "commission_payments",
+        "digest": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "count": 0,
+        "table": "commissions",
+        "digest": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "count": 0,
+        "table": "commitments",
+        "digest": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "count": 1,
+        "table": "company_profile",
+        "digest": "654abe39d6b4055429d78c8b9a21a41b"
+      },
+      {
+        "count": 0,
+        "table": "completion_certificates",
+        "digest": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "count": 0,
+        "table": "cost_allocations",
+        "digest": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "count": 15,
+        "table": "customers",
+        "digest": "e1ff395f7a3ed9853a62b534e3ceec43"
+      },
+      {
+        "count": 0,
+        "table": "daily_work_entries",
+        "digest": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "count": 1,
+        "table": "deposits",
+        "digest": "927291ee14eb858a72fded223a8c5a52"
+      },
+      {
+        "count": 0,
+        "table": "documents",
+        "digest": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "count": 0,
+        "table": "estimate_activity_events",
+        "digest": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "count": 19,
+        "table": "estimate_categories",
+        "digest": "20611b9cd7dc6f785ca38de5b5bf0a62"
+      },
+      {
+        "count": 62,
+        "table": "estimate_items",
+        "digest": "c4dd36d6cb0f0c579bba43deae553d49"
+      },
+      {
+        "count": 5,
+        "table": "estimate_meta",
+        "digest": "92da405cd7f496879d844321d88a9109"
+      },
+      {
+        "count": 22,
+        "table": "estimate_payment_schedule_items",
+        "digest": "e7c7f0ce713ece6af2e28971e610417a"
+      },
+      {
+        "count": 0,
+        "table": "estimate_snapshots",
+        "digest": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "count": 0,
+        "table": "estimate_templates",
+        "digest": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "count": 5,
+        "table": "estimates",
+        "digest": "fa5dc04f31cfd20a305cb8b0badaf72a"
+      },
+      {
+        "count": 0,
+        "table": "expense_attachments",
+        "digest": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "count": 21,
+        "table": "expense_lines",
+        "digest": "e06283475165d59a9dcee4baccaf1ecf"
+      },
+      {
+        "count": 26,
+        "table": "expense_options",
+        "digest": "5a5f7c9a63640f860cc5d851867f78cd"
+      },
+      {
+        "count": 23,
+        "table": "expenses",
+        "digest": "8fe5f46aa68284221ea4b331c2dec90e"
+      },
+      {
+        "count": 0,
+        "table": "final_punch_list_items",
+        "digest": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "count": 0,
+        "table": "final_punch_lists",
+        "digest": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "count": 0,
+        "table": "inspection_log",
+        "digest": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "count": 0,
+        "table": "inspection_logs",
+        "digest": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "count": 3,
+        "table": "invoice_items",
+        "digest": "3948df3cbf06281bd7757bf28f714bcc"
+      },
+      {
+        "count": 1,
+        "table": "invoice_payments",
+        "digest": "df803afe028681ea85b0e36b8aba0b7d"
+      },
+      {
+        "count": 3,
+        "table": "invoices",
+        "digest": "6d78e2daa7a4de5c1d49e59cb2c9cf24"
+      },
+      {
+        "count": 582,
+        "table": "labor_entries",
+        "digest": "0b0beaa908bc076c987b540463cff217"
+      },
+      {
+        "count": 0,
+        "table": "labor_invoices",
+        "digest": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "count": 0,
+        "table": "labor_payments",
+        "digest": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "count": 16,
+        "table": "labor_workers",
+        "digest": "d5576f7dbc3b925e34d73f5c8e600451"
+      },
+      {
+        "count": 1,
+        "table": "material_catalog",
+        "digest": "b8bca87cdd9fa01af7fb5a0c2ea44d18"
+      },
+      {
+        "count": 0,
+        "table": "material_selection_items",
+        "digest": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "count": 0,
+        "table": "material_selections",
+        "digest": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "count": 5,
+        "table": "payment_accounts",
+        "digest": "9e158bc09fab43e3f068af44d03c390f"
+      },
+      {
+        "count": 0,
+        "table": "payment_received_attachments",
+        "digest": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "count": 0,
+        "table": "payment_schedule_template_items",
+        "digest": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "count": 0,
+        "table": "payment_schedule_templates",
+        "digest": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "count": 1,
+        "table": "payments_received",
+        "digest": "436e0c61c9c81ac7d566c6f8a75fa6be"
+      },
+      {
+        "count": 1,
+        "table": "profiles",
+        "digest": "a0f132e943bbf0ca7104e1c8d25ac997"
+      },
+      {
+        "count": 0,
+        "table": "project_budget_items",
+        "digest": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "count": 0,
+        "table": "project_change_order_items",
+        "digest": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "count": 0,
+        "table": "project_change_orders",
+        "digest": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "count": 0,
+        "table": "project_commissions",
+        "digest": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "count": 0,
+        "table": "project_cost_codes",
+        "digest": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "count": 0,
+        "table": "project_material_selections",
+        "digest": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "count": 0,
+        "table": "project_schedule",
+        "digest": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "count": 0,
+        "table": "project_tasks",
+        "digest": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "count": 12,
+        "table": "projects",
+        "digest": "89377c9e63d902ce39bc1f6525c17e65"
+      },
+      {
+        "count": 1,
+        "table": "punch_list",
+        "digest": "58949fca3a2c024d5194ea226b2b25e4"
+      },
+      {
+        "count": 1,
+        "table": "receipt_queue",
+        "digest": "17db8437815be7785a9f6f5aedda51a5"
+      },
+      {
+        "count": 0,
+        "table": "receipt_storage_cleanup_candidates",
+        "digest": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "count": 3,
+        "table": "role_permissions",
+        "digest": "0fca9c63d1642dc82e2856cc0ffd962e"
+      },
+      {
+        "count": 102,
+        "table": "security_audit_events",
+        "digest": "f8c25c24bd1a737cc017bb5d02a4d191"
+      },
+      {
+        "count": 0,
+        "table": "site_photos",
+        "digest": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "count": 1,
+        "table": "subcontract_bills",
+        "digest": "5d8acd8e194c08af992a4a286031ea40"
+      },
+      {
+        "count": 0,
+        "table": "subcontract_deductions",
+        "digest": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "count": 0,
+        "table": "subcontract_payment_schedule",
+        "digest": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "count": 0,
+        "table": "subcontract_payments",
+        "digest": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "count": 1,
+        "table": "subcontractors",
+        "digest": "c1d8c728b147a302a09a062c5049bb22"
+      },
+      {
+        "count": 1,
+        "table": "subcontracts",
+        "digest": "9630651e7658a5dfb02ae8179ac595fc"
+      },
+      {
+        "count": 1,
+        "table": "tmp_backup_worker_advances_haijun",
+        "digest": "f97e29fcb28b8d7ed64f587c5ad41060"
+      },
+      {
+        "count": 10,
+        "table": "vendors",
+        "digest": "75c5a91a7a9b3df28a625a96de4936da"
+      },
+      {
+        "count": 0,
+        "table": "warranties",
+        "digest": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "count": 10,
+        "table": "worker_advances",
+        "digest": "00dd6a1e759775384107574435905fd9"
+      },
+      {
+        "count": 0,
+        "table": "worker_invoices",
+        "digest": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "count": 0,
+        "table": "worker_payment_reversals",
+        "digest": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "count": 0,
+        "table": "worker_payments",
+        "digest": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "count": 19,
+        "table": "worker_rate_history",
+        "digest": "83603cc1269e41003b7ceda060270a3d"
+      },
+      {
+        "count": 0,
+        "table": "worker_receipt_reference_remediations",
+        "digest": "d41d8cd98f00b204e9800998ecf8427e"
+      },
+      {
+        "count": 48,
+        "table": "worker_receipts",
+        "digest": "94abec296654c40472112fd077512b1e"
+      },
+      {
+        "count": 54,
+        "table": "worker_reimbursements",
+        "digest": "28d38140241484b65261165f391f1ffa"
+      },
+      {
+        "count": 15,
+        "table": "workers",
+        "digest": "62136290abc1cea49933fbc10e88ce26"
+      }
+    ]
+  }
 }
