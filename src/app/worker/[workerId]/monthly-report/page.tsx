@@ -1,3 +1,4 @@
+import { safeWorkerReturnPath, workerDetailReturnPath } from "@/lib/worker-return-path";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
@@ -53,7 +54,7 @@ function fmtSignedUsd(n: number): string {
 
 type PageProps = {
   params: Promise<{ workerId: string }>;
-  searchParams: Promise<{ month?: string }>;
+  searchParams: Promise<{ month?: string; returnTo?: string }>;
 };
 
 export default async function WorkerMonthlyReportPage({ params, searchParams }: PageProps) {
@@ -151,7 +152,9 @@ export default async function WorkerMonthlyReportPage({ params, searchParams }: 
                 currentYm={monthYm}
                 printDocumentTitle={`Payroll Statement — ${titleName}`}
               />
-              <Link href={`/workers/${encodeURIComponent(id)}`}>
+              <Link
+                href={safeWorkerReturnPath(sp.returnTo, workerDetailReturnPath(id, "statements"))}
+              >
                 <Button
                   variant="outline"
                   size="sm"

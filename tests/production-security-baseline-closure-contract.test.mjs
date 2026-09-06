@@ -162,11 +162,18 @@ test("does not server-render labor worker data through a service-role client for
 
   for (const relativePath of protectedReaders) {
     const reader = source(resolve(ROOT, relativePath));
-    assert.match(
-      reader,
-      /requireSupabaseOwnerOrAdminServerAction/,
-      `${relativePath} must establish the strict owner/admin boundary before reading labor data`
-    );
+    if (relativePath === "src/app/projects/[id]/page.tsx") {
+      assert.match(reader, /requireOrganizationServerActionClient/);
+      assert.match(reader, /hasCompanyAdministratorMembership/);
+      assert.match(reader, /if \(!canViewFinancials\) break/);
+      assert.doesNotMatch(reader, /getServerSupabaseAdmin/);
+    } else {
+      assert.match(
+        reader,
+        /requireSupabaseOwnerOrAdminServerAction/,
+        `${relativePath} must establish the strict owner/admin boundary before reading labor data`
+      );
+    }
   }
 
   const schemaRepairRoute = source(resolve(ROOT, "src/app/api/ensure-schema/route.ts"));

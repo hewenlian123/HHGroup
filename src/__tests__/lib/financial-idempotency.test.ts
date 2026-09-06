@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
-import { idempotentSubmissionForPayload } from "@/lib/financial-idempotency";
+import {
+  beginPendingSubmission,
+  idempotentSubmissionForPayload,
+} from "@/lib/financial-idempotency";
 
 describe("idempotentSubmissionForPayload", () => {
   it("reuses the same key for the same payload and rotates it when intent changes", () => {
@@ -28,4 +31,19 @@ describe("idempotentSubmissionForPayload", () => {
     });
     expect(createKey).toHaveBeenCalledTimes(2);
   });
+});
+
+it("persists one unresolved intent across reloads and rejects changed payment details", () => {
+  const values = new Map<string, string>();
+  const storage = {
+    getItem: (key: string) => values.get(key) ?? null,
+    setItem: (key: string, value: string) => {
+      values.set(key, value);
+    },
+  };
+  const first = beginPendingSubmission(storage, "user:bill", { amount: 40 });
+  expect(beginPendingSubmission(storage, "user:bill", { amount: 40 })).toEqual(first);
+  expect(() => beginPendingSubmission(storage, "user:bill", { amount: 41 })).toThrow(/previous/i);
+  values.set("user:bill", "broken");
+  expect(() => beginPendingSubmission(storage, "user:bill", { amount: 40 })).toThrow();
 });

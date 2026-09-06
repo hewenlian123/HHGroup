@@ -4,6 +4,15 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
+import { getSupabaseClient } from "@/lib/supabase";
+import { getPaymentsReceived } from "@/lib/payments-received-db";
+import {
+  getInvoices,
+  getInvoicePayments,
+  type Invoice,
+  type InvoicePayment,
+} from "@/lib/invoices-db";
+import { ErrorRetry, LoadingState } from "@/components/ui/system-state";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +20,6 @@ import { Select } from "@/components/ui/native-select";
 import { cn } from "@/lib/utils";
 import {
   getPaymentAttachmentPreviewUrl,
-  getPaymentsReceived,
   type PaymentReceivedAttachment,
   type PaymentReceivedDeleteDependenciesResult,
   type PaymentReceivedWithMeta,
@@ -86,6 +94,24 @@ function PaymentsReceivedPageInner() {
   const searchParams = useSearchParams();
   const [payments, setPayments] = React.useState<PaymentReceivedWithMeta[]>([]);
   const [loading, setLoading] = React.useState(true);
+  const [loadError, setLoadError] = React.useState<string | null>(null);
+  const [invoices, setInvoices] = React.useState<Invoice[]>([]);
+  const [ledgerPayments, setLedgerPayments] = React.useState<InvoicePayment[]>([]);
+  const loadRequest = React.useRef(0);
+  const customerId = searchParams.get("customerId") ?? "";
+  const invoiceById = React.useMemo(
+    () => new Map(invoices.map((invoice) => [invoice.id, invoice])),
+    [invoices]
+  );
+  const paymentReference = React.useMemo(
+    () =>
+      new Map(
+        ledgerPayments
+          .filter((payment) => payment.paymentReceivedId)
+          .map((payment) => [payment.paymentReceivedId!, payment.memo])
+      ),
+    [ledgerPayments]
+  );
   const [modalOpen, setModalOpen] = React.useState(false);
   const [prefillInvoiceId, setPrefillInvoiceId] = React.useState<string | null>(null);
   const [editPaymentId, setEditPaymentId] = React.useState<string | null>(null);
@@ -120,8 +146,18 @@ function PaymentsReceivedPageInner() {
   const handledQueryRef = React.useRef("");
 
   const clearPaymentQuery = React.useCallback(() => {
-    router.replace("/financial/payments", { scroll: false });
-  }, [router]);
+    const params = new URLSearchParams(searchParams);
+    for (const key of [
+      "paymentId",
+      "invoiceId",
+      "editPayment",
+      "receipt",
+      "receiptAction",
+      "sendReceipt",
+    ])
+      params.delete(key);
+    router.replace(`/financial/payments${params.size ? `?${params}` : ""}`, { scroll: false });
+  }, [router, searchParams]);
 
   const openReceivePayment = React.useCallback(() => {
     setPrefillInvoiceId(null);
@@ -141,17 +177,34 @@ function PaymentsReceivedPageInner() {
   );
 
   const load = React.useCallback(async () => {
-    const list = await getPaymentsReceived({ includeVoided: true });
-    setPayments(list);
+    const request = ++loadRequest.current;
+    try {
+      const client = getSupabaseClient();
+      if (!client) throw new Error("A signed-in session is required.");
+      const [list, invoiceRows, ledger] = await Promise.all([
+        getPaymentsReceived({ includeVoided: true }, client),
+        getInvoices(client),
+        getInvoicePayments(client),
+      ]);
+      if (request !== loadRequest.current) return;
+      setPayments(list);
+      setInvoices(invoiceRows);
+      setLedgerPayments(ledger);
+      setLoadError(null);
+    } catch {
+      if (request === loadRequest.current)
+        setLoadError(
+          "Received payments are unavailable. No totals are shown until the ledger can be loaded."
+        );
+    } finally {
+      if (request === loadRequest.current) setLoading(false);
+    }
   }, []);
 
   React.useEffect(() => {
-    let cancelled = false;
-    load().finally(() => {
-      if (!cancelled) setLoading(false);
-    });
+    void load();
     return () => {
-      cancelled = true;
+      loadRequest.current += 1;
     };
   }, [load]);
 
@@ -303,6 +356,7 @@ function PaymentsReceivedPageInner() {
     const from = dateFrom ? dateFrom.slice(0, 10) : "";
     const to = dateTo ? dateTo.slice(0, 10) : "";
     return payments.filter((row) => {
+      if (customerId && invoiceById.get(row.invoice_id)?.customerId !== customerId) return false;
       if (methodFilter && (row.payment_method ?? "").trim() !== methodFilter) return false;
       if (accountFilter && (row.deposit_account ?? "").trim() !== accountFilter) return false;
       const d = (row.payment_date ?? "").slice(0, 10);
@@ -326,7 +380,16 @@ function PaymentsReceivedPageInner() {
         .toLowerCase();
       return hay.includes(q);
     });
-  }, [payments, searchQuery, methodFilter, accountFilter, dateFrom, dateTo]);
+  }, [
+    payments,
+    searchQuery,
+    methodFilter,
+    accountFilter,
+    dateFrom,
+    dateTo,
+    customerId,
+    invoiceById,
+  ]);
 
   const summary = React.useMemo(() => {
     const activePayments = payments.filter((p) => !isVoidedPaymentStatus(p.status));
@@ -412,6 +475,31 @@ function PaymentsReceivedPageInner() {
     void load();
   }, [deleteTarget, load, toast]);
 
+  if (loading || loadError)
+    return (
+      <div className="page-container page-stack py-4">
+        <PageHeader title="Payments Received" description="Billing · Money In" />
+        {loading ? (
+          <LoadingState text="Loading received payments…" />
+        ) : (
+          <ErrorRetry
+            title="Unable to load received payments"
+            description={loadError}
+            action={
+              <Button
+                onClick={() => {
+                  setLoading(true);
+                  void load();
+                }}
+              >
+                Retry
+              </Button>
+            }
+          />
+        )}
+      </div>
+    );
+
   return (
     <div
       data-revenue-ar-v2
@@ -445,6 +533,51 @@ function PaymentsReceivedPageInner() {
           title="Payments Received"
           fab={<MobileFabButton ariaLabel="Receive payment" onClick={openReceivePayment} />}
         />
+
+        <div className="flex min-w-0 flex-wrap items-end gap-2">
+          <label className="min-w-0 flex-1 text-hh-control">
+            Customer history
+            <Select
+              aria-label="Customer history"
+              value={customerId}
+              className="mt-1 w-full"
+              onChange={(event) => {
+                const params = new URLSearchParams(searchParams);
+                if (event.target.value) params.set("customerId", event.target.value);
+                else params.delete("customerId");
+                router.replace(`/financial/payments${params.size ? `?${params}` : ""}`, {
+                  scroll: false,
+                });
+              }}
+            >
+              <option value="">All customers</option>
+              {customerId && !invoices.some((invoice) => invoice.customerId === customerId) ? (
+                <option value={customerId}>Selected customer</option>
+              ) : null}
+              {[
+                ...new Map(
+                  invoices
+                    .filter((invoice) => invoice.customerId)
+                    .map((invoice) => [invoice.customerId!, invoice.clientName])
+                ),
+              ].map(([id, name]) => (
+                <option key={id} value={id}>
+                  {name || "Unnamed customer"}
+                </option>
+              ))}
+            </Select>
+          </label>
+          <Button asChild variant="ghost">
+            <Link
+              href={`/financial/ar${customerId ? `?${new URLSearchParams({ customerId })}` : ""}`}
+            >
+              Balances & full history
+            </Link>
+          </Button>
+        </div>
+        <p className="text-hh-metadata">
+          Summary covers all customers. The list below follows your customer and payment filters.
+        </p>
 
         {/* Post-payment return context */}
         {paymentReturnContext ? (
@@ -736,6 +869,9 @@ function PaymentsReceivedPageInner() {
                       <div className="mt-0.5 truncate text-xs text-muted-foreground lg:hidden">
                         {row.project_name ?? "—"} · Inv {row.invoice_no ?? "—"}
                       </div>
+                      <p className="break-words text-hh-metadata text-[var(--hh-text-secondary)]">
+                        Reference / memo: {paymentReference.get(row.id) || "—"}
+                      </p>
                     </div>
 
                     <div className="hidden min-w-0 lg:block">

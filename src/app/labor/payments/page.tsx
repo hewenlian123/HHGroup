@@ -1,4 +1,7 @@
 "use client";
+import { laborPaymentHref } from "@/lib/navigation/labor-workspace";
+import { useSearchParams, useRouter } from "next/navigation";
+import { LaborReadState } from "@/components/labor/labor-read-state";
 
 import * as React from "react";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
@@ -186,9 +189,25 @@ function PaymentRowActionsMenu({
 }
 
 export default function WorkerPaymentsPage() {
+  return (
+    <React.Suspense fallback={null}>
+      <WorkerPaymentsInner />
+    </React.Suspense>
+  );
+}
+
+function WorkerPaymentsInner() {
+  const searchParams = useSearchParams();
+  const sourceWorkerId = searchParams.get("workerId") ?? "";
+  const router = useRouter();
+  React.useEffect(() => {
+    if (!sourceWorkerId) return;
+    router.replace(laborPaymentHref("/labor/payments", searchParams.toString()), { scroll: false });
+  }, [sourceWorkerId, searchParams, router]);
   const [workers, setWorkers] = React.useState<Array<{ id: string; name: string }>>([]);
   const [projects, setProjects] = React.useState<Array<{ id: string; name: string }>>([]);
   const [rows, setRows] = React.useState<WorkerPayment[]>([]);
+  const [readUnavailable, setReadUnavailable] = React.useState(false);
   const [loading, setLoading] = React.useState(true);
   const [message, setMessage] = React.useState<string | null>(null);
 
@@ -205,9 +224,12 @@ export default function WorkerPaymentsPage() {
   const [receiptPreviewId, setReceiptPreviewId] = React.useState<string | null>(null);
   const [filtersOpen, setFiltersOpen] = React.useState(false);
 
+  const readGeneration = React.useRef(0);
   const load = React.useCallback(async () => {
+    const generation = ++readGeneration.current;
     setLoading(true);
     setMessage(null);
+    setReadUnavailable(false);
     try {
       const response = await fetch("/api/labor/worker-payments?limit=500", {
         cache: "no-store",
@@ -218,17 +240,21 @@ export default function WorkerPaymentsPage() {
         workers?: Array<{ id: string; name: string }>;
         projects?: Array<{ id: string; name: string }>;
       };
-      if (!response.ok) throw new Error(body.message ?? "Failed to load worker payments.");
+      if (!response.ok || !Array.isArray(body.payments))
+        throw new Error(body.message ?? "Failed to load worker payments.");
+      if (generation !== readGeneration.current) return;
       setWorkers(body.workers ?? []);
       setProjects(body.projects ?? []);
-      setRows(body.payments ?? []);
+      setRows(body.payments!.filter((row) => !sourceWorkerId || row.workerId === sourceWorkerId));
     } catch (e) {
+      if (generation !== readGeneration.current) return;
+      setReadUnavailable(true);
       setMessage(e instanceof Error ? e.message : "Failed to load.");
       setRows([]);
     } finally {
-      setLoading(false);
+      if (generation === readGeneration.current) setLoading(false);
     }
-  }, []);
+  }, [sourceWorkerId]);
 
   React.useEffect(() => {
     void load();
@@ -359,6 +385,9 @@ export default function WorkerPaymentsPage() {
     "px-3 py-2 text-right text-hh-status font-medium uppercase tracking-normal text-[var(--hh-text-secondary)] tabular-nums";
   const sortableTh =
     "group/th cursor-pointer select-none transition-colors hover:text-[var(--hh-text-primary)]";
+
+  if (sourceWorkerId || loading || readUnavailable)
+    return <LaborReadState title="Labor payments" busy={loading} retry={() => void load()} />;
 
   return (
     <div

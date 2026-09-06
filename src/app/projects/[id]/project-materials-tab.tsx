@@ -24,6 +24,7 @@ const STATUS_OPTIONS = [
 ];
 
 function photoUrl(path: string): string {
+  if (/^https?:\/\//i.test(path)) return path;
   return `/api/materials/catalog/photo?path=${encodeURIComponent(path)}`;
 }
 
@@ -41,6 +42,7 @@ export function ProjectMaterialsTab({
   onRefresh: () => void;
 }) {
   const [rows, setRows] = React.useState<ProjectMaterialSelectionWithMaterial[]>(selections);
+  const [editingId, setEditingId] = React.useState<string | null>(null);
   const [modalOpen, setModalOpen] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
   const [generating, setGenerating] = React.useState(false);
@@ -60,6 +62,7 @@ export function ProjectMaterialsTab({
   }, [selections]);
 
   const openModal = () => {
+    setEditingId(null);
     setForm({
       item: "",
       category: "",
@@ -71,6 +74,21 @@ export function ProjectMaterialsTab({
     });
     setModalOpen(true);
     setMessage(null);
+  };
+
+  const editSelection = (row: ProjectMaterialSelectionWithMaterial) => {
+    setEditingId(row.id);
+    setForm({
+      item: row.item,
+      category: row.category,
+      material_id: row.material_id ?? "",
+      material_name: row.material_name,
+      supplier: row.supplier ?? "",
+      status: row.status,
+      notes: row.notes ?? "",
+    });
+    setMessage(null);
+    setModalOpen(true);
   };
 
   const handleMaterialSelect = (m: MaterialCatalogRow) => {
@@ -92,9 +110,10 @@ export function ProjectMaterialsTab({
     setMessage(null);
     try {
       const res = await fetch(`/api/projects/${projectId}/materials`, {
-        method: "POST",
+        method: editingId ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          id: editingId,
           item: form.item.trim(),
           category: form.category.trim() || null,
           material_id: form.material_id || null,
@@ -108,7 +127,11 @@ export function ProjectMaterialsTab({
       if (!data.ok) throw new Error(data.message || "Failed to add");
       if (data.selection) {
         const selection = data.selection as ProjectMaterialSelectionWithMaterial;
-        setRows((prev) => [selection, ...prev]);
+        setRows((prev) =>
+          editingId
+            ? prev.map((row) => (row.id === editingId ? { ...row, ...selection } : row))
+            : [selection, ...prev]
+        );
       }
       setModalOpen(false);
       onRefresh();
@@ -151,7 +174,7 @@ export function ProjectMaterialsTab({
       )}
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 pb-2">
         <SectionHeader label="Material Selections" />
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button
             size="sm"
             variant="outline"
@@ -225,7 +248,14 @@ export function ProjectMaterialsTab({
                       )}
                     </td>
                     <td className="h-11 min-h-[44px] px-2 py-0 align-middle text-hh-table-cell font-medium sm:px-3">
-                      {row.item || "—"}
+                      <button
+                        type="button"
+                        className="text-left underline-offset-2 hover:underline"
+                        onClick={() => editSelection(row)}
+                        aria-label={`Edit ${row.item}`}
+                      >
+                        {row.item || "—"}
+                      </button>
                     </td>
                     <td className="h-11 min-h-[44px] px-2 py-0 align-middle text-hh-table-cell text-[var(--hh-text-secondary)] sm:px-3">
                       {row.category || "—"}
@@ -261,15 +291,21 @@ export function ProjectMaterialsTab({
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
         <DialogContent className="max-w-lg rounded-hh-compact border-border/60 p-6">
           <DialogHeader>
-            <DialogTitle className="text-hh-body font-semibold">Add Selection</DialogTitle>
+            <DialogTitle className="text-hh-body font-semibold">
+              {editingId ? "Edit Selection" : "Add Selection"}
+            </DialogTitle>
             <DialogDescription>Select a saved material or enter details.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div>
-              <label className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]">
+              <label
+                htmlFor="project-material-item"
+                className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]"
+              >
                 Item
               </label>
               <Input
+                id="project-material-item"
                 value={form.item}
                 onChange={(e) => setForm((p) => ({ ...p, item: e.target.value }))}
                 placeholder="e.g. Kitchen flooring"
@@ -277,10 +313,14 @@ export function ProjectMaterialsTab({
               />
             </div>
             <div>
-              <label className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]">
+              <label
+                htmlFor="project-material-material_id"
+                className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]"
+              >
                 Saved material
               </label>
               <select
+                id="project-material-material_id"
                 value={form.material_id}
                 onChange={(e) => {
                   const m = catalog.find((c) => c.id === e.target.value);
@@ -298,10 +338,14 @@ export function ProjectMaterialsTab({
               </select>
             </div>
             <div>
-              <label className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]">
+              <label
+                htmlFor="project-material-category"
+                className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]"
+              >
                 Category
               </label>
               <Input
+                id="project-material-category"
                 value={form.category}
                 onChange={(e) => setForm((p) => ({ ...p, category: e.target.value }))}
                 placeholder="Optional"
@@ -309,10 +353,14 @@ export function ProjectMaterialsTab({
               />
             </div>
             <div>
-              <label className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]">
+              <label
+                htmlFor="project-material-material_name"
+                className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]"
+              >
                 Material name
               </label>
               <Input
+                id="project-material-material_name"
                 value={form.material_name}
                 onChange={(e) => setForm((p) => ({ ...p, material_name: e.target.value }))}
                 placeholder="Filled from saved material or type"
@@ -320,10 +368,14 @@ export function ProjectMaterialsTab({
               />
             </div>
             <div>
-              <label className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]">
+              <label
+                htmlFor="project-material-supplier"
+                className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]"
+              >
                 Supplier
               </label>
               <Input
+                id="project-material-supplier"
                 value={form.supplier}
                 onChange={(e) => setForm((p) => ({ ...p, supplier: e.target.value }))}
                 placeholder="Optional"
@@ -331,10 +383,14 @@ export function ProjectMaterialsTab({
               />
             </div>
             <div>
-              <label className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]">
+              <label
+                htmlFor="project-material-status"
+                className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]"
+              >
                 Status
               </label>
               <select
+                id="project-material-status"
                 value={form.status}
                 onChange={(e) =>
                   setForm((p) => ({
@@ -352,10 +408,14 @@ export function ProjectMaterialsTab({
               </select>
             </div>
             <div>
-              <label className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]">
+              <label
+                htmlFor="project-material-notes"
+                className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]"
+              >
                 Notes
               </label>
               <textarea
+                id="project-material-notes"
                 value={form.notes}
                 onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))}
                 placeholder="Optional"
@@ -380,7 +440,7 @@ export function ProjectMaterialsTab({
               onClick={handleSave}
               disabled={submitting}
             >
-              Add
+              {submitting ? "Saving…" : editingId ? "Save changes" : "Add"}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -45,14 +45,22 @@ export function ProjectDocumentsTab({ projectId, documents }: Props) {
     try {
       const result = await getDocumentPreviewUrl(doc.id);
       if (result.url) setPreviewUrl(result.url);
+      else setUploadError(result.error ?? "Document preview unavailable.");
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : "Document preview unavailable.");
     } finally {
       setLoadingPreview(false);
     }
   }, []);
 
   const handleDownload = React.useCallback(async (doc: DocumentRow) => {
-    const result = await getDocumentDownloadUrl(doc.id);
-    if (result.url) window.open(result.url, "_blank", "noopener,noreferrer");
+    try {
+      const result = await getDocumentDownloadUrl(doc.id);
+      if (result.url) window.open(result.url, "_blank", "noopener,noreferrer");
+      else setUploadError(result.error ?? "Document download unavailable.");
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : "Document download unavailable.");
+    }
   }, []);
 
   const handleDelete = React.useCallback(
@@ -67,6 +75,8 @@ export function ProjectDocumentsTab({ projectId, documents }: Props) {
           return;
         }
         syncRouterNonBlocking(router);
+      } catch (error) {
+        setDeleteError(error instanceof Error ? error.message : "Document deletion failed.");
       } finally {
         setDeletingId(null);
       }
@@ -94,6 +104,8 @@ export function ProjectDocumentsTab({ projectId, documents }: Props) {
         } else {
           setUploadError(result.error ?? "Upload failed.");
         }
+      } catch (error) {
+        setUploadError(error instanceof Error ? error.message : "Document upload failed.");
       } finally {
         setUploading(false);
       }
@@ -110,12 +122,14 @@ export function ProjectDocumentsTab({ projectId, documents }: Props) {
             <input
               type="file"
               name="file"
+              aria-label="Document file"
               accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.webp,image/*"
               capture="environment"
               className="min-h-[44px] text-hh-metadata file:mr-2 file:rounded file:border-0 file:bg-muted file:px-2 file:py-1 file:text-hh-metadata md:min-h-0"
             />
             <select
               name="file_type"
+              aria-label="Document type"
               defaultValue="Other"
               className="h-8 min-w-[100px] rounded border border-input bg-transparent px-2 text-hh-metadata"
             >
@@ -127,6 +141,7 @@ export function ProjectDocumentsTab({ projectId, documents }: Props) {
             </select>
             <Input
               name="notes"
+              aria-label="Document notes"
               placeholder="Notes (optional)"
               className="h-8 w-36 text-hh-metadata"
             />
@@ -134,7 +149,9 @@ export function ProjectDocumentsTab({ projectId, documents }: Props) {
               {uploading ? "Uploading…" : "Upload"}
             </Button>
             {uploadError && (
-              <span className="text-hh-metadata text-destructive">{uploadError}</span>
+              <span role="alert" className="text-hh-metadata text-destructive">
+                {uploadError}
+              </span>
             )}
           </form>
         }
@@ -145,7 +162,10 @@ export function ProjectDocumentsTab({ projectId, documents }: Props) {
       {documents.length === 0 ? (
         <p className="py-6 text-hh-body text-[var(--hh-text-secondary)]">
           No documents yet. Upload files above or view all in{" "}
-          <a href="/documents" className="hover:text-[var(--hh-text-primary)]">
+          <a
+            href={`/documents?project_id=${encodeURIComponent(projectId)}`}
+            className="hover:text-[var(--hh-text-primary)]"
+          >
             Documents
           </a>
           .

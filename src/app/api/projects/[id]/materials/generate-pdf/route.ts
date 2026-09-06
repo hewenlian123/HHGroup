@@ -1,29 +1,31 @@
-import { NextResponse } from "next/server";
-import { getProjectById, getSelectionsByProject, insertDocument } from "@/lib/data";
+import { sessionJson } from "@/lib/supabase-response";
+import { getProjectById, getSelectionsByProject } from "@/lib/data";
 import { addDocumentCompanyPdfHeader } from "@/lib/document-company-pdf";
 import { fetchDocumentCompanyProfile } from "@/lib/document-company-profile";
-import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
-import { getServerSupabaseAdmin } from "@/lib/supabase-server";
-
-const BUCKET = "attachments";
+import { requireOrganizationRequestClient } from "@/lib/auth-boundary";
+import { uploadDocumentFile } from "@/lib/document-storage";
 
 export async function POST(_req: Request, ctx: { params: Promise<{ id: string }> }) {
-  const guard = await requireSupabaseOwnerOrAdmin(_req);
-  if (!guard.ok) return guard.response;
-
   const { id: projectId } = await ctx.params;
-  if (!projectId)
-    return NextResponse.json({ ok: false, message: "Missing project id" }, { status: 400 });
+  const guard = await requireOrganizationRequestClient(_req, {
+    projectId,
+    write: true,
+    noStore: true,
+  });
+  if (!guard.ok) return guard.response;
+  const json = (body: unknown, options?: { status?: number }) =>
+    sessionJson(body, guard.sessionResponse, options?.status);
+
+  if (!projectId) return json({ ok: false, message: "Missing project id" }, { status: 400 });
 
   try {
-    const supabase = getServerSupabaseAdmin();
+    const supabase = guard.client;
     const [project, selections, company] = await Promise.all([
-      getProjectById(projectId),
-      getSelectionsByProject(projectId),
+      getProjectById(projectId, supabase),
+      getSelectionsByProject(projectId, supabase),
       fetchDocumentCompanyProfile(),
     ]);
-    if (!project)
-      return NextResponse.json({ ok: false, message: "Project not found" }, { status: 404 });
+    if (!project) return json({ ok: false, message: "Project not found" }, { status: 404 });
 
     const { jsPDF } = await import("jspdf");
     const doc = new jsPDF();
@@ -90,32 +92,23 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
     doc.text("Date: _________________________________", 20, y);
 
     const buf = doc.output("arraybuffer") as ArrayBuffer;
-    const ts = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
-    const fileName = `material-selections-${ts}.pdf`;
-    const filePath = `projects/${projectId}/materials/${fileName}`;
+    await uploadDocumentFile(
+      supabase,
+      {
+        file_name: `Material Selections - ${project.name}.pdf`,
+        file_type: "Other",
+        mime_type: "application/pdf",
+        size_bytes: buf.byteLength,
+        project_id: projectId,
+        related_module: "materials",
+        related_id: null,
+      },
+      buf
+    );
 
-    if (!supabase)
-      return NextResponse.json({ ok: false, message: "Supabase not configured" }, { status: 500 });
-    const { error: uploadError } = await supabase.storage
-      .from(BUCKET)
-      .upload(filePath, buf, { contentType: "application/pdf", upsert: true });
-    if (uploadError)
-      return NextResponse.json({ ok: false, message: uploadError.message }, { status: 500 });
-
-    await insertDocument({
-      file_name: `Material Selections - ${project.name}.pdf`,
-      file_path: filePath,
-      file_type: "Other",
-      mime_type: "application/pdf",
-      size_bytes: buf.byteLength,
-      project_id: projectId,
-      related_module: "materials",
-      related_id: null,
-    });
-
-    return NextResponse.json({ ok: true });
+    return json({ ok: true });
   } catch (e) {
     const message = e instanceof Error ? e.message : "PDF generation failed";
-    return NextResponse.json({ ok: false, message }, { status: 500 });
+    return json({ ok: false, message }, { status: 500 });
   }
 }

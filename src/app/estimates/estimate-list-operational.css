@@ -336,3 +336,11 @@
     opacity: 1 !important;
   }
 }
+
+@media (max-width: 1023px), (pointer: coarse) {
+  .estimate-list-workspace .estimate-list-search-field,
+  .estimate-list-status-filter.hh-touch-min {
+    min-height: var(--hh-touch-min);
+    height: var(--hh-touch-min);
+  }
+}

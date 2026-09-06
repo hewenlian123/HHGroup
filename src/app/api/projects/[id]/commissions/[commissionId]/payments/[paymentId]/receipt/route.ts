@@ -1,6 +1,7 @@
+import { withSessionCookies } from "@/lib/supabase-response";
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
-import { requireSupabaseOwnerOrAdminRequestClient } from "@/lib/auth-boundary";
+import { requireOrganizationRequestClient } from "@/lib/auth-boundary";
 import { getCommissionById, getPaymentRecordById, updatePaymentRecord } from "@/lib/data";
 import {
   parseCommissionReceiptStorageUrl,
@@ -32,54 +33,86 @@ export async function POST(
   req: Request,
   ctx: { params: Promise<{ id: string; commissionId: string; paymentId: string }> }
 ) {
-  const guard = await requireSupabaseOwnerOrAdminRequestClient(req, { noStore: true });
+  const guard = await requireOrganizationRequestClient(req, {
+    projectId: (await ctx.params).id,
+    write: req.method !== "GET",
+    requireOwnerAdmin: true,
+    noStore: true,
+  });
   if (!guard.ok) return guard.response;
   const { id: projectId, commissionId, paymentId } = await ctx.params;
   if (!projectId || !commissionId || !paymentId)
-    return NextResponse.json({ ok: false, message: "Missing id" }, { status: 400 });
+    return withSessionCookies(
+      NextResponse.json({ ok: false, message: "Missing id" }, { status: 400 }),
+      guard.sessionResponse
+    );
 
   const storageClient = getServerSupabaseAdmin();
   if (!storageClient)
-    return NextResponse.json(
-      { ok: false, message: "Supabase service role is not configured." },
-      { status: 500 }
+    return withSessionCookies(
+      NextResponse.json(
+        { ok: false, message: "Supabase service role is not configured." },
+        { status: 500 }
+      ),
+      guard.sessionResponse
     );
 
   try {
     const commission = await getCommissionById(commissionId, guard.client);
     if (!commission)
-      return NextResponse.json({ ok: false, message: "Commission not found" }, { status: 404 });
+      return withSessionCookies(
+        NextResponse.json({ ok: false, message: "Commission not found" }, { status: 404 }),
+        guard.sessionResponse
+      );
     if (!uuidNormalizedEqual(commission.project_id, projectId))
-      return NextResponse.json(
-        { ok: false, message: "Commission does not belong to this project" },
-        { status: 400 }
+      return withSessionCookies(
+        NextResponse.json(
+          { ok: false, message: "Commission does not belong to this project" },
+          { status: 400 }
+        ),
+        guard.sessionResponse
       );
     const existing = await getPaymentRecordById(paymentId, guard.client);
     if (!existing)
-      return NextResponse.json({ ok: false, message: "Payment not found" }, { status: 404 });
+      return withSessionCookies(
+        NextResponse.json({ ok: false, message: "Payment not found" }, { status: 404 }),
+        guard.sessionResponse
+      );
     if (!uuidNormalizedEqual(existing.commission_id, commissionId))
-      return NextResponse.json(
-        { ok: false, message: "Payment does not match commission" },
-        { status: 400 }
+      return withSessionCookies(
+        NextResponse.json(
+          { ok: false, message: "Payment does not match commission" },
+          { status: 400 }
+        ),
+        guard.sessionResponse
       );
 
     const formData = await req.formData();
     const file = formData.get("file");
     if (!file || typeof file !== "object" || !("arrayBuffer" in file)) {
-      return NextResponse.json({ ok: false, message: "No file provided." }, { status: 400 });
+      return withSessionCookies(
+        NextResponse.json({ ok: false, message: "No file provided." }, { status: 400 }),
+        guard.sessionResponse
+      );
     }
     const f = file as File;
     if (!f.size || f.size > MAX_BYTES) {
-      return NextResponse.json(
-        { ok: false, message: "File is empty or exceeds 15 MB." },
-        { status: 400 }
+      return withSessionCookies(
+        NextResponse.json(
+          { ok: false, message: "File is empty or exceeds 15 MB." },
+          { status: 400 }
+        ),
+        guard.sessionResponse
       );
     }
     const mime = (f.type || "").toLowerCase().split(";")[0].trim();
     if (!ALLOWED_TYPES.has(mime)) {
-      return NextResponse.json(
-        { ok: false, message: "Only JPG, PNG, and PDF files are allowed." },
-        { status: 400 }
+      return withSessionCookies(
+        NextResponse.json(
+          { ok: false, message: "Only JPG, PNG, and PDF files are allowed." },
+          { status: 400 }
+        ),
+        guard.sessionResponse
       );
     }
 
@@ -90,28 +123,34 @@ export async function POST(
       upsert: false,
     });
     if (upErr) {
-      return NextResponse.json(
-        {
-          ok: false,
-          message:
-            upErr.message ||
-            "Upload failed. Ensure Storage bucket 'commission-receipts' exists and policies allow access.",
-        },
-        { status: 500 }
+      return withSessionCookies(
+        NextResponse.json(
+          {
+            ok: false,
+            message:
+              upErr.message ||
+              "Upload failed. Ensure Storage bucket 'commission-receipts' exists and policies allow access.",
+          },
+          { status: 500 }
+        ),
+        guard.sessionResponse
       );
     }
     const { data: signed, error: signErr } = await storageClient.storage
       .from(BUCKET)
       .createSignedUrl(path, RECEIPT_SIGNED_URL_TTL_SEC);
     if (signErr || !signed?.signedUrl) {
-      return NextResponse.json(
-        {
-          ok: false,
-          message:
-            signErr?.message ??
-            "Could not create signed URL for receipt. Check Storage bucket and policies.",
-        },
-        { status: 500 }
+      return withSessionCookies(
+        NextResponse.json(
+          {
+            ok: false,
+            message:
+              signErr?.message ??
+              "Could not create signed URL for receipt. Check Storage bucket and policies.",
+          },
+          { status: 500 }
+        ),
+        guard.sessionResponse
       );
     }
 
@@ -121,20 +160,23 @@ export async function POST(
       guard.client
     );
     if (!record)
-      return NextResponse.json(
-        { ok: false, message: "Failed to save receipt URL." },
-        { status: 500 }
+      return withSessionCookies(
+        NextResponse.json({ ok: false, message: "Failed to save receipt URL." }, { status: 500 }),
+        guard.sessionResponse
       );
 
     revalidatePath(`/projects/${projectId}`);
     revalidatePath("/financial/commissions");
-    return NextResponse.json({ ok: true, record });
+    return withSessionCookies(NextResponse.json({ ok: true, record }), guard.sessionResponse);
   } catch (e) {
     const message = e instanceof Error ? e.message : "Upload failed.";
     const status = /fetch failed|Database connection failed|ENOTFOUND|ECONNREFUSED/i.test(message)
       ? 503
       : 500;
-    return NextResponse.json({ ok: false, message }, { status });
+    return withSessionCookies(
+      NextResponse.json({ ok: false, message }, { status }),
+      guard.sessionResponse
+    );
   }
 }
 
@@ -145,35 +187,58 @@ export async function DELETE(
   req: Request,
   ctx: { params: Promise<{ id: string; commissionId: string; paymentId: string }> }
 ) {
-  const guard = await requireSupabaseOwnerOrAdminRequestClient(req, { noStore: true });
+  const guard = await requireOrganizationRequestClient(req, {
+    projectId: (await ctx.params).id,
+    write: req.method !== "GET",
+    requireOwnerAdmin: true,
+    noStore: true,
+  });
   if (!guard.ok) return guard.response;
   const { id: projectId, commissionId, paymentId } = await ctx.params;
   if (!projectId || !commissionId || !paymentId)
-    return NextResponse.json({ ok: false, message: "Missing id" }, { status: 400 });
+    return withSessionCookies(
+      NextResponse.json({ ok: false, message: "Missing id" }, { status: 400 }),
+      guard.sessionResponse
+    );
 
   const storageClient = getServerSupabaseAdmin();
   if (!storageClient)
-    return NextResponse.json(
-      { ok: false, message: "Supabase service role is not configured." },
-      { status: 500 }
+    return withSessionCookies(
+      NextResponse.json(
+        { ok: false, message: "Supabase service role is not configured." },
+        { status: 500 }
+      ),
+      guard.sessionResponse
     );
 
   try {
     const commission = await getCommissionById(commissionId, guard.client);
     if (!commission)
-      return NextResponse.json({ ok: false, message: "Commission not found" }, { status: 404 });
+      return withSessionCookies(
+        NextResponse.json({ ok: false, message: "Commission not found" }, { status: 404 }),
+        guard.sessionResponse
+      );
     if (!uuidNormalizedEqual(commission.project_id, projectId))
-      return NextResponse.json(
-        { ok: false, message: "Commission does not belong to this project" },
-        { status: 400 }
+      return withSessionCookies(
+        NextResponse.json(
+          { ok: false, message: "Commission does not belong to this project" },
+          { status: 400 }
+        ),
+        guard.sessionResponse
       );
     const existing = await getPaymentRecordById(paymentId, guard.client);
     if (!existing)
-      return NextResponse.json({ ok: false, message: "Payment not found" }, { status: 404 });
+      return withSessionCookies(
+        NextResponse.json({ ok: false, message: "Payment not found" }, { status: 404 }),
+        guard.sessionResponse
+      );
     if (!uuidNormalizedEqual(existing.commission_id, commissionId))
-      return NextResponse.json(
-        { ok: false, message: "Payment does not match commission" },
-        { status: 400 }
+      return withSessionCookies(
+        NextResponse.json(
+          { ok: false, message: "Payment does not match commission" },
+          { status: 400 }
+        ),
+        guard.sessionResponse
       );
 
     const url = existing.receipt_url?.trim();
@@ -189,16 +254,22 @@ export async function DELETE(
 
     const record = await updatePaymentRecord(paymentId, { receipt_url: null }, guard.client);
     if (!record)
-      return NextResponse.json({ ok: false, message: "Failed to clear receipt." }, { status: 500 });
+      return withSessionCookies(
+        NextResponse.json({ ok: false, message: "Failed to clear receipt." }, { status: 500 }),
+        guard.sessionResponse
+      );
 
     revalidatePath(`/projects/${projectId}`);
     revalidatePath("/financial/commissions");
-    return NextResponse.json({ ok: true, record });
+    return withSessionCookies(NextResponse.json({ ok: true, record }), guard.sessionResponse);
   } catch (e) {
     const message = e instanceof Error ? e.message : "Failed to remove receipt.";
     const status = /fetch failed|Database connection failed|ENOTFOUND|ECONNREFUSED/i.test(message)
       ? 503
       : 500;
-    return NextResponse.json({ ok: false, message }, { status });
+    return withSessionCookies(
+      NextResponse.json({ ok: false, message }, { status }),
+      guard.sessionResponse
+    );
   }
 }

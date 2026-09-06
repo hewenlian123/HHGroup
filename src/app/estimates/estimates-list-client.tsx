@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FlaskConical, RefreshCw, Search } from "lucide-react";
+import { FlaskConical, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TableShell, tableRawThClass } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
@@ -12,7 +12,8 @@ import { EstimateSuccessBanner } from "./[id]/estimate-success-banner";
 import type { EstimateListItem, EstimateStatus } from "@/lib/estimates-db";
 import { ConfirmDialog } from "@/components/base/confirm-dialog";
 import { PageHeader } from "@/components/base/page-layout";
-import { EmptyState } from "@/components/ui/system-state";
+import { NativeSelect } from "@/components/ui/native-select";
+import { EmptyState, ErrorRetry } from "@/components/ui/system-state";
 import { Toolbar } from "@/components/ui/toolbar";
 import { useToast } from "@/components/toast/toast-provider";
 import { syncRouterNonBlocking } from "@/components/perf/sync-router-non-blocking";
@@ -185,19 +186,15 @@ export function EstimatesListClient({
         <PageHeader
           className="estimate-list-page-header"
           title="Estimates"
-          description={`${totalEstimates} ${totalEstimates === 1 ? "estimate" : "estimates"} · ${formatEstimateCurrency(totalValue)} pipeline`}
+          description={
+            loadWarning
+              ? "Estimates unavailable"
+              : `${totalEstimates} ${totalEstimates === 1 ? "estimate" : "estimates"} · ${formatEstimateCurrency(totalValue)} pipeline`
+          }
         />
       </div>
 
       <EstimateSuccessBanner saved={saved} />
-      {loadWarning && (
-        <p
-          role="status"
-          className="text-hh-body rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l3-hover)] px-3 py-2 text-[var(--hh-text-secondary)]"
-        >
-          {loadWarning}
-        </p>
-      )}
       {errorMessage && (
         <p
           role="alert"
@@ -207,7 +204,7 @@ export function EstimatesListClient({
         </p>
       )}
 
-      {rows.length > 0 ? (
+      {!loadWarning && rows.length > 0 ? (
         <div
           data-testid="estimate-list-summary-rail"
           className="estimate-list-summary-rail hidden md:flex"
@@ -217,7 +214,7 @@ export function EstimatesListClient({
             <button
               key={filter.value}
               type="button"
-              className="estimate-list-status-filter"
+              className="estimate-list-status-filter hh-touch-min"
               data-active={statusFilter === filter.value ? "true" : undefined}
               aria-pressed={statusFilter === filter.value}
               onClick={() => setStatusFilter(filter.value)}
@@ -232,7 +229,7 @@ export function EstimatesListClient({
       ) : null}
 
       <section data-testid="estimate-list-records" className="estimate-list-records">
-        {rows.length > 0 ? (
+        {!loadWarning && rows.length > 0 ? (
           <>
             <MobileSearchFiltersRow
               filterSheetOpen={filtersOpen}
@@ -257,7 +254,7 @@ export function EstimatesListClient({
                 >
                   Status
                 </label>
-                <select
+                <NativeSelect
                   id="estimate-mobile-status-filter"
                   className={cn(FIELD, "w-full appearance-none px-3")}
                   value={statusFilter}
@@ -269,7 +266,7 @@ export function EstimatesListClient({
                   <option value="Approved">Approved</option>
                   <option value="Rejected">Rejected</option>
                   <option value="Converted">Converted</option>
-                </select>
+                </NativeSelect>
               </div>
               <Button
                 type="button"
@@ -300,58 +297,33 @@ export function EstimatesListClient({
           </>
         ) : null}
 
-        {rows.length === 0 ? (
+        {loadWarning ? (
+          <ErrorRetry
+            title="Estimates unavailable"
+            description={loadWarning}
+            retryLabel="Retry"
+            onRetry={() => router.refresh()}
+          />
+        ) : rows.length === 0 ? (
           <>
             <MobileEmptyState
               icon={<FlaskConical className="h-8 w-8 opacity-80" aria-hidden />}
-              message={
-                loadWarning
-                  ? "Could not load estimates."
-                  : "No estimates yet. Create one to get started."
-              }
+              message="No estimates yet. Create one to get started."
               action={
-                loadWarning ? (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() => router.refresh()}
-                  >
-                    <RefreshCw className="mr-2 h-4 w-4" aria-hidden />
-                    Retry
-                  </Button>
-                ) : (
-                  <Button asChild size="sm" variant="outline">
-                    <Link href="/estimates/new">New estimate</Link>
-                  </Button>
-                )
+                <Button asChild size="sm" variant="outline">
+                  <Link href="/estimates/new">New estimate</Link>
+                </Button>
               }
             />
             <div className="hidden md:block">
               <EmptyState
-                title={loadWarning ? "Could not load estimates" : "No estimates yet"}
-                description={
-                  loadWarning
-                    ? "Check your connection and database configuration, then refresh."
-                    : "Create an estimate to get started."
-                }
-                icon={<FlaskConical className="h-5 w-5" />}
+                title="No estimates yet"
+                description="Create an estimate to get started."
+                icon={<FlaskConical className="h-5 w-5" aria-hidden />}
                 action={
-                  loadWarning ? (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={() => router.refresh()}
-                    >
-                      <RefreshCw className="mr-2 h-4 w-4" aria-hidden />
-                      Retry
-                    </Button>
-                  ) : (
-                    <Button asChild size="sm" className={cn("h-9", PRIMARY_ACTION)}>
-                      <Link href="/estimates/new">New Estimate</Link>
-                    </Button>
-                  )
+                  <Button asChild size="sm" className={cn("h-9", PRIMARY_ACTION)}>
+                    <Link href="/estimates/new">New Estimate</Link>
+                  </Button>
                 }
               />
             </div>

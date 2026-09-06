@@ -74,6 +74,8 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
   const body = await readJson(request);
   if (!body) return apiError(400, "Invalid payment payload.");
 
+  const idempotencyKey = stringOrNull(body.idempotency_key);
+  if (!idempotencyKey) return apiError(400, "Payment idempotency key is required.");
   const amount = numberOrNull(body.amount);
   const paymentDate = stringOrNull(body.payment_date);
   if (amount == null || amount <= 0) return apiError(400, "Payment amount must be greater than 0.");
@@ -85,6 +87,7 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
     const payment = await addApBillPayment(
       id,
       {
+        idempotency_key: idempotencyKey,
         payment_date: paymentDate,
         amount,
         payment_method: stringOrNull(body.payment_method),
@@ -93,32 +96,41 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
       },
       supabase
     );
-    const updatedBill = await getApBillById(id, supabase);
-    const billForRevalidation = updatedBill ?? bill;
-    revalidatePath(`/bills/${id}`);
-    revalidatePath("/bills");
-    if (billForRevalidation.project_id) {
-      revalidatePath(`/projects/${billForRevalidation.project_id}`);
-      revalidatePath(`/projects/${billForRevalidation.project_id}/subcontracts`);
-      if (billForRevalidation.subcontract_id) {
-        revalidatePath(
-          `/projects/${billForRevalidation.project_id}/subcontracts/${billForRevalidation.subcontract_id}`
-        );
+    const billForRevalidation = bill;
+    try {
+      revalidatePath(`/bills/${id}`);
+      revalidatePath("/bills");
+      if (billForRevalidation.project_id) {
+        revalidatePath(`/projects/${billForRevalidation.project_id}`);
+        revalidatePath(`/projects/${billForRevalidation.project_id}/subcontracts`);
+        if (billForRevalidation.subcontract_id) {
+          revalidatePath(
+            `/projects/${billForRevalidation.project_id}/subcontracts/${billForRevalidation.subcontract_id}`
+          );
+        }
       }
-    }
-    if (billForRevalidation.subcontractor_id) {
-      revalidatePath(`/subcontractors/${billForRevalidation.subcontractor_id}`);
-      revalidatePath("/subcontractors");
+      if (billForRevalidation.subcontractor_id) {
+        revalidatePath(`/subcontractors/${billForRevalidation.subcontractor_id}`);
+        revalidatePath("/subcontractors");
+      }
+    } catch (error) {
+      logBillsError("payment committed; cache refresh", error);
     }
     return withSessionCookies(
-      NextResponse.json(
-        { ok: true, payment, bill: updatedBill ?? bill },
-        { headers: NO_CACHE_HEADERS }
-      ),
+      NextResponse.json({ ok: true, payment }, { headers: NO_CACHE_HEADERS }),
       sessionResponse
     );
   } catch (error) {
     logBillsError("create", error);
-    return apiError(500, safeFailureMessage(error, "Failed to add payment."));
+    const code = (error as { code?: unknown } | null)?.code;
+    const rejected = typeof code === "string" && /^(22|23|42|P0)/.test(code);
+    return NextResponse.json(
+      {
+        ok: false,
+        message: safeFailureMessage(error, "Failed to add payment."),
+        outcome: rejected ? "rejected" : "unknown",
+      },
+      { status: rejected ? 400 : 500, headers: NO_CACHE_HEADERS }
+    );
   }
 }

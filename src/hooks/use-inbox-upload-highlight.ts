@@ -1,7 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { getExpenseTotal, type Expense } from "@/lib/data";
+import { getExpenseTotal } from "@/lib/expense-domain";
+import type { Expense } from "@/lib/expenses-db";
 import { buildExpenseDateGroups } from "@/lib/expense-list-date-groups";
 import { expenseInboxDuplicateIdSet } from "@/lib/expense-inbox-dup";
 import { expenseMatchesInboxPool } from "@/lib/expense-workflow-status";

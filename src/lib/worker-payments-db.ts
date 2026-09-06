@@ -9,7 +9,7 @@ import { getSupabaseClient } from "@/lib/supabase";
 export type WorkerPayment = {
   id: string;
   workerId: string;
-  /** Legacy UI field; DB has no project scope on worker_payments — always null. */
+  /** Explicit settlement_metadata.project_id; unscoped/global payments remain null. */
   projectId: string | null;
   /** Calendar date for display / receipt sequencing (payment_date, fallback created_at). */
   paymentDate: string;
@@ -94,6 +94,7 @@ function isRetryableWorkerPaymentsSelectError(err: { message?: string } | null):
  * Extra variants cover legacy or partial schemas without breaking the payments UI.
  */
 const WORKER_PAYMENTS_SELECT_VARIANTS = [
+  "id, worker_id, total_amount, payment_method, note, payment_date, created_at, labor_entry_ids, settlement_metadata",
   "id, worker_id, total_amount, payment_method, note, payment_date, created_at, labor_entry_ids",
   "id, worker_id, total_amount, payment_method, note, payment_date, created_at",
   "id, worker_id, amount, payment_method, note, payment_date, created_at",
@@ -123,10 +124,11 @@ function normalizePaymentDate(raw: string | null | undefined): string | null {
 function fromRow(r: Record<string, unknown>): WorkerPayment {
   const createdAt = (r.created_at as string) ?? "";
   const paymentDate = normalizePaymentDate((r.payment_date as string | null) ?? null);
+  const metadata = r.settlement_metadata as { project_id?: unknown } | null;
   return {
     id: (r.id as string) ?? "",
     workerId: (r.worker_id as string) ?? "",
-    projectId: null,
+    projectId: typeof metadata?.project_id === "string" ? metadata.project_id : null,
     paymentDate: paymentDate ?? createdAt.slice(0, 10),
     amount: Number(r.total_amount ?? r.amount) || 0,
     paymentMethod: (r.payment_method as string | null) ?? null,
@@ -334,7 +336,8 @@ export async function getWorkerPaymentsWithClient(
       .select(cols as never)
       .order(dateColumn, { ascending: false });
     if (filters?.workerId) q = q.eq("worker_id", filters.workerId);
-    // worker_payments has no project_id — ignore projectId filter.
+    // Apply the canonical scope before limiting, so other projects cannot crowd out results.
+    if (filters?.projectId) q = q.eq("settlement_metadata->>project_id", filters.projectId);
     if (filters?.fromDate) {
       q =
         dateColumn === "payment_date"
@@ -355,10 +358,20 @@ export async function getWorkerPaymentsWithClient(
   for (const cols of WORKER_PAYMENTS_SELECT_VARIANTS) {
     const res = await runSelect(cols);
     if (!res.error) {
-      return ((res.data ?? []) as unknown as Record<string, unknown>[]).map(fromRow);
+      if (!Array.isArray(res.data))
+        throw new Error("Worker payments unavailable: invalid query result.");
+      const payments = (res.data as unknown as Record<string, unknown>[]).map(fromRow);
+      return filters?.projectId
+        ? payments.filter((payment) => payment.projectId === filters.projectId)
+        : payments;
     }
     lastError = res.error;
-    if (isMissingTable(res.error)) return [];
+    if (filters?.projectId)
+      throw new Error(
+        `Worker payments unavailable: ${res.error.message ?? "project scope could not be read."}`
+      );
+    if (isMissingTable(res.error))
+      throw new Error("Worker payments unavailable: table is missing.");
     if (!isRetryableWorkerPaymentsSelectError(res.error)) {
       throw new Error(res.error.message ?? "Failed to load worker payments.");
     }

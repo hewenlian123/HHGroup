@@ -1,68 +1,53 @@
 import { PageLayout, PageHeader } from "@/components/base";
+import { ServerDataLoadFallback } from "@/components/server-data-load-fallback";
 import { unstable_noStore as noStore } from "next/cache";
 import { notFound } from "next/navigation";
-import { requireSupabaseOwnerOrAdminServerAction } from "@/lib/auth-boundary";
-import { getWorkers as getLaborWorkersFlat, type Worker as LaborWorker } from "@/lib/labor-db";
+import { requireSupabaseOwnerOrAdminServerActionClient } from "@/lib/auth-boundary";
 import { getWorkers } from "@/lib/workers-db";
-import type { WorkerRow, WorkerStatus } from "@/lib/workers-db";
-import { getServerSupabaseInternal } from "@/lib/supabase-server";
-import { getWorkerPaymentsWithClient, type WorkerPayment } from "@/lib/worker-payments-db";
+import { getWorkerPaymentsWithClient } from "@/lib/worker-payments-db";
 import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
 import { WorkersListClient } from "./workers-list-client";
 import { WorkersActions } from "./workers-actions";
 import { cn } from "@/lib/utils";
+import { emitRscTiming } from "@/lib/performance/server-timing";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 export const fetchCache = "force-no-store";
 
-function laborWorkerToWorkerRow(w: LaborWorker): WorkerRow {
-  const st: WorkerStatus = w.status === "inactive" ? "Inactive" : "Active";
-  return {
-    id: w.id,
-    name: w.name,
-    phone: w.phone ?? null,
-    trade: w.trade ?? null,
-    daily_rate: Number(w.dailyRate) || 0,
-    default_ot_rate: 0,
-    status: st,
-    notes: w.notes ?? null,
-    created_at: w.createdAt ?? "",
-  };
-}
-
 export default async function WorkersPage() {
+  const pageStartedAt = performance.now();
   noStore();
-  const guard = await requireSupabaseOwnerOrAdminServerAction();
+  const authStartedAt = performance.now();
+  const guard = await requireSupabaseOwnerOrAdminServerActionClient({ noStore: true });
+  const authDuration = performance.now() - authStartedAt;
   if (!guard.ok) notFound();
-  let rows: Awaited<ReturnType<typeof getWorkers>> = [];
-  let initialLastPayments: WorkerPayment[] = [];
-  let dataLoadWarning: string | null = null;
-  const internal = getServerSupabaseInternal();
+  const serverDataStartedAt = performance.now();
+  let data;
   try {
-    rows = await getWorkers(internal ?? undefined);
+    data = await Promise.all([
+      getWorkers(guard.client),
+      getWorkerPaymentsWithClient(guard.client, { limit: 500 }),
+    ] as const);
   } catch (e) {
     logServerPageDataError("workers", e);
-    dataLoadWarning = serverDataLoadWarning(e, "workers");
+    return (
+      <ServerDataLoadFallback
+        message={serverDataLoadWarning(e, "workers")}
+        backHref="/dashboard"
+        backLabel="Back to dashboard"
+      />
+    );
   }
-
-  /** Same table, narrower column set — fills list when workers-db extended select misbehaves. */
-  if (rows.length === 0) {
-    try {
-      const lw = await getLaborWorkersFlat(internal ?? undefined);
-      if (lw.length > 0) rows = lw.map(laborWorkerToWorkerRow);
-    } catch {
-      /* keep empty / existing warning */
-    }
-  }
-
-  try {
-    if (internal) {
-      initialLastPayments = await getWorkerPaymentsWithClient(internal, { limit: 500 });
-    }
-  } catch (e) {
-    logServerPageDataError("worker center last payments", e);
-  }
+  const [rows, initialLastPayments] = data;
+  const serverDataCompletedAt = performance.now();
+  const rscPreparedAt = performance.now();
+  emitRscTiming("workers", {
+    authMs: authDuration,
+    serverDataMs: serverDataCompletedAt - serverDataStartedAt,
+    rscPrepareMs: rscPreparedAt - serverDataCompletedAt,
+    totalMs: rscPreparedAt - pageStartedAt,
+  });
 
   return (
     <PageLayout
@@ -80,7 +65,7 @@ export default async function WorkersPage() {
     >
       <WorkersListClient
         rows={rows}
-        dataLoadWarning={dataLoadWarning}
+        dataLoadWarning={null}
         initialLastPayments={initialLastPayments}
       />
     </PageLayout>

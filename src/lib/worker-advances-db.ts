@@ -210,7 +210,7 @@ export async function getWorkerAdvances(
 
   const { data, error } = await q;
   if (error) {
-    if (isMissingTable(error)) return [];
+    if (isMissingTable(error)) throw new Error("Worker advances unavailable: table is missing.");
     throw new Error(error.message ?? "Failed to load worker advances.");
   }
   return ((data ?? []) as Record<string, unknown>[]).map(fromRow);

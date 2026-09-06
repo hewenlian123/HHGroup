@@ -10,7 +10,11 @@ export type NativeSelectProps = React.ComponentPropsWithoutRef<"select">;
 const NativeSelect = React.forwardRef<HTMLSelectElement, NativeSelectProps>(
   ({ className, children, ...props }, ref) => {
     return (
-      <select ref={ref} className={cn(nativeSelectClassName(), className)} {...props}>
+      <select
+        ref={ref}
+        className={cn(nativeSelectClassName(), "hh-touch-min", className)}
+        {...props}
+      >
         {children}
       </select>
     );

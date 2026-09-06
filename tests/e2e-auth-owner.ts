@@ -58,6 +58,23 @@ function localAuthAdmin() {
   });
 }
 
+async function provisionCompanyMembership(userId: string, role: E2EAuthRole): Promise<void> {
+  const admin = localAuthAdmin();
+  const { data, error } = await admin
+    .from("organizations")
+    .select("id")
+    .not("legacy_company_profile_id", "is", null)
+    .single();
+  if (error || !data) throw new Error("Local E2E company organization is unavailable.");
+  const membership = await admin.from("organization_memberships").upsert({
+    organization_id: data.id,
+    user_id: userId,
+    role,
+    status: "active",
+  });
+  if (membership.error) throw new Error("Unable to provision local E2E company membership.");
+}
+
 async function ensureE2EUser(
   role: E2EAuthRole,
   options: { resetExisting?: boolean } = {}
@@ -79,6 +96,7 @@ async function ensureE2EUser(
         password,
       });
       if (error) throw new Error("Unable to reset the local E2E Auth owner.");
+      await provisionCompanyMembership(existing.id, role);
     }
     return { email, password, userId: existing.id };
   }
@@ -93,6 +111,7 @@ async function ensureE2EUser(
   if (error || !data.user) {
     throw new Error("Unable to create the local E2E Auth owner.");
   }
+  await provisionCompanyMembership(data.user.id, role);
   return { email, password, userId: data.user.id };
 }
 

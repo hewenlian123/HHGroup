@@ -5,15 +5,16 @@ import { usePathname, useSearchParams } from "next/navigation";
 
 import { cn } from "@/lib/utils";
 
-type ExpenseOperationsSurface = "expenses" | "inbox" | "reimbursements";
+type ExpenseOperationsSurface = "overview" | "expenses" | "inbox" | "reimbursements";
 
 const SURFACES: Array<{
   id: ExpenseOperationsSurface;
   label: string;
   pathname: string;
 }> = [
+  { id: "overview", label: "Overview", pathname: "/financial/expenses/overview" },
   { id: "expenses", label: "Expenses", pathname: "/financial/expenses" },
-  { id: "inbox", label: "Receipt Inbox", pathname: "/financial/inbox" },
+  { id: "inbox", label: "Receipts", pathname: "/financial/inbox" },
   { id: "reimbursements", label: "Reimbursements", pathname: "/labor/reimbursements" },
 ];
 
@@ -22,7 +23,7 @@ function surfaceForPathname(pathname: string): ExpenseOperationsSurface | null {
 }
 
 function isExpenseRecordSurface(surface: ExpenseOperationsSurface | null): boolean {
-  return surface === "expenses" || surface === "inbox";
+  return surface === "overview" || surface === "expenses" || surface === "inbox";
 }
 
 export function ExpenseOperationsWorkspaceNav({ className }: { className?: string }) {
@@ -30,6 +31,11 @@ export function ExpenseOperationsWorkspaceNav({ className }: { className?: strin
   const searchParams = useSearchParams();
   const activeSurface = surfaceForPathname(pathname);
   const workerInboxActive = pathname.startsWith("/financial/inbox/worker");
+
+  const surfaces =
+    activeSurface === "reimbursements" || workerInboxActive
+      ? SURFACES.filter((s) => s.id !== "overview")
+      : SURFACES.filter((s) => s.id !== "reimbursements");
 
   const hrefFor = (target: (typeof SURFACES)[number]) => {
     const next = new URLSearchParams();
@@ -81,20 +87,21 @@ export function ExpenseOperationsWorkspaceNav({ className }: { className?: strin
       <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
         <div className="min-w-0">
           <h1 className="text-hh-page-title tracking-normal text-[var(--hh-text-primary)]">
-            Expense Operations
+            Expenses
           </h1>
           <p className="mt-0.5 text-hh-status leading-snug text-[var(--hh-text-secondary)]">
-            Daily operational workspace
+            Review receipts, complete expenses, and follow expense history.
           </p>
         </div>
         <nav
           aria-label="Expense Operations workspace"
           className="-mx-1 flex min-w-0 max-w-full gap-1 overflow-x-auto px-1 pb-px [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
-          {SURFACES.map((surface) => {
+          {surfaces.map((surface) => {
             const active = surface.id === activeSurface;
             return (
               <Link
+                prefetch={false}
                 key={surface.id}
                 href={hrefFor(surface)}
                 aria-current={active ? "page" : undefined}

@@ -12,10 +12,10 @@ import {
   PageLayout,
 } from "@/components/base";
 import { Button } from "@/components/ui/button";
-import { getAllCustomers } from "@/lib/customers-db";
+import type { Customer } from "@/lib/customers-db";
+import { CUSTOMERS_DB_COLUMNS } from "@/lib/customers-columns";
 import { getProjects } from "@/lib/projects-db";
-import { requireSupabaseOwnerOrAdminServerAction } from "@/lib/auth-boundary";
-import { getServerSupabaseAdmin } from "@/lib/supabase-server";
+import { requireOrganizationServerActionClient } from "@/lib/auth-boundary";
 import { createMaterialSelectionAction } from "../actions";
 import { MaterialSelectionLinkedRecordCombobox } from "./material-selection-linked-record-combobox";
 
@@ -40,12 +40,17 @@ function sortProjectsForSelection(projects: ProjectOptionSource[]): ProjectOptio
 }
 
 export default async function NewMaterialSelectionPage() {
-  const guard = await requireSupabaseOwnerOrAdminServerAction();
+  const guard = await requireOrganizationServerActionClient({ noStore: true, write: true });
   if (!guard.ok) notFound();
-  const supabase = getServerSupabaseAdmin();
-  if (!supabase) throw new Error("Supabase privileged server client is not configured.");
+  const supabase = guard.client;
 
-  const [customers, projects] = await Promise.all([getAllCustomers(), getProjects(supabase)]);
+  const [customerResult, projects] = await Promise.all([
+    supabase.from("customers").select(CUSTOMERS_DB_COLUMNS),
+    getProjects(supabase),
+  ]);
+  if (customerResult.error || !Array.isArray(customerResult.data))
+    throw new Error("Customer choices are unavailable.");
+  const customers = customerResult.data as Customer[];
   const customerOptions = [...customers]
     .sort((a, b) => (a.name ?? "").localeCompare(b.name ?? ""))
     .map((customer) => ({

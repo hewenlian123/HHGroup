@@ -1,3 +1,4 @@
+import { requireOrganizationServerActionClient } from "@/lib/auth-boundary";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageLayout, PageHeader, Divider, NeoAmount, SectionHeader } from "@/components/base";
@@ -11,10 +12,6 @@ import {
   getSubcontractsByProject,
 } from "@/lib/data";
 import { summarizeSubcontractFinancials } from "@/lib/subcontractor-financials";
-import {
-  createServerSupabaseClient,
-  getServerSupabaseInternalNoStore,
-} from "@/lib/supabase-server";
 import { AddSubcontractButton } from "./add-subcontract-button";
 import { SetBreadcrumbEntityTitle } from "@/components/layout/set-breadcrumb-entity-title";
 import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
@@ -36,24 +33,29 @@ type Props = { params: Promise<{ id: string }> };
 
 export default async function ProjectSubcontractsPage({ params }: Props) {
   const { id } = await params;
-  const projectSupabase = await createServerSupabaseClient();
-  if (!projectSupabase) throw new Error("Authenticated project session is not configured.");
+  const organizationGuard = await requireOrganizationServerActionClient({
+    projectId: id,
+    requireOwnerAdmin: true,
+    noStore: true,
+  });
+  if (!organizationGuard.ok) notFound();
+  const projectSupabase = organizationGuard.client;
   const [project, subcontracts, subcontractors] = await Promise.all([
     getProjectById(id, projectSupabase),
-    getSubcontractsByProject(id),
-    getSubcontractors(),
+    getSubcontractsByProject(id, organizationGuard.client),
+    getSubcontractors(organizationGuard.client),
   ]);
 
   if (!project) notFound();
 
   const subcontractorsForDropdown = subcontractors.map((s) => ({ id: s.id, name: s.name }));
   const subcontractIds = subcontracts.map((subcontract) => subcontract.id);
-  const supabase = getServerSupabaseInternalNoStore();
+  const supabase = organizationGuard.client;
   const [bills, payments, paymentSchedule, linkedApBills] = await Promise.all([
-    getBillsBySubcontractIds(subcontractIds).catch(() => []),
-    getPaymentsBySubcontractIds(subcontractIds).catch(() => []),
-    getPaymentScheduleBySubcontractIds(subcontractIds, supabase ?? undefined).catch(() => []),
-    getApBillsBySubcontractIds(subcontractIds, supabase ?? undefined).catch(() => []),
+    getBillsBySubcontractIds(subcontractIds, organizationGuard.client),
+    getPaymentsBySubcontractIds(subcontractIds, organizationGuard.client),
+    getPaymentScheduleBySubcontractIds(subcontractIds, supabase ?? undefined),
+    getApBillsBySubcontractIds(subcontractIds, supabase ?? undefined),
   ]);
   const rows = subcontracts.map((subcontract) => ({
     ...subcontract,

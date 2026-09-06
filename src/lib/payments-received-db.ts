@@ -4,6 +4,7 @@
  * Creates a deposit record automatically for each payment (deposits table).
  */
 
+import { financialDataUnavailable } from "@/lib/financial-availability";
 import { getSupabaseClient } from "@/lib/supabase";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -58,6 +59,7 @@ export type CreatePaymentReceivedPayload = {
   idempotency_key: string;
   invoice_id: string;
   project_id?: string | null;
+  customer_id?: string | null;
   customer_name: string;
   payment_date: string;
   amount: number;
@@ -590,9 +592,10 @@ export async function getPaymentAttachmentPreviewUrl(
 
 /** List all payments received with invoice_no and project name. */
 export async function getPaymentsReceived(
-  options: { includeVoided?: boolean } = {}
+  options: { includeVoided?: boolean } = {},
+  explicitClient?: SupabaseClient
 ): Promise<PaymentReceivedWithMeta[]> {
-  const c = client();
+  const c = client(explicitClient);
   const schema = await getPaymentOptionalSchema();
   let rows: unknown[] | null = null;
   let error: { message?: string } | null = null;
@@ -612,11 +615,9 @@ export async function getPaymentsReceived(
     rows = r.data as unknown[] | null;
     error = r.error as { message?: string } | null;
   }
-  if (error) {
-    if (isMissingTable(error)) return [];
-    throw new Error(error.message ?? "Failed to load payments received.");
-  }
-  const list = ((rows ?? []) as PaymentReceivedDbRow[]).filter(
+  if (error) financialDataUnavailable("received payments", error);
+  if (!Array.isArray(rows)) financialDataUnavailable("received payments", null);
+  const list = (rows as PaymentReceivedDbRow[]).filter(
     (row) => options.includeVoided || !isVoidPaymentStatus(row.status)
   );
   if (list.length === 0) return [];
@@ -626,9 +627,13 @@ export async function getPaymentsReceived(
     c.from("invoices").select("id, invoice_no").in("id", invoiceIds),
     projectIds.length
       ? c.from("projects").select("id, name").in("id", projectIds)
-      : Promise.resolve({ data: [] }),
+      : Promise.resolve({ data: [], error: null }),
     attachPaymentAttachments(c, list),
   ]);
+  if (invRes.error) financialDataUnavailable("received payment invoices", invRes.error);
+  if (projRes.error) financialDataUnavailable("received payment projects", projRes.error);
+  if (!Array.isArray(invRes.data) || !Array.isArray(projRes.data))
+    financialDataUnavailable("received payment context", null);
   const invoiceNoById = new Map(
     (invRes.data ?? []).map((r: { id: string; invoice_no?: string }) => [
       r.id,
@@ -1036,11 +1041,9 @@ export async function getPaymentsReceivedByInvoiceId(
     rows = r.data as unknown[] | null;
     error = r.error as { message?: string } | null;
   }
-  if (error) {
-    if (isMissingTable(error)) return [];
-    throw new Error(error.message ?? "Failed to load payments.");
-  }
-  return attachPaymentAttachments(c, (rows ?? []) as PaymentReceivedDbRow[]);
+  if (error) financialDataUnavailable("received payments", error);
+  if (!Array.isArray(rows)) financialDataUnavailable("received payments", null);
+  return attachPaymentAttachments(c, rows as PaymentReceivedDbRow[]);
 }
 
 /** Sum of payments_received.amount for an invoice. */
@@ -1078,11 +1081,12 @@ export async function createPaymentReceived(
     size_bytes: attachment.size_bytes ?? null,
     file_type: attachment.file_type,
   }));
-  const { data, error } = await c.rpc("record_payment_received_atomic", {
+  const { data, error } = await c.rpc("record_invoice_receipt_atomic", {
     p_idempotency_key: idempotencyKey,
     p_invoice_id: payload.invoice_id,
     p_project_id: payload.project_id ?? null,
     p_customer_name: payload.customer_name ?? "",
+    p_customer_id: payload.customer_id ?? null,
     p_payment_date: payload.payment_date.slice(0, 10),
     p_amount: payload.amount,
     p_payment_method: payload.payment_method,
@@ -1091,12 +1095,17 @@ export async function createPaymentReceived(
     p_attachment_url: payload.attachment_url ?? null,
     p_attachments: attachments,
   });
-  if (error) throw new Error(error.message ?? "Failed to record payment atomically.");
+  if (error)
+    throw Object.assign(new Error(error.message ?? "Failed to record payment atomically."), {
+      code: error.code,
+    });
 
   const paymentId = String((data as { payment_id?: unknown } | null)?.payment_id ?? "");
   if (!paymentId) throw new Error("Atomic payment RPC returned no payment id.");
-  const payment = await getPaymentReceivedById(paymentId, c);
-  if (!payment) throw new Error("Payment recorded, but could not be reloaded.");
+  const payment = (data as { payment?: PaymentReceivedRow } | null)?.payment;
+  if (!payment || payment.id !== paymentId || !Array.isArray(payment.attachments)) {
+    throw new Error("Atomic payment RPC returned an invalid committed payment.");
+  }
   return payment;
 }
 

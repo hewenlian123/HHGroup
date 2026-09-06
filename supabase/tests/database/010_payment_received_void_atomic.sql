@@ -9,6 +9,15 @@ select has_function(
   'atomic Payment Received void RPC exists'
 );
 
+-- Fixture provisioning and failure-injection DDL use the test transaction's
+-- database role. RPC authorization uses this explicit, database-owned member.
+insert into auth.users (id, aud, role, email, raw_app_meta_data, is_anonymous)
+values ('11111111-1111-4111-8111-111111111290', 'authenticated', 'authenticated',
+  'atomic-payment-void-owner@example.test', '{"role":"owner"}'::jsonb, false);
+insert into public.organization_memberships (organization_id, user_id, role, status)
+select o.id, '11111111-1111-4111-8111-111111111290'::uuid, 'owner', 'active'
+from public.organizations o join public.company_profile c on c.id=o.legacy_company_profile_id;
+
 insert into public.invoices (
   id,
   invoice_no,
@@ -18,7 +27,9 @@ insert into public.invoices (
   paid_total,
   balance_due
 )
-values
+select fixture.id::uuid, fixture.invoice_no, fixture.client_name, fixture.status,
+  fixture.total, fixture.paid_total, fixture.balance_due
+from (values
   ('11111111-1111-1111-1111-111111111201', 'ATOMIC-VOID-1', 'Void Customer', 'Sent', 100, 0, 100),
   ('11111111-1111-1111-1111-111111111202', 'ATOMIC-VOID-2', 'Void Customer', 'Sent', 100, 0, 100),
   ('11111111-1111-1111-1111-111111111203', 'ATOMIC-VOID-3', 'Void Customer', 'Sent', 100, 0, 100),
@@ -26,7 +37,17 @@ values
   ('11111111-1111-1111-1111-111111111205', 'ATOMIC-VOID-5', 'Void Customer', 'Sent', 100, 0, 100),
   ('11111111-1111-1111-1111-111111111206', 'ATOMIC-VOID-6', 'Void Customer', 'Sent', 100, 0, 100),
   ('11111111-1111-1111-1111-111111111207', 'ATOMIC-VOID-7', 'Void Customer', 'Sent', 100, 0, 100),
-  ('11111111-1111-1111-1111-111111111208', 'ATOMIC-VOID-8', 'Void Customer', 'Sent', 100, 0, 100);
+  ('11111111-1111-1111-1111-111111111208', 'ATOMIC-VOID-8', 'Void Customer', 'Sent', 100, 0, 100)
+) as fixture(id, invoice_no, client_name, status, total, paid_total, balance_due);
+
+select set_config('request.jwt.claims',
+  '{"sub":"11111111-1111-4111-8111-111111111290","role":"authenticated","app_metadata":{"role":"owner"},"is_anonymous":false}', true);
+select ok(
+  auth.uid() = '11111111-1111-4111-8111-111111111290'::uuid
+    and private.can_manage_company()
+    and public.is_owner_or_admin(),
+  'payment void fixture has authenticated same-organization financial authority'
+);
 
 -- Success fixture: a direct target, a second direct payment, and an unlinked
 -- legacy row with the same amount/date/memo as the target. Only the exact

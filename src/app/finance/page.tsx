@@ -1,6 +1,8 @@
 import Link from "next/link";
+import { requireSupabaseOwnerOrAdminServerActionClient } from "@/lib/auth-boundary";
+import { PermissionDenied } from "@/components/ui/system-state";
+import { FinanceUnavailable } from "@/components/financial/finance-unavailable";
 import {
-  FilterToolbar,
   KpiTile,
   NeoAmount,
   NeoMobileCard,
@@ -27,20 +29,24 @@ function fmtUsd(n: number): string {
   });
 }
 
-const navItems = [
-  { href: "/finance", label: "Overview" },
-  { href: "/financial/owner", label: "Owner dashboard" },
-  { href: "/financial/accounts", label: "Accounts" },
-  { href: "/financial/estimates", label: "Estimates" },
-  { href: "/financial/invoices", label: "Invoices" },
-  { href: "/bills", label: "Bills" },
-  { href: "/financial/expenses", label: "Expenses" },
-  { href: "/finance/labor-cost", label: "Labor Cost" },
-  { href: "/labor/cost-allocation", label: "Cost Allocation" },
-] as const;
-
 export default async function FinanceOverviewPage() {
-  const [stats, recent] = await Promise.all([getFinanceOverviewStats(), getRecentTransactions(15)]);
+  const guard = await requireSupabaseOwnerOrAdminServerActionClient({ noStore: true });
+  if (!guard.ok)
+    return (
+      <div className="page-container py-6">
+        <PermissionDenied description={guard.error} />
+      </div>
+    );
+  let stats: Awaited<ReturnType<typeof getFinanceOverviewStats>>;
+  let recent: Awaited<ReturnType<typeof getRecentTransactions>>;
+  try {
+    [stats, recent] = await Promise.all([
+      getFinanceOverviewStats(guard.client),
+      getRecentTransactions(15, guard.client),
+    ]);
+  } catch {
+    return <FinanceUnavailable title="Finance overview unavailable" />;
+  }
 
   const cards = [
     { label: "Revenue", value: stats.revenue, icon: DollarSign, href: "/financial/invoices" },
@@ -64,22 +70,29 @@ export default async function FinanceOverviewPage() {
         />
       }
     >
-      <FilterToolbar className="items-start gap-2 md:flex-wrap md:items-center">
-        {navItems.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={
-              item.href === "/finance"
-                ? "inline-flex min-h-11 items-center rounded-hh-compact bg-[var(--hh-l3-selected)] px-2.5 py-1.5 text-hh-control text-[var(--hh-text-primary)] md:min-h-8"
-                : "inline-flex min-h-11 items-center rounded-hh-compact px-2.5 py-1.5 text-sm font-medium text-[var(--hh-text-secondary)] transition-colors hover:bg-[var(--hh-l3-selected)] hover:text-[var(--hh-text-primary)] md:min-h-8"
-            }
-          >
-            {item.label}
-          </Link>
-        ))}
-      </FilterToolbar>
-
+      <nav aria-label="Finance reports" className="flex flex-wrap gap-4 text-sm">
+        <Link
+          prefetch={false}
+          href="/financial/owner"
+          className="inline-flex min-h-11 items-center underline"
+        >
+          Owner dashboard
+        </Link>
+        <Link
+          prefetch={false}
+          href="/financial/dashboard"
+          className="inline-flex min-h-11 items-center underline"
+        >
+          Project portfolio summary
+        </Link>
+        <Link
+          prefetch={false}
+          href="/reports"
+          className="inline-flex min-h-11 items-center underline"
+        >
+          Reports
+        </Link>
+      </nav>
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         {cards.map(({ label, value, icon: Icon, href }) => {
           const tone = label === "Profit" ? (value >= 0 ? "positive" : "negative") : "neutral";

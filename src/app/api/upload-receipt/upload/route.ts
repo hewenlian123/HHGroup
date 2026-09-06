@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { getServerSupabase } from "@/lib/supabase-server";
+import { requireCompanyRequestClient } from "@/lib/auth-boundary";
+import { withSessionCookies } from "@/lib/supabase-response";
 
 const BUCKET = "worker-receipts";
 const MAX_WORKER_RECEIPT_UPLOAD_BYTES = 10 * 1024 * 1024;
@@ -15,14 +16,13 @@ function jsonError(message: string, status: number) {
 }
 
 /**
- * Public worker receipt upload. Uses only the anon/RLS client; this endpoint never bypasses Storage policy.
+ * Authenticated company receipt upload. Uses the verified session client and Storage policy.
  * Returns the private object path, never a public URL.
  */
 export async function POST(req: Request) {
-  const supabase = getServerSupabase();
-  if (!supabase) {
-    return NextResponse.json({ ok: false, message: "Supabase not configured." }, { status: 500 });
-  }
+  const guard = await requireCompanyRequestClient(req);
+  if (!guard.ok) return guard.response;
+  const supabase = guard.client;
   try {
     let formData: FormData;
     try {
@@ -60,7 +60,10 @@ export async function POST(req: Request) {
       });
       return jsonError("Receipt upload failed. Please try again.", 500);
     }
-    return NextResponse.json({ ok: true as const, path, receipt_url: path });
+    return withSessionCookies(
+      NextResponse.json({ ok: true as const, path, receipt_url: path }),
+      guard.sessionResponse
+    );
   } catch (e) {
     console.error("[upload-receipt/upload] unexpected failure", {
       message: e instanceof Error ? e.message : String(e),

@@ -1,6 +1,8 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
+import { useProjectWorkspaceScope } from "@/components/projects/project-workspace-context";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import {
   EmptyState,
@@ -218,6 +220,15 @@ const ScheduleTableRow = React.memo(function ScheduleTableRow({
 });
 
 export default function SchedulePage() {
+  return (
+    <React.Suspense fallback={<p role="status">Loading workspace…</p>}>
+      <SchedulePageContent />
+    </React.Suspense>
+  );
+}
+
+function SchedulePageContent() {
+  const { projectId: scopedProjectId, embedded } = useProjectWorkspaceScope();
   const [viewMode, setViewMode] = React.useState<ViewMode>("list");
   const [schedule, setSchedule] = React.useState<ScheduleRow[]>([]);
   const [projects, setProjects] = React.useState<{ id: string; name: string }[]>([]);
@@ -241,14 +252,18 @@ export default function SchedulePage() {
       const res = await fetch("/api/operations/schedule");
       const data = await res.json();
       if (!data.ok) throw new Error(data.message || "Failed to load");
-      setSchedule(data.schedule ?? []);
+      setSchedule(
+        (data.schedule ?? []).filter(
+          (row: ScheduleRow) => !scopedProjectId || row.project_id === scopedProjectId
+        )
+      );
       setProjects(data.projects ?? []);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load schedule.");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [scopedProjectId]);
 
   React.useEffect(() => {
     load();
@@ -264,14 +279,14 @@ export default function SchedulePage() {
   const openModal = React.useCallback(() => {
     setForm((prev) => ({
       ...prev,
-      project_id: projects[0]?.id ?? "",
+      project_id: scopedProjectId || projects[0]?.id || "",
       title: "",
       start_date: "",
       end_date: "",
       status: "planned",
     }));
     setModalOpen(true);
-  }, [projects]);
+  }, [projects, scopedProjectId]);
 
   const handleCreate = React.useCallback(async () => {
     if (!form.project_id) {
@@ -324,13 +339,36 @@ export default function SchedulePage() {
   return (
     <PageLayout
       divider={false}
-      className={cn("md:max-w-5xl", mobileListPagePaddingClass, "max-md:!gap-3")}
+      className={cn(
+        "md:max-w-5xl",
+        embedded ? "!max-w-none !p-0" : mobileListPagePaddingClass,
+        "max-md:!gap-3"
+      )}
       header={
         <>
+          {scopedProjectId && !embedded ? (
+            <Button asChild variant="ghost" className="min-h-11 self-start">
+              <Link href={`/projects/${encodeURIComponent(scopedProjectId)}?tab=schedule`}>
+                Back to project
+              </Link>
+            </Button>
+          ) : null}
+          {embedded ? (
+            <Link
+              href="/schedule"
+              className="inline-flex min-h-11 items-center self-start text-hh-metadata underline"
+            >
+              All projects · schedule
+            </Link>
+          ) : null}
           <div className="hidden md:block">
             <PageHeader
               title="Schedule"
-              description="Project schedule across all projects."
+              description={
+                scopedProjectId
+                  ? "Schedule for this project."
+                  : "Project schedule across all projects."
+              }
               actions={
                 <Button size="sm" onClick={openModal}>
                   + New schedule item
@@ -596,6 +634,8 @@ export default function SchedulePage() {
               <NeoFieldLabel>Project</NeoFieldLabel>
               <NeoSelect
                 value={form.project_id}
+                aria-label="Project"
+                disabled={Boolean(scopedProjectId)}
                 onChange={(e) => setForm((p) => ({ ...p, project_id: e.target.value }))}
                 className="w-full"
               >

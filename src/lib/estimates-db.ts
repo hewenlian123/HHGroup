@@ -5,6 +5,13 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseClient } from "@/lib/supabase";
+import { lineTotal } from "@/lib/estimate-domain";
+export {
+  groupEstimateItemsByCategoryId,
+  lineTotal,
+  paymentMilestoneAmount,
+  type EstimateCategorySectionRow,
+} from "@/lib/estimate-domain";
 import { generateCode } from "@/lib/estimate-cost-code-suggest";
 import {
   DEFAULT_ESTIMATE_DOCUMENT_STYLE,
@@ -238,80 +245,6 @@ function assertValidEstimateItemAmounts(
   if (items.some((item) => !isNonNegativeFiniteNumber(item.unitCost))) {
     throw new Error("Estimate line item unit price must be a non-negative number.");
   }
-}
-
-/** Visible line total = qty * unitCost. */
-export function lineTotal(item: EstimateItemRow): number {
-  return item.qty * item.unitCost;
-}
-
-/** One section of the cost breakdown: items share the same category id (DB: estimate_items.cost_code). */
-export type EstimateCategorySectionRow = {
-  categoryId: string;
-  title: string;
-  rows: EstimateItemRow[];
-  /** Sum of visible line totals (qty × unitCost) for rows in this category */
-  sectionTotal: number;
-};
-
-/**
- * Group line items by category id (cost_code). Does not use array index or display name for matching.
- * Order: persisted estimate_categories (by orderIndex, then costCode), then item codes not in that set (sorted).
- */
-export function groupEstimateItemsByCategoryId(
-  items: EstimateItemRow[],
-  categories: ReadonlyArray<{ costCode: string; displayName: string; orderIndex?: number }>,
-  catalogNameByCode?: Readonly<Record<string, string>>
-): EstimateCategorySectionRow[] {
-  const byId = new Map<string, EstimateItemRow[]>();
-  for (const item of items) {
-    const id = item.costCode;
-    let list = byId.get(id);
-    if (!list) {
-      list = [];
-      byId.set(id, list);
-    }
-    list.push(item);
-  }
-
-  const persistedIds = new Set(categories.map((c) => c.costCode));
-  const sortedPersisted = [...categories].sort((a, b) => {
-    const oa = a.orderIndex ?? 0;
-    const ob = b.orderIndex ?? 0;
-    if (oa !== ob) return oa - ob;
-    return a.costCode.localeCompare(b.costCode);
-  });
-
-  const sections: EstimateCategorySectionRow[] = [];
-
-  for (const cat of sortedPersisted) {
-    const rows = byId.get(cat.costCode) ?? [];
-    const sectionTotal = rows.reduce((s, r) => s + lineTotal(r), 0);
-    sections.push({
-      categoryId: cat.costCode,
-      title: cat.displayName?.trim() || catalogNameByCode?.[cat.costCode]?.trim() || "Category",
-      rows,
-      sectionTotal,
-    });
-  }
-
-  const orphanIds = [...byId.keys()]
-    .filter((id) => !persistedIds.has(id))
-    .sort((a, b) => a.localeCompare(b));
-
-  for (const categoryId of orphanIds) {
-    const rows = byId.get(categoryId)!;
-    const sectionTotal = rows.reduce((s, r) => s + lineTotal(r), 0);
-    const catalogLabel = catalogNameByCode?.[categoryId]?.trim();
-    sections.push({
-      categoryId,
-      title: catalogLabel || "Category",
-      rows,
-      sectionTotal,
-    });
-  }
-
-  return sections;
 }
 
 export function orderedCategoryEntriesForEstimateSave(
@@ -2563,12 +2496,6 @@ export async function markPaymentMilestonePaid(
   itemId: string
 ): Promise<boolean> {
   return markPaymentMilestonePaidWithClient(client(), estimateId, itemId);
-}
-
-/** Compute scheduled amount for one milestone based on estimate total. */
-export function paymentMilestoneAmount(item: PaymentScheduleItem, estimateTotal: number): number {
-  void estimateTotal;
-  return item.amount;
 }
 
 // —— Payment schedule templates ——

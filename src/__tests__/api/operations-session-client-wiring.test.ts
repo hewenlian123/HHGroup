@@ -9,12 +9,12 @@ const mocks = vi.hoisted(() => ({
   getPunchListSummary: vi.fn(),
   getSitePhotos: vi.fn(),
   getWorkers: vi.fn(),
-  requireSupabaseOwnerOrAdminRequestClient: vi.fn(),
+  requireOrganizationRequestClient: vi.fn(),
   strictClient: { from: vi.fn() },
 }));
 
 vi.mock("@/lib/auth-boundary", () => ({
-  requireSupabaseOwnerOrAdminRequestClient: mocks.requireSupabaseOwnerOrAdminRequestClient,
+  requireOrganizationRequestClient: mocks.requireOrganizationRequestClient,
 }));
 
 vi.mock("@/lib/data", () => ({
@@ -61,7 +61,7 @@ describe("Operations API authenticated session client wiring", () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
-    mocks.requireSupabaseOwnerOrAdminRequestClient.mockResolvedValue({
+    mocks.requireOrganizationRequestClient.mockResolvedValue({
       ok: true,
       context: authContext,
       client: mocks.strictClient,
@@ -84,10 +84,13 @@ describe("Operations API authenticated session client wiring", () => {
     const response = await GET(req);
 
     expect(response.status).toBe(200);
-    expect(mocks.requireSupabaseOwnerOrAdminRequestClient).toHaveBeenCalledWith(req, {
+    expect(mocks.requireOrganizationRequestClient).toHaveBeenCalledWith(req, {
       noStore: true,
     });
-    expect(mocks.getAllScheduleWithProject).toHaveBeenCalledWith(mocks.strictClient);
+    expect(mocks.getAllScheduleWithProject).toHaveBeenCalledWith(
+      mocks.strictClient,
+      expect.any(Promise)
+    );
     expect(mocks.getProjects).toHaveBeenCalledWith(mocks.strictClient);
   });
 
@@ -98,7 +101,7 @@ describe("Operations API authenticated session client wiring", () => {
     const response = await GET(req);
 
     expect(response.status).toBe(200);
-    expect(mocks.requireSupabaseOwnerOrAdminRequestClient).toHaveBeenCalledWith(req, {
+    expect(mocks.requireOrganizationRequestClient).toHaveBeenCalledWith(req, {
       noStore: true,
     });
     expect(mocks.getPunchListAll).toHaveBeenCalledWith(mocks.strictClient);
@@ -114,7 +117,7 @@ describe("Operations API authenticated session client wiring", () => {
     const response = await GET(req);
 
     expect(response.status).toBe(200);
-    expect(mocks.requireSupabaseOwnerOrAdminRequestClient).toHaveBeenCalledWith(req, {
+    expect(mocks.requireOrganizationRequestClient).toHaveBeenCalledWith(req, {
       noStore: true,
     });
     expect(mocks.getSitePhotos).toHaveBeenCalledWith("project-1", mocks.strictClient);
@@ -124,7 +127,7 @@ describe("Operations API authenticated session client wiring", () => {
   it.each(readRoutes)(
     "rejects unauthenticated %s reads before any data access",
     async (_, path, load) => {
-      mocks.requireSupabaseOwnerOrAdminRequestClient.mockResolvedValueOnce({
+      mocks.requireOrganizationRequestClient.mockResolvedValueOnce({
         ok: false,
         response: Response.json(
           { ok: false, message: "Authentication required." },
@@ -143,7 +146,7 @@ describe("Operations API authenticated session client wiring", () => {
   it.each(readRoutes)(
     "fails closed when the %s request client boundary is unavailable",
     async (_, path, load) => {
-      mocks.requireSupabaseOwnerOrAdminRequestClient.mockResolvedValueOnce({
+      mocks.requireOrganizationRequestClient.mockResolvedValueOnce({
         ok: false,
         response: Response.json({ ok: false, message: "Unavailable." }, { status: 503 }),
       });

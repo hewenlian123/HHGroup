@@ -1,5 +1,6 @@
+import { withSessionCookies } from "@/lib/supabase-response";
 import { NextResponse } from "next/server";
-import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
+import { requireOrganizationRequestClient } from "@/lib/auth-boundary";
 import {
   getProjectFinancialSnapshotComparison,
   type ProjectFinancialSnapshotComparison,
@@ -56,18 +57,28 @@ function jsonError(status: number, message: string): NextResponse {
 }
 
 export async function GET(request: Request) {
-  const guard = await requireSupabaseOwnerOrAdmin(request);
+  const guard = await requireOrganizationRequestClient(request, {
+    noStore: true,
+    requireOwnerAdmin: true,
+  });
   if (!guard.ok) return guard.response;
 
   const ids = parseProjectIds(request);
-  if (ids.length === 0) return jsonError(400, "Missing project ids.");
+  if (ids.length === 0)
+    return withSessionCookies(jsonError(400, "Missing project ids."), guard.sessionResponse);
 
   const results = await mapWithConcurrency<string, ProjectSnapshotBatchItem>(
     ids,
     SNAPSHOT_BATCH_CONCURRENCY,
     async (id) => {
       try {
-        const comparison = await getProjectFinancialSnapshotComparison(id);
+        const projectGuard = await requireOrganizationRequestClient(request, {
+          projectId: id,
+          requireOwnerAdmin: true,
+          noStore: true,
+        });
+        if (!projectGuard.ok) return { id, ok: false, message: "Project access required." };
+        const comparison = await getProjectFinancialSnapshotComparison(id, guard.client);
         return { id, ok: true, comparison };
       } catch (error) {
         const message =
@@ -77,5 +88,8 @@ export async function GET(request: Request) {
     }
   );
 
-  return NextResponse.json({ ok: true, results }, { headers: NO_CACHE_HEADERS });
+  return withSessionCookies(
+    NextResponse.json({ ok: true, results }, { headers: NO_CACHE_HEADERS }),
+    guard.sessionResponse
+  );
 }

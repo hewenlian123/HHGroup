@@ -9,20 +9,22 @@ function source(path: string): string {
 }
 
 describe("worker receipt runtime security contract", () => {
-  it("keeps public upload and submit on the anon client without receipt readback", () => {
+  it("keeps authenticated intake on the session client without receipt readback", () => {
     const upload = source("src/app/api/upload-receipt/upload/route.ts");
     const submit = source("src/app/api/upload-receipt/submit/route.ts");
 
-    expect(upload).toContain("getServerSupabase()");
+    expect(upload).toContain("requireCompanyRequestClient(req)");
+    expect(upload).toContain("const supabase = guard.client");
     expect(upload).not.toContain("getServerSupabaseAdmin");
     expect(upload).toContain("receipt_url: path");
     expect(upload).not.toContain("getPublicUrl");
 
-    expect(submit).toContain("getServerSupabase()");
+    expect(submit).toContain("requireCompanyRequestClient(req)");
+    expect(submit).toContain("let supabase = companyGuard.client");
     expect(submit).not.toContain("getServerSupabaseAdmin");
     expect(submit).toContain('.from("worker_receipts").insert');
     expect(submit).not.toContain(".select(");
-    expect(submit).toContain("return NextResponse.json({ ok: true })");
+    expect(submit).toContain("return finish(NextResponse.json({ ok: true }))");
   });
 
   it("requires verified owner/admin access before receipt mutation, sync, or signed review", () => {
@@ -47,16 +49,16 @@ describe("worker receipt runtime security contract", () => {
     expect(reject).toContain("status: 503");
   });
 
-  it("keeps only documented receipt APIs public when strict middleware is enabled", () => {
+  it("denies anonymous receipt intake when strict middleware is enabled", () => {
     const middleware = source("src/middleware.ts");
     const publicPaths = middleware.slice(
       middleware.indexOf("const PUBLIC_API_PATHS"),
       middleware.indexOf("const STRICT_AUTH_PREFIXES")
     );
 
-    expect(publicPaths).toContain('"/api/upload-receipt/options"');
-    expect(publicPaths).toContain('"/api/upload-receipt/upload"');
-    expect(publicPaths).toContain('"/api/upload-receipt/submit"');
+    expect(publicPaths).not.toContain('"/api/upload-receipt/options"');
+    expect(publicPaths).not.toContain('"/api/upload-receipt/upload"');
+    expect(publicPaths).not.toContain('"/api/upload-receipt/submit"');
     expect(publicPaths).not.toContain('"/api/upload-receipt/sync"');
     expect(publicPaths).not.toContain('"/api/worker-receipts"');
     expect(publicPaths).not.toContain('"/api/ocr-receipt"');
@@ -65,11 +67,12 @@ describe("worker receipt runtime security contract", () => {
     expect(middleware).toContain('"/api/ocr-receipt"');
   });
 
-  it("uses the anon RLS client for public options and makes OCR strict", () => {
+  it("uses the company session client for options and makes OCR strict", () => {
     const options = source("src/app/api/upload-receipt/options/route.ts");
     const ocr = source("src/app/api/ocr-receipt/route.ts");
 
-    expect(options).toContain("getServerSupabase()");
+    expect(options).toContain("requireCompanyRequestClient(request)");
+    expect(options).toContain("const client = guard.client");
     expect(options).not.toContain("getServerSupabaseAdmin");
     expect(options).toContain('.select("id, name")');
 

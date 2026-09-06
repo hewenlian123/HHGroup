@@ -1,6 +1,7 @@
+import { withSessionCookies } from "@/lib/supabase-response";
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
-import { requireSupabaseOwnerOrAdminRequestClient } from "@/lib/auth-boundary";
+import { requireOrganizationRequestClient } from "@/lib/auth-boundary";
 import { updateCommission, deleteCommission, getCommissionById } from "@/lib/data";
 import { uuidNormalizedEqual } from "@/lib/uuid-normalize";
 
@@ -11,22 +12,36 @@ export async function PATCH(
   req: Request,
   ctx: { params: Promise<{ id: string; commissionId: string }> }
 ) {
-  const guard = await requireSupabaseOwnerOrAdminRequestClient(req, { noStore: true });
+  const guard = await requireOrganizationRequestClient(req, {
+    projectId: (await ctx.params).id,
+    write: req.method !== "GET",
+    requireOwnerAdmin: true,
+    noStore: true,
+  });
   if (!guard.ok) return guard.response;
   const { id: projectId, commissionId } = await ctx.params;
   if (!projectId || !commissionId)
-    return NextResponse.json(
-      { ok: false, message: "Missing project or commission id" },
-      { status: 400 }
+    return withSessionCookies(
+      NextResponse.json(
+        { ok: false, message: "Missing project or commission id" },
+        { status: 400 }
+      ),
+      guard.sessionResponse
     );
   try {
     const existing = await getCommissionById(commissionId, guard.client);
     if (!existing)
-      return NextResponse.json({ ok: false, message: "Commission not found" }, { status: 404 });
+      return withSessionCookies(
+        NextResponse.json({ ok: false, message: "Commission not found" }, { status: 404 }),
+        guard.sessionResponse
+      );
     if (!uuidNormalizedEqual(existing.project_id, projectId))
-      return NextResponse.json(
-        { ok: false, message: "Commission does not belong to this project" },
-        { status: 400 }
+      return withSessionCookies(
+        NextResponse.json(
+          { ok: false, message: "Commission does not belong to this project" },
+          { status: 400 }
+        ),
+        guard.sessionResponse
       );
     const body = await req.json();
     const updates: Record<string, unknown> = {};
@@ -54,10 +69,13 @@ export async function PATCH(
       guard.client
     );
     if (!commission)
-      return NextResponse.json({ ok: false, message: "Commission not found" }, { status: 404 });
+      return withSessionCookies(
+        NextResponse.json({ ok: false, message: "Commission not found" }, { status: 404 }),
+        guard.sessionResponse
+      );
     revalidatePath(`/projects/${projectId}`);
     revalidatePath("/financial/commissions");
-    return NextResponse.json({ ok: true, commission });
+    return withSessionCookies(NextResponse.json({ ok: true, commission }), guard.sessionResponse);
   } catch (e) {
     const message = e instanceof Error ? e.message : "Failed to update commission";
     const status = /cannot be less than total payments/i.test(message)
@@ -65,7 +83,10 @@ export async function PATCH(
       : /fetch failed|Database connection failed|ENOTFOUND|ECONNREFUSED/i.test(message)
         ? 503
         : 500;
-    return NextResponse.json({ ok: false, message }, { status });
+    return withSessionCookies(
+      NextResponse.json({ ok: false, message }, { status }),
+      guard.sessionResponse
+    );
   }
 }
 
@@ -73,32 +94,49 @@ export async function DELETE(
   req: Request,
   ctx: { params: Promise<{ id: string; commissionId: string }> }
 ) {
-  const guard = await requireSupabaseOwnerOrAdminRequestClient(req, { noStore: true });
+  const guard = await requireOrganizationRequestClient(req, {
+    projectId: (await ctx.params).id,
+    write: req.method !== "GET",
+    requireOwnerAdmin: true,
+    noStore: true,
+  });
   if (!guard.ok) return guard.response;
   const { id: projectId, commissionId } = await ctx.params;
   if (!projectId || !commissionId)
-    return NextResponse.json(
-      { ok: false, message: "Missing project or commission id" },
-      { status: 400 }
+    return withSessionCookies(
+      NextResponse.json(
+        { ok: false, message: "Missing project or commission id" },
+        { status: 400 }
+      ),
+      guard.sessionResponse
     );
   try {
     const existing = await getCommissionById(commissionId, guard.client);
     if (!existing)
-      return NextResponse.json({ ok: false, message: "Commission not found" }, { status: 404 });
+      return withSessionCookies(
+        NextResponse.json({ ok: false, message: "Commission not found" }, { status: 404 }),
+        guard.sessionResponse
+      );
     if (!uuidNormalizedEqual(existing.project_id, projectId))
-      return NextResponse.json(
-        { ok: false, message: "Commission does not belong to this project" },
-        { status: 400 }
+      return withSessionCookies(
+        NextResponse.json(
+          { ok: false, message: "Commission does not belong to this project" },
+          { status: 400 }
+        ),
+        guard.sessionResponse
       );
     await deleteCommission(commissionId, guard.client);
     revalidatePath(`/projects/${projectId}`);
     revalidatePath("/financial/commissions");
-    return NextResponse.json({ ok: true });
+    return withSessionCookies(NextResponse.json({ ok: true }), guard.sessionResponse);
   } catch (e) {
     const message = e instanceof Error ? e.message : "Failed to delete commission";
     const status = /fetch failed|Database connection failed|ENOTFOUND|ECONNREFUSED/i.test(message)
       ? 503
       : 500;
-    return NextResponse.json({ ok: false, message }, { status });
+    return withSessionCookies(
+      NextResponse.json({ ok: false, message }, { status }),
+      guard.sessionResponse
+    );
   }
 }

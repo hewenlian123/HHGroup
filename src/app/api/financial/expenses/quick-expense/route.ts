@@ -7,6 +7,7 @@ import {
 import {
   addExpenseAttachmentWithClient,
   createQuickExpenseWithClient,
+  getExpenseById,
   type Expense,
   type ExpenseAttachment,
 } from "@/lib/expenses-db";
@@ -131,7 +132,27 @@ export async function POST(request: Request) {
 
   try {
     const deduction = normalizeSubcontractDeduction(body.subcontractDeduction);
-    let expense = await createQuickExpenseWithClient(supabase, {
+    const referenceNo = optionalString(body.referenceNo);
+    let expense: Expense | null = null;
+    if (
+      body.sourceType === "receipt_upload" &&
+      referenceNo &&
+      /^INBOX-UP-[a-f0-9]{64}$/i.test(referenceNo)
+    ) {
+      const existing = await supabase
+        .from("expenses")
+        .select("id, source_type")
+        .eq("reference_no", referenceNo)
+        .maybeSingle();
+      if (existing.error) throw new Error("Receipt recovery lookup unavailable.");
+      if (existing.data) {
+        if (existing.data.source_type !== "receipt_upload")
+          return apiError(409, "Receipt reference conflicts with another expense.");
+        expense = await getExpenseById(existing.data.id, supabase);
+        if (!expense) throw new Error("Receipt recovery unavailable.");
+      }
+    }
+    expense ??= await createQuickExpenseWithClient(supabase, {
       date: optionalString(body.date) ?? hawaiiTodayYmd(),
       vendorName,
       totalAmount,
@@ -154,7 +175,9 @@ export async function POST(request: Request) {
     });
 
     for (const attachment of normalizeAttachments(body.attachments)) {
-      expense = (await addExpenseAttachmentWithClient(supabase, expense.id, attachment)) ?? expense;
+      const attached = await addExpenseAttachmentWithClient(supabase, expense.id, attachment);
+      if (!attached) throw new Error("Receipt metadata saved, but expense reload is unavailable.");
+      expense = attached;
     }
 
     return NextResponse.json({ ok: true, expense }, { headers: NO_CACHE_HEADERS });

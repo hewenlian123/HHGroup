@@ -70,7 +70,7 @@ export async function finalizeReceiptQueueExpense(
     const path = row.storage_path?.trim();
     if (path) {
       await addExpenseAttachment(created.id, {
-        id: crypto.randomUUID(),
+        id: row.id,
         fileName: row.file_name || "receipt",
         mimeType: row.mime_type || "image/jpeg",
         size: row.size_bytes || 0,
@@ -79,7 +79,9 @@ export async function finalizeReceiptQueueExpense(
       });
     }
     if (row.worker_id) {
-      await updateExpenseForReview(created.id, { workerId: row.worker_id });
+      const updated = await updateExpenseForReview(created.id, { workerId: row.worker_id });
+      if (!updated)
+        throw new Error("Unable to link the expense to the worker. Receipt retained for review.");
     }
     await deleteReceiptQueueRow(supabase, row.id);
     notifyReceiptQueueChanged();

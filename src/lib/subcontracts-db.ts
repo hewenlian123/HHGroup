@@ -47,9 +47,10 @@ function isMissingColumn(err: { message?: string } | null): boolean {
 
 /** Fetch one subcontract by id with subcontractor name. Returns null if not found. */
 export async function getSubcontractById(
-  subcontractId: string
+  subcontractId: string,
+  explicitClient?: SupabaseClient
 ): Promise<SubcontractWithSubcontractor | null> {
-  const c = client();
+  const c = client(explicitClient);
   const selectCols =
     "id, project_id, subcontractor_id, cost_code, contract_amount, status, description, start_date, end_date, created_at, subcontractors(name)";
   const withoutStatusCols =
@@ -168,9 +169,10 @@ export type SubcontractWithProject = SubcontractRow & {
 
 /** Fetch subcontracts for a subcontractor with project name. */
 export async function getSubcontractsBySubcontractor(
-  subcontractorId: string
+  subcontractorId: string,
+  explicitClient?: SupabaseClient
 ): Promise<SubcontractWithProject[]> {
-  const c = client();
+  const c = client(explicitClient);
   const selectCols =
     "id, project_id, subcontractor_id, cost_code, contract_amount, status, description, start_date, end_date, created_at, projects(name)";
   const withoutStatusCols =
@@ -225,10 +227,10 @@ export async function getSubcontractsBySubcontractor(
 }
 
 /** Fetch all subcontracts for summary: id, subcontractor_id, contract_amount. */
-export async function getSubcontractsSummaryAll(): Promise<
-  { id: string; subcontractor_id: string; contract_amount: number }[]
-> {
-  const c = client();
+export async function getSubcontractsSummaryAll(
+  explicitClient?: SupabaseClient
+): Promise<{ id: string; subcontractor_id: string; contract_amount: number }[]> {
+  const c = client(explicitClient);
   const { data: rows, error } = await c
     .from("subcontracts")
     .select("id, subcontractor_id, contract_amount");
@@ -292,8 +294,11 @@ export async function getSubcontractsWithDetailsAll(explicitClient?: SupabaseCli
 }
 
 /** Insert one subcontract. */
-export async function insertSubcontract(draft: SubcontractDraft): Promise<void> {
-  const c = client();
+export async function insertSubcontract(
+  draft: SubcontractDraft,
+  explicitClient?: SupabaseClient
+): Promise<void> {
+  const c = client(explicitClient);
   const payload = {
     project_id: draft.project_id,
     subcontractor_id: draft.subcontractor_id,
@@ -322,9 +327,10 @@ export async function insertSubcontract(draft: SubcontractDraft): Promise<void> 
 
 export async function updateSubcontractStatus(
   subcontractId: string,
-  status: SubcontractRow["status"]
+  status: SubcontractRow["status"],
+  explicitClient?: SupabaseClient
 ): Promise<void> {
-  const c = client();
+  const c = client(explicitClient);
   const { error } = await c.from("subcontracts").update({ status }).eq("id", subcontractId);
   if (!error) return;
   if (isMissingColumn(error)) {

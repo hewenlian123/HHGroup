@@ -9,12 +9,16 @@ function source(path) {
 test("AR workspace keeps the Figma command hierarchy, grouped queue, and read-only context", () => {
   const ar = source("src/app/financial/ar/page.tsx");
 
-  assert.match(ar, /title="Invoices & AR"/);
+  assert.match(ar, /title="Billing"/);
   assert.match(ar, /data-testid="ar-workspace-summary"/);
   assert.match(ar, /data-testid="ar-invoice-queue"/);
   assert.match(ar, /data-testid="ar-selected-invoice-context"/);
-  assert.match(ar, /searchParams:\s*Promise<\{ invoice\?: string \}>/);
-  assert.match(ar, /const requestedInvoiceId = \(await searchParams\)\.invoice/);
+  assert.match(ar, /searchParams:\s*Promise<\{ invoice\?: string; customerId\?: string \}>/);
+  assert.match(ar, /const \{ customerId, invoice: requestedInvoiceId \} = await searchParams/);
+  assert.match(
+    ar,
+    /model\.outstanding\.filter\(\(invoice\) => invoice\.customerId === customerId\)/
+  );
   assert.match(ar, /outstanding\.find\(\(invoice\) => invoice\.id === requestedInvoiceId\)/);
   assert.match(ar, /View context/);
   assert.match(ar, /aria-current=\{selected \? "true" : undefined\}/);

@@ -48,6 +48,8 @@ export type DocumentFilters = {
 };
 
 export type DocumentDraft = {
+  id?: string;
+  organization_id?: string;
   file_name: string;
   file_path: string;
   file_type?: DocumentFileType;
@@ -66,11 +68,6 @@ function client(explicitClient?: SupabaseClient) {
   const c = explicitClient ?? getSupabaseClient();
   if (!c) throw new Error("Supabase is not configured.");
   return c;
-}
-
-/** On any query error, return empty/list so app does not 500. */
-function safeReturnDocuments(): DocumentWithProject[] {
-  return [];
 }
 
 function mapRow(r: Record<string, unknown>): DocumentRow {
@@ -129,13 +126,13 @@ export async function getDocuments(filters: DocumentFilters = {}): Promise<Docum
         qFallback = qFallback.ilike("file_name", term);
       }
       const res = await qFallback;
-      if (res.error) return safeReturnDocuments();
+      if (res.error) throw new Error(res.error.message ?? "Documents are unavailable.");
       return (res.data ?? []).map((r: Record<string, unknown>) => ({
         ...mapRow(r),
         project_name: null,
       }));
-    } catch {
-      return safeReturnDocuments();
+    } catch (error) {
+      throw error instanceof Error ? error : new Error("Documents are unavailable.");
     }
   }
   return (rows ?? []).map((r: Record<string, unknown>) => {
@@ -192,7 +189,7 @@ export async function getDocumentsPaged(
         qFallback = qFallback.ilike("file_name", term);
       }
       const fallback = await qFallback.range(from, to);
-      if (fallback.error) return { rows: safeReturnDocuments(), total: 0 };
+      if (fallback.error) throw new Error(fallback.error.message ?? "Documents are unavailable.");
       return {
         rows: (fallback.data ?? []).map((r: Record<string, unknown>) => ({
           ...mapRow(r),
@@ -200,8 +197,8 @@ export async function getDocumentsPaged(
         })),
         total: fallback.count ?? 0,
       };
-    } catch {
-      return { rows: safeReturnDocuments(), total: 0 };
+    } catch (error) {
+      throw error instanceof Error ? error : new Error("Documents are unavailable.");
     }
   }
 
@@ -214,47 +211,52 @@ export async function getDocumentsPaged(
 }
 
 /** Get documents for a single project. */
-export async function getDocumentsByProject(projectId: string): Promise<DocumentRow[]> {
-  try {
-    const c = client();
-    const { data: rows, error } = await c
-      .from("documents")
-      .select(
-        "id, file_name, file_path, file_type, mime_type, size_bytes, project_id, related_module, related_id, uploaded_by, uploaded_at, notes"
-      )
-      .eq("project_id", projectId)
-      .order("uploaded_at", { ascending: false });
-    if (error) return [];
-    return (rows ?? []).map((r: Record<string, unknown>) => mapRow(r));
-  } catch {
-    return [];
-  }
+export async function getDocumentsByProject(
+  projectId: string,
+  explicitClient?: SupabaseClient
+): Promise<DocumentRow[]> {
+  const c = client(explicitClient);
+  const { data: rows, error } = await c
+    .from("documents")
+    .select(
+      "id, file_name, file_path, file_type, mime_type, size_bytes, project_id, related_module, related_id, uploaded_by, uploaded_at, notes"
+    )
+    .eq("project_id", projectId)
+    .order("uploaded_at", { ascending: false });
+  if (error) throw new Error(error.message ?? "Failed to load project documents.");
+  if (!Array.isArray(rows)) throw new Error("Project documents are unavailable.");
+  return rows.map((r: Record<string, unknown>) => mapRow(r));
 }
 
 /** Get one document by id. */
-export async function getDocumentById(id: string): Promise<DocumentWithProject | null> {
-  try {
-    const c = client();
-    const { data: row, error } = await c
-      .from("documents")
-      .select(
-        "id, file_name, file_path, file_type, mime_type, size_bytes, project_id, related_module, related_id, uploaded_by, uploaded_at, notes, projects(name)"
-      )
-      .eq("id", id)
-      .maybeSingle();
-    if (error || !row) return null;
-    const r = row as Record<string, unknown>;
-    const proj = r.projects as { name?: string } | null;
-    return { ...mapRow(r), project_name: proj?.name ?? null };
-  } catch {
-    return null;
-  }
+export async function getDocumentById(
+  id: string,
+  explicitClient?: SupabaseClient
+): Promise<DocumentWithProject | null> {
+  const c = client(explicitClient);
+  const { data: row, error } = await c
+    .from("documents")
+    .select(
+      "id, file_name, file_path, file_type, mime_type, size_bytes, project_id, related_module, related_id, uploaded_by, uploaded_at, notes, projects(name)"
+    )
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw new Error(error.message ?? "Document unavailable.");
+  if (!row) return null;
+  const r = row as Record<string, unknown>;
+  const proj = r.projects as { name?: string } | null;
+  return { ...mapRow(r), project_name: proj?.name ?? null };
 }
 
 /** Insert a document record (file must already be in storage at file_path). */
-export async function insertDocument(draft: DocumentDraft): Promise<DocumentRow> {
-  const c = client();
+export async function insertDocument(
+  draft: DocumentDraft,
+  explicitClient?: SupabaseClient
+): Promise<DocumentRow> {
+  const c = client(explicitClient);
   const payload = {
+    ...(draft.id ? { id: draft.id } : {}),
+    ...(draft.organization_id ? { organization_id: draft.organization_id } : {}),
     file_name: draft.file_name.trim(),
     file_path: draft.file_path.trim(),
     file_type: DOCUMENT_FILE_TYPES.includes(draft.file_type as DocumentFileType)
@@ -270,30 +272,37 @@ export async function insertDocument(draft: DocumentDraft): Promise<DocumentRow>
   };
   const { data: row, error } = await c.from("documents").insert(payload).select("*").single();
   if (error) throw new Error(error.message ?? "Failed to save document.");
+  if (!row) throw new Error("Document metadata was not saved.");
   return mapRow(row as Record<string, unknown>);
 }
 
 /** Delete document record and optionally remove file from storage. */
-export async function deleteDocument(id: string, removeFromStorage = true): Promise<boolean> {
-  const c = client();
-  const doc = await getDocumentById(id);
+export async function deleteDocument(
+  id: string,
+  removeFromStorage = true,
+  explicitClient?: SupabaseClient
+): Promise<boolean> {
+  const c = client(explicitClient);
+  const doc = await getDocumentById(id, c);
   if (!doc) return false;
   if (removeFromStorage) {
     const { error: storageError } = await c.storage.from(BUCKET).remove([doc.file_path]);
     if (storageError)
       throw new Error(storageError.message ?? "Failed to delete file from storage.");
   }
-  const { error } = await c.from("documents").delete().eq("id", id);
+  const { data, error } = await c.from("documents").delete().eq("id", id).select("id");
   if (error) throw new Error(error.message ?? "Failed to delete document record.");
-  return !error;
+  if (!data?.length) throw new Error("Document was not deleted or access was denied.");
+  return true;
 }
 
 /** Create a signed URL for preview/download (expires in 60 seconds). */
 export async function getDocumentSignedUrl(
   filePath: string,
-  expiresIn = 60
+  expiresIn = 60,
+  explicitClient?: SupabaseClient
 ): Promise<{ url: string | null; error?: string }> {
-  const c = client();
+  const c = client(explicitClient);
   const { data, error } = await c.storage.from(BUCKET).createSignedUrl(filePath, expiresIn);
   if (error) return { url: null, error: error.message };
   return { url: data?.signedUrl ?? null };

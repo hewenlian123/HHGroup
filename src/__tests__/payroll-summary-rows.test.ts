@@ -47,6 +47,37 @@ function baseLaborInvoice(over: Partial<LaborInvoice> = {}): LaborInvoice {
 }
 
 describe("buildPayrollSummaryRows", () => {
+  it("counts only explicitly attributed payments in project payroll, retaining all payments globally", () => {
+    const input = {
+      fromDate: "2026-01-01",
+      toDate: "2026-01-31",
+      projectFilter: "p1",
+      includeLaborInvoices: false,
+      workers,
+      laborEntries: [baseLaborEntry()],
+      reimbursementsAll: [],
+      workerInvoicesAll: [],
+      laborInvoicesAll: [],
+      advancesAll: [],
+      paymentsAll: ["p1", "p2", null].map((projectId, index) => ({
+        id: `payment-${index}`,
+        workerId: "w1",
+        projectId,
+        paymentDate: "2026-01-16",
+        amount: 30,
+        paymentMethod: "Cash",
+        notes: null,
+        createdAt: "2026-01-16",
+        laborEntryIds: null,
+      })),
+    };
+    expect(buildPayrollSummaryRows(input)[0]).toMatchObject({ paid: 30, balance: 170 });
+    expect(buildPayrollSummaryRows({ ...input, projectFilter: null })[0]).toMatchObject({
+      paid: 90,
+      balance: 110,
+    });
+  });
+
   it("Earned = laborOwed + worker_invoices + labor_invoices", () => {
     const laborEntries: DailyWorkEntry[] = [
       baseLaborEntry({ dailyRate: 100, dayType: "full_day" }),

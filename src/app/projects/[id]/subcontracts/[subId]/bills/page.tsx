@@ -1,3 +1,4 @@
+import { requireOrganizationServerActionClient } from "@/lib/auth-boundary";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageLayout, PageHeader, Divider, SectionHeader } from "@/components/base";
@@ -13,7 +14,6 @@ import { BillRowActions } from "./bill-row-actions";
 import { SetBreadcrumbEntityTitle } from "@/components/layout/set-breadcrumb-entity-title";
 import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
 import { subcontractBillCountsAsBilled } from "@/lib/subcontractor-financials";
-import { getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
 import {
   ProjectFinancialTable,
   ProjectFinancialTableCell,
@@ -29,11 +29,17 @@ type Props = { params: Promise<{ id: string; subId: string }> };
 
 export default async function SubcontractBillsPage({ params }: Props) {
   const { id: projectId, subId } = await params;
-  const supabase = getServerSupabaseInternalNoStore();
+  const guard = await requireOrganizationServerActionClient({
+    projectId,
+    requireOwnerAdmin: true,
+    noStore: true,
+  });
+  if (!guard.ok) notFound();
+  const supabase = guard.client;
   const [subcontract, bills, payments, deductions] = await Promise.all([
-    getSubcontractById(subId),
-    getBillsBySubcontract(subId),
-    getPaymentsBySubcontractIds([subId]),
+    getSubcontractById(subId, supabase),
+    getBillsBySubcontract(subId, supabase),
+    getPaymentsBySubcontractIds([subId], supabase),
     getSubcontractDeductionsBySubcontractIds([subId], supabase ?? undefined),
   ]);
 

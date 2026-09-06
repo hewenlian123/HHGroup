@@ -477,9 +477,10 @@ export async function createChangeOrderWithClient(
 
 export async function addChangeOrderAttachment(
   changeOrderId: string,
-  att: { fileName: string; storagePath: string; mimeType?: string | null; sizeBytes?: number }
+  att: { fileName: string; storagePath: string; mimeType?: string | null; sizeBytes?: number },
+  explicitClient?: SupabaseClient
 ): Promise<ChangeOrderAttachment | null> {
-  const c = client();
+  const c = client(explicitClient);
   const { data: row, error } = await c
     .from("project_change_order_attachments")
     .insert({
@@ -495,8 +496,11 @@ export async function addChangeOrderAttachment(
   return row ? toAttachment(row as ChangeOrderAttachmentRow) : null;
 }
 
-export async function deleteChangeOrderAttachment(attachmentId: string): Promise<boolean> {
-  const c = client();
+export async function deleteChangeOrderAttachment(
+  attachmentId: string,
+  explicitClient?: SupabaseClient
+): Promise<boolean> {
+  const c = client(explicitClient);
   const { error } = await c
     .from("project_change_order_attachments")
     .delete()

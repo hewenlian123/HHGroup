@@ -1,4 +1,5 @@
 "use client";
+import { LaborReadState } from "@/components/labor/labor-read-state";
 
 import * as React from "react";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
@@ -396,6 +397,8 @@ export default function WorkerBalanceDetailPage() {
   const [advances, setAdvances] = React.useState<AdvanceRow[]>([]);
   const [payments, setPayments] = React.useState<PaymentRow[]>([]);
   const [loading, setLoading] = React.useState(true);
+  const [readUnavailable, setReadUnavailable] = React.useState(false);
+  const readGeneration = React.useRef(0);
   const [message, setMessage] = React.useState<string | null>(null);
 
   const [payModalOpen, setPayModalOpen] = React.useState(false);
@@ -423,12 +426,19 @@ export default function WorkerBalanceDetailPage() {
 
   const load = React.useCallback(async () => {
     if (!workerId) return;
+    const generation = ++readGeneration.current;
+    setReadUnavailable(false);
+    setSelectedLaborIds(new Set());
+    setSelectedReimbIds(new Set());
+    setPayModalOpen(false);
     setLoading(true);
     setMessage(null);
     try {
       const res = await fetch(`/api/labor/workers/${workerId}/balance`, { cache: "no-store" });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message ?? "Failed to load.");
+      if (generation !== readGeneration.current) return;
+      if (!res.ok || !data.summary || !Array.isArray(data.laborEntries))
+        throw new Error(data.message ?? "Failed to load.");
       setLaborPayrollMode(
         data.laborPayrollSettlementMode === "status_fallback" ? "status_fallback" : "payment_link"
       );
@@ -459,9 +469,16 @@ export default function WorkerBalanceDetailPage() {
       setAdvances(data.advances ?? []);
       setPayments(data.payments ?? []);
     } catch (e) {
+      if (generation !== readGeneration.current) return;
+      setReadUnavailable(true);
+      setSummary(null);
+      setLaborEntries([]);
+      setReimbursements([]);
+      setAdvances([]);
+      setPayments([]);
       setMessage(e instanceof Error ? e.message : "Failed to load.");
     } finally {
-      setLoading(false);
+      if (generation === readGeneration.current) setLoading(false);
     }
   }, [workerId]);
 
@@ -832,7 +849,16 @@ export default function WorkerBalanceDetailPage() {
 
   const handlePaySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!workerId || !hasPaySelection || totalPaymentAmount <= 0 || netPaymentAmount <= 0) return;
+    if (
+      loading ||
+      readUnavailable ||
+      !summary ||
+      !workerId ||
+      !hasPaySelection ||
+      totalPaymentAmount <= 0 ||
+      netPaymentAmount <= 0
+    )
+      return;
     if (splitRows.length > 1) {
       setPayError("Split payments need backend support before saving.");
       return;
@@ -901,6 +927,8 @@ export default function WorkerBalanceDetailPage() {
       </div>
     );
   }
+
+  if (readUnavailable) return <LaborReadState title="Worker balance" retry={() => void load()} />;
 
   return (
     <div className=" page-shell-wide mx-auto flex w-full min-w-0 flex-col gap-4 overflow-x-hidden px-4 py-4 pb-[max(1.5rem,env(safe-area-inset-bottom,0px))] md:px-6 md:py-6">

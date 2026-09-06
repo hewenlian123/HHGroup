@@ -61,8 +61,17 @@ export default defineConfig({
   retries: 0,
   workers: 1,
   forbidOnly: Boolean(process.env.CI),
-  outputDir: "test-results/ui-readonly",
-  reporter: [["list"], ["html", { outputFolder: "playwright-report/ui-readonly", open: "never" }]],
+  outputDir: process.env.E2E_UI_OUTPUT_DIR || "test-results/ui-readonly",
+  reporter: [
+    ["list"],
+    [
+      "html",
+      {
+        outputFolder: process.env.E2E_UI_REPORT_DIR || "playwright-report/ui-readonly",
+        open: "never",
+      },
+    ],
+  ],
   use: {
     baseURL,
     storageState: resolvedStorageState,
@@ -70,12 +79,15 @@ export default defineConfig({
     screenshot: "only-on-failure",
     trace: "retain-on-failure",
   },
-  webServer: {
-    command: `npm run dev:safe -- -p ${port}`,
-    url: `${baseURL}/financial/inbox`,
-    reuseExistingServer: false,
-    timeout: 300_000,
-    env: buildReadonlyWebServerEnv(),
-  },
+  webServer:
+    process.env.E2E_WEB_SERVER === "off"
+      ? undefined
+      : {
+          command: `npm run dev:safe -- -p ${port}`,
+          url: `${baseURL}/financial/inbox`,
+          reuseExistingServer: false,
+          timeout: 300_000,
+          env: buildReadonlyWebServerEnv(),
+        },
   projects: [{ name: "chromium-ui-readonly", use: { ...devices["Desktop Chrome"] } }],
 });

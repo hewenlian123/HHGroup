@@ -82,7 +82,8 @@ export async function fetchReceiptQueueRows(supabase: SupabaseClient): Promise<R
     .in("status", ["pending", "processing", "failed"])
     .order("created_at", { ascending: true });
   if (error) throw new Error(error.message);
-  return (data ?? []).map((x) => mapRow(x as Record<string, unknown>));
+  if (!Array.isArray(data)) throw new Error("Receipt queue is unavailable.");
+  return data.map((x) => mapRow(x as Record<string, unknown>));
 }
 
 export async function fetchReceiptQueueBadgeCount(supabase: SupabaseClient): Promise<number> {
@@ -122,11 +123,17 @@ export async function updateReceiptQueueRow(
   id: string,
   patch: ReceiptQueuePatch
 ): Promise<void> {
-  const { error } = await supabase.from("receipt_queue").update(patch).eq("id", id);
+  const { data, error } = await supabase
+    .from("receipt_queue")
+    .update(patch)
+    .eq("id", id)
+    .select("id");
   if (error) throw new Error(error.message);
+  if (data?.length !== 1) throw new Error("Receipt unavailable or update denied.");
 }
 
 export async function deleteReceiptQueueRow(supabase: SupabaseClient, id: string): Promise<void> {
-  const { error } = await supabase.from("receipt_queue").delete().eq("id", id);
+  const { data, error } = await supabase.from("receipt_queue").delete().eq("id", id).select("id");
   if (error) throw new Error(error.message);
+  if (data?.length !== 1) throw new Error("Receipt unavailable or deletion denied.");
 }

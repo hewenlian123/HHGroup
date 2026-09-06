@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { ErrorRetry, LoadingState } from "@/components/ui/system-state";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
@@ -29,7 +30,7 @@ import {
   mobileListPagePaddingClass,
 } from "@/components/mobile/mobile-list-chrome";
 import { cn } from "@/lib/utils";
-import { createBrowserClient } from "@/lib/supabase";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { formatCurrency } from "@/lib/formatters";
 import { amountClass } from "@/lib/typography";
 import { formatLedgerDate, LEDGER_DATE_CLASS } from "@/lib/ledger-date";
@@ -180,6 +181,8 @@ function parseCsv(text: string): Array<{ date: string; description: string; amou
 
 export default function BankReconcileClient() {
   const [loading, setLoading] = React.useState(true);
+  const [readError, setReadError] = React.useState<string | null>(null);
+  const readSequence = React.useRef(0);
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -210,12 +213,25 @@ export default function BankReconcileClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   const configured = Boolean(url && anon);
-  const supabase = React.useMemo(
-    () => (configured ? createBrowserClient(url as string, anon as string) : null),
-    [configured, url, anon]
-  );
+  const [supabase, setSupabase] = React.useState<SupabaseClient | null>(null);
+  React.useEffect(() => {
+    if (!configured || !url || !anon) return;
+    let active = true;
+    void import("@/lib/supabase")
+      .then(({ createBrowserClient }) => {
+        if (active) setSupabase(createBrowserClient(url, anon));
+      })
+      .catch(() => {
+        if (active) setReadError("Bank session unavailable.");
+      });
+    return () => {
+      active = false;
+    };
+  }, [configured, url, anon]);
 
   const refresh = React.useCallback(async () => {
+    const sequence = ++readSequence.current;
+    setReadError(null);
     setLoading(true);
     setError(null);
 
@@ -233,25 +249,32 @@ export default function BankReconcileClient() {
       };
       if (!response.ok) throw new Error(body.message ?? "Failed to load bank transactions.");
 
-      setTransactions(body.transactions ?? []);
+      if (!Array.isArray(body.transactions) || !Array.isArray(body.projects))
+        throw new Error("Bank transactions unavailable.");
+      if (sequence !== readSequence.current) return;
+      setTransactions(body.transactions);
       setProjects(body.projects ?? []);
       setCategories(body.categories?.length ? body.categories : ["Other"]);
       setVendorsList(body.vendors ?? []);
       setPaymentMethodsList(body.paymentMethods?.length ? body.paymentMethods : ["ACH"]);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load bank transactions.");
+      if (sequence !== readSequence.current) return;
+      setReadError(e instanceof Error ? e.message : "Failed to load bank transactions.");
       setTransactions([]);
       setProjects([]);
       setCategories(["Other"]);
       setVendorsList([]);
       setPaymentMethodsList(["ACH"]);
     } finally {
-      setLoading(false);
+      if (sequence === readSequence.current) setLoading(false);
     }
   }, []);
 
   React.useEffect(() => {
     void refresh();
+    return () => {
+      readSequence.current += 1;
+    };
   }, [refresh]);
 
   useOnAppSync(
@@ -698,6 +721,22 @@ export default function BankReconcileClient() {
     : null;
   const isReconciled = selectedTxFromList?.status === "reconciled";
   const isLinkedToExpense = !!selectedTxFromList?.linkedExpenseId;
+
+  if (loading || readError)
+    return (
+      <div className="page-container py-6" data-testid="bank-reconciliation-workspace">
+        <PageHeader title="Transactions" subtitle="Bank activity and reconciliation." />
+        {loading ? (
+          <LoadingState text="Loading bank transactions…" />
+        ) : (
+          <ErrorRetry
+            title="Transactions unavailable"
+            description={readError ?? undefined}
+            onRetry={() => void refresh()}
+          />
+        )}
+      </div>
+    );
 
   return (
     <div

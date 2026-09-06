@@ -1,3 +1,4 @@
+import { financialDataUnavailable } from "@/lib/financial-availability";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 /**
@@ -147,11 +148,13 @@ export async function resolveLaborWorkerForBalance(
   workerId: string
 ): Promise<{ id: string; name: string } | null> {
   const lw = await c.from("labor_workers").select("id, name").eq("id", workerId).maybeSingle();
+  if (lw.error) financialDataUnavailable("labor_workers", lw.error);
   const a = lw.data as { id: string; name: string | null } | null;
   if (a?.id) {
     return { id: a.id, name: (a.name ?? "").trim() || "—" };
   }
   const w = await c.from("workers").select("id, name").eq("id", workerId).maybeSingle();
+  if (w.error) financialDataUnavailable("workers", w.error);
   const b = w.data as { id: string; name: string | null } | null;
   if (b?.id) {
     return { id: b.id, name: (b.name ?? "").trim() || "—" };
@@ -159,139 +162,14 @@ export async function resolveLaborWorkerForBalance(
   return null;
 }
 
-export function normWorkerBalanceName(s: string | null | undefined): string {
-  return String(s ?? "")
-    .replace(/\u3000/g, " ")
-    .replace(/\s+/g, " ")
-    .trim()
-    .toLowerCase();
-}
-
-/** Escape `%` / `_` for Postgres ILIKE when embedding a user-provided substring. */
-function escapeIlikeSubstring(s: string): string {
-  return s.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
-}
-
-/**
- * worker_payments / worker_advances / worker_reimbursements reference public.workers(id).
- * Worker Balances uses labor_workers.id. When UUIDs drift but names match, remap FK → labor row.
- * If multiple labor_workers rows share the same normalized name, pick a stable first id so
- * list/detail pages don't diverge by dropping financial rows to an unmapped id.
- */
-export async function createWorkersFkToLaborIdResolver(
-  c: SupabaseClient,
-  laborWorkers: { id: string; name: string | null }[],
-  rawWorkerIds: Iterable<string>
-): Promise<(rawWorkerId: string) => string> {
-  const laborIdSet = new Set(laborWorkers.map((w) => String(w.id ?? "").trim()).filter(Boolean));
-  const nameToLaborIds = new Map<string, string[]>();
-  for (const w of laborWorkers) {
-    const k = normWorkerBalanceName(w.name);
-    if (!k) continue;
-    const arr = nameToLaborIds.get(k) ?? [];
-    arr.push(String(w.id));
-    nameToLaborIds.set(k, arr);
-  }
-
-  const orphanIds = new Set<string>();
-  for (const id of rawWorkerIds) {
-    const t = String(id ?? "").trim();
-    if (t && !laborIdSet.has(t)) orphanIds.add(t);
-  }
-
-  const workerNamesById = new Map<string, string | null>();
-  if (orphanIds.size > 0) {
-    const wr = await c
-      .from("workers")
-      .select("id, name")
-      .in("id", [...orphanIds]);
-    if (!wr.error && wr.data) {
-      for (const row of wr.data as { id: string; name: string | null }[]) {
-        workerNamesById.set(String(row.id), row.name);
-      }
-    }
-  }
-
-  return (rawWorkerId: string): string => {
-    const id = String(rawWorkerId ?? "").trim();
-    if (!id) return rawWorkerId;
-    if (laborIdSet.has(id)) return id;
-    const nm = workerNamesById.get(id);
-    const candidates = nameToLaborIds.get(normWorkerBalanceName(nm)) ?? [];
-    if (candidates.length > 0) {
-      const stable = [...candidates].sort((a, b) => a.localeCompare(b))[0];
-      if (stable) return stable;
-    }
-    return id;
-  };
-}
-
-/**
- * All worker_id values to query for financial rows when opening a labor_workers balance by id.
- *
- * Financial tables (`worker_payments`, `worker_reimbursements`, `worker_advances`) reference
- * `public.workers(id)`. `labor_workers.id` is often the same UUID, but rows can still point at
- * another `workers` row with the **same display name** (imports / merges / legacy duplicates).
- *
- * Do **not** short-circuit to `[laborId]` when `workers` contains that id — that drops sibling ids
- * and makes Worker Balances list show $0 reimbursements while the detail page (same helper) would
- * also miss unless the full `workers` scan happened to include the other row within PostgREST limits.
- *
- * Resolution order:
- * 1) Name from `labor_workers`, else from `workers` by id (financial-only rows may lack labor_workers).
- * 2) `workers` with `name` eq / ilike (exact string).
- * 3) If still no second id besides `laborWorkerId`, a bounded `ilike('%…%')` plus **normalized name**
- *    equality so rows like full-width spaces / odd spacing still match (detail page used to see data
- *    while the list showed $0 when only one UUID was queried).
- */
+/** Workers and labor_workers share a UUID; display names never establish financial ownership. */
 export async function workerIdsForLaborBalanceFinancialQueries(
   c: SupabaseClient,
   laborWorkerId: string
 ): Promise<string[]> {
-  const ids = new Set<string>();
-  const lid = laborWorkerId.trim();
-  if (!lid) return [];
-
-  ids.add(lid);
-
-  const lw = await c.from("labor_workers").select("name").eq("id", lid).maybeSingle();
-  const rawName = (lw.data as { name?: string | null } | null)?.name;
-  let lname = String(rawName ?? "").trim();
-
-  if (!lname) {
-    const wn = await c.from("workers").select("name").eq("id", lid).maybeSingle();
-    lname = String((wn.data as { name?: string | null } | null)?.name ?? "").trim();
-  }
-
-  if (!lname) return [...ids];
-
-  const mergeRows = (list: { id: string; name: string | null }[] | null | undefined) => {
-    for (const r of list ?? []) {
-      const id = String(r.id ?? "").trim();
-      if (id) ids.add(id);
-    }
-  };
-
-  const exact = await c.from("workers").select("id, name").eq("name", lname);
-  if (!exact.error && exact.data?.length) {
-    mergeRows(exact.data as { id: string; name: string | null }[]);
-  }
-
-  const ilExact = await c.from("workers").select("id, name").ilike("name", lname);
-  if (!ilExact.error && ilExact.data?.length) {
-    mergeRows(ilExact.data as { id: string; name: string | null }[]);
-  }
-
-  const hasSiblingId = [...ids].some((id) => id !== lid);
-  if (!hasSiblingId) {
-    const esc = escapeIlikeSubstring(lname);
-    const loose = await c.from("workers").select("id, name").ilike("name", `%${esc}%`);
-    const nk = normWorkerBalanceName(lname);
-    const filtered = (loose.data ?? []).filter(
-      (r: { id: string; name: string | null }) => normWorkerBalanceName(r.name) === nk
-    );
-    mergeRows(filtered);
-  }
-
-  return [...ids];
+  const id = laborWorkerId.trim();
+  if (!id) return [];
+  const worker = await c.from("workers").select("id").eq("id", id).maybeSingle();
+  if (worker.error) financialDataUnavailable("workers", worker.error);
+  return [id];
 }

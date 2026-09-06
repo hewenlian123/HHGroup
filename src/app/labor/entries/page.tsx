@@ -1,4 +1,5 @@
 "use client";
+import { LaborReadState } from "@/components/labor/labor-read-state";
 
 import * as React from "react";
 import { startTransition } from "react";
@@ -235,7 +236,16 @@ function DailyEntriesPageInner() {
   const [entries, setEntries] = React.useState<LaborEntryWithJoins[]>([]);
   const [projects, setProjects] = React.useState<Array<{ id: string; name: string }>>([]);
   const [workers, setWorkers] = React.useState<Array<{ id: string; name: string }>>([]);
-  const [filters, setFilters] = React.useState<LaborEntriesFilters>({});
+  const routeWorkerId = searchParams.get("workerId") ?? "";
+  const routeProjectId = searchParams.get("projectId") ?? searchParams.get("project_id") ?? "";
+  const [filters, setFilters] = React.useState<LaborEntriesFilters>(() => ({
+    worker_id: routeWorkerId,
+    project_id: routeProjectId,
+  }));
+  React.useEffect(() => {
+    setFilters((current) => ({ ...current, worker_id: routeWorkerId, project_id: routeProjectId }));
+  }, [routeWorkerId, routeProjectId]);
+  const [readUnavailable, setReadUnavailable] = React.useState(false);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [message, setMessage] = React.useState<string | null>(null);
@@ -292,9 +302,12 @@ function DailyEntriesPageInner() {
     [router, searchParams]
   );
 
+  const readGeneration = React.useRef(0);
   const loadEntries = React.useCallback(async () => {
+    const generation = ++readGeneration.current;
     setLoading(true);
     setError(null);
+    setReadUnavailable(false);
     try {
       const params = new URLSearchParams({ view: "joined" });
       if (filters.date_from) params.set("dateFrom", filters.date_from);
@@ -312,7 +325,9 @@ function DailyEntriesPageInner() {
         workers?: Array<{ id: string; name: string }>;
         unattributedLabor?: UnattributedLaborSummary;
       };
-      if (!response.ok) throw new Error(body.message ?? "Failed to load entries.");
+      if (!response.ok || !Array.isArray(body.entries))
+        throw new Error(body.message ?? "Failed to load entries.");
+      if (generation !== readGeneration.current) return;
       setEntries(body.entries ?? []);
       setProjects(body.projects ?? []);
       setWorkers(body.workers ?? []);
@@ -320,11 +335,13 @@ function DailyEntriesPageInner() {
         body.unattributedLabor ?? { entryCount: 0, recordedCost: 0, canonicalCost: 0 }
       );
     } catch (e) {
+      if (generation !== readGeneration.current) return;
+      setReadUnavailable(true);
       setError(e instanceof Error ? e.message : "Failed to load entries.");
       setEntries([]);
       setUnattributedLabor({ entryCount: 0, recordedCost: 0, canonicalCost: 0 });
     } finally {
-      setLoading(false);
+      if (generation === readGeneration.current) setLoading(false);
     }
   }, [filters]);
 
@@ -509,6 +526,9 @@ function DailyEntriesPageInner() {
   }, [editDraft, editEntry]);
   const editOvertimePay = Math.max(0, Number(editDraft?.overtime_amount) || 0);
   const editTotalPay = editBasePay + editOvertimePay;
+
+  if (loading || readUnavailable)
+    return <LaborReadState title="Time entries" busy={loading} retry={() => void loadEntries()} />;
 
   return (
     <PageLayout

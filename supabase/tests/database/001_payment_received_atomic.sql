@@ -1,6 +1,6 @@
 begin;
 
-select plan(35);
+select plan(38);
 
 select has_function(
   'public',
@@ -13,14 +13,42 @@ select has_function(
   'atomic Payment Received update RPC exists'
 );
 
+-- Fixture provisioning and failure-injection DDL use the test transaction's
+-- database role. RPC authorization uses this explicit, database-owned member.
+insert into auth.users (id, aud, role, email, raw_app_meta_data, is_anonymous)
+values ('11111111-1111-4111-8111-111111111190', 'authenticated', 'authenticated',
+  'atomic-payment-owner@example.test', '{"role":"owner"}'::jsonb, false);
+insert into public.organization_memberships (organization_id, user_id, role, status)
+select o.id, '11111111-1111-4111-8111-111111111190'::uuid, 'owner', 'active'
+from public.organizations o join public.company_profile c on c.id=o.legacy_company_profile_id;
+
 insert into public.invoices (id, invoice_no, client_name, status, total)
-values
+select fixture.id::uuid, fixture.invoice_no, fixture.client_name, fixture.status, fixture.total
+from (values
   ('11111111-1111-1111-1111-111111111101', 'ATOMIC-PAY-1', 'Atomic Customer', 'Sent', 100),
   ('11111111-1111-1111-1111-111111111102', 'ATOMIC-PAY-2', 'Atomic Customer', 'Sent', 100),
   ('11111111-1111-1111-1111-111111111103', 'ATOMIC-PAY-3', 'Atomic Customer', 'Sent', 100),
   ('11111111-1111-1111-1111-111111111104', 'ATOMIC-PAY-4', 'Atomic Customer', 'Sent', 100),
   ('11111111-1111-1111-1111-111111111105', 'ATOMIC-PAY-5', 'Atomic Customer', 'Sent', 100),
-  ('11111111-1111-1111-1111-111111111106', 'ATOMIC-PAY-6', 'Atomic Customer', 'Sent', 100);
+  ('11111111-1111-1111-1111-111111111106', 'ATOMIC-PAY-6', 'Atomic Customer', 'Sent', 100)
+) as fixture(id, invoice_no, client_name, status, total);
+
+insert into storage.objects (bucket_id, name, owner_id, metadata)
+values (
+  'payment-attachments',
+  'payments-received/11111111-1111-1111-1111-111111111101/atomic-receipt.pdf',
+  '11111111-1111-4111-8111-111111111190',
+  '{"mimetype":"application/pdf","size":12}'::jsonb
+);
+
+select set_config('request.jwt.claims',
+  '{"sub":"11111111-1111-4111-8111-111111111190","role":"authenticated","app_metadata":{"role":"owner"},"is_anonymous":false}', true);
+select ok(
+  auth.uid() = '11111111-1111-4111-8111-111111111190'::uuid
+    and private.can_manage_company()
+    and public.is_owner_or_admin(),
+  'payment fixture has authenticated same-organization financial authority'
+);
 
 create temp table payment_atomic_results (result jsonb);
 
@@ -35,7 +63,8 @@ select public.record_payment_received_atomic(
   'ACH',
   'Operating',
   'Atomic payment',
-  null
+  null,
+  '[{"file_url":"payments-received/11111111-1111-1111-1111-111111111101/atomic-receipt.pdf","file_name":"atomic-receipt.pdf","mime_type":"application/pdf","size_bytes":12,"file_type":"pdf"}]'::jsonb
 );
 
 select is(
@@ -69,6 +98,13 @@ select is(
   'Partially Paid',
   'success updates invoice status'
 );
+select is(
+  (select a.file_url from public.payment_received_attachments a
+    join public.payments_received p on p.id = a.payment_id
+    where p.idempotency_key = 'payment-key-success'),
+  'payments-received/11111111-1111-1111-1111-111111111101/atomic-receipt.pdf',
+  'success preserves the invoice-scoped existing attachment object'
+);
 
 insert into payment_atomic_results (result)
 select public.record_payment_received_atomic(
@@ -81,7 +117,8 @@ select public.record_payment_received_atomic(
   'ACH',
   'Operating',
   'Atomic payment',
-  null
+  null,
+  '[{"file_url":"payments-received/11111111-1111-1111-1111-111111111101/atomic-receipt.pdf","file_name":"atomic-receipt.pdf","mime_type":"application/pdf","size_bytes":12,"file_type":"pdf"}]'::jsonb
 );
 
 select is(
@@ -99,6 +136,13 @@ select is(
   1::bigint,
   'same key and payload remains exactly once'
 );
+select is(
+  (select count(*) from public.payment_received_attachments a
+    join public.payments_received p on p.id = a.payment_id
+    where p.idempotency_key = 'payment-key-success'),
+  1::bigint,
+  'same key and payload does not duplicate attachment metadata'
+);
 select throws_ok(
   $$
     select public.record_payment_received_atomic(
@@ -111,7 +155,8 @@ select throws_ok(
       'ACH',
       'Operating',
       'Atomic payment',
-      null
+      null,
+      '[{"file_url":"payments-received/11111111-1111-1111-1111-111111111101/atomic-receipt.pdf","file_name":"atomic-receipt.pdf","mime_type":"application/pdf","size_bytes":12,"file_type":"pdf"}]'::jsonb
     )
   $$,
   '23505',

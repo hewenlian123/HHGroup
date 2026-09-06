@@ -3,6 +3,7 @@
  */
 
 import { getSupabaseClient } from "@/lib/supabase";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type ExpenseOptionType =
   | "payment_method"
@@ -95,8 +96,8 @@ const DEFAULT_PAYMENT_SOURCE_ROWS: ExpenseOptionRow[] = [
   },
 ];
 
-function client() {
-  const c = getSupabaseClient();
+function client(explicitClient?: SupabaseClient) {
+  const c = explicitClient ?? getSupabaseClient();
   if (!c) throw new Error("Supabase is not configured.");
   return c;
 }
@@ -217,18 +218,21 @@ async function legacyPickerItemsByStoredName(
   return items;
 }
 
-export async function expenseOptionsTableAvailable(): Promise<boolean> {
+export async function expenseOptionsTableAvailable(
+  explicitClient?: SupabaseClient
+): Promise<boolean> {
   if (!(await publicSchemaItemAvailable("expense_options"))) return false;
-  const c = client();
+  const c = client(explicitClient);
   const { error } = await c.from("expense_options").select("id").limit(1);
   if (error && isMissingTable(error)) return false;
   return !error;
 }
 
 export async function listExpenseOptionsByType(
-  type: ExpenseOptionType
+  type: ExpenseOptionType,
+  explicitClient?: SupabaseClient
 ): Promise<ExpenseOptionRow[]> {
-  const c = client();
+  const c = client(explicitClient);
   const { data, error } = await c
     .from("expense_options")
     .select("*")
@@ -442,8 +446,10 @@ export async function setDefaultExpenseOption(
 }
 
 /** Active payment_account option keys = payment_accounts.id */
-export async function activePaymentAccountIds(): Promise<Set<string>> {
-  const rows = await listExpenseOptionsByType("payment_account");
+export async function activePaymentAccountIds(
+  explicitClient?: SupabaseClient
+): Promise<Set<string>> {
+  const rows = await listExpenseOptionsByType("payment_account", explicitClient);
   const set = new Set<string>();
   for (const r of rows) {
     if (r.active) set.add(r.key);

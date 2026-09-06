@@ -151,9 +151,7 @@ type WorkerPaymentRow = {
   id: string;
   worker_id: string | null;
   total_amount: number | string | null;
-  amount: number | string | null;
   labor_entry_ids: unknown;
-  project_id: string | null;
   payment_date: string | null;
   created_at: string | null;
 };
@@ -965,9 +963,7 @@ export async function getReportsData(range: ReportDateRange): Promise<ReportsDat
       ),
     supabase
       .from("worker_payments")
-      .select(
-        "id, worker_id, total_amount, amount, labor_entry_ids, project_id, payment_date, created_at"
-      ),
+      .select("id, worker_id, total_amount, labor_entry_ids, payment_date, created_at"),
     supabase
       .from("ap_bills")
       .select(
@@ -997,6 +993,11 @@ export async function getReportsData(range: ReportDateRange): Promise<ReportsDat
     "labor_entries",
     warnings
   );
+  if (workerPaymentsRes.error || !Array.isArray(workerPaymentsRes.data)) {
+    throw new Error(
+      `Worker payments unavailable: ${workerPaymentsRes.error?.message ?? "invalid result"}`
+    );
+  }
   const workerPayments = safeRows(
     workerPaymentsRes as QueryResponse<WorkerPaymentRow>,
     "worker_payments",

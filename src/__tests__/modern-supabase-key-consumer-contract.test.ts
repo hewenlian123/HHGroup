@@ -59,7 +59,7 @@ describe("modern Supabase key consumer contract", () => {
     const route = source("src/app/api/projects/[id]/tab/route.ts");
 
     expect(route).toMatch(
-      /requireSupabaseOwnerOrAdminRequestClient\(_req,[\s\S]*?const supabase = guard\.client[\s\S]*?getCanonicalProjectProfit\(id,\s*supabase\)/i
+      /requireOrganizationRequestClient\(_req,[\s\S]*?const supabase = guard\.client[\s\S]*?getCanonicalProjectProfit\(id,\s*supabase\)/i
     );
     expect(route).not.toContain("getServerSupabaseInternalNoStore");
   });

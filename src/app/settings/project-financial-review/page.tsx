@@ -1,3 +1,4 @@
+import { requireOrganizationServerActionClient } from "@/lib/auth-boundary";
 import Link from "next/link";
 import { AlertTriangle, ArrowUpRight, CheckCircle2 } from "lucide-react";
 import {
@@ -40,7 +41,15 @@ export default async function ProjectFinancialReviewPage() {
   let errorMessage: string | null = null;
 
   try {
-    payload = await getProjectFinancialReview();
+    const guard = await requireOrganizationServerActionClient({
+      requireOwnerAdmin: true,
+      noStore: true,
+    });
+    if (!guard.ok) throw new Error(guard.error);
+    payload = await getProjectFinancialReview(
+      guard.client,
+      guard.context.memberships.map((m) => m.organization_id)
+    );
   } catch (error) {
     errorMessage =
       error instanceof Error ? error.message : "Project financial review could not be loaded.";

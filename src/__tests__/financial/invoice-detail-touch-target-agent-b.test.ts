@@ -3,7 +3,9 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 const invoiceDetailSource = readFileSync(
-  fileURLToPath(new URL("../../app/financial/invoices/[id]/page.tsx", import.meta.url)),
+  fileURLToPath(
+    new URL("../../app/financial/invoices/[id]/invoice-detail-client.tsx", import.meta.url)
+  ),
   "utf8"
 );
 

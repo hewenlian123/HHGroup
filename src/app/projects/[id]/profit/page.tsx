@@ -1,3 +1,4 @@
+import { requireOrganizationServerActionClient } from "@/lib/auth-boundary";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireSupabaseOwnerOrAdminServerAction } from "@/lib/auth-boundary";
@@ -38,6 +39,12 @@ export default async function ProjectProfitPage({ params }: Props) {
   const guard = await requireSupabaseOwnerOrAdminServerAction();
   if (!guard.ok) notFound();
   const { id } = await params;
+  const organizationGuard = await requireOrganizationServerActionClient({
+    projectId: id,
+    requireOwnerAdmin: true,
+    noStore: true,
+  });
+  if (!organizationGuard.ok) notFound();
   const projectSupabase = await createServerSupabaseClient();
   if (!projectSupabase) throw new Error("Authenticated project session is not configured.");
   const [

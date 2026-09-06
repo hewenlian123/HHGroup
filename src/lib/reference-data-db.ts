@@ -6,9 +6,10 @@
 
 import * as expenseOpts from "@/lib/expense-options-db";
 import { getSupabaseClient } from "@/lib/supabase";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
-function client() {
-  const c = getSupabaseClient();
+function client(explicitClient?: SupabaseClient) {
+  const c = explicitClient ?? getSupabaseClient();
   if (!c) throw new Error("Supabase is not configured.");
   return c;
 }
@@ -50,29 +51,6 @@ type ExpenseOptionApiResponse = {
   message?: string;
 };
 
-async function ensureExpenseCategoriesExist(): Promise<void> {
-  if (await expenseOpts.expenseOptionsTableAvailable()) {
-    const rows = await expenseOpts.listExpenseOptionsByType("category");
-    if (rows.length > 0) return;
-    for (const name of DEFAULT_CATEGORIES) {
-      await expenseOpts.insertExpenseOption({ type: "category", name });
-    }
-    return;
-  }
-  if (!(await expenseOpts.publicSchemaItemAvailable("categories"))) return;
-  const c = client();
-  const { data: existing, error } = await c
-    .from("categories")
-    .select("name")
-    .eq("type", "expense")
-    .limit(1);
-  if (error && isMissingTable(error)) return;
-  if (existing && existing.length > 0) return;
-  for (const name of DEFAULT_CATEGORIES) {
-    await c.from("categories").insert({ name, type: "expense", status: "active" });
-  }
-}
-
 async function readJson<T>(response: Response): Promise<T | null> {
   try {
     return (await response.json()) as T;
@@ -96,10 +74,12 @@ async function addExpenseCategoryViaApi(name: string): Promise<string> {
   return created;
 }
 
-export async function getExpenseCategories(includeDisabled = false): Promise<string[]> {
-  await ensureExpenseCategoriesExist();
-  if (await expenseOpts.expenseOptionsTableAvailable()) {
-    const rows = await expenseOpts.listExpenseOptionsByType("category");
+export async function getExpenseCategories(
+  includeDisabled = false,
+  explicitClient?: SupabaseClient
+): Promise<string[]> {
+  if (await expenseOpts.expenseOptionsTableAvailable(explicitClient)) {
+    const rows = await expenseOpts.listExpenseOptionsByType("category", explicitClient);
     const list = includeDisabled ? rows : rows.filter((r) => r.active);
     return list
       .sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name))
@@ -108,7 +88,7 @@ export async function getExpenseCategories(includeDisabled = false): Promise<str
   if (!(await expenseOpts.publicSchemaItemAvailable("categories"))) {
     return [...DEFAULT_CATEGORIES];
   }
-  const c = client();
+  const c = client(explicitClient);
   const { data: rows, error } = await c
     .from("categories")
     .select("name, status")

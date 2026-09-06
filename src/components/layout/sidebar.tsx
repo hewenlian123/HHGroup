@@ -18,7 +18,6 @@ import {
   Building2,
   ChevronLeft,
   ChevronRight,
-  ChevronDown,
   CircleDollarSign,
   CheckSquare,
   ListChecks,
@@ -57,17 +56,11 @@ import { useSystemHealth } from "@/contexts/system-health-context";
 import { useAuth } from "@/components/auth/auth-provider";
 import { authIdentityRoleLabel } from "@/components/auth/auth-ui";
 import {
-  HH_PROJECT_OS_DEFAULT_OPEN_SECTIONS,
   HH_PROJECT_OS_NAV_SECTIONS,
-  HH_PROJECT_OS_SECTION_KEYS,
-  isHhProjectOsNavItem,
-  isHhProjectOsNavPlaceholder,
+  getHhProjectOsMobileActiveHref,
   type HhProjectOsIconKey,
   type HhProjectOsNavItem,
-  type HhProjectOsNavPlaceholder,
 } from "@/lib/navigation/ia";
-
-const STORAGE_KEY = "hh.sidebarSections";
 
 const NAV_ICON_MAP: Record<HhProjectOsIconKey, LucideIcon> = {
   accounts: Wallet,
@@ -163,7 +156,6 @@ export function Sidebar({
     },
     [prefetchFinancialNav, router]
   );
-  const [openSections, setOpenSections] = React.useState<Record<string, boolean>>(() => ({}));
   const { data: companyProfile } = useQuery({
     queryKey: companyProfileQueryKey,
     queryFn: () => fetchCompanyProfileForNav(prefetchSupabase!),
@@ -178,8 +170,6 @@ export function Sidebar({
     ? authIdentityRoleLabel(authRole, Boolean(authUser))
     : "Checking session";
   const accountInitial = authUser?.email?.trim().charAt(0).toUpperCase() || "?";
-
-  const sectionsInitDone = React.useRef(false);
 
   React.useEffect(() => {
     if (!bulkPrefetchEnabled) return;
@@ -196,93 +186,13 @@ export function Sidebar({
     };
   }, [bulkPrefetchEnabled, router]);
 
-  const itemMatchesPath = React.useCallback(
-    (item: HhProjectOsNavItem) => {
-      const matchesHref = (href: string) =>
-        item.exact ? pathname === href : pathname === href || pathname.startsWith(href + "/");
-      if (
-        (item.excludePaths ?? []).some(
-          (href) => pathname === href || pathname.startsWith(href + "/")
-        )
-      ) {
-        return false;
-      }
-      return matchesHref(item.href) || (item.aliases ?? []).some((href) => matchesHref(href));
-    },
-    [pathname]
-  );
-
-  const activeSectionKey = React.useMemo(() => {
-    for (const section of HH_PROJECT_OS_NAV_SECTIONS) {
-      if (section.entries.some((entry) => isHhProjectOsNavItem(entry) && itemMatchesPath(entry))) {
-        return section.key;
-      }
-    }
-    return null;
-  }, [itemMatchesPath]);
-
-  React.useEffect(() => {
-    if (sectionsInitDone.current) return;
-    sectionsInitDone.current = true;
-    const isMobileOrTablet = typeof window !== "undefined" && window.innerWidth < 1024;
-    if (isMobileOrTablet) {
-      const allClosed = HH_PROJECT_OS_SECTION_KEYS.reduce(
-        (acc, k) => ({ ...acc, [k]: false }),
-        {} as Record<string, boolean>
-      );
-      setOpenSections(allClosed);
-      return;
-    }
-    try {
-      const raw = typeof window !== "undefined" ? window.localStorage.getItem(STORAGE_KEY) : null;
-      if (raw) {
-        const parsed = JSON.parse(raw) as Record<string, boolean>;
-        if (parsed && typeof parsed === "object") {
-          setOpenSections({ ...HH_PROJECT_OS_DEFAULT_OPEN_SECTIONS, ...parsed });
-          return;
-        }
-      }
-    } catch {
-      // ignore
-    }
-    setOpenSections(HH_PROJECT_OS_DEFAULT_OPEN_SECTIONS);
-  }, []);
-
-  React.useEffect(() => {
-    if (!activeSectionKey || collapsed) return;
-    setOpenSections((prev) => {
-      if (prev[activeSectionKey]) return prev;
-      const next = { ...prev, [activeSectionKey]: true };
-      try {
-        if (typeof window !== "undefined") {
-          window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-        }
-      } catch {
-        // ignore
-      }
-      return next;
-    });
-  }, [activeSectionKey, collapsed]);
-
-  const setSectionOpen = React.useCallback((key: string, open: boolean) => {
-    setOpenSections((prev) => {
-      const next = { ...prev, [key]: open };
-      try {
-        if (typeof window !== "undefined") {
-          window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-        }
-      } catch {
-        // ignore
-      }
-      return next;
-    });
-  }, []);
+  const activeHref = getHhProjectOsMobileActiveHref(pathname);
 
   const { systemHealth } = useSystemHealth();
   /** Nav row: inactive label always readable; hover adjusts background only. */
   const navRowClass = (active: boolean) =>
     cn(
-      "group relative flex touch-manipulation items-center rounded-hh-standard transition-[background-color,color] duration-150 ease-out",
+      "group relative flex touch-manipulation items-center rounded-hh-standard transition-[background-color,color] duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)]",
       TYPO.tableCell,
       collapsed
         ? "min-h-[44px] justify-center px-2 lg:h-9 lg:min-h-9"
@@ -300,7 +210,7 @@ export function Sidebar({
     );
 
   const renderNavItem = (item: HhProjectOsNavItem, options?: { iconOnly?: boolean }) => {
-    const active = itemMatchesPath(item);
+    const active = activeHref === item.href;
     const isSystemHealthWarning =
       item.badge === "systemHealth" && systemHealth.status === "warning";
     const Icon = isSystemHealthWarning ? AlertTriangle : NAV_ICON_MAP[item.icon];
@@ -323,51 +233,6 @@ export function Sidebar({
         <Icon className={iconClass} strokeWidth={1.75} />
         {!iconOnly && <span className="min-w-0 flex-1 truncate">{item.label}</span>}
       </Link>
-    );
-  };
-
-  const renderNavPlaceholder = (
-    item: HhProjectOsNavPlaceholder,
-    options?: { iconOnly?: boolean }
-  ) => {
-    const Icon = NAV_ICON_MAP[item.icon];
-    const iconOnly = options?.iconOnly ?? false;
-    const label = item.note ? `${item.label}: ${item.note}` : item.label;
-
-    return (
-      <div
-        key={`placeholder-${item.label}`}
-        aria-disabled="true"
-        title={label}
-        className={cn(
-          "group relative flex items-center rounded-hh-standard text-[var(--hh-text-muted)]",
-          TYPO.tableCell,
-          "cursor-default select-none",
-          collapsed
-            ? "min-h-[44px] justify-center px-2 lg:h-9 lg:min-h-9"
-            : "min-h-[44px] gap-2.5 px-2.5 lg:h-9 lg:min-h-9"
-        )}
-      >
-        <Icon
-          className="h-[15px] w-[15px] shrink-0 text-[var(--hh-text-muted)]"
-          strokeWidth={1.75}
-        />
-        {!iconOnly && (
-          <span className="flex min-w-0 flex-1 items-baseline justify-between gap-2">
-            <span className="truncate">{item.label}</span>
-            {item.note ? (
-              <span
-                className={cn(
-                  "shrink-0 rounded-hh-compact border border-[var(--hh-border)] px-1.5 py-0.5",
-                  TYPO.tableHeader
-                )}
-              >
-                Future
-              </span>
-            ) : null}
-          </span>
-        )}
-      </div>
     );
   };
 
@@ -412,6 +277,7 @@ export function Sidebar({
 
       <nav
         data-sidebar-navigation
+        aria-label="Workspaces"
         className={cn(
           "relative z-[1] flex-1 overflow-y-auto",
           // Hide scrollbar chrome (keep scroll) for a cleaner SaaS feel
@@ -419,76 +285,19 @@ export function Sidebar({
           "px-2 py-3"
         )}
       >
-        <div className={cn("flex flex-col", collapsed && "gap-1")}>
-          {HH_PROJECT_OS_NAV_SECTIONS.map((section, sectionIndex) => {
-            const isOpen = openSections[section.key] ?? false;
-            if (collapsed) {
-              return (
-                <div
-                  key={section.key}
-                  className={cn("flex flex-col gap-1", sectionIndex > 0 && "mt-4")}
-                >
-                  {section.entries.map((entry) => {
-                    if (isHhProjectOsNavItem(entry)) {
-                      return renderNavItem(entry, { iconOnly: true });
-                    }
-                    if (isHhProjectOsNavPlaceholder(entry)) {
-                      return renderNavPlaceholder(entry, { iconOnly: true });
-                    }
-                    return null;
-                  })}
-                </div>
-              );
-            }
-            return (
-              <div key={section.key} className={cn("flex flex-col", sectionIndex > 0 && "mt-4")}>
-                <button
-                  type="button"
-                  onClick={() => setSectionOpen(section.key, !isOpen)}
-                  className={cn(
-                    "flex min-h-[44px] w-full items-center gap-2 rounded-hh-standard px-2.5 text-left text-[var(--hh-text-muted)] transition-[background-color,color] duration-150 ease-out hover:bg-[var(--hh-surface-hover)] hover:text-[var(--hh-text-secondary)] active:bg-[var(--hh-accent-soft)] lg:h-9 lg:min-h-9",
-                    TYPO.tableHeader
-                  )}
-                  aria-expanded={isOpen}
-                >
-                  {isOpen ? (
-                    <ChevronDown
-                      className="h-3.5 w-3.5 shrink-0 opacity-70"
-                      aria-hidden
-                      strokeWidth={1.75}
-                    />
-                  ) : (
-                    <ChevronRight
-                      className="h-3.5 w-3.5 shrink-0 opacity-70"
-                      aria-hidden
-                      strokeWidth={1.75}
-                    />
-                  )}
-                  <span className="truncate">{section.label}</span>
-                </button>
-                {isOpen ? (
-                  <div>
-                    <div className="flex flex-col gap-1">
-                      {section.entries.map((entry, entryIndex) => {
-                        if (isHhProjectOsNavItem(entry)) return renderNavItem(entry);
-                        if (isHhProjectOsNavPlaceholder(entry)) {
-                          return renderNavPlaceholder(entry);
-                        }
-                        return (
-                          <div
-                            key={`${section.key}-${entry.label}`}
-                            className={cn("px-2 pb-1", TYPO.tableHeader, entryIndex > 0 && "pt-3")}
-                          >
-                            {entry.label}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-            );
-          })}
+        <div className="flex min-h-full flex-col gap-1">
+          {HH_PROJECT_OS_NAV_SECTIONS.map((section) => (
+            <div
+              key={section.key}
+              className={
+                section.key === "SETTINGS"
+                  ? "mt-auto border-t border-[var(--hh-border-subtle)] pt-3"
+                  : undefined
+              }
+            >
+              {renderNavItem(section, { iconOnly: collapsed })}
+            </div>
+          ))}
         </div>
       </nav>
 

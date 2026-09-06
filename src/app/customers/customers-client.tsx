@@ -5,9 +5,10 @@ import { startTransition } from "react";
 import { flushSync } from "react-dom";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { syncRouterNonBlocking } from "@/components/perf/sync-router-non-blocking";
+import { refreshRscNonBlocking } from "@/components/perf/sync-router-non-blocking";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { Search, UserRound } from "lucide-react";
+import { ErrorRetry } from "@/components/ui/system-state";
 import { Button } from "@/components/ui/button";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import {
@@ -23,6 +24,8 @@ import { Dialog } from "@/components/ui/dialog";
 import {
   EmptyState,
   NeoInput,
+  NeoSelect,
+  NeoStatus,
   NeoMobileCard,
   NeoModal,
   NeoTable,
@@ -61,6 +64,7 @@ export function CustomersClient({ initialCustomers, dataLoadWarning = null }: Pr
   const router = useRouter();
   const [items, setItems] = React.useState<Customer[]>(initialCustomers);
   const [search, setSearch] = React.useState("");
+  const [status, setStatus] = React.useState("all");
   const [busy, setBusy] = React.useState(false);
   const [modalOpen, setModalOpen] = React.useState(false);
   const [draft, setDraft] = React.useState<Draft | null>(null);
@@ -78,21 +82,23 @@ export function CustomersClient({ initialCustomers, dataLoadWarning = null }: Pr
   }, [initialCustomers]);
 
   useOnAppSync(
-    React.useCallback(() => {
-      syncRouterNonBlocking(router);
-    }, [router]),
+    React.useCallback(
+      (detail) => {
+        if (!detail.refreshScheduled) refreshRscNonBlocking(router);
+      },
+      [router]
+    ),
     [router]
   );
 
   const filtered = React.useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return items;
     return items.filter((c) => {
       const hay =
         `${c.name} ${c.email ?? ""} ${c.phone ?? ""} ${c.address ?? ""} ${c.city ?? ""} ${c.state ?? ""} ${c.zip ?? ""} ${c.contact_person ?? ""} ${c.company_name ?? ""}`.toLowerCase();
-      return hay.includes(q);
+      return hay.includes(q) && (status === "all" || c.status === status);
     });
-  }, [items, search]);
+  }, [items, search, status]);
 
   const openNew = () => {
     setDraft(emptyCustomerFormValues());
@@ -242,15 +248,6 @@ export function CustomersClient({ initialCustomers, dataLoadWarning = null }: Pr
 
   return (
     <div className={cn("space-y-4", mobileListPagePaddingClass, "max-md:!space-y-3")}>
-      {dataLoadWarning ? (
-        <p
-          className="border-b border-[var(--hh-border)] pb-3 text-sm text-[var(--hh-text-secondary)]"
-          role="status"
-        >
-          {dataLoadWarning}
-        </p>
-      ) : null}
-
       <MobileListHeader
         title="Customers"
         fab={<MobileFabButton onClick={openNew} ariaLabel="New customer" />}
@@ -268,7 +265,7 @@ export function CustomersClient({ initialCustomers, dataLoadWarning = null }: Pr
           </div>
           <Button
             type="button"
-            className="h-9 w-full rounded-md px-3 text-sm md:w-auto"
+            className="min-h-11 w-full rounded-md px-3 text-sm md:w-auto"
             onClick={openNew}
           >
             + New Customer
@@ -282,12 +279,14 @@ export function CustomersClient({ initialCustomers, dataLoadWarning = null }: Pr
               placeholder="Search customers…"
               value={search}
               onChange={(e) => startTransition(() => setSearch(e.target.value))}
-              className="h-9 pl-8 text-sm"
+              className="min-h-11 pl-8 text-sm"
             />
           </div>
           <p className="shrink-0 text-xs text-[var(--hh-text-secondary)]">
             Total customers:{" "}
-            <span className="font-medium text-[var(--hh-text-primary)]">{items.length}</span>
+            <span className="font-medium text-[var(--hh-text-primary)]">
+              {dataLoadWarning ? "Unavailable" : items.length}
+            </span>
           </p>
         </NeoToolbar>
       </div>
@@ -300,21 +299,40 @@ export function CustomersClient({ initialCustomers, dataLoadWarning = null }: Pr
             placeholder="Search customers…"
             value={search}
             onChange={(e) => startTransition(() => setSearch(e.target.value))}
-            className="h-10 w-full pl-8 text-sm"
+            className="min-h-11 w-full pl-8 text-sm"
           />
         </div>
       </div>
 
+      <NeoSelect
+        aria-label="Customer status"
+        value={status}
+        onChange={(e) => setStatus(e.target.value)}
+        className="min-h-11 sm:w-auto"
+      >
+        <option value="all">All statuses</option>
+        <option value="active">Active</option>
+        <option value="inactive">Inactive</option>
+      </NeoSelect>
+      {!dataLoadWarning && items.length > 0 && filtered.length === 0 && (
+        <EmptyState
+          title="No customers match your filters"
+          description="Try another search or status."
+        />
+      )}
       <div>
-        {items.length === 0 ? (
+        {dataLoadWarning ? (
+          <ErrorRetry
+            title="Customers unavailable"
+            description={dataLoadWarning}
+            retryLabel="Retry"
+            onRetry={() => router.refresh()}
+          />
+        ) : items.length === 0 ? (
           <>
             <MobileEmptyState
               icon={<UserRound className="h-8 w-8" aria-hidden />}
-              message={
-                dataLoadWarning
-                  ? "Could not load customers."
-                  : "No customers yet. Add one to get started."
-              }
+              message="No customers yet. Add one to get started."
               action={
                 !dataLoadWarning ? (
                   <Button type="button" size="sm" variant="outline" onClick={openNew}>
@@ -324,12 +342,8 @@ export function CustomersClient({ initialCustomers, dataLoadWarning = null }: Pr
               }
             />
             <EmptyState
-              title={dataLoadWarning ? "Could not load customers" : "No customers yet"}
-              description={
-                dataLoadWarning
-                  ? "Check your connection and database configuration, then refresh."
-                  : "Add your first client to start tracking projects and estimates."
-              }
+              title="No customers yet"
+              description="Add your first client to start tracking projects and estimates."
               icon={<UserRound className="h-5 w-5" aria-hidden />}
               action={
                 !dataLoadWarning ? (
@@ -355,7 +369,7 @@ export function CustomersClient({ initialCustomers, dataLoadWarning = null }: Pr
                         {c.name}
                       </p>
                       <p className="truncate text-xs text-[var(--hh-text-secondary)]">
-                        {customerListSubtitle(c)}
+                        {customerListSubtitle(c)} · {c.status ?? "active"}
                       </p>
                     </div>
                     <span className="shrink-0 text-sm font-medium tabular-nums text-[var(--hh-text-primary)]">
@@ -380,6 +394,7 @@ export function CustomersClient({ initialCustomers, dataLoadWarning = null }: Pr
                   <th className={tableHeadClass}>Email</th>
                   <th className={tableHeadClass}>Phone</th>
                   <th className={tableHeadClass}>Address</th>
+                  <th className={tableHeadClass}>Status</th>
                   <th className={tableHeadClass}>Created</th>
                   <th className={cn(tableHeadClass, "w-8 px-2 text-right")}>Actions</th>
                 </tr>
@@ -390,7 +405,7 @@ export function CustomersClient({ initialCustomers, dataLoadWarning = null }: Pr
                     <td className="min-h-[44px] px-3 py-2 align-middle font-medium">
                       <Link
                         href={`/customers/${c.id}`}
-                        className="text-[var(--hh-text-primary)] underline-offset-2 hover:underline"
+                        className="inline-flex min-h-11 items-center text-[var(--hh-text-primary)] underline-offset-2 hover:underline"
                       >
                         {c.name}
                       </Link>
@@ -408,6 +423,12 @@ export function CustomersClient({ initialCustomers, dataLoadWarning = null }: Pr
                       {truncateText(formatCustomerAddressLine(c), 40)}
                     </td>
                     <td className="px-3 py-2 text-xs text-[var(--hh-text-secondary)]">
+                      <NeoStatus
+                        label={c.status ?? "active"}
+                        variant={c.status === "inactive" ? "muted" : "success"}
+                      />
+                    </td>
+                    <td className="px-3 py-2 text-xs text-[var(--hh-text-secondary)]">
                       {c.created_at ? new Date(c.created_at).toLocaleDateString() : "—"}
                     </td>
                     <td className="px-2 py-2 text-right">
@@ -421,7 +442,7 @@ export function CustomersClient({ initialCustomers, dataLoadWarning = null }: Pr
                             destructive: true,
                           },
                         ]}
-                        className="h-7 w-7 md:h-7 md:w-7"
+                        className="h-11 w-11"
                       />
                     </td>
                   </tr>
@@ -459,7 +480,7 @@ export function CustomersClient({ initialCustomers, dataLoadWarning = null }: Pr
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="h-9 rounded-sm"
+                  className="min-h-11 rounded-sm"
                   onClick={() => setModalOpen(false)}
                   disabled={busy}
                 >
@@ -468,7 +489,7 @@ export function CustomersClient({ initialCustomers, dataLoadWarning = null }: Pr
                 <Button
                   type="submit"
                   size="sm"
-                  className="h-9 rounded-sm"
+                  className="min-h-11 rounded-sm"
                   data-testid="customers-modal-save"
                   disabled={busy}
                 >
@@ -494,7 +515,7 @@ export function CustomersClient({ initialCustomers, dataLoadWarning = null }: Pr
               type="button"
               variant="outline"
               size="sm"
-              className="h-9 rounded-sm"
+              className="min-h-11 rounded-sm"
               onClick={() => setDeleteTarget(null)}
               disabled={deleteBusy}
             >

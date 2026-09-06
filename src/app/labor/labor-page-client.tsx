@@ -1,4 +1,5 @@
 "use client";
+import { LaborReadState } from "@/components/labor/labor-read-state";
 
 import * as React from "react";
 import Link from "next/link";
@@ -40,7 +41,7 @@ import {
 } from "lucide-react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { formatCurrency, formatDate, formatInteger, formatNumber } from "@/lib/formatters";
-import { encodeWorkerReturnPath } from "@/lib/worker-return-path";
+import { encodeWorkerReturnPath, safeWorkerReturnPath } from "@/lib/worker-return-path";
 
 function monthAdd(ym: string, deltaMonths: number): string {
   const [y, m] = ym.split("-").map(Number);
@@ -343,24 +344,14 @@ export default function LaborPageClient() {
   const { dateFrom: monthStart, dateTo: monthEnd } = getMonthRange(selectedMonth);
   const [projectFilter, setProjectFilter] = React.useState<string>("");
   const [workerFilter, setWorkerFilter] = React.useState<string>("");
-  const appliedProjectIdFromUrl = React.useRef(false);
-  const appliedWorkerIdFromUrl = React.useRef(false);
+  const routeWorkerId = searchParams.get("workerId") ?? "";
+  const routeProjectId = searchParams.get("projectId") ?? searchParams.get("project_id") ?? "";
   React.useEffect(() => {
-    if (appliedProjectIdFromUrl.current) return;
-    const pid = searchParams.get("project_id");
-    if (pid) {
-      setProjectFilter(pid);
-      appliedProjectIdFromUrl.current = true;
-    }
-  }, [searchParams]);
+    setWorkerFilter(routeWorkerId);
+  }, [routeWorkerId]);
   React.useEffect(() => {
-    if (appliedWorkerIdFromUrl.current) return;
-    const workerId = searchParams.get("workerId");
-    if (workerId) {
-      setWorkerFilter(workerId);
-      appliedWorkerIdFromUrl.current = true;
-    }
-  }, [searchParams]);
+    setProjectFilter(routeProjectId);
+  }, [routeProjectId]);
   React.useEffect(() => {
     const month = searchParams.get("month");
     if (month && /^\d{4}-\d{2}$/.test(month)) {
@@ -377,7 +368,9 @@ export default function LaborPageClient() {
       // ignore storage errors
     }
     setModalOpen(true);
-    router.replace("/labor", { scroll: false });
+    const next = new URLSearchParams(searchParams.toString());
+    next.delete("addDaily");
+    router.replace(`/labor?${next}`, { scroll: false });
   }, [searchParams, router]);
   const workerModeAutoOpenedRef = React.useRef(false);
   React.useEffect(() => {
@@ -412,7 +405,8 @@ export default function LaborPageClient() {
   const entriesLoadSeqRef = React.useRef(0);
   monthEntriesRef.current = monthEntries;
   const [loadingProjects, setLoadingProjects] = React.useState(true);
-  const [loadingEntries, setLoadingEntries] = React.useState(false);
+  const [readUnavailable, setReadUnavailable] = React.useState(false);
+  const [loadingEntries, setLoadingEntries] = React.useState(true);
   const [message, setMessage] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [lastSavedEntry, setLastSavedEntry] = React.useState<DailyEntrySaveResult | null>(null);
@@ -452,6 +446,7 @@ export default function LaborPageClient() {
     entriesLoadSeqRef.current = seq;
     setLoadingEntries(true);
     setLoadingProjects(true);
+    setReadUnavailable(false);
     try {
       const params = new URLSearchParams({
         view: "joined",
@@ -464,13 +459,15 @@ export default function LaborPageClient() {
         cache: "no-store",
       });
       const body = (await response.json().catch(() => ({}))) as LaborEntriesResponse;
-      if (!response.ok) throw new Error(body.message ?? "Failed to load labor entries.");
+      if (!response.ok || !Array.isArray(body.entries))
+        throw new Error(body.message ?? "Failed to load labor entries.");
       if (entriesLoadSeqRef.current !== seq) return;
       setMonthEntries(body.entries ?? []);
       setProjects(body.projects ?? []);
       setWorkers(body.workers ?? []);
       setError(null);
     } catch (e) {
+      setReadUnavailable(true);
       if (entriesLoadSeqRef.current !== seq) return;
       setMonthEntries([]);
       setError(e instanceof Error ? e.message : "Failed to load labor entries.");
@@ -594,6 +591,15 @@ export default function LaborPageClient() {
     [datesInMonth, entriesByDate]
   );
 
+  if (loadingEntries || readUnavailable)
+    return (
+      <LaborReadState
+        title="Time entries"
+        busy={loadingEntries}
+        retry={() => void loadMonthEntries()}
+      />
+    );
+
   return (
     <div
       className={cn(
@@ -601,6 +607,13 @@ export default function LaborPageClient() {
         "flex flex-col"
       )}
     >
+      {searchParams.get("returnTo") && (
+        <div className="px-4">
+          <Button asChild variant="outline" className="min-h-11">
+            <Link href={safeWorkerReturnPath(searchParams.get("returnTo"))}>Back to Worker</Link>
+          </Button>
+        </div>
+      )}
       <div
         className={cn(
           " page-shell-wide mx-auto flex w-full max-w-[430px] flex-1 flex-col gap-2 px-4 py-2 pb-4 sm:max-w-[460px] md:gap-2 md:px-6 md:pb-6 md:pt-3",
@@ -1694,7 +1707,13 @@ export default function LaborPageClient() {
           </section>
         )}
 
-        <QuickTimesheetModal open={modalOpen} onOpenChange={setModalOpen} onSuccess={handleSaved} />
+        <QuickTimesheetModal
+          initialWorkerId={routeWorkerId}
+          initialProjectId={routeProjectId}
+          open={modalOpen}
+          onOpenChange={setModalOpen}
+          onSuccess={handleSaved}
+        />
 
         <EditEntryModal
           open={editOpen}

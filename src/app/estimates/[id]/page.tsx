@@ -10,16 +10,14 @@ import {
   getEstimateRevisionContext,
   listPaymentTemplates,
 } from "@/lib/data";
-import {
-  createServerSupabaseClient,
-  getServerSupabaseAdmin,
-  getServerSupabaseAdminNoStore,
-} from "@/lib/supabase-server";
+import { createServerSupabaseClient, getServerSupabaseAdminNoStore } from "@/lib/supabase-server";
 import { getEstimateActivityWithClient } from "@/lib/estimate-activity";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { EstimateDetailClient } from "./estimate-detail-client";
 import { EstimateSuccessBanner } from "./estimate-success-banner";
 import { ServerDataLoadFallback } from "@/components/server-data-load-fallback";
 import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
+import { emitRscTiming } from "@/lib/performance/server-timing";
 
 export const dynamic = "force-dynamic";
 
@@ -50,9 +48,9 @@ function uniqueProjectRows(rows: Array<{ id: string | null; name: string | null 
 
 async function getInvoiceProjectLinkStatus(
   estimateId: string,
-  projectName?: string | null
+  projectName?: string | null,
+  db?: SupabaseClient | null
 ): Promise<InvoiceProjectLinkStatus> {
-  const db = getServerSupabaseAdmin();
   if (!db) {
     return {
       canCreateInvoice: false,
@@ -89,11 +87,11 @@ async function getInvoiceProjectLinkStatus(
 }
 
 async function getPaymentInvoiceSummaries(
-  invoiceIds: string[]
+  invoiceIds: string[],
+  db?: SupabaseClient | null
 ): Promise<Record<string, PaymentInvoiceSummary>> {
   const ids = Array.from(new Set(invoiceIds.map((id) => id.trim()).filter(Boolean)));
   if (ids.length === 0) return {};
-  const db = getServerSupabaseAdmin();
   if (!db) return {};
   const { data, error } = await db.from("invoices").select("id, invoice_no, status").in("id", ids);
   if (error) return {};
@@ -115,14 +113,17 @@ export default async function EstimateDetailPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ created?: string; saved?: string }>;
 }) {
+  const pageStartedAt = performance.now();
   const { id } = await params;
   /** When the dynamic segment incorrectly receives `new`, avoid UUID queries and send the canonical route. */
   if (id === "new") redirect("/estimates/new");
   const { created, saved } = await searchParams;
+  const authStartedAt = performance.now();
   const readClient = await createServerSupabaseClient();
+  const authDuration = performance.now() - authStartedAt;
   if (!readClient) redirect(`/login?next=${encodeURIComponent(`/estimates/${id}`)}`);
-  const lineageClient = getServerSupabaseAdminNoStore();
-  const activityClient = getServerSupabaseAdminNoStore();
+  const adminClient = getServerSupabaseAdminNoStore();
+  const serverDataStartedAt = performance.now();
   const pageData = await Promise.all([
     getEstimateHeaderById(id, readClient),
     getEstimateMeta(id, readClient),
@@ -130,9 +131,9 @@ export default async function EstimateDetailPage({
     getEstimateCategories(id, readClient),
     getCostCodes(),
     getPaymentSchedule(id, readClient),
-    listPaymentTemplates(getServerSupabaseAdminNoStore()).catch(() => []),
-    lineageClient ? getEstimateRevisionContext(id, lineageClient).catch(() => null) : null,
-    activityClient ? getEstimateActivityWithClient(activityClient, id).catch(() => null) : null,
+    listPaymentTemplates(adminClient).catch(() => []),
+    adminClient ? getEstimateRevisionContext(id, adminClient).catch(() => null) : null,
+    adminClient ? getEstimateActivityWithClient(adminClient, id).catch(() => null) : null,
   ])
     .then((data) => ({ data }))
     .catch((error: unknown) => ({ error }));
@@ -171,13 +172,22 @@ export default async function EstimateDetailPage({
     const orderDiff = (a.orderIndex ?? 0) - (b.orderIndex ?? 0);
     return orderDiff || a.costCode.localeCompare(b.costCode);
   });
-  const invoiceProjectLink =
+  const [invoiceProjectLink, paymentInvoiceSummaries] = await Promise.all([
     paymentSchedule.length > 0
-      ? await getInvoiceProjectLinkStatus(id, meta.project.name)
-      : undefined;
-  const paymentInvoiceSummaries = await getPaymentInvoiceSummaries(
-    paymentSchedule.map((item) => item.invoiceId ?? "")
-  );
+      ? getInvoiceProjectLinkStatus(id, meta.project.name, adminClient)
+      : Promise.resolve(undefined),
+    getPaymentInvoiceSummaries(
+      paymentSchedule.map((item) => item.invoiceId ?? ""),
+      adminClient
+    ),
+  ]);
+  const rscPreparedAt = performance.now();
+  emitRscTiming("estimates/[id]", {
+    authMs: authDuration,
+    serverDataMs: rscPreparedAt - serverDataStartedAt,
+    rscPrepareMs: 0,
+    totalMs: rscPreparedAt - pageStartedAt,
+  });
 
   return (
     <div className="estimate-builder-page page-stack py-3 md:py-4">

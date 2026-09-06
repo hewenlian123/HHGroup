@@ -39,6 +39,7 @@ export type MaterialSelectionSheetWithItems = MaterialSelectionSheet & {
 };
 
 export type MaterialSelectionSheetDraft = {
+  organizationId?: string;
   title: string;
   customerId?: string | null;
   projectId?: string | null;

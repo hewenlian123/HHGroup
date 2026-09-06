@@ -1,6 +1,7 @@
+import { withSessionCookies } from "@/lib/supabase-response";
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
-import { requireSupabaseOwnerOrAdminRequestClient } from "@/lib/auth-boundary";
+import { requireOrganizationRequestClient } from "@/lib/auth-boundary";
 import {
   getCommissionById,
   createPaymentRecord,
@@ -14,25 +15,39 @@ export async function GET(
   req: Request,
   ctx: { params: Promise<{ id: string; commissionId: string }> }
 ) {
-  const guard = await requireSupabaseOwnerOrAdminRequestClient(req, { noStore: true });
+  const guard = await requireOrganizationRequestClient(req, {
+    projectId: (await ctx.params).id,
+    write: req.method !== "GET",
+    requireOwnerAdmin: true,
+    noStore: true,
+  });
   if (!guard.ok) return guard.response;
   const { id: projectId, commissionId } = await ctx.params;
   if (!projectId || !commissionId)
-    return NextResponse.json(
-      { ok: false, message: "Missing project or commission id" },
-      { status: 400 }
+    return withSessionCookies(
+      NextResponse.json(
+        { ok: false, message: "Missing project or commission id" },
+        { status: 400 }
+      ),
+      guard.sessionResponse
     );
   try {
     const commission = await getCommissionById(commissionId, guard.client);
     if (!commission)
-      return NextResponse.json({ ok: false, message: "Commission not found" }, { status: 404 });
+      return withSessionCookies(
+        NextResponse.json({ ok: false, message: "Commission not found" }, { status: 404 }),
+        guard.sessionResponse
+      );
     if (!uuidNormalizedEqual(commission.project_id, projectId))
-      return NextResponse.json(
-        { ok: false, message: "Commission does not belong to this project" },
-        { status: 400 }
+      return withSessionCookies(
+        NextResponse.json(
+          { ok: false, message: "Commission does not belong to this project" },
+          { status: 400 }
+        ),
+        guard.sessionResponse
       );
     const records = await getPaymentRecordsByCommissionId(commissionId, guard.client);
-    return NextResponse.json({ ok: true, records });
+    return withSessionCookies(NextResponse.json({ ok: true, records }), guard.sessionResponse);
   } catch (e) {
     const message = e instanceof Error ? e.message : "Failed to load payments";
     const connFail = /fetch failed|Database connection failed|ENOTFOUND|ECONNREFUSED/i.test(
@@ -45,7 +60,10 @@ export async function GET(
     const hint = schemaMissing
       ? " Run Supabase migrations (e.g. `npx supabase db push` / `db reset --local`) or POST /api/ensure-schema with SUPABASE_DATABASE_URL set, then retry."
       : "";
-    return NextResponse.json({ ok: false, message: message + hint }, { status });
+    return withSessionCookies(
+      NextResponse.json({ ok: false, message: message + hint }, { status }),
+      guard.sessionResponse
+    );
   }
 }
 
@@ -53,29 +71,46 @@ export async function POST(
   req: Request,
   ctx: { params: Promise<{ id: string; commissionId: string }> }
 ) {
-  const guard = await requireSupabaseOwnerOrAdminRequestClient(req, { noStore: true });
+  const guard = await requireOrganizationRequestClient(req, {
+    projectId: (await ctx.params).id,
+    write: req.method !== "GET",
+    requireOwnerAdmin: true,
+    noStore: true,
+  });
   if (!guard.ok) return guard.response;
   const { id: projectId, commissionId } = await ctx.params;
   if (!projectId || !commissionId)
-    return NextResponse.json(
-      { ok: false, message: "Missing project or commission id" },
-      { status: 400 }
+    return withSessionCookies(
+      NextResponse.json(
+        { ok: false, message: "Missing project or commission id" },
+        { status: 400 }
+      ),
+      guard.sessionResponse
     );
   try {
     const commission = await getCommissionById(commissionId, guard.client);
     if (!commission)
-      return NextResponse.json({ ok: false, message: "Commission not found" }, { status: 404 });
+      return withSessionCookies(
+        NextResponse.json({ ok: false, message: "Commission not found" }, { status: 404 }),
+        guard.sessionResponse
+      );
     if (!uuidNormalizedEqual(commission.project_id, projectId))
-      return NextResponse.json(
-        { ok: false, message: "Commission does not belong to this project" },
-        { status: 400 }
+      return withSessionCookies(
+        NextResponse.json(
+          { ok: false, message: "Commission does not belong to this project" },
+          { status: 400 }
+        ),
+        guard.sessionResponse
       );
     const body = await req.json();
     const amount = Math.max(0, Number(body.amount) || 0);
     if (!Number.isFinite(amount) || amount <= 0) {
-      return NextResponse.json(
-        { ok: false, message: "Amount must be greater than zero." },
-        { status: 400 }
+      return withSessionCookies(
+        NextResponse.json(
+          { ok: false, message: "Amount must be greater than zero." },
+          { status: 400 }
+        ),
+        guard.sessionResponse
       );
     }
     const payment_date = String(body.payment_date ?? "").slice(0, 10);
@@ -100,7 +135,7 @@ export async function POST(
     );
     revalidatePath(`/projects/${projectId}`);
     revalidatePath("/financial/commissions");
-    return NextResponse.json({ ok: true, record });
+    return withSessionCookies(NextResponse.json({ ok: true, record }), guard.sessionResponse);
   } catch (e) {
     const message = e instanceof Error ? e.message : "Failed to record payment";
     const status = /exceed the commission amount/i.test(message)
@@ -110,6 +145,9 @@ export async function POST(
           )
         ? 503
         : 500;
-    return NextResponse.json({ ok: false, message }, { status });
+    return withSessionCookies(
+      NextResponse.json({ ok: false, message }, { status }),
+      guard.sessionResponse
+    );
   }
 }

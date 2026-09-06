@@ -1,13 +1,15 @@
 "use client";
 
 import * as React from "react";
+import { ErrorRetry, LoadingState } from "@/components/ui/system-state";
+import { loadDepositsAction } from "./actions";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/native-select";
 import { cn } from "@/lib/utils";
-import { getDeposits, type DepositWithMeta } from "@/lib/data";
+import { type DepositWithMeta } from "@/lib/data";
 import { EmptyState } from "@/components/empty-state";
 import { Banknote, CalendarDays, Link2, Search, Wallet } from "lucide-react";
 import {
@@ -40,6 +42,8 @@ export default function DepositsPage() {
 function DepositsPageInner() {
   const [deposits, setDeposits] = React.useState<DepositWithMeta[]>([]);
   const [loading, setLoading] = React.useState(true);
+  const [loadError, setLoadError] = React.useState<string | null>(null);
+  const readSequence = React.useRef(0);
   const [filtersOpen, setFiltersOpen] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState("");
   const [projectFilter, setProjectFilter] = React.useState("");
@@ -48,17 +52,25 @@ function DepositsPageInner() {
   const [dateTo, setDateTo] = React.useState("");
 
   const load = React.useCallback(async () => {
-    const list = await getDeposits();
-    setDeposits(list);
+    const sequence = ++readSequence.current;
+    setLoading(true);
+    setLoadError(null);
+    try {
+      const result = await loadDepositsAction();
+      if (sequence !== readSequence.current) return;
+      if (result.error) throw new Error(result.error);
+      setDeposits(result.deposits);
+    } catch (error) {
+      if (sequence === readSequence.current)
+        setLoadError(error instanceof Error ? error.message : "Deposits unavailable.");
+    } finally {
+      if (sequence === readSequence.current) setLoading(false);
+    }
   }, []);
-
   React.useEffect(() => {
-    let cancelled = false;
-    load().finally(() => {
-      if (!cancelled) setLoading(false);
-    });
+    void load();
     return () => {
-      cancelled = true;
+      readSequence.current += 1;
     };
   }, [load]);
 
@@ -128,6 +140,22 @@ function DepositsPageInner() {
     const linkedPayments = deposits.filter((d) => Boolean(d.payment_id)).length;
     return { totalDeposited, depositCount, thisMonthTotal, linkedPayments };
   }, [deposits]);
+
+  if (loading || loadError)
+    return (
+      <div className="page-container py-6">
+        <PageHeader title="Deposits" subtitle="Cash In records from received payments." />
+        {loading ? (
+          <LoadingState text="Loading deposits…" />
+        ) : (
+          <ErrorRetry
+            title="Deposits unavailable"
+            description={loadError ?? undefined}
+            onRetry={() => void load()}
+          />
+        )}
+      </div>
+    );
 
   return (
     <div

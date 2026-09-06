@@ -43,6 +43,7 @@ async function createInboxDraftExpenseViaServer(payload: {
   sourceType: "receipt_upload";
   initialStatus: "draft";
   referenceNo: string;
+  idempotencyKey: string;
   attachments: InboxDraftAttachmentPayload[];
 }): Promise<{ id: string }> {
   const res = await fetch("/api/financial/expenses/quick-expense", {
@@ -89,16 +90,27 @@ export async function createInboxDraftFromReceiptFile(
     .select("id")
     .eq("reference_no", ref)
     .maybeSingle();
-  if (!existErr && existing && typeof (existing as { id?: string }).id === "string") {
-    return {
-      ok: true,
-      expenseId: String((existing as { id: string }).id),
-      duplicate: true,
-      referenceNo: ref,
-    };
+  if (existErr) throw new Error(existErr.message || "Receipt lookup unavailable.");
+  if (existing && typeof (existing as { id?: string }).id === "string") {
+    const attached = await supabase
+      .from("attachments")
+      .select("id")
+      .eq("entity_type", "expense")
+      .eq("entity_id", existing.id)
+      .limit(1);
+    if (attached.error || !Array.isArray(attached.data))
+      throw new Error(attached.error?.message || "Receipt attachment lookup unavailable.");
+    if (attached.data.length > 0)
+      return {
+        ok: true,
+        expenseId: String(existing.id),
+        duplicate: true,
+        referenceNo: ref,
+      };
+    // Expense creation may have committed before metadata failed. Resume the same receipt.
   }
 
-  const slot = await uploadReceiptToStorage(supabase, file, hash.slice(0, 12));
+  const slot = await uploadReceiptToStorage(supabase, file, ref);
   const receiptUrl = slot.attachmentPath?.trim() || null;
   if (!receiptUrl || slot.uploadError) {
     return {
@@ -118,10 +130,11 @@ export async function createInboxDraftFromReceiptFile(
     sourceType: "receipt_upload",
     initialStatus: "draft",
     referenceNo: ref,
+    idempotencyKey: ref,
     attachments: attachmentUrl
       ? [
           {
-            id: crypto.randomUUID(),
+            id: `${hash.slice(0, 8)}-${hash.slice(8, 12)}-${hash.slice(12, 16)}-${hash.slice(16, 20)}-${hash.slice(20, 32)}`,
             fileName: slot.storedFileName || file.name || "receipt",
             mimeType: slot.storedMimeType || file.type || "application/octet-stream",
             size: slot.storedSize || file.size || 0,

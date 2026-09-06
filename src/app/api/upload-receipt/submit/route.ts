@@ -1,5 +1,6 @@
+import { requireCompanyRequestClient, requireOrganizationRequestClient } from "@/lib/auth-boundary";
+import { withSessionCookies } from "@/lib/supabase-response";
 import { NextResponse } from "next/server";
-import { getServerSupabase } from "@/lib/supabase-server";
 
 const MAX_WORKER_RECEIPT_AMOUNT = 100_000;
 const WORKER_RECEIPT_UPLOAD_PATH_RE =
@@ -36,15 +37,17 @@ function isWorkerReceiptUploadPath(value: string): boolean {
 }
 
 /**
- * Public worker receipt submission. The anon/RLS client is deliberately used so this route
- * cannot bypass the worker_receipts policy or create records with service-role authority.
+ * All intake requires company membership. Project assignment also verifies the exact project.
  */
 export async function POST(req: Request) {
+  let sessionResponse: NextResponse | null = null;
+  const finish = (response: NextResponse) =>
+    sessionResponse ? withSessionCookies(response, sessionResponse) : response;
   try {
-    const supabase = getServerSupabase();
-    if (!supabase) {
-      return jsonError("Receipt submission is temporarily unavailable.", 500);
-    }
+    const companyGuard = await requireCompanyRequestClient(req);
+    if (!companyGuard.ok) return companyGuard.response;
+    let supabase = companyGuard.client;
+    sessionResponse = companyGuard.sessionResponse;
 
     let body: Record<string, unknown>;
     try {
@@ -91,6 +94,16 @@ export async function POST(req: Request) {
       return jsonError("Receipt upload reference is invalid.", 400);
     }
 
+    if (projectId) {
+      const guard = await requireOrganizationRequestClient(req, {
+        projectId,
+        noStore: true,
+      });
+      if (!guard.ok) return guard.response;
+      supabase = guard.client;
+      sessionResponse = guard.sessionResponse;
+    }
+
     try {
       const { error } = await supabase.from("worker_receipts").insert({
         worker_id: workerId,
@@ -105,7 +118,7 @@ export async function POST(req: Request) {
         receipt_date: receiptDate,
       });
       if (error) throw new Error(error.message ?? "Failed to create receipt upload.");
-      return NextResponse.json({ ok: true });
+      return finish(NextResponse.json({ ok: true }));
     } catch (err) {
       // Log detailed error for debugging in Vercel function logs.
       // eslint-disable-next-line no-console
@@ -116,12 +129,12 @@ export async function POST(req: Request) {
         amount,
         expenseType,
       });
-      return jsonError("Receipt submission failed. Please try again.", 500);
+      return finish(jsonError("Receipt submission failed. Please try again.", 500));
     }
   } catch (e) {
     console.error("[upload-receipt/submit] unexpected failure", {
       message: e instanceof Error ? e.message : String(e),
     });
-    return jsonError("Receipt submission failed. Please try again.", 500);
+    return finish(jsonError("Receipt submission failed. Please try again.", 500));
   }
 }

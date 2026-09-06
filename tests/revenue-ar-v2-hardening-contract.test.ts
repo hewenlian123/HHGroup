@@ -10,7 +10,7 @@ async function source(path: string) {
 
 test("Revenue and AR form controls keep visible labels programmatically associated", async () => {
   const [detail, edit, list, receipt] = await Promise.all([
-    source("src/app/financial/invoices/[id]/page.tsx"),
+    source("src/app/financial/invoices/[id]/invoice-detail-client.tsx"),
     source("src/app/financial/invoices/[id]/edit/edit-invoice-client.tsx"),
     source("src/app/financial/invoices/page.tsx"),
     source("src/components/financial/send-payment-receipt-modal.tsx"),
@@ -65,7 +65,7 @@ test("Revenue and AR form controls keep visible labels programmatically associat
 test("Payment attachment actions use HH touch targets through tablet", async () => {
   const [payments, detail] = await Promise.all([
     source("src/app/financial/payments/page.tsx"),
-    source("src/app/financial/invoices/[id]/page.tsx"),
+    source("src/app/financial/invoices/[id]/invoice-detail-client.tsx"),
   ]);
 
   assert.match(payments, /data-testid="payment-attachment-action"/);
@@ -92,7 +92,7 @@ test("operational Revenue and AR surfaces do not carry dark-mode runtime branche
 
 test("Revenue and AR direct workflow surfaces avoid transition-all", async () => {
   const sources = await Promise.all([
-    source("src/app/financial/invoices/[id]/page.tsx"),
+    source("src/app/financial/invoices/[id]/invoice-detail-client.tsx"),
     source("src/app/financial/invoices/[id]/edit/edit-invoice-client.tsx"),
     source("src/app/financial/payments/page.tsx"),
     source("src/app/financial/deposits/page.tsx"),

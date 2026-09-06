@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireSupabaseOwnerOrAdminRequestClient } from "@/lib/auth-boundary";
+import { requireOrganizationRequestClient } from "@/lib/auth-boundary";
 import { isTestTask } from "@/lib/project-tasks-db";
 
 export const dynamic = "force-dynamic";
@@ -24,7 +24,7 @@ function withSessionCookies(response: NextResponse, sessionResponse: NextRespons
 
 /** GET: Tasks, projects, workers through the exact owner/admin request identity. */
 export async function GET(request: Request) {
-  const guard = await requireSupabaseOwnerOrAdminRequestClient(request, { noStore: true });
+  const guard = await requireOrganizationRequestClient(request, { noStore: true });
   if (!guard.ok) return guard.response;
   const client = guard.client;
   try {
@@ -84,6 +84,9 @@ export async function GET(request: Request) {
   } catch (e) {
     const message = e instanceof Error ? e.message : "Failed to load tasks.";
     const status = message === "Request timed out." ? 504 : 500;
-    return NextResponse.json({ ok: false as const, message }, { status });
+    return withSessionCookies(
+      NextResponse.json({ ok: false as const, message }, { status }),
+      guard.sessionResponse
+    );
   }
 }

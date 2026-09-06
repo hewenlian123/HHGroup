@@ -1,4 +1,5 @@
 "use client";
+import { LaborReadState } from "@/components/labor/labor-read-state";
 
 import "../../financial/expenses/expenses-ui-theme.css";
 import "./reimbursements-ui.css";
@@ -54,7 +55,6 @@ import {
 } from "@/components/mobile/mobile-list-chrome";
 import { NeoAmount, NeoMobileCard, NeoStatus, NeoTable, NeoToolbar } from "@/components/base";
 import { formatCurrency, formatDate } from "@/lib/formatters";
-import { ExpenseOperationsWorkspaceNav } from "@/components/financial/expense-operations-workspace-nav";
 import {
   safeWorkerReturnPath,
   workerDetailPathWithReturnTo,
@@ -191,6 +191,32 @@ function ReimbursementStatusChip({ status }: { status: WorkerReimbursementStatus
 }
 
 export default function WorkerReimbursementsPage() {
+  return (
+    <React.Suspense fallback={<WorkerReimbursementsPageFallback />}>
+      <WorkerReimbursementsPageContent />
+    </React.Suspense>
+  );
+}
+
+function WorkerReimbursementsPageFallback() {
+  return (
+    <div
+      data-reimbursements-workspace
+      aria-busy="true"
+      className={cn(
+        "expenses-ui reimbursements-ui page-shell-wide mx-auto flex min-h-[calc(100dvh-1rem)] w-full !max-w-none flex-col gap-1 bg-[var(--hh-l0-canvas)] px-4 py-1 pb-2.5 text-[color:var(--hh-text-secondary)] md:gap-2 md:px-6 md:pb-3 md:pt-0.5",
+        mobileListPagePaddingClass,
+        "max-md:!gap-1"
+      )}
+    >
+      <div className="flex min-h-[260px] items-center justify-center text-sm text-[color:var(--hh-text-tertiary)]">
+        Loading reimbursements…
+      </div>
+    </div>
+  );
+}
+
+function WorkerReimbursementsPageContent() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -204,6 +230,7 @@ export default function WorkerReimbursementsPage() {
   const [workers, setWorkers] = React.useState<Awaited<ReturnType<typeof getLaborWorkersList>>>([]);
   const [projects, setProjects] = React.useState<Awaited<ReturnType<typeof getProjects>>>([]);
   const [rows, setRows] = React.useState<WorkerReimbursement[]>([]);
+  const [readUnavailable, setReadUnavailable] = React.useState(false);
   const [loading, setLoading] = React.useState(true);
   const [message, setMessage] = React.useState<string | null>(null);
   const [showForm, setShowForm] = React.useState(false);
@@ -249,27 +276,42 @@ export default function WorkerReimbursementsPage() {
   const [filtersOpen, setFiltersOpen] = React.useState(false);
   const suppressNewQueryAutoOpenRef = React.useRef(false);
 
+  const sourceWorkerId = searchParams.get("workerId")?.trim() ?? "";
+  const readGeneration = React.useRef(0);
   const load = React.useCallback(async () => {
+    const generation = ++readGeneration.current;
     setLoading(true);
     setMessage(null);
     setSchemaWarning(null);
+    setReadUnavailable(false);
     try {
       const [w, p, res] = await Promise.all([
         getLaborWorkersList(),
         getProjects(),
-        fetch("/api/worker-reimbursements", { cache: "no-store" }).then((r) => r.json()),
+        fetch("/api/worker-reimbursements", { cache: "no-store" }).then(async (r) => {
+          if (!r.ok) throw new Error("Reimbursements unavailable.");
+          return r.json();
+        }),
       ]);
+      if (generation !== readGeneration.current) return;
       setWorkers(w);
       setProjects(p);
       if (res.schemaWarning) setSchemaWarning(res.schemaWarning);
-      if (!res.reimbursements) throw new Error(res.message ?? "Failed to load reimbursements.");
-      setRows(res.reimbursements);
+      if (!Array.isArray(res.reimbursements))
+        throw new Error(res.message ?? "Failed to load reimbursements.");
+      setRows(
+        res.reimbursements.filter(
+          (row: WorkerReimbursement) => !sourceWorkerId || row.workerId === sourceWorkerId
+        )
+      );
     } catch (e) {
+      if (generation !== readGeneration.current) return;
+      setReadUnavailable(true);
       setMessage(e instanceof Error ? e.message : "Failed to load.");
     } finally {
-      setLoading(false);
+      if (generation === readGeneration.current) setLoading(false);
     }
-  }, []);
+  }, [sourceWorkerId]);
 
   const clearNewQueryParam = React.useCallback(() => {
     if (searchParams.get("new") !== "1") return;
@@ -293,7 +335,6 @@ export default function WorkerReimbursementsPage() {
 
   const workerById = React.useMemo(() => new Map(workers.map((w) => [w.id, w.name])), [workers]);
   const projectById = React.useMemo(() => new Map(projects.map((p) => [p.id, p.name])), [projects]);
-  const sourceWorkerId = searchParams.get("workerId")?.trim() ?? "";
   const returnHref = safeWorkerReturnPath(
     searchParams.get("returnTo"),
     sourceWorkerId ? workerDetailReturnPath(sourceWorkerId, "receipts") : "/workers"
@@ -737,6 +778,11 @@ export default function WorkerReimbursementsPage() {
 
   const sortFilterActive = sort.key !== "reimbursementDate" || sort.dir !== "desc" ? 1 : 0;
 
+  if (loading || readUnavailable)
+    return (
+      <LaborReadState title="Worker reimbursements" busy={loading} retry={() => void load()} />
+    );
+
   return (
     <div
       data-reimbursements-workspace
@@ -746,7 +792,6 @@ export default function WorkerReimbursementsPage() {
         "max-md:!gap-1"
       )}
     >
-      <ExpenseOperationsWorkspaceNav className="mb-1" />
       <div className="flex flex-col gap-2 border-b border-[color:var(--hh-border)] pb-2 pt-1">
         <div className="flex flex-wrap items-center gap-2">
           <Button

@@ -46,7 +46,8 @@ function toItem(r: Record<string, unknown>): ProjectScheduleItem {
 
 /** Get all schedule items across all projects (for Operations Schedule page), with project name. */
 export async function getAllScheduleWithProject(
-  explicitClient?: SupabaseClient
+  explicitClient?: SupabaseClient,
+  projectRows?: PromiseLike<Array<{ id: string; name: string | null }>>
 ): Promise<(ProjectScheduleItem & { project_name: string | null })[]> {
   const c = client(explicitClient);
   const { data: rows, error } = await c
@@ -57,14 +58,17 @@ export async function getAllScheduleWithProject(
   const items = (rows ?? []).map((r) => toItem(r as Record<string, unknown>));
   const projectIds = Array.from(new Set(items.map((i) => i.project_id)));
   if (projectIds.length === 0) return items.map((i) => ({ ...i, project_name: null }));
-  const { data: projects, error: projectsError } = await c
-    .from("projects")
-    .select("id, name")
-    .in("id", projectIds);
-  if (projectsError) throw new Error(projectsError.message ?? "Failed to load schedule projects.");
-  const projectNames = new Map<string, string>(
-    ((projects ?? []) as { id: string; name: string }[]).map((p) => [p.id, p.name ?? ""])
-  );
+  const projects = projectRows
+    ? await projectRows
+    : await c
+        .from("projects")
+        .select("id, name")
+        .in("id", projectIds)
+        .then(({ data, error }) => {
+          if (error) throw new Error(error.message ?? "Failed to load schedule projects.");
+          return (data ?? []) as Array<{ id: string; name: string | null }>;
+        });
+  const projectNames = new Map<string, string>(projects.map((p) => [p.id, p.name ?? ""]));
   return items.map((i) => ({ ...i, project_name: projectNames.get(i.project_id) ?? null }));
 }
 

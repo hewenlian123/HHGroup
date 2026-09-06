@@ -1,29 +1,27 @@
+import { FinanceUnavailable } from "@/components/financial/finance-unavailable";
+import { requireSupabaseOwnerOrAdminServerActionClient } from "@/lib/auth-boundary";
+import { PermissionDenied } from "@/components/ui/system-state";
 import Link from "next/link";
 import { getCompanyFinancialDashboard } from "@/lib/data";
 import { PageLayout, PageHeader, SectionHeader } from "@/components/base";
 import { cn } from "@/lib/utils";
-import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
 import { formatCurrency } from "@/lib/formatters";
 
 export const dynamic = "force-dynamic";
 
-const EMPTY_DASHBOARD = {
-  budget: 0,
-  spent: 0,
-  revenue: 0,
-  collected: 0,
-  profit: 0,
-  cashflow: 0,
-} as const;
-
 export default async function CompanyFinancialDashboardPage() {
-  let d: Awaited<ReturnType<typeof getCompanyFinancialDashboard>> = { ...EMPTY_DASHBOARD };
-  let dataLoadWarning: string | null = null;
+  const guard = await requireSupabaseOwnerOrAdminServerActionClient({ noStore: true });
+  if (!guard.ok)
+    return (
+      <div className="page-container py-6">
+        <PermissionDenied description={guard.error} />
+      </div>
+    );
+  let d: Awaited<ReturnType<typeof getCompanyFinancialDashboard>>;
   try {
-    d = await getCompanyFinancialDashboard();
-  } catch (e) {
-    logServerPageDataError("financial/dashboard", e);
-    dataLoadWarning = serverDataLoadWarning(e, "financial dashboard");
+    d = await getCompanyFinancialDashboard(guard.client);
+  } catch {
+    return <FinanceUnavailable title="Portfolio summary unavailable" />;
   }
 
   const metrics: { label: string; value: number; positiveGood?: boolean }[] = [
@@ -43,6 +41,7 @@ export default async function CompanyFinancialDashboardPage() {
           description="Portfolio totals: budget, spent, revenue, collected, profit, cashflow."
           actions={
             <Link
+              prefetch={false}
               href="/financial"
               className="inline-flex min-h-[44px] sm:min-h-0 items-center text-sm text-text-secondary hover:text-[#111111]"
             >
@@ -52,11 +51,6 @@ export default async function CompanyFinancialDashboardPage() {
         />
       }
     >
-      {dataLoadWarning ? (
-        <p className="border-b border-border/60 pb-3 text-sm text-muted-foreground" role="status">
-          {dataLoadWarning}
-        </p>
-      ) : null}
       <SectionHeader label="Metrics" />
       <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6">
         {metrics.map((m) => (

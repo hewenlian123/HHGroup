@@ -1,6 +1,8 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
+import { useProjectWorkspaceScope } from "@/components/projects/project-workspace-context";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { Download, ImageIcon, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -54,9 +56,19 @@ function photoImageUrl(path: string): string {
 }
 
 export default function SitePhotosPage() {
+  return (
+    <React.Suspense fallback={<p role="status">Loading workspace…</p>}>
+      <SitePhotosPageContent />
+    </React.Suspense>
+  );
+}
+
+function SitePhotosPageContent() {
+  const { projectId: scopedProjectId, embedded } = useProjectWorkspaceScope();
   const [photos, setPhotos] = React.useState<PhotoRow[]>([]);
   const [projects, setProjects] = React.useState<{ id: string; name: string }[]>([]);
-  const [projectFilter, setProjectFilter] = React.useState<string>("");
+  const [selectedProjectFilter, setProjectFilter] = React.useState("");
+  const projectFilter = scopedProjectId || selectedProjectFilter;
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [detailOpen, setDetailOpen] = React.useState(false);
@@ -309,7 +321,7 @@ export default function SitePhotosPage() {
     uploadFocusReturnRef.current =
       document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setUploadForm({
-      project_id: projects[0]?.id ?? "",
+      project_id: projectFilter || projects[0]?.id || "",
       description: "",
       tags: "",
       uploaded_by: "",
@@ -402,6 +414,7 @@ export default function SitePhotosPage() {
     try {
       const formData = new FormData();
       formData.set("file", file);
+      formData.set("project_id", uploadForm.project_id);
       const uploadRes = await fetch("/api/operations/site-photos/upload", {
         method: "POST",
         body: formData,
@@ -437,11 +450,26 @@ export default function SitePhotosPage() {
       divider={false}
       className={cn(
         "md:max-w-5xl text-[var(--hh-text-secondary)]",
-        mobileListPagePaddingClass,
+        embedded ? "!max-w-none !p-0" : mobileListPagePaddingClass,
         "max-md:!gap-3"
       )}
       header={
         <>
+          {scopedProjectId && !embedded ? (
+            <Button asChild variant="ghost" className="min-h-11 self-start">
+              <Link href={`/projects/${encodeURIComponent(scopedProjectId)}?tab=photos`}>
+                Back to project
+              </Link>
+            </Button>
+          ) : null}
+          {embedded ? (
+            <Link
+              href="/site-photos"
+              className="inline-flex min-h-11 items-center self-start text-hh-metadata underline"
+            >
+              All projects · site photos
+            </Link>
+          ) : null}
           <div className="hidden md:block">
             <PageHeader
               title="Site Photos"
@@ -530,6 +558,7 @@ export default function SitePhotosPage() {
             <Select
               aria-label="Filter site photos by project"
               value={projectFilter}
+              disabled={Boolean(scopedProjectId)}
               onChange={(e) => setProjectFilter(e.target.value)}
               className="min-h-10 w-full"
             >
@@ -608,6 +637,7 @@ export default function SitePhotosPage() {
             <Select
               aria-label="Filter site photos by project"
               value={projectFilter}
+              disabled={Boolean(scopedProjectId)}
               onChange={(e) => setProjectFilter(e.target.value)}
               className="min-w-[160px]"
             >
@@ -1201,6 +1231,8 @@ export default function SitePhotosPage() {
               <label className="text-xs font-medium text-muted-foreground">Project</label>
               <Select
                 value={uploadForm.project_id}
+                aria-label="Project"
+                disabled={Boolean(scopedProjectId)}
                 onChange={(e) => setUploadForm((f) => ({ ...f, project_id: e.target.value }))}
                 className="mt-1 w-full"
               >

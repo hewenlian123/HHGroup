@@ -1,7 +1,9 @@
 # HH Group step 11 operator, window, and backup record
 
-**Status:** READY FOR EXPLICIT AUTHORIZATION — Dashboard restore operability
-verified; window closed.
+**Status:** STOPPED — step 11 and the exact successor application were deployed,
+but the Production critical smoke exposed database/API errors. The scoped
+Estimate→milestone Invoice freeze remains active pending separate incident
+authorization and a reviewed forward fix or rollback decision.
 
 This record identifies the operator and recovery inputs for step 11. It does
 not authorize a Production write, migration, restore, or deployment.
@@ -26,7 +28,9 @@ not authorize a Production write, migration, restore, or deployment.
 
 ## Change window
 
-- Current state: **CLOSED**.
+- Current state: **CLOSED — STOPPED ON PRODUCTION SMOKE FAILURE**.
+- Authorized start: `2026-09-01T09:32:08Z`.
+- Closed on failure: `2026-09-01T09:50:37Z`.
 - Opening condition: explicit user authorization for the two ordered stages,
   naming the exact successor commit and migration blob
   `36f835f28af473de664ebbd3a5375b148f4862f9`, after fresh preflight and a
@@ -40,8 +44,9 @@ not authorize a Production write, migration, restore, or deployment.
   a hard gate between the stages; the single change authorization does not
   permit reversing their order.
 
-The closed window is intentional: a technically ready gate must stop before
-Production migration and wait for authorization.
+The window was opened by explicit Production deployment authorization. It was
+closed at the first failed post-deploy smoke/log gate; no recovery, additional
+migration, Production data repair, or follow-up deployment was authorized.
 
 ## Scoped write quiescence
 
@@ -128,9 +133,62 @@ destructive recovery and downtime.
 
 ## Authorization ledger
 
-- Production migration authorization: **NOT GRANTED**.
-- Production application deployment authorization: **NOT GRANTED**.
-- Scoped milestone-Invoice write freeze: **NOT ACTIVATED — window closed**.
+- Production migration authorization: **GRANTED AND CONSUMED — STEP 11 ONLY**.
+- Production application deployment authorization: **GRANTED AND CONSUMED —
+  exact commit `9fb540dea9a7c85a9abd3beda0b50a69442509e4`**.
+- Scoped milestone-Invoice write freeze: **ACTIVATED AND REMAINS ACTIVE —
+  Production smoke did not pass**.
 - Production restore authorization: **NOT GRANTED**.
-- Window start/end: **NOT OPENED**.
+- Window start/end: **`2026-09-01T09:32:08Z` / `2026-09-01T09:50:37Z`**.
 - Dashboard restore permission/selectability evidence: **VERIFIED — PASS**.
+
+## Production rollout execution record
+
+- Exact branch push: `codex/ui-v2-estimate-certified` resolved remotely to
+  `9fb540dea9a7c85a9abd3beda0b50a69442509e4` after the push.
+- Migration command applied only
+  `20260901042341_invoice_milestone_atomicity.sql`; no seed, role, or historical
+  migration was included.
+- Post-migration ledger: step 11 is recorded exactly once after step 10.
+- Post-migration catalog: the new wrapper exists with the reviewed signature,
+  remains `SECURITY INVOKER`, is executable by `service_role` only, and matches
+  the reviewed source contract. The prerequisite functions, seven uniqueness
+  indexes, and two reimbursement triggers remained unchanged and valid.
+- Canonical association baseline stayed exactly `(0, 1, 0, 1, 0)` before and
+  after the migration. No Invoice was created after the window opened.
+- Exact successor application commit
+  `9fb540dea9a7c85a9abd3beda0b50a69442509e4` was promoted to Production as
+  Vercel deployment `dpl_AUtBxDMEBUNxHxfoesoaaRfs6zWz`; it reached `READY`
+  and received the `hhprojectgroup.com` alias.
+- Login/session, Dashboard, Estimate list/detail, Invoice list/preview/client
+  PDF generation, Expense, Payment, and Payroll surfaces rendered without a
+  visible fatal UI state. Anonymous safety-lock probes returned `401` for all
+  ten maintenance routes and `404` for all seven test/schema routes plus
+  `/system-tests`.
+- Vercel reported no runtime error cluster and no error/fatal runtime log for
+  the exact deployment during the smoke window.
+
+## Stop condition and preserved evidence
+
+The Supabase database/API logs recorded failures during the Production smoke
+window, so the release cannot be marked complete even though the visible pages
+rendered:
+
+- 24 PostgREST `400` attempts selected the absent
+  `project_change_orders.amount` column at
+  `2026-09-01T09:49:26.214Z`–`09:49:26.346Z`; fallback requests without that
+  column returned `200`.
+- Four `permission denied for table workers` and four
+  `permission denied for table labor_workers` errors were observed at
+  `2026-09-01T09:48:36.962Z`–`09:49:23.725Z` while the authenticated smoke
+  traversed Dashboard/Payroll surfaces.
+- The API log also returned `404` for the `payment_methods` relation during the
+  smoke window.
+
+These errors were first observed after promotion in the captured log window;
+this record does not claim root cause or whether every condition was introduced
+by the successor. Under the release contract, server/database errors in the
+critical Production smoke are a hard stop regardless of visible fallback
+behavior. No Production data fix, restore, additional migration, rollback, or
+follow-up deployment was attempted. A separate authorized incident task must
+determine disposition before the scoped milestone-Invoice freeze is lifted.

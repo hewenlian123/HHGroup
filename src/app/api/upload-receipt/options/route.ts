@@ -1,23 +1,15 @@
+import { withSessionCookies } from "@/lib/supabase-response";
 import { NextResponse } from "next/server";
-import { getServerSupabase } from "@/lib/supabase-server";
+import { requireCompanyRequestClient } from "@/lib/auth-boundary";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-/**
- * Public dropdown data is constrained by the anon RLS policies to active id/name values.
- */
-export async function GET() {
-  const client = getServerSupabase();
-  if (!client) {
-    return NextResponse.json(
-      {
-        message:
-          "Supabase not configured (set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY)",
-      },
-      { status: 503 }
-    );
-  }
+/** Business dropdowns require an authenticated organization membership. */
+export async function GET(request: Request) {
+  const guard = await requireCompanyRequestClient(request);
+  if (!guard.ok) return guard.response;
+  const client = guard.client;
   try {
     const [workersRes, projectsRes] = await Promise.all([
       client.from("workers").select("id, name").order("name"),
@@ -35,9 +27,17 @@ export async function GET() {
       name: p.name ?? "",
     }));
 
-    return NextResponse.json({ workers, projects });
+    const response = withSessionCookies(
+      NextResponse.json({ workers, projects }),
+      guard.sessionResponse
+    );
+
+    return response;
   } catch (e) {
     const message = e instanceof Error ? e.message : "Failed to load options";
-    return NextResponse.json({ message }, { status: 500 });
+    return withSessionCookies(
+      NextResponse.json({ message }, { status: 500 }),
+      guard.sessionResponse
+    );
   }
 }

@@ -1,4 +1,5 @@
 "use client";
+import { LaborReadState } from "@/components/labor/labor-read-state";
 
 import * as React from "react";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
@@ -165,6 +166,7 @@ export default function PayrollSummaryPage() {
 
   const [projects, setProjects] = React.useState<ProjectOption[]>([]);
   const [rows, setRows] = React.useState<Row[]>([]);
+  const [readUnavailable, setReadUnavailable] = React.useState(false);
   const [loading, setLoading] = React.useState(true);
   const [message, setMessage] = React.useState<string | null>(null);
   const [payOpen, setPayOpen] = React.useState(false);
@@ -180,9 +182,12 @@ export default function PayrollSummaryPage() {
     [pathname]
   );
 
+  const readGeneration = React.useRef(0);
   const load = React.useCallback(async () => {
+    const generation = ++readGeneration.current;
     setLoading(true);
     setMessage(null);
+    setReadUnavailable(false);
     try {
       const params = new URLSearchParams({ fromDate, toDate });
       if (projectId) params.set("projectId", projectId);
@@ -194,13 +199,16 @@ export default function PayrollSummaryPage() {
         const message = body && "message" in body ? body.message : null;
         throw new Error(message ?? "Failed to load payroll summary.");
       }
+      if (generation !== readGeneration.current) return;
       setProjects(body.projects);
       setRows(body.rows);
     } catch (e) {
+      if (generation !== readGeneration.current) return;
+      setReadUnavailable(true);
       setMessage(e instanceof Error ? e.message : "Failed to load.");
       setRows([]);
     } finally {
-      setLoading(false);
+      if (generation === readGeneration.current) setLoading(false);
     }
   }, [fromDate, toDate, projectId]);
 
@@ -273,6 +281,9 @@ export default function PayrollSummaryPage() {
     "hh-fin text-hh-table-cell tabular-nums text-[var(--hh-text-secondary)] ",
     "bg-[var(--hh-l3-hover)] hover:bg-[var(--hh-l3-hover)]"
   );
+
+  if ((loading && rows.length === 0) || readUnavailable)
+    return <LaborReadState title="Payroll summary" busy={loading} retry={() => void load()} />;
 
   return (
     <div
@@ -468,14 +479,14 @@ export default function PayrollSummaryPage() {
 
         <div className={cn(psShell, "p-3 md:p-3")}>
           <FilterBar className="gap-2.5 sm:gap-2">
-            <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center md:flex-nowrap">
+            <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
               <Input
                 type="date"
                 value={fromDate}
                 onChange={(e) => {
                   if (isCompleteDateInput(e.target.value)) setFromDate(e.target.value);
                 }}
-                className={cn(dateInputClass, "sm:w-[152px]")}
+                className={cn(dateInputClass, "sm:w-[152px] sm:shrink-0")}
                 aria-label="From"
               />
               <Input
@@ -484,7 +495,7 @@ export default function PayrollSummaryPage() {
                 onChange={(e) => {
                   if (isCompleteDateInput(e.target.value)) setToDate(e.target.value);
                 }}
-                className={cn(dateInputClass, "sm:w-[152px]")}
+                className={cn(dateInputClass, "sm:w-[152px] sm:shrink-0")}
                 aria-label="To"
               />
               <select

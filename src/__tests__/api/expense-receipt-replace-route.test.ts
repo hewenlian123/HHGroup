@@ -20,7 +20,7 @@ const {
 }));
 
 vi.mock("@/lib/auth-boundary", () => ({
-  requireSupabaseOwnerOrAdmin: requireStrictAuthMock,
+  requireSupabaseOwnerOrAdminRequestClient: requireStrictAuthMock,
 }));
 
 vi.mock("@/lib/expense-receipt-server", () => ({
@@ -106,6 +106,7 @@ describe("transaction-safe expense receipt Replace route", () => {
     adminFromMock.mockReset().mockReturnValue(existingOperationQuery);
     requireStrictAuthMock.mockReset().mockResolvedValue({
       ok: true,
+      client: { session: "fixture" },
       context: {
         role: "owner",
         user: { id: "owner-id", app_metadata: { role: "owner" } },
@@ -252,10 +253,13 @@ describe("transaction-safe expense receipt Replace route", () => {
     const response = await callRoute();
 
     expect(response.status).toBe(404);
-    expect(resolveStoredReceiptReferenceMock).toHaveBeenCalledWith({
-      expenseId: EXPENSE_ID,
-      receiptId: RECEIPT_ID,
-    });
+    expect(resolveStoredReceiptReferenceMock).toHaveBeenCalledWith(
+      {
+        expenseId: EXPENSE_ID,
+        receiptId: RECEIPT_ID,
+      },
+      { session: "fixture" }
+    );
     expect(uploadMock).not.toHaveBeenCalled();
   });
 });

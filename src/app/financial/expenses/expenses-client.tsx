@@ -1,6 +1,9 @@
 "use client";
 
 import "./expenses-ui-theme.css";
+import Link from "next/link";
+import { KpiTile } from "@/components/base";
+import { ErrorRetry } from "@/components/ui/system-state";
 import * as React from "react";
 import { startTransition } from "react";
 import { flushSync } from "react-dom";
@@ -17,13 +20,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  defaultExpenseListSort,
   getExpenseTotal,
-  getPaymentAccounts,
-  updateExpenseForReview,
-  type Expense,
-  type PaymentAccountRow,
-} from "@/lib/data";
-import { createBrowserClient } from "@/lib/supabase";
+  isDefaultExpenseListSort,
+} from "@/lib/expense-domain";
+import type { Expense } from "@/lib/expenses-db";
+import type { PaymentAccountRow } from "@/lib/payment-accounts-db";
+import type { SubcontractDeductionOption } from "@/lib/subcontract-deductions-db";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   AlertCircle,
   ChevronLeft,
@@ -67,12 +71,11 @@ import {
   fetchSubcontractDeductionOptions,
   fetchWorkers,
   subcontractDeductionOptionsQueryKey,
+  type ExpensesInitialData,
   type ExpenseListSort,
   workersQueryKey,
 } from "@/lib/queries/expenses";
-import type { SubcontractDeductionOption } from "@/lib/data";
 import { fetchFinancialProjects, financialProjectsQueryKey } from "@/lib/queries/receiptQueue";
-import { defaultExpenseListSort, isDefaultExpenseListSort } from "@/lib/expenses-db";
 import { cn } from "@/lib/utils";
 import { cleanExpenseDescriptionForDisplay } from "@/lib/expense-form-system";
 import { ExpensesListSkeleton } from "@/components/financial/expenses-list-skeleton";
@@ -119,7 +122,6 @@ import {
   type ExpenseReceiptApiItem,
   type ExpenseReceiptApiManifest,
 } from "@/lib/expense-receipt-api-client";
-import { UploadReceiptsQueueModal } from "./upload-receipts-queue-modal";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import { OS } from "@/lib/typography";
 import { hawaiiTodayYmd } from "@/lib/hawaii-calendar-date";
@@ -160,6 +162,33 @@ type ExpenseApiResponse = {
 type ExpenseMutationApiResponse = ExpenseApiResponse & {
   expense?: Expense;
 };
+
+type ExpenseReviewStatusPatch = Partial<{
+  date: string;
+  vendorName: string;
+  notes: string;
+  status: NonNullable<Expense["status"]>;
+  workerId: string | null;
+  projectId: string | null;
+  category: string;
+  amount: number;
+  sourceType: Expense["sourceType"];
+  paymentAccountId: string | null;
+  paymentMethod: string;
+}>;
+
+async function loadPaymentAccounts(client: SupabaseClient): Promise<PaymentAccountRow[]> {
+  const { getPaymentAccounts } = await import("@/lib/data");
+  return getPaymentAccounts(client);
+}
+
+async function updateExpenseForReviewLazy(
+  expenseId: string,
+  patch: ExpenseReviewStatusPatch
+): Promise<Expense | null> {
+  const { updateExpenseForReview } = await import("@/lib/data");
+  return updateExpenseForReview(expenseId, patch);
+}
 
 async function saveExpenseReviewViaApi(payload: ExpenseReviewApiPayload): Promise<void> {
   const response = await fetch(`/api/expenses/${encodeURIComponent(payload.expenseId)}`, {
@@ -238,6 +267,10 @@ const ExpenseInboxPreviewModal = dynamic(
 const ExpenseInboxTransactionList = dynamic(
   () => import("./expense-inbox-transaction-list").then((m) => m.ExpenseInboxTransactionList),
   { ssr: false, loading: () => <ExpensesListSkeleton /> }
+);
+const UploadReceiptsQueueModal = dynamic(
+  () => import("./upload-receipts-queue-modal").then((m) => m.UploadReceiptsQueueModal),
+  { ssr: false }
 );
 
 /** HH Finance OS — visual parity with Finance Owner dashboard (presentation only). */
@@ -536,25 +569,43 @@ function TransactionInboxEntryActions({
   );
 }
 
-export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
+export function ExpensesPageClient({
+  pool,
+  initialData,
+}: {
+  pool: "inbox" | "expenses" | "overview";
+  initialData?: ExpensesInitialData;
+}) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const inboxMode = pool === "inbox";
-  const archiveMode = pool === "expenses";
+  const archiveMode = pool !== "inbox";
   const listPath = inboxMode ? "/financial/inbox" : "/financial/expenses";
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   const configured = Boolean(url && anon);
-  const supabase = React.useMemo(
-    () => (configured ? createBrowserClient(url as string, anon as string) : null),
-    [configured, url, anon]
-  );
+  const supabaseRef = React.useRef<SupabaseClient | null>(null);
+  const [supabase, setSupabase] = React.useState<SupabaseClient | null>(null);
+  const loadBrowserSupabase = React.useCallback(async (): Promise<SupabaseClient> => {
+    if (!configured || !url || !anon) throw new Error("Supabase is not configured.");
+    if (supabaseRef.current) return supabaseRef.current;
+    const { createBrowserClient } = await import("@/lib/supabase");
+    const client = createBrowserClient(url, anon);
+    supabaseRef.current = client;
+    setSupabase(client);
+    return client;
+  }, [configured, url, anon]);
+
+  React.useEffect(() => {
+    void loadBrowserSupabase();
+  }, [loadBrowserSupabase]);
 
   const [expenseSort, setExpenseSort] = React.useState<ExpenseListSort>(() =>
     readStoredExpenseSort()
   );
+  const initialSortMatches = Boolean(initialData && isDefaultExpenseListSort(expenseSort));
 
   const readCachedCategories = React.useCallback(
     () => queryClient.getQueryData<string[]>(expenseCategoriesQueryKey),
@@ -564,19 +615,25 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
     () => queryClient.getQueryData<WorkerRow[]>(workersQueryKey),
     [queryClient]
   );
-  const [workers, setWorkers] = React.useState<WorkerRow[]>(() => readCachedWorkers() ?? []);
+  const [workers, setWorkers] = React.useState<WorkerRow[]>(
+    () => readCachedWorkers() ?? initialData?.workers ?? []
+  );
   const [subcontractDeductionOptions, setSubcontractDeductionOptions] = React.useState<
     SubcontractDeductionOption[]
   >(
     () =>
       queryClient.getQueryData<SubcontractDeductionOption[]>(subcontractDeductionOptionsQueryKey) ??
+      initialData?.subcontractDeductionOptions ??
       []
   );
   const [expenses, setExpenses] = React.useState<Expense[]>(
-    () => queryClient.getQueryData<Expense[]>(buildExpensesQueryKey(readStoredExpenseSort())) ?? []
+    () =>
+      queryClient.getQueryData<Expense[]>(buildExpensesQueryKey(readStoredExpenseSort())) ??
+      (initialSortMatches ? initialData?.expenses : undefined) ??
+      []
   );
   const [categoriesList, setCategoriesList] = React.useState<string[]>(
-    () => readCachedCategories() ?? []
+    () => readCachedCategories() ?? initialData?.categories ?? []
   );
 
   const {
@@ -585,13 +642,13 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
     isFetching: expensesQueryFetching,
     isError: expensesQueryError,
     status: expensesQueryStatus,
-    refetch: refetchExpensesQuery,
   } = useQuery({
     queryKey: buildExpensesQueryKey(expenseSort),
-    queryFn: () => fetchExpenses(expenseSort),
+    queryFn: async () => fetchExpenses(expenseSort, await loadBrowserSupabase()),
     placeholderData: keepPreviousData,
     staleTime: expenseListQueryStaleMs,
     refetchOnMount: false,
+    initialData: initialSortMatches ? initialData?.expenses : undefined,
   });
 
   React.useEffect(() => {
@@ -601,26 +658,29 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
       /* ignore */
     }
   }, [expenseSort]);
-  const { data: categoriesQueryData } = useQuery({
+  const { data: categoriesQueryData, isError: categoriesError } = useQuery({
     queryKey: expenseCategoriesQueryKey,
-    queryFn: fetchExpenseCategories,
+    queryFn: async () => fetchExpenseCategories(await loadBrowserSupabase()),
     placeholderData: keepPreviousData,
     staleTime: expenseListQueryStaleMs,
     refetchOnMount: false,
+    initialData: initialData?.categories,
   });
-  const { data: workersQueryData } = useQuery({
+  const { data: workersQueryData, isError: workersError } = useQuery({
     queryKey: workersQueryKey,
-    queryFn: fetchWorkers,
+    queryFn: async () => fetchWorkers(await loadBrowserSupabase()),
     placeholderData: keepPreviousData,
     staleTime: expenseListQueryStaleMs,
     refetchOnMount: false,
+    initialData: initialData?.workers,
   });
-  const { data: subcontractDeductionOptionsQueryData } = useQuery({
+  const { data: subcontractDeductionOptionsQueryData, isError: deductionsError } = useQuery({
     queryKey: subcontractDeductionOptionsQueryKey,
-    queryFn: fetchSubcontractDeductionOptions,
+    queryFn: async () => fetchSubcontractDeductionOptions(await loadBrowserSupabase()),
     placeholderData: keepPreviousData,
     staleTime: expenseListQueryStaleMs,
     refetchOnMount: false,
+    initialData: initialData?.subcontractDeductionOptions,
   });
 
   const {
@@ -629,11 +689,16 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
     error: projectsQueryError,
   } = useQuery({
     queryKey: financialProjectsQueryKey,
-    queryFn: () => fetchFinancialProjects(supabase!),
-    enabled: configured && Boolean(supabase),
+    queryFn: async () => {
+      const client = await loadBrowserSupabase();
+      if (!client) throw new Error("Supabase is not configured.");
+      return fetchFinancialProjects(client);
+    },
+    enabled: configured,
     placeholderData: keepPreviousData,
     staleTime: expenseListQueryStaleMs,
     refetchOnMount: false,
+    initialData: initialData?.projects,
   });
 
   const projectsError = React.useMemo(() => {
@@ -682,7 +747,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
   const [projectFilter, setProjectFilter] = React.useState("");
   const [categoryFilter, setCategoryFilter] = React.useState("");
   const [expenseDateFilter, setExpenseDateFilter] = React.useState<ExpenseDateFilterValue>(() =>
-    defaultExpenseDateFilterForPool(pool)
+    defaultExpenseDateFilterForPool(inboxMode ? "inbox" : "expenses")
   );
   const [sourceTypeFilter, setSourceTypeFilter] = React.useState("");
   const [activeExpenseId, setActiveExpenseId] = React.useState<string | null>(null);
@@ -1108,14 +1173,19 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
     onClearNarrowingFilters: clearNarrowingFiltersForUploadHighlight,
   });
 
+  const [refreshError, setRefreshError] = React.useState(false);
+  const [refreshPending, setRefreshPending] = React.useState(false);
   const manualRefreshGenRef = React.useRef(0);
   const refresh = React.useCallback(async () => {
     const gen = ++manualRefreshGenRef.current;
+    setRefreshPending(true);
+    setRefreshError(false);
     try {
+      const client = await loadBrowserSupabase();
       const [ex, cat, w] = await Promise.all([
-        fetchExpenses(expenseSort),
-        fetchExpenseCategories(),
-        fetchWorkers(),
+        fetchExpenses(expenseSort, client),
+        fetchExpenseCategories(client),
+        fetchWorkers(client),
       ]);
       if (gen !== manualRefreshGenRef.current) return;
       setExpenses(ex);
@@ -1127,9 +1197,12 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
     } catch (e) {
       if (gen !== manualRefreshGenRef.current) return;
       const msg = e instanceof Error ? e.message : "Could not refresh.";
+      setRefreshError(true);
       toast({ title: "Refresh failed", description: msg, variant: "error" });
+    } finally {
+      if (gen === manualRefreshGenRef.current) setRefreshPending(false);
     }
-  }, [queryClient, expenseSort, toast]);
+  }, [queryClient, expenseSort, toast, loadBrowserSupabase]);
 
   React.useEffect(() => {
     if (!inboxMode) return;
@@ -1473,7 +1546,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
       try {
         const saved = inboxRef
           ? await approveInboxDraftViaApi(expense.id)
-          : await updateExpenseForReview(expense.id, { status: targetStatus });
+          : await updateExpenseForReviewLazy(expense.id, { status: targetStatus });
         const final = saved ?? { ...expense, status: targetStatus };
         flushSync(() => {
           setExpenses((list) => list.map((e) => (e.id === expense.id ? final : e)));
@@ -1787,7 +1860,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
           const saved =
             inboxRef && next === "approved"
               ? await approveInboxDraftViaApi(expense.id)
-              : await updateExpenseForReview(expense.id, { status: next });
+              : await updateExpenseForReviewLazy(expense.id, { status: next });
           if (!saved) throw new Error("Failed");
           const persisted = (saved.status ?? "pending") === next;
           if (persisted) {
@@ -1818,13 +1891,21 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
   );
 
   const [paymentAccountsForBulk, setPaymentAccountsForBulk] = React.useState<PaymentAccountRow[]>(
-    []
+    initialData?.paymentAccounts ?? []
   );
+  const [paymentAccountsError, setPaymentAccountsError] = React.useState(false);
+  const reloadPaymentAccounts = React.useCallback(async () => {
+    try {
+      const rows = await loadPaymentAccounts(await loadBrowserSupabase());
+      setPaymentAccountsForBulk(rows);
+      setPaymentAccountsError(false);
+    } catch {
+      setPaymentAccountsError(true);
+    }
+  }, [loadBrowserSupabase]);
   React.useEffect(() => {
-    void getPaymentAccounts()
-      .then(setPaymentAccountsForBulk)
-      .catch(() => setPaymentAccountsForBulk([]));
-  }, []);
+    if (!initialData?.paymentAccounts) void reloadPaymentAccounts();
+  }, [initialData?.paymentAccounts, reloadPaymentAccounts]);
 
   const [bulkBusy, setBulkBusy] = React.useState(false);
 
@@ -1868,7 +1949,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
           try {
             const saved = inboxRef
               ? await approveInboxDraftViaApi(id)
-              : await updateExpenseForReview(id, { status: targetStatus });
+              : await updateExpenseForReviewLazy(id, { status: targetStatus });
             if (saved && (saved.status ?? "pending") === targetStatus) {
               mergeSavedExpenseInCaches(saved);
               ok++;
@@ -1904,7 +1985,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
       let ok = 0;
       try {
         for (const id of ids) {
-          const saved = await updateExpenseForReview(id, { projectId });
+          const saved = await updateExpenseForReviewLazy(id, { projectId });
           if (saved) {
             mergeSavedExpenseInCaches(saved);
             ok++;
@@ -1935,7 +2016,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
       let ok = 0;
       try {
         for (const id of ids) {
-          const saved = await updateExpenseForReview(id, { category });
+          const saved = await updateExpenseForReviewLazy(id, { category });
           if (saved) {
             mergeSavedExpenseInCaches(saved);
             ok++;
@@ -1966,7 +2047,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
       let ok = 0;
       try {
         for (const id of ids) {
-          const saved = await updateExpenseForReview(id, { paymentAccountId });
+          const saved = await updateExpenseForReviewLazy(id, { paymentAccountId });
           if (saved) {
             mergeSavedExpenseInCaches(saved);
             ok++;
@@ -2150,6 +2231,97 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
     ? "Review uploaded receipts and draft expenses"
     : "Tracked project costs and completed expenses";
 
+  const ledgerPending = expensesQueryPending || expensesQueryFetching || refreshPending;
+  const ledgerFailed =
+    expensesQueryError ||
+    refreshError ||
+    categoriesError ||
+    workersError ||
+    deductionsError ||
+    projectsIsError ||
+    paymentAccountsError;
+  const ledgerUnavailable = ledgerPending || ledgerFailed;
+  const availability = ledgerUnavailable ? (
+    <div className="page-container py-6" data-expenses-availability>
+      <ExpenseOperationsWorkspaceNav />
+      {ledgerPending ? (
+        <LoadingState text="Loading expenses…" />
+      ) : (
+        <ErrorRetry
+          title="Expenses unavailable"
+          description="Expense totals and records are unavailable until the read succeeds. Unsaved edits are retained."
+          onRetry={() => {
+            void refresh();
+            void reloadPaymentAccounts();
+            void queryClient.invalidateQueries({ refetchType: "active" });
+          }}
+        />
+      )}
+    </div>
+  ) : null;
+
+  if (pool === "overview" && ledgerUnavailable) return availability;
+  if (pool === "overview")
+    return (
+      <div className="page-container page-stack py-6">
+        <ExpenseOperationsWorkspaceNav />
+        <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4" aria-label="Expense overview">
+          <KpiTile label="This month expenses" value={formatCurrency(summary.monthTotal)} />
+          <KpiTile label="Receipts needing review" value={inboxReviewStats.pending} />
+          <KpiTile
+            label="Uncategorized"
+            value={expensesForListing.filter((e) => !expenseHasCategoryForWorkflow(e)).length}
+          />
+          <KpiTile
+            label="Missing receipt"
+            value={expensesForListing.filter(expenseMissingReceiptForInbox).length}
+          />
+        </section>
+        <nav aria-label="Expense workflow" className="flex flex-wrap gap-3">
+          <Button asChild>
+            <Link prefetch={false} href="/financial/inbox">
+              Review receipts
+            </Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link prefetch={false} href="/financial/expenses?new_expense=1">
+              Create expense
+            </Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link prefetch={false} href="/financial/expenses">
+              Expense history
+            </Link>
+          </Button>
+        </nav>
+        <NeoPanel
+          title="Recent expenses"
+          description="Completed expenses. Draft receipts remain in review until approved."
+        >
+          {archivedExpenses.length === 0 ? (
+            <p className="p-4 text-sm">No completed expenses yet.</p>
+          ) : (
+            [...archivedExpenses]
+              .sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""))
+              .slice(0, 8)
+              .map((e) => (
+                <Link
+                  prefetch={false}
+                  key={e.id}
+                  href={`/financial/expenses?ops_record=${encodeURIComponent(e.id)}`}
+                  className="flex min-h-11 flex-wrap items-center justify-between gap-2 border-b border-[var(--hh-border)] p-3 text-sm"
+                >
+                  <span>
+                    {e.vendorName || "Expense"} · {e.date}
+                  </span>
+                  <NeoAmount>{formatCurrency(getExpenseTotal(e))}</NeoAmount>
+                </Link>
+              ))
+          )}
+        </NeoPanel>
+      </div>
+    );
+
   return (
     <div
       className={financeOsPageWrap}
@@ -2158,7 +2330,11 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
       data-expenses-list-page={inboxMode ? "inbox" : "expenses"}
       data-expense-workspace-detail-open={previewOpen ? "true" : "false"}
     >
+      {availability}
       <div
+        hidden={ledgerUnavailable}
+        style={{ display: ledgerUnavailable ? "none" : undefined }}
+        aria-busy={ledgerPending}
         className={cn(
           "expenses-ui-content page-shell-wide mx-auto w-full min-w-0 max-w-none px-3 py-3 md:px-6 xl:max-w-[1440px] xl:px-8",
           inboxMode ? "md:pb-7 md:pt-3" : "md:py-8"
@@ -2547,7 +2723,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                         <button
                           type="button"
                           aria-label="Clear expense search"
-                          className="absolute right-0 top-0 flex h-9 w-9 items-center justify-center rounded-lg text-[var(--hh-text-tertiary)] outline-none hover:text-[var(--hh-text-primary)] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--hh-focus-ring)]"
+                          className="hh-touch-square absolute right-0 top-0 flex h-9 w-9 items-center justify-center rounded-lg text-[var(--hh-text-tertiary)] outline-none hover:text-[var(--hh-text-primary)] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--hh-focus-ring)]"
                           onClick={() => setSearchInput("")}
                         >
                           <X className="h-3.5 w-3.5" aria-hidden />
@@ -2657,36 +2833,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                     </div>
                   </div>
                 ) : null}
-                {expensesQueryError && expensesQueryData === undefined ? (
-                  <div
-                    data-expenses-error
-                    role="alert"
-                    aria-live="assertive"
-                    className="flex min-h-56 flex-col items-start justify-center gap-4 border-t border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-5 py-10 text-left md:min-h-72 md:flex-row md:items-center md:justify-center md:px-8"
-                  >
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[var(--hh-border-strong)] bg-[var(--hh-l3-hover)] text-[var(--hh-action-primary)]">
-                      <AlertCircle className="h-5 w-5" strokeWidth={1.75} aria-hidden />
-                    </span>
-                    <div className="min-w-0 max-w-md flex-1 md:flex-none">
-                      <p className="text-sm font-semibold text-[var(--hh-text-primary)]">
-                        Expenses couldn’t load
-                      </p>
-                      <p className="mt-1 text-xs leading-relaxed text-[var(--hh-text-secondary)]">
-                        The ledger is unavailable right now. No expense totals or empty results are
-                        being inferred.
-                      </p>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className={cn(financeToolbarButtonClass, "h-11 min-h-11 md:h-9 md:min-h-0")}
-                      onClick={() => void refetchExpensesQuery()}
-                    >
-                      Retry
-                    </Button>
-                  </div>
-                ) : showExpensesSkeleton && expenses.length === 0 ? (
+                {showExpensesSkeleton && expenses.length === 0 ? (
                   <div className="border-t border-[var(--hh-border)] px-4 py-8 md:border-t-0">
                     <ExpensesListSkeleton
                       rows={8}
@@ -2880,7 +3027,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                             type="button"
                             variant="outline"
                             size="sm"
-                            className="h-11 min-h-11 w-11 min-w-11 shrink-0 border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-0 text-[var(--hh-text-primary)] shadow-none transition-colors duration-150 hover:bg-[var(--hh-l3-hover)] md:h-7 md:min-h-0 md:w-7 md:min-w-0"
+                            className="h-11 min-h-11 w-11 min-w-11 shrink-0 border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-0 text-[var(--hh-text-primary)] shadow-none transition-colors duration-150 hover:bg-[var(--hh-l3-hover)] "
                             disabled={curPage <= 1}
                             aria-label="Previous page"
                             onClick={() => setPage(curPage - 1)}
@@ -2894,7 +3041,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                             type="button"
                             variant="outline"
                             size="sm"
-                            className="h-11 min-h-11 w-11 min-w-11 shrink-0 border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-0 text-[var(--hh-text-primary)] shadow-none transition-colors duration-150 hover:bg-[var(--hh-l3-hover)] md:h-7 md:min-h-0 md:w-7 md:min-w-0"
+                            className="h-11 min-h-11 w-11 min-w-11 shrink-0 border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-0 text-[var(--hh-text-primary)] shadow-none transition-colors duration-150 hover:bg-[var(--hh-l3-hover)] "
                             disabled={curPage >= totalPages}
                             aria-label="Next page"
                             onClick={() => setPage(curPage + 1)}
@@ -2910,7 +3057,10 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                             value={String(pageSize)}
                             onValueChange={(v) => setPageSizeAndReset(Number(v))}
                           >
-                            <SelectTrigger className="h-11 min-h-11 w-[4.25rem] rounded-lg border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-xs shadow-none transition-colors duration-150 md:h-7 md:min-h-0">
+                            <SelectTrigger
+                              aria-label="Expense groups per page"
+                              className="h-11 min-h-11 w-[4.25rem] rounded-lg border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-xs shadow-none transition-colors duration-150 "
+                            >
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent

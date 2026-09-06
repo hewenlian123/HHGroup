@@ -70,7 +70,7 @@ describe("financial data-layer atomicity failure injection", () => {
 
     const fake = {
       async rpc(name: string) {
-        expect(name).toBe("record_payment_received_atomic");
+        expect(name).toBe("record_invoice_receipt_atomic");
         return { data: null, error: { message: "injected invoice allocation failure" } };
       },
       from(table: string) {

@@ -19,7 +19,7 @@ import {
   type MaterialSelectionSheet,
 } from "@/lib/material-selection-sheets";
 import { listMaterialSelectionSheets } from "@/lib/material-selection-sheets-db";
-import { requireSupabaseOwnerOrAdminServerAction } from "@/lib/auth-boundary";
+import { requireOrganizationServerActionClient } from "@/lib/auth-boundary";
 import { MaterialSelectionDeleteButton } from "./material-selection-delete-button";
 
 export const dynamic = "force-dynamic";
@@ -37,9 +37,9 @@ function customerProjectLine(selection: MaterialSelectionSheet): string {
 }
 
 export default async function MaterialSelectionsPage() {
-  const guard = await requireSupabaseOwnerOrAdminServerAction();
+  const guard = await requireOrganizationServerActionClient({ noStore: true });
   if (!guard.ok) notFound();
-  const selections = await listMaterialSelectionSheets();
+  const selections = await listMaterialSelectionSheets(guard.client);
 
   return (
     <PageLayout

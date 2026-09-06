@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSitePhotos, getProjects, createSitePhoto } from "@/lib/data";
-import { requireSupabaseOwnerOrAdminRequestClient } from "@/lib/auth-boundary";
+import { requireOrganizationRequestClient } from "@/lib/auth-boundary";
 
 const NO_CACHE_HEADERS = {
   "Cache-Control": "private, no-store, no-cache, must-revalidate",
@@ -13,7 +13,7 @@ function withSessionCookies(response: NextResponse, sessionResponse: NextRespons
 }
 
 export async function GET(req: Request) {
-  const guard = await requireSupabaseOwnerOrAdminRequestClient(req, { noStore: true });
+  const guard = await requireOrganizationRequestClient(req, { noStore: true });
   if (!guard.ok) return guard.response;
   const { client: supabase, sessionResponse } = guard;
   try {
@@ -36,27 +36,36 @@ export async function GET(req: Request) {
     );
   } catch (e) {
     const message = e instanceof Error ? e.message : "Failed to load site photos.";
-    return NextResponse.json({ ok: false as const, message }, { status: 500 });
+    return withSessionCookies(
+      NextResponse.json({ ok: false as const, message }, { status: 500 }),
+      guard.sessionResponse
+    );
   }
 }
 
 export async function POST(req: Request) {
-  const guard = await requireSupabaseOwnerOrAdminRequestClient(req, { noStore: true });
+  const guard = await requireOrganizationRequestClient(req, { noStore: true });
   if (!guard.ok) return guard.response;
   try {
     const body = await req.json();
     const project_id = body.project_id as string | undefined;
     const photo_url = (body.photo_url as string)?.trim();
     if (!project_id?.trim()) {
-      return NextResponse.json(
-        { ok: false as const, message: "project_id is required." },
-        { status: 400 }
+      return withSessionCookies(
+        NextResponse.json(
+          { ok: false as const, message: "project_id is required." },
+          { status: 400 }
+        ),
+        guard.sessionResponse
       );
     }
     if (!photo_url) {
-      return NextResponse.json(
-        { ok: false as const, message: "photo_url is required." },
-        { status: 400 }
+      return withSessionCookies(
+        NextResponse.json(
+          { ok: false as const, message: "photo_url is required." },
+          { status: 400 }
+        ),
+        guard.sessionResponse
       );
     }
     await createSitePhoto(
@@ -72,6 +81,9 @@ export async function POST(req: Request) {
     return withSessionCookies(NextResponse.json({ ok: true as const }), guard.sessionResponse);
   } catch (e) {
     const message = e instanceof Error ? e.message : "Failed to create site photo.";
-    return NextResponse.json({ ok: false as const, message }, { status: 500 });
+    return withSessionCookies(
+      NextResponse.json({ ok: false as const, message }, { status: 500 }),
+      guard.sessionResponse
+    );
   }
 }

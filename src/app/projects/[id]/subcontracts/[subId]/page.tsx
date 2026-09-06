@@ -1,3 +1,4 @@
+import { requireOrganizationServerActionClient } from "@/lib/auth-boundary";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
@@ -23,10 +24,6 @@ import { formatCurrency, formatDate } from "@/lib/formatters";
 import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
 import { summarizeSubcontractFinancials } from "@/lib/subcontractor-financials";
 import {
-  createServerSupabaseClient,
-  getServerSupabaseInternalNoStore,
-} from "@/lib/supabase-server";
-import {
   SubcontractDetailClient,
   SubcontractPaymentScheduleClient,
 } from "./subcontract-detail-client";
@@ -50,16 +47,21 @@ type Props = { params: Promise<{ id: string; subId: string }> };
 
 export default async function SubcontractDetailPage({ params }: Props) {
   const { id: projectId, subId } = await params;
-  const projectSupabase = await createServerSupabaseClient();
-  if (!projectSupabase) throw new Error("Authenticated project session is not configured.");
+  const organizationGuard = await requireOrganizationServerActionClient({
+    projectId: projectId,
+    requireOwnerAdmin: true,
+    noStore: true,
+  });
+  if (!organizationGuard.ok) notFound();
+  const projectSupabase = organizationGuard.client;
   const [project, subcontract] = await Promise.all([
     getProjectById(projectId, projectSupabase),
-    getSubcontractById(subId),
+    getSubcontractById(subId, organizationGuard.client),
   ]);
   if (!project || !subcontract || subcontract.project_id !== projectId) notFound();
 
-  let dataLoadWarning: string | null = null;
-  const supabase = getServerSupabaseInternalNoStore();
+  const dataLoadWarning: string | null = null;
+  const supabase = organizationGuard.client;
   let financials = summarizeSubcontractFinancials({
     contractAmount: subcontract.contract_amount,
     bills: [],
@@ -69,8 +71,8 @@ export default async function SubcontractDetailPage({ params }: Props) {
   let linkedApBills: Awaited<ReturnType<typeof getApBillsBySubcontractIds>> = [];
   try {
     const [bills, payments, schedule, apBills] = await Promise.all([
-      getBillsBySubcontractIds([subcontract.id]),
-      getPaymentsBySubcontractIds([subcontract.id]),
+      getBillsBySubcontractIds([subcontract.id], organizationGuard.client),
+      getPaymentsBySubcontractIds([subcontract.id], organizationGuard.client),
       getPaymentScheduleBySubcontractId(subcontract.id, supabase ?? undefined),
       getApBillsBySubcontractIds([subcontract.id], supabase ?? undefined),
     ]);
@@ -96,7 +98,7 @@ export default async function SubcontractDetailPage({ params }: Props) {
     });
   } catch (e) {
     logServerPageDataError(`projects/${projectId}/subcontracts/${subId} financials`, e);
-    dataLoadWarning = serverDataLoadWarning(e, "subcontract financials");
+    throw new Error(serverDataLoadWarning(e, "subcontract financials"));
   }
 
   return (

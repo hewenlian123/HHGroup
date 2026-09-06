@@ -10,7 +10,11 @@ import {
   getTotalExpenses,
 } from "@/lib/expenses-db";
 import { FinancialDataUnavailableError } from "@/lib/financial-availability";
-import { getInvoices, getPaymentsByInvoiceId } from "@/lib/invoices-db";
+import {
+  getInvoices,
+  getInvoicesWithDerivedPaged,
+  getPaymentsByInvoiceId,
+} from "@/lib/invoices-db";
 import { getLaborPayments } from "@/lib/labor-db";
 
 type QueryResult = {
@@ -30,7 +34,7 @@ function scriptedClient(responses: Record<string, QueryResult[]>): SupabaseClien
           queues[table]?.shift() ?? ({ data: [], error: null } satisfies QueryResult)
         );
       const builder: Record<string, unknown> = {};
-      for (const method of ["select", "eq", "in", "order", "gte", "lte", "not", "limit"]) {
+      for (const method of ["select", "eq", "in", "order", "gte", "lte", "not", "limit", "range"]) {
         builder[method] = () => builder;
       }
       builder.maybeSingle = next;
@@ -517,5 +521,27 @@ describe("typed financial read availability", () => {
         total: 110,
       },
     ]);
+  });
+});
+
+describe("paged invoice availability", () => {
+  it.each([
+    { data: null, error: { code: "42501", message: "permission denied" } },
+    { data: null, error: null },
+  ])("rejects unavailable payment reads instead of a full unpaid balance: %j", async (result) => {
+    const client = scriptedClient({
+      invoices: [{ data: [invoiceHeader], error: null }],
+      invoice_payments: [result],
+    });
+    await expect(getInvoicesWithDerivedPaged(undefined, client)).rejects.toThrow();
+  });
+  it("keeps successful empty payments as a valid unpaid amount", async () => {
+    const client = scriptedClient({
+      invoices: [{ data: [invoiceHeader], error: null }],
+      invoice_payments: [{ data: [], error: null }],
+    });
+    await expect(getInvoicesWithDerivedPaged(undefined, client)).resolves.toMatchObject({
+      rows: [{ paidTotal: 0, balanceDue: 110 }],
+    });
   });
 });

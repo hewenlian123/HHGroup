@@ -16,7 +16,10 @@ import type {
   PaymentScheduleItem,
   PaymentScheduleTemplate,
 } from "@/lib/data";
-import { estimateLineTotal, groupEstimateItemsByCategoryId } from "@/lib/data";
+import {
+  groupEstimateItemsByCategoryId,
+  lineTotal as estimateLineTotal,
+} from "@/lib/estimate-domain";
 import { useToast } from "@/components/toast/toast-provider";
 import {
   saveEstimateMetaAction,

@@ -5,6 +5,7 @@ import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { ErrorRetry, LoadingState } from "@/components/ui/system-state";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
@@ -84,11 +85,24 @@ function AccountTypeIcon({ type }: { type: AccountType }) {
 }
 
 type AccountsClientProps = {
-  cashOverview: CashOverview;
-  dataLoadWarnings: string[];
+  cashOverview: CashOverview | null;
 };
 
-function BankReconciliationOverview({ cashOverview, dataLoadWarnings }: AccountsClientProps) {
+export function BankReconciliationOverview({
+  cashOverview,
+  loading = false,
+  onRetry,
+}: AccountsClientProps & { loading?: boolean; onRetry: () => void }) {
+  if (loading) return <LoadingState text="Loading bank reconciliation…" />;
+  if (!cashOverview)
+    return (
+      <ErrorRetry
+        title="Bank reconciliation unavailable"
+        description="Bank transactions or expense totals could not be read. Balances are unavailable until the read succeeds."
+        onRetry={onRetry}
+        retryLabel="Retry bank reconciliation"
+      />
+    );
   const kpis = [
     { label: "Bank Balance", value: cashOverview.bankBalance, icon: Banknote },
     { label: "System Expenses", value: cashOverview.systemExpenses, icon: Receipt },
@@ -103,7 +117,8 @@ function BankReconciliationOverview({ cashOverview, dataLoadWarnings }: Accounts
         <div>
           <p className={TYPO.sectionLabel}>Bank reconciliation</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Cash position and unreconciled bank activity.
+            Cash position from bank transactions and expense totals. Account records below identify
+            payment sources.
           </p>
         </div>
         {cashOverview.recentUnreconciled.length > 0 ? (
@@ -112,16 +127,6 @@ function BankReconciliationOverview({ cashOverview, dataLoadWarnings }: Accounts
           </Button>
         ) : null}
       </div>
-
-      {dataLoadWarnings.length > 0 ? (
-        <div className="mb-3 space-y-2 text-sm text-muted-foreground">
-          {dataLoadWarnings.map((warning) => (
-            <p key={warning} role="status">
-              {warning}
-            </p>
-          ))}
-        </div>
-      ) : null}
 
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
         {kpis.map(({ label, value, icon: Icon }) => (
@@ -204,11 +209,17 @@ export default function AccountsClient(props: AccountsClientProps) {
   );
 }
 
-function AccountsPageInner({ cashOverview, dataLoadWarnings }: AccountsClientProps) {
+function AccountsPageInner({ cashOverview }: AccountsClientProps) {
   const router = useRouter();
   const { toast } = useToast();
   const [accounts, setAccounts] = React.useState<Account[]>([]);
   const [loading, setLoading] = React.useState(true);
+  const [loadError, setLoadError] = React.useState<string | null>(null);
+  const loadRequest = React.useRef(0);
+  const [cashRefreshing, startCashRefresh] = React.useTransition();
+  const refreshCash = React.useCallback(() => {
+    startCashRefresh(() => router.refresh());
+  }, [router]);
   const [modalOpen, setModalOpen] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
   const [name, setName] = React.useState("");
@@ -222,40 +233,50 @@ function AccountsPageInner({ cashOverview, dataLoadWarnings }: AccountsClientPro
   const [deleteTarget, setDeleteTarget] = React.useState<Account | null>(null);
 
   const load = React.useCallback(async () => {
-    const res = await getAccountsAction();
-    if (res.error) {
-      // Keep the page functional even if auth is missing.
-      setAccounts([]);
-      return;
+    const request = ++loadRequest.current;
+    setLoading(true);
+    setLoadError(null);
+    try {
+      const res = await getAccountsAction();
+      if (request !== loadRequest.current) return;
+      if (res.error) throw new Error(res.error);
+      setAccounts(
+        res.accounts.map((a) => ({
+          id: a.id,
+          name: a.name,
+          type: a.type as AccountType,
+          lastFour: a.lastFour,
+          notes: a.notes,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        }))
+      );
+    } catch (error) {
+      if (request === loadRequest.current)
+        setLoadError(
+          error instanceof Error ? error.message : "Accounts are unavailable. Please retry."
+        );
+    } finally {
+      if (request === loadRequest.current) setLoading(false);
     }
-    setAccounts(
-      res.accounts.map((a) => ({
-        id: a.id,
-        name: a.name,
-        type: a.type as AccountType,
-        lastFour: a.lastFour,
-        notes: a.notes,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      }))
-    );
   }, []);
 
   React.useEffect(() => {
-    let cancelled = false;
-    load().finally(() => {
-      if (!cancelled) setLoading(false);
-    });
+    void load();
     return () => {
-      cancelled = true;
+      loadRequest.current += 1;
     };
   }, [load]);
 
   useOnAppSync(
-    React.useCallback(() => {
-      void load();
-    }, [load]),
-    [load]
+    React.useCallback(
+      (detail) => {
+        void load();
+        if (!detail.refreshScheduled) refreshCash();
+      },
+      [load, refreshCash]
+    ),
+    [load, refreshCash]
   );
 
   const openModal = () => {
@@ -396,6 +417,26 @@ function AccountsPageInner({ cashOverview, dataLoadWarnings }: AccountsClientPro
     }
   };
 
+  if (loading || loadError)
+    return (
+      <div className="page-container page-stack py-4">
+        <PageHeader title="Accounts" description="Payment sources and bank reconciliation." />
+        {loading ? (
+          <LoadingState text="Loading accounts…" />
+        ) : (
+          <ErrorRetry
+            title="Accounts unavailable"
+            description={loadError}
+            onRetry={() => {
+              void load();
+              refreshCash();
+            }}
+            retryLabel="Retry accounts"
+          />
+        )}
+      </div>
+    );
+
   return (
     <div
       className={cn(
@@ -430,7 +471,8 @@ function AccountsPageInner({ cashOverview, dataLoadWarnings }: AccountsClientPro
 
         <BankReconciliationOverview
           cashOverview={cashOverview}
-          dataLoadWarnings={dataLoadWarnings}
+          loading={cashRefreshing}
+          onRetry={refreshCash}
         />
 
         {/* KPI summary */}
@@ -533,9 +575,7 @@ function AccountsPageInner({ cashOverview, dataLoadWarnings }: AccountsClientPro
           </div>
         </div>
 
-        {loading ? (
-          <p className="text-sm text-muted-foreground">Loading…</p>
-        ) : accounts.length === 0 ? (
+        {accounts.length === 0 ? (
           <div className={cn(accountsShell, "px-4 py-10 text-center")}>
             <span className="mx-auto mb-3 inline-flex h-10 w-10 items-center justify-center rounded-full border border-[var(--hh-border)] bg-[var(--hh-l3-selected)] text-[var(--hh-text-secondary)]">
               <CreditCard className="h-5 w-5" aria-hidden />

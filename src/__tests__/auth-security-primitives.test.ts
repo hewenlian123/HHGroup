@@ -38,6 +38,25 @@ import { validateSameOriginMutation } from "@/lib/auth-request-security";
 import { isCompatibilityAccessEnabled } from "@/lib/owner-access-mode";
 import { validatePassword } from "@/lib/password-policy";
 
+function companyMembershipQuery() {
+  const query = {
+    select: () => query,
+    eq: () => query,
+    not: () => query,
+    then: (resolve: (value: unknown) => unknown) =>
+      Promise.resolve({
+        data: [
+          {
+            role: "owner",
+            status: "active",
+            organizations: { legacy_company_profile_id: "company" },
+          },
+        ],
+        error: null,
+      }).then(resolve),
+  };
+  return query;
+}
 const ORIGINAL_ENV = { ...process.env };
 
 describe("authenticated owner-access security primitives", () => {
@@ -47,8 +66,24 @@ describe("authenticated owner-access security primitives", () => {
     delete process.env.INTERNAL_ADMIN_SECRET;
     delete process.env.HH_ADMIN_EMAILS;
     getSupabaseUserFromRequestMock.mockReset().mockResolvedValue(null);
-    createRouteSupabaseClientMock.mockReset().mockReturnValue(null);
-    createServerSupabaseClientMock.mockReset().mockResolvedValue(null);
+    createRouteSupabaseClientMock.mockReset().mockImplementation(() => ({
+      auth: {
+        getUser: async () => ({
+          data: { user: await getSupabaseUserFromRequestMock() },
+          error: null,
+        }),
+      },
+      from: vi.fn(companyMembershipQuery),
+    }));
+    createServerSupabaseClientMock.mockReset().mockImplementation(async () => ({
+      auth: {
+        getUser: async () => ({
+          data: { user: await getSupabaseUserFromServerSessionMock() },
+          error: null,
+        }),
+      },
+      from: vi.fn(companyMembershipQuery),
+    }));
     getSupabaseUserFromServerSessionMock.mockReset().mockResolvedValue(null);
     isValidPinSessionMock.mockReset().mockResolvedValue(true);
   });
@@ -177,7 +212,7 @@ describe("authenticated owner-access security primitives", () => {
     };
     const client = {
       auth: { getUser: vi.fn().mockResolvedValue({ data: { user }, error: null }) },
-      from: vi.fn(),
+      from: vi.fn(companyMembershipQuery),
     };
     createRouteSupabaseClientMock.mockReturnValue(client);
     const request = new Request("http://localhost:3104/api/operations/tasks", {
@@ -199,7 +234,7 @@ describe("authenticated owner-access security primitives", () => {
           error: { message: "invalid bearer" },
         }),
       },
-      from: vi.fn(),
+      from: vi.fn(companyMembershipQuery),
     };
     createRouteSupabaseClientMock.mockReturnValue(client);
     const request = new Request("http://localhost:3104/api/operations/tasks", {
@@ -223,7 +258,7 @@ describe("authenticated owner-access security primitives", () => {
     };
     const client = {
       auth: { getUser: vi.fn().mockResolvedValue({ data: { user: bearerOwner }, error: null }) },
-      from: vi.fn(),
+      from: vi.fn(companyMembershipQuery),
     };
     createRouteSupabaseClientMock.mockReturnValue(client);
 
@@ -247,7 +282,7 @@ describe("authenticated owner-access security primitives", () => {
   it("does not fall back to a cookie session for a malformed Authorization header", async () => {
     const client = {
       auth: { getUser: vi.fn() },
-      from: vi.fn(),
+      from: vi.fn(companyMembershipQuery),
     };
     createRouteSupabaseClientMock.mockReturnValue(client);
 
@@ -334,7 +369,7 @@ describe("authenticated owner-access security primitives", () => {
     };
     const client = {
       auth: { getUser: vi.fn().mockResolvedValue({ data: { user }, error: null }) },
-      from: vi.fn(),
+      from: vi.fn(companyMembershipQuery),
     };
     createServerSupabaseClientMock.mockResolvedValue(client);
 

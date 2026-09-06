@@ -3,6 +3,8 @@
  * Table: bank_transactions.
  */
 
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { financialDataUnavailable } from "@/lib/financial-availability";
 import { getSupabaseClient } from "@/lib/supabase";
 
 export type BankTransactionStatus = "unmatched" | "reconciled";
@@ -31,8 +33,8 @@ type BankTransactionRow = {
   reconciled_by?: string | null;
 };
 
-function client() {
-  const c = getSupabaseClient();
+function client(explicitClient?: SupabaseClient) {
+  const c = explicitClient ?? getSupabaseClient();
   if (!c) throw new Error("Supabase is not configured.");
   return c;
 }
@@ -58,19 +60,19 @@ function toBankTx(r: BankTransactionRow): BankTransaction {
   };
 }
 
-export async function getBankTransactions(): Promise<BankTransaction[]> {
-  const c = client();
+export async function getBankTransactions(
+  explicitClient?: SupabaseClient
+): Promise<BankTransaction[]> {
+  const c = client(explicitClient);
   const { data: rows, error } = await c
     .from("bank_transactions")
     .select(
       "id, txn_date, description, amount, status, linked_expense_id, created_at, reconciled_at, reconciled_by"
     )
     .order("txn_date", { ascending: false });
-  if (error) {
-    if (isMissingTable(error)) throw new Error(`bank_transactions: table not found. ${HINT}`);
-    throw new Error(error.message ? `${error.message} ${HINT}` : HINT);
-  }
-  return (rows ?? []).map((r) => toBankTx(r as BankTransactionRow));
+  if (error) financialDataUnavailable("bank transactions", error);
+  if (!Array.isArray(rows)) financialDataUnavailable("bank transactions", null);
+  return rows.map((r) => toBankTx(r as BankTransactionRow));
 }
 
 export async function getBankTransactionById(id: string): Promise<BankTransaction | null> {

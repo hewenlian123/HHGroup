@@ -1,6 +1,8 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
+import { useProjectWorkspaceScope } from "@/components/projects/project-workspace-context";
 import { PageLayout, PageHeader, Drawer } from "@/components/base";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -159,12 +161,22 @@ const KanbanCard = React.memo(function KanbanCard({
 });
 
 export default function PunchListPage() {
+  return (
+    <React.Suspense fallback={<p role="status">Loading workspace…</p>}>
+      <PunchListPageContent />
+    </React.Suspense>
+  );
+}
+
+function PunchListPageContent() {
+  const { projectId: scopedProjectId, embedded } = useProjectWorkspaceScope();
   const [items, setItems] = React.useState<PunchRow[]>([]);
   const [summary, setSummary] = React.useState({ open: 0, assigned: 0, completed: 0 });
   const [projects, setProjects] = React.useState<{ id: string; name: string }[]>([]);
   const [workers, setWorkers] = React.useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = React.useState(true);
-  const [projectFilter, setProjectFilter] = React.useState<string>("");
+  const [selectedProjectFilter, setProjectFilter] = React.useState("");
+  const projectFilter = scopedProjectId || selectedProjectFilter;
   const [statusFilter, setStatusFilter] = React.useState<StatusFilter>("");
   const [priorityFilter, setPriorityFilter] = React.useState<string>("");
   const [searchQuery, setSearchQuery] = React.useState("");
@@ -204,7 +216,21 @@ export default function PunchListPage() {
       const data = await res.json();
       if (!data.ok) throw new Error(data.message || "Failed to load");
       setItems(data.items ?? []);
-      setSummary(data.summary ?? { open: 0, assigned: 0, completed: 0 });
+      setSummary(
+        projectFilter
+          ? {
+              open: (data.items ?? []).filter(
+                (item: PunchRow) => normStatus(item.status) === "open"
+              ).length,
+              assigned: (data.items ?? []).filter(
+                (item: PunchRow) => normStatus(item.status) === "assigned"
+              ).length,
+              completed: (data.items ?? []).filter(
+                (item: PunchRow) => normStatus(item.status) === "completed"
+              ).length,
+            }
+          : (data.summary ?? { open: 0, assigned: 0, completed: 0 })
+      );
       setProjects(data.projects ?? []);
       setWorkers(data.workers ?? []);
     } catch (e) {
@@ -298,38 +324,51 @@ export default function PunchListPage() {
     setDrawerOpen(true);
   }, []);
 
-  const handleFileChange = React.useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true);
-    setError(null);
-    try {
-      const formData = new FormData();
-      formData.set("file", file);
-      const res = await fetch("/api/operations/punch-list/upload", {
-        method: "POST",
-        body: formData,
-      });
-      const data = await res.json();
-      if (!data.ok) throw new Error(data.message || "Upload failed");
-      setForm((p) => ({ ...p, photo_url: data.path }));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Upload failed.");
-    } finally {
-      setUploading(false);
-      e.target.value = "";
-    }
-  }, []);
-
-  const handleDrawerFileChange = React.useCallback(
+  const handleFileChange = React.useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (!file) return;
+      if (!form.project_id) {
+        setError("Select a project before uploading.");
+        return;
+      }
       setUploading(true);
       setError(null);
       try {
         const formData = new FormData();
         formData.set("file", file);
+        formData.set("project_id", form.project_id);
+        const res = await fetch("/api/operations/punch-list/upload", {
+          method: "POST",
+          body: formData,
+        });
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.message || "Upload failed");
+        setForm((p) => ({ ...p, photo_url: data.path }));
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Upload failed.");
+      } finally {
+        setUploading(false);
+        e.target.value = "";
+      }
+    },
+    [form.project_id]
+  );
+
+  const handleDrawerFileChange = React.useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      if (!selectedItem?.project_id) {
+        setError("Project is unavailable.");
+        return;
+      }
+      setUploading(true);
+      setError(null);
+      try {
+        const formData = new FormData();
+        formData.set("file", file);
+        formData.set("project_id", selectedItem.project_id);
         const res = await fetch("/api/operations/punch-list/upload", {
           method: "POST",
           body: formData,
@@ -344,7 +383,7 @@ export default function PunchListPage() {
         e.target.value = "";
       }
     },
-    []
+    [selectedItem?.project_id]
   );
 
   const handleSaveNew = React.useCallback(async () => {
@@ -442,11 +481,26 @@ export default function PunchListPage() {
       divider={false}
       className={cn(
         "md:max-w-5xl text-[var(--hh-text-secondary)]",
-        mobileListPagePaddingClass,
+        embedded ? "!max-w-none !p-0" : mobileListPagePaddingClass,
         "max-md:!gap-3"
       )}
       header={
         <>
+          {scopedProjectId && !embedded ? (
+            <Button asChild variant="ghost" className="min-h-11 self-start">
+              <Link href={`/projects/${encodeURIComponent(scopedProjectId)}?tab=punch-list`}>
+                Back to project
+              </Link>
+            </Button>
+          ) : null}
+          {embedded ? (
+            <Link
+              href="/punch-list"
+              className="inline-flex min-h-11 items-center self-start text-hh-metadata underline"
+            >
+              All projects · punch list
+            </Link>
+          ) : null}
           <div className="hidden md:block">
             <PageHeader
               title="Punch List"
@@ -546,6 +600,7 @@ export default function PunchListPage() {
               <select
                 aria-label="Filter punch list by project"
                 value={projectFilter}
+                disabled={Boolean(scopedProjectId)}
                 onChange={(e) => setProjectFilter(e.target.value)}
                 className="hh-focus-ring hh-touch-min hh-type-text-entry h-hh-control-comfortable w-full rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-2.5 text-[var(--hh-text-primary)]"
               >
@@ -632,6 +687,7 @@ export default function PunchListPage() {
             <select
               aria-label="Filter punch list by project"
               value={projectFilter}
+              disabled={Boolean(scopedProjectId)}
               onChange={(e) => setProjectFilter(e.target.value)}
               className="hh-focus-ring hh-touch-min hh-type-text-entry h-hh-control-standard w-full min-w-0 rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-2.5 text-[var(--hh-text-primary)] sm:w-auto sm:min-w-[160px]"
             >
@@ -938,6 +994,8 @@ export default function PunchListPage() {
               <label className="text-xs font-medium text-[var(--hh-text-secondary)]">Project</label>
               <select
                 value={form.project_id}
+                aria-label="Project"
+                disabled={Boolean(scopedProjectId)}
                 onChange={(e) => setForm((p) => ({ ...p, project_id: e.target.value }))}
                 className="hh-focus-ring hh-touch-min mt-1.5 h-hh-control-standard w-full rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-2.5 text-sm text-[var(--hh-text-primary)]"
               >

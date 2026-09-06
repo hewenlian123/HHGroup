@@ -13,7 +13,7 @@ import {
   neoFormFieldClassName,
 } from "@/components/base";
 import { Button } from "@/components/ui/button";
-import { AP_BILL_TYPES } from "@/lib/data";
+import { AP_BILL_TYPES } from "@/lib/ap-bill-domain";
 import { cn } from "@/lib/utils";
 import { BillCategoryCombobox } from "../bill-category-combobox";
 import {

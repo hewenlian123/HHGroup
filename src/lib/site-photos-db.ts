@@ -143,6 +143,7 @@ export async function updateSitePhoto(
 /** Delete a site photo. */
 export async function deleteSitePhoto(id: string, explicitClient?: SupabaseClient): Promise<void> {
   const c = client(explicitClient);
-  const { error } = await c.from("site_photos").delete().eq("id", id);
+  const { data, error } = await c.from("site_photos").delete().eq("id", id).select("id");
   if (error) throw new Error(error.message ?? "Failed to delete site photo.");
+  if (!data?.length) throw new Error("Photo was not deleted or access was denied.");
 }

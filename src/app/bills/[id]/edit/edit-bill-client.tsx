@@ -15,7 +15,7 @@ import {
 } from "@/components/base";
 import { Button } from "@/components/ui/button";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
-import { AP_BILL_TYPES } from "@/lib/data";
+import { AP_BILL_TYPES } from "@/lib/ap-bill-domain";
 import type { ApBillWithProject } from "@/lib/data";
 import { cn } from "@/lib/utils";
 import { BillCategoryCombobox } from "../../bill-category-combobox";

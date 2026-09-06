@@ -1,22 +1,26 @@
-# Public worker receipt upload contract
+# Authenticated worker receipt intake contract
 
-The legacy `/upload-receipt` workflow remains intentionally public so a worker can submit a
-receipt without an owner/admin session. Its public API surface is limited to:
+The September 6, 2026 production-completion authorization closes anonymous business access,
+including the former public receipt intake. `/upload-receipt` redirects signed-out users to
+login. All three intake APIs require an authenticated, active member of HH's canonical
+company organization before any business read or write:
 
-- `GET /api/upload-receipt/options` — only active worker/project `id` and `name` choices
-  permitted by anon RLS.
-- `POST /api/upload-receipt/upload` — a JPG, PNG, WebP, or PDF under 10 MB to the
-  `worker-receipts` upload path permitted by Storage policy.
-- `POST /api/upload-receipt/submit` — validated receipt metadata referencing a previously
-  uploaded path, only when anon RLS permits the insert; the inserted receipt always starts in
-  `Pending` status and returns no receipt row or readback.
+- `GET /api/upload-receipt/options` reads authorized worker and project choices.
+- `POST /api/upload-receipt/upload` accepts a JPG, PNG, WebP, or PDF under 10 MB.
+- `POST /api/upload-receipt/submit` validates metadata and an existing private upload path.
+  Project assignment additionally verifies access to that exact company project.
 
-The `worker-receipts` bucket is private. Upload returns only the canonical private
-`uploads/<UUID>.<extension>` path, never a public URL. Existing public-style references are
-normalized to their object path for owner/admin review; neither the existing row nor object is
-rewritten. Anonymous callers cannot list, download, update, or delete receipt objects.
+Owner, admin, and assistant company members retain narrow receipt submission access.
+The authenticated session client performs every intake query and Storage operation; intake
+never constructs a service-role client. RLS verifies the worker/name pair, project, upload
+existence, amount, date, allowed fields, and initial Pending status. Submission returns no
+receipt row or readback.
 
-These routes must use only the anon/RLS client and must not use a service-role client. Approval,
-rejection, deletion, payment, storage reconciliation, and signed/proxied previews require a
-verified owner/admin session. Receipt OCR is not public and requires a verified owner/admin
-session. `GET /api/upload-receipt/sync` remains owner/admin-only.
+The `worker-receipts` bucket is private. Upload returns only
+`uploads/<UUID>.<extension>`, never a public URL. Anonymous and foreign-company callers cannot
+upload, submit, list, download, update, or delete receipts. Existing historical references are
+preserved. Assistant intake does not grant receipt review or mutation privileges.
+
+Approval, rejection, deletion, payment, reconciliation, signed previews, OCR, and
+`GET /api/upload-receipt/sync` continue to require verified owner/admin authorization plus
+live canonical-company membership. Query or write failures are explicit errors.

@@ -199,6 +199,7 @@ export function buildPayrollSummaryRows(
 
   const paySum = new Map<string, number>();
   for (const pay of paymentsAll) {
+    if (projectFilter && pay.projectId !== projectFilter) continue;
     paySum.set(pay.workerId, (paySum.get(pay.workerId) ?? 0) + (Number(pay.amount) || 0));
   }
 

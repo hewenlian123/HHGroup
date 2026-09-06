@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Select } from "@/components/ui/native-select";
+import { ServerDataLoadFallback } from "@/components/server-data-load-fallback";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,19 +14,15 @@ import {
   type StatusBadgeVariant,
 } from "@/components/base";
 import { MobileFabPlus, MobileListHeader } from "@/components/mobile/mobile-list-chrome";
-import {
-  getARSummary,
-  getOutstandingInvoices,
-  getProjects,
-  type InvoiceComputedStatus,
-} from "@/lib/data";
-import { requireSupabaseOwnerOrAdminServerAction } from "@/lib/auth-boundary";
-import { createServerSupabaseClient } from "@/lib/supabase-server";
+import { type InvoiceComputedStatus } from "@/lib/data";
+import { requireSupabaseOwnerOrAdminServerActionClient } from "@/lib/auth-boundary";
+import { loadARPageReadModel } from "@/lib/financial/invoice-read-model";
 import { CreditCard, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/formatters";
 import { OS, TYPO } from "@/lib/typography";
 import { formatLedgerDate, LEDGER_DATE_CLASS } from "@/lib/ledger-date";
+import { emitRscTiming } from "@/lib/performance/server-timing";
 
 function getAgingBucket(dueDate: string): string {
   const today = new Date().toISOString().slice(0, 10);
@@ -52,17 +50,45 @@ export const dynamic = "force-dynamic";
 export default async function ARPage({
   searchParams,
 }: {
-  searchParams: Promise<{ invoice?: string }>;
+  searchParams: Promise<{ invoice?: string; customerId?: string }>;
 }) {
-  const guard = await requireSupabaseOwnerOrAdminServerAction();
+  const pageStartedAt = performance.now();
+  const authStartedAt = performance.now();
+  const guard = await requireSupabaseOwnerOrAdminServerActionClient({ noStore: true });
+  const authDuration = performance.now() - authStartedAt;
   if (!guard.ok) notFound();
-  const supabase = await createServerSupabaseClient({ noStore: true });
-  if (!supabase) notFound();
-  const [summary, outstanding, projects] = await Promise.all([
-    getARSummary(supabase),
-    getOutstandingInvoices(supabase),
-    getProjects(supabase),
-  ]);
+  const serverDataStartedAt = performance.now();
+  let model;
+  try {
+    model = await loadARPageReadModel(guard.client);
+  } catch {
+    return (
+      <ServerDataLoadFallback
+        message="Billing data is unavailable. No balances are shown until the ledger can be loaded."
+        backHref="/financial/ar"
+        backLabel="Retry Billing"
+      />
+    );
+  }
+  const { summary, projects, invoices, payments } = model;
+  const { customerId, invoice: requestedInvoiceId } = await searchParams;
+  const outstanding = customerId
+    ? model.outstanding.filter((invoice) => invoice.customerId === customerId)
+    : model.outstanding;
+  const customers = new Map(
+    invoices
+      .filter((invoice) => invoice.customerId)
+      .map((invoice) => [invoice.customerId!, invoice.clientName])
+  );
+  const invoiceById = new Map(invoices.map((invoice) => [invoice.id, invoice]));
+  const history = payments
+    .filter(
+      (payment) => !customerId || invoiceById.get(payment.invoiceId)?.customerId === customerId
+    )
+    .toSorted((a, b) => b.date.localeCompare(a.date));
+  const recentPayments = customerId ? history : history.slice(0, 8);
+  const customerQuery = customerId ? `?${new URLSearchParams({ customerId })}` : "";
+  const serverDataCompletedAt = performance.now();
   const projectNameById = new Map(projects.map((p) => [p.id, p.name]));
 
   const byBucket: Record<string, typeof outstanding> = {};
@@ -74,9 +100,16 @@ export default async function ARPage({
   const bucketOrder = ["Current", "1–30", "31–60", "61–90", "90+"];
   const sortedBuckets = bucketOrder.filter((b) => byBucket[b]?.length);
 
-  const requestedInvoiceId = (await searchParams).invoice;
   const selectedInvoice =
     outstanding.find((invoice) => invoice.id === requestedInvoiceId) ?? outstanding[0] ?? null;
+
+  const rscPreparedAt = performance.now();
+  emitRscTiming("financial/ar", {
+    authMs: authDuration,
+    serverDataMs: serverDataCompletedAt - serverDataStartedAt,
+    rscPrepareMs: rscPreparedAt - serverDataCompletedAt,
+    totalMs: rscPreparedAt - pageStartedAt,
+  });
 
   return (
     <div
@@ -85,8 +118,8 @@ export default async function ARPage({
     >
       <div className="hidden md:block">
         <PageHeader
-          title="Invoices & AR"
-          description="Accounts receivable, balances, and payment activity."
+          title="Billing"
+          description="Customer receivables, invoices, and received payments."
           actions={
             <div className="flex gap-2">
               <Button
@@ -95,7 +128,7 @@ export default async function ARPage({
                 size="sm"
                 className={cn(OS.secondaryButton, "h-11 min-h-[44px] xl:h-9 xl:min-h-0")}
               >
-                <Link href="/financial/payments">Payments</Link>
+                <Link href={`/financial/payments${customerQuery}`}>Received payments</Link>
               </Button>
               <Button
                 asChild
@@ -109,12 +142,12 @@ export default async function ARPage({
         />
       </div>
       <MobileListHeader
-        title="Invoices & AR"
+        title="Billing"
         fab={<MobileFabPlus href="/financial/invoices/new" ariaLabel="New invoice" />}
       />
 
       <section data-testid="ar-workspace-summary" aria-label="Accounts receivable summary">
-        <div className="grid gap-2 sm:grid-cols-3 md:gap-3">
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4 md:gap-3">
           <KpiTile
             label="Outstanding"
             value={formatCurrency(summary.totalAR)}
@@ -132,8 +165,53 @@ export default async function ARPage({
             tone="positive"
             meta="Posted customer payments"
           />
+          <KpiTile
+            label="Awaiting payment"
+            value={String(model.outstanding.length)}
+            meta="Open invoices across all customers"
+          />
         </div>
+        <p className="mt-2 text-hh-metadata text-[var(--hh-text-secondary)]">
+          Company-wide balances · Posted invoice payments are counted once.
+        </p>
       </section>
+
+      <form action="/financial/ar" className="flex min-w-0 flex-wrap items-end gap-2">
+        <label className="min-w-0 flex-1 text-hh-control text-[var(--hh-text-primary)]">
+          Customer history
+          <Select name="customerId" defaultValue={customerId ?? ""} className="mt-1 w-full">
+            <option value="">All customers</option>
+            {customerId && !customers.has(customerId) ? (
+              <option value={customerId}>Selected customer</option>
+            ) : null}
+            {[...customers].map(([id, name]) => (
+              <option key={id} value={id}>
+                {name || "Unnamed customer"}
+              </option>
+            ))}
+          </Select>
+        </label>
+        <Button type="submit" variant="secondary">
+          View history
+        </Button>
+        {customerId ? (
+          <Button asChild variant="ghost">
+            <Link href="/financial/ar">Clear customer</Link>
+          </Button>
+        ) : null}
+      </form>
+      {customerId ? (
+        <p className="text-hh-control">
+          Showing invoices and payments linked to this customer.{" "}
+          <Link className="underline" href={`/financial/invoices${customerQuery}`}>
+            View invoices
+          </Link>{" "}
+          ·{" "}
+          <Link className="underline" href={`/financial/payments${customerQuery}`}>
+            Received payments
+          </Link>
+        </p>
+      ) : null}
 
       {sortedBuckets.length === 0 ? (
         <NeoPanel bodyClassName="px-4 py-10 text-center md:px-6" data-testid="ar-invoice-queue">
@@ -149,7 +227,7 @@ export default async function ARPage({
             data-testid="ar-invoice-queue"
             eyebrow="Receivables queue"
             title="Outstanding invoices"
-            description="Grouped by due status. Open an invoice for its full record."
+            description="Needs attention: review overdue and unpaid balances, then receive payment against the invoice."
             bodyClassName="p-0"
           >
             <div className="space-y-4 p-2.5 md:p-3">
@@ -241,7 +319,7 @@ export default async function ARPage({
                                   className={cn(OS.secondaryButton, "h-8")}
                                 >
                                   <Link
-                                    href={`/financial/ar?invoice=${invoice.id}`}
+                                    href={`/financial/ar?${new URLSearchParams({ invoice: invoice.id, ...(customerId ? { customerId } : {}) })}`}
                                     aria-label="View invoice context"
                                     aria-current={selected ? "true" : undefined}
                                   >
@@ -308,7 +386,7 @@ export default async function ARPage({
                               className={cn(OS.secondaryButton, "h-11 min-h-[44px]")}
                             >
                               <Link
-                                href={`/financial/ar?invoice=${invoice.id}`}
+                                href={`/financial/ar?${new URLSearchParams({ invoice: invoice.id, ...(customerId ? { customerId } : {}) })}`}
                                 aria-current={selected ? "true" : undefined}
                               >
                                 View context
@@ -392,6 +470,100 @@ export default async function ARPage({
           </NeoPanel>
         </section>
       )}
+      <NeoPanel
+        title={customerId ? "Customer payment history" : "Recent customer payments"}
+        description="Invoice ledger history, including partial and voided payments. Open the linked record for full details."
+        action={
+          <Button asChild variant="ghost" size="sm">
+            <Link href={`/financial/payments${customerQuery}`}>Received payments</Link>
+          </Button>
+        }
+        bodyClassName="p-0"
+      >
+        {recentPayments.length === 0 ? (
+          <p className="p-4 text-hh-body">No customer payments found.</p>
+        ) : (
+          <>
+            <NeoTable className="hidden lg:block">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Customer / Project</th>
+                  <th>Invoice</th>
+                  <th>Method</th>
+                  <th>Reference / memo</th>
+                  <th>Status</th>
+                  <th className="text-right">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recentPayments.map((payment) => {
+                  const invoice = invoiceById.get(payment.invoiceId);
+                  const href = payment.paymentReceivedId
+                    ? `/financial/payments?${new URLSearchParams({ paymentId: payment.paymentReceivedId, ...(customerId ? { customerId } : {}) })}`
+                    : `/financial/invoices/${payment.invoiceId}`;
+                  return (
+                    <tr key={payment.id}>
+                      <td>{formatLedgerDate(payment.date)}</td>
+                      <td>
+                        {invoice?.clientName || "Customer unavailable"}
+                        <p className="text-hh-metadata">
+                          {invoice ? (projectNameById.get(invoice.projectId) ?? "—") : "—"}
+                        </p>
+                      </td>
+                      <td>
+                        <Link href={href} className="underline">
+                          {invoice?.invoiceNo ?? "View invoice"}
+                        </Link>
+                      </td>
+                      <td>{payment.method || "—"}</td>
+                      <td>{payment.memo || "—"}</td>
+                      <td>
+                        <NeoStatus
+                          label={payment.status ?? "Posted"}
+                          variant={payment.status === "Voided" ? "muted" : "success"}
+                        />
+                      </td>
+                      <td className="text-right">
+                        <NeoAmount>{formatCurrency(payment.amount)}</NeoAmount>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </NeoTable>
+            <div className="space-y-2 p-3 lg:hidden">
+              {recentPayments.map((payment) => {
+                const invoice = invoiceById.get(payment.invoiceId);
+                const href = payment.paymentReceivedId
+                  ? `/financial/payments?${new URLSearchParams({ paymentId: payment.paymentReceivedId, ...(customerId ? { customerId } : {}) })}`
+                  : `/financial/invoices/${payment.invoiceId}`;
+                return (
+                  <NeoMobileCard key={payment.id} className="space-y-2 p-3">
+                    <div className="flex justify-between gap-2">
+                      <span className="min-w-0 break-words">
+                        {invoice?.clientName || "Customer unavailable"}
+                      </span>
+                      <NeoAmount>{formatCurrency(payment.amount)}</NeoAmount>
+                    </div>
+                    <Link href={href} className="inline-flex min-h-11 items-center underline">
+                      {invoice?.invoiceNo ?? "View invoice"}
+                    </Link>
+                    <p className="text-hh-metadata">
+                      {formatLedgerDate(payment.date)} · {payment.method || "—"} ·{" "}
+                      {payment.status ?? "Posted"}
+                    </p>
+                    <p className="break-words text-hh-metadata">
+                      {invoice ? (projectNameById.get(invoice.projectId) ?? "—") : "—"} · Reference
+                      / memo: {payment.memo || "—"}
+                    </p>
+                  </NeoMobileCard>
+                );
+              })}
+            </div>
+          </>
+        )}
+      </NeoPanel>
     </div>
   );
 }

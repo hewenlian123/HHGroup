@@ -20,11 +20,12 @@ import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { tableRawTdClass, tableRawThClass } from "@/components/ui/table";
 import type { ApBillWithProject, ApBillPaymentRow } from "@/lib/data";
 import { useAttachmentPreview } from "@/contexts/attachment-preview-context";
-import { createBrowserClient } from "@/lib/supabase";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { resolvePreviewSignedUrl } from "@/lib/storage-signed-url";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import { TYPO } from "@/lib/typography";
 import { cn } from "@/lib/utils";
+import { beginPendingSubmission, getPendingSubmission } from "@/lib/financial-idempotency";
 import {
   billsDestructiveGhostClass,
   billsDetailDdClass,
@@ -52,10 +53,7 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   const configured = Boolean(url && anon);
-  const supabase = React.useMemo(
-    () => (configured ? createBrowserClient(url as string, anon as string) : null),
-    [configured, url, anon]
-  );
+  const [supabase, setSupabase] = React.useState<SupabaseClient | null>(null);
   const [addPaymentOpen, setAddPaymentOpen] = React.useState(initialAddPaymentOpen);
   const [paymentDate, setPaymentDate] = React.useState(() => new Date().toISOString().slice(0, 10));
   const [paymentAmount, setPaymentAmount] = React.useState("");
@@ -63,11 +61,49 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
   const [paymentRef, setPaymentRef] = React.useState("");
   const [paymentNotes, setPaymentNotes] = React.useState("");
   const [submitting, setSubmitting] = React.useState(false);
+  const [intentStorageKey, setIntentStorageKey] = React.useState<string | null>(null);
+  const paymentInFlight = React.useRef(false);
+  const [hasPendingPayment, setHasPendingPayment] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [voidConfirm, setVoidConfirm] = React.useState(false);
   const [deleteConfirm, setDeleteConfirm] = React.useState(false);
 
-  const canAddPayment = bill.status === "Pending" || bill.status === "Partially Paid";
+  React.useEffect(() => {
+    let active = true;
+    async function restoreIntent() {
+      if (!configured) throw new Error("Payment session is unavailable.");
+      const { createBrowserClient } = await import("@/lib/supabase");
+      const client = createBrowserClient(url as string, anon as string);
+      const identity = await client.auth.getUser();
+      if (!identity?.data.user || identity.error)
+        throw new Error("Payment session is unavailable.");
+      if (!active) return;
+      setSupabase(client);
+      const key = `hh:ap-payment:${identity.data.user.id}:${bill.id}`;
+      const pending = getPendingSubmission(localStorage, key);
+      if (!active) return;
+      setIntentStorageKey(key);
+      setHasPendingPayment(Boolean(pending));
+      if (pending) {
+        const draft = JSON.parse(pending.fingerprint);
+        setPaymentDate(draft.payment_date);
+        setPaymentAmount(String(draft.amount));
+        setPaymentMethod(draft.payment_method ?? "");
+        setPaymentRef(draft.reference_no ?? "");
+        setPaymentNotes(draft.notes ?? "");
+      }
+    }
+    void restoreIntent().catch((error) => {
+      if (active)
+        setError(error instanceof Error ? error.message : "Payment session is unavailable.");
+    });
+    return () => {
+      active = false;
+    };
+  }, [bill.id, configured, url, anon]);
+
+  const canAddPayment =
+    hasPendingPayment || bill.status === "Pending" || bill.status === "Partially Paid";
   const canVoid =
     bill.status === "Pending" || bill.status === "Partially Paid" || bill.status === "Paid";
 
@@ -85,6 +121,7 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
 
   const handleAddPayment = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (paymentInFlight.current) return;
     if (!canAddPayment) {
       setError("Only pending bills can be paid.");
       return;
@@ -94,23 +131,36 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
       setError("Enter a valid amount.");
       return;
     }
+    paymentInFlight.current = true;
     setSubmitting(true);
     setError(null);
     try {
+      if (!intentStorageKey) throw new Error("Payment session is unavailable.");
+      const draft = {
+        payment_date: paymentDate,
+        amount: amt,
+        payment_method: paymentMethod || undefined,
+        reference_no: paymentRef || undefined,
+        notes: paymentNotes || undefined,
+      };
+      const intent = beginPendingSubmission(localStorage, intentStorageKey, draft);
+      setHasPendingPayment(true);
       const response = await fetch(`/api/bills/${encodeURIComponent(bill.id)}/payments`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          payment_date: paymentDate,
-          amount: amt,
-          payment_method: paymentMethod || undefined,
-          reference_no: paymentRef || undefined,
-          notes: paymentNotes || undefined,
-        }),
+        body: JSON.stringify({ ...draft, idempotency_key: intent.key }),
       });
-      if (!response.ok) {
-        throw new Error(await readApiMessage(response, "Failed to add payment."));
+      const result = await response.json();
+      if (!response.ok || result.ok !== true) {
+        if (result.outcome === "rejected") {
+          localStorage.removeItem(intentStorageKey);
+          setHasPendingPayment(false);
+        }
+        throw new Error(result.message ?? "Failed to add payment.");
       }
+      if (getPendingSubmission(localStorage, intentStorageKey)?.key === intent.key)
+        localStorage.removeItem(intentStorageKey);
+      setHasPendingPayment(false);
       setPaymentAmount("");
       setPaymentMethod("");
       setPaymentRef("");
@@ -120,6 +170,7 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to add payment.");
     } finally {
+      paymentInFlight.current = false;
       setSubmitting(false);
     }
   };
@@ -309,6 +360,7 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
             size="sm"
             type="button"
             className={billsGhostButtonClass}
+            disabled={!supabase}
             onClick={() => {
               const raw = (bill.attachment_url ?? "").trim();
               if (!raw) return;
@@ -427,7 +479,7 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
                 form="bill-add-payment-form"
                 size="sm"
                 className={billsPrimaryButtonClass}
-                disabled={submitting}
+                disabled={submitting || !intentStorageKey}
               >
                 <SubmitSpinner loading={submitting} className="mr-2" />
                 {submitting ? "Saving…" : "Add payment"}
@@ -439,6 +491,7 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
             <div className="space-y-1.5">
               <NeoFieldLabel required>Payment date</NeoFieldLabel>
               <NeoInput
+                disabled={submitting || !intentStorageKey}
                 type="date"
                 value={paymentDate}
                 onChange={(e) => setPaymentDate(e.target.value)}
@@ -449,6 +502,7 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
             <div className="space-y-1.5">
               <NeoFieldLabel required>Amount</NeoFieldLabel>
               <NeoInput
+                disabled={submitting || !intentStorageKey}
                 type="number"
                 step="0.01"
                 min="0"
@@ -463,6 +517,7 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
             <div className="space-y-1.5">
               <NeoFieldLabel>Payment method</NeoFieldLabel>
               <NeoInput
+                disabled={submitting || !intentStorageKey}
                 value={paymentMethod}
                 onChange={(e) => setPaymentMethod(e.target.value)}
                 className="h-11 rounded-hh-standard"
@@ -472,6 +527,7 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
             <div className="space-y-1.5">
               <NeoFieldLabel>Reference no.</NeoFieldLabel>
               <NeoInput
+                disabled={submitting || !intentStorageKey}
                 value={paymentRef}
                 onChange={(e) => setPaymentRef(e.target.value)}
                 className="h-11 rounded-hh-standard"
@@ -480,6 +536,7 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
             <div className="space-y-1.5">
               <NeoFieldLabel>Notes</NeoFieldLabel>
               <NeoInput
+                disabled={submitting || !intentStorageKey}
                 value={paymentNotes}
                 onChange={(e) => setPaymentNotes(e.target.value)}
                 className="h-11 rounded-hh-standard"

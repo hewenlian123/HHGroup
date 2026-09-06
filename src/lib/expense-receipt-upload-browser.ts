@@ -33,7 +33,6 @@ export async function uploadReceiptToStorage(
   _keySuffix: string
 ): Promise<ExpenseReceiptUploadSlot> {
   void _supabase;
-  void _keySuffix;
   const fileToUpload = file;
   const storedFileName = fileToUpload.name || "receipt";
   const storedMimeType = fileToUpload.type || "application/octet-stream";
@@ -42,6 +41,7 @@ export async function uploadReceiptToStorage(
   try {
     const fd = new FormData();
     fd.set("file", fileToUpload);
+    if (/^INBOX-UP-[a-f0-9]{64}$/i.test(_keySuffix)) fd.set("receipt_reference", _keySuffix);
     const res = await fetch("/api/quick-expense/upload-attachment", {
       method: "POST",
       body: fd,

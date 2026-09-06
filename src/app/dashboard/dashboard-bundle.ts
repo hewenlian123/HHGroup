@@ -2,33 +2,17 @@ import { cache } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   computeDashboardStatsFromProjects,
+  buildProjectRiskOverview,
   getApBillsSummary,
   getExpensesThisMonth,
   getLaborCostThisWeek,
   getOverdueInvoices,
-  getProjectRiskOverview,
   getProjectsDashboard,
   getRecentTransactions,
-  type ProjectRiskOverview,
 } from "@/lib/data";
 import { getCanonicalProjectProfitBatch } from "@/lib/profit-engine";
 import { getProjectContractReviewSummary } from "@/lib/financial/project-financial-review";
 import type { ProjectContractReviewSummary } from "@/lib/financial/project-financial-review";
-
-const emptyRiskOverview: ProjectRiskOverview = {
-  summary: { highCount: 0, overBudgetCount: 0, laborOverCount: 0, lowRunwayCount: 0 },
-  projects: [],
-};
-
-export const getProjectRiskOverviewCached = cache(
-  async (supabase: SupabaseClient): Promise<ProjectRiskOverview> => {
-    try {
-      return await getProjectRiskOverview(supabase);
-    } catch {
-      return emptyRiskOverview;
-    }
-  }
-);
 
 /**
  * Single-flight projects + canonical profit map + dashboard stats for one HTTP request.
@@ -40,6 +24,7 @@ export const loadDashboardProjectsBundle = cache(async (supabase: SupabaseClient
     projects.map((p) => p.id),
     supabase
   );
+  const riskOverview = buildProjectRiskOverview(projects, profitMap);
   const contractReview = getProjectContractReviewSummary(
     projects.map((project) => ({
       id: project.id,
@@ -59,55 +44,29 @@ export const loadDashboardProjectsBundle = cache(async (supabase: SupabaseClient
     totalProjects: projects.length,
     activeProjects: projects.filter((p) => p.status === "active").length,
   };
-  return { projects, profitMap, stats, contractReview };
+  return { projects, profitMap, stats, contractReview, riskOverview };
 });
 
 export const emptyDashboardContractReview: ProjectContractReviewSummary =
   getProjectContractReviewSummary([]);
 
-export const getRecentTransactionsCached = cache(async (limit = 20) =>
-  getRecentTransactions(limit)
+export const getRecentTransactionsCached = cache(async (limit: number, supabase: SupabaseClient) =>
+  getRecentTransactions(limit, supabase)
 );
 
-const defaultAp = {
-  totalOutstanding: 0,
-  overdueCount: 0,
-  overdueAmount: 0,
-  dueThisWeekCount: 0,
-  dueThisWeekAmount: 0,
-  paidThisMonthAmount: 0,
-};
-
 /** Dedupes overlapping KPI + main dashboard fetches in the same request. */
-export const getApBillsSummaryCached = cache(async (supabase: SupabaseClient | null) => {
-  if (!supabase) return defaultAp;
-  try {
-    return await getApBillsSummary(supabase);
-  } catch {
-    return defaultAp;
-  }
-});
+export const getApBillsSummaryCached = cache(async (supabase: SupabaseClient) =>
+  getApBillsSummary(supabase)
+);
 
-export const getOverdueInvoicesCached = cache(async () => {
-  try {
-    return await getOverdueInvoices();
-  } catch {
-    return [];
-  }
-});
+export const getOverdueInvoicesCached = cache(async (supabase: SupabaseClient) =>
+  getOverdueInvoices(supabase)
+);
 
-export const getLaborCostThisWeekCached = cache(async () => {
-  try {
-    return await getLaborCostThisWeek();
-  } catch {
-    return 0;
-  }
-});
+export const getLaborCostThisWeekCached = cache(async (supabase: SupabaseClient) =>
+  getLaborCostThisWeek(supabase)
+);
 
-export const getExpensesThisMonthCached = cache(async () => {
-  try {
-    return await getExpensesThisMonth();
-  } catch {
-    return 0;
-  }
-});
+export const getExpensesThisMonthCached = cache(async (supabase: SupabaseClient) =>
+  getExpensesThisMonth(supabase)
+);

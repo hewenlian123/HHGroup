@@ -4,10 +4,18 @@ const authAdmin = vi.hoisted(() => ({
   createUser: vi.fn(),
   listUsers: vi.fn(),
   updateUserById: vi.fn(),
+  organization: vi.fn(),
+  membership: vi.fn(),
 }));
 
 vi.mock("@supabase/supabase-js", () => ({
-  createClient: vi.fn(() => ({ auth: { admin: authAdmin } })),
+  createClient: vi.fn(() => ({
+    auth: { admin: authAdmin },
+    from: (table: string) =>
+      table === "organizations"
+        ? { select: () => ({ not: () => ({ single: authAdmin.organization }) }) }
+        : { upsert: authAdmin.membership },
+  })),
 }));
 
 import { createClient } from "@supabase/supabase-js";
@@ -26,6 +34,10 @@ describe("E2E Auth owner lifecycle", () => {
     authAdmin.createUser.mockReset();
     authAdmin.listUsers.mockReset();
     authAdmin.updateUserById.mockReset();
+    authAdmin.organization
+      .mockReset()
+      .mockResolvedValue({ data: { id: "company-org" }, error: null });
+    authAdmin.membership.mockReset().mockResolvedValue({ error: null });
   });
 
   afterEach(() => {
@@ -86,6 +98,18 @@ describe("E2E Auth owner lifecycle", () => {
     expect(provision).toBeTypeOf("function");
     await provision?.();
 
+    expect(authAdmin.membership).toHaveBeenCalledWith({
+      organization_id: "company-org",
+      user_id: "existing-owner-id",
+      role: "owner",
+      status: "active",
+    });
+    expect(authAdmin.membership).toHaveBeenCalledWith({
+      organization_id: "company-org",
+      user_id: "existing-assistant-id",
+      role: "assistant",
+      status: "active",
+    });
     expect(authAdmin.updateUserById).toHaveBeenCalledTimes(2);
     expect(authAdmin.updateUserById).toHaveBeenNthCalledWith(1, "existing-owner-id", {
       app_metadata: { role: "owner" },

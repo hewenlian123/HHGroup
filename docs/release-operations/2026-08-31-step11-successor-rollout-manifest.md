@@ -1,9 +1,15 @@
 # HH Group step 11 successor rollout manifest
 
-**Status:** PRE-DEPLOY READY — non-authorizing. The named operator's Dashboard
-backup visibility, selection, and restore-flow access are verified. This
-manifest does not authorize a Production migration, data write, restore, or
-application deployment.
+**Status:** EXECUTED, THEN STOPPED ON PRODUCTION SMOKE FAILURE. Step 11 and the
+exact successor application were deployed under explicit authorization, but
+the critical smoke exposed database/API errors. No restore, follow-up
+migration, Production data repair, rollback, or additional deployment is
+authorized by this manifest.
+
+**Execution record:** See
+[2026-08-31-invoice-milestone-step11-operator-record.md](2026-08-31-invoice-milestone-step11-operator-record.md)
+for the exact push, migration, catalog verification, Vercel deployment, smoke,
+failure evidence, closed window, and continuing scoped write freeze.
 
 **Release lineage:** parent commit
 `a625bec077fc2fde5d14e33787209022a0a6f4ea` already contains the certified HH

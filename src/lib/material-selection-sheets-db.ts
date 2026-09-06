@@ -1,7 +1,6 @@
 import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { getServerSupabaseAdminNoStore } from "@/lib/supabase-server";
 import type {
   MaterialSelectionItem,
   MaterialSelectionItemDraft,
@@ -19,9 +18,9 @@ const ITEM_COLS =
   "id, selection_id, area_name, category, item_name, brand, sku, size, color, finish, image_url, notes, status, sort_order, created_at, updated_at";
 
 function client(explicitClient?: SupabaseClient): SupabaseClient {
-  const c = explicitClient ?? getServerSupabaseAdminNoStore();
+  const c = explicitClient;
   if (!c) {
-    throw new Error("Supabase privileged server client is not configured for material selections.");
+    throw new Error("Authenticated material selections session is required.");
   }
   return c;
 }
@@ -104,7 +103,8 @@ export async function listMaterialSelectionSheets(
     .order("updated_at", { ascending: false })
     .order("created_at", { ascending: false });
   if (error) throw new Error(error.message ?? "Failed to load material selections.");
-  return (data ?? []).map((row) => toSheet(row as Record<string, unknown>));
+  if (!Array.isArray(data)) throw new Error("Material selections are unavailable.");
+  return data.map((row) => toSheet(row as Record<string, unknown>));
 }
 
 export async function getMaterialSelectionSheet(
@@ -127,6 +127,7 @@ export async function getMaterialSelectionSheet(
     .order("sort_order", { ascending: true })
     .order("created_at", { ascending: true });
   if (itemError) throw new Error(itemError.message ?? "Failed to load material items.");
+  if (!Array.isArray(itemRows)) throw new Error("Material items are unavailable.");
 
   return {
     ...toSheet(sheetRow as Record<string, unknown>),
@@ -143,6 +144,7 @@ export async function createMaterialSelectionSheet(
   if (!title) throw new Error("Title is required.");
 
   const payload = {
+    ...(draft.organizationId ? { organization_id: draft.organizationId } : {}),
     selection_number: generateSelectionNumber(),
     title,
     customer_id: nonEmptyText(draft.customerId),
@@ -197,11 +199,6 @@ export async function addMaterialSelectionItem(
     .select(ITEM_COLS)
     .single();
   if (error || !data) throw new Error(error?.message ?? "Failed to add material item.");
-
-  await c
-    .from("material_selections")
-    .update({ updated_at: new Date().toISOString() })
-    .eq("id", selectionId);
 
   return toItem(data as Record<string, unknown>);
 }

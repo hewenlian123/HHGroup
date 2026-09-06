@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { requireSupabaseOwnerOrAdminRequestClient } from "@/lib/auth-boundary";
+import { requireOrganizationRequestClient } from "@/lib/auth-boundary";
 import { getSitePhotoById, updateSitePhoto, deleteSitePhoto } from "@/lib/data";
+import { deleteDocument } from "@/lib/documents-db";
 
 const STORAGE_BUCKET = "attachments";
 
@@ -10,14 +11,17 @@ function withSessionCookies(response: NextResponse, sessionResponse: NextRespons
 }
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const guard = await requireSupabaseOwnerOrAdminRequestClient(_req, { noStore: true });
+  const guard = await requireOrganizationRequestClient(_req, { noStore: true });
   if (!guard.ok) return guard.response;
 
   try {
     const { id } = await params;
     const photo = await getSitePhotoById(id, guard.client);
     if (!photo) {
-      return NextResponse.json({ ok: false as const, message: "Not found." }, { status: 404 });
+      return withSessionCookies(
+        NextResponse.json({ ok: false as const, message: "Not found." }, { status: 404 }),
+        guard.sessionResponse
+      );
     }
     return withSessionCookies(
       NextResponse.json({ ok: true as const, photo }),
@@ -25,12 +29,15 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     );
   } catch (e) {
     const message = e instanceof Error ? e.message : "Failed to load photo.";
-    return NextResponse.json({ ok: false as const, message }, { status: 500 });
+    return withSessionCookies(
+      NextResponse.json({ ok: false as const, message }, { status: 500 }),
+      guard.sessionResponse
+    );
   }
 }
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const guard = await requireSupabaseOwnerOrAdminRequestClient(req, { noStore: true });
+  const guard = await requireOrganizationRequestClient(req, { noStore: true });
   if (!guard.ok) return guard.response;
 
   try {
@@ -48,9 +55,12 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       guard.client
     );
     if (!updated) {
-      return NextResponse.json(
-        { ok: false as const, message: "Not found or no changes." },
-        { status: 404 }
+      return withSessionCookies(
+        NextResponse.json(
+          { ok: false as const, message: "Not found or no changes." },
+          { status: 404 }
+        ),
+        guard.sessionResponse
       );
     }
     return withSessionCookies(
@@ -59,27 +69,55 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     );
   } catch (e) {
     const message = e instanceof Error ? e.message : "Failed to update photo.";
-    return NextResponse.json({ ok: false as const, message }, { status: 500 });
+    return withSessionCookies(
+      NextResponse.json({ ok: false as const, message }, { status: 500 }),
+      guard.sessionResponse
+    );
   }
 }
 
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const guard = await requireSupabaseOwnerOrAdminRequestClient(_req, { noStore: true });
+  const guard = await requireOrganizationRequestClient(_req, { noStore: true });
   if (!guard.ok) return guard.response;
 
   try {
     const { id } = await params;
     const photo = await getSitePhotoById(id, guard.client);
     if (!photo) {
-      return NextResponse.json({ ok: false as const, message: "Not found." }, { status: 404 });
+      return withSessionCookies(
+        NextResponse.json({ ok: false as const, message: "Not found." }, { status: 404 }),
+        guard.sessionResponse
+      );
     }
+    const writeGuard = await requireOrganizationRequestClient(_req, {
+      projectId: photo.project_id,
+      write: true,
+      noStore: true,
+    });
+    if (!writeGuard.ok) return writeGuard.response;
     if (photo.photo_url?.trim()) {
-      await guard.client.storage.from(STORAGE_BUCKET).remove([photo.photo_url.trim()]);
+      const path = photo.photo_url.trim();
+      const document = await writeGuard.client
+        .from("documents")
+        .select("id")
+        .eq("project_id", photo.project_id)
+        .eq("file_path", path)
+        .maybeSingle();
+      if (document.error) throw new Error("Photo metadata is unavailable.");
+      if (document.data) {
+        await deleteDocument(document.data.id, true, writeGuard.client);
+      } else if (!/^https?:\/\//i.test(path)) {
+        const removed = await writeGuard.client.storage.from(STORAGE_BUCKET).remove([path]);
+        if (removed.error) throw new Error(removed.error.message || "Photo cleanup failed.");
+      }
     }
-    await deleteSitePhoto(id, guard.client);
+    await deleteSitePhoto(id, writeGuard.client);
     return withSessionCookies(NextResponse.json({ ok: true as const }), guard.sessionResponse);
   } catch (e) {
     const message = e instanceof Error ? e.message : "Failed to delete photo.";
-    return NextResponse.json({ ok: false as const, message }, { status: 500 });
+    return withSessionCookies(
+      NextResponse.json({ ok: false as const, message }, { status: 500 }),
+      guard.sessionResponse
+    );
   }
 }

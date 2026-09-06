@@ -1,6 +1,8 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
+import { useProjectWorkspaceScope } from "@/components/projects/project-workspace-context";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import {
   Drawer,
@@ -65,6 +67,15 @@ function statusLabel(status: string) {
 }
 
 export default function InspectionLogPage() {
+  return (
+    <React.Suspense fallback={<p role="status">Loading workspace…</p>}>
+      <InspectionLogPageContent />
+    </React.Suspense>
+  );
+}
+
+function InspectionLogPageContent() {
+  const { projectId: scopedProjectId, embedded } = useProjectWorkspaceScope();
   const [entries, setEntries] = React.useState<InspectionRow[]>([]);
   const [projects, setProjects] = React.useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -90,7 +101,8 @@ export default function InspectionLogPage() {
   });
   const [searchQuery, setSearchQuery] = React.useState("");
   const [filtersOpen, setFiltersOpen] = React.useState(false);
-  const [projectFilter, setProjectFilter] = React.useState("");
+  const [selectedProjectFilter, setProjectFilter] = React.useState("");
+  const projectFilter = scopedProjectId || selectedProjectFilter;
   const [statusFilter, setStatusFilter] = React.useState("");
 
   const load = React.useCallback(async () => {
@@ -121,7 +133,7 @@ export default function InspectionLogPage() {
 
   const openModal = () => {
     setForm({
-      project_id: projects[0]?.id ?? "",
+      project_id: projectFilter || projects[0]?.id || "",
       inspection_type: "",
       inspector: "",
       inspection_date: "",
@@ -229,9 +241,28 @@ export default function InspectionLogPage() {
   return (
     <PageLayout
       divider={false}
-      className={cn("md:max-w-5xl", mobileListPagePaddingClass, "max-md:!gap-3")}
+      className={cn(
+        "md:max-w-5xl",
+        embedded ? "!max-w-none !p-0" : mobileListPagePaddingClass,
+        "max-md:!gap-3"
+      )}
       header={
         <>
+          {scopedProjectId && !embedded ? (
+            <Button asChild variant="ghost" className="min-h-11 self-start">
+              <Link href={`/projects/${encodeURIComponent(scopedProjectId)}?tab=inspections`}>
+                Back to project
+              </Link>
+            </Button>
+          ) : null}
+          {embedded ? (
+            <Link
+              href="/inspection-log"
+              className="inline-flex min-h-11 items-center self-start text-hh-metadata underline"
+            >
+              All projects · inspection log
+            </Link>
+          ) : null}
           <div className="hidden md:block">
             <PageHeader
               title="Inspection Log"
@@ -276,6 +307,7 @@ export default function InspectionLogPage() {
             <NeoSelect
               aria-label="Filter inspections by project"
               value={projectFilter}
+              disabled={Boolean(scopedProjectId)}
               onChange={(e) => setProjectFilter(e.target.value)}
               className="w-full"
             >
@@ -328,6 +360,7 @@ export default function InspectionLogPage() {
             <NeoSelect
               aria-label="Filter inspections by project"
               value={projectFilter}
+              disabled={Boolean(scopedProjectId)}
               onChange={(e) => setProjectFilter(e.target.value)}
               className="h-9 min-w-[160px]"
             >
@@ -578,6 +611,8 @@ export default function InspectionLogPage() {
               <NeoFieldLabel>Project</NeoFieldLabel>
               <NeoSelect
                 value={form.project_id}
+                aria-label="Project"
+                disabled={Boolean(scopedProjectId)}
                 onChange={(e) => setForm((f) => ({ ...f, project_id: e.target.value }))}
                 className="w-full"
               >

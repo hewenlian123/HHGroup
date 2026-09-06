@@ -34,6 +34,8 @@ const workerGridClass =
   "grid grid-cols-[minmax(8.5rem,1.75fr)_4.4rem_3.35rem_3.35rem_3.45rem_5.6rem_5.7rem] items-center gap-2";
 
 type Props = {
+  initialWorkerId?: string;
+  initialProjectId?: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: (result: DailyEntrySaveResult) => void;
@@ -642,8 +644,17 @@ const AddDailyEntryWorkerRow = React.memo(function AddDailyEntryWorkerRow({
   );
 });
 
-export function AddDailyEntryModal({ open, onOpenChange, onSuccess }: Props) {
-  const [projectId, setProjectId] = React.useState("");
+export function AddDailyEntryModal({
+  open,
+  onOpenChange,
+  onSuccess,
+  initialWorkerId,
+  initialProjectId,
+}: Props) {
+  const [projectId, setProjectId] = React.useState(initialProjectId ?? "");
+  React.useEffect(() => {
+    if (open) setProjectId(initialProjectId ?? "");
+  }, [open, initialProjectId]);
   const [workDate, setWorkDate] = React.useState(() => workerRateLocalYmd());
   const [projects, setProjects] = React.useState<LaborProjectOption[]>([]);
   const [workers, setWorkers] = React.useState<LaborWorker[]>([]);
@@ -689,7 +700,9 @@ export function AddDailyEntryModal({ open, onOpenChange, onSuccess }: Props) {
       })
       .then((body) => {
         if (cancelled) return;
-        const nextWorkers = body.workers ?? [];
+        const nextWorkers = initialWorkerId
+          ? (body.workers ?? []).filter((worker) => worker.id === initialWorkerId)
+          : (body.workers ?? []);
         setProjects(body.projects ?? []);
         setWorkers(nextWorkers);
         const nextSelection = defaultSelectionMap(nextWorkers);
@@ -724,7 +737,7 @@ export function AddDailyEntryModal({ open, onOpenChange, onSuccess }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [open, workDate]);
+  }, [open, workDate, initialWorkerId]);
 
   React.useEffect(() => {
     if (!open || !projectId) {

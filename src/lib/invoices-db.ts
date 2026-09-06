@@ -435,9 +435,10 @@ export async function getPaymentsByInvoiceId(
   return ((rows ?? []) as InvoicePaymentRow[]).map(toPayment);
 }
 
-function computeDerived(
+export function computeInvoiceDerived(
   inv: Invoice,
-  payments: InvoicePayment[]
+  payments: InvoicePayment[],
+  now = new Date()
 ): {
   paidTotal: number;
   balanceDue: number;
@@ -446,7 +447,7 @@ function computeDerived(
 } {
   const paidTotal = payments.filter((p) => p.status !== "Voided").reduce((s, p) => s + p.amount, 0);
   const balanceDue = Math.max(0, inv.total - paidTotal);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = now.toISOString().slice(0, 10);
   const hasPayments = payments.filter((p) => p.status !== "Voided").length > 0;
 
   if (inv.status === "Void")
@@ -509,7 +510,10 @@ export async function getInvoicesWithDerived(
   const payments = await getInvoicePayments(explicitClient);
   let withDerived: InvoiceWithDerived[] = list.map((inv) => {
     const invPayments = payments.filter((p) => p.invoiceId === inv.id);
-    const { paidTotal, balanceDue, computedStatus, daysOverdue } = computeDerived(inv, invPayments);
+    const { paidTotal, balanceDue, computedStatus, daysOverdue } = computeInvoiceDerived(
+      inv,
+      invPayments
+    );
     return { ...inv, paidTotal, balanceDue, computedStatus, daysOverdue };
   });
   if (filters?.status) withDerived = withDerived.filter((i) => i.computedStatus === filters.status);
@@ -571,7 +575,8 @@ export async function getInvoicesWithDerivedPaged(
     throwInvoiceError(invRes.error, HINT);
   }
 
-  const invoiceRows = ((invRes.data ?? []) as InvoiceRow[]).map((r) => toInvoice(r, []));
+  if (!Array.isArray(invRes.data)) financialDataUnavailable("invoices", null);
+  const invoiceRows = (invRes.data as InvoiceRow[]).map((r) => toInvoice(r, []));
   const invoiceIds = invoiceRows.map((r) => r.id).filter(Boolean);
 
   // Pull payments for only these invoices (batched)
@@ -581,8 +586,10 @@ export async function getInvoicesWithDerivedPaged(
       .from("invoice_payments")
       .select("id, invoice_id, amount, payment_date, paid_at, method, reference, memo, status")
       .in("invoice_id", invoiceIds);
-    if (!payRes.error && Array.isArray(payRes.data)) {
-      for (const p of (payRes.data ?? []) as InvoicePaymentRow[]) {
+    if (payRes.error) financialDataUnavailable("invoice_payments", payRes.error);
+    if (!Array.isArray(payRes.data)) financialDataUnavailable("invoice_payments", null);
+    {
+      for (const p of payRes.data as InvoicePaymentRow[]) {
         const payment = toPayment(p);
         const arr = paymentsByInvoiceId.get(payment.invoiceId) ?? [];
         arr.push(payment);
@@ -594,7 +601,10 @@ export async function getInvoicesWithDerivedPaged(
   // Compute derived per invoice
   let rows: InvoiceWithDerived[] = invoiceRows.map((inv) => {
     const invPayments = paymentsByInvoiceId.get(inv.id) ?? [];
-    const { paidTotal, balanceDue, computedStatus, daysOverdue } = computeDerived(inv, invPayments);
+    const { paidTotal, balanceDue, computedStatus, daysOverdue } = computeInvoiceDerived(
+      inv,
+      invPayments
+    );
     return { ...inv, paidTotal, balanceDue, computedStatus, daysOverdue };
   });
 
@@ -627,7 +637,10 @@ export async function getInvoiceByIdWithDerived(
   const inv = await getInvoiceById(id, explicitClient);
   if (!inv) return null;
   const payments = await getPaymentsByInvoiceId(id, explicitClient);
-  const { paidTotal, balanceDue, computedStatus, daysOverdue } = computeDerived(inv, payments);
+  const { paidTotal, balanceDue, computedStatus, daysOverdue } = computeInvoiceDerived(
+    inv,
+    payments
+  );
   return { ...inv, paidTotal, balanceDue, computedStatus, daysOverdue };
 }
 
@@ -642,17 +655,24 @@ export type OverdueInvoiceRow = {
 };
 
 /** Invoices with balance due and past due date. For dashboard Overdue Invoices widget. */
-export async function getOverdueInvoices(): Promise<OverdueInvoiceRow[]> {
-  const list = await getInvoicesWithDerived();
+export async function getOverdueInvoices(
+  explicitClient?: SupabaseClient
+): Promise<OverdueInvoiceRow[]> {
+  const list = await getInvoicesWithDerived(undefined, explicitClient);
   const overdue = list.filter((i) => i.computedStatus === "Overdue" && i.balanceDue > 0);
   if (overdue.length === 0) return [];
   const projectIds = Array.from(
     new Set(overdue.map((i) => i.projectId).filter(Boolean))
   ) as string[];
-  const c = client();
-  const { data: projRows } = await c.from("projects").select("id, name").in("id", projectIds);
+  const c = client(explicitClient);
+  const { data: projRows, error: projectError } = await c
+    .from("projects")
+    .select("id, name")
+    .in("id", projectIds);
+  if (projectError) financialDataUnavailable("overdue invoice projects", projectError);
+  if (!Array.isArray(projRows)) financialDataUnavailable("overdue invoice projects", null);
   const projectNameById = new Map(
-    (projRows ?? []).map((r: { id: string; name?: string }) => [r.id, r.name ?? ""])
+    projRows.map((r: { id: string; name?: string }) => [r.id, r.name ?? ""])
   );
   return overdue.map((i) => ({
     id: i.id,
@@ -1316,16 +1336,16 @@ export async function getProjectRevenueAndCollected(
 }
 
 /** Company-wide revenue (sum invoices.total where not Void) and collected (sum invoice_payments.amount where not Voided). */
-export async function getCompanyRevenueAndCollected(): Promise<{
+export async function getCompanyRevenueAndCollected(explicitClient?: SupabaseClient): Promise<{
   revenue: number;
   collected: number;
 }> {
-  const c = client();
+  const c = client(explicitClient);
   const { data: invRows, error: invErr } = await c
     .from("invoices")
     .select("id, total, status")
     .neq("status", "Void");
-  if (invErr) return { revenue: 0, collected: 0 };
+  if (invErr) financialDataUnavailable("company invoice revenue", invErr);
   const receivableRows = (invRows ?? [])
     .map((r) => r as { id: string; total?: number; status?: string | null })
     .filter((row) => invoiceCountsTowardReceivable(row.status));
@@ -1333,7 +1353,7 @@ export async function getCompanyRevenueAndCollected(): Promise<{
   const { data: payRows, error: payErr } = await c
     .from("invoice_payments")
     .select("amount, status");
-  if (payErr) return { revenue, collected: 0 };
+  if (payErr) financialDataUnavailable("company invoice collections", payErr);
   const collected = (payRows ?? []).reduce((s, r) => {
     const row = r as { amount?: number; status?: string };
     if (row.status === "Voided") return s;
@@ -1353,8 +1373,11 @@ export type InvoiceRecentRow = {
 };
 
 /** Recent invoices for dashboard activity feed. Ordered by created_at desc, limit. */
-export async function getInvoicesRecent(limit: number): Promise<InvoiceRecentRow[]> {
-  const c = client();
+export async function getInvoicesRecent(
+  limit: number,
+  explicitClient?: SupabaseClient
+): Promise<InvoiceRecentRow[]> {
+  const c = client(explicitClient);
   const { data: rows, error } = await c
     .from("invoices")
     .select("id, project_id, invoice_no, client_name, total, created_at, projects(name)")

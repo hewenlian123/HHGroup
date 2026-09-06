@@ -48,6 +48,7 @@ test("Pricing Inspector is presentation over the existing customer-total contrac
 test("Payment Schedule keeps fixed-dollar, partial, and server-authoritative behavior", () => {
   const payment = source("src/app/estimates/_components/estimate-payment-schedule.tsx");
   const database = source("src/lib/estimates-db.ts");
+  const domain = source("src/lib/estimate-domain.ts");
   const actions = source("src/app/estimates/[id]/actions.ts");
 
   for (const action of [
@@ -64,7 +65,8 @@ test("Payment Schedule keeps fixed-dollar, partial, and server-authoritative beh
   assert.match(payment, /const isOverallocated = remaining < -0\.005/);
   assert.match(payment, /canCreateMilestoneInvoices/);
   assert.match(database, /return \["Draft", "Sent"\]\.includes\(est\.status as string\)/);
-  assert.match(database, /return item\.amount/);
+  assert.match(database, /paymentMilestoneAmount/);
+  assert.match(domain, /return item\.amount/);
   assert.match(database, /await assertPaymentScheduleAllocation/);
   assert.match(actions, /requireSupabaseOwnerOrAdminServerAction/);
   assert.match(actions, /Only Approved or Converted estimates can create milestone invoices/);

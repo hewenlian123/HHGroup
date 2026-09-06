@@ -444,29 +444,43 @@ export function ReceiptQueueWorkspace() {
   const {
     data: receiptQueueData,
     isPending: receiptQueuePending,
-    isError: receiptQueueError,
+    isError: queueReadError,
   } = useQuery({
     queryKey: receiptQueueQueryKey,
     queryFn: () => fetchReceiptQueue(supabase!),
     enabled: Boolean(supabase),
     placeholderData: keepPreviousData,
   });
-  const { data: expensesQueryData } = useQuery({
+  const { data: expensesQueryData, isError: expensesReadError } = useQuery({
     queryKey: buildExpensesQueryKey(defaultExpenseListSort),
     queryFn: () => fetchExpenses(defaultExpenseListSort),
     placeholderData: keepPreviousData,
   });
-  const { data: workersQueryData } = useQuery({
+  const { data: workersQueryData, isError: workersReadError } = useQuery({
     queryKey: workersQueryKey,
-    queryFn: fetchWorkers,
+    queryFn: () => fetchWorkers(supabase ?? undefined),
     placeholderData: keepPreviousData,
   });
-  const { data: projectsQueryData } = useQuery({
+  const { data: projectsQueryData, isError: projectsReadError } = useQuery({
     queryKey: financialProjectsQueryKey,
     queryFn: () => fetchFinancialProjects(supabase!),
     enabled: Boolean(supabase),
     placeholderData: keepPreviousData,
   });
+
+  const { data: accountQueryData, isError: accountsReadError } = useQuery({
+    queryKey: ["receipt-review-payment-accounts"],
+    queryFn: () => getPaymentAccounts(),
+  });
+  React.useEffect(() => {
+    if (accountQueryData) setPaymentAccountRows(accountQueryData);
+  }, [accountQueryData]);
+  const receiptQueueError =
+    queueReadError ||
+    expensesReadError ||
+    workersReadError ||
+    projectsReadError ||
+    accountsReadError;
 
   React.useLayoutEffect(() => {
     if (receiptQueueData === undefined) return;
@@ -654,39 +668,36 @@ export function ReceiptQueueWorkspace() {
 
   const refreshAll = React.useCallback(async (): Promise<ReceiptQueueRow[]> => {
     await flushPendingDebouncedPatches();
-    let list: ReceiptQueueRow[] = [];
-    let expList: Expense[] = [];
-    let workerList: WorkerRow[] = [];
     const settled = await Promise.allSettled([
-      supabase ? fetchReceiptQueue(supabase) : Promise.resolve([] as ReceiptQueueRow[]),
-      getExpenses(defaultExpenseListSort, { includeLinkedBankTx: false }),
-      getWorkers(),
+      queryClient.fetchQuery({
+        queryKey: receiptQueueQueryKey,
+        queryFn: async () => {
+          if (!supabase) throw new Error("Receipt queue unavailable.");
+          return mergeReceiptQueueFetchWithPrev(await fetchReceiptQueue(supabase), rowsRef.current);
+        },
+        staleTime: 0,
+      }),
+      queryClient.fetchQuery({
+        queryKey: buildExpensesQueryKey(defaultExpenseListSort),
+        queryFn: () => getExpenses(defaultExpenseListSort, { includeLinkedBankTx: false }),
+        staleTime: 0,
+      }),
+      queryClient.fetchQuery({
+        queryKey: workersQueryKey,
+        queryFn: () => getWorkers(),
+        staleTime: 0,
+      }),
     ]);
-    const q = settled[0];
-    if (q.status === "fulfilled") list = q.value;
-    else {
-      const msg = q.reason instanceof Error ? q.reason.message : String(q.reason);
-      toast({ title: "Receipt queue", description: msg, variant: "error" });
+    for (const result of settled) {
+      if (result.status === "rejected")
+        toast({
+          title: "Receipt review unavailable",
+          description:
+            result.reason instanceof Error ? result.reason.message : "Please reload and retry.",
+          variant: "error",
+        });
     }
-    const ex = settled[1];
-    if (ex.status === "fulfilled") expList = ex.value;
-    else {
-      const msg = ex.reason instanceof Error ? ex.reason.message : String(ex.reason);
-      toast({ title: "Expenses", description: msg, variant: "error" });
-    }
-    const w = settled[2];
-    if (w.status === "fulfilled") workerList = w.value as WorkerRow[];
-    const mergedList = mergeReceiptQueueFetchWithPrev(list, rowsRef.current);
-    if (mountedRef.current) {
-      startTransition(() => {
-        setExpenses(expList);
-        setWorkers(workerList);
-      });
-    }
-    queryClient.setQueryData(receiptQueueQueryKey, mergedList);
-    queryClient.setQueryData(buildExpensesQueryKey(defaultExpenseListSort), expList);
-    queryClient.setQueryData(workersQueryKey, workerList);
-    return mergedList;
+    return settled[0].status === "fulfilled" ? settled[0].value : rowsRef.current;
   }, [supabase, toast, flushPendingDebouncedPatches, queryClient]);
 
   const softRefreshGenRef = React.useRef(0);
@@ -825,20 +836,6 @@ export function ReceiptQueueWorkspace() {
     },
     [paymentAccountRows, patchRowImmediate]
   );
-
-  React.useEffect(() => {
-    let alive = true;
-    void getPaymentAccounts()
-      .then((accounts) => {
-        if (alive) setPaymentAccountRows(accounts);
-      })
-      .catch(() => {
-        if (alive) setPaymentAccountRows([]);
-      });
-    return () => {
-      alive = false;
-    };
-  }, []);
 
   React.useEffect(() => {
     if (paymentAccountRows.length === 0) return;
@@ -1537,7 +1534,7 @@ export function ReceiptQueueWorkspace() {
   );
 
   const handleAddAll = React.useCallback(async () => {
-    if (bulkAddInFlightRef.current) return;
+    if (bulkAddInFlightRef.current || receiptQueueError) return;
     const targets = rows.filter((r) => r.status !== "processing");
     if (!targets.length || !supabase) return;
     bulkAddInFlightRef.current = true;
@@ -1600,7 +1597,7 @@ export function ReceiptQueueWorkspace() {
         setBulkAdding(false);
       }
     }
-  }, [rows, supabase, toast, softRefreshQueueAndExpenses, router, previewUrls]);
+  }, [rows, supabase, toast, softRefreshQueueAndExpenses, router, previewUrls, receiptQueueError]);
 
   const onReplacePick = React.useCallback((rowId: string) => {
     setReplaceTargetId(rowId);
@@ -1786,7 +1783,9 @@ export function ReceiptQueueWorkspace() {
                     RQ_BTN,
                     "hover:bg-[var(--hh-accent-hover)]"
                   )}
-                  disabled={bulkAdding || !supabase || addAllEligibleCount === 0}
+                  disabled={
+                    bulkAdding || receiptQueueError || !supabase || addAllEligibleCount === 0
+                  }
                   onClick={() => void handleAddAll()}
                 >
                   {bulkAdding ? (
@@ -2073,9 +2072,9 @@ export function ReceiptQueueWorkspace() {
             role="alert"
             className="rounded-hh-standard border border-[var(--hh-danger-border)] bg-[var(--hh-danger-soft-fill)] px-4 py-3 text-sm text-[var(--hh-danger)]"
           >
-            <p className="font-semibold">Unable to load receipt queue.</p>
+            <p className="font-semibold">Unable to load receipt review data.</p>
             <p className="mt-1 text-[var(--hh-text-secondary)]">
-              Check the connection and reload the page. No receipt data was changed.
+              Check the connection and reload the page to retry.
             </p>
           </div>
         ) : null}
@@ -2101,7 +2100,7 @@ export function ReceiptQueueWorkspace() {
               </p>
             </div>
           </>
-        ) : rows.length > 0 ? (
+        ) : rows.length > 0 && !receiptQueueError ? (
           <>
             <div className="overflow-hidden rounded-hh-panel border border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)]">
               <div className="flex flex-wrap items-start justify-between gap-3 px-4 py-3 sm:items-center">

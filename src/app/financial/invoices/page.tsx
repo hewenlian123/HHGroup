@@ -314,20 +314,37 @@ export default function InvoicesPage() {
 function InvoicesPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const customerId = searchParams.get("customerId") ?? "";
   const [invoices, setInvoices] = React.useState<InvoiceWithDerived[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [refreshing, setRefreshing] = React.useState(false);
   const [loadError, setLoadError] = React.useState<string | null>(null);
-  const [search, setSearch] = React.useState("");
-  const [statusFilter, setStatusFilter] = React.useState<"" | InvoiceComputedStatus>("");
-  const [projectFilter, setProjectFilter] = React.useState("");
+  const search = searchParams.get("q") ?? "";
+  const statusFilter =
+    STATUS_OPTIONS.find((option) => option.value === searchParams.get("status"))?.value ?? "";
+  const projectFilter = searchParams.get("project") ?? "";
+  const updateFilters = React.useCallback((values: Record<string, string>) => {
+    const params = new URLSearchParams(window.location.search);
+    for (const [key, value] of Object.entries(values)) {
+      if (value) params.set(key, value);
+      else params.delete(key);
+    }
+    params.delete("page");
+    const query = params.toString();
+    window.history.replaceState(null, "", `/financial/invoices${query ? `?${query}` : ""}`);
+  }, []);
+  const invoiceDetailHref = (invoiceId: string) => {
+    const query = searchParams.toString();
+    const returnTo = `/financial/invoices${query ? `?${query}` : ""}`;
+    return `/financial/invoices/${invoiceId}?${new URLSearchParams({ returnTo })}`;
+  };
   const [voidBusyId, setVoidBusyId] = React.useState<string | null>(null);
   const [projects, setProjects] = React.useState<Project[]>([]);
   const [filtersOpen, setFiltersOpen] = React.useState(false);
   const [desktopFiltersOpen, setDesktopFiltersOpen] = React.useState(false);
   const [summaryOpen, setSummaryOpen] = React.useState(false);
-  const [dateFrom, setDateFrom] = React.useState("");
-  const [dateTo, setDateTo] = React.useState("");
+  const dateFrom = searchParams.get("dateFrom") ?? "";
+  const dateTo = searchParams.get("dateTo") ?? "";
   const [voidTarget, setVoidTarget] = React.useState<InvoiceWithDerived | null>(null);
   const [deleteTarget, setDeleteTarget] = React.useState<InvoiceWithDerived | null>(null);
   const [deleteDependenciesOpen, setDeleteDependenciesOpen] = React.useState(false);
@@ -371,7 +388,9 @@ function InvoicesPageInner() {
   );
 
   const filtered = React.useMemo(() => {
-    let list = invoices;
+    let list = customerId
+      ? invoices.filter((invoice) => invoice.customerId === customerId)
+      : invoices;
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter(
@@ -395,7 +414,16 @@ function InvoicesPageInner() {
       });
     }
     return list;
-  }, [invoices, search, statusFilter, projectFilter, projectNameById, dateFrom, dateTo]);
+  }, [
+    invoices,
+    search,
+    statusFilter,
+    projectFilter,
+    projectNameById,
+    dateFrom,
+    dateTo,
+    customerId,
+  ]);
 
   const page = Math.max(1, Number(searchParams.get("page") ?? "1") || 1);
   const pageSize = 20;
@@ -634,24 +662,15 @@ function InvoicesPageInner() {
   }, [dateFrom, dateTo, projectFilter, projectNameById, statusFilter]);
 
   const clearAdvancedFilters = React.useCallback(() => {
-    setStatusFilter("");
-    setProjectFilter("");
-    setDateFrom("");
-    setDateTo("");
-  }, []);
+    updateFilters({ status: "", project: "", dateFrom: "", dateTo: "" });
+  }, [updateFilters]);
 
-  const clearFilterChip = React.useCallback((key: "status" | "project" | "date") => {
-    if (key === "status") {
-      setStatusFilter("");
-      return;
-    }
-    if (key === "project") {
-      setProjectFilter("");
-      return;
-    }
-    setDateFrom("");
-    setDateTo("");
-  }, []);
+  const clearFilterChip = React.useCallback(
+    (key: "status" | "project" | "date") => {
+      updateFilters(key === "date" ? { dateFrom: "", dateTo: "" } : { [key]: "" });
+    },
+    [updateFilters]
+  );
 
   return (
     <div
@@ -667,6 +686,24 @@ function InvoicesPageInner() {
           mobileListPagePaddingClass
         )}
       >
+        {customerId ? (
+          <p className="text-hh-control">
+            Customer:{" "}
+            {invoices.find((invoice) => invoice.customerId === customerId)?.clientName ||
+              "Selected customer"}{" "}
+            ·{" "}
+            <Link
+              href={`/financial/ar?${new URLSearchParams({ customerId })}`}
+              className="underline"
+            >
+              Balances & history
+            </Link>{" "}
+            ·{" "}
+            <Link href="/financial/invoices" className="underline">
+              All customers
+            </Link>
+          </p>
+        ) : null}
         <div className="hidden md:block">
           <div className="flex items-center justify-between gap-4 border-b border-white/10 pb-3">
             <div className="min-w-0">
@@ -712,7 +749,7 @@ function InvoicesPageInner() {
               <Input
                 placeholder="Invoice #, client, project…"
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => updateFilters({ q: e.target.value })}
                 className="h-11 pl-8 text-hh-table-cell tracking-normal text-[var(--hh-text-primary)] placeholder:text-[var(--hh-text-tertiary)]"
               />
             </div>
@@ -726,7 +763,7 @@ function InvoicesPageInner() {
             <Select
               id="invoice-mobile-filter-status"
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as "" | InvoiceComputedStatus)}
+              onChange={(e) => updateFilters({ status: e.target.value })}
               className="w-full"
             >
               {STATUS_OPTIONS.map((o) => (
@@ -743,7 +780,7 @@ function InvoicesPageInner() {
             <Select
               id="invoice-mobile-filter-project"
               value={projectFilter}
-              onChange={(e) => setProjectFilter(e.target.value)}
+              onChange={(e) => updateFilters({ project: e.target.value })}
               className="w-full"
             >
               <option value="">All projects</option>
@@ -761,14 +798,14 @@ function InvoicesPageInner() {
                 aria-label="Issue from"
                 type="date"
                 value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
+                onChange={(e) => updateFilters({ dateFrom: e.target.value })}
                 className="h-11 min-h-11 tabular-nums"
               />
               <Input
                 aria-label="Issue to"
                 type="date"
                 value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
+                onChange={(e) => updateFilters({ dateTo: e.target.value })}
                 className="h-11 min-h-11 tabular-nums"
               />
             </div>
@@ -886,7 +923,7 @@ function InvoicesPageInner() {
               <Input
                 placeholder="Invoice #, client, project…"
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => updateFilters({ q: e.target.value })}
                 className="h-11 min-h-11 border-transparent bg-[var(--hh-l2-operational-surface)] pl-8 text-hh-table-cell tracking-normal text-[var(--hh-text-primary)] placeholder:text-[var(--hh-text-tertiary)] shadow-none transition-colors focus-visible:border-[var(--hh-action-primary)] focus-visible:ring-[var(--hh-focus-ring)] xl:h-9 xl:min-h-9"
               />
             </div>
@@ -957,7 +994,7 @@ function InvoicesPageInner() {
                 <Select
                   id="invoice-filter-status"
                   value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value as "" | InvoiceComputedStatus)}
+                  onChange={(e) => updateFilters({ status: e.target.value })}
                   className="h-11 min-h-11 w-full bg-[var(--hh-l2-operational-surface)] xl:h-8 xl:min-h-8"
                 >
                   {STATUS_OPTIONS.map((o) => (
@@ -974,7 +1011,7 @@ function InvoicesPageInner() {
                 <Select
                   id="invoice-filter-project"
                   value={projectFilter}
-                  onChange={(e) => setProjectFilter(e.target.value)}
+                  onChange={(e) => updateFilters({ project: e.target.value })}
                   className="h-11 min-h-11 w-full bg-[var(--hh-l2-operational-surface)] xl:h-8 xl:min-h-8"
                 >
                   <option value="">All projects</option>
@@ -993,7 +1030,7 @@ function InvoicesPageInner() {
                   id="invoice-filter-issue-from"
                   type="date"
                   value={dateFrom}
-                  onChange={(e) => setDateFrom(e.target.value)}
+                  onChange={(e) => updateFilters({ dateFrom: e.target.value })}
                   className="h-11 min-h-11 bg-[var(--hh-l2-operational-surface)] tabular-nums xl:h-8 xl:min-h-8"
                 />
               </div>
@@ -1005,7 +1042,7 @@ function InvoicesPageInner() {
                   id="invoice-filter-issue-to"
                   type="date"
                   value={dateTo}
-                  onChange={(e) => setDateTo(e.target.value)}
+                  onChange={(e) => updateFilters({ dateTo: e.target.value })}
                   className="h-11 min-h-11 bg-[var(--hh-l2-operational-surface)] tabular-nums xl:h-8 xl:min-h-8"
                 />
               </div>
@@ -1067,11 +1104,7 @@ function InvoicesPageInner() {
                     financeToolbarButtonTextClass
                   )}
                   onClick={() => {
-                    setSearch("");
-                    setStatusFilter("");
-                    setProjectFilter("");
-                    setDateFrom("");
-                    setDateTo("");
+                    updateFilters({ q: "", status: "", project: "", dateFrom: "", dateTo: "" });
                   }}
                 >
                   Clear filters
@@ -1151,8 +1184,7 @@ function InvoicesPageInner() {
                   const rowActions = [
                     {
                       label: "View",
-                      onClick: () =>
-                        startTransition(() => router.push(`/financial/invoices/${inv.id}`)),
+                      onClick: () => startTransition(() => router.push(invoiceDetailHref(inv.id))),
                     },
                     ...(canRecordPayment
                       ? [
@@ -1196,13 +1228,11 @@ function InvoicesPageInner() {
                       key={inv.id}
                       data-testid={`invoice-row-${inv.invoiceNo}`}
                       className={listTableRowClassName}
-                      onClick={() =>
-                        startTransition(() => router.push(`/financial/invoices/${inv.id}`))
-                      }
+                      onClick={() => startTransition(() => router.push(invoiceDetailHref(inv.id)))}
                       onKeyDown={(e) => {
                         if (e.key === "Enter" || e.key === " ") {
                           e.preventDefault();
-                          startTransition(() => router.push(`/financial/invoices/${inv.id}`));
+                          startTransition(() => router.push(invoiceDetailHref(inv.id)));
                         }
                       }}
                       tabIndex={0}
@@ -1216,7 +1246,7 @@ function InvoicesPageInner() {
                           aria-label={`${inv.clientName} ${inv.invoiceNo}`}
                           onClick={(e) => {
                             e.stopPropagation();
-                            startTransition(() => router.push(`/financial/invoices/${inv.id}`));
+                            startTransition(() => router.push(invoiceDetailHref(inv.id)));
                           }}
                         >
                           <span className={cn(financePrimaryTextClass, "block truncate")}>
@@ -1308,8 +1338,7 @@ function InvoicesPageInner() {
                 const rowActions = [
                   {
                     label: "View",
-                    onClick: () =>
-                      startTransition(() => router.push(`/financial/invoices/${inv.id}`)),
+                    onClick: () => startTransition(() => router.push(invoiceDetailHref(inv.id))),
                   },
                   ...(canRecordPayment
                     ? [
@@ -1359,7 +1388,7 @@ function InvoicesPageInner() {
                         type="button"
                         className="min-w-0 flex-1 text-left"
                         onClick={() =>
-                          startTransition(() => router.push(`/financial/invoices/${inv.id}`))
+                          startTransition(() => router.push(invoiceDetailHref(inv.id)))
                         }
                       >
                         <div className={cn(financePrimaryTextClass, "truncate")}>
@@ -1425,7 +1454,7 @@ function InvoicesPageInner() {
                           financeToolbarButtonTextClass
                         )}
                       >
-                        <Link href={`/financial/invoices/${inv.id}`}>Open</Link>
+                        <Link href={invoiceDetailHref(inv.id)}>Open</Link>
                       </Button>
                       <Button
                         asChild

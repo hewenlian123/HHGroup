@@ -1,0 +1,153 @@
+{
+  "status": "LOCAL_CERTIFIED",
+  "productionStatus": "NOT_DEPLOYED",
+  "targets": {
+    "url": "https://hhprojectgroup.com",
+    "vercelProject": "prj_dXVKe7VCa2dq0Odze5Uff9PRaG6g",
+    "vercelTeam": "team_6AjM6hfkaSIowUzkMJN0cOw8",
+    "supabaseProject": "rzublljldebswurgdqxp",
+    "previousDeployment": "dpl_ATCPWSUmZKay7XobMs73QJuHhGJV"
+  },
+  "migrationSources": [
+    {
+      "source": "20260906091106_organization_project_authorization_foundation.sql",
+      "sha256": "fda5d2fbfa42253ff10507b9d321639e4f2792e7a745b90404016fa2d8090d06"
+    },
+    {
+      "source": "20260906093852_punch_list_active_fields_replay.sql",
+      "sha256": "4c55a2120dc86d1cda27c0c3e8736d40b3baa2764969cd31ed3c3d6b651cecd8"
+    },
+    {
+      "source": "20260906094223_organization_document_storage_authorization.sql",
+      "sha256": "f02258ea619af20e26694d9db1f22611ce829d7d4cac9c43cced85ba7ce9ca90"
+    },
+    {
+      "source": "20260906112152_ar_ap_settlement_integrity.sql",
+      "sha256": "6a5b1b112c286cea291aea3beb67e61890056735730a26c3c6dce2c5ffdc72b7"
+    },
+    {
+      "source": "20260906112353_estimate_project_conversion_atomic.sql",
+      "sha256": "9f43887cba58a68c0a456d21a39d7a0673ce589c9f7b411abf39e473071cad89"
+    },
+    {
+      "source": "20260906112422_company_authorization_and_project_integrity.sql",
+      "sha256": "2bbfb6011d2e6f7c3e78d6c427a81fa70a4cbf8b6ff8efe7774d2c70e0192ba6"
+    },
+    {
+      "source": "20260906112652_payroll_project_scope_integrity.sql",
+      "sha256": "ae8f3c9b33dd1b7f7b874825dab9b501e3eb55fe02ee4e9674a73280442e9964"
+    },
+    {
+      "source": "20260906113635_authenticated_company_receipt_intake.sql",
+      "sha256": "e1e3c7028931228eae38872ae5d46ac956f5ebbf0274909db1bad78266164155"
+    },
+    {
+      "source": "20260906113900_invoice_allocation_balance_integrity.sql",
+      "sha256": "e4992d462c242682449a369e0de688765f942cf4f00b438c2a9d970d7f0329e0"
+    },
+    {
+      "source": "20260906114628_protect_committed_payment_attachment_objects.sql",
+      "sha256": "2c86722dd5baa81ff94b7ce75d5d94ea62c808ccb7687a80fd0c3140476bf1f2"
+    },
+    {
+      "source": "20260906115947_secure_worker_projection_authority.sql",
+      "sha256": "04910b92ae2d956311dcc58c0fd68e1adf12c3fc51135de88d2b12d26423aa6d"
+    },
+    {
+      "source": "20260906120301_global_company_role_boundaries.sql",
+      "sha256": "1229f293690b2dd5d8bcfd25398e11c55134cfa6e2034cf6ea2837a1c92888b0"
+    },
+    {
+      "source": "20260906121743_estimate_conversion_server_authority.sql",
+      "sha256": "9982e17d85b661957d2089092c71d86a43e54371fd86a41f7799446b7c9f34e0"
+    }
+  ],
+  "evidence": {
+    "database": {
+      "files": 16,
+      "passed": 478,
+      "log": "/tmp/hh-production-db-release.log"
+    },
+    "cleanReplay": {
+      "result": "PASS",
+      "tablesPreserved": 122,
+      "rowsPreserved": 2346,
+      "expectedSchemaEqualsCleanReplay": true,
+      "columnContractDigest": "63e61d1c8c85d76139301d476eaeb757bd2ff3de328e488e7417883a5601a5e7",
+      "latestMigration": "20260906121743",
+      "currentDataHashesMatch": true
+    },
+    "originalPublicTableCountsAfterCleanup": {
+      "tablesCompared": 92,
+      "rowCountDifferences": [],
+      "result": "PASS"
+    },
+    "unit": {
+      "filesPassed": 218,
+      "testsPassed": 1465,
+      "log": "/tmp/hh-production-unit-release.log",
+      "isolatedReceiptTestsPassed": 23,
+      "isolatedReceiptLog": "/tmp/hh-production-receipt-isolated-gate.log",
+      "additionalFinalReceiptTestsPassed": 13
+    },
+    "sourceContracts": {
+      "passed": 196,
+      "skippedLocalOptIns": 5,
+      "log": "/tmp/hh-production-source-final.log"
+    },
+    "finalBuild": {
+      "result": "PASS",
+      "log": "/tmp/hh-production-build-certified.log"
+    },
+    "diffAudit": {
+      "files": 438,
+      "secret_candidates": [],
+      "debug_candidates": []
+    },
+    "finalLocalDataAudit": {
+      "result": "PASS",
+      "originalPublicTables": 92,
+      "originalPublicRows": 61,
+      "differences": [],
+      "additionalCounts": {
+        "authUsers": 2,
+        "storageObjects": 0,
+        "changeOrderAttachments": 0
+      }
+    },
+    "browser": {
+      "securityProjects": {
+        "passed": 111,
+        "log": "/tmp/hh-security-org-production-final.log"
+      },
+      "arAp": {
+        "arViewports": 3,
+        "apViewports": 3,
+        "finalLog": "/tmp/hh-ar-ap-production-e2e.log"
+      },
+      "estimateProjectInvoice": {
+        "viewports": 3,
+        "log": "/tmp/hh-estimate-production-rendered-e2e.log"
+      },
+      "laborExpensesAccounts": {
+        "readOnlyPassed": 21,
+        "mutationViewports": 3,
+        "finalLogs": [
+          "/tmp/hh-labor-expenses-certification-rerun-2.log",
+          "/tmp/hh-labor-expenses-1440-final-pass.log",
+          "/tmp/hh-labor-expenses-768-final-pass.log"
+        ]
+      }
+    },
+    "accountsSyncGuard": {
+      "passed": 26,
+      "log": "/tmp/hh-accounts-sync-guard-final.log"
+    },
+    "fixtures": {
+      "dbResidual": 0,
+      "storageResidual": 0,
+      "authResidual": 0
+    }
+  },
+  "productionMigrations": []
+}

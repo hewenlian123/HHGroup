@@ -1,3 +1,4 @@
+import { requireOrganizationServerActionClient } from "@/lib/auth-boundary";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireSupabaseOwnerOrAdminServerAction } from "@/lib/auth-boundary";
@@ -7,10 +8,7 @@ import { ServerDataLoadFallback } from "@/components/server-data-load-fallback";
 import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
 import { SetBreadcrumbEntityTitle } from "@/components/layout/set-breadcrumb-entity-title";
 import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
-import {
-  createServerSupabaseClient,
-  getServerSupabaseInternalNoStore,
-} from "@/lib/supabase-server";
+import { createServerSupabaseClient } from "@/lib/supabase-server";
 import {
   ProjectFinancialTable,
   ProjectFinancialTableCell,
@@ -28,6 +26,12 @@ export default async function ProjectLaborPage({ params }: Props) {
   const guard = await requireSupabaseOwnerOrAdminServerAction();
   if (!guard.ok) notFound();
   const { id } = await params;
+  const organizationGuard = await requireOrganizationServerActionClient({
+    projectId: id,
+    requireOwnerAdmin: true,
+    noStore: true,
+  });
+  if (!organizationGuard.ok) notFound();
 
   let project: Awaited<ReturnType<typeof getProjectById>> | undefined;
   try {
@@ -49,11 +53,11 @@ export default async function ProjectLaborPage({ params }: Props) {
   let entries: Awaited<ReturnType<typeof getLaborEntriesWithJoins>> = [];
   let workers: Awaited<ReturnType<typeof getWorkers>> = [];
   let dataLoadWarning: string | null = null;
-  const supabase = getServerSupabaseInternalNoStore();
+  const supabase = organizationGuard.client;
   try {
     [entries, workers] = await Promise.all([
       getLaborEntriesWithJoins({ project_id: id }, supabase ?? undefined),
-      getWorkers(),
+      getWorkers(organizationGuard.client),
     ]);
   } catch (e) {
     logServerPageDataError(`projects/${id}/labor entries`, e);

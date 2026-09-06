@@ -1,6 +1,9 @@
 "use client";
 
-import { syncRouterNonBlocking } from "@/components/perf/sync-router-non-blocking";
+import {
+  refreshRscNonBlocking,
+  syncRouterNonBlocking,
+} from "@/components/perf/sync-router-non-blocking";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import * as React from "react";
 import Link from "next/link";
@@ -15,6 +18,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { NativeSelect } from "@/components/ui/native-select";
+import { ErrorRetry } from "@/components/ui/system-state";
+import { PageHeader } from "@/components/base/page-layout";
 import { Input } from "@/components/ui/input";
 import {
   ConfirmDialog,
@@ -66,19 +72,21 @@ export type ProjectsListRow = {
   name: string;
   clientName: string | null;
   status: string;
-  budget: number;
-  revenue: number;
-  actualCost: number;
-  expenseCost: number;
-  laborCost: number;
-  reimbursementCost: number;
-  billedAmount: number;
-  paidAmount: number;
-  openAR: number;
-  profit: number;
-  marginPct: number;
+  budget: number | null;
+  revenue: number | null;
+  actualCost: number | null;
+  expenseCost: number | null;
+  laborCost: number | null;
+  reimbursementCost: number | null;
+  billedAmount: number | null;
+  paidAmount: number | null;
+  openAR: number | null;
+  profit: number | null;
+  marginPct: number | null;
   profitReadinessWarning: string | null;
-  financialSource: "snapshot" | "legacy";
+  financialSource: "snapshot" | "legacy" | "unavailable";
+  canViewFinancials?: boolean;
+  canManage?: boolean;
   updatedAt: string;
 };
 
@@ -104,12 +112,14 @@ const FIELD =
 const MODAL =
   "max-w-[480px] w-full gap-0 border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-8 shadow-operational rounded-hh-task sm:max-w-[480px]";
 
-function fmtUsd0(n: number): string {
+function fmtUsd0(n: number | null): string {
+  if (n == null || !Number.isFinite(n)) return "Unavailable";
   const rounded = Math.round(Math.abs(n));
   return `${n < -0.005 ? "−" : ""}$${rounded.toLocaleString("en-US")}`;
 }
 
-function profitClass(n: number): string {
+function profitClass(n: number | null): string {
+  if (n == null) return "text-[var(--hh-text-secondary)]";
   if (n > 0.005) return OS.emeraldAccent;
   if (n < -0.005) return OS.dangerAmount;
   return "text-[var(--hh-text-secondary)]";
@@ -179,10 +189,12 @@ function ProjectListStatusPill({ status }: { status: string }) {
 export function ProjectsListClient({
   rows,
   dataLoadWarning = null,
+  financialDataWarning = null,
   initialStatusFilter = "all",
 }: {
   rows: ProjectsListRow[];
   dataLoadWarning?: string | null;
+  financialDataWarning?: string | null;
   initialStatusFilter?: ProjectListStatusFilter;
 }) {
   const router = useRouter();
@@ -205,7 +217,7 @@ export function ProjectsListClient({
   const [filtersOpen, setFiltersOpen] = React.useState(false);
 
   React.useEffect(() => {
-    if (rows.length === 0) {
+    if (!rows.some((row) => row.canViewFinancials !== false)) {
       setSnapshotListWarning(null);
       return;
     }
@@ -213,7 +225,10 @@ export function ProjectsListClient({
     const controller = new AbortController();
 
     async function loadSnapshotFinancials() {
-      const ids = rows.map((row) => row.id).filter(Boolean);
+      const ids = rows
+        .filter((row) => row.canViewFinancials !== false)
+        .map((row) => row.id)
+        .filter(Boolean);
       let results: Array<{ id: string; comparison: ProjectFinancialSnapshotComparisonView }> = [];
       try {
         const response = await fetch(
@@ -252,9 +267,9 @@ export function ProjectsListClient({
         })
       );
       setSnapshotListWarning(
-        comparisonByProjectId.size === rows.length
+        comparisonByProjectId.size === ids.length
           ? null
-          : "Some projects are using legacy financial summary."
+          : "Project financial snapshots are unavailable for some projects."
       );
     }
 
@@ -266,9 +281,12 @@ export function ProjectsListClient({
   const activeDrawerFilterCount = (statusFilter !== "all" ? 1 : 0) + (sortBy !== "updated" ? 1 : 0);
 
   useOnAppSync(
-    React.useCallback(() => {
-      syncRouterNonBlocking(router);
-    }, [router]),
+    React.useCallback(
+      (detail) => {
+        if (!detail.refreshScheduled) refreshRscNonBlocking(router);
+      },
+      [router]
+    ),
     [router]
   );
 
@@ -278,7 +296,9 @@ export function ProjectsListClient({
     const completed = localRows.filter(
       (r) => normalizeProjectStatus(r.status) === "completed"
     ).length;
-    const totalBudget = localRows.reduce((s, r) => s + (Number(r.budget) || 0), 0);
+    const totalBudget = localRows.some((row) => row.budget == null)
+      ? null
+      : localRows.reduce((sum, row) => sum + row.budget!, 0);
     return { total, active, completed, totalBudget };
   }, [localRows]);
 
@@ -301,8 +321,8 @@ export function ProjectsListClient({
     const sorted = [...list];
     sorted.sort((a, b) => {
       if (sortBy === "name") return a.name.localeCompare(b.name);
-      if (sortBy === "revenue") return b.revenue - a.revenue;
-      if (sortBy === "profit") return b.profit - a.profit;
+      if (sortBy === "revenue") return (b.revenue ?? -Infinity) - (a.revenue ?? -Infinity);
+      if (sortBy === "profit") return (b.profit ?? -Infinity) - (a.profit ?? -Infinity);
       return (b.updatedAt || "").localeCompare(a.updatedAt || "");
     });
     return sorted;
@@ -366,20 +386,12 @@ export function ProjectsListClient({
         "max-md:!gap-3 max-md:!pb-[calc(7.5rem+env(safe-area-inset-bottom,0px))]"
       )}
     >
-      {dataLoadWarning ? (
-        <p
-          className="border-b border-[var(--hh-border)] pb-3 text-hh-body text-[var(--hh-text-secondary)]"
-          role="status"
-        >
-          {dataLoadWarning}
-        </p>
-      ) : null}
-      {snapshotListWarning ? (
+      {financialDataWarning || snapshotListWarning ? (
         <p
           className="rounded-hh-task border border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] px-3 py-2 text-hh-metadata font-medium text-[var(--hh-text-primary)]"
           role="status"
         >
-          {snapshotListWarning}
+          {financialDataWarning ?? snapshotListWarning}
         </p>
       ) : null}
 
@@ -389,47 +401,41 @@ export function ProjectsListClient({
         fab={<MobileFabPlus href="/projects/new" ariaLabel="New project" />}
       />
 
-      <div className="hidden flex-col gap-3 sm:flex-row sm:items-end sm:justify-between md:flex">
-        <div>
-          <h1
-            data-testid="projects-page-heading"
-            className="text-hh-page-title font-semibold tracking-normal text-[var(--hh-text-primary)]"
-          >
-            Projects
-          </h1>
-          <p className="mt-1 max-w-xl text-hh-body text-[var(--hh-text-secondary)]">
-            Revenue, actual cost, and guarded profit — click a row or View to open a project.
-          </p>
-        </div>
-        <Button
-          asChild
-          className="h-10 shrink-0 rounded-hh-standard bg-[var(--hh-action-primary)] px-4 text-hh-body font-medium text-[var(--hh-action-primary-foreground)] hover:bg-[var(--hh-action-primary)]"
-        >
-          <Link href="/projects/new">
-            <Plus className="mr-2 h-4 w-4" />
-            New Project
-          </Link>
-        </Button>
+      <div className="hidden md:block">
+        <PageHeader
+          title={<span data-testid="projects-page-heading">Projects</span>}
+          description="Revenue, actual cost, and guarded profit — click a row or View to open a project."
+          actions={
+            <Button asChild>
+              <Link href="/projects/new">
+                <Plus aria-hidden />
+                New Project
+              </Link>
+            </Button>
+          }
+        />
       </div>
 
-      <div className="hidden grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4 md:grid">
-        {(
-          [
-            ["TOTAL PROJECTS", summary.total],
-            ["ACTIVE", summary.active],
-            ["COMPLETED", summary.completed],
-            ["TOTAL BUDGET", summary.totalBudget],
-          ] as const
-        ).map(([label, value]) => (
-          <KpiTile
-            key={label}
-            label={label}
-            value={label === "TOTAL BUDGET" ? fmtUsd0(value as number) : (value as number)}
-            className="min-h-[92px]"
-            valueClassName="text-hh-financial-total"
-          />
-        ))}
-      </div>
+      {!dataLoadWarning && (
+        <div className="hidden grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4 md:grid">
+          {(
+            [
+              ["TOTAL PROJECTS", summary.total],
+              ["ACTIVE", summary.active],
+              ["COMPLETED", summary.completed],
+              ["TOTAL BUDGET", summary.totalBudget],
+            ] as const
+          ).map(([label, value]) => (
+            <KpiTile
+              key={label}
+              label={label}
+              value={label === "TOTAL BUDGET" ? fmtUsd0(value as number | null) : (value as number)}
+              className="min-h-[92px]"
+              valueClassName="text-hh-financial-total"
+            />
+          ))}
+        </div>
+      )}
 
       <MobileSearchFiltersRow
         filterSheetOpen={filtersOpen}
@@ -462,50 +468,50 @@ export function ProjectsListClient({
             aria-label="Search projects"
           />
         </div>
-        <select
+        <NativeSelect
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value as ProjectListStatusFilter)}
-          className={cn("min-w-[160px] px-3", FIELD)}
+          className={cn("w-auto min-w-[160px] px-3", FIELD)}
           aria-label="Filter projects by status"
         >
-          <option value="all">All statuses</option>
+          <option value="all">All Projects</option>
           <option value="active">Active</option>
           <option value="completed">Completed</option>
           <option value="pending">Pending</option>
-          <option value="on_hold">On hold</option>
-        </select>
-        <select
+          <option value="on_hold">On Hold</option>
+        </NativeSelect>
+        <NativeSelect
           value={sortBy}
           onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-          className={cn("min-w-[180px] px-3", FIELD)}
+          className={cn("w-auto min-w-[180px] px-3", FIELD)}
           aria-label="Sort projects"
         >
           <option value="updated">Sort: Updated (newest)</option>
           <option value="name">Sort: Name (A–Z)</option>
           <option value="revenue">Sort: Revenue (high)</option>
           <option value="profit">Sort: Profit (high)</option>
-        </select>
+        </NativeSelect>
       </NeoToolbar>
 
       <MobileFilterSheet open={filtersOpen} onOpenChange={setFiltersOpen} title="Filters">
         <div className="space-y-2">
           <p className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]">Status</p>
-          <select
+          <NativeSelect
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as ProjectListStatusFilter)}
             className={cn("w-full px-3", FIELD)}
             aria-label="Filter projects by status"
           >
-            <option value="all">All statuses</option>
+            <option value="all">All Projects</option>
             <option value="active">Active</option>
             <option value="completed">Completed</option>
             <option value="pending">Pending</option>
-            <option value="on_hold">On hold</option>
-          </select>
+            <option value="on_hold">On Hold</option>
+          </NativeSelect>
         </div>
         <div className="space-y-2">
           <p className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]">Sort</p>
-          <select
+          <NativeSelect
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
             className={cn("w-full px-3", FIELD)}
@@ -515,7 +521,7 @@ export function ProjectsListClient({
             <option value="name">Name (A–Z)</option>
             <option value="revenue">Revenue (high)</option>
             <option value="profit">Profit (high)</option>
-          </select>
+          </NativeSelect>
         </div>
         <Button
           type="button"
@@ -526,19 +532,24 @@ export function ProjectsListClient({
         </Button>
       </MobileFilterSheet>
 
-      {filtered.length === 0 ? (
+      {dataLoadWarning ? (
+        <ErrorRetry
+          title="Projects unavailable"
+          description={dataLoadWarning}
+          retryLabel="Retry"
+          onRetry={() => router.refresh()}
+        />
+      ) : filtered.length === 0 ? (
         <>
           <MobileEmptyState
             icon={<Search className="h-8 w-8 opacity-80" aria-hidden />}
             message={
-              dataLoadWarning
-                ? "Could not load projects."
-                : query.trim() || statusFilter !== "all"
-                  ? "No projects match your filters."
-                  : "No projects yet."
+              query.trim() || statusFilter !== "all"
+                ? "No projects match your filters."
+                : "No projects yet."
             }
             action={
-              !query.trim() && statusFilter === "all" && !dataLoadWarning ? (
+              !query.trim() && statusFilter === "all" ? (
                 <Button asChild size="sm" variant="outline">
                   <Link href="/projects/new">New project</Link>
                 </Button>
@@ -548,11 +559,9 @@ export function ProjectsListClient({
           <EmptyState
             className="hidden px-8 py-14 md:block"
             title={
-              dataLoadWarning
-                ? "Could not load projects."
-                : query.trim() || statusFilter !== "all"
-                  ? "No projects match your filter."
-                  : "No projects yet."
+              query.trim() || statusFilter !== "all"
+                ? "No projects match your filter."
+                : "No projects yet."
             }
             description={
               query.trim() || statusFilter !== "all"
@@ -618,7 +627,7 @@ export function ProjectsListClient({
                       disabled: deletingId != null,
                       onClick: () => void requestDelete(r),
                     },
-                  ]}
+                  ].filter((action) => r.canManage !== false || action.label === "View")}
                 />
               </div>
             ))}
@@ -691,7 +700,7 @@ export function ProjectsListClient({
                     {r.profitReadinessWarning ? (
                       "Needs review"
                     ) : (
-                      <NeoAmount tone={r.profit >= 0 ? "income" : "expense"}>
+                      <NeoAmount tone={r.profit != null && r.profit >= 0 ? "income" : "expense"}>
                         {fmtUsd0(r.profit)}
                       </NeoAmount>
                     )}
@@ -720,7 +729,7 @@ export function ProjectsListClient({
                           disabled: deletingId != null,
                           onClick: () => void requestDelete(r),
                         },
-                      ]}
+                      ].filter((action) => r.canManage !== false || action.label === "View")}
                     />
                   </td>
                 </tr>

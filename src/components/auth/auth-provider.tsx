@@ -4,6 +4,10 @@ import * as React from "react";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { authorizedAppRole } from "@/lib/auth-role";
 import {
+  getActiveOrganizationMemberships,
+  hasCompanyAdministratorMembership,
+} from "@/lib/organization-membership";
+import {
   DEFAULT_ROLE_PERMISSIONS,
   type AppRole,
   type PermissionKey,
@@ -124,7 +128,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .eq("id", sessionUser.id)
       .maybeSingle();
 
-    const authoritativeRole = authorizedAppRole(sessionUser);
+    const memberships = await getActiveOrganizationMemberships(supabase, sessionUser).catch(
+      () => []
+    );
+    const companyAdmin =
+      Boolean(authorizedAppRole(sessionUser)) &&
+      (await hasCompanyAdministratorMembership(supabase, sessionUser).catch(() => false));
+    const authoritativeRole =
+      (companyAdmin ? authorizedAppRole(sessionUser) : null) ?? memberships[0]?.role ?? null;
     const profileRow = (profileData ?? null) as ProfileRow | null;
     setProfile(profileRow);
     if (!authoritativeRole) {
@@ -136,13 +147,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const currentRole: AppRole = authoritativeRole;
     setRole(currentRole);
 
+    if (!companyAdmin) {
+      setPermissions({
+        ...EMPTY_PERMS,
+        "projects.view": true,
+        "projects.create": currentRole !== "assistant",
+        "projects.update": currentRole !== "assistant",
+      });
+      setInitialized(true);
+      return;
+    }
     if (currentRole === "owner") {
       setPermissions(DEFAULT_ROLE_PERMISSIONS.owner);
       setInitialized(true);
       return;
     }
-    const { data: permsData } = await supabase.rpc("get_my_permissions");
-    setPermissions(coercePerms(permsData, currentRole));
+    if (currentRole === "assistant") {
+      setPermissions({ ...EMPTY_PERMS, "projects.view": true });
+      setInitialized(true);
+      return;
+    }
+    const { data: permsData, error: permsError } = await supabase.rpc("get_my_permissions");
+    setPermissions(permsError ? EMPTY_PERMS : coercePerms(permsData, currentRole));
     setInitialized(true);
   }, [supabase]);
 
@@ -151,7 +177,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setInitialized(true);
       return;
     }
-    void loadAuthState();
     const { data: sub } = supabase.auth.onAuthStateChange(() => {
       void loadAuthState();
     });
@@ -169,7 +194,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       role,
       permissions,
       hasPermission: (key: PermissionKey) => {
-        if (role === "owner") return true;
         return Boolean(permissions[key]);
       },
       refreshAuthState: loadAuthState,

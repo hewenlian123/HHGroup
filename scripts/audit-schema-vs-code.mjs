@@ -45,7 +45,8 @@ function parseAlterTableColumnChanges(sql) {
 }
 
 function parseCreateTable(sql) {
-  const re = /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:public\.)?["']?(\w+)["']?\s*\(/gi;
+  const re =
+    /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:"?public"?\s*\.\s*)?["']?(\w+)["']?\s*\(/gi;
   let m;
   while ((m = re.exec(sql)) !== null) {
     const table = m[1];

@@ -77,7 +77,11 @@ export async function GET(request: Request) {
       getWorkerReimbursements(supabase),
       getWorkerInvoices(supabase),
       getLaborInvoices(supabase),
-      getWorkerPaymentsWithClient(supabase, { fromDate, toDate }),
+      getWorkerPaymentsWithClient(supabase, {
+        fromDate,
+        toDate,
+        projectId: projectFilter ?? undefined,
+      }),
       getWorkerAdvances({ fromDate, toDate }, supabase),
     ]);
 

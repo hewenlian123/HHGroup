@@ -16,6 +16,11 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/auth-boundary", () => ({
+  requireSupabaseOwnerOrAdminRequestClient: async () => ({
+    ok: true as const,
+    context: { email: "owner@example.com", role: "owner", user: { id: "owner-1" } },
+    client: mocks.client,
+  }),
   requireSupabaseOwnerOrAdminWithClient: async (
     _request: Request,
     createClient: () => unknown

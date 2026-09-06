@@ -12,6 +12,12 @@ vi.mock("@supabase/ssr", () => ({
   createServerClient: createServerClientMock,
 }));
 
+const companyAccess = vi.hoisted(() => vi.fn(async () => true));
+vi.mock("@/lib/organization-membership", async (original) => ({
+  ...(await original<typeof import("@/lib/organization-membership")>()),
+  hasCompanyAdministratorMembership: companyAccess,
+}));
+
 import { middleware } from "@/middleware";
 
 const ORIGINAL_ENV = { ...process.env };
@@ -24,6 +30,7 @@ function request(path: string, init?: ConstructorParameters<typeof NextRequest>[
 
 describe("middleware Auth rollout behavior", () => {
   beforeEach(() => {
+    companyAccess.mockReset().mockResolvedValue(true);
     process.env = {
       ...ORIGINAL_ENV,
       VERCEL_ENV: "production",
@@ -50,6 +57,17 @@ describe("middleware Auth rollout behavior", () => {
     process.env = { ...ORIGINAL_ENV };
   });
 
+  it("denies a global owner without live company membership on financial routes", async () => {
+    process.env.NEXT_PUBLIC_SUPABASE_URL = "http://127.0.0.1:54321";
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "local-anon-key";
+    getUserMock.mockResolvedValue({
+      data: { user: { id: "foreign-owner", app_metadata: { role: "owner" } } },
+    });
+    companyAccess.mockResolvedValue(false);
+    const response = await middleware(request("/api/invoices"));
+    expect(response.status).toBe(403);
+  });
+
   it("redirects an anonymous protected page in strict mode", async () => {
     process.env.HH_REQUIRE_LOGIN = "true";
 
@@ -58,6 +76,9 @@ describe("middleware Auth rollout behavior", () => {
     expect(response.status).toBe(307);
     expect(response.headers.get("location")).toBe(
       "https://preview.hh.test/login?redirect=%2Fdashboard%3Fview%3Dactive"
+    );
+    expect(response.headers.get("Server-Timing")).toMatch(
+      /hh_auth;dur=\d+\.\d, hh_middleware;dur=\d+\.\d/
     );
   });
 
@@ -113,18 +134,67 @@ describe("middleware Auth rollout behavior", () => {
 
   it.each([
     ["/upload-receipt", "GET"],
-    ["/api/upload-receipt/options", "GET"],
     ["/api/upload-receipt/upload", "POST"],
     ["/api/upload-receipt/submit", "POST"],
+  ])("denies anonymous receipt intake in strict mode: %s", async (path, method) => {
+    process.env.HH_REQUIRE_LOGIN = "true";
+
+    const response = await middleware(request(path, { method }));
+
+    expect(response.status).toBe(path.startsWith("/api/") ? 401 : 307);
+    expect(response.headers.get("x-middleware-next")).toBeNull();
+  });
+
+  it("requires authentication for project and worker receipt options", async () => {
+    const response = await middleware(request("/api/upload-receipt/options"));
+    expect(response.status).toBe(401);
+  });
+
+  it.each([
+    ["/api/projects/project/tab?tab=documents", "GET", 200, false],
+    ["/api/upload-receipt/upload", "POST", 200, false],
+    ["/api/upload-receipt/submit", "POST", 200, false],
+    ["/api/upload-receipt/sync", "POST", 403, false],
+    ["/api/materials/catalog", "POST", 403, false],
+    ["/api/expenses", "GET", 403, false],
+    ["/documents", "POST", 200, true],
+    ["/projects/project", "POST", 200, true],
+    ["/materials/selection", "POST", 200, true],
+    ["/documents", "POST", 403, false],
+    ["/api/materials/catalog", "POST", 403, true],
+    ["/financial/invoices", "POST", 403, true],
   ])(
-    "keeps only the documented public receipt endpoint available in strict mode: %s",
-    async (path, method) => {
-      process.env.HH_REQUIRE_LOGIN = "true";
-
-      const response = await middleware(request(path, { method }));
-
-      expect(response.status).toBe(200);
-      expect(response.headers.get("x-middleware-next")).toBe("1");
+    "limits assistant membership admission for %s %s",
+    async (path, method, status, serverAction) => {
+      process.env.NEXT_PUBLIC_SUPABASE_URL = "http://127.0.0.1:54321";
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "test-anon-key";
+      getUserMock.mockResolvedValue({
+        data: { user: { id: "assistant", app_metadata: {} } },
+        error: null,
+      });
+      const query = {
+        select: () => query,
+        eq: () => query,
+        then: (resolve: (value: unknown) => unknown) =>
+          Promise.resolve({
+            data: [{ organization_id: "org", role: "assistant", status: "active" }],
+            error: null,
+          }).then(resolve),
+      };
+      createServerClientMock.mockReturnValue({
+        auth: { getUser: getUserMock, getSession: getSessionMock },
+        from: () => query,
+      });
+      const response = await middleware(
+        request(path, {
+          method: String(method),
+          headers: {
+            authorization: "Bearer assistant-session",
+            ...(serverAction ? { "next-action": "read-or-write-action-id" } : {}),
+          },
+        })
+      );
+      expect(response.status).toBe(status);
     }
   );
 
@@ -321,14 +391,14 @@ describe("middleware Auth rollout behavior", () => {
     expect(response.headers.get("location")).toBeNull();
   });
 
-  it("keeps public Auth recovery and worker intake pages outside local auto-login", async () => {
+  it("keeps public Auth recovery pages outside local auto-login", async () => {
     process.env = { ...process.env, NODE_ENV: "development" };
     delete process.env.VERCEL_ENV;
     process.env.HH_ALLOW_LOCAL_AUTO_LOGIN = "1";
     process.env.NEXT_PUBLIC_SUPABASE_URL = "http://127.0.0.1:54321";
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "local-anon-key";
 
-    for (const path of ["/auth/recovery/callback", "/forgot-password", "/upload-receipt"]) {
+    for (const path of ["/auth/recovery/callback", "/forgot-password"]) {
       const response = await middleware(new NextRequest(`http://localhost:3000${path}`));
       expect(response.status).toBe(200);
       expect(response.headers.get("location")).toBeNull();

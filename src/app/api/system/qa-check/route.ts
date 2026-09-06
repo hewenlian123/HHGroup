@@ -1,5 +1,7 @@
+import { withSessionCookies } from "@/lib/supabase-response";
 import { NextResponse } from "next/server";
-import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { requireOrganizationRequestClient } from "@/lib/auth-boundary";
 import { getProjectFinancialReview } from "@/lib/financial/project-financial-review-db";
 import { getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
 import { redactSensitiveText, safeErrorMessage } from "@/lib/system-response-safety";
@@ -769,9 +771,12 @@ async function buildSchemaSection(request: Request): Promise<QaSection> {
   }
 }
 
-async function buildFinancialSection(): Promise<QaSection> {
+async function buildFinancialSection(
+  client: SupabaseClient,
+  organizationIds: string[]
+): Promise<QaSection> {
   try {
-    const review = await getProjectFinancialReview();
+    const review = await getProjectFinancialReview(client, organizationIds);
     const flagged = review.flaggedProjects;
     const placeholderCount = review.summary.placeholder + review.summary.zero;
     const suspiciousHugeCount = review.summary.suspiciousHuge;
@@ -1025,7 +1030,10 @@ function summarize(sections: QaSection[]) {
 }
 
 export async function GET(request: Request) {
-  const guard = await requireSupabaseOwnerOrAdmin(request);
+  const guard = await requireOrganizationRequestClient(request, {
+    requireOwnerAdmin: true,
+    noStore: true,
+  });
   if (!guard.ok) return guard.response;
 
   const checkedAt = new Date().toISOString();
@@ -1046,7 +1054,10 @@ export async function GET(request: Request) {
     buildDestructiveSafetySection(request),
     buildSchemaSection(request),
     buildCompanyProfileSection(supabase),
-    buildFinancialSection(),
+    buildFinancialSection(
+      guard.client,
+      guard.context.memberships.map((m) => m.organization_id)
+    ),
     buildDataQualitySection(request),
     buildPreviewSection(supabase),
   ]);
@@ -1064,17 +1075,20 @@ export async function GET(request: Request) {
   ];
   const summary = summarize(sections);
 
-  return NextResponse.json(
-    {
-      ok: summary.critical === 0,
-      checkedAt,
-      mode:
-        process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production"
-          ? "production-safe"
-          : "local-safe",
-      summary,
-      sections,
-    },
-    { headers: NO_CACHE_HEADERS }
+  return withSessionCookies(
+    NextResponse.json(
+      {
+        ok: summary.critical === 0,
+        checkedAt,
+        mode:
+          process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production"
+            ? "production-safe"
+            : "local-safe",
+        summary,
+        sections,
+      },
+      { headers: NO_CACHE_HEADERS }
+    ),
+    guard.sessionResponse
   );
 }

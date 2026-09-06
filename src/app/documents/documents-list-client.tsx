@@ -1,6 +1,9 @@
 "use client";
 
-import { syncRouterNonBlocking } from "@/components/perf/sync-router-non-blocking";
+import {
+  refreshRscNonBlocking,
+  syncRouterNonBlocking,
+} from "@/components/perf/sync-router-non-blocking";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import * as React from "react";
 import Link from "next/link";
@@ -107,9 +110,12 @@ export function DocumentsListClient({ documents, projects, total }: Props) {
   React.useEffect(() => setSearchInput(search), [search]);
 
   useOnAppSync(
-    React.useCallback(() => {
-      syncRouterNonBlocking(router);
-    }, [router]),
+    React.useCallback(
+      (detail) => {
+        if (!detail.refreshScheduled) refreshRscNonBlocking(router);
+      },
+      [router]
+    ),
     [router]
   );
 

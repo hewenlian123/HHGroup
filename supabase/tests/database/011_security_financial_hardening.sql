@@ -39,13 +39,14 @@ select is(
     from pg_catalog.pg_policies p
     where p.schemaname = 'public'
       and p.tablename = any(array['project_tasks', 'punch_list', 'site_photos', 'inspection_log'])
-      and p.cmd = 'ALL'
+      and p.cmd = 'UPDATE'
+      and p.permissive = 'PERMISSIVE'
       and 'authenticated' = any(p.roles)
-      and p.qual like '%app_metadata%owner%admin%'
-      and p.with_check like '%app_metadata%owner%admin%'
+      and p.qual like '%can_manage_project%'
+      and p.with_check like '%can_manage_project%'
   ),
   4,
-  'each Operations P0 table has one authenticated owner/admin policy'
+  'each Operations P0 table requires live project manager membership for updates'
 );
 
 select ok(
@@ -138,9 +139,10 @@ select ok(
     where p.schemaname = 'public'
       and p.tablename = any(array['worker_payments', 'ap_bills'])
       and p.cmd = any(array['DELETE', 'ALL'])
+      and p.permissive = 'PERMISSIVE'
       and p.roles && array['public', 'anon', 'authenticated', 'service_role']::name[]
   ),
-  'financial destructive targets expose no DELETE or ALL policy to API roles'
+  'financial destructive targets expose no permissive DELETE or ALL policy to API roles'
 );
 
 select ok(
@@ -166,9 +168,10 @@ select ok(
     from pg_catalog.pg_policies p
     where p.schemaname = 'public'
       and p.tablename = any(array['worker_payment_reversals', 'ap_bill_deletions'])
+      and p.permissive = 'PERMISSIVE'
       and p.roles && array['public', 'anon', 'authenticated', 'service_role']::name[]
   ),
-  'financial replay ledgers expose no API policy'
+  'financial replay ledgers expose no permissive API policy'
 );
 
 select has_function('public', 'reverse_worker_payment_atomic', array['uuid', 'text']);
@@ -234,13 +237,13 @@ select throws_ok(
 select throws_ok(
   $$ select public.reverse_worker_payment_atomic('33333333-3333-3333-3333-333333333399', 'worker-payment-reversal:denied') $$,
   '42501',
-  'Owner or admin role required.',
+  'Company administrator access required',
   'non-owner authenticated role cannot reverse worker payments'
 );
 select throws_ok(
   $$ select public.delete_ap_bill_draft_atomic('33333333-3333-3333-3333-333333333399', 'ap-bill-delete:denied') $$,
   '42501',
-  'Owner or admin role required.',
+  'Company administrator access required',
   'non-owner authenticated role cannot delete Draft AP Bills'
 );
 reset role;
@@ -341,6 +344,11 @@ select ok(
   'predecessor marker is postgres-owned and unavailable to API roles'
 );
 
+-- The legal owner fixture has a live membership in the canonical company.
+insert into auth.users (id, email, raw_app_meta_data)
+values ('33333333-3333-3333-3333-333333333301', 'financial-hardening-fixture@example.invalid', '{"role":"owner"}');
+insert into public.organization_memberships(organization_id,user_id,role,status)
+values (private.company_organization_id(),'33333333-3333-3333-3333-333333333301','owner','active');
 insert into public.workers (id, name)
 values ('33333333-3333-3333-3333-333333333301', 'Reversal Worker');
 insert into public.projects (id, name)
@@ -516,12 +524,15 @@ select is((select count(*) from public.ap_bill_deletions where bill_id = '333333
 select is((select (result->>'reused')::boolean from ap_delete_results order by ctid desc limit 1), true, 'duplicate Draft AP Bill delete reports an authoritative replay');
 
 insert into public.ap_bills (id, vendor_name, amount, paid_amount, balance_amount, status)
-values ('33333333-3333-3333-3333-333333333321', 'Paid Draft Vendor', 100, 10, 90, 'Draft');
+values ('33333333-3333-3333-3333-333333333321', 'Paid Draft Vendor', 100, 0, 100, 'Pending');
 insert into public.ap_bill_payments (id, bill_id, payment_date, amount)
 values ('33333333-3333-3333-3333-333333333322', '33333333-3333-3333-3333-333333333321', '2026-09-02', 10);
+-- Simulate a legacy inconsistent Draft header to exercise the dependency guard.
+alter table public.ap_bills disable trigger guard_ap_bill_header;
 update public.ap_bills
 set status = 'Draft'
 where id = '33333333-3333-3333-3333-333333333321';
+alter table public.ap_bills enable trigger guard_ap_bill_header;
 set local role authenticated;
 set local "request.jwt.claims" = '{"sub":"33333333-3333-3333-3333-333333333301","role":"authenticated","app_metadata":{"role":"owner"}}';
 select throws_ok(

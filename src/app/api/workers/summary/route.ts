@@ -7,7 +7,7 @@ import {
   SUPABASE_MISSING_SERVER_ENV_MESSAGE,
   getServerSupabaseInternalNoStore,
 } from "@/lib/supabase-server";
-import { getWorkerInvoices, type WorkerInvoice } from "@/lib/worker-invoices-db";
+import { getWorkerInvoices } from "@/lib/worker-invoices-db";
 import { getWorkerPaymentsWithClient } from "@/lib/worker-payments-db";
 
 export const dynamic = "force-dynamic";
@@ -55,9 +55,9 @@ export async function GET(request: Request) {
   try {
     const [workers, laborEntries, invoicesAll, payments] = await Promise.all([
       getWorkers(supabase),
-      getLaborEntriesWithJoins({ date_from: fromDate, date_to: toDate }, supabase).catch(() => []),
-      getWorkerInvoices(supabase).catch(() => [] as WorkerInvoice[]),
-      getWorkerPaymentsWithClient(supabase, { fromDate, toDate, limit: 5000 }).catch(() => []),
+      getLaborEntriesWithJoins({ date_from: fromDate, date_to: toDate }, supabase),
+      getWorkerInvoices(supabase),
+      getWorkerPaymentsWithClient(supabase, { fromDate, toDate, limit: 5000 }),
     ]);
 
     const laborByWorker = new Map<string, number>();
@@ -70,7 +70,7 @@ export async function GET(request: Request) {
     }
 
     if (laborEntries.length === 0) {
-      const daily = await getDailyWorkEntriesInRange(fromDate, toDate, supabase).catch(() => []);
+      const daily = await getDailyWorkEntriesInRange(fromDate, toDate, supabase);
       for (const entry of daily) {
         laborByWorker.set(
           entry.workerId,
