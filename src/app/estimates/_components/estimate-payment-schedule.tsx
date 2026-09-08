@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useEstimateSheetFocus } from "./use-estimate-sheet-focus";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -125,6 +126,7 @@ export function EstimatePaymentSchedule(props: {
   const { toast } = useToast();
   const { markUnsaved, trackMutation } = useEstimateDocumentSave();
   const [scheduleOpen, setScheduleOpen] = React.useState(false);
+  const paymentSheetFocus = useEstimateSheetFocus();
   const [editingItem, setEditingItem] = React.useState<PaymentScheduleItem | null>(null);
   const [paymentDescriptionDraft, setPaymentDescriptionDraft] = React.useState("");
   const [amountDraft, setAmountDraft] = React.useState("");
@@ -689,6 +691,7 @@ export function EstimatePaymentSchedule(props: {
           }}
         >
           <SheetContent
+            {...paymentSheetFocus}
             side="right"
             className={estimateSurfaceSheetClassName("payment")}
             data-estimate-surface="payment"

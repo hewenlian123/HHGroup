@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useEstimateSheetFocus } from "../_components/use-estimate-sheet-focus";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -237,6 +238,7 @@ export function NewEstimateEditor({
   const [paymentMilestones, setPaymentMilestones] = React.useState<PaymentMilestoneLocal[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = React.useState(initialTemplateId ?? "");
   const [scheduleOpen, setScheduleOpen] = React.useState(false);
+  const paymentSheetFocus = useEstimateSheetFocus();
   const [detailsOpen, setDetailsOpen] = React.useState(false);
   const [activeSectionState, setActiveSectionState] = React.useState<{
     id: string | null;
@@ -1252,7 +1254,11 @@ export function NewEstimateEditor({
                         if (!open) resetPaymentDraft();
                       }}
                     >
-                      <SheetContent side="right" className={ebSheetGlassNarrow(EB.shellNew)}>
+                      <SheetContent
+                        {...paymentSheetFocus}
+                        side="right"
+                        className={ebSheetGlassNarrow(EB.shellNew)}
+                      >
                         <SheetHeader className={EB.sheetHeader}>
                           <SheetTitle className={EB.sheetTitle}>
                             {editingPaymentMilestoneId ? "Edit Payment" : "Schedule Payment"}

@@ -49,6 +49,7 @@ type InboxIssue = {
 
 const EXPENSE_INBOX_DISMISSED_ISSUE_PREFIX = "hh.expenseInbox.dismissedIssue";
 const EXPENSE_ISSUE_POPOVER_CLOSE_DELAY_MS = 140;
+const expenseTableThClass = cn(tableRawThClass, "text-[var(--hh-text-secondary)]");
 
 let activeExpenseIssuePopover: { id: symbol; close: () => void } | null = null;
 
@@ -1128,6 +1129,7 @@ function DesktopRows({
                         a.setActiveExpenseId(row.id);
                         a.openExpensePreview(row);
                       }}
+                      onFocus={() => a.setActiveExpenseId(row.id)}
                       onKeyDown={(event) => {
                         if (event.target !== event.currentTarget) return;
                         if (event.key !== "Enter" && event.key !== " ") return;
@@ -1274,7 +1276,7 @@ function DesktopRows({
                       </td>
                       <td
                         data-expense-amount={ledgerMode ? "" : undefined}
-                        className="w-[90px] shrink-0 whitespace-nowrap text-right tabular-nums"
+                        className="w-36 shrink-0 whitespace-nowrap text-right tabular-nums"
                       >
                         <NeoAmount
                           tone={triageLayout ? "neutral" : "expense"}
@@ -1559,6 +1561,7 @@ function MobileRows({
                           a.setActiveExpenseId(row.id);
                           a.openExpensePreview(row);
                         }}
+                        onFocus={() => a.setActiveExpenseId(row.id)}
                         onKeyDown={(event) => {
                           if (event.target !== event.currentTarget) return;
                           if (event.key !== "Enter" && event.key !== " ") return;
@@ -1910,8 +1913,13 @@ export function ExpenseInboxTransactionList({
       if (!bulkActions) return;
       const ids = [...selectedIds];
       if (ids.length === 0) return;
-      const result = await fn(ids);
-      if (result !== false) clearBulkSelection();
+      try {
+        const result = await fn(ids);
+        if (result !== false) clearBulkSelection();
+      } catch (cause) {
+        clearBulkSelection();
+        throw cause;
+      }
     },
     [bulkActions, selectedIds, clearBulkSelection]
   );
@@ -1942,7 +1950,7 @@ export function ExpenseInboxTransactionList({
             onSetPayment={(paymentAccountId) =>
               void runBulk((ids) => bulkActions.runSetPayment(ids, paymentAccountId))
             }
-            onDeleteMany={() => void runBulk(bulkActions.runDeleteMany)}
+            onDeleteMany={() => runBulk(bulkActions.runDeleteMany)}
           />
         ) : null}
         {desktopLayout ? (
@@ -1960,24 +1968,27 @@ export function ExpenseInboxTransactionList({
               <col className="w-[82px]" />
               <col className="w-[190px]" />
               <col className="w-[104px]" />
-              <col className="w-[90px]" />
+              <col className="w-36" />
               <col className="w-10" />
             </colgroup>
             <thead>
               <tr>
-                <th className={cn(tableRawThClass, "w-[82px] shrink-0")}>Date</th>
-                <th className={tableRawThClass}>Merchant</th>
-                <th className={cn(tableRawThClass, "w-36 shrink-0")}>Project</th>
-                <th className={cn(tableRawThClass, "w-24 shrink-0")}>Category</th>
-                <th className={cn(tableRawThClass, "w-24 shrink-0")}>Source</th>
-                <th className={cn(tableRawThClass, "w-[82px] shrink-0")}>Receipt</th>
-                <th className={cn(tableRawThClass, "w-[190px] shrink-0")}>Issues</th>
-                <th className={cn(tableRawThClass, "w-[104px] shrink-0")}>Status</th>
-                <th className={cn(tableRawThClass, "w-[90px] shrink-0 text-right tabular-nums")}>
+                <th className={cn(expenseTableThClass, "w-[82px] shrink-0")}>Date</th>
+                <th className={expenseTableThClass}>Merchant</th>
+                <th className={cn(expenseTableThClass, "w-36 shrink-0")}>Project</th>
+                <th className={cn(expenseTableThClass, "w-24 shrink-0")}>Category</th>
+                <th className={cn(expenseTableThClass, "w-24 shrink-0")}>Source</th>
+                <th className={cn(expenseTableThClass, "w-[82px] shrink-0")}>Receipt</th>
+                <th className={cn(expenseTableThClass, "w-[190px] shrink-0")}>Issues</th>
+                <th className={cn(expenseTableThClass, "w-[104px] shrink-0")}>Status</th>
+                <th className={cn(expenseTableThClass, "w-36 shrink-0 text-right tabular-nums")}>
                   Amount
                 </th>
                 <th
-                  className={cn(tableRawThClass, "w-10 shrink-0 overflow-hidden px-1 text-right")}
+                  className={cn(
+                    expenseTableThClass,
+                    "w-10 shrink-0 overflow-hidden px-1 text-right"
+                  )}
                 >
                   <span className="sr-only">Actions</span>
                 </th>

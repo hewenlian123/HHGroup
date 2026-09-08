@@ -1202,6 +1202,7 @@ body.estimate-builder-active [data-radix-dialog-overlay] {
 }
 
 .estimate-builder.eb-sheet-glass > button[type="button"].absolute {
+  z-index: 10;
   top: 1rem !important;
   right: 1rem !important;
   min-height: 2.25rem !important;
@@ -1216,10 +1217,6 @@ body.estimate-builder-active [data-radix-dialog-overlay] {
 .estimate-builder.eb-sheet-glass > button[type="button"].absolute:hover {
   background: var(--hh-l4-floating-surface) !important;
   color: var(--hh-text-primary) !important;
-}
-
-.estimate-builder.eb-sheet-glass[data-state="open"] {
-  transform: translate3d(0, 0, 0) !important;
 }
 
 @media (min-width: 768px) {

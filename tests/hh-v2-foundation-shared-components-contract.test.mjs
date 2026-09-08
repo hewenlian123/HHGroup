@@ -22,11 +22,13 @@ test("Foundation emits the dense menu min-height and shared Light scrim token", 
   assert.doesNotMatch(motion, /bg-\[color-mix\(/);
 });
 
-test("shared Tabs default is underline-only instead of a boxed segmented control", () => {
+test("shared Tabs use a transform-only continuous underline instead of a boxed control", () => {
   const tabs = source("src/components/ui/tabs.tsx");
 
   assert.match(tabs, /border-b-2 border-transparent/);
-  assert.match(tabs, /data-\[state=active\]:border-\[var\(--hh-accent-primary\)\]/);
+  assert.match(tabs, /after:bg-\[var\(--hh-accent-primary\)\]/);
+  assert.match(tabs, /data-\[state=active\]:after:scale-x-100/);
+  assert.match(tabs, /after:transition-\[transform,opacity\]/);
   assert.doesNotMatch(tabs, /data-\[state=active\]:bg-\[var\(--hh-l3-selected\)\]/);
   assert.doesNotMatch(tabs, /rounded-hh-standard border border-\[var\(--hh-border\)\]/);
 });

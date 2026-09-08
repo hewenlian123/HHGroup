@@ -498,6 +498,7 @@ export function ProjectDetailTabsClient({
   const [deleteConfirmOpen, setDeleteConfirmOpen] = React.useState(false);
   const [deleteBusy, setDeleteBusy] = React.useState(false);
   const [displayProject, setDisplayProject] = React.useState<Project>(() => project);
+  const editButtonRef = React.useRef<HTMLButtonElement>(null);
   useBreadcrumbEntityLabel(displayProject.name);
   const displayProjectRef = React.useRef(displayProject);
   displayProjectRef.current = displayProject;
@@ -509,6 +510,15 @@ export function ProjectDetailTabsClient({
   React.useEffect(() => {
     setTab(normalizeWorkspaceTab(initialTab));
   }, [initialTab]);
+
+  React.useEffect(() => {
+    if (!canManageProject || searchParams.get("edit") !== "1") return;
+    setEditModalOpen(true);
+    const nextSearchParams = new URLSearchParams(searchParams.toString());
+    nextSearchParams.delete("edit");
+    const query = nextSearchParams.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  }, [canManageProject, pathname, router, searchParams]);
 
   React.useEffect(() => {
     if (tab !== "financial") {
@@ -544,7 +554,7 @@ export function ProjectDetailTabsClient({
   }, [router]);
 
   const handleProjectSave = React.useCallback(
-    (patch: ProjectEditSavePatch) => {
+    async (patch: ProjectEditSavePatch) => {
       const snapshot = displayProjectRef.current;
       flushSync(() => {
         setDisplayProject((p) => ({
@@ -555,10 +565,9 @@ export function ProjectDetailTabsClient({
           budget: patch.budget,
           contractAmount: patch.budget,
         }));
-        setEditModalOpen(false);
       });
       dispatchClientDataSync({ reason: HH_PROJECT_EDIT_OPTIMISTIC_REASON });
-      void (async () => {
+      try {
         const result = await updateProjectAction(projectId, {
           name: patch.name,
           client: patch.client,
@@ -566,16 +575,14 @@ export function ProjectDetailTabsClient({
           budget: patch.budget,
         });
         if (result?.error) {
-          flushSync(() => setDisplayProject(snapshot));
-          toast({
-            title: "Couldn't save project",
-            description: result.error,
-            variant: "error",
-          });
-          return;
+          throw new Error(result.error);
         }
+        setEditModalOpen(false);
         toast({ title: "Project updated" });
-      })();
+      } catch (cause) {
+        flushSync(() => setDisplayProject(snapshot));
+        throw cause instanceof Error ? cause : new Error("Couldn't save project. Try again.");
+      }
     },
     [projectId, toast]
   );
@@ -893,6 +900,7 @@ export function ProjectDetailTabsClient({
               </div>
               <div className="flex flex-wrap items-center justify-end gap-2 max-md:w-full max-md:[&>*]:flex-1">
                 <Button
+                  ref={editButtonRef}
                   type="button"
                   size="sm"
                   className="min-h-11 rounded-hh-standard bg-[var(--hh-action-primary)] text-hh-table-cell text-[var(--hh-action-primary-foreground)] hover:bg-[var(--hh-action-primary)]"
@@ -1017,7 +1025,12 @@ export function ProjectDetailTabsClient({
       {canManageProject && (
         <EditProjectModal
           open={editModalOpen}
-          onOpenChange={setEditModalOpen}
+          onOpenChange={(open) => {
+            setEditModalOpen(open);
+            if (!open) {
+              window.requestAnimationFrame(() => editButtonRef.current?.focus());
+            }
+          }}
           project={{
             id: projectId,
             name: displayProject.name,

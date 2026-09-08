@@ -69,6 +69,7 @@ import { useDelayedPending } from "@/hooks/use-delayed-pending";
 import { ReceiptQueueSkeleton } from "@/components/financial/receipt-queue-skeleton";
 import {
   afterLayout,
+  motionAwareScrollBehavior,
   neighborRowIdAfterRemove,
   scrollElementIntoViewNearest,
 } from "@/lib/list-flow";
@@ -214,11 +215,11 @@ type FieldRefs = {
   date: Record<string, HTMLInputElement | null>;
 };
 
-/** Buttons: hover lighten 140ms ease; active scale 0.95 90ms spring */
+/** Buttons: immediate color feedback without spatial movement. */
 const RQ_BTN =
-  "transition-[background-color_transform_color] duration-rq ease-out active:scale-[0.95] active:duration-90 active:ease-spring-out";
+  "transition-[background-color,color] duration-fast ease-motion-out active:duration-micro";
 
-function scrollReceiptQueueRowIntoView(rowId: string, behavior: ScrollBehavior = "smooth") {
+function scrollReceiptQueueRowIntoView(rowId: string, behavior?: ScrollBehavior) {
   if (typeof window === "undefined") return;
   requestAnimationFrame(() => {
     const el = document.querySelector(`[data-receipt-queue-row="${rowId}"]`);
@@ -1005,7 +1006,7 @@ export function ReceiptQueueWorkspace() {
       window.requestAnimationFrame(() => {
         if (!mountedRef.current) return;
         queueBottomSentinelRef.current?.scrollIntoView({
-          behavior: "smooth",
+          behavior: motionAwareScrollBehavior(),
           block: "end",
         });
       });
@@ -1068,7 +1069,7 @@ export function ReceiptQueueWorkspace() {
             focusRowField("vendor", rowId);
             fieldRefs.current.vendor[rowId]?.scrollIntoView({
               block: "nearest",
-              behavior: "smooth",
+              behavior: motionAwareScrollBehavior(),
             });
           });
         });
@@ -2019,7 +2020,7 @@ export function ReceiptQueueWorkspace() {
             ) : null}
             <div
               className={cn(
-                "hidden min-h-[140px] flex-col items-center justify-center gap-2 rounded-hh-panel border border-dashed border-[var(--hh-border-default)] bg-[var(--hh-surface-workspace)] py-8 text-sm text-[var(--hh-text-secondary)] transition-colors duration-rq ease-out md:flex",
+                "hidden min-h-[140px] flex-col items-center justify-center gap-2 rounded-hh-panel border border-dashed border-[var(--hh-border-default)] bg-[var(--hh-surface-workspace)] py-8 text-sm text-[var(--hh-text-secondary)] transition-colors duration-fast ease-motion-out md:flex",
                 dragOver &&
                   !captureUploading &&
                   "border-[var(--hh-accent-primary)] bg-[var(--hh-accent-soft)]",
@@ -2093,7 +2094,7 @@ export function ReceiptQueueWorkspace() {
               ref={emptyQueueRef}
               tabIndex={-1}
               data-receipt-queue-empty
-              className="hidden min-h-[min(40vh_280px)] flex-col justify-center rounded-hh-panel border border-[var(--hh-border-subtle)] bg-[var(--hh-surface-workspace)] transition-opacity duration-200 ease-out animate-in fade-in md:flex"
+              className="hidden min-h-[min(40vh_280px)] flex-col justify-center px-6 transition-opacity duration-200 ease-out animate-in fade-in md:flex"
             >
               <p className="text-center text-sm text-[var(--hh-text-secondary)]">
                 No items in the queue.
@@ -2128,7 +2129,7 @@ export function ReceiptQueueWorkspace() {
                       type="button"
                       onClick={() => setListFilter("all")}
                       className={cn(
-                        "min-h-11 min-w-11 rounded-hh-standard px-3 py-1.5 text-xs font-medium transition-colors duration-rq ease-out lg:min-h-9",
+                        "min-h-11 min-w-11 rounded-hh-standard px-3 py-1.5 text-xs font-medium transition-colors duration-fast ease-motion-out lg:min-h-9",
                         listFilter === "all"
                           ? "bg-[var(--hh-surface-workspace)] text-[var(--hh-text-primary)] ring-1 ring-[var(--hh-border-default)]"
                           : "text-[var(--hh-warning)] hover:bg-[var(--hh-surface-hover)]"
@@ -2140,7 +2141,7 @@ export function ReceiptQueueWorkspace() {
                       type="button"
                       onClick={() => setListFilter("needs_fix")}
                       className={cn(
-                        "min-h-11 rounded-hh-standard px-3 py-1.5 text-xs font-medium transition-colors duration-rq ease-out lg:min-h-9",
+                        "min-h-11 rounded-hh-standard px-3 py-1.5 text-xs font-medium transition-colors duration-fast ease-motion-out lg:min-h-9",
                         listFilter === "needs_fix"
                           ? "bg-[var(--hh-surface-workspace)] text-[var(--hh-text-primary)] ring-1 ring-[var(--hh-border-default)]"
                           : "text-[var(--hh-warning)] hover:bg-[var(--hh-surface-hover)]"

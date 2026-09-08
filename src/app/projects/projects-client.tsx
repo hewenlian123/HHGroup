@@ -285,7 +285,7 @@ export function ProjectsClient() {
             asChild
             variant="outline"
             size="sm"
-            className="w-full rounded-hh-standard border-[0.5px] border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-none transition-[background-color,border-color,box-shadow,transform] duration-150 ease-out motion-reduce:transition-none hover:-translate-y-px hover:bg-[var(--hh-l3-hover)] active:scale-[0.97] active:duration-100 sm:w-auto"
+            className="w-full rounded-hh-standard border-[0.5px] border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-none transition-[background-color,border-color,box-shadow] duration-fast ease-motion-out motion-reduce:transition-none hover:bg-[var(--hh-l3-hover)] active:duration-micro sm:w-auto"
           >
             <Link href="/projects/new" className="inline-flex items-center justify-center gap-1">
               <Plus className="h-4 w-4" />

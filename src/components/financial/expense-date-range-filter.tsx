@@ -14,6 +14,7 @@ import {
   hawaiiTodayYmd,
 } from "@/lib/hawaii-calendar-date";
 import { cn } from "@/lib/utils";
+import calendarStyles from "@/components/ui/date-picker.module.css";
 
 import "react-day-picker/style.css";
 
@@ -108,7 +109,7 @@ export function formatExpenseDateFilterTrigger(value: ExpenseDateFilterValue): s
 type Panel = "menu" | "custom";
 
 const MENU_ITEM =
-  "flex w-full cursor-pointer items-center rounded-md px-3 py-2 text-left text-sm text-[var(--hh-text-primary)] outline-none transition-colors hover:bg-[var(--hh-l3-hover)] focus:bg-[var(--hh-l3-hover)]";
+  "hh-focus-ring flex min-h-11 w-full cursor-pointer items-center rounded-md px-3 py-2 text-left text-sm text-[var(--hh-text-primary)] transition-colors hover:bg-[var(--hh-l3-hover)] focus:bg-[var(--hh-l3-hover)] lg:min-h-hh-row-dense";
 
 export type ExpenseDateRangeFilterProps = {
   value: ExpenseDateFilterValue;
@@ -195,7 +196,7 @@ export function ExpenseDateRangeFilter({
           type="button"
           data-expenses-filter-date
           className={cn(
-            "inline-flex h-8 min-w-[7.5rem] items-center justify-between gap-2 rounded-lg border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-2.5 text-left text-xs font-medium text-[var(--hh-text-primary)] shadow-none transition-colors hover:bg-[var(--hh-l3-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)]",
+            "inline-flex h-11 min-h-11 min-w-[7.5rem] items-center justify-between gap-2 rounded-lg border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-2.5 text-left text-xs font-medium text-[var(--hh-text-primary)] shadow-none transition-colors hover:bg-[var(--hh-l3-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)] lg:h-8 lg:min-h-8 [@media(pointer:coarse)]:min-h-11",
             className
           )}
         >
@@ -206,14 +207,14 @@ export function ExpenseDateRangeFilter({
       <PopoverContent
         align="start"
         sideOffset={6}
+        collisionPadding={2}
         data-expense-component-surface="date-filter"
         className={cn(
-          "expenses-ui-dialog z-[130] overflow-visible p-0",
+          "expenses-ui-dialog z-[130] p-0 [@media(pointer:coarse)]:[&_button]:min-h-11",
           panel === "menu"
-            ? "w-[min(100vw-16px_260px)]"
-            : "w-[min(100vw-16px_720px)] max-w-[calc(100vw-16px)]"
+            ? "w-[min(100vw-16px_260px)] overflow-visible"
+            : "max-h-[var(--radix-popover-content-available-height)] w-max max-w-[calc(100vw-4px)] overflow-y-auto"
         )}
-        onCloseAutoFocus={(e) => e.preventDefault()}
       >
         {panel === "menu" ? (
           <div className="py-1.5">
@@ -249,9 +250,21 @@ export function ExpenseDateRangeFilter({
             </button>
           </div>
         ) : (
-          <div className="flex flex-col gap-0 sm:flex-row">
-            <div className="expense-date-range-picker border-b border-[var(--hh-border)] p-2 sm:border-b-0 sm:border-r">
+          <div className="flex flex-col gap-0 lg:flex-row">
+            <div className="expense-date-range-picker min-w-0 border-b border-[var(--hh-border)] p-0.5 lg:border-b-0 lg:border-r">
               <DayPicker
+                className={calendarStyles.calendar}
+                navLayout="around"
+                style={
+                  {
+                    "--rdp-accent-color": "var(--hh-action-primary)",
+                    "--rdp-weekday-opacity": "1",
+                    "--rdp-outside-opacity": "1",
+                    "--rdp-range_middle-color": "var(--hh-action-primary-foreground)",
+                    "--rdp-range_start-color": "var(--hh-action-primary-foreground)",
+                    "--rdp-range_end-color": "var(--hh-action-primary-foreground)",
+                  } as React.CSSProperties
+                }
                 mode="range"
                 today={ymdToLocalDate(hawaiiTodayYmd())}
                 month={month}
@@ -262,7 +275,7 @@ export function ExpenseDateRangeFilter({
                 showOutsideDays
                 classNames={{
                   ...rdp,
-                  months: cn(rdp.months, "flex flex-col gap-4 sm:flex-row sm:gap-6"),
+                  months: cn(rdp.months, "flex flex-col gap-4"),
                   month: cn(rdp.month, "space-y-2"),
                   month_caption: cn(
                     rdp.month_caption,
@@ -271,24 +284,27 @@ export function ExpenseDateRangeFilter({
                   nav: cn(rdp.nav, "flex items-center gap-1"),
                   button_previous: cn(
                     rdp.button_previous,
-                    "inline-flex h-8 w-8 items-center justify-center rounded-md border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] hover:bg-[var(--hh-l3-hover)]"
+                    "inline-flex h-11 w-11 items-center justify-center rounded-md border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] hover:bg-[var(--hh-l3-hover)] lg:h-8 lg:w-8"
                   ),
                   button_next: cn(
                     rdp.button_next,
-                    "inline-flex h-8 w-8 items-center justify-center rounded-md border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] hover:bg-[var(--hh-l3-hover)]"
+                    "inline-flex h-11 w-11 items-center justify-center rounded-md border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] hover:bg-[var(--hh-l3-hover)] lg:h-8 lg:w-8"
                   ),
                   month_grid: cn(rdp.month_grid, "w-full"),
                   weekdays: cn(rdp.weekdays, "flex"),
-                  weekday: cn(rdp.weekday, "w-9 text-hh-status font-medium text-zinc-500"),
+                  weekday: cn(
+                    rdp.weekday,
+                    "w-11 text-hh-status font-medium text-[var(--hh-text-secondary)] lg:w-9 [@media(pointer:coarse)]:w-11"
+                  ),
                   week: cn(rdp.week, "flex w-full"),
                   day: cn(rdp.day, "p-0 text-center text-sm"),
                   day_button: cn(
                     rdp.day_button,
-                    "h-9 w-9 rounded-md text-[var(--hh-text-primary)] hover:bg-[var(--hh-l3-hover)]"
+                    "h-11 w-11 rounded-md text-[var(--hh-text-primary)] hover:bg-[var(--hh-l3-hover)] lg:h-9 lg:w-9"
                   ),
                   selected: cn(
                     rdp.selected,
-                    "!bg-[var(--hh-action-primary)] font-medium !text-[var(--hh-action-primary-foreground)] hover:!bg-[var(--hh-action-primary)]"
+                    "!bg-[var(--hh-action-primary)] font-medium !text-[var(--hh-action-primary-foreground)] [&>button]:!text-[var(--hh-action-primary-foreground)] hover:!bg-[var(--hh-action-primary)]"
                   ),
                   range_start: cn(rdp.range_start, "rounded-r-none !bg-[var(--hh-action-primary)]"),
                   range_end: cn(rdp.range_end, "rounded-l-none !bg-[var(--hh-action-primary)]"),
@@ -297,12 +313,12 @@ export function ExpenseDateRangeFilter({
                     "rounded-none bg-[var(--hh-l3-selected)] text-[var(--hh-text-primary)]"
                   ),
                   today: cn(rdp.today, "font-semibold text-[var(--hh-text-primary)]"),
-                  outside: cn(rdp.outside, "text-zinc-400 opacity-60"),
+                  outside: cn(rdp.outside, "text-[var(--hh-text-secondary)]"),
                   disabled: cn(rdp.disabled, "opacity-40"),
                 }}
               />
             </div>
-            <div className="flex w-full flex-col justify-between gap-3 p-3 sm:w-[148px] sm:shrink-0">
+            <div className="flex w-full flex-col justify-between gap-3 p-3 lg:w-[148px] lg:shrink-0">
               <div className="flex flex-col gap-1">
                 <p className="px-1 text-hh-status font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                   Quick select
@@ -341,7 +357,7 @@ export function ExpenseDateRangeFilter({
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="h-8 w-full rounded-lg text-xs"
+                  className="h-11 min-h-11 w-full rounded-lg text-xs lg:h-8 lg:min-h-8"
                   onClick={() => setPanel("menu")}
                 >
                   <ChevronLeft className="mr-1 h-3.5 w-3.5" aria-hidden />
@@ -352,7 +368,7 @@ export function ExpenseDateRangeFilter({
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="h-8 flex-1 rounded-lg text-xs"
+                    className="h-11 min-h-11 flex-1 rounded-lg text-xs lg:h-8 lg:min-h-8"
                     onClick={() => handleOpenChange(false)}
                   >
                     Cancel
@@ -360,7 +376,7 @@ export function ExpenseDateRangeFilter({
                   <Button
                     type="button"
                     size="sm"
-                    className="h-8 flex-1 rounded-lg border-0 text-xs"
+                    className="h-11 min-h-11 flex-1 rounded-lg border-0 text-xs lg:h-8 lg:min-h-8"
                     disabled={!draft?.from}
                     onClick={applyCustom}
                   >

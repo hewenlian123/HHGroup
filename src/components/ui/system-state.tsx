@@ -44,7 +44,7 @@ export function SystemState({
       {...props}
     >
       {icon ? (
-        <div className="mx-auto mb-hh-3 flex h-hh-touch w-hh-touch items-center justify-center rounded-full border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-secondary)]">
+        <div className="mx-auto mb-hh-3 flex size-[var(--hh-touch-min)] items-center justify-center rounded-full border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-secondary)]">
           {icon}
         </div>
       ) : null}

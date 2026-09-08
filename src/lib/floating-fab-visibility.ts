@@ -31,6 +31,7 @@ export function shouldHideFloatingQuickActionFab(pathname: string | null | undef
     "/financial/deposits",
     "/financial/vendors",
     "/financial/expenses",
+    "/financial/inbox",
     "/financial/commissions",
     "/subcontractors",
     "/settings/company",

@@ -8,24 +8,28 @@ const workspaces = [
     route: "/financial/expenses?date_kind=all",
     root: '[data-expenses-list-page="expenses"]',
     heading: "Expenses",
+    navigation: "expense",
   },
   {
     name: "receipt-inbox",
     route: "/financial/inbox?date_kind=all",
     root: '[data-expenses-list-page="inbox"]',
     heading: "Receipt Inbox",
+    navigation: "expense",
   },
   {
     name: "worker-submitted",
     route: "/financial/inbox/worker",
     root: "[data-worker-receipts-workspace]",
     heading: "Worker Submitted",
+    navigation: "expense",
   },
   {
     name: "reimbursements",
     route: "/labor/reimbursements",
     root: "[data-reimbursements-workspace]",
     heading: "Worker Reimbursements",
+    navigation: "labor",
   },
 ] as const;
 
@@ -69,10 +73,13 @@ test.describe("Expense Operations visual cohesion (read-only)", () => {
 
     for (const workspace of workspaces) {
       const root = await openWorkspace(page, workspace);
-      await page.evaluate(() => document.documentElement.classList.remove("dark"));
+      await page.evaluate(() => document.documentElement.removeAttribute("data-hh-theme"));
       await page.waitForTimeout(260);
 
-      const nav = root.locator("[data-expense-operations-shell]");
+      const nav =
+        workspace.navigation === "expense"
+          ? root.getByRole("navigation", { name: "Expense Operations workspace" })
+          : root.getByRole("navigation", { name: "Labor navigation" });
       await expect(nav).toBeVisible();
       await expect(
         page.getByRole("heading", { name: workspace.heading, exact: true })
@@ -106,7 +113,9 @@ test.describe("Expense Operations visual cohesion (read-only)", () => {
 
     for (const workspace of workspaces) {
       const root = await openWorkspace(page, workspace);
-      await page.evaluate(() => document.documentElement.classList.add("dark"));
+      await page.evaluate(() =>
+        document.documentElement.setAttribute("data-hh-theme", "operational-dark")
+      );
       await page.waitForTimeout(260);
       await expect(root).toHaveCSS("color-scheme", "dark");
       await expectContainedViewport(page);
@@ -136,18 +145,34 @@ test.describe("Expense Operations visual cohesion (read-only)", () => {
       await page.setViewportSize(viewport);
       for (const workspace of workspaces) {
         const root = await openWorkspace(page, workspace);
-        await page.evaluate(() => document.documentElement.classList.remove("dark"));
+        await page.evaluate(() => document.documentElement.removeAttribute("data-hh-theme"));
         await page.waitForTimeout(260);
         await expectContainedViewport(page);
 
-        const navLinks = root.locator("[data-expense-operations-shell] nav[aria-label] a");
-        const count = await navLinks.count();
-        expect(count).toBe(3);
-        if (viewport.width < 768) {
-          for (let index = 0; index < count; index += 1) {
-            const box = await navLinks.nth(index).boundingBox();
-            expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
+        if (workspace.navigation === "expense") {
+          const navLinks = root
+            .getByRole("navigation", {
+              name: "Expense Operations workspace",
+            })
+            .getByRole("link");
+          const count = await navLinks.count();
+          expect(count).toBe(3);
+          if (viewport.width < 768) {
+            for (let index = 0; index < count; index += 1) {
+              const box = await navLinks.nth(index).boundingBox();
+              expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
+            }
           }
+        } else if (viewport.width >= 768) {
+          await expect(
+            root.getByRole("navigation", { name: "Labor navigation" }).getByRole("link")
+          ).toHaveCount(2);
+        } else {
+          const primaryAction = root.getByRole("button", { name: "New reimbursement" });
+          await expect(primaryAction).toBeVisible();
+          const box = await primaryAction.boundingBox();
+          expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
+          expect(box?.width ?? 0).toBeGreaterThanOrEqual(44);
         }
       }
     }

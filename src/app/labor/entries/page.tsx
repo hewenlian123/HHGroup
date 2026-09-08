@@ -5,7 +5,7 @@ import * as React from "react";
 import { startTransition } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { PageLayout, PageHeader } from "@/components/base";
+import { ConfirmDialog, PageLayout, PageHeader } from "@/components/base";
 import { FilterBar } from "@/components/filter-bar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -253,6 +253,7 @@ function DailyEntriesPageInner() {
   const [editDraft, setEditDraft] = React.useState<LaborEntryEditDraft | null>(null);
   const [saving, setSaving] = React.useState(false);
   const [deletingId, setDeletingId] = React.useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = React.useState<LaborEntryWithJoins | null>(null);
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
   const [bulkAction, setBulkAction] = React.useState<"submit" | "approve" | "lock" | null>(null);
   const [searchInput, setSearchInput] = React.useState("");
@@ -407,28 +408,25 @@ function DailyEntriesPageInner() {
     }
   }, [editEntry, editDraft, closeEdit, loadEntries]);
 
-  const handleDelete = React.useCallback(
-    async (row: LaborEntryWithJoins) => {
-      if (row.status === "Locked" || laborEntryPayrollLocked(row)) return;
-      if (!window.confirm("Delete this labor entry?")) return;
-      setDeletingId(row.id);
-      setError(null);
-      try {
-        const response = await fetch(`/api/labor/entries?id=${encodeURIComponent(row.id)}`, {
-          method: "DELETE",
-        });
-        const body = (await response.json().catch(() => ({}))) as { message?: string };
-        if (!response.ok) throw new Error(body.message ?? "Failed to delete entry.");
-        setMessage("Entry deleted.");
-        await loadEntries();
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Failed to delete entry.");
-      } finally {
-        setDeletingId(null);
-      }
-    },
-    [loadEntries]
-  );
+  const handleDelete = React.useCallback(async () => {
+    if (!deleteTarget) return;
+    if (deleteTarget.status === "Locked" || laborEntryPayrollLocked(deleteTarget)) return;
+    setDeletingId(deleteTarget.id);
+    setError(null);
+    try {
+      const response = await fetch(`/api/labor/entries?id=${encodeURIComponent(deleteTarget.id)}`, {
+        method: "DELETE",
+      });
+      const body = (await response.json().catch(() => ({}))) as { message?: string };
+      if (!response.ok) throw new Error(body.message ?? "Failed to delete entry.");
+      setMessage("Entry deleted.");
+      await loadEntries();
+    } catch (e) {
+      throw e instanceof Error ? e : new Error("Failed to delete entry.");
+    } finally {
+      setDeletingId(null);
+    }
+  }, [deleteTarget, loadEntries]);
 
   const toggleSelect = React.useCallback((id: string) => {
     setSelectedIds((prev) => {
@@ -941,7 +939,7 @@ function DailyEntriesPageInner() {
                       variant="outline"
                       size="sm"
                       className="btn-outline-ghost h-8 flex-1 rounded-hh-compact text-[var(--hh-danger)] text-[var(--hh-danger)]"
-                      onClick={() => handleDelete(row)}
+                      onClick={() => setDeleteTarget(row)}
                       disabled={rowLocked || deletingId === row.id}
                     >
                       <SubmitSpinner loading={deletingId === row.id} className="mr-1" />
@@ -1195,6 +1193,18 @@ function DailyEntriesPageInner() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null);
+        }}
+        title="Delete labor entry?"
+        description="Delete this labor entry? This cannot be undone."
+        confirmLabel="Delete"
+        destructive
+        loading={!!deletingId}
+        onConfirm={handleDelete}
+      />
     </PageLayout>
   );
 }

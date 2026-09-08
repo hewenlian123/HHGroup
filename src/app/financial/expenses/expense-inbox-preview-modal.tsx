@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
+import { ConfirmDialog } from "@/components/base";
 import {
   getExpenseTotal,
   isExpenseCategoryDisabled,
@@ -527,6 +528,7 @@ export function ExpenseInboxPreviewModal({
   const [previewPmArchived, setPreviewPmArchived] = React.useState(false);
   const [previewCatArchived, setPreviewCatArchived] = React.useState(false);
   const [previewPaArchived, setPreviewPaArchived] = React.useState(false);
+  const [pendingDiscardAction, setPendingDiscardAction] = React.useState<(() => void) | null>(null);
   const vendorInputRef = React.useRef<HTMLInputElement>(null);
   const amountInputRef = React.useRef<HTMLInputElement>(null);
   const editActionRef = React.useRef<HTMLButtonElement>(null);
@@ -1444,24 +1446,23 @@ export function ExpenseInboxPreviewModal({
       return;
     event.preventDefault();
     event.stopPropagation();
-    if (window.confirm("Discard unsaved expense changes?")) cancelEdit();
+    setPendingDiscardAction(() => cancelEdit);
   };
   const requestPanelClose = () => {
-    if (
-      (mode === "edit" || (inlineReviewWorkspace && reviewDraftDirty)) &&
-      !window.confirm("Discard unsaved expense changes?")
-    )
+    if (mode === "edit" || (inlineReviewWorkspace && reviewDraftDirty)) {
+      setPendingDiscardAction(() => () => onOpenChange(false));
       return;
+    }
     onOpenChange(false);
   };
   const requestQueueNavigation = (navigate: () => void) => {
-    if (
-      inlineReviewWorkspace &&
-      reviewDraftDirty &&
-      !window.confirm("Discard unsaved expense changes?")
-    )
+    if (inlineReviewWorkspace && reviewDraftDirty) {
+      setPendingDiscardAction(() => () => {
+        cancelEdit();
+        navigate();
+      });
       return;
-    if (inlineReviewWorkspace && reviewDraftDirty) cancelEdit();
+    }
     navigate();
   };
 
@@ -1491,7 +1492,7 @@ export function ExpenseInboxPreviewModal({
       <div className="flex min-h-0 h-full flex-col">
         <div className="flex shrink-0 items-center justify-between gap-3 px-4 py-2.5">
           <div className="min-w-0">
-            <p className="text-hh-status font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]">
+            <p className="text-hh-status font-semibold uppercase tracking-normal text-[var(--hh-text-secondary)]">
               Receipt preview
             </p>
             <p className="mt-0.5 truncate text-xs text-[var(--hh-text-secondary)]">
@@ -1577,7 +1578,7 @@ export function ExpenseInboxPreviewModal({
           </div>
         </div>
         {embeddedReceiptItem ? (
-          <div className="shrink-0 px-4 pb-3 text-hh-status text-[var(--hh-text-tertiary)]">
+          <div className="shrink-0 px-4 pb-3 text-hh-status text-[var(--hh-text-secondary)]">
             <p className="truncate" title={embeddedReceiptItem.fileName}>
               {embeddedReceiptItem.fileName}
             </p>
@@ -2708,59 +2709,85 @@ export function ExpenseInboxPreviewModal({
     </>
   );
 
+  const discardDialog = (
+    <ConfirmDialog
+      open={pendingDiscardAction !== null}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) setPendingDiscardAction(null);
+      }}
+      title="Discard unsaved changes?"
+      description="Your unsaved expense changes will be lost."
+      confirmLabel="Discard"
+      destructive
+      onConfirm={() => pendingDiscardAction?.()}
+    />
+  );
+
   if (presentation === "panel") {
     if (!open) return null;
     return (
-      <aside
-        data-expense-detail-panel
-        data-expense-detail-mode={detailMode}
-        aria-label={
-          inlineReviewWorkspace
-            ? "Receipt review"
-            : mode === "preview"
-              ? evidenceFirst
-                ? "Receipt detail"
-                : "Expense detail"
-              : evidenceFirst
-                ? "Edit receipt details"
-                : "Edit expense"
-        }
-        className="expense-detail-panel expenses-ui-dialog flex min-h-0 min-w-0 flex-col overflow-hidden rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)]"
-        onKeyDown={handlePanelKeyDown}
-      >
-        {evidenceFirst ? (
-          <div data-expense-review-workspace className="expense-review-workspace min-h-0 flex-1">
-            {receiptReviewStage}
-            <div
-              data-expense-review-panel
-              className="expense-review-panel flex min-h-0 min-w-0 flex-col overflow-hidden"
-            >
-              {detailSurface}
+      <>
+        <aside
+          data-expense-detail-panel
+          data-expense-detail-mode={detailMode}
+          aria-label={
+            inlineReviewWorkspace
+              ? "Receipt review"
+              : mode === "preview"
+                ? evidenceFirst
+                  ? "Receipt detail"
+                  : "Expense detail"
+                : evidenceFirst
+                  ? "Edit receipt details"
+                  : "Edit expense"
+          }
+          className="expense-detail-panel expenses-ui-dialog flex min-h-0 min-w-0 flex-col overflow-hidden rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)]"
+          onKeyDown={handlePanelKeyDown}
+        >
+          {evidenceFirst ? (
+            <div data-expense-review-workspace className="expense-review-workspace min-h-0 flex-1">
+              {receiptReviewStage}
+              <div
+                data-expense-review-panel
+                className="expense-review-panel flex min-h-0 min-w-0 flex-col overflow-hidden"
+              >
+                {detailSurface}
+              </div>
             </div>
-          </div>
-        ) : (
-          detailSurface
-        )}
-      </aside>
+          ) : (
+            detailSurface
+          )}
+        </aside>
+        {discardDialog}
+      </>
     );
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        data-expense-component-surface="receipt-review"
-        data-hh-context="viewer"
-        data-hh-theme="operational-light"
-        onPointerDownOutside={(event) => {
-          if (eventTargetsAttachmentPreviewModal(event)) event.preventDefault();
+    <>
+      <Dialog
+        open={open}
+        onOpenChange={(nextOpen) => {
+          if (nextOpen) onOpenChange(true);
+          else requestPanelClose();
         }}
-        onInteractOutside={(event) => {
-          if (eventTargetsAttachmentPreviewModal(event)) event.preventDefault();
-        }}
-        className="expenses-ui-dialog flex max-h-[min(92vh,820px)] w-full max-w-[560px] flex-col gap-0 overflow-hidden rounded-hh-task border-[var(--hh-border-floating)] bg-[var(--hh-l5-task-surface)] p-0 text-[var(--hh-text-primary)] shadow-task"
       >
-        {detailSurface}
-      </DialogContent>
-    </Dialog>
+        <DialogContent
+          data-expense-component-surface="receipt-review"
+          data-hh-context="viewer"
+          data-hh-theme="operational-light"
+          onPointerDownOutside={(event) => {
+            if (eventTargetsAttachmentPreviewModal(event)) event.preventDefault();
+          }}
+          onInteractOutside={(event) => {
+            if (eventTargetsAttachmentPreviewModal(event)) event.preventDefault();
+          }}
+          className="expenses-ui-dialog flex max-h-[min(92vh,820px)] w-full max-w-[560px] flex-col gap-0 overflow-hidden rounded-hh-task border-[var(--hh-border-floating)] bg-[var(--hh-l5-task-surface)] p-0 text-[var(--hh-text-primary)] shadow-task"
+        >
+          {detailSurface}
+        </DialogContent>
+      </Dialog>
+      {discardDialog}
+    </>
   );
 }

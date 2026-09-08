@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { hhNeoFocusRevealCommand, hhNeoFocusRevealOverlay } from "@/lib/motion-system";
+import { hhCommandOverlay, hhNeoFocusRevealCommand } from "@/lib/motion-system";
 import { UPLOAD_RECEIPT_ACTION } from "@/lib/navigation/actions";
 import { HH_PROJECT_OS_COMMAND_ITEMS, type HhProjectOsIconKey } from "@/lib/navigation/ia";
 import { TYPO } from "@/lib/typography";
@@ -155,8 +155,8 @@ export function NeoKeyboardHint({ className }: { className?: string }) {
   return (
     <kbd
       className={cn(
-        "inline-flex h-5 min-w-5 items-center justify-center rounded-hh-compact border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-1.5 leading-none text-[var(--hh-text-secondary)] shadow-none",
         TYPO.tableHeader,
+        "inline-flex h-5 min-w-5 items-center justify-center rounded-hh-compact border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-1.5 leading-none text-[var(--hh-text-secondary)] shadow-none",
         className
       )}
     >
@@ -415,7 +415,7 @@ export function NeoCommandPalette({
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <DialogPrimitive.Portal container={portalContainer ?? undefined}>
-        <DialogPrimitive.Overlay className={cn("fixed inset-0 z-[90]", hhNeoFocusRevealOverlay)} />
+        <DialogPrimitive.Overlay className={cn("fixed inset-0 z-[90]", hhCommandOverlay)} />
         <DialogPrimitive.Content
           data-command-dialog
           data-hh-context={context}

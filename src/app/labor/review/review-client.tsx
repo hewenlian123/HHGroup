@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { NeoMobileCard } from "@/components/base";
+import { ConfirmDialog, NeoMobileCard } from "@/components/base";
 import {
   MobileFabPlus,
   MobileListHeader,
@@ -69,6 +69,7 @@ export default function LaborReviewClient() {
   const [selected, setSelected] = React.useState<LaborEntry | null>(null);
   const [message, setMessage] = React.useState<string | null>(null);
   const [busy, setBusy] = React.useState(false);
+  const [deleteTarget, setDeleteTarget] = React.useState<LaborEntry | null>(null);
 
   const halfDayRates = React.useMemo(
     () => new Map(workerOptions.map((w) => [w.id, w.halfDayRate])),
@@ -134,23 +135,29 @@ export default function LaborReviewClient() {
     return (row.hours ?? 0) * rate;
   };
 
-  const handleDelete = async (row: LaborEntry) => {
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
     if (busy) return;
-    if (!window.confirm("Delete this entry?")) return;
     setBusy(true);
     setError(null);
-    if (selected?.id === row.id) setSelected(null);
     const prevRows = rows;
-    setRows((r) => r.filter((e) => e.id !== row.id));
-    const response = await fetch(`/api/labor/entries?id=${encodeURIComponent(row.id)}`, {
-      method: "DELETE",
-    });
-    const body = (await response.json().catch(() => ({}))) as { message?: string };
-    if (!response.ok) {
-      setError(body.message ?? "Failed to delete labor entry.");
+    const prevSelected = selected;
+    if (selected?.id === deleteTarget.id) setSelected(null);
+    setRows((r) => r.filter((e) => e.id !== deleteTarget.id));
+    try {
+      const response = await fetch(`/api/labor/entries?id=${encodeURIComponent(deleteTarget.id)}`, {
+        method: "DELETE",
+      });
+      const body = (await response.json().catch(() => ({}))) as { message?: string };
+      if (!response.ok) throw new Error(body.message ?? "Failed to delete labor entry.");
+      setMessage("Entry deleted.");
+    } catch (cause) {
       setRows(prevRows);
-    } else setMessage("Entry deleted.");
-    setBusy(false);
+      setSelected(prevSelected);
+      throw cause instanceof Error ? cause : new Error("Failed to delete labor entry.");
+    } finally {
+      setBusy(false);
+    }
   };
 
   const handleSaveSelected = async () => {
@@ -349,7 +356,7 @@ export default function LaborReviewClient() {
                       size="sm"
                       variant="outline"
                       className="h-11 min-h-[44px]"
-                      onClick={() => handleDelete(row)}
+                      onClick={() => setDeleteTarget(row)}
                       disabled={busy}
                     >
                       Delete
@@ -444,7 +451,7 @@ export default function LaborReviewClient() {
                               size="sm"
                               variant="outline"
                               className="h-11 min-h-[44px] lg:h-8 lg:min-h-8"
-                              onClick={() => handleDelete(row)}
+                              onClick={() => setDeleteTarget(row)}
                               disabled={busy}
                             >
                               Delete
@@ -542,6 +549,18 @@ export default function LaborReviewClient() {
           </Card>
         </div>
       </div>
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null);
+        }}
+        title="Delete labor entry?"
+        description="Delete this labor entry? This cannot be undone."
+        confirmLabel="Delete"
+        destructive
+        loading={busy}
+        onConfirm={handleDelete}
+      />
     </div>
   );
 }

@@ -30,7 +30,14 @@ import {
   MobileSearchFiltersRow,
   mobileListPagePaddingClass,
 } from "@/components/mobile/mobile-list-chrome";
-import { NeoAmount, NeoMobileCard, NeoStatus, NeoTable, NeoToolbar } from "@/components/base";
+import {
+  ConfirmDialog,
+  NeoAmount,
+  NeoMobileCard,
+  NeoStatus,
+  NeoTable,
+  NeoToolbar,
+} from "@/components/base";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
@@ -155,6 +162,7 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
   const consumedInitialCreateKeyRef = React.useRef<string | null>(null);
 
   const [busyId, setBusyId] = React.useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = React.useState<AdvanceRow | null>(null);
   const [filtersOpen, setFiltersOpen] = React.useState(false);
 
   React.useEffect(() => {
@@ -427,20 +435,20 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
     }
   };
 
-  const handleDelete = async (row: AdvanceRow) => {
-    if (!window.confirm(`Delete advance for ${row.workerName}?`)) return;
-    setBusyId(row.id);
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setBusyId(deleteTarget.id);
     const prev = rows;
-    setRows((r) => r.filter((x) => x.id !== row.id));
+    setRows((r) => r.filter((x) => x.id !== deleteTarget.id));
     try {
-      const res = await fetch(`/api/labor/advances/${row.id}`, { method: "DELETE" });
+      const res = await fetch(`/api/labor/advances/${deleteTarget.id}`, { method: "DELETE" });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.message ?? "Failed to delete advance.");
       }
     } catch (e) {
-      setMessage(e instanceof Error ? e.message : "Failed to delete advance.");
       setRows(prev);
+      throw e instanceof Error ? e : new Error("Failed to delete advance.");
     } finally {
       setBusyId(null);
     }
@@ -972,7 +980,7 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
                         onOpenWorker={() => router.push(workerDetailHref(row.workerId))}
                         onEdit={() => openEdit(row)}
                         onMarkDeducted={() => handleMarkDeducted(row)}
-                        onDelete={() => handleDelete(row)}
+                        onDelete={() => setDeleteTarget(row)}
                         disabled={busyId === row.id}
                       />
                     </div>
@@ -1154,7 +1162,7 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
                         onOpenWorker={() => router.push(workerDetailHref(row.workerId))}
                         onEdit={() => openEdit(row)}
                         onMarkDeducted={() => handleMarkDeducted(row)}
-                        onDelete={() => handleDelete(row)}
+                        onDelete={() => setDeleteTarget(row)}
                         disabled={busyId === row.id}
                       />
                     </div>
@@ -1193,6 +1201,18 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
         }
         onClose={closeEditor}
         onSave={handleDialogSave}
+      />
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null);
+        }}
+        title="Delete advance?"
+        description={`Delete the advance for ${deleteTarget?.workerName ?? "this worker"}? This cannot be undone.`}
+        confirmLabel="Delete"
+        destructive
+        loading={!!busyId}
+        onConfirm={handleDelete}
       />
     </div>
   );

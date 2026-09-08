@@ -12,6 +12,7 @@ import { balanceStatusLabel, type PayrollSummaryComputeRow } from "./compute-pay
 import { PayWorkerModal } from "./pay-worker-modal";
 import { WorkerPaymentReceiptPreviewModal } from "@/components/labor/worker-payment-receipt-preview-modal";
 import { RowActionsMenu } from "@/components/base/row-actions-menu";
+import { ConfirmDialog } from "@/components/base";
 import { deleteWorkerAction } from "@/app/workers/actions";
 import { cn } from "@/lib/utils";
 import { TYPO } from "@/lib/typography";
@@ -172,6 +173,7 @@ export default function PayrollSummaryPage() {
   const [payOpen, setPayOpen] = React.useState(false);
   const [payTarget, setPayTarget] = React.useState<Row | null>(null);
   const [deletingId, setDeletingId] = React.useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = React.useState<Row | null>(null);
   const [receiptPaymentId, setReceiptPaymentId] = React.useState<string | null>(null);
   const [receiptOpen, setReceiptOpen] = React.useState(false);
   const workerDetailHref = React.useCallback(
@@ -249,6 +251,19 @@ export default function PayrollSummaryPage() {
       s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: "desc" }
     );
   };
+
+  const handleDeleteWorker = React.useCallback(async () => {
+    if (!deleteTarget || deletingId) return;
+    setDeletingId(deleteTarget.workerId);
+    try {
+      const result = await deleteWorkerAction(deleteTarget.workerId);
+      if (!result.ok) throw new Error(result.error ?? "Failed to delete worker.");
+      toast({ title: "Worker deleted", variant: "success" });
+      await load();
+    } finally {
+      setDeletingId(null);
+    }
+  }, [deleteTarget, deletingId, load, toast]);
 
   /** Monthly report page uses calendar month; align with the range “From” date. */
   const payrollMonthYm = fromDate.slice(0, 7);
@@ -608,28 +623,7 @@ export default function PayrollSummaryPage() {
                         { label: "Edit", onClick: () => router.push("/workers") },
                         {
                           label: "Delete",
-                          onClick: async () => {
-                            if (deletingId) return;
-                            if (
-                              !window.confirm(
-                                `Delete worker "${r.workerName}"? This cannot be undone.`
-                              )
-                            )
-                              return;
-                            setDeletingId(r.workerId);
-                            const res = await deleteWorkerAction(r.workerId);
-                            if (!res.ok) {
-                              toast({
-                                title: "Delete failed",
-                                description: res.error,
-                                variant: "error",
-                              });
-                            } else {
-                              toast({ title: "Deleted", variant: "success" });
-                            }
-                            setDeletingId(null);
-                            await load();
-                          },
+                          onClick: () => setDeleteTarget(r),
                           destructive: true,
                           disabled: deletingId === r.workerId,
                         },
@@ -955,28 +949,7 @@ export default function PayrollSummaryPage() {
                               { label: "Edit", onClick: () => router.push("/workers") },
                               {
                                 label: "Delete",
-                                onClick: async () => {
-                                  if (deletingId) return;
-                                  if (
-                                    !window.confirm(
-                                      `Delete worker "${r.workerName}"? This cannot be undone.`
-                                    )
-                                  )
-                                    return;
-                                  setDeletingId(r.workerId);
-                                  const res = await deleteWorkerAction(r.workerId);
-                                  if (!res.ok) {
-                                    toast({
-                                      title: "Delete failed",
-                                      description: res.error,
-                                      variant: "error",
-                                    });
-                                  } else {
-                                    toast({ title: "Deleted", variant: "success" });
-                                  }
-                                  setDeletingId(null);
-                                  await load();
-                                },
+                                onClick: () => setDeleteTarget(r),
                                 destructive: true,
                                 disabled: deletingId === r.workerId,
                               },
@@ -1076,6 +1049,18 @@ export default function PayrollSummaryPage() {
             setReceiptOpen(open);
             if (!open) setReceiptPaymentId(null);
           }}
+        />
+        <ConfirmDialog
+          open={!!deleteTarget}
+          onOpenChange={(open) => {
+            if (!open) setDeleteTarget(null);
+          }}
+          title="Delete worker?"
+          description={`Delete ${deleteTarget?.workerName ?? "this worker"}? This cannot be undone.`}
+          confirmLabel="Delete"
+          destructive
+          loading={!!deletingId}
+          onConfirm={handleDeleteWorker}
         />
       </div>
     </div>

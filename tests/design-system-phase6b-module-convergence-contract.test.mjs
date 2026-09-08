@@ -113,9 +113,9 @@ test("Phase 6B Estimates composes canonical operational authority and preserves 
   const builderCss = `${builderGlass}\n${builderOperational}`;
 
   assert.match(commandHeader, /<StatusBadge/);
-  assert.match(commandHeader, /text-\[24px\][^"\n]*leading-\[30px\]/);
-  assert.match(commandHeader, /hh-fin[^"\n]*text-\[20px\][^"\n]*leading-6/);
-  assert.match(commandHeader, /rounded-\[6px\][^"\n]*--hh-border-default/);
+  assert.match(commandHeader, /text-hh-page-title/);
+  assert.match(commandHeader, /hh-fin[^"\n]*text-hh-financial-total/);
+  assert.match(commandHeader, /rounded-\[var\(--hh-radius-control\)\]/);
 
   assert.doesNotMatch(
     estimates,

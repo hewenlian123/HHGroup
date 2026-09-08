@@ -193,6 +193,7 @@ export default function InvoiceDetailClient({
   const [voidConfirmOpen, setVoidConfirmOpen] = React.useState(false);
   const [actionBusy, setActionBusy] = React.useState(false);
   const [deletingPaymentId, setDeletingPaymentId] = React.useState<string | null>(null);
+  const [paymentDeleteTarget, setPaymentDeleteTarget] = React.useState<InvoicePayment | null>(null);
   const [editing, setEditing] = React.useState(false);
   const [editSaving, setEditSaving] = React.useState(false);
   const [editAttempted, setEditAttempted] = React.useState(false);
@@ -536,7 +537,7 @@ export default function InvoiceDetailClient({
     }
   };
 
-  const handleDeletePayment = async (paymentId: string) => {
+  const requestDeletePayment = (paymentId: string) => {
     const target = payments.find((p) => p.id === paymentId);
     if (!id || !target) return;
     if (target.paymentReceivedId) {
@@ -547,17 +548,16 @@ export default function InvoiceDetailClient({
       });
       return;
     }
-    if (!window.confirm("Delete this legacy invoice payment?")) return;
-    setDeletingPaymentId(paymentId);
+    setPaymentDeleteTarget(target);
+  };
+
+  const handleDeletePayment = async () => {
+    if (!id || !paymentDeleteTarget) return;
+    setDeletingPaymentId(paymentDeleteTarget.id);
     try {
-      const result = await deleteInvoicePaymentAction(id, paymentId);
+      const result = await deleteInvoicePaymentAction(id, paymentDeleteTarget.id);
       if (!result.ok) {
-        toast({
-          title: "Could not delete payment",
-          description: result.error ?? "Refresh and try again.",
-          variant: "error",
-        });
-        return;
+        throw new Error(result.error ?? "Could not delete payment. Refresh and try again.");
       }
       toast({ title: "Payment deleted", variant: "success" });
       await refresh();
@@ -1184,7 +1184,7 @@ export default function InvoiceDetailClient({
                                 variant="outline"
                                 size="sm"
                                 className="h-11 min-h-11 xl:h-8 xl:min-h-8 rounded-hh-standard border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-danger)] hover:bg-[var(--hh-danger-soft-fill)] hover:text-[var(--hh-danger)]"
-                                onClick={() => handleDeletePayment(p.id)}
+                                onClick={() => requestDeletePayment(p.id)}
                                 disabled={deletingPaymentId === p.id}
                                 title="Delete payment"
                               >
@@ -1321,7 +1321,7 @@ export default function InvoiceDetailClient({
                 <span>Paid</span>
                 <span className="tabular-nums">{formatCurrency(invoice.paidTotal)}</span>
               </div>
-              <div className="flex justify-between gap-4 rounded-hh-task border border-[var(--hh-border-strong)] bg-[var(--hh-l3-selected)] px-3 py-2 hh-type-text-entry font-semibold text-[var(--hh-text-primary)]">
+              <div className="flex justify-between gap-4 pt-1 text-hh-financial font-semibold text-[var(--hh-text-primary)]">
                 <span>Balance due</span>
                 <span data-testid="invoice-detail-balance" className="tabular-nums">
                   {formatCurrency(displayedBalance)}
@@ -1361,6 +1361,19 @@ export default function InvoiceDetailClient({
           </section>
         </aside>
       </InvoiceDetailPresentation>
+
+      <ConfirmDialog
+        open={!!paymentDeleteTarget}
+        onOpenChange={(open) => {
+          if (!open) setPaymentDeleteTarget(null);
+        }}
+        title="Delete legacy payment?"
+        description="Delete this legacy invoice payment? This cannot be undone."
+        confirmLabel="Delete"
+        destructive
+        loading={!!deletingPaymentId}
+        onConfirm={handleDeletePayment}
+      />
 
       <ConfirmDialog
         open={deleteConfirmOpen}

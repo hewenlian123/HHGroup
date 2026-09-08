@@ -10,7 +10,7 @@ import { Select } from "@/components/ui/native-select";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { listTableRowClassName } from "@/lib/list-table-interaction";
-import { NeoAmount, NeoMobileCard, NeoTable, NeoToolbar } from "@/components/base";
+import { ConfirmDialog, NeoAmount, NeoMobileCard, NeoTable, NeoToolbar } from "@/components/base";
 import {
   MobileFabButton,
   MobileListHeader,
@@ -133,6 +133,7 @@ export default function LaborWorkersPage() {
   const [form, setForm] = React.useState<WorkerForm>(EMPTY_FORM);
   const [submitting, setSubmitting] = React.useState(false);
   const [deletingId, setDeletingId] = React.useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = React.useState<WorkerRow | null>(null);
 
   const refresh = React.useCallback(async () => {
     setLoading(true);
@@ -324,28 +325,24 @@ export default function LaborWorkersPage() {
     }
   }, [editorMode, form]);
 
-  const handleDelete = React.useCallback(
-    async (worker: WorkerRow) => {
-      if (!window.confirm(`Delete worker "${worker.name || "Unnamed"}"?`)) return;
-
-      setDeletingId(worker.id);
-      setMessage(null);
-      const prevRows = rows;
-      setRows((r) => r.filter((w) => w.id !== worker.id));
-      try {
-        const res = await fetch(`/api/labor/workers/${worker.id}`, { method: "DELETE" });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.message ?? "Failed to delete worker.");
-      } catch (err: unknown) {
-        setRows(prevRows);
-        const msg = err instanceof Error ? err.message : String(err);
-        setMessage(msg || "Failed to delete worker.");
-      } finally {
-        setDeletingId(null);
-      }
-    },
-    [rows]
-  );
+  const handleDelete = React.useCallback(async () => {
+    if (!deleteTarget) return;
+    setDeletingId(deleteTarget.id);
+    setMessage(null);
+    const prevRows = rows;
+    setRows((r) => r.filter((w) => w.id !== deleteTarget.id));
+    try {
+      const res = await fetch(`/api/labor/workers/${deleteTarget.id}`, { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message ?? "Failed to delete worker.");
+    } catch (err: unknown) {
+      setRows(prevRows);
+      const msg = err instanceof Error ? err.message : String(err);
+      throw new Error(msg || "Failed to delete worker.");
+    } finally {
+      setDeletingId(null);
+    }
+  }, [deleteTarget, rows]);
 
   return (
     <div className="min-w-0 overflow-x-hidden bg-[var(--hh-l0-canvas)] pb-[max(1rem,env(safe-area-inset-bottom,0px))] pt-[max(0.35rem,env(safe-area-inset-top,0px))] text-[color:var(--hh-text-secondary)]">
@@ -684,7 +681,7 @@ export default function LaborWorkersPage() {
                         workerSecondaryButton,
                         "h-11 min-h-[44px] flex-1 text-[var(--hh-danger)] hover:border-[var(--hh-danger-border)] hover:bg-[var(--hh-danger-soft-fill)] hover:text-[var(--hh-danger)]"
                       )}
-                      onClick={() => void handleDelete(w)}
+                      onClick={() => setDeleteTarget(w)}
                       disabled={submitting || deletingId === w.id}
                     >
                       <Trash2 className="h-4 w-4" aria-hidden />
@@ -821,7 +818,7 @@ export default function LaborWorkersPage() {
                         )}
                         onClick={(e) => {
                           e.stopPropagation();
-                          void handleDelete(w);
+                          setDeleteTarget(w);
                         }}
                         disabled={submitting || deletingId === w.id}
                       >
@@ -874,6 +871,18 @@ export default function LaborWorkersPage() {
           </tbody>
         </NeoTable>
       </div>
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null);
+        }}
+        title="Delete worker?"
+        description={`Delete ${deleteTarget?.name || "this worker"}? This cannot be undone.`}
+        confirmLabel="Delete"
+        destructive
+        loading={!!deletingId}
+        onConfirm={handleDelete}
+      />
     </div>
   );
 }

@@ -7,9 +7,9 @@ import { StatusBadge, type StatusBadgeVariant } from "@/components/base/status-b
 import { EstimateBuilderSaveStatus, type EstimateSaveStatus } from "./estimate-builder-save-status";
 
 export const ESTIMATE_HEADER_BUTTON =
-  "rounded-[6px] border border-[var(--hh-border-default)] bg-[var(--hh-surface-workspace)] text-[var(--hh-text-primary)] shadow-none hover:border-[var(--hh-border-input)] hover:bg-[var(--hh-surface-hover)] focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)]";
+  "rounded-[var(--hh-radius-control)] border border-transparent bg-[var(--hh-surface-workspace)] text-[var(--hh-text-primary)] shadow-none hover:border-[var(--hh-border-input)] hover:bg-[var(--hh-surface-hover)] focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)]";
 export const ESTIMATE_HEADER_PRIMARY_BUTTON =
-  "rounded-[6px] !border-[var(--hh-accent-primary)] !bg-[var(--hh-accent-primary)] !text-white shadow-none hover:!border-[var(--hh-accent-hover)] hover:!bg-[var(--hh-accent-hover)] focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)]";
+  "rounded-[var(--hh-radius-control)] !border-[var(--hh-accent-primary)] !bg-[var(--hh-accent-primary)] !text-[var(--hh-action-primary-foreground)] shadow-none hover:!border-[var(--hh-accent-hover)] hover:!bg-[var(--hh-accent-hover)] focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)]";
 
 function estimateStatusMeta(status: string): { label: string; variant: StatusBadgeVariant } {
   if (status === "Draft") return { label: "Draft", variant: "muted" };
@@ -68,10 +68,10 @@ export function EstimateWorkspaceCommandHeader({
           </Link>
           <div className="min-w-0 space-y-0.5">
             <div className="eb-estimate-command-title-row flex min-w-0 flex-wrap items-center gap-1.5">
-              <h1 className="eb-estimate-command-title truncate text-[24px] font-semibold leading-[30px] tracking-[-0.01em] text-[var(--hh-text-primary)]">
+              <h1 className="eb-estimate-command-title min-w-0 text-hh-page-title text-[var(--hh-text-primary)]">
                 {title}
                 {revisionLabel ? (
-                  <span className="font-medium text-[var(--hh-text-secondary)]">
+                  <span className="eb-estimate-command-revision text-hh-metadata font-medium text-[var(--hh-text-secondary)]">
                     {" "}
                     · {revisionLabel}
                   </span>
@@ -80,7 +80,7 @@ export function EstimateWorkspaceCommandHeader({
               <StatusBadge label={statusMeta.label} variant={statusMeta.variant} showDot={false} />
               {amount ? (
                 <span
-                  className="eb-estimate-command-amount hh-fin ml-1 text-[20px] font-semibold leading-6 text-[var(--hh-text-primary)]"
+                  className="eb-estimate-command-amount hh-fin ml-1 text-hh-financial-total text-[var(--hh-text-primary)]"
                   aria-label={`${amountLabel}: ${amount}`}
                 >
                   {amount}

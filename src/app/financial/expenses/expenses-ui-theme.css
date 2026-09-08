@@ -247,8 +247,7 @@
 }
 
 .expenses-ui[data-expenses-list-page="inbox"] [data-inbox-decision-brief] dt {
-  color: var(--hh-text-tertiary);
-  opacity: 0.88;
+  color: var(--hh-text-secondary);
 }
 
 .expenses-ui[data-expenses-list-page="inbox"] [data-inbox-decision-brief] dd {
@@ -422,8 +421,8 @@
 }
 
 .expenses-ui[data-expenses-list-page="expenses"] [data-expenses-kpi-strip] dt {
-  color: var(--hh-text-tertiary);
-  opacity: 0.86;
+  color: var(--hh-text-secondary);
+  opacity: 1;
 }
 
 .expenses-ui[data-expenses-list-page="expenses"] [data-expenses-kpi-strip] dd {

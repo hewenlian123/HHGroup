@@ -1,13 +1,17 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawn } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { createServer } from "node:http";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import test from "node:test";
 import { chromium, expect } from "@playwright/test";
+import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import postgres from "postgres";
+import { assertDisposableCertificationTarget } from "./certification-target-guard.mjs";
 
 // Explicit opt-in; isolated local fixtures, no global seed or broad cleanup hooks.
 // HH_LABOR_EXPENSES_LOCAL_TEST=1 E2E_BASE_URL=http://127.0.0.1:3001 node --test tests/labor-expenses-certification.local.test.mjs
@@ -46,27 +50,142 @@ function receiptPdf(marker) {
   return Buffer.from(text);
 }
 
+function isExpectedNavigationCancellation(failure, baseURL, proxyURL) {
+  if (failure.error !== "net::ERR_ABORTED") return false;
+  const url = new URL(failure.url);
+  if (url.pathname.startsWith("/auth/v1/")) return false;
+  if (url.origin === new URL(proxyURL).origin)
+    return (
+      failure.method === "GET" &&
+      url.pathname.startsWith("/storage/v1/object/sign/expense-attachments/")
+    );
+  if (url.origin !== new URL(baseURL).origin) return false;
+  return (
+    (failure.method === "GET" &&
+      (/^\/(?:financial\/(?:accounts|inbox|expenses)|api\/(?:system-health|labor\/(?:workers\/[^/]+|payroll-summary)))$/.test(
+        url.pathname
+      ) ||
+        url.pathname.startsWith("/_next/static/chunks/"))) ||
+    (failure.method === "POST" && url.pathname === "/financial/accounts")
+  );
+}
+
+async function addDisposableSession(context, apiUrl, anonKey, actor, baseURL, accessTokens) {
+  let cookies = [];
+  const client = createServerClient(apiUrl, anonKey, {
+    cookies: {
+      getAll: () => cookies,
+      setAll: (next) => {
+        cookies = next;
+      },
+    },
+  });
+  const { data, error } = await client.auth.signInWithPassword(actor);
+  assert.equal(error, null, "Disposable Auth session is created directly");
+  assert.ok(data.session?.access_token, "Disposable bearer token is present");
+  accessTokens.add(data.session.access_token);
+  await context.setExtraHTTPHeaders({ Authorization: `Bearer ${data.session.access_token}` });
+  await context.addCookies(
+    cookies.map(({ name, value, options }) => ({
+      httpOnly: options?.httpOnly,
+      name,
+      sameSite:
+        options?.sameSite === "strict" ? "Strict" : options?.sameSite === "none" ? "None" : "Lax",
+      secure: options?.secure,
+      url: baseURL,
+      value,
+    }))
+  );
+}
+
 test(
   "Labor, receipt persistence, and Accounts local certification",
   { skip: process.env.HH_LABOR_EXPENSES_LOCAL_TEST !== "1", timeout: 1_800_000 },
   async (t) => {
     assert.equal(process.versions.node.split(".")[0], "22");
-    for (const key of ["NEXT_PUBLIC_SUPABASE_URL", "SUPABASE_URL", "DATABASE_URL", "E2E_BASE_URL"])
-      if (process.env[key]) local(process.env[key]);
+    const workdir = resolve(process.env.HH_CERTIFICATION_SUPABASE_WORKDIR || process.cwd());
+    const expected = {
+      projectId: process.env.HH_CERTIFICATION_PROJECT_ID,
+      apiUrl: process.env.HH_CERTIFICATION_API_URL,
+      databaseUrl: process.env.HH_CERTIFICATION_DATABASE_URL,
+    };
     const status = JSON.parse(
-      execFileSync("./node_modules/.bin/supabase", ["status", "-o", "json"], {
-        encoding: "utf8",
-        stdio: ["ignore", "pipe", "pipe"],
-      })
+      execFileSync(
+        resolve(process.cwd(), "node_modules/.bin/supabase"),
+        ["status", "-o", "json", "--workdir", workdir],
+        {
+          encoding: "utf8",
+          stdio: ["ignore", "pipe", "pipe"],
+        }
+      )
     );
-    const sql = postgres(local(status.DB_URL), { max: 1, onnotice: () => {} });
-    const admin = createClient(
-      local(status.API_URL),
-      status.SECRET_KEY || status.SERVICE_ROLE_KEY,
-      { auth: { persistSession: false, autoRefreshToken: false } }
-    );
+    const projectId = readFileSync(join(workdir, "supabase/config.toml"), "utf8").match(
+      /^project_id\s*=\s*"([^"]+)"/m
+    )?.[1];
+    assertDisposableCertificationTarget({
+      expected,
+      actual: { projectId, apiUrl: status.API_URL, databaseUrl: status.DB_URL },
+    });
+    const sql = postgres(status.DB_URL, { max: 1, onnotice: () => {} });
+    const [databaseIdentity] = await sql`select current_database() name`;
+    assert.deepEqual(databaseIdentity, { name: "postgres" });
+    const admin = createClient(status.API_URL, status.SECRET_KEY || status.SERVICE_ROLE_KEY, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
     const baseURL = local(process.env.E2E_BASE_URL || "http://127.0.0.1:3001");
-    assert.equal(new URL(baseURL).hostname, "127.0.0.1", "Accounts exact local origin");
+    const proxyURL = local(process.env.HH_CERTIFICATION_PROXY_URL);
+    assert.ok(Number(new URL(proxyURL).port) >= 57000, "Certification proxy port allowlist");
+    assert.ok(Number(new URL(proxyURL).port) <= 57999, "Certification proxy port allowlist");
+    const accessTokens = new Set();
+    let certificationUser = null;
+    const proxy = createServer(async (request, response) => {
+      const target = new URL(request.url, status.API_URL);
+      const cors = {
+        "access-control-allow-headers":
+          request.headers["access-control-request-headers"] ||
+          "authorization,apikey,content-type,x-client-info",
+        "access-control-allow-methods": "GET,HEAD,POST,PUT,PATCH,DELETE,OPTIONS",
+        "access-control-allow-origin": request.headers.origin || "*",
+      };
+      if (request.method === "OPTIONS") {
+        response.writeHead(204, cors);
+        response.end();
+        return;
+      }
+      const body = [];
+      for await (const chunk of request) body.push(chunk);
+      if (target.pathname === "/auth/v1/user") {
+        const token = request.headers.authorization?.replace(/^Bearer\s+/i, "");
+        if (!certificationUser || !token || !accessTokens.has(token)) {
+          response.writeHead(401, { ...cors, "content-type": "application/json" });
+          response.end(JSON.stringify({ message: "Invalid disposable certification session" }));
+          return;
+        }
+        response.writeHead(200, { ...cors, "content-type": "application/json" });
+        response.end(JSON.stringify(certificationUser));
+        return;
+      }
+      const headers = { ...request.headers };
+      delete headers.host;
+      delete headers.connection;
+      delete headers["content-length"];
+      const upstream = await fetch(target, {
+        method: request.method,
+        headers,
+        body: ["GET", "HEAD"].includes(request.method) ? undefined : Buffer.concat(body),
+      });
+      const payload = Buffer.from(await upstream.arrayBuffer());
+      if (target.pathname === "/auth/v1/token" && upstream.ok) {
+        const token = JSON.parse(payload.toString()).access_token;
+        if (token) accessTokens.add(token);
+      }
+      response.writeHead(upstream.status, Object.fromEntries(upstream.headers));
+      response.end(payload);
+    });
+    await new Promise((resolve, reject) => {
+      proxy.once("error", reject);
+      proxy.listen(Number(new URL(proxyURL).port), new URL(proxyURL).hostname, resolve);
+    });
     const scope = process.env.HH_LABOR_EXPENSES_SCOPE || "all";
     assert.ok(["all", "readonly", "workflows"].includes(scope), "Explicit certification scope");
     const selectedWidth = Number(process.env.HH_LABOR_EXPENSES_WIDTH || 0);
@@ -77,6 +196,10 @@ test(
       `Certification started ${new Date().toISOString()}; scope=${scope}; viewport=${selectedWidth || "all"}; evidence=${output}`
     );
     const projects = [randomUUID(), randomUUID()];
+    const companyProfileId = randomUUID();
+    const organizationId = randomUUID();
+    const customerId = randomUUID();
+    const subcontractorId = randomUUID();
     const workers = viewports.map(() => [randomUUID(), randomUUID()]);
     const workerIds = workers.flat();
     const entries = viewports.map(() => [randomUUID(), randomUUID(), randomUUID()]);
@@ -92,6 +215,7 @@ test(
     );
     t.after(async () => {
       if (browser) await browser.close();
+      await new Promise((resolve) => proxy.close(resolve));
       try {
         for (const trigger of metadataTriggers) {
           await sql.unsafe(`drop trigger if exists "${trigger}" on public.attachments`);
@@ -148,6 +272,8 @@ test(
         await sql`delete from public.labor_workers where id in ${sql(workerIds)}`;
         await sql`delete from public.workers where id in ${sql(workerIds)}`;
         await sql`delete from public.projects where id in ${sql(projects)}`;
+        await sql`delete from public.subcontractors where id=${subcontractorId}`;
+        await sql`delete from public.customers where id=${customerId}`;
         await sql`delete from public.expense_options where id=${paymentOption}`;
         await sql`delete from public.payment_accounts where id=${paymentAccount}`;
         if (userId) {
@@ -159,10 +285,16 @@ test(
           const [remaining] = await sql`select count(*)::int n from auth.users where id=${userId}`;
           assert.equal(remaining.n, 0, "Auth residual0");
         }
+        await sql`delete from public.organizations where id=${organizationId}`;
+        await sql`delete from public.company_profile where id=${companyProfileId}`;
         for (const [table, ids] of [
           ["workers", workerIds],
           ["labor_workers", workerIds],
           ["projects", projects],
+          ["subcontractors", [subcontractorId]],
+          ["customers", [customerId]],
+          ["organizations", [organizationId]],
+          ["company_profile", [companyProfileId]],
           ["payment_accounts", [paymentAccount]],
           ["expense_options", [paymentOption]],
         ]) {
@@ -176,9 +308,11 @@ test(
         await sql.end();
       }
     });
+    await sql`insert into public.company_profile(id,org_name) values(${companyProfileId},${marker + " Company"})`;
+    await sql`insert into public.organizations(id,name,legacy_company_profile_id) values(${organizationId},${marker + " Organization"},${companyProfileId})`;
     const [company] =
-      await sql`select id from public.organizations where legacy_company_profile_id is not null`;
-    assert.ok(company);
+      await sql`select id from public.organizations where id=${organizationId} and legacy_company_profile_id=${companyProfileId}`;
+    assert.deepEqual(company, { id: organizationId }, "Owned organization fixture is queryable");
     const actor = {
       email: `labor-receipts-${randomUUID()}@example.invalid`,
       password: `Hh!${randomUUID()}aA1`,
@@ -190,8 +324,11 @@ test(
     });
     assert.equal(created.error, null);
     userId = created.data.user.id;
+    certificationUser = created.data.user;
     await sql`insert into public.organization_memberships(organization_id,user_id,role,status) values(${company.id},${userId},'owner','active')`;
-    await sql`insert into public.projects ${sql(projects.map((id, index) => ({ id, name: `${marker} Project ${index + 1}`, organization_id: company.id })))}`;
+    await sql`insert into public.customers(id,name,email,status) values(${customerId},${marker + " Customer"},'contact@example.invalid','active')`;
+    await sql`insert into public.subcontractors(id,name,email,active) values(${subcontractorId},${marker + " Subcontractor"},'subcontractor@example.invalid',true)`;
+    await sql`insert into public.projects ${sql(projects.map((id, index) => ({ id, name: `${marker} Project ${index + 1}`, organization_id: company.id, customer_id: index === 0 ? customerId : null })))}`;
     await sql`insert into public.payment_accounts(id,name,type) values(${paymentAccount},${marker + " Cash"},'cash')`;
     await sql`insert into public.expense_options(id,type,key,name,active,is_default,is_system,sort_order) values(${paymentOption},'payment_account',${paymentAccount},${marker + " Cash"},true,false,false,999)`;
     const date = new Intl.DateTimeFormat("en-CA", {
@@ -208,11 +345,14 @@ test(
     }
     browser = await chromium.launch({ headless: true });
     const authContext = await browser.newContext({ baseURL });
-    const login = await authContext.request.post("/api/auth/login", {
-      headers: { Origin: baseURL },
-      data: { ...actor, redirect: "/labor/overview" },
-    });
-    assert.equal(login.status(), 200);
+    await addDisposableSession(
+      authContext,
+      status.API_URL,
+      status.ANON_KEY || status.PUBLISHABLE_KEY,
+      actor,
+      baseURL,
+      accessTokens
+    );
     await authContext.storageState({ path: join(output, "owner.json") });
     await authContext.close();
 
@@ -241,6 +381,22 @@ test(
                 E2E_BASE_URL: baseURL,
                 E2E_WEB_SERVER: "off",
                 E2E_UI_STORAGE_STATE: join(output, "owner.json"),
+                E2E_UI_SESSION_EMAIL: actor.email,
+                E2E_UI_SESSION_PASSWORD: actor.password,
+                E2E_UI_AUTH_USER_ID: userId,
+                E2E_UI_AUTH_USER_JSON: JSON.stringify(created.data.user),
+                E2E_UI_CERTIFICATION: "1",
+                HH_CERTIFICATION_PROXY_URL: proxyURL,
+                NEXT_PUBLIC_SUPABASE_URL: proxyURL,
+                SUPABASE_URL: proxyURL,
+                NEXT_PUBLIC_SUPABASE_ANON_KEY: status.ANON_KEY || status.PUBLISHABLE_KEY,
+                SUPABASE_ANON_KEY: status.ANON_KEY || status.PUBLISHABLE_KEY,
+                SUPABASE_DATABASE_URL: "",
+                DATABASE_URL: "",
+                SUPABASE_SERVICE_ROLE_KEY: "",
+                SUPABASE_SECRET_KEY: "",
+                E2E_UI_CUSTOMER_ID: customerId,
+                E2E_UI_PROJECT_ID: projects[0],
                 E2E_UI_WORKER_ID: workers[0][0],
                 E2E_UI_OUTPUT_DIR: join(output, "readonly"),
                 E2E_UI_REPORT_DIR: join(output, "readonly-report"),
@@ -261,23 +417,49 @@ test(
             const context = await browser.newContext({
               baseURL,
               viewport,
-              storageState: join(output, "owner.json"),
             });
+            await addDisposableSession(
+              context,
+              status.API_URL,
+              status.ANON_KEY || status.PUBLISHABLE_KEY,
+              actor,
+              baseURL,
+              accessTokens
+            );
             context.setDefaultTimeout(30000);
             let page = await context.newPage();
             const errors = [],
               injectedErrors = [],
-              requestFailures = [];
+              requestFailures = [],
+              expectedCancellations = [];
+            const completedWriteResponses = new WeakSet();
             let expectMetadataFailure = false;
             const watchPage = (observedPage) => {
               observedPage.on("pageerror", (error) => errors.push(error.message));
-              observedPage.on("requestfailed", (request) =>
-                requestFailures.push({
+              observedPage.on("response", (response) => {
+                const request = response.request();
+                if (
+                  response.status() === 200 &&
+                  request.method() === "POST" &&
+                  new URL(response.url()).pathname === "/workers"
+                )
+                  completedWriteResponses.add(request);
+              });
+              observedPage.on("requestfailed", (request) => {
+                const failure = {
                   url: request.url(),
                   method: request.method(),
                   error: request.failure()?.errorText,
-                })
-              );
+                };
+                const completedWorkerWrite =
+                  completedWriteResponses.has(request) && failure.error === "net::ERR_ABORTED";
+                if (
+                  completedWorkerWrite ||
+                  isExpectedNavigationCancellation(failure, baseURL, proxyURL)
+                )
+                  expectedCancellations.push(failure);
+                else requestFailures.push(failure);
+              });
               observedPage.on("console", (message) => {
                 if (message.type() !== "error") return;
                 if (
@@ -334,8 +516,19 @@ test(
                 .click();
               await page.getByRole("menuitem", { name: "Edit", exact: true }).click();
               const workerEdit = page.getByRole("dialog", { name: "Edit Worker", exact: true });
-              await workerEdit.locator("input").last().fill("Exact worker edit certification");
+              await workerEdit
+                .getByText("Notes", { exact: true })
+                .locator("..")
+                .locator("input")
+                .fill("Exact worker edit certification");
+              const workerSaved = page.waitForResponse(
+                (response) =>
+                  new URL(response.url()).pathname === "/workers" &&
+                  response.request().method() === "POST"
+              );
               await workerEdit.getByRole("button", { name: "Save", exact: true }).click();
+              assert.equal((await workerSaved).status(), 200, "Worker edit action succeeds");
+              await expect(page.getByText("Saved", { exact: true })).toBeVisible();
               await expect
                 .poll(async () => {
                   const [saved] = await sql`select notes from public.workers where id=${pair[0]}`;
@@ -346,6 +539,7 @@ test(
                 await sql`select id,name from public.labor_workers where id=${pair[0]}`;
               assert.equal(projection.id, pair[0]);
               assert.equal(projection.name, `${marker} Same Name ${index}`);
+              await page.waitForLoadState("networkidle");
               await page.reload();
               await expect(workerRow).toHaveCount(1);
               await screenshot("worker-edit-persisted");
@@ -378,7 +572,21 @@ test(
                     .filter({ visible: true })
                 ).toContainText(balance);
               await screenshot("same-name-independent-balances");
+              const payrollLoaded = page.waitForResponse(
+                (response) =>
+                  new URL(response.url()).pathname === "/api/labor/payroll-summary" &&
+                  response.request().method() === "GET"
+              );
               await page.goto("/labor/payroll");
+              const payrollResponse = await payrollLoaded;
+              assert.equal(payrollResponse.status(), 200, "Payroll summary load succeeds");
+              const payroll = await payrollResponse.json();
+              assert.equal(
+                payroll.rows.find((row) => row.workerId === pair[0])?.balance,
+                315,
+                "Payroll API preserves the worker's exact payable balance"
+              );
+              await expect(page.locator("[data-labor-read-state]")).toHaveCount(0);
               const payrollRow = page
                 .locator('tr[role="link"], div.space-y-3.p-3')
                 .filter({ hasText: `${marker} Same Name ${index}` })
@@ -435,7 +643,14 @@ test(
               await page.goto(
                 `/workers/${pair[0]}?tab=payments&projectId=${projects[0]}&returnTo=%2Flabor%2Foverview`
               );
-              await expect(page.getByRole("tabpanel")).toContainText("125.00");
+              const paymentsTab = page.getByRole("tab", { name: "Payments", exact: true });
+              await expect(paymentsTab).toBeVisible();
+              if ((await paymentsTab.getAttribute("aria-selected")) !== "true") {
+                await paymentsTab.click();
+              }
+              await expect(page.getByRole("tabpanel")).toContainText("125.00", {
+                timeout: 30_000,
+              });
               await screenshot("worker-payment-history");
               await page.goto("/labor/payroll");
               await expect(
@@ -457,13 +672,28 @@ test(
                 .filter({ visible: true })
                 .click();
               let accountDialog = page.getByRole("dialog");
-              const independentAccountsRead = async () => {
-                // Keep the mutation page alive while verifying canonical persistence in a fresh page.
-                page = await context.newPage();
-                watchPage(page);
-                await page.goto("/financial/accounts", { waitUntil: "networkidle" });
-                await expect(page.getByText("Total accounts", { exact: true })).toBeVisible();
-                accountDialog = page.getByRole("dialog");
+              const independentAccountsRead = async (name, visible) => {
+                const verifierContext = await browser.newContext({ baseURL, viewport });
+                await addDisposableSession(
+                  verifierContext,
+                  status.API_URL,
+                  status.ANON_KEY || status.PUBLISHABLE_KEY,
+                  actor,
+                  baseURL,
+                  accessTokens
+                );
+                const verifierPage = await verifierContext.newPage();
+                watchPage(verifierPage);
+                await verifierPage.goto("/financial/accounts", { waitUntil: "networkidle" });
+                await expect(
+                  verifierPage.getByText("Total accounts", { exact: true })
+                ).toBeVisible();
+                const persisted = verifierPage
+                  .getByText(name, { exact: true })
+                  .filter({ visible: true });
+                if (visible) await expect(persisted).toBeVisible();
+                else await expect(persisted).toHaveCount(0);
+                await verifierContext.close();
               };
               const accountName = `${marker} ${viewport.width} Cash`;
               await accountDialog.getByPlaceholder("e.g. Chase Ink, BoA Bank").fill(accountName);
@@ -476,7 +706,7 @@ test(
                 .click();
               await expect(accountDialog).not.toBeVisible();
               await createdAccountRefresh;
-              await independentAccountsRead();
+              await independentAccountsRead(accountName, true);
               await expect(
                 page.getByText(accountName, { exact: true }).filter({ visible: true })
               ).toBeVisible();
@@ -496,7 +726,7 @@ test(
                 .click();
               await expect(accountDialog).not.toBeVisible();
               await editedAccountRefresh;
-              await independentAccountsRead();
+              await independentAccountsRead(accountName, true);
               const [updatedAccount] =
                 await sql`select notes from public.accounts where user_id=${userId} and name=${accountName}`;
               assert.equal(updatedAccount.notes, "Updated through account edit");
@@ -525,7 +755,7 @@ test(
                 )
                 .toBe(0);
               await deletedAccountRefresh;
-              await independentAccountsRead();
+              await independentAccountsRead(accountName, false);
               await expect(
                 page.getByText(accountName, { exact: true }).filter({ visible: true })
               ).toHaveCount(0);
@@ -674,6 +904,8 @@ test(
                   return saved.status;
                 })
                 .toBe("approved");
+              await expect(page.getByText("Approved", { exact: true }).last()).toBeVisible();
+              await expect(edit).not.toBeVisible();
               const [approved] =
                 await sql`select project_id,payment_account_id,total from public.expenses where id=${draft.id}`;
               assert.equal(approved.project_id, projects[0]);
@@ -681,20 +913,33 @@ test(
               assert.equal(Number(approved.total), 12.34);
               await page.goto("/financial/expenses");
               await page
+                .getByRole("button", { name: /^Filters 1$/ })
+                .filter({ visible: true })
+                .click();
+              await page.getByRole("button", { name: "Clear", exact: true }).click();
+              const approvedRow = page
+                .locator(`.exp-row[data-expense-id="${draft.id}"]`)
+                .filter({ visible: true });
+              await expect(approvedRow).toBeVisible({ timeout: 30_000 });
+              await page
                 .locator('input[aria-label="Search expenses"]')
                 .filter({ visible: true })
-                .fill(`${marker} Vendor ${viewport.width}`);
-              await expect(
-                page.locator(`.exp-row[data-expense-id="${draft.id}"]`).filter({ visible: true })
-              ).toBeVisible();
+                .fill(`Vendor ${viewport.width}`);
+              await expect(approvedRow).toBeVisible({ timeout: 30_000 });
               await expect(page.locator(".exp-row").filter({ visible: true })).toHaveCount(1);
               await screenshot("receipt-approved-archive");
               assert.deepEqual(errors, [], "Unexpected browser console and page errors");
+              assert.deepEqual(requestFailures, [], "Unexpected browser request failures");
             } finally {
               await writeFile(
                 join(output, `${viewport.width}-console-errors.json`),
                 JSON.stringify(
-                  { unexpected: errors, injected: injectedErrors, requestFailures },
+                  {
+                    unexpected: errors,
+                    injected: injectedErrors,
+                    requestFailures,
+                    expectedCancellations,
+                  },
                   null,
                   2
                 )

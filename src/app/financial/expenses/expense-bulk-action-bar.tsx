@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { NeoBulkActions } from "@/components/base";
+import { ConfirmDialog, NeoBulkActions } from "@/components/base";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -28,7 +28,7 @@ export type ExpenseBulkActionBarProps = {
   onAssignProject: (projectId: string | null) => void;
   onSetCategory: (category: string) => void;
   onSetPayment: (paymentAccountId: string | null) => void;
-  onDeleteMany: () => void;
+  onDeleteMany: () => Promise<void>;
 };
 
 export function ExpenseBulkActionBar({
@@ -46,6 +46,7 @@ export function ExpenseBulkActionBar({
   onDeleteMany,
 }: ExpenseBulkActionBarProps) {
   const inbox = pool === "inbox";
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = React.useState(false);
 
   const controlSm = inbox
     ? "h-10 min-h-10 rounded-md px-3 text-xs sm:h-8 sm:min-h-0"
@@ -269,12 +270,21 @@ export function ExpenseBulkActionBar({
             size="sm"
             className="h-7 shrink-0 rounded-md border-[var(--hh-danger-border)] bg-[var(--hh-l2-operational-surface)] text-xs text-[var(--hh-danger)] shadow-none hover:bg-[var(--hh-danger-soft-fill)] hover:text-[var(--hh-danger)]"
             disabled={busy || selectedCount === 0}
-            onClick={onDeleteMany}
+            onClick={() => setDeleteConfirmOpen(true)}
           >
             Delete
           </Button>
         </>
       )}
+      <ConfirmDialog
+        open={deleteConfirmOpen}
+        onOpenChange={setDeleteConfirmOpen}
+        title="Delete selected expenses?"
+        description={`Delete ${selectedCount} expense${selectedCount === 1 ? "" : "s"}? This cannot be undone.`}
+        confirmLabel="Delete"
+        destructive
+        onConfirm={onDeleteMany}
+      />
     </NeoBulkActions>
   );
 }

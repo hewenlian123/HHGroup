@@ -560,6 +560,7 @@ function EstimateDetailClientContent({
         onDetailsOpenChange={setDetailsOpen}
         detailsSurface={detailsSurface}
         onSaveDetails={() => void onSave()}
+        saving={commandBusy || wholeDocumentSaving}
         onPricingInspectorDetailsClick={
           isLocked
             ? undefined

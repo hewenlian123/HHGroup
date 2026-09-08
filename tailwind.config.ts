@@ -15,7 +15,9 @@ const config: Config = {
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
+    "./src/lib/**/*.{js,ts,jsx,tsx,mdx}",
   ],
+  future: { hoverOnlyWhenSupported: true },
   theme: {
     extend: {
       screens: {
@@ -346,36 +348,9 @@ const config: Config = {
         sidebar: "var(--hh-shadow-sidebar)",
       },
       keyframes: {
-        "receipt-queue-badge": {
-          "0%": {
-            transform: "scale(1) translateY(0)",
-            opacity: "1",
-            backgroundColor: "transparent",
-          },
-          "45%": {
-            transform: "scale(1.12) translateY(-2px)",
-            opacity: "1",
-            backgroundColor: "rgb(99 102 241 / 0.18)",
-          },
-          "100%": {
-            transform: "scale(1) translateY(0)",
-            opacity: "1",
-            backgroundColor: "transparent",
-          },
-        },
         "receipt-queue-row-new": {
           "0%": { backgroundColor: "rgb(239 246 255)" },
           "100%": { backgroundColor: "rgb(239 246 255 / 0)" },
-        },
-        "receipt-queue-row-exit": {
-          "0%": {
-            opacity: "1",
-            transform: "translateY(0)",
-          },
-          "100%": {
-            opacity: "0",
-            transform: "translateY(-10px)",
-          },
         },
         "rq-confirm-shake": {
           "0%, 100%": { transform: "translateX(0)" },
@@ -383,14 +358,6 @@ const config: Config = {
           "40%": { transform: "translateX(6px)" },
           "60%": { transform: "translateX(-4px)" },
           "80%": { transform: "translateX(4px)" },
-        },
-        "toast-in": {
-          "0%": { opacity: "0", transform: "translateY(8px)" },
-          "100%": { opacity: "1", transform: "translateY(0)" },
-        },
-        "toast-out": {
-          "0%": { opacity: "1" },
-          "100%": { opacity: "0" },
         },
         /** Restrained centered dialog reveal: opacity plus a small positional transition. */
         "hh-dialog-in": {
@@ -460,41 +427,45 @@ const config: Config = {
         },
       },
       animation: {
-        "receipt-queue-badge": "receipt-queue-badge 220ms cubic-bezier(0.33, 1, 0.68, 1) both",
-        "receipt-queue-row-new": "receipt-queue-row-new 600ms ease-out forwards",
-        "receipt-queue-row-exit": "receipt-queue-row-exit 220ms ease-out forwards",
-        "rq-confirm-shake": "rq-confirm-shake 340ms ease-in-out both",
-        "toast-in": "toast-in 220ms cubic-bezier(0, 0, 0.2, 1) both",
-        "toast-out": "toast-out 180ms ease both",
-        "hh-dialog-in": "hh-dialog-in 200ms cubic-bezier(0.16, 1, 0.3, 1) both",
-        "hh-dialog-out": "hh-dialog-out 160ms cubic-bezier(0.4, 0, 1, 1) both",
-        "hh-command-dialog-in": "hh-command-dialog-in 200ms cubic-bezier(0.16, 1, 0.3, 1) both",
-        "hh-command-dialog-out": "hh-command-dialog-out 160ms cubic-bezier(0.4, 0, 1, 1) both",
-        "hh-modal-fade-in": "hh-modal-fade-in 180ms ease-out both",
-        "hh-modal-fade-out": "hh-modal-fade-out 140ms ease-in both",
-        "hh-panel-dialog-in": "hh-panel-dialog-in 200ms cubic-bezier(0.16, 1, 0.3, 1) both",
-        "hh-panel-dialog-out": "hh-panel-dialog-out 160ms cubic-bezier(0.4, 0, 1, 1) both",
-        "hh-sheet-in": "hh-sheet-in 200ms cubic-bezier(0.16, 1, 0.3, 1) both",
-        "hh-sheet-out": "hh-sheet-out 160ms cubic-bezier(0.4, 0, 1, 1) both",
-        "hh-sheet-right-in": "hh-sheet-right-in 200ms cubic-bezier(0.16, 1, 0.3, 1) both",
-        "hh-sheet-right-out": "hh-sheet-right-out 160ms cubic-bezier(0.4, 0, 1, 1) both",
-        "hh-sheet-left-in": "hh-sheet-left-in 200ms cubic-bezier(0.16, 1, 0.3, 1) both",
-        "hh-sheet-left-out": "hh-sheet-left-out 160ms cubic-bezier(0.4, 0, 1, 1) both",
-        "hh-sheet-top-in": "hh-sheet-top-in 200ms cubic-bezier(0.16, 1, 0.3, 1) both",
-        "hh-sheet-top-out": "hh-sheet-top-out 160ms cubic-bezier(0.4, 0, 1, 1) both",
+        "receipt-queue-row-new":
+          "receipt-queue-row-new var(--hh-motion-panel) var(--hh-motion-ease-out) forwards",
+        "rq-confirm-shake":
+          "rq-confirm-shake var(--hh-motion-panel) var(--hh-motion-ease-move) both",
+        "hh-dialog-in": "hh-dialog-in var(--hh-motion-standard) var(--hh-motion-ease-out) both",
+        "hh-dialog-out": "hh-dialog-out var(--hh-motion-fast) var(--hh-motion-ease-out) both",
+        "hh-command-dialog-in":
+          "hh-command-dialog-in var(--hh-motion-standard) var(--hh-motion-ease-out) both",
+        "hh-command-dialog-out":
+          "hh-command-dialog-out var(--hh-motion-fast) var(--hh-motion-ease-out) both",
+        "hh-modal-fade-in": "hh-modal-fade-in var(--hh-motion-fast) var(--hh-motion-ease-out) both",
+        "hh-modal-fade-out":
+          "hh-modal-fade-out var(--hh-motion-micro) var(--hh-motion-ease-out) both",
+        "hh-panel-dialog-in":
+          "hh-panel-dialog-in var(--hh-motion-standard) var(--hh-motion-ease-out) both",
+        "hh-panel-dialog-out":
+          "hh-panel-dialog-out var(--hh-motion-fast) var(--hh-motion-ease-out) both",
+        "hh-sheet-in": "hh-sheet-in var(--hh-motion-panel) var(--hh-motion-ease-out) both",
+        "hh-sheet-out": "hh-sheet-out var(--hh-motion-fast) var(--hh-motion-ease-out) both",
+        "hh-sheet-right-in":
+          "hh-sheet-right-in var(--hh-motion-panel) var(--hh-motion-ease-out) both",
+        "hh-sheet-right-out":
+          "hh-sheet-right-out var(--hh-motion-fast) var(--hh-motion-ease-out) both",
+        "hh-sheet-left-in":
+          "hh-sheet-left-in var(--hh-motion-panel) var(--hh-motion-ease-out) both",
+        "hh-sheet-left-out":
+          "hh-sheet-left-out var(--hh-motion-fast) var(--hh-motion-ease-out) both",
+        "hh-sheet-top-in": "hh-sheet-top-in var(--hh-motion-panel) var(--hh-motion-ease-out) both",
+        "hh-sheet-top-out": "hh-sheet-top-out var(--hh-motion-fast) var(--hh-motion-ease-out) both",
       },
       transitionDuration: {
-        micro: "200ms",
-        "micro-slow": "240ms",
-        /** Named steps avoid ambiguous `duration-[Nms]` warnings (Tailwind 3.4+) */
-        nav: "120ms",
-        rq: "140ms",
+        micro: "var(--hh-motion-micro)",
+        fast: "var(--hh-motion-fast)",
+        standard: "var(--hh-motion-standard)",
+        panel: "var(--hh-motion-panel)",
       },
       transitionTimingFunction: {
-        /** Material standard / deceleration */
-        "material-standard": "cubic-bezier(0.4, 0, 0.2, 1)",
-        /** Slight overshoot (receipt queue micro-interactions) */
-        "spring-out": "cubic-bezier(0.34, 1.56, 0.64, 1)",
+        "motion-out": "var(--hh-motion-ease-out)",
+        "motion-move": "var(--hh-motion-ease-move)",
       },
     },
   },

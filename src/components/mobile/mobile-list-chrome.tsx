@@ -24,11 +24,11 @@ export function MobileListHeader({
   return (
     <div
       data-mobile-list-header={tone}
-      className="flex h-11 shrink-0 items-center justify-between gap-3 md:hidden"
+      className="flex min-h-11 shrink-0 items-center justify-between gap-3 md:hidden"
     >
       <h1
         className={cn(
-          "text-base font-medium leading-6 tracking-normal",
+          TYPO.pageTitle,
           tone === "canvas" ? "text-[var(--hh-text-primary)]" : "text-text-primary"
         )}
       >

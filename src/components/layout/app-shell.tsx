@@ -12,6 +12,8 @@ import {
 } from "@/contexts/hh-theme-context";
 import { LaborAddEntryProvider } from "@/contexts/labor-add-entry-context";
 import { SystemHealthProvider } from "@/contexts/system-health-context";
+import { getHhProjectOsWorkspace } from "@/lib/navigation/ia";
+import { isLaborWorkspace } from "@/lib/navigation/labor-workspace";
 
 type AppShellProps = {
   children: React.ReactNode;
@@ -74,6 +76,14 @@ export function AppShell({ children }: AppShellProps) {
     (estimatePathSegments[1] === "new" ||
       estimatePathSegments.length === 2 ||
       estimatePathSegments[2] === "snapshot");
+  const showsWorkspaceNavigation = Boolean(
+    pathname &&
+    !integratedEstimateWorkspace &&
+    !/\/(print|preview)(\/|$)/.test(pathname) &&
+    !/^\/labor\/payments\/[^/]+\/receipt(?:\/|$)/.test(pathname) &&
+    !/^\/(projects|estimates)\/[^/]+/.test(pathname) &&
+    (isLaborWorkspace(pathname) || getHhProjectOsWorkspace(pathname)?.entries.length)
+  );
   const routeContext: HhContextName = documentRoute
     ? "document-route"
     : viewerRoute
@@ -121,7 +131,10 @@ export function AppShell({ children }: AppShellProps) {
                   integratedEstimateWorkspace ? "true" : undefined
                 }
               >
-                <div data-app-shell-sidebar-slot />
+                <div
+                  data-app-shell-sidebar-slot
+                  className="hidden shrink-0 empty:w-hh-sidebar-expanded sm:block"
+                />
                 <AppShellChrome
                   pathname={pathname}
                   bare={false}
@@ -131,8 +144,11 @@ export function AppShell({ children }: AppShellProps) {
                   data-app-main-column
                   className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
                 >
-                  <div data-app-shell-topbar-slot />
-                  <div data-app-shell-workspace-slot />
+                  <div data-app-shell-topbar-slot className="shrink-0 empty:h-14" />
+                  <div
+                    data-app-shell-workspace-slot
+                    className={showsWorkspaceNavigation ? "shrink-0 empty:h-[61px]" : "shrink-0"}
+                  />
                   <main
                     data-app-scroll-root
                     className="min-h-0 flex-1 scroll-smooth overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[var(--hh-surface-canvas)] [-webkit-overflow-scrolling:touch] pb-[calc(4rem+env(safe-area-inset-bottom))] sm:pb-0"

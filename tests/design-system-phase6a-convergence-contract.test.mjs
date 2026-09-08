@@ -107,14 +107,17 @@ test("Phase 6A shared motion uses restrained state transitions without scale or 
   const globals = source("src/app/globals.css");
   const tailwind = source("tailwind.config.ts");
 
+  assert.match(tailwind, /\.\/src\/lib\/\*\*\/\*\.\{js,ts,jsx,tsx,mdx\}/);
+  assert.match(tailwind, /hoverOnlyWhenSupported:\s*true/);
   assert.doesNotMatch(motion, /transition-all|hover:-translate|active:scale|hover:scale/);
   assert.doesNotMatch(
     globals,
     /active:!scale|@apply\s+-translate-y-px|@apply\s+scale-\[|@apply\s+scale-\[1\.02\]|backdrop-filter:\s*blur\((?:14|18)px\)/
   );
+  assert.doesNotMatch(tailwind, /toast-(?:in|out)/);
+  assert.match(globals, /\.hh-toast\s*\{[\s\S]*?transition:/);
 
   for (const [name, nextName] of [
-    ["toast-in", "toast-out"],
     ["hh-dialog-in", "hh-dialog-out"],
     ["hh-dialog-out", "hh-command-dialog-in"],
     ["hh-command-dialog-in", "hh-command-dialog-out"],

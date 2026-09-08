@@ -126,7 +126,8 @@ test("shared primitives consume semantic state and depth roles", () => {
   const typography = source("src/lib/typography.ts");
 
   assert.match(table, /data-\[state=selected\]:bg-\[var\(--hh-l3-selected\)\]/);
-  assert.match(tabs, /data-\[state=active\]:border-\[var\(--hh-accent-primary\)\]/);
+  assert.match(tabs, /after:bg-\[var\(--hh-accent-primary\)\]/);
+  assert.match(tabs, /data-\[state=active\]:after:scale-x-100/);
   assert.doesNotMatch(tabs, /data-\[state=active\]:bg-\[var\(--hh-l3-selected\)\]/);
   assert.match(dropdown, /bg-\[var\(--hh-l4-floating-surface\)\]/);
   assert.match(dropdown, /shadow-floating/);

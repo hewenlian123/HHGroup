@@ -21,6 +21,7 @@ import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { hawaiiTodayYmd } from "@/lib/hawaii-calendar-date";
 import { cn } from "@/lib/utils";
+import { ConfirmDialog } from "@/components/base";
 
 type ExpenseRow = {
   id: string;
@@ -142,6 +143,9 @@ export function ExpenseDetailClient({ id, returnHref }: { id: string; returnHref
     disabled: Set<string>;
   }>({ options: [], disabled: new Set() });
   const [attachments, setAttachments] = React.useState<AttachmentRow[]>([]);
+  const [attachmentDeleteTarget, setAttachmentDeleteTarget] = React.useState<AttachmentRow | null>(
+    null
+  );
   const [failedAttachmentFiles, setFailedAttachmentFiles] = React.useState<File[]>([]);
   const [attachmentFeedback, setAttachmentFeedback] = React.useState<{
     tone: "error" | "success";
@@ -507,24 +511,25 @@ export function ExpenseDetailClient({ id, returnHref }: { id: string; returnHref
     });
   };
 
-  const deleteAttachment = async (row: AttachmentRow) => {
-    if (!window.confirm("Delete attachment?")) return;
+  const deleteAttachment = async () => {
+    if (!attachmentDeleteTarget) return;
     setSaving(true);
     setError(null);
     try {
       const response = await fetch(
         `/api/expenses/${encodeURIComponent(id)}/attachments?attachmentId=${encodeURIComponent(
-          row.id
+          attachmentDeleteTarget.id
         )}`,
         { method: "DELETE", headers: { Accept: "application/json" } }
       );
       const body = await readJson<{ ok: boolean; message?: string }>(response);
       if (!response.ok || !body?.ok)
         throw new Error(body?.message || "Failed to delete attachment.");
-      setAttachments((prev) => prev.filter((att) => att.id !== row.id));
+      setAttachments((prev) => prev.filter((att) => att.id !== attachmentDeleteTarget.id));
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
       setError(msg || "Failed to delete attachment.");
+      throw e instanceof Error ? e : new Error("Failed to delete attachment.");
     } finally {
       setSaving(false);
     }
@@ -830,7 +835,7 @@ export function ExpenseDetailClient({ id, returnHref }: { id: string; returnHref
                     variant="outline"
                     size="icon"
                     className="btn-outline-ghost h-11 w-11 touch-manipulation text-destructive md:h-9 md:w-9"
-                    onClick={() => void deleteAttachment(att)}
+                    onClick={() => setAttachmentDeleteTarget(att)}
                     aria-label="Delete"
                   >
                     <Trash2 className="h-4 w-4" />
@@ -915,6 +920,18 @@ export function ExpenseDetailClient({ id, returnHref }: { id: string; returnHref
           </div>
         </Card>
       </div>
+      <ConfirmDialog
+        open={!!attachmentDeleteTarget}
+        onOpenChange={(open) => {
+          if (!open) setAttachmentDeleteTarget(null);
+        }}
+        title="Delete attachment?"
+        description={`Delete ${attachmentDeleteTarget?.file_name ?? "this attachment"}? This cannot be undone.`}
+        confirmLabel="Delete"
+        destructive
+        loading={saving}
+        onConfirm={deleteAttachment}
+      />
     </div>
   );
 }

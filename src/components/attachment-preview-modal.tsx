@@ -13,6 +13,7 @@ import {
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/base";
 import { InlineLoading, Skeleton } from "@/components/ui/skeleton";
 import { ReceiptViewerDialog } from "@/components/receipt-viewer/receipt-viewer-dialog";
 import {
@@ -1513,6 +1514,7 @@ export function AttachmentPreviewModal({
   const [navDirection, setNavDirection] = React.useState(1);
   const [imageZoomed, setImageZoomed] = React.useState(false);
   const [deleteBusy, setDeleteBusy] = React.useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = React.useState(false);
   const fastPreviewMotion = useFastMobilePreviewMotion();
   const touchStartRef = React.useRef<{ x: number; y: number } | null>(null);
   const {
@@ -1614,19 +1616,13 @@ export function AttachmentPreviewModal({
 
   const handleDelete = React.useCallback(async () => {
     if (!onDeleteCurrent || !attachmentId || deleteBusy || sessionIsLoading) return;
-    if (
-      typeof window !== "undefined" &&
-      !window.confirm(`Delete “${fileName}” from this expense?`)
-    ) {
-      return;
-    }
     setDeleteBusy(true);
     try {
       await onDeleteCurrent(attachmentId);
     } finally {
       setDeleteBusy(false);
     }
-  }, [onDeleteCurrent, attachmentId, deleteBusy, sessionIsLoading, fileName]);
+  }, [onDeleteCurrent, attachmentId, deleteBusy, sessionIsLoading]);
 
   const onTouchStartCapture = React.useCallback(
     (e: React.TouchEvent) => {
@@ -1864,7 +1860,7 @@ export function AttachmentPreviewModal({
                   className={cn(toolbarIconBtn, "hover:bg-red-500/20 hover:text-red-200")}
                   aria-label="Delete attachment"
                   disabled={!fileUrl || sessionIsLoading || unsupported || deleteBusy}
-                  onClick={() => void handleDelete()}
+                  onClick={() => setDeleteConfirmOpen(true)}
                 >
                   {deleteBusy ? (
                     <InlineLoading
@@ -2050,6 +2046,16 @@ export function AttachmentPreviewModal({
               ) : null}
             </footer>
           ) : null}
+          <ConfirmDialog
+            open={deleteConfirmOpen}
+            onOpenChange={setDeleteConfirmOpen}
+            title="Delete attachment?"
+            description={`Delete “${fileName}” from this expense? This cannot be undone.`}
+            confirmLabel="Delete"
+            destructive
+            loading={deleteBusy}
+            onConfirm={handleDelete}
+          />
         </motion.div>
       ) : null}
     </AnimatePresence>,

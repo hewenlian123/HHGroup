@@ -2787,7 +2787,7 @@
   min-height: 42px;
   align-items: center;
   gap: 16px;
-  border-bottom: 1px solid var(--hh-border-subtle);
+  border-bottom: 0;
   color: var(--hh-text-secondary);
   font-size: var(--hh-type-label-font-size);
   font-weight: var(--hh-type-label-font-weight);
@@ -2893,11 +2893,11 @@
 }
 
 .estimate-builder-new .eb-pricing-payment-card {
-  margin: 28px 19px 20px;
-  border: 1px solid var(--hh-border-subtle);
-  border-radius: var(--hh-radius-card);
-  padding: 13px;
-  background: var(--hh-surface-section);
+  margin: var(--hh-space-6) var(--hh-space-5);
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
 }
 
 .estimate-builder-new .eb-pricing-payment-card-header,
@@ -3026,8 +3026,8 @@
 }
 
 .estimate-builder .eb-payment-schedule-header {
-  min-height: 52px;
-  border-bottom: 1px solid var(--hh-border-subtle);
+  min-height: var(--hh-control-height-standard);
+  border-bottom: 0;
   padding: 8px 0;
 }
 
@@ -3043,17 +3043,17 @@
 
 .estimate-builder .eb-payment-schedule-stats {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px 20px;
-  border-bottom: 1px solid var(--hh-border-subtle);
-  padding: 12px 0;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--hh-space-4);
+  border-bottom: 0;
+  padding: var(--hh-space-4) 0;
 }
 
 .estimate-builder .eb-payment-stat-label {
   display: flex;
   min-width: 0;
-  justify-content: space-between;
-  gap: 12px;
+  flex-direction: column;
+  gap: var(--hh-space-1);
   color: var(--hh-text-secondary);
 }
 
@@ -3092,9 +3092,10 @@
 
 .estimate-builder [data-testid="payment-template-controls"],
 .estimate-builder [data-testid="estimate-invoice-readiness"] {
-  border-color: var(--hh-border-subtle);
-  border-radius: var(--hh-radius-card);
-  background: var(--hh-surface-section);
+  border: 0;
+  border-radius: 0;
+  padding-inline: 0;
+  background: transparent;
 }
 
 .estimate-builder .eb-payment-milestone-list {
@@ -3128,10 +3129,24 @@
 }
 
 .estimate-builder .eb-payment-empty-box {
-  border: 1px solid var(--hh-border-subtle);
-  border-radius: var(--hh-radius-card);
-  background: var(--hh-surface-section);
+  display: flex;
+  align-items: center;
+  gap: var(--hh-space-2);
+  border: 0;
+  border-radius: 0;
+  padding: var(--hh-space-3) 0;
+  background: transparent;
+  box-shadow: none;
+  text-align: left;
   color: var(--hh-text-muted);
+}
+
+.estimate-builder .eb-payment-empty-box:hover {
+  box-shadow: none;
+}
+.estimate-builder .eb-payment-empty-icon {
+  margin: 0;
+  flex-shrink: 0;
 }
 
 /* Activity and Revision — the same 360px contextual pane, never stacked cards. */
@@ -3265,10 +3280,10 @@
 }
 
 .estimate-builder-new .eb-estimate-command-title {
-  font-size: 24px;
-  font-weight: 600;
-  line-height: 30px;
-  letter-spacing: 0;
+  font-size: var(--hh-type-page-title-font-size);
+  font-weight: var(--hh-type-page-title-font-weight);
+  line-height: var(--hh-type-page-title-line-height);
+  letter-spacing: var(--hh-type-page-title-letter-spacing);
 }
 
 .estimate-builder-new .eb-estimate-command-context {
@@ -3488,6 +3503,18 @@
 }
 
 @media (min-width: 768px) and (max-width: 1199px) {
+  .estimate-builder-new .eb-estimate-command-bar {
+    height: auto;
+  }
+  .estimate-builder-new .eb-estimate-command-layout {
+    height: auto;
+    gap: var(--hh-space-3);
+  }
+  .estimate-builder-new .eb-estimate-command-actions {
+    width: 100%;
+    max-width: 100%;
+    flex-wrap: wrap;
+  }
   .estimate-builder-new {
     --eb-estimate-line-grid: var(--hh-grid-template-estimate-line-portrait);
     --eb-estimate-line-gap: var(--hh-space-2);
@@ -3527,6 +3554,9 @@
 }
 
 @media (min-width: 1200px) {
+  .estimate-builder-new .eb-estimate-command-layout {
+    flex-direction: row;
+  }
   .estimate-builder-new .eb-estimate-command-bar {
     height: 104px;
     min-height: 104px;
@@ -3610,12 +3640,6 @@
 
   .estimate-builder-new .eb-pricing-allocation {
     padding: 15px 19px 0;
-  }
-
-  .estimate-builder-new .eb-pricing-payment-card {
-    margin: 28px 19px 20px;
-    border-radius: 8px;
-    padding: 13px;
   }
 }
 
@@ -4055,7 +4079,10 @@
     .eb-add-line,
     .eb-line-item-more-trigger
   ) {
-  transition: none !important;
+  transition:
+    background-color var(--hh-duration) var(--hh-ease-out),
+    border-color var(--hh-duration) var(--hh-ease-out),
+    color var(--hh-duration) var(--hh-ease-out) !important;
 }
 
 /* Touch devices should not retain a synthetic hover wash after a tap. */
@@ -4129,6 +4156,14 @@
 }
 
 @media (max-width: 767px) {
+  .estimate-builder.estimate-builder-new button.eb-add-line,
+  .estimate-builder.estimate-builder-new .eb-add-next-section-row .eb-add-section {
+    border-color: transparent !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    color: var(--hh-text-muted) !important;
+  }
+
   .estimate-builder-new .eb-glass-mobile-bar {
     padding: var(--hh-space-1) var(--hh-space-3) !important;
   }
@@ -4712,9 +4747,9 @@
     :where(input.eb-line-qty-input, input.eb-line-measure-input) {
     height: var(--hh-control-height-standard) !important;
     min-height: var(--hh-control-height-standard) !important;
-    border: 1px solid var(--hh-border-input) !important;
+    border: 1px solid transparent !important;
     border-radius: var(--hh-radius-control) !important;
-    background: var(--hh-input-background) !important;
+    background: transparent !important;
     box-shadow: none !important;
   }
 
@@ -4727,5 +4762,220 @@
     border-color: var(--hh-accent-primary) !important;
     outline: 0;
     box-shadow: 0 0 0 2px var(--hh-focus-ring) !important;
+  }
+}
+
+/* Estimate Golden Page: one document plane, existing HH type and surface tokens. */
+.estimate-builder-new .eb-estimate-command-revision {
+  white-space: nowrap;
+}
+.estimate-builder-new .eb-estimate-command-title {
+  overflow-wrap: anywhere;
+}
+.estimate-builder-new .eb-estimate-command-context {
+  font-size: var(--hh-type-metadata-font-size);
+  line-height: var(--hh-type-metadata-line-height);
+  letter-spacing: var(--hh-type-metadata-letter-spacing);
+}
+.estimate-builder-new .eb-pricing-summary-strip {
+  background: var(--hh-surface-section);
+}
+.estimate-builder-new .eb-pricing-summary-cell.is-total > span {
+  font-size: var(--hh-type-body-strong-font-size);
+}
+.estimate-builder-new .eb-pricing-inspector-tabs [aria-current="page"] {
+  box-shadow: inset 0 -2px var(--hh-accent-primary);
+}
+.estimate-builder-new
+  :where(
+    .eb-pricing-summary-cell > strong,
+    .eb-pricing-payment-scheduled strong,
+    .eb-payment-stat-value
+  ) {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--hh-type-financial-letter-spacing);
+}
+.estimate-builder-new .eb-payment-stat-label:first-child .eb-payment-stat-value {
+  font-size: var(--hh-type-financial-total-font-size);
+  line-height: var(--hh-type-financial-total-line-height);
+}
+.estimate-builder-new .eb-payment-stat-value {
+  line-height: var(--hh-type-financial-total-line-height);
+}
+.estimate-builder-new .eb-v3-continuous-section {
+  padding-inline: var(--hh-space-5);
+}
+.estimate-builder-new .eb-v3-continuous-section > details {
+  border: 0;
+}
+.estimate-builder-new .eb-v3-continuous-section > details > summary {
+  font-size: var(--hh-type-section-title-font-size);
+  line-height: var(--hh-type-section-title-line-height);
+  color: var(--hh-text-primary);
+  text-transform: none;
+}
+.estimate-builder-new .eb-notes-tablist {
+  display: flex;
+  width: 100%;
+  height: auto;
+  gap: var(--hh-space-4);
+  border: 0;
+  padding: 0;
+}
+.estimate-builder-new .eb-notes-tab {
+  min-width: 0;
+  min-height: var(--hh-touch-min);
+  padding-inline: 0;
+  font-size: var(--hh-type-label-font-size);
+}
+.estimate-builder-new .eb-notes-clarifications-panel,
+.estimate-builder-new .eb-notes-clarifications-panel:hover {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.estimate-builder-new .eb-notes-clarifications-panel details,
+.estimate-builder-new .eb-notes-clarifications-panel details > div {
+  border: 0;
+}
+.estimate-builder-new .eb-notes-clarifications-panel :where(h2, .eb-scope-subtitle) {
+  text-transform: none;
+  letter-spacing: normal;
+}
+.estimate-builder-new .eb-notes-clarifications-panel h2 {
+  font-size: var(--hh-type-panel-title-font-size);
+}
+.estimate-builder-new .eb-notes-clarifications-panel .eb-scope-subtitle {
+  font-size: var(--hh-type-metadata-font-size);
+}
+.estimate-builder-new
+  :where(.eb-notes-tab, .eb-pricing-inspector-tabs button, summary, .eb-scope-toolbar input) {
+  transition:
+    color var(--hh-duration) var(--hh-ease-out),
+    background-color var(--hh-duration) var(--hh-ease-out),
+    border-color var(--hh-duration) var(--hh-ease-out);
+}
+.estimate-builder-new :where(.eb-notes-tab, .eb-pricing-inspector-tabs button, summary):active {
+  background-color: var(--hh-l3-pressed);
+}
+.estimate-builder-new
+  :where([role="tabpanel"], details[open] > div, .eb-notes-content:not([hidden])) {
+  animation: hh-modal-fade-in var(--hh-duration) var(--hh-ease-out);
+}
+.estimate-builder-new :where(.eb-note-title-textarea, .eb-notes-disclosure, summary):focus-visible {
+  outline: 2px solid var(--hh-focus-ring);
+  outline-offset: 2px;
+}
+@media (min-width: 1200px) {
+  .estimate-builder-new .eb-line-item-grid--pricing .eb-line-pricing-unit input.eb-line-unit-input {
+    border-color: transparent !important;
+    background: transparent !important;
+  }
+  .estimate-builder-new .eb-scope-section-lines {
+    border-inline: 0;
+    border-radius: 0;
+  }
+  .estimate-builder-new
+    .eb-estimate-workbench--v3
+    .eb-line-item-grid--pricing
+    input.eb-input:hover {
+    border-color: var(--hh-border-input) !important;
+  }
+  .estimate-builder-new .eb-line-item-card input.eb-input:focus-visible {
+    border-color: var(--hh-accent-primary) !important;
+    outline: 2px solid var(--hh-focus-ring);
+    outline-offset: -2px;
+  }
+  .estimate-builder-new .eb-line-item-card input.eb-input[aria-invalid="true"] {
+    border-color: var(--hh-danger) !important;
+  }
+}
+@media (max-width: 767px) {
+  .estimate-builder-new .eb-payment-schedule-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .estimate-builder-new .eb-payment-stat-label:first-child {
+    grid-column: 1 / -1;
+  }
+  .estimate-builder-new .eb-v3-continuous-section {
+    padding-inline: var(--hh-space-3);
+  }
+  .estimate-builder-new .eb-scope-work-panel,
+  .estimate-builder-new .eb-scope-work-panel:hover {
+    border: 0;
+    box-shadow: none;
+    background: transparent;
+  }
+  .estimate-builder-new .eb-notes-tablist {
+    gap: var(--hh-space-3);
+  }
+  .estimate-builder-new .eb-notes-tab {
+    flex: 1;
+    white-space: normal;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .estimate-builder-new
+    :where(button, a, input, summary, svg, .eb-line-item-card, .eb-description-summary-button) {
+    transition: none !important;
+  }
+  .estimate-builder-new
+    :where([role="tabpanel"], details[open] > div, .eb-notes-content:not([hidden])) {
+    animation: none;
+  }
+}
+@media (forced-colors: active) {
+  .estimate-builder-new .eb-pricing-inspector-tabs [aria-current="page"] {
+    border-bottom: 2px solid Highlight;
+  }
+  .estimate-builder-new
+    :where(
+      .eb-notes-tab,
+      .eb-note-title-textarea,
+      summary,
+      .eb-line-item-card input.eb-input
+    ):focus-visible {
+    outline: 2px solid Highlight !important;
+  }
+}
+
+.estimate-builder [data-testid="estimate-pricing-live-summary"] {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding-inline: 0;
+  padding-top: var(--hh-space-4);
+}
+.estimate-builder [data-testid="estimate-pricing-live-summary"] dd:last-of-type {
+  font-size: var(--hh-type-financial-font-size);
+}
+.estimate-builder-new .eb-estimate-empty-scope {
+  padding: var(--hh-space-4) var(--hh-space-5);
+  color: var(--hh-text-secondary);
+  font-size: var(--hh-type-body-font-size);
+}
+
+.estimate-builder-new .eb-notes-clarifications-panel .eb-scope-empty-message {
+  color: var(--hh-text-secondary);
+}
+
+.estimate-builder-new .eb-add-line:not(:disabled) {
+  opacity: 1;
+}
+
+/* One document plane through 1024px; preserve the 1140px/1440px desktop surfaces. */
+@media screen and (max-width: 1024px) {
+  [data-app-scroll-root]:has(> .estimate-builder-page > .estimate-builder-new),
+  .estimate-builder-page:has(> .estimate-builder-new),
+  .estimate-builder.estimate-builder-new:not(.eb-sheet-glass),
+  .estimate-builder-new .eb-new-payment-schedule > div > .eb-payment-schedule {
+    background: var(--hh-surface-workspace);
+  }
+
+  .estimate-builder-new .eb-scope-work-panel,
+  .estimate-builder-new .eb-scope-work-panel:hover {
+    border-color: transparent;
+    border-radius: 0;
   }
 }

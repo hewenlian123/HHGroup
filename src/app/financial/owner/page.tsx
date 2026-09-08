@@ -140,7 +140,7 @@ function ProfitMarginTrack({ row }: { row: FinanceOwnerProjectRow }) {
       <div className="h-2 overflow-hidden rounded-full bg-[var(--hh-l3-selected)]">
         <div
           className={cn(
-            "h-full max-w-full rounded-full transition-[width] duration-300 ease-out",
+            "h-full max-w-full rounded-full",
             positive
               ? "bg-gradient-to-r from-emerald-500/90 to-emerald-600/80"
               : "bg-gradient-to-r from-rose-500/90 to-rose-600/75"

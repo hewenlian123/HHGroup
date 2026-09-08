@@ -24,6 +24,7 @@ import {
 import { ArrowLeft, Download, Eye, Plus, Trash2 } from "lucide-react";
 import { useBreadcrumbEntityLabel } from "@/contexts/breadcrumb-override-context";
 import { formatCurrency } from "@/lib/formatters";
+import { ConfirmDialog } from "@/components/base";
 
 function makeAttachment(file: File): Attachment {
   return {
@@ -47,6 +48,7 @@ export default function LaborInvoiceDetailPage() {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [workers, setWorkers] = React.useState<Awaited<ReturnType<typeof getWorkers>>>([]);
   const [projects, setProjects] = React.useState<Awaited<ReturnType<typeof getProjects>>>([]);
+  const [voidConfirmOpen, setVoidConfirmOpen] = React.useState(false);
 
   const refresh = React.useCallback(async () => {
     if (!id) return;
@@ -178,7 +180,6 @@ export default function LaborInvoiceDetailPage() {
   };
 
   const handleVoid = () => {
-    if (!window.confirm("Void this invoice?")) return;
     voidLaborInvoice(invoice.id);
     setMessage("Invoice voided.");
     refresh();
@@ -261,7 +262,7 @@ export default function LaborInvoiceDetailPage() {
             variant="outline"
             size="sm"
             className="rounded-hh-compact"
-            onClick={handleVoid}
+            onClick={() => setVoidConfirmOpen(true)}
             disabled={invoice.status === "void"}
           >
             Void
@@ -545,6 +546,15 @@ export default function LaborInvoiceDetailPage() {
           setPreviewOpen(v);
           if (!v) setPreviewAttachment(null);
         }}
+      />
+      <ConfirmDialog
+        open={voidConfirmOpen}
+        onOpenChange={setVoidConfirmOpen}
+        title="Void labor invoice?"
+        description="Void this labor invoice? Its financial history will remain visible."
+        confirmLabel="Void"
+        destructive
+        onConfirm={handleVoid}
       />
     </div>
   );

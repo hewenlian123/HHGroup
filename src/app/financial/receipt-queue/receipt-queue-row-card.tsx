@@ -19,7 +19,7 @@ type ProjectRow = { id: string; name: string | null; status?: string | null };
 type WorkerRow = { id: string; name: string };
 
 const RQ_BTN =
-  "transition-[background-color_transform_color] duration-rq ease-out active:scale-[0.95] active:duration-90 active:ease-spring-out";
+  "transition-[background-color,color] duration-fast ease-motion-out active:duration-micro";
 
 function fieldClass(layout: RqLayout, extra?: string): string {
   return cn(
@@ -344,8 +344,8 @@ export const ReceiptQueueRowCard = React.memo(function ReceiptQueueRowCard({
       size="sm"
       className={cn(
         compact
-          ? "h-11 min-h-11 w-full flex-1 rounded-hh-standard border border-transparent bg-[var(--hh-accent-primary)] px-4 text-sm font-semibold text-white shadow-none transition-transform duration-150 ease-out hover:bg-[var(--hh-accent-hover)] active:scale-[0.98]"
-          : "h-9 w-full min-w-0 rounded-hh-standard border border-transparent bg-[var(--hh-accent-primary)] px-2 text-xs font-medium text-white shadow-none transition-transform duration-150 ease-out hover:bg-[var(--hh-accent-hover)] active:scale-[0.98]",
+          ? "h-11 min-h-11 w-full flex-1 rounded-hh-standard border border-transparent bg-[var(--hh-accent-primary)] px-4 text-sm font-semibold text-white shadow-none hover:bg-[var(--hh-accent-hover)]"
+          : "h-9 w-full min-w-0 rounded-hh-standard border border-transparent bg-[var(--hh-accent-primary)] px-2 text-xs font-medium text-white shadow-none hover:bg-[var(--hh-accent-hover)]",
         RQ_BTN
       )}
       disabled={busy || bulkAdding || captureUploading || rowLocked}
@@ -362,8 +362,8 @@ export const ReceiptQueueRowCard = React.memo(function ReceiptQueueRowCard({
       size="sm"
       className={cn(
         compact
-          ? "h-11 min-h-11 min-w-11 shrink-0 rounded-hh-standard border-[var(--hh-border-default)] px-3 text-[var(--hh-text-secondary)] transition-[background-color,transform,color,box-shadow] duration-150 ease-out hover:border-[var(--hh-danger-border)] hover:bg-[var(--hh-danger-soft-fill)] hover:text-[var(--hh-danger)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)] active:scale-[0.96]"
-          : "h-9 min-w-9 shrink-0 rounded-hh-standard border-[var(--hh-border-default)] px-2 text-[var(--hh-text-secondary)] transition-[background-color,transform,color,box-shadow] duration-rq ease-out hover:border-[var(--hh-danger-border)] hover:bg-[var(--hh-danger-soft-fill)] hover:text-[var(--hh-danger)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)] active:scale-[0.96] active:duration-90 active:ease-spring-out",
+          ? "h-11 min-h-11 min-w-11 shrink-0 rounded-hh-standard border-[var(--hh-border-default)] px-3 text-[var(--hh-text-secondary)] hover:border-[var(--hh-danger-border)] hover:bg-[var(--hh-danger-soft-fill)] hover:text-[var(--hh-danger)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)]"
+          : "h-9 min-w-9 shrink-0 rounded-hh-standard border-[var(--hh-border-default)] px-2 text-[var(--hh-text-secondary)] hover:border-[var(--hh-danger-border)] hover:bg-[var(--hh-danger-soft-fill)] hover:text-[var(--hh-danger)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)]",
         RQ_BTN
       )}
       disabled={busy || rowLocked}
@@ -424,21 +424,15 @@ export const ReceiptQueueRowCard = React.memo(function ReceiptQueueRowCard({
     motion &&
       (prefersReducedMotion
         ? "transition-opacity duration-150 ease-out"
-        : "transition-[transform,opacity,background-color,box-shadow] duration-200 ease-material-standard"),
+        : "transition-[transform,opacity,background-color,box-shadow] duration-standard ease-motion-out"),
     !motion && "transition-[background-color,box-shadow] duration-150 ease-out",
     !motion && !rowLocked && "hover:bg-[var(--hh-surface-hover)]",
     motion === "success_check" &&
       "bg-[var(--hh-success-soft-fill)] ring-1 ring-[var(--hh-success-border)]",
     motion === "fade" &&
-      cn(
-        "opacity-0",
-        !prefersReducedMotion && "translate-x-2 !duration-200 !ease-material-standard"
-      ),
+      cn("opacity-0", !prefersReducedMotion && "translate-x-2 !duration-standard !ease-motion-out"),
     motion === "collapse" &&
-      cn(
-        "opacity-0",
-        !prefersReducedMotion && "translate-x-2 !duration-200 !ease-material-standard"
-      ),
+      cn("opacity-0", !prefersReducedMotion && "translate-x-2 !duration-standard !ease-motion-out"),
     activeQueueRowId === id && "z-[1] ring-1 ring-inset ring-[var(--hh-accent-primary)]/30",
     activeQueueRowId === id && !needsHighlight && !motion && "bg-[var(--hh-accent-soft)]",
     newRowHighlight && "animate-receipt-queue-row-new",
@@ -469,15 +463,11 @@ export const ReceiptQueueRowCard = React.memo(function ReceiptQueueRowCard({
             <m.div
               className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--hh-success)] text-white"
               initial={{
-                transform: prefersReducedMotion ? "scale(1)" : "scale(0.95)",
+                transform: prefersReducedMotion ? "scale(1)" : "scale(0.98)",
                 opacity: 0,
               }}
               animate={{ transform: "scale(1)", opacity: 1 }}
-              transition={
-                prefersReducedMotion
-                  ? { duration: 0.15, ease: "easeOut" }
-                  : { type: "spring", duration: 0.5, bounce: 0.2 }
-              }
+              transition={{ duration: prefersReducedMotion ? 0.15 : 0.2, ease: [0.16, 1, 0.3, 1] }}
             >
               <Check className="h-6 w-6" strokeWidth={2.5} aria-hidden />
             </m.div>
@@ -588,15 +578,11 @@ export const ReceiptQueueRowCard = React.memo(function ReceiptQueueRowCard({
           <m.div
             className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--hh-success)] text-white"
             initial={{
-              transform: prefersReducedMotion ? "scale(1)" : "scale(0.95)",
+              transform: prefersReducedMotion ? "scale(1)" : "scale(0.98)",
               opacity: 0,
             }}
             animate={{ transform: "scale(1)", opacity: 1 }}
-            transition={
-              prefersReducedMotion
-                ? { duration: 0.15, ease: "easeOut" }
-                : { type: "spring", duration: 0.5, bounce: 0.2 }
-            }
+            transition={{ duration: prefersReducedMotion ? 0.15 : 0.2, ease: [0.16, 1, 0.3, 1] }}
           >
             <Check className="h-6 w-6" strokeWidth={2.5} aria-hidden />
           </m.div>

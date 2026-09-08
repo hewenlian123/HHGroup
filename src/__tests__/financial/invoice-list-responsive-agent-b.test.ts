@@ -9,21 +9,24 @@ const invoiceListSource = readFileSync(
 
 describe("invoice list responsive presentation", () => {
   it("uses the stacked invoice cards below the dense-table breakpoint", () => {
-    expect(invoiceListSource).toContain('className="hidden lg:block"');
-    expect(invoiceListSource).toContain('className="space-y-2 p-2.5 lg:hidden"');
+    expect(invoiceListSource).toContain('className="hidden xl:block"');
+    expect(invoiceListSource).toContain(
+      'className="grid grid-cols-1 gap-2 p-2.5 lg:grid-cols-2 xl:hidden"'
+    );
     expect(invoiceListSource).toContain('className="h-11 w-11 min-h-11 min-w-11');
     expect(invoiceListSource).toContain('"h-11 min-h-11 flex-1 rounded-hh-standard shadow-none"');
-    expect(invoiceListSource).toMatch(/"h-11 min-h-11 [^"\n]*xl:h-\[34px\] xl:min-h-\[34px\]"/);
-    expect(invoiceListSource).toMatch(
-      /"h-11 min-h-11 border-transparent [^"\n]*xl:h-9 xl:min-h-9"/
-    );
-    expect(invoiceListSource).toMatch(/"h-11 min-h-11 shrink-0 [^"\n]*xl:h-9 xl:min-h-9"/);
-    expect(invoiceListSource).toContain('className="h-11 min-h-11 tabular-nums"');
+    expect(invoiceListSource).toContain('className="h-hh-control-standard gap-hh-2"');
     expect(invoiceListSource).toContain(
-      '"h-11 min-h-11 w-full bg-[var(--hh-l2-operational-surface)] xl:h-8 xl:min-h-8"'
+      'className="h-hh-control-standard min-h-[var(--hh-control-height-standard)] bg-[var(--hh-input-background)]'
     );
     expect(invoiceListSource).toContain(
-      '"h-11 min-h-11 bg-[var(--hh-l2-operational-surface)] tabular-nums xl:h-8 xl:min-h-8"'
+      '"h-hh-control-standard min-h-[var(--hh-control-height-standard)] shrink-0 gap-hh-2 px-hh-3"'
+    );
+    expect(invoiceListSource).toContain(
+      'className="h-hh-control-standard min-h-[var(--hh-control-height-standard)] w-full"'
+    );
+    expect(invoiceListSource).toContain(
+      'className="h-hh-control-standard min-h-[var(--hh-control-height-standard)] tabular-nums"'
     );
   });
 });

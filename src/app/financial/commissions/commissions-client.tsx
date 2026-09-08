@@ -2164,8 +2164,10 @@ export function CommissionsClient({
                   <div className="mt-4 space-y-2">
                     <div className="h-2 w-full overflow-hidden rounded-full bg-[var(--hh-l3-selected)]">
                       <div
-                        className="h-full rounded-full bg-[var(--hh-success-soft-fill)] transition-[width] duration-150"
-                        style={{ width: `${Math.max(0, Math.min(100, receiptUploadProgress))}%` }}
+                        className="h-full origin-left bg-[var(--hh-success-soft-fill)] transition-transform duration-fast ease-linear motion-reduce:transition-none"
+                        style={{
+                          transform: `scaleX(${Math.max(0, Math.min(100, receiptUploadProgress)) / 100})`,
+                        }}
                       />
                     </div>
                     <p className="text-center text-hh-metadata text-text-secondary">Uploading…</p>

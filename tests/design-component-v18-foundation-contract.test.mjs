@@ -61,7 +61,9 @@ test("Shared tabs and floating layers retain Radix state, portal, and surface co
   const tooltip = source("src/components/ui/tooltip.tsx");
 
   assert.match(tabs, /border-b-2 border-transparent/);
-  assert.match(tabs, /data-\[state=active\]:border-\[var\(--hh-accent-primary\)\]/);
+  assert.match(tabs, /after:bg-\[var\(--hh-accent-primary\)\]/);
+  assert.match(tabs, /data-\[state=active\]:after:scale-x-100/);
+  assert.match(tabs, /motion-reduce:after:transition-none/);
   assert.doesNotMatch(tabs, /data-\[state=active\]:bg-\[var\(--hh-l3-selected\)\]/);
   assert.doesNotMatch(tabs, /rounded-hh-standard/);
   assert.match(tabs, /hh-focus-ring/);

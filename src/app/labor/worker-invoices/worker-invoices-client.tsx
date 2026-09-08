@@ -39,6 +39,7 @@ import {
   type WorkerInvoiceStatus,
 } from "@/lib/data";
 import { RowActionsMenu } from "@/components/base/row-actions-menu";
+import { ConfirmDialog } from "@/components/base";
 import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 
@@ -173,6 +174,7 @@ export function WorkerInvoicesClient({
     invoiceFile: "",
   });
   const [filtersOpen, setFiltersOpen] = React.useState(false);
+  const [deleteTarget, setDeleteTarget] = React.useState<WorkerInvoice | null>(null);
 
   const load = React.useCallback(async () => {
     setLoading(true);
@@ -322,13 +324,13 @@ export function WorkerInvoicesClient({
     setShowForm(true);
   };
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm("Delete this invoice?")) return;
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
     try {
-      await deleteWorkerInvoice(id);
+      await deleteWorkerInvoice(deleteTarget.id);
       await load();
     } catch (e) {
-      setMessage(e instanceof Error ? e.message : "Delete failed.");
+      throw e instanceof Error ? e : new Error("Delete failed.");
     }
   };
 
@@ -379,6 +381,17 @@ export function WorkerInvoicesClient({
         "flex flex-col"
       )}
     >
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null);
+        }}
+        title="Delete worker invoice?"
+        description="Delete this worker invoice? This cannot be undone."
+        confirmLabel="Delete"
+        destructive
+        onConfirm={handleDelete}
+      />
       <div
         className={cn(
           " page-shell-wide mx-auto flex w-full max-w-[430px] flex-1 flex-col gap-2 px-4 py-2 pb-4 sm:max-w-[460px] md:gap-2 md:px-6 md:pb-6 md:pt-3",
@@ -819,7 +832,7 @@ export function WorkerInvoicesClient({
                     onClick: () => toggleStatus(r),
                   },
                   { label: "Edit", onClick: () => handleEdit(r) },
-                  { label: "Delete", onClick: () => handleDelete(r.id), destructive: true },
+                  { label: "Delete", onClick: () => setDeleteTarget(r), destructive: true },
                 ];
                 return (
                   <div
@@ -1006,7 +1019,7 @@ export function WorkerInvoicesClient({
                         onClick: () => toggleStatus(r),
                       },
                       { label: "Edit", onClick: () => handleEdit(r) },
-                      { label: "Delete", onClick: () => handleDelete(r.id), destructive: true },
+                      { label: "Delete", onClick: () => setDeleteTarget(r), destructive: true },
                     ];
                     return (
                       <tr

@@ -50,6 +50,7 @@ test("InlineFeedback and FieldMessage own semantic soft-state presentation with 
 test("toast convergence leaves one app-facing API and one rendered live region", () => {
   const provider = source("src/components/toast/toast-provider.tsx");
   const api = source("src/lib/toast.ts");
+  const globals = source("src/app/globals.css");
   const providers = source("src/app/providers.tsx");
   const shell = source("src/components/layout/app-shell.tsx");
   const expense = source("src/app/financial/expenses/expenses-client.tsx");
@@ -59,7 +60,8 @@ test("toast convergence leaves one app-facing API and one rendered live region",
   assert.match(api, /subscribeToToasts/);
   assert.match(provider, /subscribeToToasts/);
   assert.equal((provider.match(/aria-live=/g) ?? []).length, 1);
-  assert.match(provider, /motion-reduce:animate-none/);
+  assert.match(provider, /hh-toast/);
+  assert.match(globals, /@media \(prefers-reduced-motion: reduce\)[\s\S]*\.hh-toast/);
   assert.doesNotMatch(providers, /<ToastProvider>|toast\/toast-provider/);
   assert.doesNotMatch(providers, /HotToaster|components\/ui\/sonner/);
   assert.match(shell, /toast\/toast-provider/);

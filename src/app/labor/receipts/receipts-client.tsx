@@ -22,7 +22,7 @@ import {
   X,
 } from "lucide-react";
 
-import { NeoStatus, RowActionsMenu, type RowAction } from "@/components/base";
+import { ConfirmDialog, NeoStatus, RowActionsMenu, type RowAction } from "@/components/base";
 import { ExpenseOperationsWorkspaceNav } from "@/components/financial/expense-operations-workspace-nav";
 import { ReceiptInboxSourceNav } from "@/components/financial/receipt-inbox-source-nav";
 import {
@@ -482,6 +482,7 @@ export function ReceiptsClient({
   const searchParams = useSearchParams();
   const [rows, setRows] = React.useState(initialRows);
   const [busyId, setBusyId] = React.useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = React.useState<ReceiptRow | null>(null);
   const [rejectOpen, setRejectOpen] = React.useState(false);
   const [rejectId, setRejectId] = React.useState<string | null>(null);
   const [rejectReason, setRejectReason] = React.useState("");
@@ -772,8 +773,9 @@ export function ReceiptsClient({
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (typeof window !== "undefined" && !window.confirm("Delete this receipt upload?")) return;
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    const id = deleteTarget.id;
     setMessage(null);
     let snapshot: ReceiptRow[] | undefined;
     setRows((current) => {
@@ -787,8 +789,8 @@ export function ReceiptsClient({
       if (!response.ok) throw new Error(data.message ?? "Delete failed");
       syncRouterNonBlocking(router);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Delete failed");
       if (snapshot) setRows(snapshot);
+      throw error instanceof Error ? error : new Error("Delete failed");
     } finally {
       setBusyId(null);
     }
@@ -823,7 +825,7 @@ export function ReceiptsClient({
       : []),
     {
       label: "Delete",
-      onClick: () => void handleDelete(receipt.id),
+      onClick: () => setDeleteTarget(receipt),
       destructive: true,
       disabled: busyId === receipt.id,
     },
@@ -1396,6 +1398,19 @@ export function ReceiptsClient({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null);
+        }}
+        title="Delete receipt upload?"
+        description="Delete this receipt upload? This cannot be undone."
+        confirmLabel="Delete"
+        destructive
+        loading={busyId === deleteTarget?.id}
+        onConfirm={handleDelete}
+      />
 
       <Dialog
         open={Boolean(viewReceiptUrl)}

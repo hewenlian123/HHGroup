@@ -115,6 +115,7 @@ export function ContactsDirectory({
     <div
       className="divide-y divide-[var(--hh-border-subtle)] border-y border-[var(--hh-border-subtle)]"
       data-contact-list
+      aria-busy={vendors.loading ? "true" : undefined}
     >
       {filtered.map((entry) => (
         <article
@@ -240,7 +241,7 @@ export function ContactsDirectory({
           </Button>
         </div>
       )}
-      {vendors.loading && <LoadingState text="Loading vendors…" />}
+      {vendorOnly && vendors.loading && <LoadingState text="Loading vendors…" />}
       {filtered.length > 0 ? (
         directory
       ) : !vendors.loading && unavailable.length === 0 ? (

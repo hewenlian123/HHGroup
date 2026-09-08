@@ -13,6 +13,7 @@ playwright-report/
 test-results/
 tests/.auth/
 .local-artifacts/
+private/
 *.dump
 *.backup
 *.sql.gz

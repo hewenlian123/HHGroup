@@ -1,6 +1,8 @@
 "use client";
 
 import * as React from "react";
+import { useEstimateSheetFocus } from "./use-estimate-sheet-focus";
+import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -155,6 +157,7 @@ export function EstimateEditCustomerSection({
   estimateSubtotal,
   saveEstimateMetaAction,
   onSaveDetails,
+  saving = false,
 }: {
   meta: EstimateEditCustomerMeta;
   estimateId: string;
@@ -169,6 +172,7 @@ export function EstimateEditCustomerSection({
   estimateSubtotal: number;
   saveEstimateMetaAction: (formData: FormData) => Promise<void>;
   onSaveDetails?: () => void;
+  saving?: boolean;
 }): React.ReactElement {
   const [uncontrolledDetailsOpen, setUncontrolledDetailsOpen] = React.useState(false);
   const detailsOpen = controlledDetailsOpen ?? uncontrolledDetailsOpen;
@@ -197,7 +201,7 @@ export function EstimateEditCustomerSection({
     meta.documentStyle ?? "proposal"
   );
   const formRef = React.useRef<HTMLFormElement | null>(null);
-  const detailsOpenerRef = React.useRef<HTMLElement | null>(null);
+  const sheetFocus = useEstimateSheetFocus();
 
   React.useEffect(() => {
     // Same-value RSC refreshes replace the `meta` object identity. Depend on the
@@ -327,15 +331,7 @@ export function EstimateEditCustomerSection({
             side="right"
             className={estimateSurfaceSheetClassName(detailsSurface, "eb-estimate-details-sheet")}
             data-estimate-surface={detailsSurface}
-            onOpenAutoFocus={() => {
-              const activeElement = document.activeElement;
-              detailsOpenerRef.current =
-                activeElement instanceof HTMLElement ? activeElement : null;
-            }}
-            onCloseAutoFocus={(event) => {
-              event.preventDefault();
-              window.requestAnimationFrame(() => detailsOpenerRef.current?.focus());
-            }}
+            {...sheetFocus}
           >
             <div className="flex max-h-[100dvh] min-h-0 flex-1 flex-col overflow-hidden">
               <SheetHeader className={EB.sheetHeader}>
@@ -690,6 +686,8 @@ export function EstimateEditCustomerSection({
                     type="button"
                     size="sm"
                     className={EB.sheetPrimary}
+                    disabled={saving}
+                    aria-busy={saving}
                     onClick={() => {
                       if (onSaveDetails) {
                         onSaveDetails();
@@ -698,7 +696,8 @@ export function EstimateEditCustomerSection({
                       formRef.current?.requestSubmit();
                     }}
                   >
-                    Save
+                    <SubmitSpinner loading={saving} className="mr-2" />
+                    {saving ? "Saving…" : "Save"}
                   </Button>
                   <Button
                     type="button"

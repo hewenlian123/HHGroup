@@ -1,14 +1,6 @@
 import Link from "next/link";
-import {
-  ArrowLeftRight,
-  CircleDollarSign,
-  FileText,
-  FolderKanban,
-  HandCoins,
-  ReceiptText,
-  UsersRound,
-  WalletCards,
-} from "lucide-react";
+import { FileText, FolderKanban, ReceiptText } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import { UPLOAD_RECEIPT_ACTION } from "@/lib/navigation/actions";
 import { cn } from "@/lib/utils";
@@ -16,31 +8,12 @@ import { cn } from "@/lib/utils";
 const actions = [
   { label: "Create invoice", href: "/financial/invoices/new", icon: FileText, primary: true },
   { ...UPLOAD_RECEIPT_ACTION, icon: ReceiptText },
-  { label: "Projects", href: "/projects", icon: FolderKanban },
-  { label: "Pay Worker", href: "/workers", icon: UsersRound },
-  {
-    label: "Workers Ready To Pay",
-    href: "/reports/workforce?tab=payroll",
-    icon: CircleDollarSign,
-  },
-  { label: "Payroll Due", href: "/reports/workforce?tab=payroll", icon: WalletCards },
-  { label: "Outstanding Advances", href: "/reports/workforce?tab=advances", icon: HandCoins },
-  {
-    label: "Pending Reimbursements",
-    href: "/reports/workforce?tab=reimbursements",
-    icon: ReceiptText,
-  },
-  { label: "Labor", href: "/labor", icon: ArrowLeftRight },
+  { label: "Projects", href: "/projects", icon: FolderKanban, mobileHidden: true },
 ];
 
 export function DashboardQuickActions({ className }: { className?: string }) {
   return (
-    <div
-      className={cn(
-        "dashboard-quick-actions grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-end",
-        className
-      )}
-    >
+    <div data-dashboard-primary-actions className={cn("flex min-w-0 flex-wrap gap-2", className)}>
       {actions.map((action) => {
         const Icon = action.icon;
         return (
@@ -49,12 +22,12 @@ export function DashboardQuickActions({ className }: { className?: string }) {
             asChild
             variant={action.primary ? "default" : "outline"}
             className={cn(
-              "dashboard-action-button w-full px-3 sm:w-auto",
-              action.primary && "shadow-none"
+              "dashboard-action-button min-h-11 min-w-0 px-3 shadow-none md:min-h-9",
+              action.mobileHidden && "hidden sm:inline-flex"
             )}
           >
             <Link href={action.href}>
-              <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
+              <Icon className="h-4 w-4 shrink-0" aria-hidden />
               <span className="truncate">{action.label}</span>
             </Link>
           </Button>

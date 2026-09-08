@@ -17,6 +17,7 @@ import {
 import { FilterBar } from "@/components/filter-bar";
 import { StatusBadge } from "@/components/status-badge";
 import { formatCurrency, formatDate } from "@/lib/formatters";
+import { ConfirmDialog } from "@/components/base";
 
 export default function LaborInvoicesPage() {
   const [rows, setRows] = React.useState<LaborInvoice[]>([]);
@@ -27,6 +28,10 @@ export default function LaborInvoicesPage() {
   const [toDate, setToDate] = React.useState("");
   const [workers, setWorkers] = React.useState<Awaited<ReturnType<typeof getWorkers>>>([]);
   const [busyId, setBusyId] = React.useState<string | null>(null);
+  const [confirmAction, setConfirmAction] = React.useState<{
+    id: string;
+    kind: "delete" | "void";
+  } | null>(null);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -68,7 +73,9 @@ export default function LaborInvoicesPage() {
     [refresh, reloadWorkers]
   );
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async () => {
+    if (!confirmAction || confirmAction.kind !== "delete") return;
+    const id = confirmAction.id;
     const target = rows.find((r) => r.id === id);
     if (!target) return;
     if (target.status === "confirmed") {
@@ -81,16 +88,17 @@ export default function LaborInvoicesPage() {
     try {
       await deleteLaborInvoice(id);
       setMessage("Invoice deleted.");
-    } catch {
+    } catch (cause) {
       setRows(prev);
-      setMessage("Delete failed.");
+      throw cause instanceof Error ? cause : new Error("Delete failed.");
     } finally {
       setBusyId(null);
     }
   };
 
-  const handleVoid = async (id: string) => {
-    if (!window.confirm("Void this invoice?")) return;
+  const handleVoid = async () => {
+    if (!confirmAction || confirmAction.kind !== "void") return;
+    const id = confirmAction.id;
     const prev = rows;
     setBusyId(id);
     setRows((list) => list.map((row) => (row.id === id ? { ...row, status: "void" } : row)));
@@ -98,13 +106,12 @@ export default function LaborInvoicesPage() {
       const updated = await voidLaborInvoice(id);
       if (!updated) {
         setRows(prev);
-        setMessage("Void failed.");
-        return;
+        throw new Error("Void failed.");
       }
       setMessage("Invoice voided.");
-    } catch {
+    } catch (cause) {
       setRows(prev);
-      setMessage("Void failed.");
+      throw cause instanceof Error ? cause : new Error("Void failed.");
     } finally {
       setBusyId(null);
     }
@@ -227,7 +234,7 @@ export default function LaborInvoicesPage() {
                         size="sm"
                         variant="outline"
                         className="h-8 rounded-hh-compact"
-                        onClick={() => handleVoid(row.id)}
+                        onClick={() => setConfirmAction({ id: row.id, kind: "void" })}
                         disabled={row.status === "void" || busyId === row.id}
                       >
                         {busyId === row.id ? "Working..." : "Void"}
@@ -236,7 +243,7 @@ export default function LaborInvoicesPage() {
                         size="sm"
                         variant="outline"
                         className="h-8 rounded-hh-compact"
-                        onClick={() => handleDelete(row.id)}
+                        onClick={() => setConfirmAction({ id: row.id, kind: "delete" })}
                         disabled={busyId === row.id}
                       >
                         {busyId === row.id ? "Working..." : "Delete"}
@@ -256,6 +263,22 @@ export default function LaborInvoicesPage() {
           </table>
         </div>
       </div>
+      <ConfirmDialog
+        open={confirmAction !== null}
+        onOpenChange={(open) => {
+          if (!open) setConfirmAction(null);
+        }}
+        title={confirmAction?.kind === "void" ? "Void labor invoice?" : "Delete labor invoice?"}
+        description={
+          confirmAction?.kind === "void"
+            ? "Void this labor invoice? Its financial history will remain visible."
+            : "Delete this draft labor invoice? This cannot be undone."
+        }
+        confirmLabel={confirmAction?.kind === "void" ? "Void" : "Delete"}
+        destructive
+        loading={!!busyId}
+        onConfirm={confirmAction?.kind === "void" ? handleVoid : handleDelete}
+      />
     </div>
   );
 }

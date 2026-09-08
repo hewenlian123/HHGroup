@@ -12,11 +12,16 @@ export function neighborRowIdAfterRemove<T extends { id: string }>(
   return rows[i + 1]?.id ?? rows[i - 1]?.id ?? null;
 }
 
+export function motionAwareScrollBehavior(): ScrollBehavior {
+  return globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
+}
+
 export function scrollElementIntoViewNearest(
   el: Element | null | undefined,
-  behavior: ScrollBehavior = "smooth"
+  behavior?: ScrollBehavior
 ): void {
-  el?.scrollIntoView({ block: "nearest", inline: "nearest", behavior });
+  const resolvedBehavior = behavior ?? motionAwareScrollBehavior();
+  el?.scrollIntoView({ block: "nearest", inline: "nearest", behavior: resolvedBehavior });
 }
 
 /** Focus first tabbable inside a row (keyboard flow). */

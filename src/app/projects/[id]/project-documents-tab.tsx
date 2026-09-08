@@ -3,7 +3,7 @@
 import { syncRouterNonBlocking } from "@/components/perf/sync-router-non-blocking";
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { SectionHeader, Divider } from "@/components/base";
+import { ConfirmDialog, SectionHeader, Divider } from "@/components/base";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DocumentPreviewModal } from "@/components/documents/document-preview-modal";
@@ -35,7 +35,7 @@ export function ProjectDocumentsTab({ projectId, documents }: Props) {
   const [uploading, setUploading] = React.useState(false);
   const [uploadError, setUploadError] = React.useState<string | null>(null);
   const [deletingId, setDeletingId] = React.useState<string | null>(null);
-  const [deleteError, setDeleteError] = React.useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = React.useState<DocumentRow | null>(null);
   const formRef = React.useRef<HTMLFormElement>(null);
 
   const handlePreview = React.useCallback(async (doc: DocumentRow) => {
@@ -63,26 +63,19 @@ export function ProjectDocumentsTab({ projectId, documents }: Props) {
     }
   }, []);
 
-  const handleDelete = React.useCallback(
-    async (doc: DocumentRow) => {
-      if (!window.confirm("Delete this document?")) return;
-      setDeleteError(null);
-      setDeletingId(doc.id);
-      try {
-        const res = await deleteDocumentAction(doc.id);
-        if (!res.ok) {
-          setDeleteError(res.error ?? "Delete failed.");
-          return;
-        }
-        syncRouterNonBlocking(router);
-      } catch (error) {
-        setDeleteError(error instanceof Error ? error.message : "Document deletion failed.");
-      } finally {
-        setDeletingId(null);
-      }
-    },
-    [router]
-  );
+  const handleDelete = React.useCallback(async () => {
+    if (!deleteTarget) return;
+    setDeletingId(deleteTarget.id);
+    try {
+      const res = await deleteDocumentAction(deleteTarget.id);
+      if (!res.ok) throw new Error(res.error ?? "Delete failed.");
+      syncRouterNonBlocking(router);
+    } catch (error) {
+      throw error instanceof Error ? error : new Error("Document deletion failed.");
+    } finally {
+      setDeletingId(null);
+    }
+  }, [deleteTarget, router]);
 
   const handleUpload = React.useCallback(
     async (e: React.FormEvent<HTMLFormElement>) => {
@@ -226,7 +219,7 @@ export function ProjectDocumentsTab({ projectId, documents }: Props) {
                           variant="outline"
                           size="sm"
                           className="btn-outline-ghost h-7 text-hh-metadata text-[var(--hh-danger)]"
-                          onClick={() => handleDelete(doc)}
+                          onClick={() => setDeleteTarget(doc)}
                           disabled={deletingId === doc.id}
                         >
                           {deletingId === doc.id ? "Deleting…" : "Delete"}
@@ -249,7 +242,18 @@ export function ProjectDocumentsTab({ projectId, documents }: Props) {
         fileName={previewDoc?.file_name ?? ""}
         isLoading={loadingPreview && !!previewDoc}
       />
-      {deleteError ? <p className="mt-2 text-hh-metadata text-destructive">{deleteError}</p> : null}
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null);
+        }}
+        title="Delete document?"
+        description={`Delete ${deleteTarget?.file_name ?? "this document"}? This cannot be undone.`}
+        confirmLabel="Delete"
+        destructive
+        loading={!!deletingId}
+        onConfirm={handleDelete}
+      />
     </>
   );
 }

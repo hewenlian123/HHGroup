@@ -1,10 +1,10 @@
 import AxeBuilder from "@axe-core/playwright";
 import type { Page } from "@playwright/test";
 import { test, expect } from "./fixture";
-import {
-  E2E_PRESERVED_CUSTOMER_ID as customerId,
-  E2E_PRESERVED_PROJECT_ID as projectId,
-} from "../e2e-cleanup-db";
+import { E2E_PRESERVED_CUSTOMER_ID, E2E_PRESERVED_PROJECT_ID } from "../e2e-cleanup-db";
+
+const customerId = process.env.E2E_UI_CUSTOMER_ID || E2E_PRESERVED_CUSTOMER_ID;
+const projectId = process.env.E2E_UI_PROJECT_ID || E2E_PRESERVED_PROJECT_ID;
 
 const viewports = [
   { width: 1440, height: 900 },
@@ -39,14 +39,45 @@ async function healthy(page: Page) {
     )
   ).toBeLessThanOrEqual(2);
 }
+async function clickAndExpectNavigation200(
+  page: Page,
+  link: ReturnType<Page["locator"]>,
+  href: string,
+  reloadCachedRoute = false
+) {
+  const expected = new URL(href, page.url());
+  const historyState = await page.evaluate(() => JSON.stringify(history.state));
+  const navigated = page.waitForResponse((response) => {
+    const actual = new URL(response.url());
+    return (
+      response.request().method() === "GET" &&
+      actual.pathname === expected.pathname &&
+      [...expected.searchParams].every(([key, value]) => actual.searchParams.get(key) === value)
+    );
+  });
+  await link.click();
+  await expect(page).toHaveURL(expected.toString());
+  if (reloadCachedRoute) await page.reload({ waitUntil: "networkidle" });
+  const response = await navigated;
+  expect(response.status(), href).toBe(200);
+  await page.waitForLoadState("networkidle");
+  await expect
+    .poll(() => page.evaluate(() => JSON.stringify(history.state)))
+    .not.toBe(historyState);
+}
 async function section(page: Page, label: string) {
   const nav = page.getByRole("navigation", { name: "Contact detail sections", exact: true });
   const link = nav.getByRole("link", { name: label, exact: true });
-  if (await link.isVisible()) await link.click();
+  let href: string | null;
+  let target = link;
+  if (await link.isVisible()) href = await link.getAttribute("href");
   else {
     await nav.getByRole("button", { name: "More contact sections" }).click();
-    await page.getByRole("menuitem", { name: label, exact: true }).click();
+    target = page.getByRole("menuitem", { name: label, exact: true });
+    href = await target.getAttribute("href");
   }
+  expect(href).toBeTruthy();
+  await clickAndExpectNavigation200(page, target, href!);
   await expect(page).toHaveURL(new RegExp(`tab=${label.toLowerCase()}(?:&|$)`));
   await expect(page.getByRole("region", { name: label, exact: true })).toBeVisible();
 }
@@ -72,6 +103,7 @@ for (const viewport of viewports) {
     const aliasResponse = await page.goto("/contacts", { waitUntil: "networkidle" });
     expect([200, 307]).toContain(aliasResponse?.status());
     await expect(page).toHaveURL(/\/customers\/overview$/);
+    await healthy(page);
     await goto("/customers/overview");
     const nav = page.getByRole("navigation", { name: "Contacts workspace", exact: true });
     await expect(nav).toHaveCount(1);
@@ -133,7 +165,12 @@ for (const viewport of viewports) {
     await healthy(page);
     await page.emulateMedia({ forcedColors: "none" });
 
-    await nav.getByRole("link", { name: "Customers", exact: true }).click();
+    await clickAndExpectNavigation200(
+      page,
+      nav.getByRole("link", { name: "Customers", exact: true }),
+      "/customers"
+    );
+    await healthy(page);
     await expect(page).toHaveURL(/\/customers$/);
     await expect(page.getByRole("textbox", { name: "Search customers" })).toBeVisible();
     await page
@@ -156,11 +193,14 @@ for (const viewport of viewports) {
       .getByRole("region", { name: "Projects", exact: true })
       .locator(`a[href="/projects/${projectId}"]`);
     await expect(projectLink).toBeVisible();
-    await projectLink.click();
-    await expect(page).toHaveURL(new RegExp(`/projects/${projectId}`));
+    await clickAndExpectNavigation200(page, projectLink, `/projects/${projectId}`);
     await healthy(page);
     await page.goBack();
     await expect(page.getByRole("region", { name: "Projects", exact: true })).toBeVisible();
+    await page.waitForLoadState("networkidle");
+    const projectBackResponse = await page.reload({ waitUntil: "networkidle" });
+    expect(projectBackResponse?.status()).toBe(200);
+    await healthy(page);
     await section(page, "Estimates");
     await expect(page.getByRole("link", { name: "Open Estimates", exact: true })).toHaveAttribute(
       "href",
@@ -173,12 +213,16 @@ for (const viewport of viewports) {
       await section(page, label);
       const link = page.getByRole("link", { name, exact: true });
       await expect(link).toHaveAttribute("href", `${route}?customerId=${customerId}`);
-      await link.click();
+      await clickAndExpectNavigation200(page, link, `${route}?customerId=${customerId}`);
       await page.waitForLoadState("networkidle");
       await expect(page).toHaveURL(new RegExp(`${route}\\?customerId=${customerId}`));
       await healthy(page);
       await page.goBack();
       await expect(page.getByRole("region", { name: label, exact: true })).toBeVisible();
+      await page.waitForLoadState("networkidle");
+      const detailBackResponse = await page.reload({ waitUntil: "networkidle" });
+      expect(detailBackResponse?.status()).toBe(200);
+      await healthy(page);
     }
     await section(page, "Documents");
     await expect(
@@ -191,8 +235,16 @@ for (const viewport of viewports) {
     await section(page, "Overview");
     await page.goBack();
     await expect(page.getByRole("region", { name: "History", exact: true })).toBeVisible();
+    await page.waitForLoadState("networkidle");
+    const historyBackResponse = await page.reload({ waitUntil: "networkidle" });
+    expect(historyBackResponse?.status()).toBe(200);
+    await healthy(page);
     await page.goForward();
     await expect(page.getByRole("region", { name: "Overview", exact: true })).toBeVisible();
+    await page.waitForLoadState("networkidle");
+    const historyForwardResponse = await page.reload({ waitUntil: "networkidle" });
+    expect(historyForwardResponse?.status()).toBe(200);
+    await healthy(page);
 
     await goto("/labor/subcontractors");
     await expect(page).toHaveURL(/\/subcontractors$/);
@@ -209,7 +261,8 @@ for (const viewport of viewports) {
     const subLink = page.locator('a[href^="/subcontractors/"]:visible').first();
     await expect(subLink).toBeVisible();
     const subHref = await subLink.getAttribute("href");
-    await subLink.click();
+    await clickAndExpectNavigation200(page, subLink, subHref!);
+    await healthy(page);
     await expect(page).toHaveURL(new RegExp(`${subHref}$`));
     await expect(page.getByRole("navigation", { name: "Contact detail sections" })).toBeVisible();
     await expect(
@@ -248,7 +301,16 @@ for (const viewport of viewports) {
     await expect(page.locator("[data-contact-list] article")).toHaveCount(1);
     await page.getByRole("combobox", { name: "Contact status" }).selectOption("all");
     await capture("vendors");
-    await page.getByRole("link", { name: vendor.name, exact: true }).click();
+    await expect(page.getByRole("link", { name: vendor.name, exact: true })).toHaveAttribute(
+      "href",
+      `/vendors/${vendorId}`
+    );
+    await clickAndExpectNavigation200(
+      page,
+      page.getByRole("link", { name: vendor.name, exact: true }),
+      `/vendors/${vendorId}`
+    );
+    await healthy(page);
     await expect(page).toHaveURL(new RegExp(`/vendors/${vendorId}$`));
     await expect(page.getByRole("link", { name: vendor.email, exact: true })).toHaveAttribute(
       "href",
@@ -269,7 +331,17 @@ for (const viewport of viewports) {
       await healthy(page);
     }
     await section(page, "Overview");
-    await page.getByRole("link", { name: "Back to Vendors" }).click();
+    await expect(page.getByRole("link", { name: "Back to Vendors" })).toHaveAttribute(
+      "href",
+      "/vendors"
+    );
+    await clickAndExpectNavigation200(
+      page,
+      page.getByRole("link", { name: "Back to Vendors" }),
+      "/vendors",
+      true
+    );
+    await healthy(page);
     await expect(page).toHaveURL(/\/vendors$/);
     await goto("/financial/vendors");
     await expect(page.getByRole("textbox", { name: "Search vendors" })).toBeVisible();

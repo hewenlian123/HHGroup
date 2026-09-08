@@ -710,7 +710,7 @@ export default function NewExpensePage() {
                       fileType: receiptPreviewFileType,
                     })
                   }
-                  className="cursor-pointer overflow-hidden rounded-sm border border-border/60 p-0.5 transition-transform duration-200 ease-out hover:scale-105"
+                  className="cursor-pointer overflow-hidden rounded-sm border border-border/60 p-0.5"
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={receiptPreviewUrl} alt="" className="h-16 w-16 object-cover" />
@@ -756,7 +756,7 @@ export default function NewExpensePage() {
                       fileType: "pdf",
                     })
                   }
-                  className="flex h-16 w-16 cursor-pointer items-center justify-center rounded-sm border border-border/60 text-hh-status font-medium text-muted-foreground transition-transform duration-200 ease-out hover:scale-105"
+                  className="flex h-16 w-16 cursor-pointer items-center justify-center rounded-sm border border-border/60 text-hh-status font-medium text-muted-foreground"
                 >
                   PDF
                 </button>

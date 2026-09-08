@@ -26,7 +26,13 @@ function isExpenseRecordSurface(surface: ExpenseOperationsSurface | null): boole
   return surface === "overview" || surface === "expenses" || surface === "inbox";
 }
 
-export function ExpenseOperationsWorkspaceNav({ className }: { className?: string }) {
+export function ExpenseOperationsWorkspaceNav({
+  className,
+  showHeader = true,
+}: {
+  className?: string;
+  showHeader?: boolean;
+}) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const activeSurface = surfaceForPathname(pathname);
@@ -84,18 +90,30 @@ export function ExpenseOperationsWorkspaceNav({ className }: { className?: strin
       data-expense-operations-shell
       className={cn("min-w-0 shrink-0 border-b border-[var(--hh-border)] pb-2", className)}
     >
-      <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
-        <div className="min-w-0">
-          <h1 className="text-hh-page-title tracking-normal text-[var(--hh-text-primary)]">
-            Expenses
-          </h1>
-          <p className="mt-0.5 text-hh-status leading-snug text-[var(--hh-text-secondary)]">
-            Review receipts, complete expenses, and follow expense history.
-          </p>
-        </div>
+      <div
+        className={cn(
+          "flex min-w-0",
+          showHeader
+            ? "flex-col gap-2 sm:flex-row sm:items-end sm:justify-between sm:gap-4"
+            : "overflow-hidden"
+        )}
+      >
+        {showHeader ? (
+          <div className="min-w-0">
+            <h1 className="text-hh-page-title tracking-normal text-[var(--hh-text-primary)]">
+              Expenses
+            </h1>
+            <p className="mt-0.5 text-hh-status leading-snug text-[var(--hh-text-secondary)]">
+              Review receipts, complete expenses, and follow expense history.
+            </p>
+          </div>
+        ) : null}
         <nav
           aria-label="Expense Operations workspace"
-          className="-mx-1 flex min-w-0 max-w-full gap-1 overflow-x-auto px-1 pb-px [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className={cn(
+            "-mx-1 flex min-w-0 max-w-full gap-1 overflow-x-auto px-1 pb-px [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+            !showHeader && "w-full"
+          )}
         >
           {surfaces.map((surface) => {
             const active = surface.id === activeSurface;

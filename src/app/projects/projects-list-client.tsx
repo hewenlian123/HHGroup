@@ -25,7 +25,6 @@ import { Input } from "@/components/ui/input";
 import {
   ConfirmDialog,
   EmptyState,
-  KpiTile,
   MobileListRow,
   NeoAmount,
   NeoMobileCard,
@@ -47,7 +46,6 @@ import {
   DELETE_BLOCKED_RELATED_CONFIG,
   getLabelForKey,
   getViewPathForKey,
-  getRelatedLabelsList,
   type DeleteBlockedCounts,
 } from "./delete-blocked-config";
 import { useToast } from "@/components/toast/toast-provider";
@@ -120,7 +118,7 @@ function fmtUsd0(n: number | null): string {
 
 function profitClass(n: number | null): string {
   if (n == null) return "text-[var(--hh-text-secondary)]";
-  if (n > 0.005) return OS.emeraldAccent;
+  if (n > 0.005) return "text-[var(--hh-text-primary)]";
   if (n < -0.005) return OS.dangerAmount;
   return "text-[var(--hh-text-secondary)]";
 }
@@ -290,18 +288,6 @@ export function ProjectsListClient({
     [router]
   );
 
-  const summary = React.useMemo(() => {
-    const total = localRows.length;
-    const active = localRows.filter((r) => normalizeProjectStatus(r.status) === "active").length;
-    const completed = localRows.filter(
-      (r) => normalizeProjectStatus(r.status) === "completed"
-    ).length;
-    const totalBudget = localRows.some((row) => row.budget == null)
-      ? null
-      : localRows.reduce((sum, row) => sum + row.budget!, 0);
-    return { total, active, completed, totalBudget };
-  }, [localRows]);
-
   const filtered = React.useMemo(() => {
     const q = query.trim().toLowerCase();
     let list = localRows.filter((r) => {
@@ -380,7 +366,7 @@ export function ProjectsListClient({
   return (
     <div
       className={cn(
-        "page-container page-shell-wide page-stack py-8 text-hh-body leading-normal",
+        "page-container page-shell-wide page-stack text-hh-body leading-normal",
         PAGE_BG,
         mobileListPagePaddingClass,
         "max-md:!gap-3 max-md:!pb-[calc(7.5rem+env(safe-area-inset-bottom,0px))]"
@@ -404,9 +390,9 @@ export function ProjectsListClient({
       <div className="hidden md:block">
         <PageHeader
           title={<span data-testid="projects-page-heading">Projects</span>}
-          description="Revenue, actual cost, and guarded profit — click a row or View to open a project."
+          description="Open a project to review revenue, actual cost, and guarded profit."
           actions={
-            <Button asChild>
+            <Button asChild className="!w-auto self-start">
               <Link href="/projects/new">
                 <Plus aria-hidden />
                 New Project
@@ -415,27 +401,6 @@ export function ProjectsListClient({
           }
         />
       </div>
-
-      {!dataLoadWarning && (
-        <div className="hidden grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4 md:grid">
-          {(
-            [
-              ["TOTAL PROJECTS", summary.total],
-              ["ACTIVE", summary.active],
-              ["COMPLETED", summary.completed],
-              ["TOTAL BUDGET", summary.totalBudget],
-            ] as const
-          ).map(([label, value]) => (
-            <KpiTile
-              key={label}
-              label={label}
-              value={label === "TOTAL BUDGET" ? fmtUsd0(value as number | null) : (value as number)}
-              className="min-h-[92px]"
-              valueClassName="text-hh-financial-total"
-            />
-          ))}
-        </div>
-      )}
 
       <MobileSearchFiltersRow
         filterSheetOpen={filtersOpen}
@@ -579,7 +544,10 @@ export function ProjectsListClient({
         </>
       ) : (
         <>
-          <NeoMobileCard className="divide-y divide-[var(--hh-border)] overflow-hidden md:hidden">
+          <NeoMobileCard
+            data-projects-mobile-list
+            className="divide-y divide-[var(--hh-border)] overflow-hidden xl:hidden"
+          >
             {filtered.map((r) => (
               <div key={r.id} className="flex min-h-[56px] items-center gap-2">
                 <MobileListRow asChild className="min-w-0 flex-1 rounded-none">
@@ -608,7 +576,7 @@ export function ProjectsListClient({
                         )}
                         data-testid={`project-list-profit-${r.id}`}
                       >
-                        {r.profitReadinessWarning ? "Needs review" : fmtUsd0(r.profit)}
+                        {r.profitReadinessWarning ? "Needs review" : `Profit ${fmtUsd0(r.profit)}`}
                       </span>
                       <ProjectListStatusPill status={r.status} />
                     </div>
@@ -632,7 +600,11 @@ export function ProjectsListClient({
               </div>
             ))}
           </NeoMobileCard>
-          <NeoTable className="hidden md:block" busy={deletingId != null}>
+          <NeoTable
+            data-projects-desktop-list
+            className="hidden xl:block"
+            busy={deletingId != null}
+          >
             <thead>
               <tr>
                 <th className={tableRawThClass}>Project</th>
@@ -700,7 +672,7 @@ export function ProjectsListClient({
                     {r.profitReadinessWarning ? (
                       "Needs review"
                     ) : (
-                      <NeoAmount tone={r.profit != null && r.profit >= 0 ? "income" : "expense"}>
+                      <NeoAmount tone={r.profit != null && r.profit < 0 ? "expense" : "neutral"}>
                         {fmtUsd0(r.profit)}
                       </NeoAmount>
                     )}
@@ -853,12 +825,6 @@ export function ProjectsListClient({
                   disabled={forceDeleteInProgress || deletingId != null}
                   onClick={async () => {
                     if (!deleteBlockedProjectId || !deleteBlockedCounts) return;
-                    const labels = getRelatedLabelsList(deleteBlockedCounts);
-                    const listText = labels.length > 0 ? labels.join("、") : "";
-                    const msg = listText
-                      ? `确定要删除该项目及其所有关联数据（${listText}）？此操作不可撤销。`
-                      : "确定要删除该项目及其所有关联数据？此操作不可撤销。";
-                    if (!window.confirm(msg)) return;
                     setForceDeleteInProgress(true);
                     const pid = deleteBlockedProjectId;
                     try {

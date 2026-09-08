@@ -1,22 +1,11 @@
-import { existsSync } from "node:fs";
-import { resolve } from "node:path";
-
 import { defineConfig, devices } from "@playwright/test";
-import { config as loadDotenv } from "dotenv";
 
 import { loadE2EProcessEnv } from "./tests/e2e-load-env";
 import { assertPlaywrightProductionRunSafeForWrites } from "./tests/e2e-supabase-url-guard";
 import { buildPlaywrightWebServerEnv } from "./tests/e2e-webserver-env";
 
-/**
- * Base chain: `.env` → `.env.local` → `.env.e2e` → `.env.test` (see tests/e2e-load-env.ts).
- * Load `.env.test` again so local E2E Supabase is explicitly pinned for Playwright even if other tools change order.
- */
+/** Dotenv file precedence plus explicit process-env precedence lives in the shared loader. */
 loadE2EProcessEnv();
-const e2eTestEnvPath = resolve(process.cwd(), ".env.test");
-if (existsSync(e2eTestEnvPath)) {
-  loadDotenv({ path: e2eTestEnvPath, override: true });
-}
 
 /** Dynamic base URL for isolated local E2E (default :3001) or CI override. */
 const resolvedBase = (process.env.E2E_BASE_URL || "http://localhost:3001").replace(/\/$/, "");

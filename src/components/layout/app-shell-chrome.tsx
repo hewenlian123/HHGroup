@@ -95,8 +95,43 @@ export function AppShellChrome({
       return;
     }
     setMobileOpen(false);
-    window.requestAnimationFrame(() => mobileNavigationTriggerRef.current?.focus());
   }, []);
+
+  const desktopNavigationQuery = integratedEstimateWorkspace
+    ? "(min-width: 1200px)"
+    : "(min-width: 640px)";
+
+  const desktopNavigationTriggerSelector = integratedEstimateWorkspace
+    ? "[data-app-shell-sidebar-slot] [data-sidebar-collapse] button"
+    : '[data-app-topbar] [aria-label="Toggle sidebar"]';
+
+  React.useEffect(() => {
+    const desktopNavigation = window.matchMedia(desktopNavigationQuery);
+    const closeMobileNavigation = () => {
+      if (!desktopNavigation.matches) return;
+      setMobileOpen(false);
+    };
+    // CSS may hide the restored opener before or after the media-query event.
+    const restoreHiddenOpenerFocus = (event: FocusEvent) => {
+      const opener = mobileNavigationTriggerRef.current;
+      if (
+        !mobileOpen &&
+        desktopNavigation.matches &&
+        event.target === opener &&
+        !event.relatedTarget &&
+        opener?.getClientRects().length === 0
+      ) {
+        document.querySelector<HTMLElement>(desktopNavigationTriggerSelector)?.focus();
+      }
+    };
+    closeMobileNavigation();
+    desktopNavigation.addEventListener("change", closeMobileNavigation);
+    document.addEventListener("focusout", restoreHiddenOpenerFocus);
+    return () => {
+      desktopNavigation.removeEventListener("change", closeMobileNavigation);
+      document.removeEventListener("focusout", restoreHiddenOpenerFocus);
+    };
+  }, [mobileOpen, desktopNavigationQuery, desktopNavigationTriggerSelector]);
 
   if (bare || workerMode) return <ScrollLockRecovery />;
 
@@ -112,7 +147,7 @@ export function AppShellChrome({
         createPortal(<WorkspaceNavigation pathname={pathname ?? ""} />, workspace)}
       {createPortal(
         <Sidebar
-          className="hidden sm:flex shrink-0 transition-[width] duration-200"
+          className="hidden shrink-0 sm:flex"
           collapsed={isTabletNav ? !tabletSidebarExpanded : collapsed}
           onToggleCollapsed={toggleSidebar}
         />,
@@ -134,9 +169,16 @@ export function AppShellChrome({
           <NeoCommandPalette open={commandOpen} onOpenChange={handleCommandOpenChange} />
           <Sheet open={mobileOpen} onOpenChange={handleMobileOpenChange}>
             <SheetContent
+              onCloseAutoFocus={(event) => {
+                event.preventDefault();
+                const trigger = window.matchMedia(desktopNavigationQuery).matches
+                  ? document.querySelector<HTMLElement>(desktopNavigationTriggerSelector)
+                  : mobileNavigationTriggerRef.current;
+                trigger?.focus();
+              }}
               side="left"
               className={cn(
-                "w-hh-sidebar-expanded max-w-[85vw] p-0 shadow-none transition-transform duration-200 data-[state=open]:slide-in-from-left data-[state=closed]:slide-out-to-left",
+                "w-hh-sidebar-expanded max-w-[85vw] p-0 shadow-none",
                 "border-r border-[var(--hh-border-default)] bg-[var(--hh-surface-workspace)]"
               )}
             >

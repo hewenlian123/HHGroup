@@ -2,10 +2,10 @@
 
 import * as React from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { motion } from "framer-motion";
 import { Download, X } from "lucide-react";
 import { InlineLoading, Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import { hhNeoFocusRevealOverlay, hhNeoFocusRevealViewer } from "@/lib/motion-system";
 import { cn } from "@/lib/utils";
 import { useHhPortalContainer } from "@/contexts/hh-theme-context";
 
@@ -123,24 +123,19 @@ export function ExpenseReceiptPreviewDialog({
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange} modal>
       <DialogPrimitive.Portal container={portalContainer ?? undefined}>
         <DialogPrimitive.Overlay asChild>
-          <motion.div
+          <div
             data-hh-context="viewer"
             data-hh-theme="operational-light"
-            className="fixed inset-0 z-50 bg-[var(--hh-overlay-scrim)]"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.2 }}
+            className={cn("fixed inset-0 z-50", hhNeoFocusRevealOverlay)}
           />
         </DialogPrimitive.Overlay>
         <DialogPrimitive.Content asChild>
-          <motion.div
+          <div
             className={cn(
               "expenses-ui-dialog fixed left-1/2 top-1/2 z-[51] flex max-h-[90vh] w-[calc(100%-1.5rem)] max-w-5xl -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] shadow-floating",
-              "focus:outline-none"
+              "focus:outline-none",
+              hhNeoFocusRevealViewer
             )}
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
           >
             <DialogPrimitive.Title className="sr-only">Receipt preview</DialogPrimitive.Title>
             <DialogPrimitive.Description className="sr-only">
@@ -290,7 +285,7 @@ export function ExpenseReceiptPreviewDialog({
                 ) : null}
               </div>
             </footer>
-          </motion.div>
+          </div>
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>
     </DialogPrimitive.Root>

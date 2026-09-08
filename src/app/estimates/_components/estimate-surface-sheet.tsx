@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useEstimateSheetFocus } from "./use-estimate-sheet-focus";
 
 import {
   Sheet,
@@ -52,7 +53,7 @@ export function EstimateSurfaceSheet({
   contentClassName,
   testId,
 }: EstimateSurfaceSheetProps): React.ReactElement {
-  const openerRef = React.useRef<HTMLElement | null>(null);
+  const sheetFocus = useEstimateSheetFocus();
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -61,14 +62,7 @@ export function EstimateSurfaceSheet({
         className={cn(estimateSurfaceSheetClassName(surface, className), "[&>button]:z-10")}
         data-estimate-surface={surface}
         data-testid={testId}
-        onOpenAutoFocus={() => {
-          const activeElement = document.activeElement;
-          openerRef.current = activeElement instanceof HTMLElement ? activeElement : null;
-        }}
-        onCloseAutoFocus={(event) => {
-          event.preventDefault();
-          window.requestAnimationFrame(() => openerRef.current?.focus());
-        }}
+        {...sheetFocus}
       >
         <SheetHeader className={EB.sheetHeader}>
           <SheetTitle className={EB.sheetTitle}>{title}</SheetTitle>

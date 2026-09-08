@@ -41,7 +41,7 @@ import {
   MobileSearchFiltersRow,
   mobileListPagePaddingClass,
 } from "@/components/mobile/mobile-list-chrome";
-import { NeoAmount, NeoMobileCard, NeoTable, NeoToolbar } from "@/components/base";
+import { ConfirmDialog, NeoAmount, NeoMobileCard, NeoTable, NeoToolbar } from "@/components/base";
 import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
 import type { WorkerPayment } from "@/lib/worker-payments-db";
 import { dispatchClientDataSync } from "@/lib/sync-router-client";
@@ -223,6 +223,7 @@ function WorkerPaymentsInner() {
   });
   const [receiptPreviewId, setReceiptPreviewId] = React.useState<string | null>(null);
   const [filtersOpen, setFiltersOpen] = React.useState(false);
+  const [deleteTarget, setDeleteTarget] = React.useState<WorkerPayment | null>(null);
 
   const readGeneration = React.useRef(0);
   const load = React.useCallback(async () => {
@@ -341,24 +342,22 @@ function WorkerPaymentsInner() {
     );
   };
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm("Delete this payment record?")) return;
-    let snapshot: WorkerPayment[] | undefined;
-    setRows((prev) => {
-      snapshot = prev;
-      return prev.filter((r) => r.id !== id);
-    });
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    const snapshot = rows;
+    setRows(snapshot.filter((row) => row.id !== deleteTarget.id));
     try {
-      const response = await fetch(`/api/labor/worker-payments/${encodeURIComponent(id)}`, {
-        method: "DELETE",
-      });
+      const response = await fetch(
+        `/api/labor/worker-payments/${encodeURIComponent(deleteTarget.id)}`,
+        { method: "DELETE" }
+      );
       const body = (await response.json().catch(() => ({}))) as { message?: string };
       if (!response.ok) throw new Error(body.message ?? "Delete failed.");
       dispatchClientDataSync({ reason: "worker-payment-deleted" });
       void load();
     } catch (e) {
-      if (snapshot) setRows(snapshot);
-      setMessage(e instanceof Error ? e.message : "Delete failed.");
+      setRows(snapshot);
+      throw e instanceof Error ? e : new Error("Delete failed.");
     }
   };
 
@@ -402,6 +401,17 @@ function WorkerPaymentsInner() {
         onOpenChange={(o) => {
           if (!o) setReceiptPreviewId(null);
         }}
+      />
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null);
+        }}
+        title="Delete payment record?"
+        description="Delete this payment record? This cannot be undone."
+        confirmLabel="Delete"
+        destructive
+        onConfirm={handleDelete}
       />
 
       <div
@@ -698,7 +708,7 @@ function WorkerPaymentsInner() {
                         ariaLabel={`Actions for payment ${wName}`}
                         layout="mobile"
                         onViewReceipt={() => setReceiptPreviewId(r.id)}
-                        onDelete={() => handleDelete(r.id)}
+                        onDelete={() => setDeleteTarget(r)}
                       />
                     </div>
                     <div className="flex flex-wrap items-end justify-between gap-2 border-b border-[var(--hh-border)] pb-2">
@@ -917,7 +927,7 @@ function WorkerPaymentsInner() {
                           ariaLabel={`Actions for payment ${wName}`}
                           layout="desktop"
                           onViewReceipt={() => setReceiptPreviewId(r.id)}
-                          onDelete={() => handleDelete(r.id)}
+                          onDelete={() => setDeleteTarget(r)}
                         />
                       </div>
                     </td>

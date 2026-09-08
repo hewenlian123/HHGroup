@@ -26,6 +26,7 @@ export interface ConfirmDialogProps {
   onConfirm: () => void | Promise<void>;
   onOpenChange: (open: boolean) => void;
   open: boolean;
+  returnFocusRef?: React.RefObject<HTMLElement | null>;
   title: string;
 }
 
@@ -46,6 +47,7 @@ export function ConfirmDialog({
   onConfirm,
   onOpenChange,
   open,
+  returnFocusRef,
   title,
 }: ConfirmDialogProps) {
   const [busy, setBusy] = React.useState(false);
@@ -56,7 +58,12 @@ export function ConfirmDialog({
   React.useEffect(() => {
     if (open) return;
     const rememberFocus = (event: FocusEvent) => {
-      if (event.target instanceof HTMLElement) restoreFocusRef.current = event.target;
+      if (
+        event.target instanceof HTMLElement &&
+        !event.target.closest('[role="menuitem"], [role="dialog"]')
+      ) {
+        restoreFocusRef.current = event.target;
+      }
     };
     if (
       !restoreFocusRef.current &&
@@ -112,7 +119,7 @@ export function ConfirmDialog({
           if (isBusy) event.preventDefault();
         }}
         onCloseAutoFocus={(event) => {
-          const focusTarget = restoreFocusRef.current;
+          const focusTarget = returnFocusRef?.current ?? restoreFocusRef.current;
           if (!focusTarget?.isConnected) return;
           event.preventDefault();
           focusTarget.focus({ preventScroll: true });

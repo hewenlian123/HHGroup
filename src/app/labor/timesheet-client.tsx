@@ -15,6 +15,7 @@ import { ENSURE_LABOR_TABLES_SQL } from "./ensure-labor-tables-sql";
 import { formatCurrency } from "@/lib/formatters";
 import { amountClass, OS, TYPO } from "@/lib/typography";
 import { cn } from "@/lib/utils";
+import { ConfirmDialog } from "@/components/base";
 
 type LaborEntryRow = {
   id: string;
@@ -91,6 +92,7 @@ export default function TimesheetClient() {
   const [copySqlFeedback, setCopySqlFeedback] = React.useState(false);
   const [message, setMessage] = React.useState<string | null>(null);
   const [busy, setBusy] = React.useState(false);
+  const [deleteTarget, setDeleteTarget] = React.useState<DraftRow | null>(null);
 
   const halfDayRates = React.useMemo(
     () => new Map(workerOptions.map((w) => [w.id, w.halfDayRate])),
@@ -228,24 +230,33 @@ export default function TimesheetClient() {
 
   const deleteRow = async (row: DraftRow) => {
     if (busy) return;
-    if (row.id && !window.confirm("Delete this entry?")) return;
     if (row.id) {
-      setBusy(true);
-      setMessage(null);
-      const prevRows = rows;
-      setRows((prev) => prev.filter((r) => r.id !== row.id));
-      const response = await fetch(`/api/labor/entries?id=${encodeURIComponent(row.id)}`, {
+      setDeleteTarget(row);
+      return;
+    }
+    setRows((prev) => prev.filter((r) => r.localId !== row.localId));
+    setMessage("Row removed.");
+  };
+
+  const confirmDeleteRow = async () => {
+    const id = deleteTarget?.id;
+    if (!id || busy) return;
+    setBusy(true);
+    setMessage(null);
+    const prevRows = rows;
+    setRows((prev) => prev.filter((r) => r.id !== id));
+    try {
+      const response = await fetch(`/api/labor/entries?id=${encodeURIComponent(id)}`, {
         method: "DELETE",
       });
       const body = (await response.json().catch(() => ({}))) as { message?: string };
-      if (!response.ok) {
-        setError(body.message ?? "Failed to delete labor entry.");
-        setRows(prevRows);
-      } else setMessage("Row deleted.");
+      if (!response.ok) throw new Error(body.message ?? "Failed to delete labor entry.");
+      setMessage("Row deleted.");
+    } catch (cause) {
+      setRows(prevRows);
+      throw cause instanceof Error ? cause : new Error("Failed to delete labor entry.");
+    } finally {
       setBusy(false);
-    } else {
-      setRows((prev) => prev.filter((r) => r.localId !== row.localId));
-      setMessage("Row removed.");
     }
   };
 
@@ -574,6 +585,18 @@ export default function TimesheetClient() {
           })}
         </div>
       </div>
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null);
+        }}
+        title="Delete labor entry?"
+        description="Delete this labor entry? This cannot be undone."
+        confirmLabel="Delete"
+        destructive
+        loading={busy}
+        onConfirm={confirmDeleteRow}
+      />
     </div>
   );
 }

@@ -6,6 +6,7 @@ import type { Expense } from "@/lib/expenses-db";
 import { buildExpenseDateGroups } from "@/lib/expense-list-date-groups";
 import { expenseInboxDuplicateIdSet } from "@/lib/expense-inbox-dup";
 import { expenseMatchesInboxPool } from "@/lib/expense-workflow-status";
+import { motionAwareScrollBehavior } from "@/lib/list-flow";
 
 export function parseInboxHighlightParam(raw: string | null): string[] {
   if (!raw?.trim()) return [];
@@ -160,7 +161,7 @@ export function useInboxUploadHighlight(args: UseInboxUploadHighlightArgs): {
 
     const scrollOne = () => {
       const el = args.rowElsRef.current[tid];
-      el?.scrollIntoView({ block: "center", behavior: "smooth" });
+      el?.scrollIntoView({ block: "center", behavior: motionAwareScrollBehavior() });
     };
 
     setVisualHighlightRefs((prev) => {

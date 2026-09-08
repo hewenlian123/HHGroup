@@ -1,16 +1,14 @@
+import Link from "next/link";
+
 import type { RecentTransaction, ProjectRiskOverview } from "@/lib/data";
 import type { ProjectContractReviewSummary } from "@/lib/financial/project-financial-review";
-import Link from "next/link";
-import type { ReactNode } from "react";
-import { formatCompactCurrency, formatCurrency } from "@/lib/formatters";
+import { formatCompactCurrency, formatCurrency, formatDate } from "@/lib/formatters";
 import type { OverdueInvoiceRow } from "@/lib/invoices-db";
 import { TYPO } from "@/lib/typography";
 import { cn } from "@/lib/utils";
-import { DashboardAttentionFeed } from "./dashboard-attention-feed";
-import { DashboardCoreRing } from "./dashboard-core-ring";
-import { DashboardHudCard } from "./dashboard-hud-card";
+
+import { DashboardPageHeader } from "./dashboard-page-header";
 import { DashboardQuickActions } from "./dashboard-quick-actions";
-import { DashboardTelemetryRail } from "./dashboard-telemetry-rail";
 
 type DashboardStats = Awaited<ReturnType<typeof import("@/lib/data").getDashboardStats>>;
 type AttentionTask = { id: string; title: string; meta: string; due: string };
@@ -25,27 +23,6 @@ type ProjectHealthRow = {
   profitReady: boolean;
   contractReviewLabel: string | null;
 };
-
-function clampPct(value: number): number {
-  if (!Number.isFinite(value)) return 0;
-  return Math.max(0, Math.min(100, value));
-}
-
-function profitCoreStatus({
-  totalProfit,
-  actionPressure,
-  negativeMarginCount,
-}: {
-  totalProfit: number;
-  actionPressure: number;
-  negativeMarginCount: number;
-}): { label: string; tone: "positive" | "pressure" | "review" } {
-  if (totalProfit < 0) return { label: "Pressure", tone: "pressure" };
-  if (actionPressure > 0 || negativeMarginCount > 0) {
-    return { label: "Needs review", tone: "review" };
-  }
-  return { label: "Healthy", tone: "positive" };
-}
 
 export function DashboardCommandHud({
   stats,
@@ -74,212 +51,258 @@ export function DashboardCommandHud({
   contractReview: ProjectContractReviewSummary;
   className?: string;
 }) {
-  const cashSlice = transactions.slice(0, 24);
-  const cashIn = cashSlice.reduce((sum, t) => sum + (t.amount > 0 ? t.amount : 0), 0);
-  const cashOut = cashSlice.reduce((sum, t) => sum + (t.amount < 0 ? Math.abs(t.amount) : 0), 0);
-  const cashNet = cashIn - cashOut;
-  const overdueTotal = overdueInvoices.reduce((sum, row) => sum + (row.balanceDue ?? 0), 0);
-  const reviewPressure =
+  const recentRecords = transactions.slice(0, 24);
+  const recentPositive = recentRecords.reduce(
+    (sum, transaction) => sum + (transaction.amount > 0 ? transaction.amount : 0),
+    0
+  );
+  const recentOutgoing = recentRecords.reduce(
+    (sum, transaction) => sum + (transaction.amount < 0 ? Math.abs(transaction.amount) : 0),
+    0
+  );
+  const overdueReceivables = overdueInvoices.reduce(
+    (sum, invoice) => sum + (invoice.balanceDue ?? 0),
+    0
+  );
+  const riskSignalCount =
     riskOverview.summary.highCount +
     riskOverview.summary.overBudgetCount +
     riskOverview.summary.laborOverCount +
     riskOverview.summary.lowRunwayCount;
-  const negativeMarginCount = projectHealthRows.filter(
-    (row) => row.profitReady && row.marginPct < 0
-  ).length;
   const contractReviewCount = contractReview.needsReviewProjects.length;
-  const actionPressure = reviewPressure + contractReviewCount;
-  const activeProjectPct =
-    stats.totalProjects > 0 ? clampPct((stats.activeProjects / stats.totalProjects) * 100) : 0;
-  const collectionPct = cashIn + cashOut > 0 ? clampPct((cashIn / (cashIn + cashOut)) * 100) : 0;
-  const reviewPct = clampPct(actionPressure * 18);
-  const coreStatus = profitCoreStatus({
-    totalProfit: stats.totalProfit,
-    actionPressure,
-    negativeMarginCount,
-  });
+  const actionCount = riskSignalCount + contractReviewCount;
+  const readyProjectCount = projectHealthRows.filter((project) => project.profitReady).length;
+  const projectRows = projectHealthRows.slice(0, 4);
+  const activityRows = recentActivity.slice(0, 4);
 
-  const nodes = [
-    { label: "Inbox", value: String(actionPressure), tone: "copper" as const },
-    { label: "Projects", value: String(stats.activeProjects), tone: "emerald" as const },
-    { label: "Labor", value: formatCompactCurrency(laborCostThisWeek), tone: "steel" as const },
-    { label: "Expenses", value: formatCompactCurrency(expensesThisMonth), tone: "alert" as const },
-    { label: "Invoices", value: String(overdueInvoices.length), tone: "copper" as const },
+  const financeFacts = [
+    { label: "Recent positive activity", value: formatCompactCurrency(recentPositive) },
+    { label: "Recent outgoing activity", value: formatCompactCurrency(recentOutgoing) },
+    { label: "Overdue receivables", value: formatCompactCurrency(overdueReceivables) },
+    { label: "AP outstanding", value: formatCompactCurrency(apOutstanding) },
   ];
 
   return (
     <section
-      className={cn(
-        "dashboard-command-hud relative isolate min-w-0 overflow-hidden rounded-hh-standard px-3 py-3 text-[var(--hh-text-primary)] sm:px-4 sm:py-4 md:px-5 md:py-5",
-        className
-      )}
-      aria-label="HH Command Center"
+      className={cn("min-w-0 text-[var(--hh-text-primary)]", className)}
+      aria-label="Operations home"
     >
-      <div className="dashboard-command-hud__grid" aria-hidden />
+      <DashboardPageHeader actions={<DashboardQuickActions />} />
 
-      <div className="relative z-10 flex min-w-0 flex-col gap-4 2xl:flex-row 2xl:items-start 2xl:justify-between">
-        <div className="min-w-0">
-          <p className={cn(TYPO.tableHeader, "uppercase text-[var(--hh-text-secondary)]")}>
-            HH Operations
+      <div className="mt-6 grid min-w-0 border-y border-[var(--hh-border)] lg:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.65fr)]">
+        <section className="min-w-0 py-6 lg:border-r lg:border-[var(--hh-border)] lg:pr-8">
+          <p className={cn(TYPO.sectionLabel, "text-[var(--hh-text-tertiary)]")}>
+            Guarded project profit
           </p>
-          <h2 className={cn(TYPO.sectionTitle, "mt-2 max-w-[34rem]")}>HH Command Center</h2>
-          <p className={cn(TYPO.body, "mt-2 max-w-[42rem]")}>
-            Cash, project health, labor, AP, and owner action signals from the current dashboard
-            feed.
+          <p className="mt-3 truncate text-[clamp(2rem,5vw,3.5rem)] font-semibold leading-none tracking-normal tabular-nums text-[var(--hh-text-primary)]">
+            {formatCurrency(stats.totalProfit)}
           </p>
-        </div>
-        <div className="flex shrink-0 flex-col gap-3 2xl:items-end">
-          <div className="flex flex-wrap gap-2">
-            <StatusPill tone="emerald">Live data</StatusPill>
-            <StatusPill tone={actionPressure > 0 ? "alert" : "copper"}>
-              {actionPressure} signals
-            </StatusPill>
-            <StatusPill tone="copper">Owner ready</StatusPill>
+          <p className={cn(TYPO.metadata, "mt-3 text-[var(--hh-text-secondary)]")}>
+            {readyProjectCount} of {stats.totalProjects} projects included in the current profit
+            basis.
+          </p>
+          <div className="mt-6 grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4">
+            <div>
+              <p className={cn(TYPO.sectionLabel, "text-[var(--hh-text-tertiary)]")}>Active</p>
+              <p className="mt-1 text-hh-financial font-semibold tabular-nums">
+                {stats.activeProjects}
+              </p>
+            </div>
+            <div>
+              <p className={cn(TYPO.sectionLabel, "text-[var(--hh-text-tertiary)]")}>
+                Total projects
+              </p>
+              <p className="mt-1 text-hh-financial font-semibold tabular-nums">
+                {stats.totalProjects}
+              </p>
+            </div>
+            <div>
+              <p className={cn(TYPO.sectionLabel, "text-[var(--hh-text-tertiary)]")}>
+                Labor this week
+              </p>
+              <p className="mt-1 truncate text-hh-financial font-semibold tabular-nums">
+                {formatCompactCurrency(laborCostThisWeek)}
+              </p>
+            </div>
+            <div>
+              <p className={cn(TYPO.sectionLabel, "text-[var(--hh-text-tertiary)]")}>
+                Expenses this month
+              </p>
+              <p className="mt-1 truncate text-hh-financial font-semibold tabular-nums">
+                {formatCompactCurrency(expensesThisMonth)}
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <aside className="min-w-0 py-6 lg:pl-8" aria-labelledby="dashboard-attention-title">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className={cn(TYPO.sectionLabel, "text-[var(--hh-text-tertiary)]")}>
+                Priority queue
+              </p>
+              <h2 id="dashboard-attention-title" className={cn(TYPO.sectionTitle, "mt-1")}>
+                {actionCount > 0 ? `${actionCount} items need review` : "No urgent items"}
+              </h2>
+            </div>
             {contractReviewCount > 0 ? (
-              <>
-                <Link
-                  href="/settings/project-financial-review"
-                  className={cn(
-                    TYPO.chip,
-                    "inline-flex min-h-hh-control-compact items-center rounded-full border border-[var(--hh-danger-border)] bg-[var(--hh-danger-soft-fill)] px-3 uppercase text-[var(--hh-danger)] transition-colors hover:border-[var(--hh-border-strong)]"
-                  )}
-                >
-                  Contract value review
-                </Link>
-                <span
-                  className={cn(
-                    TYPO.chip,
-                    "inline-flex min-h-hh-control-compact items-center uppercase text-[var(--hh-danger)]"
-                  )}
-                >
-                  {contractReviewCount} contract checks · Projects need contract value review
-                </span>
-              </>
+              <Link
+                href="/settings/project-financial-review"
+                className={cn(
+                  TYPO.button,
+                  "shrink-0 text-[var(--hh-action-primary)] underline-offset-4 hover:underline"
+                )}
+              >
+                Review basis
+              </Link>
             ) : null}
           </div>
-          <DashboardQuickActions />
-        </div>
+          {upcomingTasks.length > 0 ? (
+            <ol className="mt-4 divide-y divide-[var(--hh-border)] border-t border-[var(--hh-border)]">
+              {upcomingTasks.slice(0, 3).map((task) => (
+                <li key={task.id} className="grid grid-cols-[minmax(0,1fr)_auto] gap-4 py-3">
+                  <div className="min-w-0">
+                    <p className={cn(TYPO.bodyStrong, "truncate")}>{task.title}</p>
+                    <p className={cn(TYPO.metadata, "mt-0.5 truncate")}>{task.meta}</p>
+                  </div>
+                  <span className={cn(TYPO.metadata, "whitespace-nowrap text-right")}>
+                    {task.due}
+                  </span>
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <p className={cn(TYPO.body, "mt-4 text-[var(--hh-text-secondary)]")}>
+              No risk-driven action is queued in the current feed.
+            </p>
+          )}
+        </aside>
       </div>
 
-      <div className="relative z-10 mt-5 grid min-w-0 grid-cols-1 gap-3 xl:grid-cols-[minmax(13rem,18rem)_minmax(24rem,1fr)_minmax(13rem,18rem)] xl:items-center">
-        <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-3 xl:grid-cols-1">
-          <DashboardHudCard
-            label="Cash velocity"
-            value={formatCompactCurrency(cashIn)}
-            meta={`${cashSlice.length} recent tx · ${formatCurrency(cashNet)} net`}
-            tone="copper"
-            delay={80}
-            hasSignal={cashSlice.length > 0}
-          />
-          <DashboardHudCard
-            label="Open balance"
-            value={formatCompactCurrency(overdueTotal)}
-            meta={`${overdueInvoices.length} overdue invoices · ${formatCompactCurrency(
-              apOutstanding
-            )} AP`}
-            tone={overdueTotal > 0 ? "alert" : "emerald"}
-            delay={160}
-            hasSignal={overdueTotal > 0}
-          />
-          <DashboardHudCard
-            label="Expense burn"
-            value={formatCompactCurrency(expensesThisMonth)}
-            meta="Month-to-date expense pressure from the current feed"
-            tone="alert"
-            delay={240}
-            hasSignal={expensesThisMonth > 0}
-          />
+      <section className="mt-7 min-w-0" aria-labelledby="dashboard-finance-title">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <p className={cn(TYPO.sectionLabel, "text-[var(--hh-text-tertiary)]")}>
+              Financial facts
+            </p>
+            <h2 id="dashboard-finance-title" className={cn(TYPO.sectionTitle, "mt-1")}>
+              Recent finance activity
+            </h2>
+          </div>
+          <p
+            className={cn(
+              TYPO.metadata,
+              "w-full text-left text-[var(--hh-text-tertiary)] sm:w-auto sm:text-right"
+            )}
+          >
+            Latest {recentRecords.length} created records
+          </p>
         </div>
+        <dl className="mt-4 grid grid-cols-2 border-y border-[var(--hh-border)] sm:grid-cols-4">
+          {financeFacts.map((fact, index) => (
+            <div
+              key={fact.label}
+              className={cn(
+                "min-w-0 py-4",
+                index % 2 === 0 ? "pr-4" : "border-l border-[var(--hh-border)] pl-4",
+                index >= 2 && "border-t border-[var(--hh-border)] sm:border-t-0",
+                index > 0 && "sm:border-l sm:border-[var(--hh-border)] sm:px-5",
+                index === 0 && "sm:pr-5"
+              )}
+            >
+              <dt className={cn(TYPO.metadata, "truncate text-[var(--hh-text-secondary)]")}>
+                {fact.label}
+              </dt>
+              <dd className="mt-1 truncate text-hh-financial font-semibold tabular-nums">
+                {fact.value}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </section>
 
-        <div className="min-w-0">
-          <DashboardCoreRing
-            label="NET OPERATING PROFIT"
-            value={formatCurrency(stats.totalProfit)}
-            status={coreStatus.label}
-            helper="Current operating posture"
-            tone={coreStatus.tone}
-            nodes={nodes}
-          />
-        </div>
+      <div className="mt-7 grid min-w-0 gap-8 xl:grid-cols-2">
+        <section className="min-w-0" aria-labelledby="dashboard-projects-title">
+          <div className="flex items-end justify-between gap-4">
+            <div>
+              <p className={cn(TYPO.sectionLabel, "text-[var(--hh-text-tertiary)]")}>Delivery</p>
+              <h2 id="dashboard-projects-title" className={cn(TYPO.sectionTitle, "mt-1")}>
+                Project posture
+              </h2>
+            </div>
+            <Link
+              href="/projects"
+              className={cn(
+                TYPO.button,
+                "text-[var(--hh-action-primary)] underline-offset-4 hover:underline"
+              )}
+            >
+              View projects
+            </Link>
+          </div>
+          {projectRows.length > 0 ? (
+            <ul className="mt-3 divide-y divide-[var(--hh-border)] border-y border-[var(--hh-border)]">
+              {projectRows.map((project) => (
+                <li key={project.id}>
+                  <Link
+                    href={`/projects/${project.id}`}
+                    className="grid min-h-14 grid-cols-[minmax(0,1fr)_auto] items-center gap-4 py-3 outline-none hover:text-[var(--hh-action-primary)] focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)] focus-visible:ring-inset"
+                  >
+                    <div className="min-w-0">
+                      <p className={cn(TYPO.bodyStrong, "truncate")}>{project.name}</p>
+                      <p className={cn(TYPO.metadata, "mt-0.5 truncate")}>
+                        {project.profitReady
+                          ? `${project.marginPct.toFixed(1)}% margin`
+                          : (project.contractReviewLabel ?? "Contract value review required")}
+                      </p>
+                    </div>
+                    <span className="max-w-32 truncate text-right text-hh-financial font-semibold tabular-nums">
+                      {project.profitReady ? formatCurrency(project.profit) : "Review"}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className={cn(TYPO.body, "mt-4 text-[var(--hh-text-secondary)]")}>
+              No projects returned from the current dashboard feed.
+            </p>
+          )}
+        </section>
 
-        <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-3 xl:grid-cols-1">
-          <DashboardHudCard
-            label="Active projects"
-            value={stats.activeProjects}
-            meta={`${stats.totalProjects} total · ${negativeMarginCount} margin reviews`}
-            tone="emerald"
-            delay={320}
-            hasSignal={stats.totalProjects > 0}
-          />
-          <DashboardHudCard
-            label="Labor payable"
-            value={formatCompactCurrency(laborCostThisWeek)}
-            meta="Current labor cost context from the dashboard feed"
-            tone="steel"
-            delay={400}
-            hasSignal={laborCostThisWeek > 0}
-          />
-          <DashboardHudCard
-            label="Review inbox"
-            value={actionPressure}
-            meta={`${reviewPressure} risk signals · ${contractReviewCount} contract checks`}
-            tone={actionPressure > 0 ? "copper" : "emerald"}
-            delay={480}
-            hasSignal={actionPressure > 0}
-          />
-        </div>
-      </div>
-
-      <div className="relative z-10 mt-3 grid min-w-0 grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1fr)_18rem]">
-        <DashboardTelemetryRail
-          items={[
-            {
-              label: "Collection flow",
-              value: formatCompactCurrency(cashIn),
-              progress: collectionPct,
-              tone: "copper",
-            },
-            {
-              label: "Project health",
-              value: `${Math.round(activeProjectPct)}%`,
-              progress: activeProjectPct,
-              tone: "emerald",
-            },
-            {
-              label: "Review pressure",
-              value: actionPressure > 0 ? `${actionPressure} hot` : "Clear",
-              progress: actionPressure > 0 ? reviewPct : 100,
-              tone: actionPressure > 0 ? "alert" : "emerald",
-            },
-          ]}
-        />
-        <DashboardAttentionFeed tasks={upcomingTasks} recentActivity={recentActivity} />
+        <section className="min-w-0" aria-labelledby="dashboard-activity-title">
+          <div>
+            <p className={cn(TYPO.sectionLabel, "text-[var(--hh-text-tertiary)]")}>Ledger</p>
+            <h2 id="dashboard-activity-title" className={cn(TYPO.sectionTitle, "mt-1")}>
+              Latest movement
+            </h2>
+          </div>
+          {activityRows.length > 0 ? (
+            <ul className="mt-3 divide-y divide-[var(--hh-border)] border-y border-[var(--hh-border)]">
+              {activityRows.map((activity) => (
+                <li
+                  key={activity.id}
+                  className="grid min-h-14 grid-cols-[minmax(0,1fr)_auto] items-center gap-4 py-3"
+                >
+                  <div className="min-w-0">
+                    <p className={cn(TYPO.bodyStrong, "truncate")}>{activity.description}</p>
+                    <p className={cn(TYPO.metadata, "mt-0.5 tabular-nums")}>
+                      {formatDate(activity.date, "compact")}
+                    </p>
+                  </div>
+                  <span className="max-w-32 truncate text-right text-hh-financial font-semibold tabular-nums">
+                    {formatCurrency(activity.amount)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className={cn(TYPO.body, "mt-4 text-[var(--hh-text-secondary)]")}>
+              No recent finance activity returned from the current feed.
+            </p>
+          )}
+        </section>
       </div>
     </section>
-  );
-}
-
-function StatusPill({
-  children,
-  tone,
-}: {
-  children: ReactNode;
-  tone: "copper" | "emerald" | "alert";
-}) {
-  return (
-    <span
-      className={cn(
-        TYPO.chip,
-        "inline-flex min-h-hh-control-compact items-center rounded-full border px-3 uppercase",
-        tone === "emerald" &&
-          "border-[var(--hh-success-border)] bg-[var(--hh-success-soft-fill)] text-[var(--hh-success)]",
-        tone === "alert" &&
-          "border-[var(--hh-danger-border)] bg-[var(--hh-danger-soft-fill)] text-[var(--hh-danger)]",
-        tone === "copper" &&
-          "border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] text-[var(--hh-warning)]"
-      )}
-    >
-      {children}
-    </span>
   );
 }

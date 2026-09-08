@@ -4,6 +4,7 @@ import { syncRouterNonBlocking } from "@/components/perf/sync-router-non-blockin
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/base";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { Input } from "@/components/ui/input";
 import {
@@ -42,6 +43,7 @@ export function BillRowActions({
   const [payOpen, setPayOpen] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [confirmAction, setConfirmAction] = React.useState<"delete" | "void" | null>(null);
 
   const [billDate, setBillDate] = React.useState(bill.bill_date);
   const [dueDate, setDueDate] = React.useState(bill.due_date ?? "");
@@ -94,24 +96,28 @@ export function BillRowActions({
 
   const handleDelete = async () => {
     if (busy) return;
-    if (!window.confirm("Delete this bill?")) return;
     setBusy(true);
     setError(null);
-    const res = await deleteSubcontractBillDraftAction(projectId, subcontractId, bill.id);
-    if (res.ok) syncRouterNonBlocking(router);
-    else setError(res.error ?? "Failed to delete.");
-    setBusy(false);
+    try {
+      const res = await deleteSubcontractBillDraftAction(projectId, subcontractId, bill.id);
+      if (!res.ok) throw new Error(res.error ?? "Failed to delete.");
+      syncRouterNonBlocking(router);
+    } finally {
+      setBusy(false);
+    }
   };
 
   const handleVoid = async () => {
     if (busy) return;
-    if (!window.confirm("Void this bill?")) return;
     setBusy(true);
     setError(null);
-    const res = await voidSubcontractBillAction(projectId, subcontractId, bill.id);
-    if (res.ok) syncRouterNonBlocking(router);
-    else setError(res.error ?? "Failed to void.");
-    setBusy(false);
+    try {
+      const res = await voidSubcontractBillAction(projectId, subcontractId, bill.id);
+      if (!res.ok) throw new Error(res.error ?? "Failed to void.");
+      syncRouterNonBlocking(router);
+    } finally {
+      setBusy(false);
+    }
   };
 
   const handleRecordPayment = async () => {
@@ -163,7 +169,7 @@ export function BillRowActions({
             variant="outline"
             size="sm"
             className="btn-outline-ghost min-h-[44px] text-hh-metadata text-[var(--hh-danger)] xl:min-h-7"
-            onClick={handleDelete}
+            onClick={() => setConfirmAction("delete")}
             disabled={busy}
           >
             Delete
@@ -184,7 +190,7 @@ export function BillRowActions({
             variant="outline"
             size="sm"
             className="btn-outline-ghost min-h-[44px] text-hh-metadata text-[var(--hh-text-secondary)] xl:min-h-7"
-            onClick={handleVoid}
+            onClick={() => setConfirmAction("void")}
             disabled={busy}
           >
             Void
@@ -294,6 +300,22 @@ export function BillRowActions({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <ConfirmDialog
+        open={confirmAction !== null}
+        onOpenChange={(open) => {
+          if (!open) setConfirmAction(null);
+        }}
+        title={confirmAction === "void" ? "Void bill?" : "Delete bill?"}
+        description={
+          confirmAction === "void"
+            ? "Void this approved bill? Its financial history will remain visible."
+            : "Delete this draft bill? This cannot be undone."
+        }
+        confirmLabel={confirmAction === "void" ? "Void" : "Delete"}
+        destructive
+        loading={busy}
+        onConfirm={confirmAction === "void" ? handleVoid : handleDelete}
+      />
 
       <Dialog open={payOpen} onOpenChange={setPayOpen}>
         <DialogContent className="max-w-sm">

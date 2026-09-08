@@ -534,7 +534,7 @@ export function UploadReceiptClient() {
                       fileType: file.type === "application/pdf" ? "pdf" : "image",
                     });
                   }}
-                  className="shrink-0 cursor-pointer overflow-hidden rounded-md border border-border/70 transition-transform duration-200 hover:scale-105"
+                  className="shrink-0 cursor-pointer overflow-hidden rounded-md border border-border/70"
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img

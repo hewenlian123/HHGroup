@@ -2,6 +2,7 @@
 
 import { syncRouterNonBlocking } from "@/components/perf/sync-router-non-blocking";
 import * as React from "react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createPortal } from "react-dom";
 import { useHhPortalContainer, useHhTheme } from "@/contexts/hh-theme-context";
@@ -150,6 +151,7 @@ export type EstimateEditorProps = {
   detailsSurface?: "information" | "pricing";
   /** Persist the detail drawer through the parent edit flow when available. */
   onSaveDetails?: () => void;
+  saving?: boolean;
   onPricingInspectorDetailsClick?: () => void;
 };
 
@@ -173,6 +175,7 @@ export function EstimateEditor({
   onDetailsOpenChange,
   detailsSurface = "information",
   onSaveDetails,
+  saving = false,
   onPricingInspectorDetailsClick,
 }: EstimateEditorProps) {
   const isLocked = !["Draft", "Sent"].includes(status);
@@ -1005,12 +1008,13 @@ export function EstimateEditor({
   );
 
   const notesSurface = (
-    <div className="space-y-4" data-testid="estimate-notes-tabs">
-      <div
-        className="grid grid-cols-3 rounded-md border border-border bg-muted/30 p-1"
-        role="tablist"
-        aria-label="Estimate notes"
-      >
+    <Tabs
+      className="eb-notes-workspace"
+      data-testid="estimate-notes-tabs"
+      value={activeNotesTab}
+      onValueChange={(value) => setActiveNotesTab(value as typeof activeNotesTab)}
+    >
+      <TabsList className="eb-notes-tablist" aria-label="Estimate notes">
         {(
           [
             ["customer", "Customer Notes"],
@@ -1018,26 +1022,14 @@ export function EstimateEditor({
             ["internal", "Internal Notes"],
           ] as const
         ).map(([value, label]) => (
-          <button
-            key={value}
-            type="button"
-            role="tab"
-            aria-selected={activeNotesTab === value}
-            className={cn(
-              "min-h-10 rounded-sm px-2 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-              activeNotesTab === value
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-            onClick={() => setActiveNotesTab(value)}
-          >
+          <TabsTrigger key={value} value={value} className="eb-notes-tab">
             {label}
-          </button>
+          </TabsTrigger>
         ))}
-      </div>
+      </TabsList>
 
       {activeNotesTab === "customer" ? (
-        <div role="tabpanel" aria-label="Customer Notes">
+        <TabsContent value="customer" aria-label="Customer Notes">
           <EstimateNotesClarifications
             notes={localDocumentNotes.filter((note) => note.type !== "payment_terms")}
             onNotesChange={(notes) => replaceDocumentNoteSubset("customer", notes)}
@@ -1049,10 +1041,10 @@ export function EstimateEditor({
             emptyMessage="No customer notes yet. Add a clarification when needed."
             addLabel="Add customer note"
           />
-        </div>
+        </TabsContent>
       ) : null}
       {activeNotesTab === "terms" ? (
-        <div role="tabpanel" aria-label="Terms">
+        <TabsContent value="terms" aria-label="Terms">
           <EstimateNotesClarifications
             notes={localDocumentNotes.filter((note) => note.type === "payment_terms")}
             onNotesChange={(notes) => replaceDocumentNoteSubset("terms", notes)}
@@ -1064,10 +1056,10 @@ export function EstimateEditor({
             emptyMessage="No terms yet. Add the payment or proposal terms for this Estimate."
             addLabel="Add term"
           />
-        </div>
+        </TabsContent>
       ) : null}
       {activeNotesTab === "internal" ? (
-        <div className="space-y-2" role="tabpanel" aria-label="Internal Notes">
+        <TabsContent value="internal" className="space-y-2" aria-label="Internal Notes">
           <Label htmlFor="estimate-internal-notes" className={EB.sheetLabel}>
             Internal Notes
           </Label>
@@ -1090,9 +1082,9 @@ export function EstimateEditor({
           <p id="estimate-internal-notes-help" className="text-xs text-muted-foreground">
             Internal notes never appear in customer Preview, Print, or PDF documents.
           </p>
-        </div>
+        </TabsContent>
       ) : null}
-    </div>
+    </Tabs>
   );
   const paymentScheduleSurface = (
     <EstimatePaymentSchedule
@@ -1158,6 +1150,7 @@ export function EstimateEditor({
             estimateSubtotal={summary?.subtotal ?? 0}
             saveEstimateMetaAction={saveEstimateMetaAction}
             onSaveDetails={onSaveDetails}
+            saving={saving}
           />
 
           <EstimateBuilderCompactSummary
@@ -1202,6 +1195,9 @@ export function EstimateEditor({
                       : undefined
                   }
                 />
+                {costBreakdownSections.length === 0 ? (
+                  <p className="eb-estimate-empty-scope">No scope lines yet.</p>
+                ) : null}
                 <div className="eb-scope-workspace-grid">
                   <div className="eb-scope-builder-region min-w-0">
                     <div className="mb-4 space-y-3 lg:hidden">

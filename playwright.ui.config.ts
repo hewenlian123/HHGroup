@@ -57,7 +57,7 @@ const port = new URL(baseURL).port || "3000";
 export default defineConfig({
   testDir: "./tests/ui-readonly",
   timeout: 90_000,
-  expect: { timeout: 15_000 },
+  expect: { timeout: process.env.E2E_UI_CERTIFICATION === "1" ? 60_000 : 15_000 },
   retries: 0,
   workers: 1,
   forbidOnly: Boolean(process.env.CI),

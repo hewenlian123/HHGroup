@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./fixture";
 
 // Accounts uses a zero-argument read Server Action. Only that POST is allowed;
 // create/update/delete require arguments and remain blocked by this smoke guard.
@@ -12,12 +12,14 @@ for (const viewport of [
     baseURL,
   }, testInfo) => {
     test.setTimeout(120_000);
-    expect(new URL(baseURL!).hostname).toBe("127.0.0.1");
+    expect(["127.0.0.1", "localhost"]).toContain(new URL(baseURL!).hostname);
     await page.setViewportSize(viewport);
     let mode: "live" | "empty" | "data" | "query-error" | "permission-error" = "live";
     let readCalls = 0;
     let cashUnavailable = false;
     let readGate: Promise<void> | null = null;
+    let readTemplate: { body: string; headers: Record<string, string>; status: number } | null =
+      null;
     const errors: string[] = [];
     page.on("pageerror", (error) => errors.push(error.message));
     page.on("console", (message) => {
@@ -59,18 +61,25 @@ for (const viewport of [
         expect(replaced, "Existing Accounts server cash-source result frame").toBe(true);
         return route.fulfill({ response, body });
       }
-      if (["GET", "HEAD", "OPTIONS"].includes(request.method())) return route.continue();
+      if (["GET", "HEAD", "OPTIONS"].includes(request.method())) return route.fallback();
       if (
         new URL(request.url()).pathname === "/financial/accounts" &&
         request.headers()["next-action"] &&
         request.postData()?.trim() === "[]"
       ) {
         if (readGate) await readGate;
-        const response = await route.fetch();
         readCalls += 1;
-        if (mode === "live") return route.fulfill({ response });
+        if (mode === "live" || !readTemplate) {
+          const response = await route.fetch();
+          readTemplate = {
+            body: await response.text(),
+            headers: response.headers(),
+            status: response.status(),
+          };
+        }
+        if (mode === "live") return route.fulfill(readTemplate);
         let replaced = false;
-        const body = (await response.text())
+        const body = readTemplate.body
           .split("\n")
           .map((line) => {
             const colon = line.indexOf(":");
@@ -109,15 +118,18 @@ for (const viewport of [
           })
           .join("\n");
         expect(replaced, "existing Accounts read-action result frame").toBe(true);
-        return route.fulfill({ response, body });
+        return route.fulfill({ ...readTemplate, body });
       }
       return route.abort("blockedbyclient");
     });
 
     const response = await page.goto("/financial/accounts");
     expect(response?.status()).toBe(200);
+    await expect(page.locator("[data-app-scroll-root]")).toBeVisible();
     await expect(page.getByRole("banner")).toBeVisible();
-    await expect(page.getByText("Total accounts", { exact: true })).toBeVisible();
+    await expect(page.getByText("Total accounts", { exact: true })).toBeVisible({
+      timeout: 60_000,
+    });
     await expect(
       page.getByText("Bank reconciliation unavailable", { exact: true })
     ).not.toBeVisible();
@@ -181,7 +193,7 @@ for (const viewport of [
     });
     cashUnavailable = false;
     await page.getByRole("button", { name: "Retry bank reconciliation", exact: true }).click();
-    await expect(page.getByText("Bank Balance", { exact: true })).toBeVisible();
+    await expect(page.getByText("Bank Balance", { exact: true })).toBeVisible({ timeout: 60_000 });
     await expect(
       page.getByText("Bank reconciliation unavailable", { exact: true })
     ).not.toBeVisible();

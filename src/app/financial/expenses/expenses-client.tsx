@@ -9,7 +9,14 @@ import { startTransition } from "react";
 import { flushSync } from "react-dom";
 import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
-import { EmptyState, LoadingState, NeoAmount, NeoPanel, NeoToolbar } from "@/components/base";
+import {
+  ConfirmDialog,
+  EmptyState,
+  LoadingState,
+  NeoAmount,
+  NeoPanel,
+  NeoToolbar,
+} from "@/components/base";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -42,6 +49,7 @@ import { uiActionLog, uiActionMark } from "@/lib/ui-action-perf";
 import {
   afterLayout,
   focusFirstFocusableInContainer,
+  motionAwareScrollBehavior,
   neighborRowIdAfterRemove,
   scrollElementIntoViewNearest,
 } from "@/lib/list-flow";
@@ -754,6 +762,7 @@ export function ExpensesPageClient({
   const selectedExpenseIdFromUrl = (searchParams.get("ops_record") ?? "").trim();
   const receiptEvidenceRequested = searchParams.get("ops_preview") === "receipt";
   const rowElsRef = React.useRef<Record<string, HTMLTableRowElement | HTMLLIElement | null>>({});
+  const deleteReturnFocusRef = React.useRef<HTMLElement | null>(null);
   const emptyExpensesRef = React.useRef<HTMLDivElement>(null);
   const listView: "all" | "unreviewed" = inboxMode ? "unreviewed" : "all";
   const focusExpenseIdParam = (searchParams.get("focusExpenseId") ?? "").trim();
@@ -852,6 +861,7 @@ export function ExpensesPageClient({
   const [previewEnterMode, setPreviewEnterMode] = React.useState<"preview" | "edit">("preview");
   const [focusReviewOnOpen, setFocusReviewOnOpen] = React.useState(false);
   const [deletingExpenseId, setDeletingExpenseId] = React.useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = React.useState<Expense | null>(null);
   const expensesRef = React.useRef<Expense[]>([]);
   expensesRef.current = expenses;
   const previewExpenseRef = React.useRef<Expense | null>(null);
@@ -1112,7 +1122,7 @@ export function ExpensesPageClient({
   React.useEffect(() => {
     if (!activeExpenseId || listView !== "unreviewed") return;
     const el = rowElsRef.current[activeExpenseId];
-    el?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    el?.scrollIntoView({ block: "nearest", behavior: motionAwareScrollBehavior() });
   }, [activeExpenseId, listView, listRowIdsKey]);
 
   const setPage = React.useCallback(
@@ -1136,8 +1146,7 @@ export function ExpensesPageClient({
     const el = rowElsRef.current[expenseId];
     if (!el) return;
     const frame = window.requestAnimationFrame(() => {
-      const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-      el.scrollIntoView({ block: "center", behavior: prefersReducedMotion ? "auto" : "smooth" });
+      el.scrollIntoView({ block: "center", behavior: motionAwareScrollBehavior() });
     });
     return () => window.cancelAnimationFrame(frame);
   }, [expenseIssueFocus?.expenseId, listRowIdsKey]);
@@ -1654,75 +1663,78 @@ export function ExpensesPageClient({
     []
   );
 
-  const handleDelete = React.useCallback(
-    (expense: Expense) => {
-      if (typeof window === "undefined" || !window.confirm("Delete this expense?")) return;
-      const prev = expensesRef.current;
-      const rowsBefore = listRowsRef.current;
-      const nextId = neighborRowIdAfterRemove(rowsBefore, expense.id);
-      const t0 = uiActionMark();
-      setDeletingExpenseId(expense.id);
-      setExpenses((list) => list.filter((e) => e.id !== expense.id));
-      uiActionLog("expense-delete-ui", t0, 100);
+  const handleDelete = React.useCallback((expense: Expense) => {
+    const row = rowElsRef.current[expense.id];
+    const active = document.activeElement;
+    deleteReturnFocusRef.current =
+      active instanceof HTMLElement && row?.contains(active)
+        ? active
+        : (row?.querySelector<HTMLElement>('[aria-label="Row actions"]') ?? row ?? null);
+    if (document.activeElement === document.body) focusFirstFocusableInContainer(row);
+    setDeleteTarget(expense);
+  }, []);
+
+  const confirmDeleteExpense = React.useCallback(async () => {
+    if (!deleteTarget) return;
+    const expense = deleteTarget;
+    const prev = expensesRef.current;
+    const rowsBefore = listRowsRef.current;
+    const nextId = neighborRowIdAfterRemove(rowsBefore, expense.id);
+    const t0 = uiActionMark();
+    setDeletingExpenseId(expense.id);
+    setExpenses((list) => list.filter((e) => e.id !== expense.id));
+    uiActionLog("expense-delete-ui", t0, 100);
+    try {
+      await deleteExpenseViaApi(expense.id);
       expense.attachments?.forEach((a) => {
         if (a.url?.startsWith("blob:")) URL.revokeObjectURL(a.url);
       });
-      void (async () => {
-        try {
-          await deleteExpenseViaApi(expense.id);
-          queryClient.setQueriesData<Expense[]>({ queryKey: [...expensesQueryKeyRoot] }, (old) =>
-            Array.isArray(old) ? old.filter((e) => e.id !== expense.id) : old
-          );
-          let closedPreviewForDeleted = false;
-          flushSync(() => {
-            setPreviewExpense((cur) => {
-              if (cur?.id === expense.id) {
-                closedPreviewForDeleted = true;
-                return null;
-              }
-              return cur;
-            });
-          });
-          if (closedPreviewForDeleted) setPreviewOpen(false);
-          toast({ title: "Expense deleted", variant: "success" });
-          afterLayout(() => {
-            const li = nextId ? rowElsRef.current[nextId] : null;
-            scrollElementIntoViewNearest(li ?? undefined);
-            if (listViewRef.current === "unreviewed") {
-              if (nextId) {
-                setActiveExpenseId(nextId);
-                focusFirstFocusableInContainer(li);
-              } else {
-                const first = listRowsRef.current[0];
-                setActiveExpenseId(first?.id ?? null);
-                if (first) {
-                  const firstLi = rowElsRef.current[first.id];
-                  scrollElementIntoViewNearest(firstLi ?? undefined);
-                  focusFirstFocusableInContainer(firstLi);
-                } else {
-                  emptyExpensesRef.current?.focus({ preventScroll: true });
-                }
-              }
-            } else if (nextId) {
-              focusFirstFocusableInContainer(li);
+      queryClient.setQueriesData<Expense[]>({ queryKey: [...expensesQueryKeyRoot] }, (old) =>
+        Array.isArray(old) ? old.filter((e) => e.id !== expense.id) : old
+      );
+      let closedPreviewForDeleted = false;
+      flushSync(() => {
+        setPreviewExpense((cur) => {
+          if (cur?.id === expense.id) {
+            closedPreviewForDeleted = true;
+            return null;
+          }
+          return cur;
+        });
+      });
+      if (closedPreviewForDeleted) setPreviewOpen(false);
+      toast({ title: "Expense deleted", variant: "success" });
+      afterLayout(() => {
+        const li = nextId ? rowElsRef.current[nextId] : null;
+        scrollElementIntoViewNearest(li ?? undefined);
+        if (listViewRef.current === "unreviewed") {
+          if (nextId) {
+            setActiveExpenseId(nextId);
+            focusFirstFocusableInContainer(li);
+          } else {
+            const first = listRowsRef.current[0];
+            setActiveExpenseId(first?.id ?? null);
+            if (first) {
+              const firstLi = rowElsRef.current[first.id];
+              scrollElementIntoViewNearest(firstLi ?? undefined);
+              focusFirstFocusableInContainer(firstLi);
             } else {
               emptyExpensesRef.current?.focus({ preventScroll: true });
             }
-          });
-        } catch (error) {
-          setExpenses(prev);
-          toast({
-            title: "Delete failed",
-            description: error instanceof Error ? error.message : "Failed to delete expense.",
-            variant: "error",
-          });
-        } finally {
-          setDeletingExpenseId(null);
+          }
+        } else if (nextId) {
+          focusFirstFocusableInContainer(li);
+        } else {
+          emptyExpensesRef.current?.focus({ preventScroll: true });
         }
-      })();
-    },
-    [queryClient, toast]
-  );
+      });
+    } catch (error) {
+      setExpenses(prev);
+      throw error instanceof Error ? error : new Error("Failed to delete expense.");
+    } finally {
+      setDeletingExpenseId(null);
+    }
+  }, [deleteTarget, queryClient, toast]);
 
   const focusUnreviewedFromReceiptBulk = searchParams.get("focus_unreviewed") === "1";
   const focusUnreviewedConsumedRef = React.useRef(false);
@@ -1794,9 +1806,7 @@ export function ExpensesPageClient({
         if (inEditable) return;
         e.preventDefault();
         const row = k.listRows.find((r) => r.id === k.activeExpenseId);
-        if (row && typeof window !== "undefined" && window.confirm("Delete this expense?")) {
-          void handleDelete(row);
-        }
+        if (row) handleDelete(row);
         return;
       }
 
@@ -2074,22 +2084,17 @@ export function ExpensesPageClient({
 
   const bulkRunDeleteMany = React.useCallback(
     async (ids: string[]) => {
-      if (typeof window === "undefined") return false;
-      if (!window.confirm(`Delete ${ids.length} expenses? This cannot be undone.`)) {
-        return false;
-      }
       setBulkBusy(true);
-      const prev = expensesRef.current;
+      let ok = 0;
       try {
-        let ok = 0;
         for (const id of ids) {
           const expense = expensesRef.current.find((e) => e.id === id);
           if (!expense) continue;
+          await deleteExpenseViaApi(id);
           expense.attachments?.forEach((a) => {
             if (a.url?.startsWith("blob:")) URL.revokeObjectURL(a.url);
           });
           setExpenses((list) => list.filter((e) => e.id !== id));
-          await deleteExpenseViaApi(id);
           queryClient.setQueriesData<Expense[]>({ queryKey: [...expensesQueryKeyRoot] }, (old) =>
             Array.isArray(old) ? old.filter((e) => e.id !== id) : old
           );
@@ -2109,13 +2114,17 @@ export function ExpensesPageClient({
         }
         return true;
       } catch (error) {
-        setExpenses(prev);
-        toast({
-          title: "Delete failed",
-          description: error instanceof Error ? error.message : "Failed to delete expense.",
-          variant: "error",
+        void queryClient.invalidateQueries({
+          queryKey: expensesQueryKeyRoot,
+          refetchType: "active",
         });
-        return false;
+        throw new Error(
+          ok > 0
+            ? `Deleted ${ok} expense${ok === 1 ? "" : "s"}; the remaining items were kept. Try again.`
+            : error instanceof Error
+              ? error.message
+              : "Failed to delete expenses."
+        );
       } finally {
         setBulkBusy(false);
       }
@@ -2336,12 +2345,11 @@ export function ExpensesPageClient({
         style={{ display: ledgerUnavailable ? "none" : undefined }}
         aria-busy={ledgerPending}
         className={cn(
-          "expenses-ui-content page-shell-wide mx-auto w-full min-w-0 max-w-none px-3 py-3 md:px-6 xl:max-w-[1440px] xl:px-8",
-          inboxMode ? "md:pb-7 md:pt-3" : "md:py-8"
+          "expenses-ui-content page-container page-shell-wide w-full min-w-0 !max-w-none xl:!max-w-[1440px]",
+          inboxMode && "md:pb-hh-6"
         )}
       >
-        <ExpenseOperationsWorkspaceNav className="mb-2 md:mb-3" />
-        {inboxMode ? <ReceiptInboxSourceNav className="mb-2 md:mb-3" /> : null}
+        <ExpenseOperationsWorkspaceNav showHeader={false} className="mb-hh-3" />
         <div
           className={cn(
             "max-md:pb-1",
@@ -2376,51 +2384,8 @@ export function ExpensesPageClient({
             />
           </div>
 
-          {inboxMode ? (
-            <div
-              data-inbox-queue-summary
-              className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-[var(--hh-border)] pb-2 md:-mt-1 md:pb-2"
-              aria-label="Inbox queue summary"
-            >
-              <span
-                data-inbox-queue-state="pending"
-                className="inline-flex min-h-8 items-center gap-1.5 rounded-md border border-transparent bg-transparent px-1.5 py-1 text-hh-status text-[var(--hh-text-secondary)]"
-              >
-                <span className="font-semibold tabular-nums text-[var(--hh-text-primary)]">
-                  {inboxReviewStats.pending}
-                </span>
-                pending
-              </span>
-              <span
-                data-inbox-queue-state="missing-info"
-                className="inline-flex min-h-8 items-center gap-1.5 rounded-md border border-transparent bg-transparent px-1.5 py-1 text-hh-status text-[var(--hh-text-secondary)]"
-              >
-                <span className="font-semibold tabular-nums text-[var(--hh-text-primary)]">
-                  {inboxReviewStats.missingInfo}
-                </span>
-                missing info
-              </span>
-              <span
-                data-inbox-queue-state="missing-receipt"
-                className="inline-flex min-h-8 items-center gap-1.5 rounded-md border border-transparent bg-transparent px-1.5 py-1 text-hh-status text-[var(--hh-warning)]"
-              >
-                <span className="font-semibold tabular-nums text-[var(--hh-text-primary)]">
-                  {inboxReviewStats.missingReceipt}
-                </span>
-                no receipt
-              </span>
-            </div>
-          ) : null}
-
-          <div
-            data-expense-surface-header="desktop"
-            className={cn("hidden md:block", inboxMode && "-mt-0.5")}
-          >
+          <div data-expense-surface-header="desktop" className="hidden md:block">
             <PageHeader
-              className={cn(
-                "border-b-0 pb-3 [&_h1]:!text-hh-page-title [&_h1]:!tracking-normal [&_p]:!mt-1 [&_p]:!max-w-xl [&_p]:!text-hh-body",
-                inboxMode ? "gap-2 lg:items-baseline lg:gap-x-4 lg:gap-y-2" : "gap-3"
-              )}
               title={pageTitle}
               description={pageDescription}
               actions={
@@ -2434,13 +2399,48 @@ export function ExpensesPageClient({
             />
           </div>
 
+          {inboxMode ? <ReceiptInboxSourceNav /> : null}
+
           {inboxMode ? (
             <section
               data-inbox-decision-brief
               aria-label="Expense decision brief"
               className="-mt-0.5 overflow-hidden border-y border-[var(--hh-border)] bg-transparent text-[var(--hh-text-primary)] md:-mt-1"
             >
-              <dl className="grid grid-cols-2 md:grid-cols-4">
+              <div
+                data-inbox-queue-summary
+                className="flex flex-wrap items-center gap-x-3 gap-y-1 px-1 py-1.5"
+                aria-label="Inbox queue summary"
+              >
+                <span
+                  data-inbox-queue-state="pending"
+                  className="inline-flex min-h-8 items-center gap-1.5 px-1.5 py-1 text-hh-status text-[var(--hh-text-secondary)]"
+                >
+                  <span className="font-semibold tabular-nums text-[var(--hh-text-primary)]">
+                    {inboxReviewStats.pending}
+                  </span>
+                  pending
+                </span>
+                <span
+                  data-inbox-queue-state="missing-info"
+                  className="inline-flex min-h-8 items-center gap-1.5 px-1.5 py-1 text-hh-status text-[var(--hh-text-secondary)]"
+                >
+                  <span className="font-semibold tabular-nums text-[var(--hh-text-primary)]">
+                    {inboxReviewStats.missingInfo}
+                  </span>
+                  missing info
+                </span>
+                <span
+                  data-inbox-queue-state="missing-receipt"
+                  className="inline-flex min-h-8 items-center gap-1.5 px-1.5 py-1 text-hh-status text-[var(--hh-warning)]"
+                >
+                  <span className="font-semibold tabular-nums text-[var(--hh-text-primary)]">
+                    {inboxReviewStats.missingReceipt}
+                  </span>
+                  no receipt
+                </span>
+              </div>
+              <dl className="grid grid-cols-2 border-t border-[var(--hh-border)] md:grid-cols-4">
                 {[
                   {
                     label: "In queue",
@@ -2468,7 +2468,7 @@ export function ExpensesPageClient({
                       index >= 1 && "md:border-l md:border-[var(--hh-border)]"
                     )}
                   >
-                    <dt className="truncate text-hh-status font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]">
+                    <dt className="truncate text-hh-status font-semibold uppercase tracking-normal text-[var(--hh-text-secondary)]">
                       {metric.label}
                     </dt>
                     <dd className="mt-1 truncate text-hh-body font-semibold tabular-nums leading-none">
@@ -2482,9 +2482,9 @@ export function ExpensesPageClient({
             <section
               data-expenses-kpi-strip
               aria-label="Expense summary"
-              className="overflow-x-auto rounded-lg border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-operational"
+              className="min-w-0 border-y border-[var(--hh-border)] text-[var(--hh-text-primary)]"
             >
-              <dl className="flex min-w-max items-stretch">
+              <dl className="grid min-w-0 grid-cols-2 md:grid-cols-4">
                 {[
                   { label: "Archived", value: String(summary.archivedCount), amount: false },
                   { label: "This month", value: formatCurrency(summary.monthTotal), amount: true },
@@ -2498,15 +2498,20 @@ export function ExpensesPageClient({
                     value: formatCurrency(summary.reimbursementTotal),
                     amount: true,
                   },
-                ].map((metric) => (
+                ].map((metric, index) => (
                   <div
                     key={metric.label}
-                    className="flex min-w-40 flex-1 items-baseline justify-between gap-3 px-3 py-2.5 md:min-w-44 md:px-4"
+                    className={cn(
+                      "min-w-0 px-3 py-2.5 md:px-4",
+                      index % 2 === 1 && "border-l border-[var(--hh-border)]",
+                      index >= 2 && "border-t border-[var(--hh-border)] md:border-t-0",
+                      index >= 1 && "md:border-l md:border-[var(--hh-border)]"
+                    )}
                   >
-                    <dt className="whitespace-nowrap text-hh-status font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]">
+                    <dt className="truncate text-hh-status font-semibold uppercase tracking-normal text-[var(--hh-text-secondary)]">
                       {metric.label}
                     </dt>
-                    <dd className="whitespace-nowrap text-sm font-semibold tabular-nums leading-none md:text-hh-body">
+                    <dd className="mt-1 truncate text-hh-body font-semibold tabular-nums">
                       {metric.amount ? <NeoAmount>{metric.value}</NeoAmount> : metric.value}
                     </dd>
                   </div>
@@ -2548,11 +2553,11 @@ export function ExpensesPageClient({
               type="button"
               variant="outline"
               size="sm"
-              className="relative h-11 min-h-11 w-[5.75rem] shrink-0 gap-1 rounded-lg border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-2 text-[var(--hh-text-primary)] shadow-none transition-colors duration-150 hover:bg-[var(--hh-l3-hover)]"
+              className="relative h-11 min-h-11 shrink-0 gap-1.5 rounded-lg border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 text-[var(--hh-text-primary)] shadow-none transition-colors duration-150 hover:bg-[var(--hh-l3-hover)]"
               onClick={() => setFiltersDrawerOpen(true)}
             >
               <Filter className="h-4 w-4 shrink-0" aria-hidden />
-              <span className="truncate text-xs font-medium">
+              <span className="whitespace-nowrap text-xs font-medium">
                 Filters
                 {activeAdvancedFilterCount > 0 ? (
                   <span
@@ -2685,23 +2690,8 @@ export function ExpensesPageClient({
               >
                 <NeoToolbar
                   data-inbox-toolbar={inboxMode ? "" : undefined}
-                  className="hidden flex-wrap items-center justify-between gap-3 rounded-none border-0 border-b border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-4 py-3 shadow-none md:flex"
+                  className="hidden flex-wrap items-center justify-end gap-3 rounded-none border-0 border-b border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-4 py-3 shadow-none md:flex"
                 >
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className={financeToolbarButtonClass}
-                      onClick={() =>
-                        startTransition(() =>
-                          router.push(inboxMode ? "/financial/expenses" : "/financial/inbox")
-                        )
-                      }
-                    >
-                      {inboxMode ? "Expenses" : "Inbox draft"}
-                    </Button>
-                  </div>
                   <div
                     data-expenses-list-toolbar={!inboxMode ? "desktop" : undefined}
                     className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-2 lg:max-w-xl"
@@ -2729,7 +2719,7 @@ export function ExpensesPageClient({
                           <X className="h-3.5 w-3.5" aria-hidden />
                         </button>
                       ) : (
-                        <kbd className="pointer-events-none absolute right-2 top-1/2 hidden -translate-y-1/2 select-none rounded border border-[var(--hh-border)] bg-[var(--hh-l3-hover)] px-1.5 py-0.5 font-sans text-hh-status font-medium text-[var(--hh-text-tertiary)] lg:inline">
+                        <kbd className="pointer-events-none absolute right-2 top-1/2 hidden -translate-y-1/2 select-none rounded border border-[var(--hh-border)] bg-[var(--hh-l3-hover)] px-1.5 py-0.5 font-sans text-hh-status font-medium text-[var(--hh-text-secondary)] lg:inline">
                           ⌘K
                         </kbd>
                       )}
@@ -2844,12 +2834,12 @@ export function ExpensesPageClient({
                 ) : total === 0 ? (
                   <>
                     <div
-                      className="hidden min-h-[280px] flex-col justify-center border-t border-[var(--hh-border)] px-6 py-14 text-center md:flex"
+                      className="hidden min-h-[280px] flex-col justify-center px-6 py-14 text-center md:flex"
                       tabIndex={-1}
                       data-expenses-empty
                     >
                       <EmptyState
-                        className="mx-auto max-w-md border-[var(--hh-border-strong)] bg-[var(--hh-l3-hover)] px-8 py-10"
+                        className="mx-auto max-w-md border-0 bg-transparent px-8 py-10 shadow-none"
                         title={
                           inboxMode &&
                           !hasNarrowingFilters &&
@@ -2910,7 +2900,7 @@ export function ExpensesPageClient({
                       />
                     </div>
                     <EmptyState
-                      className="mx-2 mb-2 border-[var(--hh-border-strong)] bg-[var(--hh-l3-hover)] px-4 py-10 md:hidden"
+                      className="mx-2 mb-2 border-0 bg-transparent px-4 py-10 shadow-none md:hidden"
                       tabIndex={-1}
                       data-expenses-empty-mobile
                       icon={<Upload className="h-5 w-5" aria-hidden />}
@@ -3125,6 +3115,18 @@ export function ExpensesPageClient({
           open={uploadReceiptsOpen}
           onOpenChange={setUploadReceiptsOpen}
           onSuccess={refresh}
+        />
+        <ConfirmDialog
+          open={!!deleteTarget}
+          onOpenChange={(open) => {
+            if (!open) setDeleteTarget(null);
+          }}
+          title="Delete expense?"
+          description={`Delete ${deleteTarget?.vendorName?.trim() || "this expense"}? This cannot be undone.`}
+          confirmLabel="Delete"
+          destructive
+          onConfirm={confirmDeleteExpense}
+          returnFocusRef={deleteReturnFocusRef}
         />
       </div>
     </div>

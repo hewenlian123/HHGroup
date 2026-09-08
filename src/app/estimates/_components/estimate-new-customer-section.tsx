@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useEstimateSheetFocus } from "./use-estimate-sheet-focus";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -118,7 +119,7 @@ export function EstimateNewCustomerSection({
   const [uncontrolledDetailsOpen, setUncontrolledDetailsOpen] = React.useState(false);
   const detailsOpen = controlledDetailsOpen ?? uncontrolledDetailsOpen;
   const snapshotRef = React.useRef<DetailsSnapshot | null>(null);
-  const detailsOpenerRef = React.useRef<HTMLElement | null>(null);
+  const sheetFocus = useEstimateSheetFocus();
 
   const setDetailsOpen = React.useCallback(
     (open: boolean): void => {
@@ -291,14 +292,7 @@ export function EstimateNewCustomerSection({
         <SheetContent
           side="right"
           className={ebSheetGlassWide("eb-estimate-details-sheet")}
-          onOpenAutoFocus={() => {
-            const activeElement = document.activeElement;
-            detailsOpenerRef.current = activeElement instanceof HTMLElement ? activeElement : null;
-          }}
-          onCloseAutoFocus={(event) => {
-            event.preventDefault();
-            window.requestAnimationFrame(() => detailsOpenerRef.current?.focus());
-          }}
+          {...sheetFocus}
         >
           <SheetHeader className={EB.sheetHeader}>
             <SheetTitle className={EB.sheetTitle}>

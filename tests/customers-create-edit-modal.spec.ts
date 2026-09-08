@@ -5,6 +5,8 @@ import { assertE2ESupabaseUrlSafeForMutations } from "./e2e-supabase-url-guard";
 
 const customerNames = new Set<string>();
 
+test.use({ storageState: "tests/.auth/ui-readonly-owner.json" });
+
 async function cleanupCustomersModalData(): Promise<void> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
   const key =
@@ -150,5 +152,60 @@ test.describe("Customers create/edit modal", () => {
         return row?.phone === "(808) 555-1212" && row?.company_name === "Debbie Bergase LLC";
       })
       .toBe(true);
+  });
+
+  test("keeps a new customer draft recoverable after a network failure", async ({ page }) => {
+    await page.route(/\/api\/customers$/, (route) =>
+      route.request().method() === "POST" ? route.abort("failed") : route.continue()
+    );
+    await page.goto("/customers", { waitUntil: "networkidle" });
+    await page
+      .getByRole("button", { name: /\+ New Customer|New customer/i })
+      .first()
+      .click();
+
+    const dialog = page.getByRole("dialog", { name: "New customer" });
+    await dialog.getByTestId("customers-modal-name").fill("PW Network Recovery Draft");
+    await dialog.getByTestId("customers-modal-save").click();
+
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole("alert")).toContainText("Failed to create customer");
+    await expect(dialog.getByTestId("customers-modal-name")).toHaveValue(
+      "PW Network Recovery Draft"
+    );
+    await expect(dialog.getByTestId("customers-modal-save")).toBeEnabled();
+  });
+
+  test("restores a customer after delete is rejected by the network", async ({ page }) => {
+    const stamp = Date.now();
+    const customerName = `PW Customer Delete Recovery ${stamp}`;
+    customerNames.add(customerName);
+    await page.goto("/customers", { waitUntil: "networkidle" });
+    await page
+      .getByRole("button", { name: /New customer/i })
+      .first()
+      .click();
+    const createDialog = page.getByRole("dialog", { name: "New customer" });
+    await createDialog.getByTestId("customers-modal-name").fill(customerName);
+    const createResponse = page.waitForResponse(
+      (res) => res.request().method() === "POST" && res.url().endsWith("/api/customers") && res.ok()
+    );
+    await createDialog.getByTestId("customers-modal-save").click();
+    const created = await createResponse;
+    const customer = (await created.json()) as { id: string };
+    await page.route(`**/api/customers/${customer.id}`, (route) =>
+      route.request().method() === "DELETE" ? route.abort("failed") : route.continue()
+    );
+    const search = page.locator('input[placeholder="Search customers…"]:visible').first();
+    await search.fill(customerName);
+    const row = page.locator("tbody tr").filter({ hasText: customerName });
+    await row.getByRole("button", { name: `Actions for ${customerName}` }).click();
+    await page.getByRole("menuitem", { name: /Delete/ }).click();
+
+    const dialog = page.getByRole("dialog", { name: /Delete customer/i });
+    await dialog.getByRole("button", { name: "Delete", exact: true }).click();
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole("alert")).toContainText("Failed to delete customer");
+    await expect(row).toBeVisible();
   });
 });

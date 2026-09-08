@@ -7,33 +7,23 @@
 
 @layer base {
   .hh-motion-root {
-    --hh-duration: 150ms;
-    --hh-duration-slow: 180ms;
-    --hh-ease-out: cubic-bezier(0, 0, 0.2, 1);
+    --hh-motion-micro: 100ms;
+    --hh-motion-fast: 150ms;
+    --hh-motion-standard: 200ms;
+    --hh-motion-panel: 240ms;
+    --hh-motion-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --hh-motion-ease-move: cubic-bezier(0.77, 0, 0.175, 1);
+    --hh-motion-distance-small: 8px;
+    --hh-motion-distance-panel: 24px;
+
+    /* Retained aliases for existing page-scoped consumers. */
+    --hh-duration: var(--hh-motion-fast);
+    --hh-duration-slow: var(--hh-motion-standard);
+    --hh-ease-out: var(--hh-motion-ease-out);
   }
 
   .hh-motion-root main :where(input, textarea, select, button):focus-visible {
     scroll-margin-block: 0.75rem;
-  }
-
-  @keyframes hh-row-flash-success {
-    0%,
-    100% {
-      background-color: transparent;
-    }
-    40% {
-      background-color: rgb(220 252 231 / 0.85);
-    }
-  }
-
-  @keyframes hh-row-flash-success-dark {
-    0%,
-    100% {
-      background-color: transparent;
-    }
-    40% {
-      background-color: rgb(6 78 59 / 0.35);
-    }
   }
 }
 
@@ -45,6 +35,27 @@
   .hh-focus-ring:focus-visible {
     outline: 2px solid var(--hh-focus-ring);
     outline-offset: 2px;
+  }
+
+  .hh-toast {
+    opacity: 1;
+    transform: translateY(0);
+    transition:
+      opacity var(--hh-motion-standard) var(--hh-motion-ease-out),
+      transform var(--hh-motion-standard) var(--hh-motion-ease-out);
+  }
+
+  .hh-toast[data-state="closed"] {
+    opacity: 0;
+    transform: translateY(var(--hh-motion-distance-small));
+    transition-duration: var(--hh-motion-fast);
+  }
+
+  @starting-style {
+    .hh-toast {
+      opacity: 0;
+      transform: translateY(var(--hh-motion-distance-small));
+    }
   }
 
   .neo-app-shell {
@@ -537,15 +548,6 @@
     font-feature-settings: var(--hh-fin-features);
   }
 
-  .hh-motion-root .exp-row.hh-row-flash-success {
-    animation: hh-row-flash-success 0.65s ease-out;
-  }
-
-  [data-hh-theme="operational-dark"] .exp-row.hh-row-flash-success,
-  [data-hh-theme="neo-dark"] .exp-row.hh-row-flash-success {
-    animation: hh-row-flash-success-dark 0.65s ease-out;
-  }
-
   /**
    * Button `variant="outline"` companions (former ghost / destructive).
    * Use with outline for toolbar icons, cancel, or dangerous actions.
@@ -908,6 +910,27 @@
     scroll-behavior: auto !important;
   }
 
+  .hh-motion-root :where(.animate-spin, .animate-pulse) {
+    animation: none !important;
+  }
+
+  .hh-motion-root .transition-transform {
+    transition-duration: 0s !important;
+  }
+
+  .hh-toast,
+  .hh-toast[data-state="closed"] {
+    transform: none;
+    transition-property: opacity;
+  }
+
+  @starting-style {
+    .hh-toast {
+      opacity: 0;
+      transform: none;
+    }
+  }
+
   .dashboard-command-hud *,
   .dashboard-command-hud ::before,
   .dashboard-command-hud ::after {
@@ -1121,6 +1144,7 @@
 
   /* Figma desktop estimate boards integrate page commands directly into the shell. */
   @media (min-width: 1200px) {
+    .hh-app-shell[data-integrated-estimate-workspace="true"] [data-app-shell-topbar-slot],
     .hh-app-shell[data-integrated-estimate-workspace="true"] [data-app-topbar] {
       display: none;
     }
@@ -1151,7 +1175,7 @@
   }
 
   @media (min-width: 640px) and (max-width: 1199px) {
-    .hh-app-shell[data-integrated-estimate-workspace="true"] > [data-app-sidebar] {
+    .hh-app-shell[data-integrated-estimate-workspace="true"] > [data-app-shell-sidebar-slot] {
       display: none;
     }
   }
@@ -1761,12 +1785,8 @@
 
 /* Server PDF capture (/estimates/[id]/print?pdf=1) — collapse app chrome before Chromium print. */
 body:has([data-estimate-pdf-capture="true"]) .app-shell aside,
-body:has([data-estimate-pdf-capture="true"]) .app-shell > div > header,
-body:has([data-estimate-pdf-capture="true"]) [data-app-main-column] > header,
-body:has([data-estimate-pdf-capture="true"]) [data-app-main-column] > nav.fixed.bottom-0,
-body:has([data-estimate-pdf-capture="true"])
-  [data-app-main-column]
-  > div.fixed.z-40[aria-label="Quick actions"] {
+body:has([data-estimate-pdf-capture="true"]) [data-app-shell-topbar-slot],
+body:has([data-estimate-pdf-capture="true"]) [data-app-shell-bottom-slot] {
   display: none !important;
 }
 
@@ -1852,8 +1872,7 @@ body:has([data-estimate-pdf-capture="true"]) .estimate-page-label {
     overflow: visible !important;
   }
   .app-shell aside,
-  .app-shell > div > header,
-  [data-app-main-column] > header {
+  [data-app-shell-topbar-slot] {
     display: none !important;
   }
   [data-app-main-column] {
@@ -1864,8 +1883,7 @@ body:has([data-estimate-pdf-capture="true"]) .estimate-page-label {
     overflow: visible !important;
   }
   /* Mobile bottom nav + FAB — hide when printing */
-  [data-app-main-column] > nav.fixed.bottom-0,
-  [data-app-main-column] > div.fixed.z-40[aria-label="Quick actions"] {
+  [data-app-shell-bottom-slot] {
     display: none !important;
   }
   .app-shell > div,

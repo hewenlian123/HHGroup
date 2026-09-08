@@ -4,6 +4,7 @@ import * as React from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { Camera, FileText, Plus, Upload, X } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ConfirmDialog } from "@/components/base";
 import {
   addExpenseAttachment,
   deleteExpenseAttachment,
@@ -14,7 +15,6 @@ import {
   getExpenseDisplayAttachments,
   isExpenseReceiptUrlAttachmentId,
 } from "@/lib/expense-receipt-items";
-import { useToast } from "@/components/toast/toast-provider";
 import { cn } from "@/lib/utils";
 import {
   buildExpenseAttachmentForUpload,
@@ -54,7 +54,6 @@ export function ExpenseEditAttachmentsSection({
   onPreviewAttachment,
   showDelete = true,
 }: ExpenseEditAttachmentsSectionProps) {
-  const { toast } = useToast();
   const [uploadBusy, setUploadBusy] = React.useState(false);
   const [dragActive, setDragActive] = React.useState(false);
   const [failedUploads, setFailedUploads] = React.useState<File[]>([]);
@@ -63,6 +62,7 @@ export function ExpenseEditAttachmentsSection({
     title: string;
     detail?: string;
   } | null>(null);
+  const [deleteTarget, setDeleteTarget] = React.useState<ExpenseAttachment | null>(null);
   const dragDepthRef = React.useRef(0);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const cameraInputRef = React.useRef<HTMLInputElement>(null);
@@ -164,28 +164,18 @@ export function ExpenseEditAttachmentsSection({
     [applyDedupedAttachments, expense.id, onExpenseUpdated, supabase]
   );
 
-  const handleDeleteAttachment = React.useCallback(
-    async (e: React.MouseEvent, att: ExpenseAttachment) => {
-      e.preventDefault();
-      e.stopPropagation();
-      if (isExpenseReceiptUrlAttachmentId(att.id)) return;
-      if (!window.confirm("Delete this attachment?")) return;
-      try {
-        const next = await deleteExpenseAttachment(expense.id, att.id);
-        if (next) {
-          applyDedupedAttachments(next);
-          onExpenseUpdated?.(next);
-        }
-      } catch (err) {
-        toast({
-          title: "Delete failed",
-          description: err instanceof Error ? err.message : "Unknown error",
-          variant: "error",
-        });
+  const handleDeleteAttachment = React.useCallback(async () => {
+    if (!deleteTarget || isExpenseReceiptUrlAttachmentId(deleteTarget.id)) return;
+    try {
+      const next = await deleteExpenseAttachment(expense.id, deleteTarget.id);
+      if (next) {
+        applyDedupedAttachments(next);
+        onExpenseUpdated?.(next);
       }
-    },
-    [applyDedupedAttachments, expense.id, onExpenseUpdated, toast]
-  );
+    } catch (err) {
+      throw err instanceof Error ? err : new Error("Attachment deletion failed.");
+    }
+  }, [applyDedupedAttachments, deleteTarget, expense.id, onExpenseUpdated]);
 
   const busy = Boolean(disabled || uploadBusy);
 
@@ -258,7 +248,7 @@ export function ExpenseEditAttachmentsSection({
         onDragOver={onDragOver}
         onDrop={onDrop}
         className={cn(
-          "transition-[border-color,box-shadow,background-color,padding]",
+          "transition-[border-color,box-shadow,background-color] duration-fast ease-motion-out",
           dragActive && "rounded-2xl border border-dashed border-primary/40 bg-primary/[0.05] p-2",
           !dragActive && "border border-transparent",
           !dragActive && (showEmptyIdle ? "p-0" : "p-1"),
@@ -345,7 +335,11 @@ export function ExpenseEditAttachmentsSection({
                       )}
                       aria-label="Remove attachment"
                       disabled={disabled}
-                      onClick={(e) => void handleDeleteAttachment(e, att)}
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        setDeleteTarget(att);
+                      }}
                     >
                       <X className="h-3.5 w-3.5" strokeWidth={2.5} />
                     </button>
@@ -409,6 +403,17 @@ export function ExpenseEditAttachmentsSection({
           ) : null}
         </div>
       ) : null}
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null);
+        }}
+        title="Delete attachment?"
+        description={`Delete ${deleteTarget?.fileName ?? "this attachment"}? This cannot be undone.`}
+        confirmLabel="Delete"
+        destructive
+        onConfirm={handleDeleteAttachment}
+      />
     </div>
   );
 }
