@@ -14,8 +14,8 @@ test("the current Estimate snapshot mounts one customer-facing worksheet", () =>
 
   assert.doesNotMatch(existingEditor, /EstimateSectionOutline/);
   assert.doesNotMatch(newEditor, /EstimateSectionOutline/);
-  assert.match(existingEditor, /eb-estimate-workbench--v3/);
-  assert.match(newEditor, /eb-estimate-workbench--v3/);
+  assert.match(existingEditor, /<EstimateWorkspace/g);
+  assert.match(newEditor, /<EstimateWorkspace/g);
 });
 
 test("Estimate exposes customer totals and payment reconciliation", () => {
@@ -44,34 +44,28 @@ test("Estimate details do not edit retired internal planning fields", () => {
 test("the current desktop worksheet names every customer quote field", () => {
   const header = read("src/app/estimates/_components/estimate-line-item-grid-header.tsx");
 
-  for (const label of [
-    "Item Name",
-    "Description",
-    "Qty",
-    "Unit",
-    "Unit price",
-    "Line total",
-    "More",
-  ]) {
+  for (const label of ["Item Name / Description", "Qty", "Unit", "Unit Cost", "Total Price"]) {
     assert.match(header, new RegExp(`>${label}<`));
   }
   assert.doesNotMatch(header, />Item details</);
   assert.doesNotMatch(header, />Qty \/ Unit</);
 });
 
-test("the current Estimate snapshot places payment and terms after the worksheet", () => {
+test("the canonical workspace places customer notes and inline payments after scope", () => {
+  const workspace = read("src/app/estimates/_components/estimate-workspace.tsx");
+  const scope = workspace.indexOf("{children}");
+  const notes = workspace.indexOf('id="estimate-customer-notes"', scope);
+  const payment = workspace.indexOf('id="estimate-payment-schedule"', notes);
+  assert.ok(scope >= 0 && notes > scope && payment > notes);
+  assert.doesNotMatch(workspace, /estimate-terms-notes/);
   for (const path of [
     "src/app/estimates/_components/estimate-editor.tsx",
     "src/app/estimates/new/new-estimate-editor.tsx",
   ]) {
     const editor = read(path);
-    const worksheet = editor.indexOf('className="eb-v3-worksheet-flow"');
-    const payment = editor.indexOf('id="estimate-payment-schedule"', worksheet);
-    const notes = editor.indexOf('id="estimate-terms-notes"', payment);
-
-    assert.ok(worksheet >= 0, `${path} must mount the V3 worksheet flow`);
-    assert.ok(payment > worksheet, `${path} must place payment after the worksheet`);
-    assert.ok(notes > payment, `${path} must place terms and notes after payment`);
+    assert.match(editor, /<EstimateWorkspace/);
+    assert.match(editor, /notes=\{/);
+    assert.match(editor, /payment=\{/);
   }
 });
 

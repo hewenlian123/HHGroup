@@ -133,15 +133,20 @@ export function assertEstimateCertificationLocalOnly(params: {
     throw new Error("[E2E] Estimate certification requires an explicit local app port.");
   }
 
+  // Explicit release target: never fall back to the ordinary development database.
+  const releaseTarget = process.env.E2E_ESTIMATE_TARGET === "estimate-release-20260911";
+  if (releaseTarget && (app.port !== "3101" || !params.databaseUrl?.trim())) {
+    throw new Error("[E2E] Estimate release requires app :3101 and an explicit RC database URL.");
+  }
+  const apiPort = releaseTarget ? "55321" : LOCAL_SUPABASE_API_PORT;
+  const databasePort = releaseTarget ? "55322" : LOCAL_SUPABASE_DATABASE_PORT;
   const supabase = parseRequiredE2EUrl(params.supabaseUrl, "NEXT_PUBLIC_SUPABASE_URL");
   if (supabase.protocol !== "http:") {
     throw new Error("[E2E] Estimate certification requires the local Supabase API endpoint.");
   }
   assertLocalHost(supabase, "NEXT_PUBLIC_SUPABASE_URL");
-  if (supabase.port !== LOCAL_SUPABASE_API_PORT) {
-    throw new Error(
-      `[E2E] Estimate certification requires local Supabase API port :${LOCAL_SUPABASE_API_PORT}.`
-    );
+  if (supabase.port !== apiPort) {
+    throw new Error(`[E2E] Estimate certification requires local Supabase API port :${apiPort}.`);
   }
 
   let databaseOrigin: string | undefined;
@@ -151,9 +156,9 @@ export function assertEstimateCertificationLocalOnly(params: {
       throw new Error("[E2E] Estimate certification requires a PostgreSQL local database URL.");
     }
     assertLocalHost(database, "SUPABASE_DATABASE_URL");
-    if (database.port !== LOCAL_SUPABASE_DATABASE_PORT) {
+    if (database.port !== databasePort) {
       throw new Error(
-        `[E2E] Estimate certification requires local Supabase database port :${LOCAL_SUPABASE_DATABASE_PORT}.`
+        `[E2E] Estimate certification requires local Supabase database port :${databasePort}.`
       );
     }
     databaseOrigin = `${database.protocol}//${database.host}`;

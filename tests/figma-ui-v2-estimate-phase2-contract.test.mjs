@@ -64,7 +64,7 @@ test("Payment Schedule keeps fixed-dollar, partial, and server-authoritative beh
   ]) {
     assert.match(payment, new RegExp(action));
   }
-  assert.match(payment, /Partial schedules are valid and may be saved/);
+  assert.match(payment, /Schedule exceeds the Estimate total by/);
   assert.match(payment, /const isOverallocated = remaining < -0\.005/);
   assert.match(payment, /canCreateMilestoneInvoices/);
   assert.match(database, /return \["Draft", "Sent"\]\.includes\(est\.status as string\)/);
@@ -121,7 +121,7 @@ test("Preview has a light application shell while Print and PDF preserve white L
 });
 
 test("presentation remains outside Auth, API, database, document, and calculation ownership", () => {
-  const policy = source("docs/UI_UX_CHANGE_POLICY.md");
+  const policy = source("AGENTS.md");
   const actions = source("src/app/estimates/[id]/actions.ts");
   const database = source("src/lib/estimates-db.ts");
   const customerDocuments = [
@@ -129,7 +129,7 @@ test("presentation remains outside Auth, API, database, document, and calculatio
     source("src/app/estimates/_components/estimate-print-document.tsx"),
   ].join("\n");
 
-  assert.match(policy, /Presentation changes must preserve business behavior/);
+  assert.match(policy, /Financial mutations must be atomic/);
   assert.doesNotMatch(customerDocuments, /internalNotes|internal_notes|Internal Notes/);
   assert.match(actions, /requireSupabaseOwnerOrAdminServerAction/);
   assert.match(database, /transitionEstimateStatusWithActivityWithClient/);

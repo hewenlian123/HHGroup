@@ -30,8 +30,8 @@ test("Estimate keeps production actions while payment and notes remain available
 
   assert.match(detail, /surface="activity"/);
   assert.match(detail, /surface="revision"/);
-  assert.match(editor, /className="eb-v3-worksheet-flow"/);
-  assert.match(editor, /id="estimate-payment-schedule"/);
+  assert.match(editor, /<EstimateWorkspace/);
+  assert.match(editor, /payment=\{paymentScheduleSurface\}/);
 
   assert.doesNotMatch(editor, /surface="notes"/);
   assert.doesNotMatch(editor, /surface="payment"/);
@@ -43,7 +43,10 @@ test("Estimate keeps production actions while payment and notes remain available
   assert.match(customerSection, /Customer, project, and estimate details/);
   assert.equal((editor.match(/<EstimateNotesClarifications/g) ?? []).length, 1);
   assert.equal((editor.match(/<EstimatePaymentSchedule/g) ?? []).length, 1);
-  assert.doesNotMatch(editor, /activeNotesTab|saveEstimateInternalNotesInlineAction|internalNotesSaveQueueRef/);
+  assert.doesNotMatch(
+    editor,
+    /activeNotesTab|saveEstimateInternalNotesInlineAction|internalNotesSaveQueueRef/
+  );
   assert.match(customerSection, /<CustomerSelectWithAdd/);
   assert.match(customerSection, /fetch\("\/api\/projects"/);
   assert.doesNotMatch(customerSection, /name="overheadPct"/);
@@ -52,20 +55,22 @@ test("Estimate keeps production actions while payment and notes remain available
   assert.match(customerSection, /estimateSubtotal \+ taxDraft - discountDraft/);
   assert.match(paymentSchedule, /reorderPaymentScheduleAction/);
   assert.match(paymentSchedule, /markPaymentMilestonePaidAction/);
-  assert.match(paymentSchedule, /Partial schedules are valid and may be saved/);
-  assert.match(paymentSchedule, /draftOverallocated/);
+  assert.match(paymentSchedule, /Schedule exceeds the Estimate total by/);
+  assert.match(paymentSchedule, /const isOverallocated = remaining < -0\.005/);
 });
 
 test("Phase 2 rich Description remains compact until explicitly edited", async () => {
   const source = await read("src/app/estimates/_components/proposal-scope-work-card.tsx");
 
-  assert.match(source, /const \[descriptionEditing, setDescriptionEditing\]/);
-  assert.match(source, /const minPx = 104/);
-  assert.match(source, /aria-expanded="false"/);
-  assert.match(source, /data-testid="estimate-description-done"/);
-  assert.doesNotMatch(source, /Description commands/);
-  for (const label of ["Bold", "Italic", "Bullet list", "Numbered list"]) {
-    assert.match(source, new RegExp(`label: "${label}"`));
+  const description = await read("src/app/estimates/_components/estimate-description-editor.tsx");
+  assert.match(source, /<EstimateDescriptionEditor/);
+  assert.match(description, /active && !disabled && !readOnly/);
+  assert.match(description, /contentEditable=\{!disabled && !readOnly\}/);
+  assert.match(description, /onInput=\{publish\}/);
+  assert.match(description, /setActive\(false\)/);
+  assert.doesNotMatch(description, /<textarea|estimate-description-done|minPx/);
+  for (const command of ["bold", "italic", "insertUnorderedList", "insertOrderedList"]) {
+    assert.match(description, new RegExp(`command: "${command}"`));
   }
 });
 

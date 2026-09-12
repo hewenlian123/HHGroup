@@ -29,7 +29,7 @@ test("Estimate totals and payment schedules retain financial authority", () => {
 
   assert.match(pricing, /estimateSubtotal \+ taxDraft - discountDraft/);
   assert.match(database, /const total = subtotal \+ tax - discount/);
-  assert.match(payment, /Partial schedules are valid and may be saved/);
+  assert.match(payment, /Schedule exceeds the Estimate total by/);
   assert.match(payment, /const isOverallocated = remaining < -0\.005/);
   assert.match(database, /await assertPaymentScheduleAllocation/);
   assert.match(actions, /requireSupabaseOwnerOrAdminServerAction/);
