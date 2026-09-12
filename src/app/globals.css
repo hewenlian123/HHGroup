@@ -1144,11 +1144,6 @@
 
   /* Figma desktop estimate boards integrate page commands directly into the shell. */
   @media (min-width: 1200px) {
-    .hh-app-shell[data-integrated-estimate-workspace="true"] [data-app-shell-topbar-slot],
-    .hh-app-shell[data-integrated-estimate-workspace="true"] [data-app-topbar] {
-      display: none;
-    }
-
     /* Keep the Figma 1440 grid on the full viewport width while preserving wheel/keyboard scroll. */
     .hh-app-shell[data-integrated-estimate-workspace="true"] [data-app-scroll-root] {
       scrollbar-width: none;
@@ -1175,9 +1170,6 @@
   }
 
   @media (min-width: 640px) and (max-width: 1199px) {
-    .hh-app-shell[data-integrated-estimate-workspace="true"] > [data-app-shell-sidebar-slot] {
-      display: none;
-    }
   }
 }
 

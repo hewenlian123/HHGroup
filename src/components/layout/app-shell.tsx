@@ -76,6 +76,14 @@ export function AppShell({ children }: AppShellProps) {
     (estimatePathSegments[1] === "new" ||
       estimatePathSegments.length === 2 ||
       estimatePathSegments[2] === "snapshot");
+  const estimateModule = Boolean(
+    pathname &&
+    !documentRoute &&
+    !viewerRoute &&
+    (pathname === "/estimates" ||
+      pathname.startsWith("/estimates/") ||
+      pathname.startsWith("/estimate-templates"))
+  );
   const showsWorkspaceNavigation = Boolean(
     pathname &&
     !integratedEstimateWorkspace &&
@@ -151,6 +159,7 @@ export function AppShell({ children }: AppShellProps) {
                   />
                   <main
                     data-app-scroll-root
+                    data-estimate-module={estimateModule ? "true" : undefined}
                     className="min-h-0 flex-1 scroll-smooth overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[var(--hh-surface-canvas)] [-webkit-overflow-scrolling:touch] pb-[calc(4rem+env(safe-area-inset-bottom))] sm:pb-0"
                   >
                     {children}

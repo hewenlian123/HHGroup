@@ -3,6 +3,8 @@ import localFont from "next/font/local";
 import { Inter } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
+import "./estimates/estimate-tokens.css";
+import "@/components/layout/app-shell-visual.css";
 import { ensureConstructionSchema } from "@/lib/ensure-construction-schema";
 import { ServiceWorkerCleanup } from "@/components/service-worker-cleanup";
 import { AppShell } from "@/components/layout/app-shell";

@@ -154,7 +154,7 @@ export function FloatingActionButton() {
           side="bottom"
           onOpenAutoFocus={(e) => e.preventDefault()}
           className={cn(
-            "rounded-t-xl border-t border-border/60 p-0 max-lg:max-h-[85vh]",
+            "app-shell-overlay rounded-t-xl border-t border-border/60 p-0 max-lg:max-h-[85vh]",
             "pb-[env(safe-area-inset-bottom,0px)]",
             "[&>button]:max-lg:min-h-[44px] [&>button]:max-lg:min-w-[44px]"
           )}

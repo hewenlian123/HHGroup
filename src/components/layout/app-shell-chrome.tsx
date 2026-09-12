@@ -97,13 +97,8 @@ export function AppShellChrome({
     setMobileOpen(false);
   }, []);
 
-  const desktopNavigationQuery = integratedEstimateWorkspace
-    ? "(min-width: 1200px)"
-    : "(min-width: 640px)";
-
-  const desktopNavigationTriggerSelector = integratedEstimateWorkspace
-    ? "[data-app-shell-sidebar-slot] [data-sidebar-collapse] button"
-    : '[data-app-topbar] [aria-label="Toggle sidebar"]';
+  const desktopNavigationQuery = "(min-width: 640px)";
+  const desktopNavigationTriggerSelector = '[data-app-topbar] [aria-label="Toggle sidebar"]';
 
   React.useEffect(() => {
     const desktopNavigation = window.matchMedia(desktopNavigationQuery);
@@ -158,7 +153,6 @@ export function AppShellChrome({
           onOpenSidebar={openMobileNavigation}
           onToggleSidebar={toggleSidebar}
           onOpenCommandPalette={openCommandPalette}
-          integratedEstimateWorkspace={integratedEstimateWorkspace}
         />,
         topbar
       )}
@@ -178,7 +172,7 @@ export function AppShellChrome({
               }}
               side="left"
               className={cn(
-                "w-hh-sidebar-expanded max-w-[85vw] p-0 shadow-none",
+                "app-shell-overlay app-shell-navigation-drawer w-hh-sidebar-expanded max-w-[85vw] p-0 shadow-none",
                 "border-r border-[var(--hh-border-default)] bg-[var(--hh-surface-workspace)]"
               )}
             >

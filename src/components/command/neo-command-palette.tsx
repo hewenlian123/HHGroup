@@ -421,6 +421,7 @@ export function NeoCommandPalette({
           data-hh-context={context}
           data-hh-theme={theme}
           className={cn(
+            "app-shell-overlay",
             "fixed top-[max(5rem,env(safe-area-inset-top))] z-[91] w-[min(640px,calc(100vw-2rem))] overflow-hidden rounded-hh-task border border-[var(--hh-border-strong)] bg-[var(--hh-l5-task-surface)] text-[var(--hh-text-primary)] shadow-task outline-none sm:left-1/2 sm:-translate-x-1/2",
             hhNeoFocusRevealCommand,
             "max-sm:inset-x-2 max-sm:bottom-[calc(1rem+env(safe-area-inset-bottom))] max-sm:top-[max(0.75rem,env(safe-area-inset-top))] max-sm:w-auto max-sm:rounded-hh-task"

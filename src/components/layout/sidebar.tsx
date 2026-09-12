@@ -239,6 +239,7 @@ export function Sidebar({
   return (
     <aside
       data-app-sidebar
+      data-collapsed={collapsed ? "true" : "false"}
       className={cn(
         "relative flex h-full shrink-0 flex-col overflow-hidden border-r border-[var(--hh-border-subtle)] bg-[var(--hh-surface-workspace)] text-[var(--hh-text-primary)] shadow-none",
         collapsed ? "w-hh-sidebar-collapsed" : "w-hh-sidebar-expanded",

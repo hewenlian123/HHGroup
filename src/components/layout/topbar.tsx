@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, Menu, PanelLeft, Plus, Search } from "lucide-react";
+import { Bell, PanelLeft, Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -209,13 +209,10 @@ export function Topbar({
   onOpenSidebar,
   onToggleSidebar,
   onOpenCommandPalette,
-  integratedEstimateWorkspace = false,
 }: {
   onOpenSidebar?: () => void;
   onToggleSidebar?: () => void;
   onOpenCommandPalette?: () => void;
-  /** Figma's Estimate workspace uses a compact portrait nav and no desktop global topbar. */
-  integratedEstimateWorkspace?: boolean;
 }) {
   const pathname = usePathname();
   const isEstimateIndex = pathname === "/estimates";
@@ -246,37 +243,6 @@ export function Topbar({
     return breadcrumbs[0] ?? "Dashboard";
   }, [breadcrumbs]);
   const { systemHealth } = useSystemHealth();
-
-  if (integratedEstimateWorkspace) {
-    return (
-      <header
-        data-app-topbar
-        data-estimate-portrait-navigation="true"
-        className="sticky top-0 z-40 flex h-14 min-h-14 shrink-0 items-center border-b border-[var(--hh-border-subtle)] bg-[var(--hh-surface-workspace)] px-1 text-[var(--hh-text-primary)] shadow-none"
-      >
-        <button
-          type="button"
-          className="hh-focus-ring flex h-11 w-11 shrink-0 items-center justify-center rounded-hh-standard text-[var(--hh-text-primary)] hover:bg-[var(--hh-surface-hover)]"
-          aria-label="Open menu"
-          onClick={onOpenSidebar}
-        >
-          <Menu className="h-4 w-4" strokeWidth={1.75} aria-hidden />
-        </button>
-        <span className={cn("ml-1", TYPO.bodyStrong)}>{orgName}</span>
-        <button
-          type="button"
-          className={cn(
-            TYPO.body,
-            "hh-focus-ring ml-auto flex h-11 items-center rounded-hh-standard px-3 text-[var(--hh-text-muted)] hover:bg-[var(--hh-surface-hover)] hover:text-[var(--hh-text-primary)]"
-          )}
-          aria-label="Open command palette"
-          onClick={onOpenCommandPalette}
-        >
-          Search
-        </button>
-      </header>
-    );
-  }
 
   return (
     <header
@@ -361,7 +327,7 @@ export function Topbar({
             asChild
             size="sm"
             className={cn(
-              "h-11 min-h-[44px] rounded-hh-standard border-transparent !bg-[var(--hh-accent-primary)] px-3.5 py-2.5 !text-[var(--hh-action-primary-foreground)] shadow-none hover:!bg-[var(--hh-accent-hover)] lg:h-9 lg:min-h-0",
+              "h-11 min-h-[44px] rounded-hh-standard border-transparent !bg-[var(--shell-action)] px-3.5 py-2.5 !text-[var(--shell-action-text)] shadow-none hover:!bg-[var(--shell-action-hover)] lg:h-9 lg:min-h-0",
               TYPO.button
             )}
           >
@@ -377,7 +343,7 @@ export function Topbar({
               <Button
                 size="sm"
                 className={cn(
-                  "h-11 min-h-[44px] rounded-hh-standard border-transparent !bg-[var(--hh-accent-primary)] px-3.5 py-2.5 !text-[var(--hh-action-primary-foreground)] shadow-none hover:!bg-[var(--hh-accent-hover)] lg:h-9 lg:min-h-0",
+                  "h-11 min-h-[44px] rounded-hh-standard border-transparent !bg-[var(--shell-action)] px-3.5 py-2.5 !text-[var(--shell-action-text)] shadow-none hover:!bg-[var(--shell-action-hover)] lg:h-9 lg:min-h-0",
                   TYPO.button
                 )}
               >
@@ -385,7 +351,7 @@ export function Topbar({
                 New
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuContent align="end" className="app-shell-overlay w-56">
               <DropdownMenuLabel className={TYPO.tableHeader}>Projects</DropdownMenuLabel>
               <DropdownMenuItem asChild>
                 <Link href="/projects/new">New Project</Link>
@@ -473,7 +439,7 @@ export function Topbar({
               </Avatar>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
+          <DropdownMenuContent align="end" className="app-shell-overlay w-48">
             <DropdownMenuItem asChild>
               <Link href="/settings/account">Profile</Link>
             </DropdownMenuItem>

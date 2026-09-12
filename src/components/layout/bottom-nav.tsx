@@ -142,6 +142,7 @@ export function BottomNav({ className }: { className?: string }) {
 
   return (
     <nav
+      data-app-bottom-nav
       className={cn(
         "flex min-h-14 items-center justify-around gap-1 border-t border-[var(--hh-border-default)] bg-[var(--hh-surface-workspace)] px-1 pb-[env(safe-area-inset-bottom)] print:hidden",
         className
