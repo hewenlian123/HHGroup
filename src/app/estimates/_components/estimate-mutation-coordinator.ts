@@ -36,3 +36,19 @@ export function createEstimateSerialMutationQueue(): {
     },
   };
 }
+
+/** Opt-in draft saves only: destructive/create actions must never be replayed here. */
+export function createEstimateDraftRetryRegistry() {
+  const handlers = new Map<string, () => Promise<boolean>>();
+  return {
+    register: (key: string, retry: () => Promise<boolean>): (() => void) => {
+      handlers.set(key, retry);
+      return () => {
+        if (handlers.get(key) === retry) handlers.delete(key);
+      };
+    },
+    retry: async (failedKeys: readonly string[]): Promise<void> => {
+      for (const key of [...failedKeys]) await handlers.get(key)?.();
+    },
+  };
+}

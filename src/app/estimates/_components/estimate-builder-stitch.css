@@ -1,0 +1,2930 @@
+/* Current task-scoped Estimate implementation, derived from the supplied Stitch
+ * reference and verified rendered 2026-09-10. It is not permanent UI authority.
+ * HH aliases below adapt existing controls; they are scoped to this workspace.
+ * No data, document/PDF styles, or other route theme is changed.
+ */
+[data-integrated-estimate-workspace="true"] [data-app-scroll-root] {
+  background:
+    radial-gradient(circle at 82% 10%, rgba(230, 206, 150, 0.14), transparent 32%),
+    var(--estimate-bg);
+  background-attachment: fixed;
+}
+.estimate-builder-page:has(.estimate-builder) {
+  max-width: none;
+  margin: 0;
+}
+.estimate-builder.estimate-builder {
+  background: var(--estimate-bg);
+  padding: 0;
+  overflow-x: clip;
+}
+.estimate-builder.estimate-builder
+  :where(button, input, select, textarea, .hh-fin, [contenteditable]) {
+  font-family: var(--estimate-font);
+}
+.estimate-builder.estimate-builder :where(.hh-fin, .tabular-nums) {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: normal;
+}
+.estimate-builder.estimate-builder .eb-estimate-command-bar {
+  margin: 0;
+  padding: 14px 24px 12px;
+  background: rgba(255, 255, 255, 0.92);
+  border-bottom: 1px solid var(--estimate-border);
+  border-radius: 0;
+  box-shadow: none;
+}
+.estimate-builder.estimate-builder .eb-estimate-command-title {
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 24px;
+  letter-spacing: -0.6px;
+}
+.estimate-builder.estimate-builder .eb-estimate-command-context {
+  font-size: 11.5px;
+  line-height: 17.25px;
+  margin-top: 8px;
+}
+.estimate-builder.estimate-builder .eb-estimate-command-backlink {
+  font-size: 13px;
+  min-height: 24px;
+}
+.estimate-builder.estimate-builder .eb-estimate-command-amount {
+  font-size: 15px;
+  font-weight: 600;
+}
+.estimate-builder.estimate-builder .eb-estimate-command-actions {
+  gap: 8px;
+  max-width: none;
+}
+.estimate-builder.estimate-builder .eb-estimate-command-actions :where(button, a) {
+  border-radius: 6px;
+  min-height: 32px;
+  font-size: 11.5px;
+}
+.estimate-builder.estimate-builder .eb-btn-primary,
+.estimate-builder.estimate-builder [data-estimate-workspace-header] button[class*="!bg-"] {
+  background: var(--estimate-action) !important;
+  color: var(--estimate-action-text) !important;
+  border: 1px solid var(--estimate-action-border) !important;
+  box-shadow: 0 1px 2px rgba(20, 24, 32, 0.04) !important;
+}
+.estimate-builder.estimate-builder .eb-btn-primary:hover:not(:disabled),
+.estimate-builder.estimate-builder
+  .eb-estimate-command-actions
+  button[class*="!bg-"]:hover:not(:disabled) {
+  background: var(--estimate-action-hover) !important;
+}
+.estimate-builder.estimate-builder :where(.eb-btn-ghost, .eb-add-section, .eb-add-line) {
+  background: var(--estimate-surface);
+  border: 1px solid var(--estimate-border);
+  border-radius: 6px;
+  color: var(--estimate-text-primary);
+}
+.estimate-builder.estimate-builder :where(input, select, textarea) {
+  border-radius: 4px;
+  border-color: var(--estimate-border);
+  color: var(--estimate-text-primary);
+}
+.estimate-builder.estimate-builder
+  :where(button, a, input, textarea, select, [contenteditable]):focus-visible {
+  outline: 2px solid var(--estimate-accent);
+  outline-offset: 1px;
+}
+.estimate-builder.estimate-builder ::selection {
+  background: var(--estimate-surface-selected);
+  color: var(--estimate-text-primary);
+}
+.estimate-builder.estimate-builder .eb-estimate-workbench {
+  padding: 20px;
+  gap: 16px;
+}
+.estimate-builder.estimate-builder .eb-v3-worksheet-flow {
+  background: var(--estimate-surface);
+  border: 1px solid var(--estimate-border);
+  border-radius: 10px;
+  box-shadow: var(--estimate-shadow);
+  overflow: clip;
+}
+.estimate-builder.estimate-builder .eb-scope-work-panel,
+.estimate-builder.estimate-builder .eb-scope-work-panel:hover {
+  background: var(--estimate-surface);
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+.estimate-builder.estimate-builder .eb-scope-work-panel > div:first-child:has(h2) {
+  display: flex;
+  padding: 16px;
+  margin: 0;
+  border-bottom: 1px solid var(--estimate-border);
+}
+.estimate-builder.estimate-builder .eb-scope-heading {
+  font-size: 11px;
+  line-height: 16.5px;
+  font-weight: 600;
+  letter-spacing: 0.275px;
+  text-transform: uppercase;
+}
+.estimate-builder.estimate-builder .eb-scope-toolbar {
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--estimate-border);
+  background: var(--estimate-surface);
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.estimate-builder.estimate-builder .eb-scope-toolbar-search-wrap {
+  min-width: 100px;
+}
+.estimate-builder.estimate-builder .eb-scope-toolbar :where(input, button, select) {
+  font-size: 11.5px;
+}
+.estimate-builder.estimate-builder .eb-pricing-summary-strip {
+  padding: 16px;
+  width: 100%;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(61, 58, 48, 0.1);
+  border-radius: 10px;
+  box-shadow: var(--estimate-inspector-shadow);
+}
+.estimate-builder.estimate-builder .eb-pricing-inspector-header {
+  padding: 0 0 12px;
+  border-bottom: 1px solid var(--estimate-border);
+}
+.estimate-builder.estimate-builder .eb-pricing-inspector-header h2 {
+  color: var(--estimate-accent-text);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.55px;
+}
+.estimate-builder.estimate-builder .eb-pricing-inspector-tabs {
+  padding: 8px 0;
+}
+.estimate-builder.estimate-builder .eb-pricing-summary-cell {
+  min-height: 32px;
+  padding: 6px 0;
+  border: 0;
+}
+.estimate-builder.estimate-builder .eb-pricing-summary-cell strong {
+  font-size: 13px;
+  font-weight: 500;
+}
+.estimate-builder.estimate-builder .eb-pricing-summary-cell.is-total {
+  border-top: 1px solid var(--estimate-border);
+  margin-top: 12px;
+  padding-top: 16px;
+}
+.estimate-builder.estimate-builder .eb-pricing-summary-cell.is-total strong {
+  font-size: 24px;
+  font-weight: 600;
+}
+.estimate-builder.estimate-builder .eb-pricing-payment-card {
+  padding: 16px 0 0;
+  margin-top: 16px;
+  border-top: 1px solid var(--estimate-border);
+}
+.estimate-builder.estimate-builder .eb-scope-section-header {
+  border: 0;
+  border-bottom: 1px solid var(--estimate-border);
+  border-radius: 0;
+  min-height: 54px;
+  padding: 10px 16px;
+  background: var(--estimate-surface-hover);
+}
+.estimate-builder.estimate-builder .eb-scope-section-header--collapsed {
+  background: var(--estimate-surface);
+}
+.estimate-builder.estimate-builder .eb-section-header-chip {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 21px;
+}
+.estimate-builder.estimate-builder .eb-scope-section-lines {
+  border: 0;
+  border-radius: 0;
+  background: var(--estimate-surface);
+}
+.estimate-builder.estimate-builder .eb-category-group {
+  margin: 0;
+}
+.estimate-builder.estimate-builder .eb-line-item-card {
+  padding: 10px 16px;
+  min-height: 0;
+  border: 0;
+  border-bottom: 1px solid var(--estimate-border);
+  border-radius: 0;
+  background: var(--estimate-surface);
+  box-shadow: none;
+}
+.estimate-builder.estimate-builder .eb-line-item-card:hover {
+  background: var(--estimate-surface-hover);
+  box-shadow: none;
+}
+.estimate-builder.estimate-builder .eb-line-item-card:has([data-stitch-selected]) {
+  background: var(--estimate-surface-selected);
+  box-shadow: inset 2.5px 0 var(--estimate-accent);
+}
+.estimate-builder.estimate-builder .eb-v3-continuous-section {
+  padding: 16px;
+  margin: 0;
+  border-top: 1px solid var(--estimate-border);
+}
+.estimate-builder.estimate-builder .eb-proposal-scope-work-card {
+  position: relative;
+}
+.estimate-stitch-inspect-trigger {
+  position: absolute;
+  top: 0;
+  right: -12px;
+  width: 24px;
+  height: 24px;
+  color: var(--estimate-accent);
+  z-index: 1;
+  opacity: 0;
+}
+.eb-proposal-scope-work-card:hover > .estimate-stitch-inspect-trigger,
+.estimate-stitch-inspect-trigger:focus-visible {
+  opacity: 1;
+}
+.estimate-stitch-selected-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 0;
+}
+.estimate-stitch-selected-row > button {
+  display: grid;
+  gap: 4px;
+  text-align: left;
+  min-width: 0;
+}
+.estimate-stitch-selected-row strong {
+  font-weight: 500;
+}
+.estimate-stitch-selected-row span {
+  color: var(--estimate-text-secondary);
+}
+.estimate-stitch-item-inspector > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--estimate-border);
+}
+.estimate-stitch-item-inspector h2 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.55px;
+  color: var(--estimate-accent-text);
+}
+.estimate-stitch-item-inspector > header button {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11.5px;
+  color: var(--estimate-text-secondary);
+}
+.estimate-stitch-item-inspector .estimate-stitch-inspector-fields {
+  padding-top: 16px;
+}
+.estimate-stitch-item-inspector .estimate-stitch-inspector-fields .estimate-stitch-inspect-trigger {
+  display: none;
+}
+.estimate-builder.estimate-builder
+  .estimate-stitch-item-inspector
+  .estimate-stitch-inspector-fields
+  .eb-line-item-grid--pricing {
+  display: flex !important;
+  flex-direction: column;
+  gap: 16px;
+  align-items: stretch;
+}
+.estimate-builder.estimate-builder
+  .estimate-stitch-item-inspector
+  .estimate-stitch-inspector-fields
+  .eb-line-item-item-cell {
+  display: block !important;
+}
+.estimate-stitch-item-inspector .estimate-stitch-inspector-fields .eb-line-item-index-control {
+  display: none !important;
+}
+.estimate-builder.estimate-builder
+  .estimate-stitch-item-inspector
+  .estimate-stitch-inspector-fields
+  :where(.eb-line-title-label, .eb-read-label, .eb-line-total-label) {
+  display: block !important;
+  font-size: 10.5px;
+  line-height: 16px;
+  text-transform: uppercase;
+  color: var(--estimate-text-secondary);
+}
+.estimate-builder.estimate-builder
+  .estimate-stitch-item-inspector
+  .estimate-stitch-inspector-fields
+  :where(.eb-line-title-input-wrap, .eb-line-item-description-block) {
+  width: 100%;
+  grid-area: auto !important;
+}
+.estimate-builder.estimate-builder
+  .estimate-stitch-item-inspector
+  .estimate-stitch-inspector-fields
+  .eb-line-item-pricing-wrap {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr 1fr !important;
+  gap: 6px !important;
+}
+.estimate-builder.estimate-builder
+  .estimate-stitch-item-inspector
+  .estimate-stitch-inspector-fields
+  .eb-line-qty-unit-group {
+  display: contents !important;
+}
+.estimate-builder.estimate-builder
+  .estimate-stitch-item-inspector
+  .estimate-stitch-inspector-fields
+  :where(.eb-line-pricing-qty, .eb-line-pricing-measure, .eb-line-pricing-unit) {
+  display: flex !important;
+  flex-direction: column;
+  grid-area: auto !important;
+  gap: 4px;
+  min-width: 0;
+}
+.estimate-builder.estimate-builder
+  .estimate-stitch-item-inspector
+  .estimate-stitch-inspector-fields
+  .eb-line-pricing-total-col {
+  display: flex !important;
+  grid-column: 1 / -1 !important;
+  grid-row: 2 !important;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--estimate-surface-hover);
+  border: 1px solid var(--estimate-border);
+  border-radius: 6px;
+  padding: 10px;
+}
+.estimate-builder.estimate-builder
+  .estimate-stitch-item-inspector
+  .estimate-stitch-inspector-fields
+  input {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--estimate-border) !important;
+  background: var(--estimate-surface) !important;
+  min-height: 34px !important;
+  padding: 4px 8px !important;
+  font-size: 12px;
+}
+.estimate-builder.estimate-builder .estimate-stitch-inspector-done {
+  width: 100%;
+  min-height: 32px;
+  border-radius: 6px;
+  margin-top: 16px;
+}
+.estimate-stitch-running-total {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  border-top: 1px solid var(--estimate-border);
+  margin-top: 16px;
+  padding-top: 12px;
+  font-size: 11.5px;
+}
+@media (min-width: 1200px) {
+  .estimate-builder.estimate-builder .eb-estimate-workbench.eb-estimate-workbench--v3 {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) var(--estimate-inspector-width) !important;
+    align-items: start;
+    column-gap: 16px;
+  }
+  .estimate-builder.estimate-builder .eb-estimate-workbench--v3 > .eb-pricing-summary-strip {
+    grid-column: 2 !important;
+    grid-row: 2 !important;
+    position: sticky;
+    top: calc(var(--estimate-command-height, 118px) + 16px);
+    align-self: start;
+  }
+  .estimate-builder.estimate-builder .eb-estimate-workbench--v3 > .eb-v3-worksheet-flow {
+    grid-column: 1 !important;
+    grid-row: 2 !important;
+  }
+  .estimate-builder.estimate-builder
+    .eb-estimate-workbench--v3
+    > .eb-estimate-details-summary-section,
+  .estimate-builder.estimate-builder .eb-estimate-workbench--v3 > .eb-estimate-template-tool {
+    grid-column: 1 / -1 !important;
+    grid-row: 1 !important;
+  }
+  .estimate-builder.estimate-builder .eb-line-item-grid--pricing {
+    grid-template-columns: 24px minmax(0, 1fr) 48px 44px 76px 90px 28px !important;
+    gap: 4px 8px;
+    align-items: center;
+  }
+  .estimate-builder.estimate-builder .eb-line-item-item-cell {
+    display: contents !important;
+  }
+  .estimate-builder.estimate-builder .eb-line-item-index-control {
+    grid-column: 1 !important;
+    grid-row: 1 / 3 !important;
+  }
+  .estimate-builder.estimate-builder .eb-line-title-input-wrap {
+    grid-column: 2 !important;
+    grid-row: 1 !important;
+  }
+  .estimate-builder.estimate-builder .eb-line-item-grid--pricing > .eb-line-item-description-block {
+    grid-column: 2 !important;
+    grid-row: 2 !important;
+  }
+  .estimate-builder.estimate-builder .eb-line-item-grid--pricing .eb-line-item-pricing-wrap,
+  .estimate-builder.estimate-builder .eb-line-item-grid--pricing .eb-line-qty-unit-group,
+  .estimate-builder.estimate-builder .eb-line-item-grid--pricing .eb-line-pricing-total-col {
+    display: contents !important;
+  }
+  .estimate-builder.estimate-builder .eb-line-pricing-qty {
+    grid-column: 3 !important;
+    grid-row: 1 / 3 !important;
+  }
+  .estimate-builder.estimate-builder .eb-line-pricing-measure {
+    grid-column: 4 !important;
+    grid-row: 1 / 3 !important;
+  }
+  .estimate-builder.estimate-builder .eb-line-pricing-unit {
+    grid-column: 5 !important;
+    grid-row: 1 / 3 !important;
+  }
+  .estimate-builder.estimate-builder .eb-line-total-block {
+    grid-column: 6 !important;
+    grid-row: 1 / 3 !important;
+  }
+  .estimate-builder.estimate-builder .eb-line-item-more-trigger {
+    grid-column: 7 !important;
+    grid-row: 1 / 3 !important;
+  }
+  .estimate-builder.estimate-builder
+    .eb-line-item-grid--pricing
+    :where(.eb-read-label, .eb-line-title-label, .eb-line-total-label) {
+    display: none;
+  }
+  .estimate-builder.estimate-builder .eb-line-item-grid-header {
+    display: grid;
+    grid-template-columns: 24px minmax(0, 1fr) 48px 44px 76px 90px 28px;
+    gap: 8px;
+    padding: 8px 16px;
+    color: var(--estimate-text-secondary);
+    font-size: 10.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.525px;
+  }
+  .estimate-builder.estimate-builder .eb-line-item-grid-header > span:nth-child(3) {
+    display: none;
+  }
+  .estimate-builder.estimate-builder .eb-line-item-grid--pricing input {
+    font-size: 13px;
+    font-weight: 400;
+    min-height: 28px;
+  }
+}
+@media (max-width: 1023px) {
+  .estimate-builder.estimate-builder .eb-estimate-workbench {
+    padding: 12px;
+  }
+  .estimate-builder.estimate-builder .eb-pricing-summary-strip {
+    position: static;
+  }
+  .estimate-stitch-inspect-trigger {
+    opacity: 1;
+    width: 44px;
+    height: 44px;
+    right: 0;
+  }
+}
+@media (max-width: 767px) {
+  .estimate-builder.estimate-builder .eb-estimate-command-bar {
+    padding: 12px;
+  }
+  .estimate-builder.estimate-builder .eb-estimate-command-title {
+    font-size: 20px;
+    line-height: 26px;
+  }
+  .estimate-builder.estimate-builder :where(button, input, select) {
+    min-height: 44px;
+  }
+  .estimate-builder.estimate-builder input {
+    font-size: 16px;
+  }
+}
+@media (forced-colors: active) {
+  .estimate-builder.estimate-builder :focus-visible {
+    outline: 2px solid Highlight;
+  }
+  .estimate-stitch-data-row[data-stitch-selected] {
+    border-left: 2px solid Highlight;
+  }
+}
+
+/* Remove superseded full-height inspector and boxed worksheet geometry. */
+.estimate-builder.estimate-builder .eb-pricing-summary-strip {
+  min-height: 0;
+  min-width: 0;
+}
+.estimate-builder.estimate-builder .eb-estimate-workbench {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  overflow: visible;
+}
+.estimate-builder.estimate-builder .eb-pricing-summary-main {
+  display: block;
+}
+.estimate-builder.estimate-builder .eb-pricing-summary-cell {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.estimate-builder.estimate-builder .eb-pricing-payment-status {
+  color: var(--estimate-success);
+  background: #e8f5e9;
+  border-color: var(--estimate-border);
+}
+@media (min-width: 1200px) {
+  .estimate-builder.estimate-builder .eb-estimate-command-copy {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    column-gap: 14px;
+    row-gap: 8px;
+  }
+  .estimate-builder.estimate-builder .eb-estimate-command-copy > div {
+    display: contents;
+  }
+  .estimate-builder.estimate-builder .eb-estimate-command-title-row {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .estimate-builder.estimate-builder .eb-estimate-command-context {
+    grid-column: 1 / -1;
+    margin: 0;
+  }
+}
+
+.estimate-builder.estimate-builder .eb-pricing-summary-strip {
+  height: auto !important;
+  align-self: start !important;
+}
+.estimate-builder.estimate-builder .eb-section-header-chip {
+  background: transparent;
+  box-shadow: none;
+  border-color: transparent;
+}
+.estimate-builder.estimate-builder .eb-scope-section-lines {
+  padding: 0;
+  gap: 0;
+}
+.estimate-builder.estimate-builder .eb-line-item-card {
+  margin: 0;
+  width: 100%;
+  box-shadow: none;
+}
+.estimate-builder.estimate-builder .eb-line-item-card .eb-line-measure-input {
+  padding-inline: 2px !important;
+  min-width: 0;
+  width: 100%;
+  text-overflow: clip;
+}
+.estimate-builder.estimate-builder .eb-estimate-command-backlink {
+  display: inline-flex;
+}
+.estimate-builder.estimate-builder .estimate-stitch-item-inspector .eb-proposal-scope-work-card {
+  box-shadow: none;
+}
+.estimate-builder.estimate-builder .estimate-stitch-item-inspector .eb-line-total-block {
+  grid-area: auto !important;
+}
+.estimate-builder.estimate-builder .estimate-stitch-item-inspector .eb-line-item-more-trigger {
+  grid-area: auto !important;
+}
+.estimate-builder.estimate-builder
+  .estimate-stitch-item-inspector
+  .eb-line-item-pricing-wrap
+  input {
+  border: 1px solid var(--estimate-border) !important;
+  background: var(--estimate-surface) !important;
+  padding: 4px 8px !important;
+}
+.estimate-stitch-selected-row > button[aria-pressed] {
+  flex: 1;
+}
+.estimate-stitch-selected-pricing {
+  display: grid;
+  grid-template-columns: 48px 44px 76px 90px;
+  gap: 8px;
+  align-items: center;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.estimate-stitch-selected-pricing > span {
+  color: var(--estimate-text-primary);
+}
+.estimate-builder.estimate-builder .eb-pricing-summary-strip:has(.estimate-stitch-item-inspector) {
+  display: block !important;
+}
+@media (max-width: 1199px) {
+  .estimate-builder.estimate-builder
+    .eb-estimate-workbench--v3
+    > .eb-pricing-summary-strip:has(.estimate-stitch-item-inspector) {
+    grid-column: 1 / -1 !important;
+    grid-row: auto !important;
+    position: static;
+  }
+  .estimate-stitch-selected-row {
+    flex-wrap: wrap;
+  }
+  .estimate-stitch-selected-pricing {
+    width: 100%;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.estimate-stitch-workspace-tabs {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  margin: 12px -24px -12px;
+  padding: 0 24px;
+  min-height: 40px;
+  border-top: 1px solid var(--estimate-border);
+  font-size: 12px;
+}
+.estimate-stitch-workspace-tabs > :is(button, a, span) {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  color: var(--estimate-text-secondary);
+  border-bottom: 2px solid transparent;
+}
+.estimate-stitch-workspace-tabs [aria-current="page"] {
+  color: var(--estimate-text-primary);
+  border-bottom-color: var(--estimate-accent);
+  font-weight: 500;
+}
+.estimate-stitch-workspace-tabs > :is(button, a):hover {
+  color: var(--estimate-accent-text);
+}
+@media (max-width: 767px) {
+  .estimate-stitch-workspace-tabs {
+    margin-inline: -12px;
+    padding-inline: 12px;
+    gap: 20px;
+  }
+}
+
+/* A wrapped toolbar must grow, and the stacked workbench must use one column. */
+.estimate-builder.estimate-builder .eb-scope-toolbar {
+  height: auto;
+  flex-wrap: wrap;
+}
+@media (max-width: 1199px) {
+  .estimate-builder.estimate-builder .eb-estimate-workbench.eb-estimate-workbench--v3 {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  .estimate-builder.estimate-builder .eb-estimate-workbench--v3 > .eb-v3-worksheet-flow,
+  .estimate-builder.estimate-builder .eb-estimate-workbench--v3 > .eb-pricing-summary-strip {
+    grid-column: 1 / -1 !important;
+    grid-row: auto !important;
+  }
+}
+@media (max-width: 1199px) {
+  .estimate-builder.estimate-builder
+    .estimate-stitch-item-inspector
+    .estimate-stitch-inspector-fields
+    :is(input, button, [role="combobox"]) {
+    min-height: 44px !important;
+  }
+}
+@media (max-width: 767px) {
+  .estimate-builder.estimate-builder
+    .estimate-stitch-item-inspector
+    .estimate-stitch-inspector-fields
+    input {
+    font-size: 16px;
+  }
+}
+
+/* Keep a single interactive row presentation across all Stitch widths. */
+.estimate-builder.estimate-builder .eb-scope-builder-region > .estimate-legacy-mobile-rows {
+  display: none !important;
+}
+.estimate-builder.estimate-builder .eb-scope-builder-region > .estimate-stitch-rows {
+  display: block !important;
+}
+.estimate-builder.estimate-builder .eb-scope-builder-region > .eb-scope-sections-list {
+  display: flex !important;
+}
+.estimate-builder.estimate-builder
+  .estimate-stitch-item-inspector
+  .estimate-stitch-inspector-fields
+  input[aria-invalid="true"] {
+  border-color: var(--estimate-danger) !important;
+}
+@media (max-width: 1199px) {
+  .estimate-builder.estimate-builder .estimate-stitch-inspector-done,
+  .estimate-stitch-item-inspector > header button {
+    min-height: 44px;
+  }
+}
+.estimate-stitch-running-total {
+  flex-direction: column;
+}
+.estimate-stitch-running-total > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* Keep Estimate menus above the success notification without changing other routes. */
+body:has([data-integrated-estimate-workspace="true"])
+  [data-hh-portal-host]
+  .eb-glass-command[role="listbox"] {
+  z-index: 260;
+}
+
+/* ZIP code.html: natural-height rows, seven real HH columns (no mock GET field). */
+.estimate-builder.estimate-builder.estimate-builder .eb-line-item-card {
+  padding: 0;
+  min-height: 0;
+  border-bottom: 1px solid var(--estimate-divider);
+  background: var(--estimate-surface);
+}
+.estimate-builder.estimate-builder.estimate-builder .eb-line-item-card:hover {
+  background: var(--estimate-row-hover);
+}
+.estimate-builder.estimate-builder.estimate-builder .eb-line-item-card:has([data-stitch-selected]) {
+  background: var(--estimate-surface-selected);
+  box-shadow: inset 2.5px 0 var(--estimate-accent);
+}
+.estimate-stitch-data-row {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) 60px 48px 92px 110px 36px;
+  align-items: center;
+  min-height: 42px;
+  color: var(--estimate-text-primary);
+}
+.estimate-stitch-row-drag {
+  grid-column: 1;
+  text-align: center;
+}
+.estimate-stitch-data-row > button {
+  grid-column: 2;
+  padding: 8px 14px;
+  min-width: 0;
+  text-align: left;
+  font-size: 13px;
+  line-height: 1.625;
+  overflow-wrap: anywhere;
+}
+.estimate-stitch-data-row > button > strong,
+.estimate-stitch-data-row > button > span {
+  display: block;
+  font-weight: 400;
+}
+.estimate-stitch-data-row .estimate-stitch-selected-pricing {
+  display: contents;
+}
+.estimate-stitch-data-row .estimate-stitch-selected-pricing > * {
+  padding: 8px;
+  color: var(--estimate-text-primary);
+  text-align: right;
+  font-size: 14px;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+.estimate-stitch-data-row .estimate-stitch-selected-pricing > :nth-child(2) {
+  text-align: center;
+  font-size: 12px;
+}
+.estimate-stitch-data-row .estimate-stitch-selected-pricing > strong {
+  padding-inline: 14px;
+  font-weight: 500;
+}
+.estimate-stitch-row-actions {
+  grid-column: 7;
+}
+.estimate-builder.estimate-builder.estimate-builder .eb-line-item-grid-header {
+  grid-template-columns: 36px minmax(0, 1fr) 60px 48px 92px 110px 36px;
+  gap: 0;
+  padding: 0;
+  height: 32px;
+  min-height: 32px;
+  background: var(--estimate-surface);
+  border-bottom: 1px solid var(--estimate-divider);
+}
+.estimate-builder.estimate-builder.estimate-builder .eb-line-item-grid-header > span {
+  padding-inline: 8px;
+}
+.estimate-builder.estimate-builder.estimate-builder .eb-line-item-grid-header > span:nth-child(2),
+.estimate-builder.estimate-builder.estimate-builder .eb-line-item-grid-header > span:nth-child(7) {
+  padding-inline: 14px;
+}
+.estimate-builder.estimate-builder.estimate-builder .eb-scope-section-header {
+  background: var(--estimate-row-hover);
+  min-height: 51px;
+  padding: 10px 16px;
+  box-shadow: none;
+}
+.estimate-builder.estimate-builder.estimate-builder .eb-scope-section-header--collapsed {
+  background: var(--estimate-surface);
+  padding-block: 12px;
+}
+.estimate-builder.estimate-builder.estimate-builder .eb-section-header-chip {
+  font-size: 13.5px;
+  font-weight: 600;
+}
+.estimate-builder.estimate-builder.estimate-builder .eb-scope-block-total {
+  font-size: 15px;
+  font-weight: 600;
+}
+.estimate-builder.estimate-builder.estimate-builder
+  .eb-scope-section-header
+  button[aria-label^="Add line to"] {
+  white-space: nowrap;
+  min-width: 62px;
+}
+.estimate-builder.estimate-builder.estimate-builder .eb-estimate-command-bar {
+  min-height: 0;
+  padding: 12px 24px;
+  backdrop-filter: blur(12px) saturate(108%);
+  box-shadow: var(--estimate-inspector-shadow);
+}
+.estimate-builder.estimate-builder.estimate-builder .eb-estimate-command-actions :is(button, a) {
+  border: 1px solid var(--estimate-border);
+  min-height: 32px;
+  height: 32px;
+  font-size: 12px;
+}
+.estimate-builder.estimate-builder.estimate-builder .eb-pricing-summary-strip {
+  backdrop-filter: blur(12px) saturate(108%);
+}
+.estimate-builder.estimate-builder.estimate-builder
+  .estimate-stitch-inspector-fields
+  .eb-line-item-grid--pricing {
+  gap: 12px;
+}
+.estimate-builder.estimate-builder.estimate-builder .estimate-stitch-inspector-fields textarea {
+  width: 100%;
+  min-height: 63px;
+  height: auto;
+  resize: vertical;
+  background: rgba(250, 245, 233, 0.3);
+  padding: 6px 8px;
+  border: 1px solid var(--estimate-border);
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 1.375;
+}
+.estimate-builder.estimate-builder.estimate-builder
+  .estimate-stitch-inspector-fields
+  .eb-line-total-block {
+  display: flex !important;
+  align-items: center;
+  justify-content: space-between;
+  flex: 1;
+  gap: 8px;
+}
+.estimate-builder.estimate-builder.estimate-builder
+  .estimate-stitch-inspector-fields
+  .eb-line-total-label {
+  font-size: 11.5px;
+  text-transform: none;
+}
+.estimate-builder.estimate-builder.estimate-builder
+  .estimate-stitch-inspector-fields
+  .eb-line-pricing-total-col {
+  background: var(--estimate-row-hover);
+}
+@media (max-width: 1199px) {
+  .estimate-stitch-data-row {
+    grid-template-columns: 36px minmax(0, 1fr) 56px 44px 84px 100px 44px;
+  }
+}
+@media (max-width: 767px) {
+  .estimate-stitch-data-row {
+    grid-template-columns: 36px minmax(0, 1fr) 44px;
+  }
+  .estimate-stitch-data-row > button {
+    padding: 10px 8px;
+    min-height: 44px;
+  }
+  .estimate-stitch-row-actions {
+    grid-column: 3;
+    grid-row: 1;
+  }
+  .estimate-stitch-data-row .estimate-stitch-selected-pricing {
+    display: grid;
+    grid-column: 2;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    padding-bottom: 8px;
+  }
+  .estimate-stitch-data-row .estimate-stitch-selected-pricing > * {
+    padding: 0;
+    font-size: 12px;
+  }
+  .estimate-stitch-data-row .estimate-stitch-selected-pricing > strong {
+    padding: 0;
+  }
+  .estimate-builder.estimate-builder.estimate-builder .eb-estimate-command-bar {
+    padding: 12px;
+  }
+  .estimate-builder.estimate-builder.estimate-builder .eb-estimate-command-actions :is(button, a) {
+    height: 44px;
+  }
+  .estimate-builder.estimate-builder.estimate-builder .estimate-stitch-inspector-fields textarea {
+    font-size: 16px;
+  }
+}
+
+/* Real header controls occupy the ZIP's 40px navigation/tool row. */
+.estimate-builder.estimate-builder.estimate-builder .eb-estimate-command-bar {
+  height: auto !important;
+}
+.estimate-builder.estimate-builder.estimate-builder .eb-estimate-command-layout {
+  height: auto;
+  min-height: 52px;
+  align-items: center;
+}
+.estimate-builder.estimate-builder.estimate-builder .eb-estimate-command-copy {
+  display: block;
+}
+.estimate-builder.estimate-builder.estimate-builder .eb-estimate-command-copy > div {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.estimate-builder.estimate-builder.estimate-builder .eb-estimate-command-title-row {
+  min-height: 24px;
+  gap: 12px;
+  flex-wrap: nowrap;
+}
+.estimate-builder.estimate-builder.estimate-builder .eb-estimate-command-title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.estimate-builder.estimate-builder.estimate-builder .eb-estimate-command-backlink {
+  min-height: 24px;
+  height: 24px;
+  min-width: 0;
+  gap: 4px;
+  font-size: 12.5px;
+}
+.estimate-builder.estimate-builder.estimate-builder .eb-estimate-command-backlink svg {
+  display: block;
+}
+.estimate-builder.estimate-builder.estimate-builder .eb-estimate-command-backlink::after {
+  content: none;
+}
+.estimate-stitch-header-divider {
+  width: 1px;
+  height: 16px;
+  background: var(--estimate-border);
+  flex-shrink: 0;
+}
+.estimate-builder.estimate-builder.estimate-builder .eb-estimate-command-context {
+  gap: 4px 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  font-size: 11.5px;
+}
+.eb-estimate-command-context-chip {
+  padding: 2px 8px;
+  background: var(--estimate-surface-hover);
+  border: 1px solid var(--estimate-border);
+  border-radius: 4px;
+  color: var(--estimate-text-primary);
+  flex-shrink: 0;
+  font-size: 11px;
+}
+.estimate-stitch-header-nav-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 12px -24px -12px;
+  padding: 0 24px;
+  border-top: 1px solid var(--estimate-border);
+  min-height: 40px;
+}
+.estimate-stitch-header-nav-row .estimate-stitch-workspace-tabs {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  flex-shrink: 0;
+}
+.estimate-stitch-toolbar-host {
+  min-width: 0;
+}
+.estimate-builder.estimate-builder.estimate-builder
+  .estimate-stitch-toolbar-host
+  .eb-scope-toolbar {
+  margin: 0;
+  padding: 0;
+  min-height: 40px;
+  border: 0;
+  background: transparent;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+.estimate-builder.estimate-builder.estimate-builder
+  .estimate-stitch-toolbar-host
+  .eb-scope-toolbar-search-wrap {
+  width: 140px;
+  flex: 0 1 140px;
+  min-width: 90px;
+}
+.estimate-builder.estimate-builder.estimate-builder
+  .estimate-stitch-toolbar-host
+  .eb-scope-toolbar
+  :is(button, input, select) {
+  min-height: 28px;
+  height: 28px;
+}
+.estimate-builder.estimate-builder.estimate-builder
+  .estimate-stitch-inspector-fields
+  .eb-line-total-block {
+  flex-direction: row;
+  min-height: 20px;
+}
+.estimate-builder.estimate-builder.estimate-builder
+  .estimate-stitch-inspector-fields
+  .eb-line-total-label {
+  width: auto;
+  text-align: left;
+}
+.estimate-builder.estimate-builder.estimate-builder
+  .estimate-stitch-inspector-fields
+  .eb-line-total-amount {
+  width: auto;
+  min-height: 20px;
+  font-size: 14px;
+  font-weight: 500;
+}
+.estimate-builder.estimate-builder.estimate-builder .eb-scope-section-header-row {
+  min-width: 0;
+  flex: 1;
+}
+.estimate-builder.estimate-builder.estimate-builder .eb-scope-section-header-meta {
+  flex: 0 0 auto;
+}
+@media (min-width: 1200px) {
+  .estimate-builder.estimate-builder.estimate-builder .eb-estimate-command-actions :is(button, a) {
+    min-height: 32px !important;
+  }
+}
+@media (max-width: 1199px) {
+  .estimate-stitch-header-nav-row {
+    flex-wrap: wrap;
+    gap: 4px 16px;
+  }
+  .estimate-stitch-toolbar-host {
+    flex: 1 1 400px;
+  }
+  .estimate-builder.estimate-builder.estimate-builder
+    .estimate-stitch-toolbar-host
+    .eb-scope-toolbar {
+    flex-wrap: wrap;
+  }
+}
+@media (max-width: 767px) {
+  .estimate-stitch-header-nav-row {
+    margin-inline: -12px;
+    padding-inline: 12px;
+  }
+  .estimate-builder.estimate-builder.estimate-builder .eb-estimate-command-title-row {
+    gap: 8px;
+  }
+  .estimate-builder.estimate-builder.estimate-builder .eb-estimate-command-context {
+    flex-wrap: wrap;
+  }
+  .estimate-builder.estimate-builder.estimate-builder
+    .estimate-stitch-toolbar-host
+    .eb-scope-toolbar
+    :is(button, input, select) {
+    min-height: 44px;
+    height: 44px;
+  }
+  .estimate-builder.estimate-builder.estimate-builder .eb-estimate-command-backlink {
+    min-height: 44px;
+  }
+}
+
+.estimate-builder.estimate-builder.estimate-builder .eb-scope-section-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.estimate-builder.estimate-builder.estimate-builder .eb-scope-section-header-row {
+  display: flex;
+  gap: 10px;
+}
+.estimate-builder.estimate-builder.estimate-builder .eb-scope-section-header-meta {
+  display: flex;
+  gap: 12px;
+}
+.estimate-builder.estimate-builder.estimate-builder
+  .eb-scope-section-header
+  .eb-section-header-chip {
+  min-width: 0;
+  flex: 1;
+}
+.estimate-builder.estimate-builder.estimate-builder
+  .eb-scope-section-header
+  .eb-scope-section-item-count {
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+.estimate-builder.estimate-builder.estimate-builder
+  .eb-scope-section-header
+  .eb-scope-section-add-line {
+  padding: 4px;
+  width: 28px;
+  min-width: 28px;
+  min-height: 28px;
+  height: 28px;
+}
+.estimate-builder.estimate-builder.estimate-builder
+  .eb-scope-section-header
+  .eb-scope-section-add-line
+  > span {
+  display: none;
+}
+.estimate-builder.estimate-builder.estimate-builder
+  .eb-scope-section-header
+  .eb-scope-section-add-line
+  > svg {
+  display: block;
+}
+.estimate-builder.estimate-builder.estimate-builder .eb-pricing-summary-strip .eb-read-label {
+  letter-spacing: 0.25px;
+}
+.estimate-builder.estimate-builder.estimate-builder .eb-line-item-reorder-handle {
+  background: transparent;
+}
+@media (min-width: 1200px) {
+  .estimate-builder.estimate-builder.estimate-builder
+    .eb-estimate-workbench--v3:not(
+      :has(> .eb-estimate-details-summary-section, > .eb-estimate-template-tool)
+    )
+    > :is(.eb-pricing-summary-strip, .eb-v3-worksheet-flow) {
+    grid-row: 1 !important;
+  }
+}
+@media (max-width: 767px) {
+  .estimate-builder.estimate-builder.estimate-builder .eb-scope-section-header {
+    flex-wrap: wrap;
+    padding: 10px 12px;
+  }
+  .estimate-builder.estimate-builder.estimate-builder
+    .eb-scope-section-header
+    .eb-scope-section-add-line {
+    width: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    height: 44px;
+  }
+}
+
+@media (min-width: 1200px) {
+  [data-estimate-sidebar-search] > input {
+    width: 100%;
+    height: 30px;
+    padding: 6px 8px 6px 27px;
+    border: 1px solid #e2e5e8;
+    border-radius: 6px;
+    background: var(--estimate-surface-hover);
+    font-family: var(--estimate-font);
+    font-size: 11.5px;
+    color: var(--estimate-text-primary);
+  }
+  [data-estimate-sidebar-search] > input::placeholder {
+    color: var(--estimate-text-secondary);
+  }
+  [data-estimate-sidebar-search] > svg {
+    position: absolute;
+    left: 8px;
+    top: 8px;
+    width: 14px;
+    height: 14px;
+    color: var(--estimate-text-secondary);
+    pointer-events: none;
+  }
+  [data-estimate-sidebar-search] > input:focus-visible {
+    outline: 2px solid var(--estimate-accent);
+    outline-offset: 1px;
+  }
+  [data-estimate-sidebar-search] .eb-scope-search-results {
+    position: absolute;
+    top: 36px;
+    left: 0;
+    width: 280px;
+    max-height: 320px;
+    overflow: auto;
+    background: var(--estimate-surface);
+    color: var(--estimate-text-primary);
+    border: 1px solid var(--estimate-border);
+    border-radius: 6px;
+    padding: 4px;
+    box-shadow: var(--estimate-inspector-shadow);
+    z-index: 260;
+  }
+  [data-estimate-sidebar-search] .eb-scope-search-result {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 2px;
+    width: 100%;
+    min-height: 36px;
+    padding: 6px 8px;
+    text-align: left;
+    border-radius: 4px;
+    font-size: 11.5px;
+  }
+  [data-estimate-sidebar-search] .eb-scope-search-result:is(:hover, .is-active) {
+    background: var(--estimate-surface-selected);
+  }
+  [data-estimate-sidebar-search] .eb-scope-search-empty {
+    padding: 8px;
+    font-size: 11.5px;
+  }
+}
+
+/* Sidebar geometry uses the ZIP values while keeping HH's real navigation/identity. */
+@media (min-width: 1200px) {
+}
+
+/* Canonical Stitch composition in every state; legacy full-height grid tracks must not stretch empty scope. */
+.estimate-builder .estimate-workspace.estimate-workspace {
+  min-height: 0;
+  align-content: start;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--estimate-inspector-width);
+  align-items: start;
+  gap: 16px;
+  padding: 20px;
+  margin: 0;
+}
+.estimate-builder .estimate-workspace.estimate-workspace > .eb-v3-worksheet-flow {
+  grid-column: 1 !important;
+  grid-row: 1 !important;
+  padding: 0;
+  gap: 0;
+}
+.estimate-builder .estimate-workspace.estimate-workspace > .eb-pricing-summary-strip {
+  grid-column: 2 !important;
+  grid-row: 1 !important;
+  margin: 0;
+  padding: 16px;
+}
+.estimate-workspace-sheet {
+  min-width: 0;
+  border: 1px solid var(--estimate-border);
+  border-radius: 10px;
+  background: var(--estimate-surface);
+  box-shadow: var(--estimate-shadow);
+  overflow: clip;
+}
+.estimate-workspace-intro {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px;
+  border-bottom: 1px solid var(--estimate-divider);
+}
+.estimate-workspace-intro h2 {
+  margin: 0;
+  color: var(--estimate-text-secondary);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.525px;
+  text-transform: uppercase;
+}
+.estimate-workspace-intro p {
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 1.625;
+}
+.estimate-workspace-intro button {
+  flex-shrink: 0;
+  min-height: 28px;
+  border: 1px solid var(--estimate-border);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 11px;
+  background: var(--estimate-surface);
+}
+.estimate-builder .estimate-workspace :is(.estimate-workspace-scope, .eb-scope-work-panel) {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+}
+.estimate-workspace-notes {padding: 16px;border-top: 1px solid var(--estimate-divider);
+}
+.estimate-workspace-notes .eb-notes-header {
+  display: none;
+}
+.estimate-workspace-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.estimate-workspace-summary[hidden] {
+  display: none;
+}
+.estimate-workspace-financials {
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--estimate-divider);
+}
+.estimate-workspace-total-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--estimate-text-secondary);
+  font-size: 10.5px;
+  text-transform: uppercase;
+}
+.estimate-workspace-total-label h2 {
+  font-size: inherit;
+  font-weight: 600;
+  letter-spacing: 0.525px;
+}
+.estimate-workspace-grand-total {
+  display: block;
+  margin-top: 4px;
+  font-size: 30px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.75px;
+  font-variant-numeric: tabular-nums;
+}
+.estimate-workspace-costs {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 20px;
+}
+.estimate-builder .estimate-workspace .estimate-workspace-cost-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  background: none;
+}
+.estimate-builder .estimate-workspace .estimate-workspace-cost-row span {
+  font-size: 12px;
+  font-weight: 400;
+  text-transform: none;
+}
+.estimate-builder .estimate-workspace .estimate-workspace-cost-row strong {
+  font-size: 12px;
+  font-weight: 500;
+}
+.estimate-workspace-text-action {
+  color: var(--estimate-accent-text);
+  font-size: 11.5px;
+  margin-top: 12px;
+  text-align: left;
+}
+.estimate-workspace-disclosure {
+  border-bottom: 1px solid var(--estimate-divider);
+  padding-bottom: 12px;
+}
+.estimate-workspace-disclosure:last-child {
+  border: 0;
+  padding-bottom: 0;
+}
+.estimate-workspace-disclosure > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  cursor: pointer;
+  list-style: none;
+  padding: 4px 0;
+}
+.estimate-workspace-disclosure > summary strong,
+.estimate-workspace-disclosure > strong {
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.estimate-workspace-disclosure > summary small {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--estimate-text-secondary);
+}
+.estimate-workspace-presentation {
+  font-size: 11.5px;
+  line-height: 1.5;
+  padding-top: 8px;
+  color: var(--estimate-text-secondary);
+}
+.estimate-workspace-payment {
+  padding-top: 10px;
+  min-width: 0;
+}
+.estimate-builder .estimate-workspace-payment :is(.eb-payment-schedule, .eb-v3-continuous-section) {
+  padding: 0;
+  margin: 0;
+  border: 0;
+  box-shadow: none;
+}
+.estimate-workspace-payment .eb-payment-title,
+.estimate-workspace-payment .eb-payment-subtitle {
+  display: none;
+}
+.estimate-builder .estimate-workspace-payment :is(.eb-payment-stat-label, .eb-payment-stat-value) {
+  font-size: 11.5px;
+}
+.estimate-workspace-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.estimate-workspace :is(summary, button):focus-visible {
+  outline: 2px solid var(--estimate-accent);
+  outline-offset: 2px;
+}
+@media (max-width: 1199px) {
+  .estimate-builder .estimate-workspace.estimate-workspace {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 16px 16px 200px;
+  }
+  .estimate-builder .estimate-workspace.estimate-workspace > .eb-pricing-summary-strip {
+    display: block !important;
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+    position: static;
+  }
+  .estimate-builder .estimate-workspace.estimate-workspace > .eb-v3-worksheet-flow {
+    grid-column: 1 !important;
+    grid-row: 2 !important;
+  }
+  .estimate-workspace
+    :is(summary, .estimate-workspace-text-action, .estimate-workspace-intro button) {
+    min-height: 44px;
+  }
+}
+@media (max-width: 767px) {
+  .estimate-builder .estimate-workspace.estimate-workspace {
+    padding: 12px 12px 220px;
+    gap: 12px;
+  }
+  .estimate-workspace-intro {
+    flex-wrap: wrap;
+  }
+}
+.estimate-workspace-cost-row {
+  min-height: 0;
+  margin: 0;
+  line-height: 18px;
+}
+.estimate-builder .estimate-workspace .eb-scope-workspace-grid {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 0;
+  margin: 0;
+}
+.estimate-workspace-add-section {
+  padding: 12px 16px;
+  border-top: 1px solid var(--estimate-divider);
+}
+.estimate-builder .estimate-workspace-add-section button[aria-label="Add scope section"] {
+  width: 100%;
+  min-height: 36px;
+  justify-content: center;
+  border: 1px dashed var(--estimate-border-strong);
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--estimate-text-secondary);
+}
+
+.estimate-builder .estimate-workspace-payment .eb-payment-schedule-stats {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding: 12px 0;
+}
+.estimate-builder .estimate-workspace-payment .eb-payment-stat-value {
+  font-size: 12px;
+  line-height: 18px;
+  overflow-wrap: anywhere;
+}
+.estimate-workspace-mobile-total {
+  position: fixed;
+  inset-inline: 0;
+  bottom: calc(3.5rem + env(safe-area-inset-bottom));
+  z-index: 40;
+  padding: 8px 12px;
+  border-top: 1px solid var(--estimate-border);
+  background: var(--estimate-surface);
+}
+
+.estimate-builder .estimate-workspace-section-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 16px;
+  border-top: 1px solid var(--estimate-divider);
+  background: var(--estimate-surface-hover);
+}
+.estimate-builder .estimate-workspace-section-actions > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  border: 1px solid var(--estimate-border);
+  border-radius: 6px;
+  padding: 4px 10px;
+  background: var(--estimate-surface);
+  font-size: 11.5px;
+}
+.estimate-builder .estimate-workspace-section-actions > button:hover {
+  background: var(--estimate-surface-hover);
+}
+.estimate-builder
+  .estimate-workspace-payment
+  .eb-payment-stat-label:first-child
+  .eb-payment-stat-value {
+  font-size: 12px;
+  line-height: 18px;
+}
+@media (max-width: 1199px) {
+  .estimate-builder .estimate-workspace-section-actions > button {
+    min-height: 44px;
+  }
+}
+
+/* Core entry stays in the row; only extended details use the inspector. */
+.estimate-builder .estimate-inline-row {
+  padding: 4px 0;
+}
+.estimate-inline-description {
+  grid-column: 2;
+  min-width: 0;
+  padding: 0 6px;
+}
+.estimate-builder .estimate-inline-row input {
+  width: 100%;
+  min-width: 0;
+  height: 34px;
+  border: 1px solid transparent;
+  background: transparent;
+  border-radius: 4px;
+  padding: 4px 6px;
+  font-size: 13px;
+  color: var(--estimate-text-primary);
+}
+.estimate-inline-pricing,
+.estimate-inline-pricing .eb-line-qty-unit-group,
+.estimate-inline-pricing .eb-line-field-stack-contents,
+.estimate-inline-pricing .eb-line-pricing-total-col,
+.estimate-inline-pricing .eb-line-total-block {
+  display: contents !important;
+}
+.estimate-inline-pricing .eb-read-label,
+.estimate-inline-pricing button {
+  display: none !important;
+}
+.estimate-inline-pricing .eb-line-qty-input {
+  grid-column: 3;
+  text-align: right;
+}
+.estimate-inline-pricing .eb-line-measure-input {
+  grid-column: 4;
+}
+.estimate-inline-pricing .eb-line-unit-input {
+  grid-column: 5;
+  text-align: right;
+}
+.estimate-inline-pricing .eb-line-pricing-total {
+  grid-column: 6;
+  text-align: right;
+  padding: 8px;
+  font-variant-numeric: tabular-nums;
+}
+.estimate-inline-row > .estimate-inline-actions {
+  grid-column: 7;
+  padding: 8px;
+}
+.estimate-advanced-fields > .eb-line-item-description-block {
+  display: block !important;
+  padding: 12px 16px;
+}
+@media (max-width: 767px) {
+  .estimate-builder .estimate-inline-row {
+    grid-template-columns: 28px minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.4fr) 36px;
+    gap: 6px;
+    padding: 10px 8px;
+  }
+  .estimate-inline-row .estimate-stitch-row-drag {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .estimate-inline-row .estimate-inline-description {
+    grid-column: 2 / 5;
+    grid-row: 1;
+  }
+  .estimate-inline-row > .estimate-inline-actions {
+    grid-column: 5;
+    grid-row: 1;
+  }
+  .estimate-builder .estimate-inline-row input {
+    min-height: 44px;
+    font-size: 16px;
+  }
+  .estimate-inline-pricing .eb-line-qty-input {
+    grid-column: 2;
+    grid-row: 2;
+  }
+  .estimate-inline-pricing .eb-line-measure-input {
+    grid-column: 3;
+    grid-row: 2;
+  }
+  .estimate-inline-pricing .eb-line-unit-input {
+    grid-column: 4;
+    grid-row: 2;
+  }
+  .estimate-inline-pricing .eb-line-pricing-total {
+    grid-column: 2 / 5;
+    grid-row: 3;
+  }
+}
+
+@media (max-width: 767px) {
+  .estimate-inline-pricing .eb-read-label {
+    display: block !important;
+    grid-row: 2;
+    padding: 0 6px;
+    color: var(--estimate-text-secondary);
+    font-size: 10px;
+  }
+  .estimate-inline-pricing .eb-line-qty-label {
+    grid-column: 2;
+  }
+  .estimate-inline-pricing .eb-line-measure-label {
+    grid-column: 3;
+  }
+  .estimate-inline-pricing .eb-line-unit-label {
+    grid-column: 4;
+  }
+  .estimate-inline-pricing .eb-line-total-label {
+    display: none !important;
+  }
+  .estimate-inline-pricing :is(.eb-line-qty-input, .eb-line-measure-input, .eb-line-unit-input) {
+    grid-row: 3;
+  }
+  .estimate-inline-pricing .eb-line-pricing-total {
+    grid-row: 4;
+  }
+}
+
+.estimate-inline-description-details {
+  margin: 2px 6px;
+  font-size: 11px;
+  color: var(--estimate-text-secondary);
+}
+.estimate-inline-description-details > summary {
+  cursor: pointer;
+}
+.estimate-inline-description-details .eb-line-item-description-block {
+  display: block;
+  padding: 8px 0;
+}
+
+/* Independent name + detailed description remain in the left inline entry cell. */
+.estimate-builder .estimate-inline-description > input {
+  font-weight: 600;
+}
+.estimate-inline-description > .eb-line-item-description-block {
+  display: block !important;
+  padding: 0 6px;
+}
+.estimate-inline-description .eb-read-label {
+  display: none;
+}
+.estimate-inline-description .eb-scope-editor-surface {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+.estimate-inline-description .proposal-scope-inline-editor {
+  min-height: 28px;
+  padding: 3px 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--estimate-text-secondary);
+}
+.estimate-inline-description .proposal-scope-inline-editor:empty::before {
+  content: "Add description…";
+  color: var(--estimate-text-muted);
+  pointer-events: none;
+}
+.estimate-inline-description .eb-scope-editor-toolbar {
+  display: none;
+}
+.estimate-inline-description
+  .eb-scope-editor-surface[data-description-active]
+  .eb-scope-editor-toolbar {
+  display: flex;
+}
+@media (max-width: 767px) {
+  .estimate-inline-description .proposal-scope-inline-editor {
+    min-height: 44px;
+    font-size: 16px;
+  }
+}
+.estimate-builder .estimate-inline-row {
+  align-items: start;
+}
+.estimate-stitch-data-row > button > strong {
+  font-weight: 600;
+}
+.estimate-stitch-data-row > button > span {
+  font-size: 12px;
+  color: var(--estimate-text-secondary);
+}
+
+/* Compact estimating rows; presentation only, field/save wiring is unchanged. */
+.estimate-builder.estimate-builder.estimate-builder .estimate-inline-row {
+  min-height: 60px;
+  padding-block: 3px;
+  align-items: start;
+}
+.estimate-builder.estimate-builder.estimate-builder .estimate-inline-row input:not(:focus) {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+.estimate-builder.estimate-builder.estimate-builder
+  .estimate-inline-description
+  .eb-scope-editor-surface {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+}
+.estimate-builder.estimate-builder.estimate-builder
+  .estimate-inline-description
+  .proposal-scope-inline-editor {
+  position: relative;
+  min-height: 24px;
+  padding: 2px 0;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--estimate-text-secondary);
+}
+.estimate-inline-description [data-description-empty] .proposal-scope-inline-editor::before {
+  content: "Add description…";
+  position: absolute;
+  top: 2px;
+  left: 0;
+  color: var(--estimate-text-muted);
+  pointer-events: none;
+}
+.estimate-builder.estimate-builder.estimate-builder
+  .estimate-inline-description
+  .eb-scope-editor-toolbar {
+  display: none !important;
+  min-height: 28px;
+  padding: 1px 0;
+  border: 0;
+  background: transparent;
+  gap: 2px;
+}
+.estimate-builder.estimate-builder.estimate-builder
+  .estimate-inline-description
+  [data-description-active]
+  .eb-scope-editor-toolbar {
+  display: flex !important;
+}
+.estimate-builder.estimate-builder.estimate-builder .eb-line-item-card:has([data-stitch-selected]),
+.estimate-builder .estimate-stitch-data-row[data-stitch-selected] {
+  background-color: color-mix(
+    in srgb,
+    var(--estimate-surface-selected) 3%,
+    var(--estimate-surface)
+  );
+  background-image: linear-gradient(var(--estimate-accent), var(--estimate-accent));
+  background-position: left 8px;
+  background-size: 2px 24px;
+  background-repeat: no-repeat;
+  box-shadow: none;
+}
+.estimate-builder.estimate-builder.estimate-builder .eb-scope-section-header {
+  min-height: 40px;
+  padding: 4px 16px;
+}
+@media (max-width: 767px) {
+  .estimate-builder.estimate-builder.estimate-builder .estimate-inline-row {
+    padding: 8px;
+    gap: 4px;
+  }
+}
+
+/* Inline descriptions retain their natural content height in every edit state. */
+.estimate-builder.estimate-builder.estimate-builder
+  .estimate-inline-description
+  .proposal-scope-inline-editor {
+  height: auto;
+  min-height: 24px;
+  max-height: none;
+  overflow-y: hidden;
+}
+.estimate-builder.estimate-builder.estimate-builder
+  .estimate-inline-description
+  .eb-scope-editor-toolbar {
+  position: static;
+  width: max-content;
+  max-width: 100%;
+  min-height: 26px;
+  padding: 1px 0;
+  gap: 2px;
+  border-top: 1px solid var(--estimate-border);
+  box-shadow: none;
+}
+.estimate-inline-description .eb-scope-editor-done {
+  display: none !important;
+}
+.estimate-builder .estimate-inline-description .eb-scope-editor-format-button {
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  min-height: 24px;
+  padding: 0;
+}
+@media (max-width: 767px) {
+  .estimate-builder .estimate-inline-description .eb-scope-editor-format-button {
+    width: 32px;
+    height: 32px;
+  }
+}
+
+/* Quiet hierarchy shared by the inline Estimate rows. */
+.estimate-builder.estimate-builder.estimate-builder .estimate-inline-description > input {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--estimate-text-primary);
+}
+.estimate-builder.estimate-builder.estimate-builder
+  .estimate-inline-description
+  > input::placeholder {
+  font-weight: 400;
+  color: var(--estimate-text-muted);
+  opacity: 1;
+}
+.estimate-builder.estimate-builder.estimate-builder
+  .estimate-inline-description
+  .proposal-scope-inline-editor
+  :is(ul, ol) {
+  margin-block: 0;
+  padding-inline-start: 1.1em;
+}
+.estimate-builder.estimate-builder.estimate-builder .estimate-inline-pricing input {
+  font-variant-numeric: tabular-nums;
+}
+.estimate-builder.estimate-builder.estimate-builder .eb-scope-section-header-row,
+.estimate-builder.estimate-builder.estimate-builder .eb-scope-section-header-meta {
+  align-items: center;
+}
+.estimate-builder.estimate-builder.estimate-builder
+  .eb-scope-section-header
+  .eb-section-header-chip
+  input {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--estimate-text-primary);
+}
+.estimate-builder.estimate-builder.estimate-builder
+  .eb-scope-section-header
+  :is(.eb-scope-section-item-count, .eb-scope-block-total) {
+  color: var(--estimate-text-secondary);
+  font-size: 12px;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+@media (max-width: 767px) {
+  .estimate-builder.estimate-builder.estimate-builder .estimate-inline-description > input,
+  .estimate-builder.estimate-builder.estimate-builder
+    .estimate-inline-description
+    .proposal-scope-inline-editor {
+    font-size: 16px;
+  }
+  .estimate-builder.estimate-builder.estimate-builder
+    .estimate-inline-description
+    .proposal-scope-inline-editor {
+    line-height: 22px;
+  }
+}
+
+/* Keep the first entry line and numeric baselines aligned without sizing the description. */
+.estimate-builder.estimate-builder.estimate-builder
+  .estimate-inline-description
+  .proposal-scope-inline-editor
+  li {
+  padding-inline-start: 0;
+}
+.estimate-builder.estimate-builder.estimate-builder
+  .estimate-inline-pricing
+  .eb-line-pricing-total {
+  font-weight: 600;
+  text-align: right;
+}
+.estimate-builder.estimate-builder.estimate-builder
+  .eb-scope-section-header
+  :is(.eb-section-header-chip input, .eb-scope-section-item-count, .eb-scope-block-total) {
+  line-height: 20px;
+}
+@media (min-width: 768px) {
+  .estimate-builder.estimate-builder.estimate-builder .estimate-inline-row input {
+    height: 30px;
+    min-height: 30px;
+    padding-block: 4px;
+    font-size: 14px;
+    line-height: 20px;
+  }
+  .estimate-builder.estimate-builder.estimate-builder
+    .estimate-inline-pricing
+    .eb-line-pricing-total {
+    padding-block: 5px;
+    font-size: 14px;
+    line-height: 20px;
+  }
+  .estimate-builder.estimate-builder.estimate-builder
+    .estimate-inline-description
+    .proposal-scope-inline-editor {
+    padding-block: 1px;
+  }
+}
+
+/* Inline entry uses the row selection cue, not nested form-control frames. */
+.estimate-builder.estimate-builder.estimate-builder .estimate-inline-row input,
+.estimate-builder.estimate-builder.estimate-builder
+  .estimate-inline-description
+  :is(
+    .eb-scope-editor-surface,
+    .proposal-scope-inline-editor,
+    .eb-scope-editor-toolbar,
+    .eb-scope-editor-format-button
+  ) {
+  border-color: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+  background: transparent !important;
+}
+.estimate-builder.estimate-builder.estimate-builder
+  .estimate-inline-description
+  :is(
+    .eb-scope-editor-surface,
+    .proposal-scope-inline-editor,
+    .eb-scope-editor-toolbar,
+    .eb-scope-editor-format-button
+  ) {
+  border-width: 0 !important;
+}
+.estimate-builder.estimate-builder.estimate-builder
+  .estimate-inline-description
+  .eb-scope-editor-format-button:is(:hover, :focus-visible) {
+  background: var(--estimate-surface-hover) !important;
+}
+.estimate-builder.estimate-builder.estimate-builder
+  .estimate-inline-description
+  .eb-scope-editor-toolbar {
+  border-top: 1px solid var(--estimate-divider) !important;
+}
+.estimate-builder.estimate-builder.estimate-builder
+  .estimate-inline-description
+  .eb-scope-editor-format-button:focus-visible {
+  text-decoration: underline;
+  box-shadow: inset 0 -1px var(--estimate-accent) !important;
+}
+@media (forced-colors: active) {
+  .estimate-builder.estimate-builder.estimate-builder .estimate-inline-row input:focus,
+  .estimate-builder.estimate-builder.estimate-builder
+    .estimate-inline-description
+    :is(.proposal-scope-inline-editor, .eb-scope-editor-format-button):focus-visible {
+    border-bottom: 1px solid Highlight !important;
+  }
+}
+
+/* Keep inline text fields visually identical before, during and after editing.
+   Explicit states take precedence over the legacy operational input focus rules. */
+.estimate-builder.estimate-builder.estimate-builder .estimate-inline-row input.eb-input,
+.estimate-builder.estimate-builder.estimate-builder
+  .estimate-inline-row
+  input.eb-input:is(:hover, :focus, :focus-visible),
+.estimate-builder.estimate-builder.estimate-builder
+  .estimate-inline-description
+  .eb-scope-editor-surface:focus-within,
+.estimate-builder.estimate-builder.estimate-builder
+  .estimate-inline-description
+  .proposal-scope-inline-editor:is(:hover, :focus, :focus-visible) {
+  border-color: transparent !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  --tw-ring-shadow: 0 0 transparent;
+  --tw-ring-offset-shadow: 0 0 transparent;
+}
+
+/* Section titles remain plain inline text while editing. */
+.estimate-builder.estimate-builder.estimate-builder
+  .eb-scope-section-header
+  .eb-section-header-chip
+  input,
+.estimate-builder.estimate-builder.estimate-builder
+  .eb-scope-section-header
+  .eb-section-header-chip
+  input:is(:hover, :focus, :focus-visible) {
+  border-color: transparent !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  --tw-ring-shadow: 0 0 transparent;
+  --tw-ring-offset-shadow: 0 0 transparent;
+}
+
+/* Independent notes share one lightweight card surface across note categories. */
+.estimate-builder .eb-note-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.estimate-builder .eb-note-cards-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.estimate-builder .eb-note-cards-heading h2 {
+  font-size: 13px;
+  font-weight: 600;
+}
+.estimate-builder .eb-note-cards-heading p,
+.estimate-builder .eb-note-cards-empty {
+  font-size: 12px;
+  color: var(--estimate-text-secondary);
+}
+.estimate-builder .eb-note-card {
+  padding: 8px 12px;
+  border: 1px solid var(--estimate-border);
+  border-radius: 4px;
+  background: var(--estimate-surface);
+}
+.estimate-builder .eb-note-card-heading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.estimate-builder .eb-note-card-heading > input {
+  flex: 1;
+  min-width: 0;
+  height: 28px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--estimate-text-primary);
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+.estimate-builder .eb-note-drag {
+  cursor: grab;
+  color: var(--estimate-text-secondary);
+}
+.estimate-builder .eb-note-rich-surface {
+  margin-left: 20px;
+}
+.estimate-builder .eb-note-rich-body {
+  min-height: 20px;
+  height: auto;
+  padding: 1px 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--estimate-text-secondary);
+}
+.estimate-builder .eb-note-rich-body[data-empty]::before {
+  content: "Add description…";
+  color: var(--estimate-text-muted);
+  pointer-events: none;
+}
+.estimate-builder .eb-note-rich-body :is(p, ul, ol) {
+  margin-block: 0;
+}
+.estimate-builder .eb-note-rich-body ul {
+  list-style: disc;
+  padding-left: 1.25em;
+}
+.estimate-builder .eb-note-rich-body ol {
+  list-style: decimal;
+  padding-left: 1.25em;
+}
+.estimate-builder .eb-note-rich-toolbar {
+  display: flex;
+  gap: 2px;
+  width: max-content;
+  border-top: 1px solid var(--estimate-divider);
+}
+.estimate-builder .eb-note-rich-toolbar button {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  color: var(--estimate-text-secondary);
+}
+.estimate-builder .eb-note-add {
+  align-self: flex-start;
+  gap: 6px;
+}
+@media (max-width: 767px) {
+  .estimate-builder .eb-note-card-heading > input,
+  .estimate-builder .eb-note-rich-body {
+    font-size: 16px;
+    line-height: 22px;
+  }
+  .estimate-builder .eb-note-rich-toolbar button {
+    width: 36px;
+    height: 36px;
+  }
+}
+
+.estimate-builder.estimate-builder.estimate-builder .eb-note-card-heading > input:focus-visible,
+.estimate-builder.estimate-builder.estimate-builder .eb-note-rich-body:focus-visible {
+  outline: none;
+  box-shadow: inset 0 -1px var(--estimate-accent) !important;
+}
+
+/* Payment editing belongs to the document, below scope and notes. */
+.estimate-builder .estimate-workspace-payment-bottom {
+  padding: 16px 20px;
+  border-top: 1px solid var(--estimate-divider);
+}
+.estimate-builder .estimate-payment-inline-editor {
+  width: 100%;
+}
+.estimate-builder .estimate-payment-inline-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 1fr);
+  gap: 8px 16px;
+}
+.estimate-builder .estimate-payment-inline-form > .eb-sheet-field {
+  min-width: 0;
+}
+.estimate-builder .estimate-payment-inline-form input {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+.estimate-builder .estimate-workspace-payment-bottom .eb-payment-milestone-row {
+  border-bottom: 1px solid var(--estimate-divider);
+  border-radius: 0;
+}
+.estimate-builder .estimate-workspace-payment-bottom .eb-payment-schedule-stats {
+  margin-top: 12px;
+  border-top: 1px solid var(--estimate-divider);
+}
+@media (max-width: 767px) {
+  .estimate-builder .estimate-payment-inline-form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .estimate-builder .estimate-workspace-payment-bottom {
+    padding: 12px;
+  }
+}
+
+/* One always-visible inline payment worksheet for new and saved Estimates. */
+.estimate-builder .estimate-inline-payments h3 {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+.estimate-builder .estimate-payment-entry {
+  width: 100%;
+  min-width: 0;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--estimate-divider);
+}
+.estimate-builder .estimate-payment-entry-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 72px 128px 36px;
+  align-items: center;
+  gap: 8px;
+}
+.estimate-builder .estimate-payment-columns {
+  padding: 6px 0;
+  color: var(--estimate-text-secondary);
+  font-size: 11px;
+}
+.estimate-builder .estimate-payment-columns > :nth-child(3) {
+  text-align: right;
+}
+.estimate-builder.estimate-builder .estimate-payment-entry input {
+  min-width: 0;
+  width: 100%;
+  min-height: 32px;
+  padding: 4px 6px;
+  font-size: 13px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 0;
+  box-shadow: none;
+  color: var(--estimate-text-primary);
+}
+.estimate-builder .estimate-payment-entry-fields > input:first-child {
+  font-weight: 600;
+}
+.estimate-builder .estimate-payment-entry-fields > input[type="number"] {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.estimate-builder.estimate-builder .estimate-payment-entry input:focus-visible {
+  outline: none;
+  border-bottom-color: var(--estimate-accent);
+}
+.estimate-builder .estimate-payment-entry-details {
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--estimate-text-secondary);
+}
+.estimate-builder .estimate-payment-entry-details > summary {
+  width: max-content;
+  cursor: pointer;
+  padding: 3px 6px;
+}
+.estimate-builder .estimate-payment-entry-details > label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.estimate-builder .estimate-payment-entry-details input[type="date"] {
+  width: auto;
+}
+.estimate-builder .estimate-payment-actions {
+  position: relative;
+}
+.estimate-builder .estimate-payment-actions > summary {
+  list-style: none;
+  cursor: pointer;
+  min-height: 32px;
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+}
+.estimate-builder .estimate-payment-actions > summary::-webkit-details-marker {
+  display: none;
+}
+.estimate-builder .estimate-payment-actions[open] > div {
+  position: absolute;
+  z-index: 20;
+  right: 0;
+  top: 100%;
+  padding: 6px;
+  border: 1px solid var(--estimate-border);
+  border-radius: 4px;
+  background: var(--estimate-surface);
+  box-shadow: var(--estimate-shadow);
+}
+.estimate-builder .estimate-workspace-payment-bottom .eb-payment-empty-box {
+  display: none;
+}
+.estimate-builder .estimate-workspace-payment-bottom .eb-payment-schedule-stats {
+  padding-block: 10px;
+  font-size: 12px;
+  line-height: 1.8;
+  font-variant-numeric: tabular-nums;
+}
+@media (max-width: 767px) {
+  .estimate-builder .estimate-payment-entry-fields {
+    grid-template-columns: minmax(0, 1fr) 56px 92px 28px;
+    gap: 4px;
+  }
+  .estimate-builder.estimate-builder .estimate-payment-entry input {
+    min-height: 44px;
+    font-size: 16px;
+    padding-inline: 2px;
+  }
+}
+
+/* Compact payment table; fixed-amount and percent fields remain distinct controls. */
+.estimate-builder .estimate-payment-entry-fields {
+  grid-template-columns: 18px minmax(120px, 1fr) 120px 104px 132px 70px 32px;
+  gap: 6px;
+}
+.estimate-builder .estimate-payment-entry {
+  padding-block: 3px;
+}
+.estimate-builder .estimate-payment-entry-fields > input[aria-label="Milestone name"] {
+  font-weight: 600;
+}
+.estimate-builder .estimate-payment-amount-cell label {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px;
+  font-variant-numeric: tabular-nums;
+}
+.estimate-builder .estimate-payment-amount-cell input {
+  text-align: right;
+}
+.estimate-builder.estimate-builder .estimate-payment-percent-cell input {
+  min-height: 20px;
+  padding-block: 0;
+  font-size: 11px;
+  color: var(--estimate-text-secondary);
+}
+.estimate-builder .estimate-payment-percent-cell {
+  font-size: 11px;
+  color: var(--estimate-text-secondary);
+}
+.estimate-builder .estimate-payment-entry-fields select {
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--estimate-text-muted);
+  font-size: 12px;
+}
+.estimate-builder .estimate-payment-drag {
+  color: var(--estimate-text-muted);
+  cursor: grab;
+}
+.estimate-builder .estimate-payment-entry-details {
+  margin-left: 24px;
+}
+.estimate-builder .estimate-payment-columns > span {
+  text-align: left;
+}
+.estimate-builder .estimate-payment-columns > :nth-child(3) {
+  text-align: right;
+}
+@media (max-width: 1100px) {
+  .estimate-builder .estimate-payment-entry-fields {
+    grid-template-columns: 16px minmax(100px, 1fr) 94px 85px 120px 60px 28px;
+    gap: 4px;
+  }
+}
+@media (max-width: 767px) {
+  .estimate-builder .estimate-payment-columns {
+    display: none;
+  }
+  .estimate-builder .estimate-payment-entry-fields {
+    grid-template-columns: 18px minmax(0, 1fr) 100px 28px;
+  }
+  .estimate-builder .estimate-payment-entry-fields > :last-child {
+    grid-column: 4;
+    grid-row: 1;
+  }
+  .estimate-builder .estimate-payment-entry-fields > select {
+    grid-column: 2;
+  }
+  .estimate-builder .estimate-payment-entry-fields > input[type="date"] {
+    grid-column: 2;
+  }
+}
+
+/* Financial values read as a single cell; editing stays in place. */
+.estimate-builder .estimate-payment-entry-fields {
+  grid-template-columns: 18px minmax(110px, 1fr) 164px 108px 126px 64px 30px;
+  align-items: center;
+}
+.estimate-builder .estimate-payment-entry-fields > input[aria-label="Milestone name"] {
+  font-weight: 500;
+  text-overflow: ellipsis;
+}
+.estimate-builder .estimate-payment-entry-fields > input[aria-label="Milestone name"]:focus {
+  text-overflow: clip;
+}
+.estimate-builder .estimate-payment-value-display {
+  width: 100%;
+  text-align: right;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  min-height: 32px;
+}
+.estimate-builder .estimate-payment-value-display > span {
+  color: var(--estimate-text-secondary);
+  font-size: 11px;
+  font-weight: 400;
+}
+.estimate-builder .estimate-payment-amount-edit:not([hidden]) {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.estimate-builder .estimate-payment-amount-edit > label {
+  min-width: 0;
+  flex: 1;
+}
+.estimate-builder .estimate-payment-amount-edit > .estimate-payment-percent-cell {
+  flex: 0 0 52px;
+}
+.estimate-builder .estimate-payment-date-cell button {
+  min-height: 32px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.estimate-builder .estimate-payment-entry-fields select {
+  appearance: none;
+  font-size: 12px;
+  color: var(--estimate-text-secondary);
+  opacity: 1;
+}
+.estimate-builder .estimate-payment-entry-details {
+  display: inline-block;
+  margin-top: 0;
+}
+.estimate-builder .estimate-payment-entry-details[open] {
+  display: block;
+}
+.estimate-builder .estimate-payment-save-feedback {
+  margin-left: 12px;
+  font-size: 10px;
+}
+.estimate-builder.estimate-builder .estimate-workspace-payment-bottom .eb-payment-schedule-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  padding: 10px 0;
+  margin-top: 8px;
+  border-top: 1px solid var(--estimate-divider);
+}
+.estimate-builder .eb-payment-schedule-stats > span {
+  font-size: 11px;
+  color: var(--estimate-text-secondary);
+}
+.estimate-builder .eb-payment-schedule-stats > span > :is(span, strong) {
+  display: block;
+  margin-top: 2px;
+  color: var(--estimate-text-primary);
+  font-size: 13px;
+  font-weight: 500;
+}
+.estimate-builder .estimate-payment-fully-allocated {
+  margin-top: 0;
+  font-size: 11px;
+  color: var(--estimate-success);
+}
+.estimate-builder .estimate-workspace-payment-bottom [data-payment-coverage="reconciled"] {
+  padding: 3px 0;
+  border: 0;
+  background: transparent;
+  font-size: 11px;
+}
+@media (max-width: 1100px) and (min-width: 768px) {
+  .estimate-builder .estimate-payment-entry-fields {
+    grid-template-columns: 16px minmax(100px, 1fr) 140px 90px 110px 56px 28px;
+    gap: 4px;
+  }
+}
+@media (max-width: 767px) {
+  .estimate-builder .estimate-payment-entry-fields {
+    grid-template-columns: 18px minmax(0, 1fr) 138px 28px;
+  }
+  .estimate-builder .estimate-payment-date-cell {
+    grid-column: 2;
+  }
+  .estimate-builder.estimate-builder .estimate-workspace-payment-bottom .eb-payment-schedule-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Static polish: hierarchy and spacing follow the same document rhythm. */
+.estimate-builder.estimate-builder.estimate-builder
+  .eb-scope-section-header
+  .eb-section-header-chip
+  input {
+  font-size: 14px;
+  font-weight: 600;
+}
+.estimate-workspace-summary > .estimate-workspace-costs {
+  padding-top: 0;
+}
+.estimate-workspace-disclosure > strong {
+  display: block;
+}
+.estimate-workspace-disclosure > p {
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--estimate-text-secondary);
+}
+.estimate-builder .estimate-workspace-payment-bottom {
+  container-name: estimate-payment;
+  container-type: inline-size;
+}
+/* Match the actual canvas beside Summary, rather than the browser width. */
+@container estimate-payment (max-width: 680px) {
+  .estimate-builder .estimate-payment-columns {
+    display: none;
+  }
+  .estimate-builder .estimate-payment-entry-fields {
+    grid-template-columns: 18px minmax(0, 1fr) minmax(100px, 140px) 28px;
+    gap: 4px 8px;
+  }
+  .estimate-builder .estimate-payment-entry-fields > :last-child {
+    grid-column: 4;
+    grid-row: 1;
+  }
+  .estimate-builder .estimate-payment-entry-fields > select {
+    grid-column: 2;
+    grid-row: 2;
+  }
+  .estimate-builder .estimate-payment-date-cell {
+    grid-column: 3;
+    grid-row: 2;
+  }
+}
+
+/* Payment notes reuse the scope editor without its full-form chrome. */
+.estimate-builder.estimate-builder.estimate-builder .estimate-payment-entry-details .eb-proposal-scope-editor {
+  min-height: 0 !important;
+  padding: 2px 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+.estimate-builder .estimate-payment-entry-details .eb-proposal-scope-editor > p[aria-hidden] {
+  display: none;
+}
+.estimate-builder.estimate-builder.estimate-builder .estimate-payment-entry-details .eb-proposal-scope-editor > div > div {
+  min-height: 24px;
+  padding-block: 0;
+  background: transparent;
+}
+.estimate-builder .estimate-payment-entry-details .eb-proposal-scope-editor > div > div > span {
+  margin-top: 2px;
+}
+.estimate-builder.estimate-builder.estimate-builder .estimate-payment-entry-details textarea.eb-proposal-scope-field {
+  min-height: 24px !important;
+  max-height: none !important;
+  padding: 2px 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+  font-size: 12px;
+  line-height: 20px;
+  color: var(--estimate-text-secondary);
+}
+@supports (field-sizing: content) {
+  .estimate-builder.estimate-builder.estimate-builder .estimate-payment-entry-details textarea.eb-proposal-scope-field {
+    field-sizing: content;
+    height: auto !important;
+    overflow-y: hidden !important;
+  }
+}
+@media (max-width: 767px) {
+  .estimate-builder.estimate-builder.estimate-builder .estimate-payment-entry-details textarea.eb-proposal-scope-field {
+    font-size: 16px;
+    line-height: 24px;
+  }
+}
+
+/* Header and rows share tracks and horizontal gutters at each canvas width. */
+@container estimate-payment (min-width: 681px) {
+  .estimate-builder .estimate-payment-entry-fields {
+    grid-template-columns: 18px minmax(80px, 1.65fr) minmax(100px, .9fr) minmax(90px, 1fr) minmax(98px, .9fr) minmax(48px, .55fr) 40px;
+    column-gap: 20px;
+  }
+  .estimate-builder .estimate-payment-columns {
+    display: grid;
+  }
+  .estimate-builder .estimate-payment-entry-fields > :last-child {
+    justify-self: end;
+  }
+}
+@container estimate-payment (min-width: 900px) {
+  .estimate-builder .estimate-payment-entry-fields {
+    grid-template-columns: 18px minmax(160px, 1.65fr) minmax(128px, .9fr) minmax(112px, 1fr) minmax(112px, .9fr) minmax(64px, .55fr) 44px;
+    column-gap: 24px;
+  }
+}
+
+/* Terms get a distinct visual start after the right-aligned amount. */
+@container estimate-payment (min-width: 681px) {
+  .estimate-builder .estimate-payment-entry-fields > :nth-child(4) {
+    padding-inline-start: 8px;
+    box-sizing: border-box;
+  }
+}
+@container estimate-payment (min-width: 900px) {
+  .estimate-builder .estimate-payment-entry-fields {
+    grid-template-columns: 18px minmax(160px, 1.55fr) minmax(128px, .9fr) minmax(128px, 1.1fr) minmax(112px, .9fr) minmax(64px, .55fr) 44px;
+  }
+}
+.estimate-builder .estimate-payment-custom-term-edit { font-size: 10px; color: var(--estimate-text-secondary); }
+@container estimate-payment (max-width: 680px) {
+}
+
+/* Estimate schedule: name, independent due date, amount, actions. */
+.estimate-builder .estimate-payment-entry-fields {
+  grid-template-columns: 18px minmax(140px, 1fr) minmax(112px, 148px) minmax(144px, 176px) 40px;
+  column-gap: 24px;
+}
+.estimate-builder .estimate-payment-entry-fields > :nth-child(4) {
+  padding-inline-start: 0;
+}
+.estimate-builder .estimate-payment-columns > :nth-child(3) { text-align: left; }
+.estimate-builder .estimate-payment-columns > :nth-child(4) { text-align: right; }
+@container estimate-payment (min-width: 681px) {
+  .estimate-builder .estimate-payment-columns { display: grid; }
+  .estimate-builder .estimate-payment-date-cell { grid-column: 3; grid-row: 1; }
+  .estimate-builder .estimate-payment-amount-cell { grid-column: 4; grid-row: 1; }
+  .estimate-builder .estimate-payment-entry-fields > :last-child { grid-column: 5; grid-row: 1; }
+}
+@container estimate-payment (max-width: 680px) {
+  .estimate-builder .estimate-payment-columns { display: none; }
+  .estimate-builder .estimate-payment-entry-fields {
+    grid-template-columns: 18px minmax(0, 1fr) minmax(120px, 160px) 28px;
+    column-gap: 8px;
+  }
+  .estimate-builder .estimate-payment-date-cell { grid-column: 2; grid-row: 2; }
+  .estimate-builder .estimate-payment-amount-cell { grid-column: 3; grid-row: 1; }
+  .estimate-builder .estimate-payment-entry-fields > :last-child { grid-column: 4; grid-row: 1; }
+}
+
+/* Shared Estimate description presentation: rich text and plain-text bullet bodies. */
+.estimate-builder.estimate-builder.estimate-builder.estimate-builder
+  :is(.proposal-scope-inline-editor, .eb-note-rich-body, textarea.eb-proposal-scope-field, .eb-description-summary-button) {
+  box-sizing: border-box;
+  min-height: 44px !important;
+  max-height: none !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  line-height: 1.45 !important;
+  color: var(--estimate-text-secondary);
+  overflow-y: hidden !important;
+  overflow-wrap: anywhere;
+}
+.estimate-builder.estimate-builder.estimate-builder.estimate-builder
+  :is(.proposal-scope-inline-editor, .eb-note-rich-body, .eb-description-summary-button) {
+  height: auto !important;
+}
+.estimate-builder.estimate-builder.estimate-builder.estimate-builder
+  :is(.eb-scope-editor-surface, .eb-note-rich-surface, .eb-proposal-scope-editor) {
+  min-height: 0 !important;
+  max-height: none !important;
+  padding: 0 !important;
+  border: 0 !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  margin-top: 6px;
+}
+.estimate-builder.estimate-builder.estimate-builder.estimate-builder
+  :is(.proposal-scope-inline-editor, .eb-note-rich-body) :is(p, ul, ol) {
+  margin-block: 0;
+  line-height: inherit;
+}
+.estimate-builder.estimate-builder.estimate-builder.estimate-builder
+  :is(.proposal-scope-inline-editor, .eb-note-rich-body) :is(ul, ol) {
+  padding-inline-start: 1.25em;
+}
+.estimate-builder.estimate-builder.estimate-builder.estimate-builder
+  :is(.eb-scope-editor-toolbar, .eb-note-rich-toolbar) {
+  position: static;
+  width: max-content;
+  max-width: 100%;
+  min-height: 28px;
+  margin-top: 4px;
+  padding: 0;
+  gap: 2px;
+  border: 0;
+  outline: none;
+  box-shadow: none;
+  background: transparent;
+}
+.estimate-builder .eb-scope-editor-surface:not([data-description-active]) .eb-scope-editor-toolbar {
+  display: none !important;
+}
+.estimate-builder .eb-scope-editor-done {
+  display: none;
+}
+.estimate-builder.estimate-builder.estimate-builder.estimate-builder .eb-description-summary-text {
+  white-space: pre-wrap;
+  overflow: visible;
+  text-overflow: clip;
+}
+@supports (field-sizing: content) {
+  .estimate-builder.estimate-builder.estimate-builder.estimate-builder textarea.eb-proposal-scope-field {
+    field-sizing: content;
+    height: auto !important;
+  }
+}
+
+/* Scope separators: horizontal rhythm without enclosing rows in boxes. */
+.estimate-builder.estimate-builder.estimate-builder .eb-line-item-card {
+  border-bottom: 1px solid var(--estimate-border);
+}
+.estimate-builder.estimate-builder.estimate-builder .eb-scope-section-header {
+  border-top: 1px solid var(--estimate-border-strong);
+  border-bottom: 1px solid var(--estimate-border);
+  background-color: var(--estimate-surface-hover);
+}
+.estimate-builder.estimate-builder.estimate-builder [data-testid="estimate-line-item-grid-header"] {
+  border-bottom: 1px solid var(--estimate-border);
+}
+.estimate-builder.estimate-builder.estimate-builder .estimate-workspace-section-actions {
+  border-top: 1px solid var(--estimate-border);
+  background-color: var(--estimate-surface-hover);
+}
+/* The action strip owns the final divider, avoiding a doubled line. */
+.estimate-builder.estimate-builder.estimate-builder
+  .eb-scope-section-lines:has(+ .estimate-workspace-section-actions) > .eb-line-item-card:last-child {
+  border-bottom: 0;
+}
+.estimate-builder .estimate-workspace-add-section {
+  padding-top: 16px;
+  border-top: 0;
+}
+
+/* One shared frame for the body and its contextual toolbar; reserve geometry at rest. */
+.estimate-builder.estimate-builder.estimate-builder.estimate-builder.estimate-builder
+  :is(.eb-scope-editor-surface, .eb-note-rich-surface, .eb-proposal-scope-editor) {
+  box-sizing: border-box;
+  min-height: 44px !important;
+  padding: 8px !important;
+  border: 1px solid transparent !important;
+  border-radius: 5px !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+.estimate-builder.estimate-builder.estimate-builder.estimate-builder.estimate-builder
+  :is(.eb-scope-editor-surface, .eb-note-rich-surface, .eb-proposal-scope-editor)
+  :is(.proposal-scope-inline-editor, .eb-note-rich-body, textarea.eb-proposal-scope-field) {
+  min-height: 26px !important;
+  border: 0 !important;
+  padding: 0 !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+.estimate-builder.estimate-builder.estimate-builder.estimate-builder.estimate-builder
+  :is(.eb-scope-editor-surface, .eb-note-rich-surface, .eb-proposal-scope-editor)
+  :is(.eb-scope-editor-toolbar, .eb-note-rich-toolbar) {
+  width: 100%;
+  border: 0 !important;
+  border-top: 1px solid var(--estimate-divider) !important;
+  padding-top: 4px;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+.estimate-builder.estimate-builder.estimate-builder.estimate-builder.estimate-builder
+  :is(.estimate-inline-description > input, .eb-line-item-title-control input, .eb-note-card-heading > input) {
+  box-sizing: border-box;
+  height: 34px !important;
+  min-height: 34px !important;
+  padding: 0 8px !important;
+  border: 1px solid transparent !important;
+  border-radius: 5px !important;
+  background: transparent !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+.estimate-builder.estimate-builder.estimate-builder.estimate-builder.estimate-builder
+  :is(.eb-scope-editor-surface, .eb-note-rich-surface, .eb-proposal-scope-editor)
+  :is(.eb-scope-editor-format-button, .eb-note-rich-toolbar button) {
+  border: 0 !important;
+  box-shadow: none !important;
+}
+.estimate-builder.estimate-builder.estimate-builder.estimate-builder.estimate-builder
+  :is(.eb-scope-editor-surface, .eb-note-rich-surface, .eb-proposal-scope-editor):has(:is([contenteditable="true"], textarea:not(:disabled))):hover,
+.estimate-builder.estimate-builder.estimate-builder.estimate-builder.estimate-builder
+  :is(.estimate-inline-description > input, .eb-line-item-title-control input, .eb-note-card-heading > input):not(:disabled):hover {
+  background: var(--estimate-surface-hover) !important;
+}
+.estimate-builder.estimate-builder.estimate-builder.estimate-builder.estimate-builder
+  :is(.eb-scope-editor-surface, .eb-note-rich-surface, .eb-proposal-scope-editor):has(:is([contenteditable="true"], textarea:not(:disabled))):focus-within,
+.estimate-builder.estimate-builder.estimate-builder.estimate-builder.estimate-builder
+  :is(.estimate-inline-description > input, .eb-line-item-title-control input, .eb-note-card-heading > input):not(:disabled):focus {
+  border-color: var(--estimate-border) !important;
+  background: color-mix(in srgb, var(--estimate-surface-selected) 4%, var(--estimate-surface)) !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Payment notes share the customer-note editor without the card drag-handle inset. */
+.estimate-builder .estimate-payment-entry-details .eb-note-rich-surface {
+  margin-left: 0;
+}
+
+/* Shared description primitive: identical geometry, typography and toolbar in all contexts. */
+.estimate-builder.estimate-builder.estimate-builder.estimate-builder.estimate-builder .estimate-description-editor {
+  margin-left: 0;
+  margin-top: 6px;
+  min-width: 0;
+  border-radius: var(--estimate-radius) !important;
+  font-family: var(--estimate-font);
+  transition: border-color 150ms ease-out, background-color 150ms ease-out;
+}
+.estimate-builder.estimate-builder.estimate-builder.estimate-builder.estimate-builder .estimate-description-body {
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1.45 !important;
+  color: var(--estimate-text-secondary);
+  min-height: 26px !important;
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+.estimate-builder.estimate-builder.estimate-builder.estimate-builder.estimate-builder .estimate-description-body[data-empty]::before {
+  content: attr(data-placeholder);
+  color: var(--estimate-text-muted);
+  pointer-events: none;
+}
+.estimate-builder .estimate-description-toolbar button {
+  color: var(--estimate-text-secondary);
+  border-radius: 4px;
+  transition: background-color 150ms ease-out;
+}
+.estimate-builder .estimate-description-toolbar button:hover {
+  background: var(--estimate-surface-hover);
+}
+.estimate-builder .estimate-payment-due-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  width: 100%;
+  text-align: left;
+}
+.estimate-builder .estimate-payment-due-trigger svg { flex-shrink: 0; }
+body:has([data-estimate-module]) .estimate-builder-menu {
+  font-family: var(--estimate-font);
+  font-size: 12px;
+  border-radius: var(--estimate-radius);
+  border-color: var(--estimate-border);
+  box-shadow: var(--estimate-shadow);
+  animation-duration: 150ms;
+}
+.estimate-builder details[open] > div { animation: none; }
+.estimate-builder .estimate-payment-link-warning {
+  border: 0;
+  border-top: 1px solid var(--estimate-divider);
+  background: transparent;
+  color: var(--estimate-text-secondary);
+  padding: 8px 0;
+  font-size: 12px;
+}
+@media (max-width: 767px) {
+  .estimate-builder.estimate-builder.estimate-builder.estimate-builder.estimate-builder .estimate-description-body { font-size: 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .estimate-builder *, body:has([data-estimate-module]) .estimate-builder-menu {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+@media (forced-colors: active) {
+  .estimate-builder.estimate-builder.estimate-builder.estimate-builder.estimate-builder .estimate-description-editor:focus-within,
+  .estimate-builder.estimate-builder.estimate-builder.estimate-builder.estimate-builder :is(input, button, [role="textbox"]):focus-visible {
+    outline: 1px solid Highlight !important;
+    outline-offset: 2px;
+  }
+  .estimate-builder.estimate-builder.estimate-builder.estimate-builder.estimate-builder .estimate-description-editor [role="textbox"]:focus-visible { outline: none !important; }
+}
+
+body:has([data-estimate-module]) .estimate-builder-menu [data-highlighted],
+body:has([data-estimate-module]) .estimate-builder-menu [data-state="checked"] {
+  background: var(--estimate-surface-selected) !important;
+  color: var(--estimate-text-primary) !important;
+}
+.estimate-builder.estimate-builder.estimate-builder .eb-estimate-command-amount { display: none !important; }
+@media (max-width: 1199px) {
+  .estimate-builder.estimate-builder.estimate-builder .eb-estimate-command-layout { align-items: stretch; }
+  .estimate-builder.estimate-builder.estimate-builder .eb-estimate-command-copy { width: 100%; max-width: 100%; }
+  .estimate-builder.estimate-builder.estimate-builder .eb-estimate-command-title-row { flex-wrap: wrap; }
+  .estimate-builder.estimate-builder.estimate-builder .eb-estimate-command-title { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+}

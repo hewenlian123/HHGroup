@@ -1,3 +1,4 @@
+import { lineItemBodyLooksLikeHtml } from "@/lib/sanitize-line-item-html";
 import {
   groupEstimateItemsByCategoryId,
   paymentMilestoneAmount,
@@ -5,7 +6,7 @@ import {
   type EstimateMetaRecord,
   type PaymentScheduleItem,
 } from "@/lib/estimates-db";
-import { splitLineItemDesc } from "@/lib/sanitize-line-item-html";
+import { estimateLineItemText } from "@/lib/sanitize-line-item-html";
 import { LineItemOrScopeBodyPreview } from "@/app/estimates/_components/proposal-scope-preview";
 import { parseProposalScopeLines } from "@/app/estimates/_components/proposal-scope-model";
 import type { DocumentCompanyProfileDTO } from "@/lib/document-company-profile";
@@ -28,6 +29,8 @@ import {
   buildEstimatePageIdentity,
   estimateDocumentIdentity,
   paginateEstimatePaymentSchedule,
+  estimateScopeRowHeight,
+  estimateScopePageBudget,
   type EstimateDocumentIdentity,
 } from "@/app/estimates/_components/estimate-document-pagination";
 
@@ -177,7 +180,7 @@ function ScopeLineItems({
   return (
     <div className="space-y-3">
       {rows.map((row) => {
-        const { title: itemTitle, body } = splitLineItemDesc(row.desc ?? "");
+        const { title: itemTitle, body } = estimateLineItemText(row);
         const unitPrice = formatPdfLineUnitPrice(row, (n) => `$${fmt(n)}`);
         const lineTotal = formatPdfLineTotal(row, (n) => `$${fmt(n)}`);
         return (
@@ -193,7 +196,7 @@ function ScopeLineItems({
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <h4 className="text-[14px] font-semibold leading-snug tracking-[-0.01em] text-zinc-950">
-                      {itemTitle || row.desc}
+                      {itemTitle || "Line item"}
                     </h4>
                     {row.status && row.status !== DEFAULT_LINE_ITEM_STATUS ? (
                       <span className="inline-flex rounded-full bg-zinc-100 px-2 py-0.5 text-[9px] font-medium tracking-[0.05em] text-zinc-600">
@@ -230,7 +233,7 @@ function ScopeLineItems({
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <h4 className="text-[14px] font-semibold leading-snug tracking-[-0.01em] text-zinc-950">
-                    {itemTitle || row.desc}
+                    {itemTitle || "Line item"}
                   </h4>
                   {row.status && row.status !== DEFAULT_LINE_ITEM_STATUS ? (
                     <span className="inline-flex rounded-full bg-zinc-100 px-2 py-0.5 text-[9px] font-medium tracking-[0.05em] text-zinc-600">
@@ -253,6 +256,15 @@ function ScopeLineItems({
 }
 
 function PaymentMilestoneDescription({ text }: { text: string | null | undefined }) {
+  if (text && lineItemBodyLooksLikeHtml(text)) {
+    return (
+      <LineItemOrScopeBodyPreview
+        body={text}
+        variant="print"
+        className="mt-1 text-[13px] leading-[1.5] text-zinc-600"
+      />
+    );
+  }
   const rows = parseProposalScopeLines(text);
   if (rows.length === 0) return null;
 
@@ -293,11 +305,9 @@ function PaymentMilestoneRow({
             {item.title}
           </p>
           {item.description ? <PaymentMilestoneDescription text={item.description} /> : null}
-          {formatEstimatePaymentDueDate(item.dueDate) ? (
-            <p className="mt-1 text-[11px] tabular-nums text-zinc-500">
-              Due: {formatEstimatePaymentDueDate(item.dueDate)}
-            </p>
-          ) : null}
+          <p className="mt-1 text-[11px] tabular-nums text-zinc-500">
+            Due: {formatEstimatePaymentDueDate(item.dueDate) ?? "Upon Completion"}
+          </p>
         </div>
         <p className="shrink-0 pt-0.5 text-right tabular-nums text-[16px] font-semibold tracking-[-0.01em] text-zinc-950">
           ${fmt(amount)}
@@ -335,26 +345,6 @@ type FinalPacketPage = {
   milestones: PaymentScheduleItem[];
   continuation: boolean;
 };
-
-function estimateLineItemPageWeight(row: EstimateItemRow): number {
-  const { title, body } = splitLineItemDesc(row.desc ?? "");
-  const printableBody = body
-    .replace(/<\s*br\s*\/?\s*>/gi, "\n")
-    .replace(/<\s*\/?\s*(?:p|div|li|ul|ol)\b[^>]*>/gi, "\n")
-    .replace(/<[^>]*>/g, "")
-    .replace(/&nbsp;/gi, " ")
-    .replace(/\u2028/g, "\n");
-  const titleLines = Math.max(1, Math.ceil(title.trim().length / 60));
-  const bodyLines = printableBody
-    .split(/\r?\n/)
-    .filter((line) => line.trim())
-    .reduce((total, line) => total + Math.max(1, Math.ceil(line.trim().length / 70)), 0);
-
-  // A row's base accounts for its title line, bullet/grid spacing, and the inter-row gap.
-  // Text is deliberately measured against the narrower Itemized description column, not a
-  // whole-sheet character count, so Proposal and Itemized output share a safe page boundary.
-  return 2 + titleLines + bodyLines;
-}
 
 function scopePageRowCount(page: PaginatedScopeSection[]): number {
   return page.reduce((count, section) => count + section.rows.length, 0);
@@ -396,21 +386,19 @@ function balanceTrailingScopePage(pages: PaginatedScopeSection[][]): void {
 
 function paginateScopeSections(
   sections: ScopeSection[],
-  preserveFinalSummarySpace: boolean
+  preserveFinalSummarySpace: boolean,
+  showLineAmounts: boolean
 ): PaginatedScopeSection[][] {
   if (sections.length === 0) return [[]];
 
   const pages: PaginatedScopeSection[][] = [];
   let currentPage: PaginatedScopeSection[] = [];
-  let remaining = 36;
+  let remaining = estimateScopePageBudget(true, preserveFinalSummarySpace);
 
   const nextPage = () => {
     if (currentPage.length > 0) pages.push(currentPage);
     currentPage = [];
-    // Itemized rows include a Qty / Unit / Rate block beneath each amount. When the financial
-    // summary follows the final scope page, keep a small continuation-page reserve so the summary
-    // cannot encroach on the shared footer clearance at the exact 50-unit boundary.
-    remaining = preserveFinalSummarySpace ? 48 : 50;
+    remaining = estimateScopePageBudget(false, preserveFinalSummarySpace);
   };
 
   for (const section of sections) {
@@ -418,15 +406,15 @@ function paginateScopeSections(
     let isContinuation = false;
 
     if (section.rows.length === 0) {
-      if (remaining < 4) nextPage();
+      if (remaining < 50) nextPage();
       currentPage.push({ ...section, isContinuation });
-      remaining -= 4;
+      remaining -= 50;
       continue;
     }
 
     while (rowIndex < section.rows.length) {
-      const headerWeight = 4;
-      if (remaining < headerWeight + 3 && currentPage.length > 0) {
+      const headerWeight = 50;
+      if (remaining < headerWeight + 32 && currentPage.length > 0) {
         nextPage();
       }
 
@@ -435,7 +423,8 @@ function paginateScopeSections(
 
       while (rowIndex < section.rows.length) {
         const row = section.rows[rowIndex];
-        const rowWeight = estimateLineItemPageWeight(row);
+        const { title, body } = estimateLineItemText(row);
+        const rowWeight = estimateScopeRowHeight(title, body, showLineAmounts);
         const wouldOverflow = used + rowWeight > remaining;
 
         if (wouldOverflow && pageRows.length > 0) break;
@@ -451,7 +440,7 @@ function paginateScopeSections(
       }
 
       currentPage.push({ ...section, rows: pageRows, isContinuation });
-      remaining -= Math.max(used, headerWeight + 3);
+      remaining -= Math.max(used, headerWeight + 32);
       isContinuation = true;
 
       if (rowIndex < section.rows.length) nextPage();
@@ -475,11 +464,9 @@ function estimateTextLineCount(text: string | null | undefined, charactersPerLin
 function shouldSplitFinalPacket({
   paymentSchedule,
   documentNotes,
-  defaultTerms,
 }: {
   paymentSchedule: PaymentScheduleItem[];
   documentNotes: EstimateMetaRecord["documentNotes"];
-  defaultTerms: string | null | undefined;
 }): boolean {
   const paymentWeight = paymentSchedule.reduce(
     (weight, item) => weight + 3 + estimateTextLineCount(item.description),
@@ -490,10 +477,10 @@ function shouldSplitFinalPacket({
       weight + 2 + estimateTextLineCount(note.title, 60) + estimateTextLineCount(note.body),
     documentNotes.length > 0 ? 4 : 0
   );
-  const termsWeight = defaultTerms ? 2 + estimateTextLineCount(defaultTerms) : 0;
+
   const signatureWeight = 10;
 
-  return paymentWeight + notesWeight + termsWeight + signatureWeight > 38;
+  return paymentWeight + notesWeight + signatureWeight > 38;
 }
 
 export function EstimatePreviewContent({
@@ -523,7 +510,7 @@ export function EstimatePreviewContent({
   const costSections = groupEstimateItemsByCategoryId(items, categories, catalogNameByCode).filter(
     (section) => section.rows.length > 0
   );
-  const scopePages = paginateScopeSections(costSections, Boolean(summary));
+  const scopePages = paginateScopeSections(costSections, Boolean(summary), showLineAmounts);
   const clientName = cleanText(meta?.client.name);
   const clientAddress = cleanText(meta?.client.address);
   const projectName = cleanText(meta?.project.name);
@@ -534,7 +521,6 @@ export function EstimatePreviewContent({
   const splitFinalPacket = shouldSplitFinalPacket({
     paymentSchedule,
     documentNotes,
-    defaultTerms: company.defaultTerms,
   });
   const paymentSchedulePages = paginateEstimatePaymentSchedule(paymentSchedule);
   const finalPacketPages: FinalPacketPage[] = splitFinalPacket
@@ -620,15 +606,6 @@ export function EstimatePreviewContent({
     <>
       {documentNotes.length ? (
         <EstimateNotesPreview notes={documentNotes} className={splitFinalPacket ? "" : "mt-4"} />
-      ) : null}
-
-      {company.defaultTerms ? (
-        <section className="estimate-final-packet-section mt-5">
-          <h2 className="mb-2 text-[11px] font-medium tracking-[0.08em] text-zinc-500">Terms</h2>
-          <p className="whitespace-pre-wrap break-words py-2 text-sm leading-relaxed text-zinc-700">
-            {company.defaultTerms}
-          </p>
-        </section>
       ) : null}
 
       <section

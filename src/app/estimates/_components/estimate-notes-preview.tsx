@@ -1,4 +1,5 @@
 import * as React from "react";
+import { lineItemBodyLooksLikeHtml, sanitizeLineItemDescriptionHtml } from "@/lib/sanitize-line-item-html";
 import { cn } from "@/lib/utils";
 import type { EstimateNoteBlock } from "@/lib/estimate-notes";
 
@@ -34,9 +35,9 @@ export function EstimateNotesPreview({
               {note.title || "Note"}
             </p>
             {note.body.trim() ? (
-              <p className="mt-1.5 whitespace-pre-wrap break-words leading-[1.58] text-zinc-700">
-                {note.body.trim()}
-              </p>
+              lineItemBodyLooksLikeHtml(note.body) ? (
+                <div className="mt-1.5 break-words leading-[1.58] text-zinc-700 [&_ul]:list-disc [&_ol]:list-decimal [&_ul]:pl-5 [&_ol]:pl-5" dangerouslySetInnerHTML={{ __html: sanitizeLineItemDescriptionHtml(note.body) }} />
+              ) : <p className="mt-1.5 whitespace-pre-wrap break-words leading-[1.58] text-zinc-700">{note.body.trim()}</p>
             ) : null}
           </div>
         ))}

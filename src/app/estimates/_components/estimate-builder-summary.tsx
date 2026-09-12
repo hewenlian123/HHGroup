@@ -1,10 +1,12 @@
 "use client";
 
 import * as React from "react";
-import { ChevronDown } from "lucide-react";
+import { estimateInspectorTotal } from "./estimate-line-item-model";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import type { EstimateSummaryResult } from "@/lib/data";
 import { formatEstimateCurrency } from "./estimate-currency";
 import { EB } from "./estimate-builder-ui";
+import { EstimateStitchInspectorContext } from "./estimate-stitch-inspector";
 import { cn } from "@/lib/utils";
 
 const fmt = formatEstimateCurrency;
@@ -20,6 +22,8 @@ export type EstimateBuilderSummaryProps = {
   paymentSummary?: EstimateBuilderPaymentSummary | null;
   onOpenPaymentSchedule?: () => void;
   onOpenDetails?: () => void;
+  onOpenPricing?: () => void;
+  paymentContent?: React.ReactNode;
   className?: string;
   floating?: boolean;
 };
@@ -91,72 +95,85 @@ export function EstimateBuilderSummary({
 export function EstimateBuilderCompactSummary({
   summary,
   paymentSummary = null,
-  onOpenPaymentSchedule,
   onOpenDetails,
+  onOpenPricing,
   className,
 }: EstimateBuilderSummaryProps): React.ReactElement {
+  const inspector = React.useContext(EstimateStitchInspectorContext);
+  const previewTotal = estimateInspectorTotal(summary?.grandTotal, inspector?.pricing ?? null);
   return (
     <section
       className={cn("eb-pricing-summary-strip", className)}
       aria-label="Estimate pricing summary"
       data-estimate-inspector="pricing"
     >
-      <header className="eb-pricing-inspector-header">
-        <h2>Pricing overview</h2>
-      </header>
-
-      <nav className="eb-pricing-inspector-tabs" aria-label="Estimate inspector sections">
-        <span aria-current="page">Overview</span>
-        {onOpenPaymentSchedule ? (
-          <button type="button" onClick={onOpenPaymentSchedule}>
-            Payment
-          </button>
-        ) : null}
-        {onOpenDetails ? (
-          <button type="button" onClick={onOpenDetails}>
-            Details
-          </button>
-        ) : null}
-      </nav>
-
-      <div className="eb-pricing-summary-main">
-        <CompactAmount label="Subtotal" value={summary?.subtotal ?? null} />
-        <CompactAmount
-          label="Discount"
-          value={summary ? (summary.discount > 0 ? -summary.discount : 0) : null}
-        />
-        <CompactAmount label="Tax" value={summary?.tax ?? null} />
-        <CompactAmount label="Total" value={summary?.grandTotal ?? null} total />
-      </div>
-
-      <section className="eb-pricing-payment-card" aria-labelledby="estimate-payment-summary">
-        <div className="eb-pricing-payment-card-header">
-          <h3 id="estimate-payment-summary">Payment summary</h3>
-          {paymentSummary && paymentSummary.milestoneCount > 0 ? (
-            <span className="eb-pricing-payment-status">Scheduled</span>
+      <div className="estimate-workspace-summary">
+        <div className="estimate-workspace-financials">
+          <div className="estimate-workspace-total-label">
+            <h2>Estimate Summary</h2>
+            <span>USD ($)</span>
+          </div>
+          <p className="estimate-workspace-total-label">
+            Grand Total{inspector?.pricing?.adjustment ? " (preview)" : ""}
+          </p>
+          <strong className="estimate-workspace-grand-total">
+            {previewTotal == null ? "—" : fmt(previewTotal)}
+          </strong>
+          <div className="estimate-workspace-costs">
+            <CompactAmount
+              label="Subtotal"
+              value={summary ? summary.subtotal + (inspector?.pricing?.adjustment ?? 0) : null}
+            />
+            <CompactAmount label="Discount" value={summary ? -summary.discount : null} />
+            <CompactAmount label="Tax" value={summary?.tax ?? null} />
+          </div>
+          {onOpenPricing ? (
+            <button
+              type="button"
+              className="estimate-workspace-text-action"
+              onClick={onOpenPricing}
+            >
+              Edit tax &amp; discount
+            </button>
           ) : null}
         </div>
-        {paymentSummary && paymentSummary.milestoneCount > 0 ? (
-          <div className="eb-pricing-payment-card-body">
+        <div className="estimate-workspace-costs" aria-label="Payment allocation summary">
+          <CompactAmount label="Scheduled" value={paymentSummary?.scheduledTotal ?? 0} />
+          <CompactAmount
+            label="Remaining"
+            value={
+              previewTotal == null ? null : previewTotal - (paymentSummary?.scheduledTotal ?? 0)
+            }
+          />
+        </div>
+        <div className="estimate-workspace-disclosure">
+          <strong>Payment Schedule</strong>
+          <p className="text-xs text-muted-foreground">
+            {paymentSummary?.milestoneCount ?? 0} milestones · {previewTotal && previewTotal > 0 ? (((paymentSummary?.scheduledTotal ?? 0) / previewTotal) * 100).toFixed(1) : "0"}% allocated
+          </p>
+        </div>
+        <details className="estimate-workspace-disclosure">
+          <summary>
+            <strong>Client Presentation Rules</strong>
+            <ChevronRight size={16} aria-hidden />
+          </summary>
+          <div className="estimate-workspace-presentation">
             <p>
-              {paymentSummary.milestoneCount} milestone
-              {paymentSummary.milestoneCount === 1 ? "" : "s"}
+              Document style and customer/project details control your client-facing estimate.
+              Individual amounts can be hidden from each item&apos;s menu.
             </p>
-            <p className="eb-pricing-payment-scheduled">
-              <span>Scheduled</span>
-              <strong>{fmt(paymentSummary.scheduledTotal)}</strong>
-            </p>
-            <p className="eb-pricing-payment-scheduled">
-              <span>Remaining</span>
-              <strong>
-                {summary ? fmt(summary.grandTotal - paymentSummary.scheduledTotal) : "—"}
-              </strong>
-            </p>
+            {onOpenDetails ? (
+              <button
+                type="button"
+                className="estimate-workspace-text-action"
+                onClick={onOpenDetails}
+              >
+                Edit document details
+              </button>
+            ) : null}
           </div>
-        ) : (
-          <p className="eb-pricing-payment-empty">No milestones scheduled.</p>
-        )}
-      </section>
+        </details>
+      </div>
     </section>
   );
 }
@@ -168,18 +185,23 @@ export function EstimateBuilderMobileSummary({
   summary: EstimateSummaryResult | null;
   className?: string;
 }): React.ReactElement {
+  const inspector = React.useContext(EstimateStitchInspectorContext);
+  const previewTotal = estimateInspectorTotal(summary?.grandTotal, inspector?.pricing ?? null);
   return (
     <details className={cn("eb-mobile-summary", className)}>
       <summary aria-label="Toggle price breakdown">
         <span className="eb-mobile-summary-label">Total</span>
         <span className={cn("eb-mobile-summary-total", EB.goldTotal)}>
-          {summary ? fmt(summary.grandTotal) : "—"}
+          {previewTotal == null ? "—" : fmt(previewTotal)}
         </span>
         <ChevronDown className="eb-mobile-summary-chevron h-4 w-4" aria-hidden />
       </summary>
       {summary ? (
         <div className="eb-mobile-summary-breakdown">
-          <SummaryLine label="Subtotal" value={summary.subtotal} />
+          <SummaryLine
+            label="Subtotal"
+            value={summary.subtotal + (inspector?.pricing?.adjustment ?? 0)}
+          />
           {summary.discount > 0 ? <SummaryLine label="Discount" value={-summary.discount} /> : null}
           {summary.tax > 0 ? <SummaryLine label="Tax" value={summary.tax} /> : null}
         </div>
@@ -208,7 +230,7 @@ function CompactAmount({
   total?: boolean;
 }): React.ReactElement {
   return (
-    <div className={cn("eb-pricing-summary-cell", total && "is-total")}>
+    <div className={cn("estimate-workspace-cost-row", total && "is-total")}>
       <span>{label}</span>
       <strong>{value === null ? "—" : fmt(value)}</strong>
     </div>

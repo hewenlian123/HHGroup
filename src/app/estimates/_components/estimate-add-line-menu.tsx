@@ -56,12 +56,12 @@ export function EstimateAddLineMenu({
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          className={cn(EB.addLineLink, className)}
+          className={cn("estimate-workspace-preset-action", className)}
           disabled={disabled}
-          aria-label="Add line"
+          aria-label="Add preset item"
         >
           <Plus className="h-3 w-3" aria-hidden />
-          Add line
+          Add Preset Item
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align={align} className={cn(EB.builderPickerMenu, EB.commandMenu)}>

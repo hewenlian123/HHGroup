@@ -82,6 +82,9 @@ export function EstimateTaxPresetMenu({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className={cn(EB.lineItemMoreMenu, EB.commandMenu)}>
+        <p className="max-w-64 px-2 py-2 text-xs text-[var(--hh-text-tertiary)]">
+          Applies a fixed tax amount from the current subtotal. Reapply after scope changes.
+        </p>
         {BUILTIN_ESTIMATE_TAX_PRESETS.map((preset) => (
           <DropdownMenuItem
             key={preset.id}
@@ -198,6 +201,10 @@ export function EstimateDiscountOptionsPopover({
         </Button>
         <div className="border-t border-white/[0.08] pt-2 space-y-1.5">
           <p className="text-hh-status uppercase text-[var(--hh-text-tertiary)]">Percentage %</p>
+          <p className="text-xs text-[var(--hh-text-tertiary)]">
+            Calculated from subtotal plus tax, then saved as a fixed discount. Reapply after pricing
+            changes.
+          </p>
           <div className="flex gap-1.5">
             <Input
               type="number"

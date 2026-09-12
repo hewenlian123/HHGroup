@@ -39,7 +39,7 @@ export function SaveEstimateAsTemplateDialog({
   const [description, setDescription] = React.useState("");
   const [category, setCategory] = React.useState("General");
   const [defaultTaxRate, setDefaultTaxRate] = React.useState("");
-  const [defaultTerms, setDefaultTerms] = React.useState("");
+  
   const [busy, startTransition] = React.useTransition();
 
   React.useEffect(() => {
@@ -53,7 +53,7 @@ export function SaveEstimateAsTemplateDialog({
     fd.set("description", description);
     fd.set("category", category);
     fd.set("defaultTaxRate", defaultTaxRate);
-    fd.set("defaultTerms", defaultTerms);
+    
 
     startTransition(() => {
       void saveEstimateAsTemplateAction(fd).then((result) => {
@@ -130,17 +130,7 @@ export function SaveEstimateAsTemplateDialog({
               />
             </label>
           </div>
-          <label className="block text-xs font-medium text-[var(--hh-text-secondary)]">
-            Default Terms
-            <EstimateAutoResizeTextarea
-              value={defaultTerms}
-              onChange={(event) => setDefaultTerms(event.target.value)}
-              className={cn(FIELD, "mt-1 min-h-[90px] py-2")}
-              minHeight={90}
-              maxHeight={260}
-              placeholder="Optional reusable proposal terms…"
-            />
-          </label>
+          
         </div>
 
         <DialogFooter>

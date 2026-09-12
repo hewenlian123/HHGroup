@@ -11,12 +11,6 @@ import {
 } from "../_components/estimate-currency";
 import { EstimateAutoResizeTextarea } from "../_components/estimate-auto-resize-textarea";
 
-function parseDesc(desc: string): { title: string; description: string } {
-  const idx = desc.indexOf("\n");
-  if (idx < 0) return { title: desc, description: "" };
-  return { title: desc.slice(0, idx), description: desc.slice(idx + 1) };
-}
-
 export function EstimateLineItemRow({
   row,
   estimateId,
@@ -36,23 +30,21 @@ export function EstimateLineItemRow({
   duplicateLineItemAction: (formData: FormData) => Promise<void>;
   deleteLineItemAction: (formData: FormData) => Promise<void>;
 }) {
-  const parsed = React.useMemo(() => parseDesc(row.desc), [row.desc]);
-  const [title, setTitle] = React.useState(parsed.title);
-  const [description, setDescription] = React.useState(parsed.description);
+  const [title, setTitle] = React.useState(row.itemName ?? "");
+  const [description, setDescription] = React.useState(row.desc);
   const [qty, setQty] = React.useState(row.qty);
   const [unit, setUnit] = React.useState(row.unit);
   const [unitCost, setUnitCost] = React.useState(roundEstimateCurrencyValue(row.unitCost));
   const formRef = React.useRef<HTMLFormElement>(null);
 
   React.useEffect(() => {
-    setTitle(parsed.title);
-    setDescription(parsed.description);
+    setTitle(row.itemName ?? "");
+    setDescription(row.desc);
     setQty(row.qty);
     setUnit(row.unit);
     setUnitCost(roundEstimateCurrencyValue(row.unitCost));
-  }, [row.id, row.desc, row.qty, row.unit, row.unitCost, parsed.title, parsed.description]);
+  }, [row.id, row.itemName, row.desc, row.qty, row.unit, row.unitCost]);
 
-  const combinedDesc = description.trim() ? `${title}\n${description}` : title;
   const formId = `line-${row.id}`;
 
   const submitForm = () => {
@@ -64,14 +56,14 @@ export function EstimateLineItemRow({
       <tr className="border-b border-zinc-100/50 dark:border-border/30">
         <td className="py-2 px-4 align-top">
           {isLocked ? (
-            <span className="font-medium text-foreground">{title || row.desc}</span>
+            <span className="font-medium text-foreground">{title || "Line item"}</span>
           ) : (
             <Input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               onBlur={submitForm}
               className="h-8 text-sm"
-              placeholder="Title"
+              placeholder="Item Name"
             />
           )}
         </td>
@@ -175,7 +167,8 @@ export function EstimateLineItemRow({
               >
                 <input type="hidden" name="estimateId" value={estimateId} />
                 <input type="hidden" name="itemId" value={row.id} />
-                <input type="hidden" name="desc" value={combinedDesc} />
+                <input type="hidden" name="itemName" value={title} />
+                <input type="hidden" name="desc" value={description} />
                 <input type="hidden" name="qty" value={qty} />
                 <input type="hidden" name="unit" value={unit} />
                 <input type="hidden" name="unitCost" value={unitCost} />

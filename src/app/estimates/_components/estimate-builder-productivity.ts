@@ -27,7 +27,7 @@ export function isEstimateSaveShortcut(event: KeyboardShortcutLike): boolean {
 
 export function shouldCommitEstimateLineFromPrice(event: KeyboardShortcutLike): boolean {
   return (
-    event.key === "Enter" &&
+    (event.key === "Enter" || event.key === "Tab") &&
     !event.altKey &&
     !event.ctrlKey &&
     !event.metaKey &&

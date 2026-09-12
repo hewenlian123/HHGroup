@@ -1,6 +1,8 @@
 "use client";
 
 import * as React from "react";
+import { estimateInspectorTotal } from "../_components/estimate-line-item-model";
+import { EstimateStitchInspectorContext } from "../_components/estimate-stitch-inspector";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
@@ -134,6 +136,9 @@ export function EstimateDetailHeader({
         ]
       : [];
   const headerUtilityActions = [
+    ...(editing && onEditDetails
+      ? [{ label: "Edit details", action: onEditDetails, Icon: Pencil }]
+      : []),
     { label: "Info", action: onInfoClick, Icon: Info },
     { label: "Pricing", action: onPricingClick, Icon: CircleDollarSign },
     { label: "Notes", action: onNotesClick, Icon: StickyNote },
@@ -154,73 +159,70 @@ export function EstimateDetailHeader({
     Boolean(revisionContext && !revisionContext.isCurrent) ||
     Boolean(onDuplicateClick) ||
     Boolean(onSaveAsTemplateClick);
+  const inspector = React.useContext(EstimateStitchInspectorContext);
+  const previewTotal = estimateInspectorTotal(grandTotal, inspector?.pricing ?? null);
   const visibleSaveStatus = editing && saveStatus === "idle" ? "saved" : saveStatus;
 
   return (
     <EstimateWorkspaceCommandHeader
-      title={estimateNumber}
+      title={projectName?.trim() || estimateNumber}
       revisionLabel={revisionLabel}
       status={status}
-      context={[clientName, projectName, siteAddress]}
+      contextChip={estimateNumber}
+      context={[estimateNumber, clientName, siteAddress]}
       facts={[
         { label: "Estimate date", value: formatHeaderDate(estimateDate) ?? "—" },
         { label: "Valid until", value: formatHeaderDate(validUntil) ?? "—" },
       ]}
-      amount={grandTotal == null ? undefined : formatEstimateCurrency(grandTotal)}
+      amount={previewTotal == null ? undefined : formatEstimateCurrency(previewTotal)}
+      amountLabel={inspector?.pricing?.adjustment ? "Estimate total (preview)" : "Estimate total"}
       saveStatus={editing ? visibleSaveStatus : "idle"}
       reserveSaveStatusSpace={editing}
       testId="estimate-detail-header"
+      navigation={
+        <>
+          <span aria-current="page">Estimate</span>
+          {editing || onPreview ? (
+            <button
+              type="button"
+              disabled={pending}
+              onClick={editing ? onSaveAndPreview : onPreview}
+            >
+              Client View
+            </button>
+          ) : (
+            <Link
+              href={`/estimates/${estimateId}/preview`}
+              aria-disabled={pending || undefined}
+              onClick={(event) => {
+                if (pending) event.preventDefault();
+              }}
+            >
+              Client View
+            </Link>
+          )}
+          {onActivityClick ? (
+            <button type="button" disabled={pending} onClick={onActivityClick}>
+              Activity
+            </button>
+          ) : null}
+        </>
+      }
     >
       <div
         className="eb-estimate-command-actions flex w-full min-w-0 flex-wrap items-center justify-start gap-1.5 max-md:flex-nowrap sm:justify-end xl:w-auto xl:max-w-[68%] xl:flex-nowrap"
         data-testid="estimate-detail-header-actions"
       >
-        {headerUtilityActions.map(({ label, action, Icon }) => (
-          <Button
-            key={label}
-            type="button"
-            variant="outline"
-            size="sm"
-            className={cn(
-              "eb-estimate-header-utility hidden min-h-8 whitespace-nowrap px-2.5 xl:inline-flex",
-              ESTIMATE_HEADER_BUTTON
-            )}
-            disabled={pending}
-            onClick={action}
-          >
-            <Icon className="mr-1.5 h-3.5 w-3.5" aria-hidden />
-            {label}
-          </Button>
-        ))}
-        {editing && onEditDetails ? (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className={cn(
-              "min-h-11 whitespace-nowrap px-4 max-md:flex-1 lg:min-h-8",
-              ESTIMATE_HEADER_BUTTON
-            )}
-            disabled={pending}
-            onClick={onEditDetails}
-          >
-            <Pencil className="mr-2 h-3.5 w-3.5" aria-hidden />
-            Edit details
-          </Button>
-        ) : null}
         {editing ? (
           <Button
             type="button"
             variant="outline"
             size="sm"
-            className={cn(
-              "hidden min-h-11 whitespace-nowrap px-4 lg:inline-flex lg:min-h-8",
-              ESTIMATE_HEADER_BUTTON
-            )}
+            className={cn("min-h-11 whitespace-nowrap px-4 lg:min-h-8", ESTIMATE_HEADER_BUTTON)}
             disabled={pending}
             onClick={onSaveAndPreview}
           >
-            Save &amp; Preview
+            Preview
           </Button>
         ) : (
           <Button
@@ -308,7 +310,7 @@ export function EstimateDetailHeader({
             ) : null}
           </>
         ) : (
-          <div className="hidden lg:contents">
+          <div className="contents">
             <Button
               type="button"
               size="sm"
@@ -400,7 +402,8 @@ export function EstimateDetailHeader({
                 variant="outline"
                 size="sm"
                 className={cn(
-                  "hidden min-h-11 w-11 shrink-0 md:inline-flex md:w-auto md:px-3 lg:min-h-8",
+                  "min-h-11 w-11 shrink-0 md:w-auto md:px-3 lg:min-h-8",
+                  !editing && "hidden md:inline-flex",
                   ESTIMATE_HEADER_BUTTON
                 )}
                 disabled={pending}

@@ -17,18 +17,6 @@ export type EditorLineItem = {
   status: EstimateLineItemStatus;
 };
 
-export function splitLineItemDesc(desc: string): { title: string; description: string } {
-  const i = desc.indexOf("\n");
-  if (i < 0) return { title: desc, description: "" };
-  return { title: desc.slice(0, i), description: desc.slice(i + 1) };
-}
-
-export function combineLineItemDesc(title: string, description: string): string {
-  const t = title.trim();
-  const d = description.trim();
-  return d ? `${t}\n${d}` : t;
-}
-
 export function editorLineTotal(item: EditorLineItem): number {
   return item.qty * item.unitPrice;
 }
@@ -42,12 +30,11 @@ export function editorLineTotalFromParts(qty: number, unitPrice: number): number
 }
 
 export function rowToEditorLineItem(row: EstimateItemRow): EditorLineItem {
-  const { title, description } = splitLineItemDesc(row.desc ?? "");
   return {
     id: row.id,
     costCode: row.costCode,
-    title,
-    description,
+    title: row.itemName ?? "",
+    description: row.desc ?? "",
     qty: row.qty,
     unit: row.unit,
     unitPrice: roundEstimateCurrencyValue(row.unitCost),
@@ -93,4 +80,12 @@ export function lineItemFromPreset(costCode: string, preset: LineItemPresetInput
     hideAmountOnPdf: false,
     status: preset.status ?? DEFAULT_LINE_ITEM_STATUS,
   };
+}
+
+/** Tax and discount are fixed amounts in computeSummary; replace only the selected line delta. */
+export function estimateInspectorTotal(
+  total: number | null | undefined,
+  pricing: { adjustment: number } | null
+): number | null {
+  return total == null ? null : total + (pricing?.adjustment ?? 0);
 }

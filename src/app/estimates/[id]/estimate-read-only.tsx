@@ -7,7 +7,7 @@ import {
 } from "@/lib/data";
 import { ChevronRight } from "lucide-react";
 import { formatEstimateCurrency } from "../_components/estimate-currency";
-import { splitLineItemDesc } from "@/lib/sanitize-line-item-html";
+import { estimateLineItemText } from "@/lib/sanitize-line-item-html";
 import { LineItemOrScopeBodyPreview } from "@/app/estimates/_components/proposal-scope-preview";
 
 export type EstimateReadOnlyPayload = {
@@ -143,11 +143,11 @@ function EstimateSectionReadOnly({
           </thead>
           <tbody>
             {rows.map((row) => {
-              const { title: itemTitle, body } = splitLineItemDesc(row.desc ?? "");
+              const { title: itemTitle, body } = estimateLineItemText(row);
               return (
                 <tr key={row.id} className="border-b border-border/[0.07] last:border-0">
                   <td className="py-2.5 pr-4 align-top">
-                    <p className="font-medium text-foreground">{itemTitle || row.desc}</p>
+                    <p className="font-medium text-foreground">{itemTitle || "Line item"}</p>
                     {body.trim() ? (
                       <div className="mt-0.5 text-xs text-muted-foreground/60">
                         <LineItemOrScopeBodyPreview body={body} variant="compact" maxBullets={4} />

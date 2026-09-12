@@ -4,10 +4,8 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import type { EstimateItemRow } from "@/lib/data";
 import {
-  combineLineItemDesc,
   editorLineTotalFromParts,
   rowToEditorLineItem,
-  splitLineItemDesc,
   type EditorLineItem,
 } from "./estimate-line-item-model";
 import { EstimateLineItemMobileCard } from "./estimate-line-item-mobile-card";
@@ -64,15 +62,14 @@ export function EstimateLineItemPersistedMobile({
   const router = useRouter();
   const { toast } = useToast();
   const { markUnsaved, trackMutation } = useEstimateDocumentSave();
-  const split = splitLineItemDesc(row.desc ?? "");
-  const [title, setTitle] = React.useState(split.title);
-  const [description, setDescription] = React.useState(split.description);
+  const [title, setTitle] = React.useState(row.itemName ?? "");
+  const [description, setDescription] = React.useState(row.desc ?? "");
   const [qty, setQty] = React.useState(row.qty);
   const [unit, setUnit] = React.useState(row.unit);
   const [unitPrice, setUnitPrice] = React.useState(roundEstimateCurrencyValue(row.unitCost));
   const draftRef = React.useRef({
-    title: split.title,
-    description: split.description,
+    title: row.itemName ?? "",
+    description: row.desc ?? "",
     qty: row.qty,
     unit: row.unit,
     unitPrice: roundEstimateCurrencyValue(row.unitCost),
@@ -80,20 +77,19 @@ export function EstimateLineItemPersistedMobile({
   const lineSaveQueueRef = React.useRef(createEstimateSerialMutationQueue());
 
   React.useEffect(() => {
-    const s = splitLineItemDesc(row.desc ?? "");
     draftRef.current = {
-      title: s.title,
-      description: s.description,
+      title: row.itemName ?? "",
+      description: row.desc ?? "",
       qty: row.qty,
       unit: row.unit,
       unitPrice: roundEstimateCurrencyValue(row.unitCost),
     };
-    setTitle(s.title);
-    setDescription(s.description);
+    setTitle(row.itemName ?? "");
+    setDescription(row.desc ?? "");
     setQty(row.qty);
     setUnit(row.unit);
     setUnitPrice(roundEstimateCurrencyValue(row.unitCost));
-  }, [row.id, row.desc, row.qty, row.unit, row.unitCost]);
+  }, [row.id, row.itemName, row.desc, row.qty, row.unit, row.unitCost]);
 
   const item: EditorLineItem = React.useMemo(
     () => ({
@@ -116,7 +112,8 @@ export function EstimateLineItemPersistedMobile({
     const formData = new FormData();
     formData.set("estimateId", estimateId);
     formData.set("itemId", row.id);
-    formData.set("desc", combineLineItemDesc(draft.title, draft.description));
+    formData.set("itemName", draft.title);
+    formData.set("desc", draft.description);
     formData.set("qty", String(draft.qty));
     formData.set("unit", draft.unit);
     formData.set("unitCost", String(draft.unitPrice));

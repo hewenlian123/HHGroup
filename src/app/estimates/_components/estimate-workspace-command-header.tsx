@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { EstimateStitchInspectorContext } from "./estimate-stitch-inspector";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { StatusBadge, type StatusBadgeVariant } from "@/components/base/status-badge";
@@ -25,6 +26,7 @@ export function EstimateWorkspaceCommandHeader({
   revisionLabel,
   status,
   context,
+  contextChip,
   facts,
   amount,
   amountLabel = "Estimate total",
@@ -32,12 +34,14 @@ export function EstimateWorkspaceCommandHeader({
   saveStatus = "idle",
   reserveSaveStatusSpace = false,
   testId,
+  navigation,
   children,
 }: {
   title: string;
   revisionLabel?: string;
   status: string;
   context?: Array<string | null | undefined>;
+  contextChip?: string;
   facts?: Array<{ label: string; value: string | null | undefined }>;
   amount?: string;
   amountLabel?: string;
@@ -45,30 +49,56 @@ export function EstimateWorkspaceCommandHeader({
   saveStatus?: EstimateSaveStatus;
   reserveSaveStatusSpace?: boolean;
   testId?: string;
+  navigation?: React.ReactNode;
   children: React.ReactNode;
 }): React.ReactElement {
+  const inspector = React.useContext(EstimateStitchInspectorContext);
+  const headerRef = React.useRef<HTMLElement>(null);
+  React.useLayoutEffect(() => {
+    const header = headerRef.current;
+    const builder = header?.closest<HTMLElement>(".estimate-builder");
+    if (!header || !builder) return;
+    const updateHeight = () => {
+      builder.style.setProperty(
+        "--estimate-command-height",
+        `${header.getBoundingClientRect().height}px`
+      );
+    };
+    updateHeight();
+    const observer = new ResizeObserver(updateHeight);
+    observer.observe(header);
+    return () => {
+      observer.disconnect();
+      builder.style.removeProperty("--estimate-command-height");
+    };
+  }, []);
   const statusMeta = estimateStatusMeta(status);
-  const contextLabel = context?.filter(Boolean).join(" · ") || contextFallback;
+  const contextLabel =
+    context?.filter((entry) => entry && entry !== contextChip).join(" · ") ||
+    (contextChip ? "" : contextFallback);
   const visibleFacts = facts?.filter((fact) => Boolean(fact.value)) ?? [];
 
   return (
     <header
+      ref={headerRef}
       className="eb-estimate-command-bar border-b border-[var(--hh-border-subtle)] bg-[var(--hh-surface-workspace)] text-[var(--hh-text-primary)]"
       data-testid={testId}
       data-estimate-workspace-header="true"
     >
       <div className="eb-estimate-command-layout flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between xl:gap-6">
         <div className="eb-estimate-command-copy min-w-0 flex-1 space-y-1.5">
-          <Link
-            href="/estimates"
-            className="eb-estimate-command-backlink inline-flex min-h-11 items-center gap-1.5 text-hh-metadata leading-none text-[var(--hh-text-muted)] transition-colors duration-150 hover:text-[var(--hh-accent-hover)] lg:min-h-6"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
-            Estimates
-          </Link>
           <div className="min-w-0 space-y-0.5">
             <div className="eb-estimate-command-title-row flex min-w-0 flex-wrap items-center gap-1.5">
-              <h1 className="eb-estimate-command-title min-w-0 text-hh-page-title text-[var(--hh-text-primary)]">
+              <Link
+                href="/estimates"
+                aria-label="Back to Estimates"
+                className="eb-estimate-command-backlink inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center text-[var(--hh-text-muted)] hover:text-[var(--hh-accent-hover)]"
+              >
+                <ArrowLeft className="h-4 w-4" aria-hidden />
+                <span>Estimates</span>
+              </Link>
+              <span className="estimate-stitch-header-divider" aria-hidden="true" />
+              <h1 className="eb-estimate-command-title min-w-0 text-[24px] text-[var(--hh-text-primary)]">
                 {title}
                 {revisionLabel ? (
                   <span className="eb-estimate-command-revision text-hh-metadata font-medium text-[var(--hh-text-secondary)]">
@@ -77,7 +107,6 @@ export function EstimateWorkspaceCommandHeader({
                   </span>
                 ) : null}
               </h1>
-              <StatusBadge label={statusMeta.label} variant={statusMeta.variant} showDot={false} />
               {amount ? (
                 <span
                   className="eb-estimate-command-amount hh-fin ml-1 text-hh-financial-total text-[var(--hh-text-primary)]"
@@ -88,7 +117,11 @@ export function EstimateWorkspaceCommandHeader({
               ) : null}
             </div>
             <p className="eb-estimate-command-context flex max-w-3xl flex-wrap gap-x-3 gap-y-0.5 overflow-hidden break-words text-hh-metadata leading-snug text-[var(--hh-text-secondary)] [overflow-wrap:anywhere]">
-              <span>{contextLabel}</span>
+              {contextChip ? (
+                <span className="eb-estimate-command-context-chip">{contextChip}</span>
+              ) : null}
+              <StatusBadge label={statusMeta.label} variant={statusMeta.variant} showDot={false} />
+              {contextLabel ? <span>{contextLabel}</span> : null}
               {visibleFacts.length > 0
                 ? visibleFacts.map((fact) => (
                     <span key={fact.label}>
@@ -109,6 +142,12 @@ export function EstimateWorkspaceCommandHeader({
         </div>
 
         {children}
+      </div>
+      <div className="estimate-stitch-header-nav-row">
+        <nav className="estimate-stitch-workspace-tabs" aria-label="Estimate workspace">
+          {navigation ?? <span aria-current="page">Estimate</span>}
+        </nav>
+        <div ref={inspector?.setToolbarHost} className="estimate-stitch-toolbar-host" />
       </div>
     </header>
   );

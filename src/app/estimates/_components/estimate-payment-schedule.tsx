@@ -1,7 +1,7 @@
 "use client";
+import { EstimatePaymentInlineRow, type InlinePaymentValue } from "./estimate-payment-inline-row";
 
 import * as React from "react";
-import { useEstimateSheetFocus } from "./use-estimate-sheet-focus";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -16,27 +16,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
 import type { PaymentScheduleItem, PaymentScheduleTemplate } from "@/lib/data";
 import { paymentMilestoneAmount } from "@/lib/estimate-domain";
-import { ArrowDown, ArrowUp, CheckCircle2, Pencil, Plus, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, CheckCircle2, Copy, Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatEstimateCurrency } from "./estimate-currency";
-import { EB, ebSheetInput } from "./estimate-builder-ui";
-import { estimateSurfaceSheetClassName } from "./estimate-surface-sheet-class";
-import { ProposalScopeEditor } from "./proposal-scope-editor";
-import {
-  parsePaymentPercentInput,
-  paymentAmountFromPercent,
-  paymentPercentFromAmount,
-} from "./estimate-payment-percent";
+import { EB } from "./estimate-builder-ui";
+
+import { paymentRemainingAmount } from "./estimate-payment-percent";
 import {
   ProposalPaymentMilestoneList,
   type ProposalPaymentMilestoneRow,
@@ -63,7 +50,6 @@ type CreateTemplateAction = (
 ) => Promise<{ ok: boolean; templateId?: string; error?: string }>;
 
 const fmt = formatEstimateCurrency;
-const PAYMENT_MILESTONE_FORM_ID = "estimate-payment-milestone-form";
 
 function invoiceDisplayLabel(invoiceNo?: string | null): string {
   const trimmed = invoiceNo?.trim();
@@ -93,6 +79,7 @@ export function EstimatePaymentSchedule(props: {
   };
   canCreateMilestoneInvoices?: boolean;
   nested?: boolean;
+  onSummaryChange?: (summary: { milestoneCount: number; scheduledTotal: number } | null) => void;
   paymentTemplates?: PaymentScheduleTemplate[];
   addPaymentMilestoneAction: AddAction;
   updatePaymentMilestoneAction: UpdateAction;
@@ -112,6 +99,7 @@ export function EstimatePaymentSchedule(props: {
     invoiceContext,
     canCreateMilestoneInvoices = false,
     nested = false,
+    onSummaryChange,
     paymentTemplates = [],
     addPaymentMilestoneAction,
     updatePaymentMilestoneAction,
@@ -125,12 +113,10 @@ export function EstimatePaymentSchedule(props: {
   const router = useRouter();
   const { toast } = useToast();
   const { markUnsaved, trackMutation } = useEstimateDocumentSave();
-  const [scheduleOpen, setScheduleOpen] = React.useState(false);
-  const paymentSheetFocus = useEstimateSheetFocus();
-  const [editingItem, setEditingItem] = React.useState<PaymentScheduleItem | null>(null);
-  const [paymentDescriptionDraft, setPaymentDescriptionDraft] = React.useState("");
-  const [amountDraft, setAmountDraft] = React.useState("");
-  const [percentDraft, setPercentDraft] = React.useState("");
+  const [focusPaymentId, setFocusPaymentId] = React.useState<string | null>(null);
+  const [paymentDrafts, setPaymentDrafts] = React.useState<Record<string, InlinePaymentValue>>({});
+  const pendingAddedIds = React.useRef<Set<string> | null>(null);
+
   const [saveTemplateOpen, setSaveTemplateOpen] = React.useState(false);
   const [templateNameDraft, setTemplateNameDraft] = React.useState("");
   const [templateAmountType, setTemplateAmountType] = React.useState<"percent" | "fixed">(
@@ -168,14 +154,6 @@ export function EstimatePaymentSchedule(props: {
   }, [paymentTemplates, selectedTemplateId]);
 
   React.useEffect(() => {
-    if (!scheduleOpen) return;
-    const amount = editingItem ? paymentMilestoneAmount(editingItem, estimateTotal) : 0;
-    setPaymentDescriptionDraft(editingItem?.description ?? "");
-    setAmountDraft(editingItem ? String(amount) : "");
-    setPercentDraft(editingItem ? paymentPercentFromAmount(amount, estimateTotal) : "");
-  }, [scheduleOpen, editingItem, estimateTotal]);
-
-  React.useEffect(() => {
     const invoiceError = searchParams.get("invoiceError");
     if (!invoiceError) return;
     toast({
@@ -185,29 +163,39 @@ export function EstimatePaymentSchedule(props: {
     });
   }, [searchParams, toast]);
 
-  const openScheduleDrawer = (item?: PaymentScheduleItem) => {
-    setEditingItem(item ?? null);
-    setScheduleOpen(true);
-  };
-
-  const savePaymentMilestone = async (formData: FormData): Promise<void> => {
-    const action = editingItem ? updatePaymentMilestoneAction : addPaymentMilestoneAction;
-    const result = await runPaymentMutation(() => {
-      markUnsaved();
-      return trackMutation(`payment:${editingItem?.id ?? "new"}`, () => action(formData));
-    });
-    if (!result) return;
-    if (result.ok) {
-      setScheduleOpen(false);
-      setEditingItem(null);
-      router.refresh();
-      return;
+  React.useEffect(() => {
+    if (!pendingAddedIds.current) return;
+    const added = paymentSchedule.find((item) => !pendingAddedIds.current?.has(item.id));
+    if (added) {
+      pendingAddedIds.current = null;
+      setFocusPaymentId(added.id);
     }
-    toast({
-      title: "Save failed",
-      description: result.error ?? "Could not save this payment milestone.",
-      variant: "error",
-    });
+  }, [paymentSchedule]);
+
+  const addInlinePayment = async (): Promise<void> => {
+    if (isLocked || paymentMutationBusy || pendingAddedIds.current) return;
+    pendingAddedIds.current = new Set(paymentSchedule.map((item) => item.id));
+    const data = new FormData();
+    data.set("estimateId", estimateId);
+    data.set("title", "Payment");
+    data.set("amount", "0");
+    try {
+      const result = await runPaymentMutation(() => {
+        markUnsaved();
+        return trackMutation("payment:new", () => addPaymentMilestoneAction(data));
+      });
+      if (!result?.ok) {
+        pendingAddedIds.current = null;
+        toast({
+          title: "Add payment failed",
+          description: result?.error ?? "Please try again.",
+          variant: "error",
+        });
+      } else router.refresh();
+    } catch {
+      pendingAddedIds.current = null;
+      toast({ title: "Add payment failed", description: "Please try again.", variant: "error" });
+    }
   };
 
   const deletePaymentMilestone = async (item: PaymentScheduleItem): Promise<void> => {
@@ -305,54 +293,175 @@ export function EstimatePaymentSchedule(props: {
   };
 
   const totalScheduled = paymentSchedule.reduce(
-    (sum, item) => sum + paymentMilestoneAmount(item, estimateTotal),
+    (sum, item) => sum + paymentMilestoneAmount(paymentDrafts[item.id] ?? item, estimateTotal),
     0
   );
   const remaining = estimateTotal - totalScheduled;
   const isOverallocated = remaining < -0.005;
-  const isReconciled = Math.abs(remaining) < 0.005;
-  const allocationPct = estimateTotal > 0 ? (totalScheduled / estimateTotal) * 100 : 0;
-  const amountNumber = Number(amountDraft);
-  const amountPercentDisplay = paymentPercentFromAmount(
-    Number.isFinite(amountNumber) ? amountNumber : 0,
-    estimateTotal
-  );
-  const paymentPercentHelper =
-    estimateTotal <= 0
-      ? "Add scope pricing first to use percentages."
-      : amountDraft.trim() && amountPercentDisplay
-        ? Number(amountPercentDisplay) > 100
-          ? "Exceeds estimate total."
-          : `${amountPercentDisplay}% of ${fmt(estimateTotal)}`
-        : null;
-  const editingAmount = editingItem ? paymentMilestoneAmount(editingItem, estimateTotal) : 0;
-  const projectedAmount = Number.isFinite(amountNumber) ? amountNumber : 0;
-  const projectedRemaining = estimateTotal - (totalScheduled - editingAmount + projectedAmount);
-  const draftOverallocated = projectedRemaining < -0.005;
 
-  const handleAmountChange = (value: string): void => {
-    setAmountDraft(value);
-    const n = Number(value);
-    setPercentDraft(Number.isFinite(n) ? paymentPercentFromAmount(n, estimateTotal) : "");
-  };
+  React.useEffect(() => {
+    onSummaryChange?.({ milestoneCount: paymentSchedule.length, scheduledTotal: totalScheduled });
+  }, [onSummaryChange, paymentSchedule.length, totalScheduled]);
 
-  const handlePercentChange = (value: string): void => {
-    setPercentDraft(value);
-    const pct = parsePaymentPercentInput(value);
-    if (pct == null) {
-      setAmountDraft("");
-      return;
+  const renderPaymentActions = (m: ProposalPaymentMilestoneRow) => {
+    const item = paymentSchedule.find((x) => x.id === m.id);
+    if (!item) return null;
+    if (isLocked) {
+      if (item.invoiceId) {
+        const invoice = invoiceSummaries[item.invoiceId];
+        const invoiceNo = invoiceDisplayLabel(invoice?.invoiceNo);
+        const estimateReturnHref = buildEstimateMilestoneReturnHref(estimateId, item.id);
+        return (
+          <div className="flex min-w-[9rem] flex-col items-end gap-1 text-right">
+            <span className="text-hh-status font-medium leading-none text-muted-foreground">
+              {invoiceNo}
+              {invoice?.status ? ` · ${invoice.status}` : ""}
+            </span>
+            {item.status !== "paid" && invoice?.status?.toLowerCase() === "paid" ? (
+              <form action={markPaymentMilestonePaidAction}>
+                <input type="hidden" name="estimateId" value={estimateId} />
+                <input type="hidden" name="itemId" value={item.id} />
+                <Button
+                  type="submit"
+                  variant="outline"
+                  size="sm"
+                  className={cn("min-h-9 px-2.5 text-hh-metadata", EB.actionSecondary)}
+                  aria-label={`Sync paid status for ${item.title}`}
+                >
+                  <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" aria-hidden />
+                  Sync paid status
+                </Button>
+              </form>
+            ) : null}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              asChild
+              className={cn("min-h-11 px-3 text-hh-metadata", EB.actionSecondary)}
+            >
+              <Link
+                href={appendEstimateReturnPath(
+                  `/financial/invoices/${item.invoiceId}`,
+                  estimateReturnHref
+                )}
+              >
+                View Invoice
+              </Link>
+            </Button>
+          </div>
+        );
+      }
+
+      const canCreate =
+        canCreateMilestoneInvoices && invoiceProjectLink?.canCreateInvoice !== false;
+      const estimateReturnHref = buildEstimateMilestoneReturnHref(estimateId, item.id);
+      return (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          asChild={canCreate}
+          disabled={!canCreate}
+          title={
+            !canCreate
+              ? canCreateMilestoneInvoices
+                ? invoiceProjectLink?.message
+                : "Only Approved or Converted estimates can create milestone invoices."
+              : undefined
+          }
+          className={cn("min-h-11 px-3 text-hh-metadata", EB.actionSecondary)}
+        >
+          {canCreate ? (
+            <Link href={buildCreateDraftInvoiceHref(estimateId, item.id, estimateReturnHref)}>
+              Create Draft Invoice
+            </Link>
+          ) : (
+            "Create Draft Invoice"
+          )}
+        </Button>
+      );
     }
-    setAmountDraft(String(paymentAmountFromPercent(pct, estimateTotal)));
-  };
+    return (
+      <div className="flex gap-1">
+        {(["up", "down"] as const).map((direction) => {
+          const orderedItemIds = orderedIdsForMove(item.id, direction);
+          const Icon = direction === "up" ? ArrowUp : ArrowDown;
+          return (
+            <form key={direction} action={reorderPaymentSchedule}>
+              <input type="hidden" name="estimateId" value={estimateId} />
+              <input
+                type="hidden"
+                name="orderedItemIds"
+                value={JSON.stringify(orderedItemIds ?? [])}
+              />
+              <Button
+                type="submit"
+                variant="outline"
+                size="icon"
+                className={cn("eb-payment-row-action h-8 min-h-8 w-8 min-w-8", EB.btnGhost)}
+                disabled={!orderedItemIds || paymentMutationBusy}
+                aria-label={`Move ${item.title} ${direction}`}
+              >
+                <Icon className="h-4 w-4" aria-hidden />
+              </Button>
+            </form>
+          );
+        })}
 
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          aria-label={`Duplicate ${item.title}`}
+          disabled={paymentMutationBusy}
+          onClick={async () => {
+            const source = paymentDrafts[item.id] ?? item;
+            const data = new FormData();
+            data.set("estimateId", estimateId);
+            data.set("title", source.title);
+            data.set("amount", String(source.amount));
+            data.set("description", source.description ?? "");
+            data.set("dueDate", source.dueDate ?? "");
+            data.set("paymentTerm", source.paymentTerm ?? "");
+            const result = await runPaymentMutation(() => {
+              markUnsaved();
+              return trackMutation(`payment:duplicate:${item.id}`, () =>
+                addPaymentMilestoneAction(data)
+              );
+            });
+            if (result?.ok) router.refresh();
+            else if (result)
+              toast({ title: "Duplicate failed", description: result.error, variant: "error" });
+          }}
+        >
+          <Copy size={14} />
+        </Button>
+        <div className="inline">
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className={cn(
+              "eb-payment-row-action h-8 min-h-8 w-8 min-w-8 text-[var(--hh-danger)] hover:bg-[var(--hh-danger-soft-fill)]",
+              EB.btnGhost
+            )}
+            aria-label={`Delete ${item.title}`}
+            onClick={() => void deletePaymentMilestone(item)}
+            disabled={paymentMutationBusy}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    );
+  };
   const milestoneRows: ProposalPaymentMilestoneRow[] = paymentSchedule.map((item) => ({
     id: item.id,
     title: item.title || "—",
     amount: paymentMilestoneAmount(item, estimateTotal),
     description: item.description,
     dueDate: item.dueDate,
-    status: item.status,
   }));
 
   return (
@@ -362,69 +471,17 @@ export function EstimatePaymentSchedule(props: {
     >
       <div className="eb-payment-schedule-header flex flex-wrap items-start justify-between gap-3 py-2">
         <div className="min-w-0">
-          <h3 className={cn(EB.paymentTitle, nested && EB.paymentHeaderDuplicate)}>
-            Payment schedule
-          </h3>
+          <h3 className={EB.paymentTitle}>Payment schedule</h3>
           <p className={EB.paymentSubtitle}>Client payment milestones</p>
         </div>
-        {!isLocked && (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className={cn("min-h-11 shrink-0 px-2.5 md:min-h-8", EB.actionSecondary)}
-            onClick={() => openScheduleDrawer()}
-            disabled={paymentMutationBusy}
-          >
-            <Plus className="h-3.5 w-3.5 mr-1.5" aria-hidden />
-            Schedule Payment
-          </Button>
-        )}
+        {!isLocked && <span />}
       </div>
       <div>
-        <div className="eb-payment-schedule-stats flex flex-wrap items-center gap-x-6 gap-y-2 py-2">
-          <span className={EB.paymentStatLabel}>
-            Estimate total <span className={EB.paymentStatValue}>{fmt(estimateTotal)}</span>
-          </span>
-          <span className={EB.paymentStatLabel}>
-            Scheduled <span className={EB.paymentStatValue}>{fmt(totalScheduled)}</span>
-          </span>
-          <span className={EB.paymentStatLabel}>
-            Allocated <span className={EB.paymentStatValue}>{allocationPct.toFixed(1)}%</span>
-          </span>
-          <span className={EB.paymentStatLabel}>
-            {isOverallocated ? "Over allocated" : "Remaining"}{" "}
-            <span
-              className={cn(EB.paymentStatValue, isOverallocated && "text-destructive")}
-              data-testid="payment-schedule-remaining"
-            >
-              {fmt(Math.abs(remaining))}
-            </span>
-          </span>
-        </div>
-
-        {paymentSchedule.length > 0 ? (
-          <div
-            className={cn(
-              "mb-3 rounded-md border px-3 py-2 text-xs",
-              isOverallocated
-                ? "border-destructive/50 bg-destructive/10 text-destructive"
-                : isReconciled
-                  ? "border-[var(--hh-success-border)] bg-[var(--hh-success-soft-fill)] text-[var(--hh-success)]"
-                  : "border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] text-[var(--hh-warning)]"
-            )}
-            role={isOverallocated ? "alert" : "status"}
-            data-testid="payment-schedule-reconciliation"
-            data-payment-coverage={
-              isOverallocated ? "overallocated" : isReconciled ? "reconciled" : "partial"
-            }
-          >
-            {isOverallocated
-              ? `Schedule exceeds the Estimate total by ${fmt(Math.abs(remaining))}. Reduce a milestone before adding more.`
-              : isReconciled
-                ? "Payment schedule is fully allocated."
-                : `${fmt(remaining)} remains unscheduled. Partial schedules are valid and may be saved.`}
-          </div>
+        {isOverallocated ? (
+          <p role="alert" className="text-xs text-destructive">
+            Schedule exceeds the Estimate total by {fmt(Math.abs(remaining))}. Reduce a milestone
+            before adding more.
+          </p>
         ) : null}
 
         {!isLocked && (paymentTemplates.length > 0 || paymentSchedule.length > 0) ? (
@@ -528,151 +585,97 @@ export function EstimatePaymentSchedule(props: {
           </div>
         ) : null}
 
-        <ProposalPaymentMilestoneList
-          milestones={milestoneRows}
-          actions={(m) => {
-            const item = paymentSchedule.find((x) => x.id === m.id);
-            if (!item) return null;
-            if (isLocked) {
-              if (item.invoiceId) {
-                const invoice = invoiceSummaries[item.invoiceId];
-                const invoiceNo = invoiceDisplayLabel(invoice?.invoiceNo);
-                const estimateReturnHref = buildEstimateMilestoneReturnHref(estimateId, item.id);
-                return (
-                  <div className="flex min-w-[9rem] flex-col items-end gap-1 text-right">
-                    <span className="text-hh-status font-medium leading-none text-muted-foreground">
-                      {invoiceNo}
-                      {invoice?.status ? ` · ${invoice.status}` : ""}
-                    </span>
-                    {item.status !== "paid" && invoice?.status?.toLowerCase() === "paid" ? (
-                      <form action={markPaymentMilestonePaidAction}>
-                        <input type="hidden" name="estimateId" value={estimateId} />
-                        <input type="hidden" name="itemId" value={item.id} />
-                        <Button
-                          type="submit"
-                          variant="outline"
-                          size="sm"
-                          className={cn("min-h-9 px-2.5 text-hh-metadata", EB.actionSecondary)}
-                          aria-label={`Sync paid status for ${item.title}`}
-                        >
-                          <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" aria-hidden />
-                          Sync paid status
-                        </Button>
-                      </form>
-                    ) : null}
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      asChild
-                      className={cn("min-h-11 px-3 text-hh-metadata", EB.actionSecondary)}
-                    >
-                      <Link
-                        href={appendEstimateReturnPath(
-                          `/financial/invoices/${item.invoiceId}`,
-                          estimateReturnHref
-                        )}
-                      >
-                        View Invoice
-                      </Link>
-                    </Button>
-                  </div>
-                );
-              }
-
-              const canCreate =
-                canCreateMilestoneInvoices && invoiceProjectLink?.canCreateInvoice !== false;
-              const estimateReturnHref = buildEstimateMilestoneReturnHref(estimateId, item.id);
+        <>
+          <div
+            className="estimate-payment-entry-fields estimate-payment-columns"
+            aria-hidden="true"
+          >
+            <span />
+            <span>Payment Name</span>
+            <span>Due</span>
+            <span>Amount</span>
+            <span className="sr-only">Actions</span>
+          </div>
+          <ProposalPaymentMilestoneList
+            milestones={milestoneRows}
+            actions={renderPaymentActions}
+            editor={(milestone) => {
+              const item = paymentSchedule.find((item) => item.id === milestone.id)!;
+              const value = isLocked ? item : (paymentDrafts[item.id] ?? item);
               return (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  asChild={canCreate}
-                  disabled={!canCreate}
-                  title={
-                    !canCreate
-                      ? canCreateMilestoneInvoices
-                        ? invoiceProjectLink?.message
-                        : "Only Approved or Converted estimates can create milestone invoices."
-                      : undefined
+                <EstimatePaymentInlineRow
+                  value={value}
+                  onReorder={(sourceId, targetId) => {
+                    const ids = paymentSchedule.map((payment) => payment.id);
+                    const from = ids.indexOf(sourceId),
+                      to = ids.indexOf(targetId);
+                    if (from < 0 || to < 0) return;
+                    ids.splice(to, 0, ...ids.splice(from, 1));
+                    const data = new FormData();
+                    data.set("estimateId", estimateId);
+                    data.set("orderedItemIds", JSON.stringify(ids));
+                    void reorderPaymentSchedule(data);
+                  }}
+                  total={estimateTotal}
+                  maxAmount={
+                    isLocked
+                      ? undefined
+                      : paymentRemainingAmount(estimateTotal, totalScheduled, value.amount)
                   }
-                  className={cn("min-h-11 px-3 text-hh-metadata", EB.actionSecondary)}
-                >
-                  {canCreate ? (
-                    <Link
-                      href={buildCreateDraftInvoiceHref(estimateId, item.id, estimateReturnHref)}
-                    >
-                      Create Draft Invoice
-                    </Link>
-                  ) : (
-                    "Create Draft Invoice"
-                  )}
-                </Button>
+                  autoFocus={!isLocked && item.id === focusPaymentId}
+                  disabled={isLocked || paymentMutationBusy}
+                  onChange={(next) => {
+                    markUnsaved();
+                    setPaymentDrafts((previous) => ({ ...previous, [item.id]: next }));
+                  }}
+                  onSave={
+                    isLocked
+                      ? undefined
+                      : async (next) => {
+                          const data = new FormData();
+                          data.set("estimateId", estimateId);
+                          data.set("itemId", item.id);
+                          data.set("title", next.title);
+                          data.set("amount", String(next.amount));
+                          data.set("description", next.description ?? "");
+                          data.set("dueDate", next.dueDate ?? "");
+                          data.set("paymentTerm", next.paymentTerm ?? "");
+                          const result = await trackMutation(`payment:${item.id}`, () =>
+                            updatePaymentMilestoneAction(data)
+                          );
+                          if (result.ok) router.refresh();
+                          return result;
+                        }
+                  }
+                  actions={
+                    <details className="estimate-payment-actions">
+                      <summary aria-label={`Actions for ${milestone.title}`}>⋮</summary>
+                      <div>{renderPaymentActions(milestone)}</div>
+                    </details>
+                  }
+                />
               );
-            }
-            return (
-              <div className="flex gap-1">
-                {(["up", "down"] as const).map((direction) => {
-                  const orderedItemIds = orderedIdsForMove(item.id, direction);
-                  const Icon = direction === "up" ? ArrowUp : ArrowDown;
-                  return (
-                    <form key={direction} action={reorderPaymentSchedule}>
-                      <input type="hidden" name="estimateId" value={estimateId} />
-                      <input
-                        type="hidden"
-                        name="orderedItemIds"
-                        value={JSON.stringify(orderedItemIds ?? [])}
-                      />
-                      <Button
-                        type="submit"
-                        variant="outline"
-                        size="icon"
-                        className={cn("eb-payment-row-action h-8 min-h-8 w-8 min-w-8", EB.btnGhost)}
-                        disabled={!orderedItemIds || paymentMutationBusy}
-                        aria-label={`Move ${item.title} ${direction}`}
-                      >
-                        <Icon className="h-4 w-4" aria-hidden />
-                      </Button>
-                    </form>
-                  );
-                })}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  className={cn("eb-payment-row-action h-8 min-h-8 w-8 min-w-8", EB.btnGhost)}
-                  aria-label={`Edit ${item.title}`}
-                  onClick={() => openScheduleDrawer(item)}
-                  disabled={paymentMutationBusy}
-                >
-                  <Pencil className="h-4 w-4" />
-                </Button>
-                <div className="inline">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    className={cn(
-                      "eb-payment-row-action h-8 min-h-8 w-8 min-w-8 text-[var(--hh-danger)] hover:bg-[var(--hh-danger-soft-fill)]",
-                      EB.btnGhost
-                    )}
-                    aria-label={`Delete ${item.title}`}
-                    onClick={() => void deletePaymentMilestone(item)}
-                    disabled={paymentMutationBusy}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            );
-          }}
-        />
+            }}
+          />
+          {!isLocked ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className={cn("min-h-11 shrink-0 px-2.5 md:min-h-8", EB.actionSecondary)}
+              onClick={() => void addInlinePayment()}
+              disabled={paymentMutationBusy}
+            >
+              <Plus className="h-3.5 w-3.5 mr-1.5" aria-hidden />
+              Add Payment
+            </Button>
+          ) : null}
+        </>
         {paymentSchedule.length > 0 &&
         ((!canCreateMilestoneInvoices && isLocked) ||
           (invoiceProjectLink && !invoiceProjectLink.canCreateInvoice)) ? (
           <div
-            className="estimate-payment-link-warning mt-3 rounded-hh-compact border border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] px-3 py-2 text-hh-table-cell text-[var(--hh-warning)]"
+            className="estimate-payment-link-warning mt-3 text-xs leading-relaxed text-muted-foreground"
             role="note"
           >
             {!canCreateMilestoneInvoices
@@ -681,161 +684,6 @@ export function EstimatePaymentSchedule(props: {
                 "Invoice generation requires a linked project before creating invoices from payment milestones.")}
           </div>
         ) : null}
-
-        {/* Drawer: Schedule Payment */}
-        <Sheet
-          open={scheduleOpen}
-          onOpenChange={(open) => {
-            setScheduleOpen(open);
-            if (!open) setEditingItem(null);
-          }}
-        >
-          <SheetContent
-            {...paymentSheetFocus}
-            side="right"
-            className={estimateSurfaceSheetClassName("payment")}
-            data-estimate-surface="payment"
-          >
-            <SheetHeader className={EB.sheetHeader}>
-              <SheetTitle className={EB.sheetTitle}>
-                {editingItem ? "Edit Payment" : "Schedule Payment"}
-              </SheetTitle>
-              <SheetDescription className="sr-only">
-                {editingItem
-                  ? "Edit a payment milestone on this estimate."
-                  : "Add a payment milestone to this estimate."}
-              </SheetDescription>
-            </SheetHeader>
-            <div className={EB.sheetContent}>
-              <form
-                id={PAYMENT_MILESTONE_FORM_ID}
-                key={editingItem?.id ?? "new-payment"}
-                action={savePaymentMilestone}
-                className={cn(EB.sheetContentInner, "max-w-none space-y-[1.125rem]")}
-              >
-                <input type="hidden" name="estimateId" value={estimateId} />
-                {editingItem ? <input type="hidden" name="itemId" value={editingItem.id} /> : null}
-                <div className={EB.sheetField}>
-                  <label className={EB.sheetLabel}>Payment Name</label>
-                  <Input
-                    name="title"
-                    placeholder="e.g. Deposit"
-                    defaultValue={editingItem?.title ?? ""}
-                    className={ebSheetInput("text-sm")}
-                    required
-                  />
-                </div>
-                <div className={EB.sheetField}>
-                  <div className={EB.paymentAmountRow}>
-                    <div className={EB.paymentAmountCol}>
-                      <label htmlFor="payment-milestone-amount" className={EB.sheetLabel}>
-                        Amount
-                      </label>
-                      <Input
-                        id="payment-milestone-amount"
-                        name="amount"
-                        type="number"
-                        step="0.01"
-                        min={0}
-                        inputMode="decimal"
-                        placeholder="0.00"
-                        value={amountDraft}
-                        onChange={(e) => handleAmountChange(e.target.value)}
-                        onWheel={(event) => event.currentTarget.blur()}
-                        className={ebSheetInput(
-                          cn("text-sm text-right text-slate-50", EB.inputNumeric)
-                        )}
-                        required
-                      />
-                    </div>
-                    <div className={EB.paymentPercentCol}>
-                      <label htmlFor="payment-milestone-percent" className={EB.sheetLabel}>
-                        % of estimate
-                      </label>
-                      <Input
-                        id="payment-milestone-percent"
-                        type="number"
-                        step="0.01"
-                        min={0}
-                        max={100}
-                        inputMode="decimal"
-                        placeholder="Optional"
-                        value={percentDraft}
-                        onChange={(e) => handlePercentChange(e.target.value)}
-                        onWheel={(event) => event.currentTarget.blur()}
-                        className={ebSheetInput(
-                          cn("text-sm text-right text-slate-50", EB.inputNumeric)
-                        )}
-                        aria-describedby={
-                          paymentPercentHelper ? "payment-percent-helper" : undefined
-                        }
-                      />
-                    </div>
-                  </div>
-                  {paymentPercentHelper ? (
-                    <p id="payment-percent-helper" className={EB.paymentPercentHelper}>
-                      {paymentPercentHelper}
-                    </p>
-                  ) : null}
-                  {draftOverallocated ? (
-                    <p className="text-xs text-destructive" role="alert">
-                      This amount would exceed the Estimate total by{" "}
-                      {fmt(Math.abs(projectedRemaining))}.
-                    </p>
-                  ) : null}
-                </div>
-                <input type="hidden" name="description" value={paymentDescriptionDraft} />
-                <div className={EB.sheetField}>
-                  <label htmlFor="payment-milestone-description" className={EB.sheetLabel}>
-                    Description
-                  </label>
-                  <ProposalScopeEditor
-                    id="payment-milestone-description"
-                    value={paymentDescriptionDraft}
-                    onChange={setPaymentDescriptionDraft}
-                    density="comfortable"
-                    showHandle={false}
-                    placeholder="What this payment covers…"
-                    ariaLabel="Payment milestone description"
-                    className={cn(EB.sheetTextarea, "rounded-md px-2 py-2")}
-                  />
-                </div>
-                <div className={EB.sheetField}>
-                  <label className={EB.sheetLabel}>Due Date</label>
-                  <Input
-                    name="dueDate"
-                    type="date"
-                    defaultValue={editingItem?.dueDate ?? ""}
-                    className={ebSheetInput(cn(EB.dateField, "text-sm"))}
-                  />
-                </div>
-              </form>
-            </div>
-            <SheetFooter className={EB.sheetFooter}>
-              <div className={EB.sheetFooterActions}>
-                <Button
-                  type="submit"
-                  form={PAYMENT_MILESTONE_FORM_ID}
-                  size="sm"
-                  className={EB.sheetPrimary}
-                  disabled={draftOverallocated || paymentMutationBusy}
-                  aria-busy={paymentMutationBusy}
-                >
-                  Save
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className={EB.sheetSecondary}
-                  onClick={() => setScheduleOpen(false)}
-                >
-                  Cancel
-                </Button>
-              </div>
-            </SheetFooter>
-          </SheetContent>
-        </Sheet>
 
         <Dialog open={saveTemplateOpen} onOpenChange={setSaveTemplateOpen}>
           <DialogContent data-testid="payment-template-save-dialog">

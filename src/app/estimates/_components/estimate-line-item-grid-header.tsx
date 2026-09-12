@@ -10,13 +10,13 @@ export function EstimateLineItemGridHeader(): React.ReactElement {
       aria-hidden="true"
     >
       <span aria-hidden />
-      <span>Item Name</span>
-      <span>Description</span>
+      <span>Item Name / Description</span>
+      <span aria-hidden />
       <span className="text-right">Qty</span>
       <span>Unit</span>
-      <span className="text-right">Unit price</span>
-      <span className="text-right">Line total</span>
-      <span className="text-center">More</span>
+      <span className="text-right">Unit Cost</span>
+      <span className="text-right">Total Price</span>
+      <span aria-hidden />
     </div>
   );
 }

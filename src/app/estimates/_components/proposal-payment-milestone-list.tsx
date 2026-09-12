@@ -4,7 +4,7 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 import { formatEstimateCurrency } from "./estimate-currency";
 import { Wallet } from "lucide-react";
-import { ProposalScopePreview } from "./proposal-scope-preview";
+import { LineItemOrScopeBodyPreview } from "./proposal-scope-preview";
 import { EB } from "./estimate-builder-ui";
 import { formatEstimatePaymentDueDate } from "./estimate-payment-date";
 
@@ -21,11 +21,13 @@ export function ProposalPaymentMilestoneList({
   milestones,
   emptyMessage = "No payment milestones yet.",
   actions,
+  editor,
   className,
 }: {
   milestones: ProposalPaymentMilestoneRow[];
   emptyMessage?: string;
   actions?: (milestone: ProposalPaymentMilestoneRow) => React.ReactNode;
+  editor?: (milestone: ProposalPaymentMilestoneRow) => React.ReactNode;
   className?: string;
 }): React.ReactElement {
   if (milestones.length === 0) {
@@ -41,7 +43,7 @@ export function ProposalPaymentMilestoneList({
     <ul className={cn("eb-payment-milestone-list space-y-2", className)}>
       {milestones.map((m) => {
         const due = formatEstimatePaymentDueDate(m.dueDate);
-        const dueLabel = due ? `Due: ${due}` : null;
+        const dueLabel = `Due: ${due ?? "Upon Completion"}`;
         return (
           <li
             key={m.id}
@@ -50,6 +52,7 @@ export function ProposalPaymentMilestoneList({
             tabIndex={-1}
             className="eb-payment-milestone-row flex flex-wrap items-start justify-between gap-x-4 gap-y-2 rounded-md px-0 py-2.5"
           >
+            {editor?.(m) ?? <>
             <div className="min-w-0 flex-1 space-y-0.5">
               <div className="flex flex-wrap items-center gap-2">
                 <p className="text-hh-body font-semibold leading-snug tracking-normal text-foreground">
@@ -62,8 +65,8 @@ export function ProposalPaymentMilestoneList({
                 ) : null}
               </div>
               {m.description?.trim() ? (
-                <ProposalScopePreview
-                  text={m.description}
+                <LineItemOrScopeBodyPreview
+                  body={m.description}
                   variant="compact"
                   maxBullets={2}
                   className="text-hh-table-cell leading-snug text-muted-foreground"
@@ -84,6 +87,7 @@ export function ProposalPaymentMilestoneList({
               </span>
               {actions ? actions(m) : null}
             </div>
+            </>}
           </li>
         );
       })}

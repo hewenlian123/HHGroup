@@ -17,7 +17,7 @@ export type CreateEstimatePayload = {
   clientEmail?: string;
   estimateDate?: string;
   validUntil?: string;
-  notes?: string;
+  
   documentNotes?: EstimateNoteBlock[];
   salesPerson?: string;
   tax?: number;
@@ -28,6 +28,7 @@ export type CreateEstimatePayload = {
   costCategoryNames?: Record<string, string>;
   items: Array<{
     costCode: string;
+    itemName?: string;
     desc: string;
     qty: number;
     unit: string;
@@ -41,6 +42,7 @@ export type CreateEstimatePayload = {
     description?: string | null;
     amount: number;
     dueDate?: string | null;
+    paymentTerm?: string | null;
   }>;
 };
 
@@ -82,7 +84,8 @@ export async function createEstimateWithItemsAction(
     .map((i) => ({
       ...i,
       costCode: i.costCode.trim(),
-      desc: i.desc.trim(),
+      itemName: i.itemName?.trim() ?? "",
+      desc: i.desc,
       unit: i.unit?.trim() || "EA",
       qty: Number(i.qty) || 0,
       unitCost: Number(i.unitCost) || 0,
@@ -90,7 +93,7 @@ export async function createEstimateWithItemsAction(
       status: i.status,
       sortOrder: Number.isFinite(i.sortOrder) ? Number(i.sortOrder) : undefined,
     }))
-    .filter((i) => i.costCode && i.desc.length > 0);
+    .filter((i) => i.costCode && (i.itemName.length > 0 || i.desc.trim().length > 0));
 
   if (items.length === 0) {
     return { ok: false, error: "At least one line item is required." };
@@ -109,7 +112,7 @@ export async function createEstimateWithItemsAction(
       clientEmail: payload.clientEmail?.trim() ?? "",
       estimateDate: payload.estimateDate || undefined,
       validUntil: payload.validUntil || undefined,
-      notes: payload.notes?.trim() || undefined,
+      
       documentNotes: payload.documentNotes,
       salesPerson: payload.salesPerson?.trim() || undefined,
       tax: payload.tax ?? 0,
@@ -120,6 +123,7 @@ export async function createEstimateWithItemsAction(
       categoryNames: payload.costCategoryNames,
       items: items.map((i) => ({
         costCode: i.costCode,
+        itemName: i.itemName,
         desc: i.desc,
         qty: i.qty,
         unit: i.unit,

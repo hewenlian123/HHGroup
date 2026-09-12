@@ -4574,10 +4574,14 @@
   }
 
   .estimate-builder-new
-    .eb-estimate-workbench.eb-estimate-workbench--v3:has(> .eb-estimate-details-summary-section)
+    .eb-estimate-workbench.eb-estimate-workbench--v3:not(.estimate-workspace):has(
+      > .eb-estimate-details-summary-section
+    )
     > .eb-v3-worksheet-flow,
   .estimate-builder-new
-    .eb-estimate-workbench.eb-estimate-workbench--v3:has(> .eb-estimate-details-summary-section)
+    .eb-estimate-workbench.eb-estimate-workbench--v3:not(.estimate-workspace):has(
+      > .eb-estimate-details-summary-section
+    )
     > .eb-pricing-summary-strip {
     grid-row: 2 !important;
   }
@@ -4814,20 +4818,6 @@
   color: var(--hh-text-primary);
   text-transform: none;
 }
-.estimate-builder-new .eb-notes-tablist {
-  display: flex;
-  width: 100%;
-  height: auto;
-  gap: var(--hh-space-4);
-  border: 0;
-  padding: 0;
-}
-.estimate-builder-new .eb-notes-tab {
-  min-width: 0;
-  min-height: var(--hh-touch-min);
-  padding-inline: 0;
-  font-size: var(--hh-type-label-font-size);
-}
 .estimate-builder-new .eb-notes-clarifications-panel,
 .estimate-builder-new .eb-notes-clarifications-panel:hover {
   border: 0;
@@ -4850,13 +4840,13 @@
   font-size: var(--hh-type-metadata-font-size);
 }
 .estimate-builder-new
-  :where(.eb-notes-tab, .eb-pricing-inspector-tabs button, summary, .eb-scope-toolbar input) {
+  :where(.eb-pricing-inspector-tabs button, summary, .eb-scope-toolbar input) {
   transition:
     color var(--hh-duration) var(--hh-ease-out),
     background-color var(--hh-duration) var(--hh-ease-out),
     border-color var(--hh-duration) var(--hh-ease-out);
 }
-.estimate-builder-new :where(.eb-notes-tab, .eb-pricing-inspector-tabs button, summary):active {
+.estimate-builder-new :where(.eb-pricing-inspector-tabs button, summary):active {
   background-color: var(--hh-l3-pressed);
 }
 .estimate-builder-new
@@ -4907,13 +4897,6 @@
     box-shadow: none;
     background: transparent;
   }
-  .estimate-builder-new .eb-notes-tablist {
-    gap: var(--hh-space-3);
-  }
-  .estimate-builder-new .eb-notes-tab {
-    flex: 1;
-    white-space: normal;
-  }
 }
 @media (prefers-reduced-motion: reduce) {
   .estimate-builder-new
@@ -4931,7 +4914,6 @@
   }
   .estimate-builder-new
     :where(
-      .eb-notes-tab,
       .eb-note-title-textarea,
       summary,
       .eb-line-item-card input.eb-input

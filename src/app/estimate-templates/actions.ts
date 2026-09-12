@@ -50,7 +50,7 @@ function templateInputFromForm(formData: FormData) {
     description: String(formData.get("description") ?? ""),
     category: String(formData.get("category") ?? ""),
     defaultTaxRate: optionalNumber(formData.get("defaultTaxRate")),
-    defaultTerms: String(formData.get("defaultTerms") ?? ""),
+    
     templateData: normalizeEstimateTemplateData(parsedTemplateData),
   };
 }
@@ -146,7 +146,7 @@ export async function saveEstimateAsTemplateAction(
         description: String(formData.get("description") ?? ""),
         category: String(formData.get("category") ?? ""),
         defaultTaxRate: optionalNumber(formData.get("defaultTaxRate")),
-        defaultTerms: String(formData.get("defaultTerms") ?? ""),
+        
       },
       guard.client
     );

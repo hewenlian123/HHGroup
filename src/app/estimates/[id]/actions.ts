@@ -457,7 +457,7 @@ export async function convertToProjectWithSetupAction(
         projectManager: (formData.get("projectManager") as string)?.trim() || undefined,
         startDate: (formData.get("startDate") as string)?.trim() || undefined,
         endDate: (formData.get("endDate") as string)?.trim() || undefined,
-        notes: (formData.get("notes") as string)?.trim() || undefined,
+        
         estimateRef: (formData.get("estimateRef") as string)?.trim() || undefined,
       },
       estimateActivityActorFromAuth(guard.context),
@@ -507,7 +507,7 @@ export async function saveEstimateMetaInlineAction(
     );
     const estimateDate = (formData.get("estimateDate") as string)?.trim();
     const validUntil = (formData.get("validUntil") as string)?.trim();
-    const notes = (formData.get("notes") as string)?.trim();
+    
     const salesPerson = (formData.get("salesPerson") as string)?.trim();
     const documentStyleRaw = (formData.get("documentStyle") as string)?.trim();
     const documentStyle =
@@ -562,7 +562,7 @@ export async function saveEstimateMetaInlineAction(
       ...(profitPct.value !== undefined ? { profitPct: profitPct.value } : {}),
       ...(estimateDate != null ? { estimateDate: estimateDate || undefined } : {}),
       ...(validUntil != null ? { validUntil } : {}),
-      ...(formData.has("notes") ? { notes: notes ?? "" } : {}),
+      
       ...(salesPerson != null ? { salesPerson } : {}),
       ...(documentStyle != null ? { documentStyle } : {}),
     });
@@ -576,26 +576,7 @@ export async function saveEstimateMetaInlineAction(
   }
 }
 
-export async function saveEstimateInternalNotesInlineAction(
-  estimateId: string,
-  notes: string
-): Promise<{ ok: boolean; error?: string }> {
-  if (!estimateId.trim()) return { ok: false, error: "Missing estimate id" };
-  try {
-    const db = await getEstimateWriteClient();
-    if (!db) return { ok: false, error: "Database is not configured." };
-    const ok = await updateEstimateMetaWithClient(db, estimateId, { notes });
-    if (!ok) return { ok: false, error: "Could not save internal notes." };
-    revalidateEstimatePaths(estimateId);
-    revalidatePath("/estimates");
-    return { ok: true };
-  } catch (error) {
-    return {
-      ok: false,
-      error: safeEstimateActionError(error, "Could not save internal notes."),
-    };
-  }
-}
+
 
 export async function addPaymentMilestoneAction(formData: FormData) {
   const estimateId = formData.get("estimateId");
@@ -629,6 +610,7 @@ export async function addPaymentMilestoneInlineAction(
     const item = await addPaymentMilestoneWithClient(db, estimateId, {
       title: (formData.get("title") as string)?.trim() || "Payment",
       description: (formData.get("description") as string)?.trim() || "",
+      paymentTerm: (formData.get("paymentTerm") as string)?.trim() || null,
       amount: Number(formData.get("amount")) || 0,
       dueDate: (formData.get("dueDate") as string)?.trim() || undefined,
     });
@@ -659,6 +641,9 @@ export async function updatePaymentMilestoneAction(formData: FormData) {
     await updatePaymentMilestoneWithClient(db, estimateId, itemId, {
       ...(title != null ? { title } : {}),
       ...(description != null ? { description } : {}),
+      ...(formData.has("paymentTerm")
+        ? { paymentTerm: String(formData.get("paymentTerm") ?? "").trim() || null }
+        : {}),
       ...(amount != null && amount !== "" ? { amount: Number(amount) } : {}),
       ...(dueDate !== undefined ? { dueDate } : {}),
     });
@@ -688,6 +673,9 @@ export async function updatePaymentMilestoneInlineAction(
     const ok = await updatePaymentMilestoneWithClient(db, estimateId, itemId, {
       ...(title != null ? { title } : {}),
       ...(description != null ? { description } : {}),
+      ...(formData.has("paymentTerm")
+        ? { paymentTerm: String(formData.get("paymentTerm") ?? "").trim() || null }
+        : {}),
       ...(amount != null && amount !== "" ? { amount: Number(amount) } : {}),
       dueDate: dueDateRaw || null,
     });
@@ -1055,7 +1043,8 @@ export async function addLineItemAction(formData: FormData) {
     if (!db) return;
     const item = await addLineItemWithClient(db, estimateId, {
       costCode,
-      desc: (formData.get("desc") as string)?.trim() || "New item",
+      itemName: (formData.get("itemName") as string) ?? "New item",
+      desc: (formData.get("desc") as string) ?? "",
       qty: Number(formData.get("qty")) || 1,
       unit: (formData.get("unit") as string)?.trim() || "EA",
       unitCost: Number(formData.get("unitCost")) || 0,
@@ -1085,7 +1074,8 @@ export async function addLineItemCatalogInlineAction(
     if (!db) return { ok: false, error: "Database is not configured." };
     const item = await addLineItemWithClient(db, estimateId, {
       costCode,
-      desc: "New item",
+      itemName: "New item",
+      desc: "",
       qty: 1,
       unit: "EA",
       unitCost: 0,
@@ -1220,6 +1210,7 @@ export async function updateLineItemAction(formData: FormData) {
   const itemId = formData.get("itemId");
   if (typeof estimateId !== "string" || typeof itemId !== "string") return;
   try {
+    const itemName = formData.get("itemName") as string | null;
     const desc = formData.get("desc") as string | null;
     const qty = formData.get("qty");
     const unit = formData.get("unit") as string | null;
@@ -1227,6 +1218,7 @@ export async function updateLineItemAction(formData: FormData) {
     const db = await getEstimateWriteClient();
     if (!db) return;
     const ok = await updateLineItemWithClient(db, estimateId, itemId, {
+      ...(itemName != null ? { itemName } : {}),
       ...(desc != null ? { desc } : {}),
       ...(qty != null && qty !== "" ? { qty: Number(qty) } : {}),
       ...(unit != null ? { unit } : {}),
@@ -1251,11 +1243,13 @@ export async function updateLineItemInlineAction(
   try {
     const db = await getEstimateWriteClient();
     if (!db) return { ok: false, error: "Database is not configured." };
+    const itemName = formData.get("itemName") as string | null;
     const desc = formData.get("desc") as string | null;
     const qty = formData.get("qty");
     const unit = formData.get("unit") as string | null;
     const unitCost = formData.get("unitCost");
     const ok = await updateLineItemWithClient(db, estimateId, itemId, {
+      ...(itemName != null ? { itemName } : {}),
       ...(desc != null ? { desc } : {}),
       ...(qty != null && qty !== "" ? { qty: Number(qty) } : {}),
       ...(unit != null ? { unit } : {}),
@@ -1376,7 +1370,7 @@ export async function saveEstimateMetaAction(formData: FormData) {
       : undefined;
     const estimateDate = (formData.get("estimateDate") as string)?.trim();
     const validUntil = (formData.get("validUntil") as string)?.trim();
-    const notes = (formData.get("notes") as string)?.trim();
+    
     const salesPerson = (formData.get("salesPerson") as string)?.trim();
     const documentStyleRaw = (formData.get("documentStyle") as string)?.trim();
     const documentStyle =
@@ -1423,7 +1417,7 @@ export async function saveEstimateMetaAction(formData: FormData) {
       ...(profitPct.value !== undefined ? { profitPct: profitPct.value } : {}),
       ...(estimateDate != null ? { estimateDate: estimateDate || undefined } : {}),
       ...(validUntil != null ? { validUntil } : {}),
-      ...(formData.has("notes") ? { notes: notes ?? "" } : {}),
+      
       ...(salesPerson != null ? { salesPerson } : {}),
       ...(documentStyle != null ? { documentStyle } : {}),
     });

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ChevronDown, Copy, MoreVertical, Plus, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Copy, GripVertical, MoreVertical, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -10,27 +10,20 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { EstimateAutoResizeTextarea } from "./estimate-auto-resize-textarea";
-import { EB, ebGlassPanel, ebInput } from "./estimate-builder-ui";
+import { EB } from "./estimate-builder-ui";
 import {
   ESTIMATE_NOTE_TYPES,
-  NOTE_TYPE_LABELS,
   defaultTitleForNoteType,
   type EstimateNoteBlock,
   type EstimateNoteType,
 } from "@/lib/estimate-notes";
-
+import { EstimateDescriptionEditor as EstimateNoteBody } from "./estimate-description-editor";
+export { EstimateDescriptionEditor as EstimateNoteBody } from "./estimate-description-editor";
 export type { EstimateNoteBlock, EstimateNoteType } from "@/lib/estimate-notes";
 
 export function createEstimateNoteBlock(type: EstimateNoteType): EstimateNoteBlock {
-  return {
-    id: `note-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-    type,
-    title: defaultTitleForNoteType(type),
-    body: "",
-  };
+  return { id: crypto.randomUUID(), type, title: defaultTitleForNoteType(type), body: "" };
 }
-
 export type EstimateNotesClarificationsProps = {
   notes: EstimateNoteBlock[];
   onNotesChange: (notes: EstimateNoteBlock[]) => void;
@@ -47,175 +40,162 @@ export function EstimateNotesClarifications({
   notes,
   onNotesChange,
   disabled = false,
-  defaultCollapsed = true,
   allowedTypes = ESTIMATE_NOTE_TYPES,
-  title = "Notes & Clarifications",
-  subtitle = "Client-facing scope notes",
-  emptyMessage = "No notes yet. Add a client-facing clarification when needed.",
-  addLabel = "Add note",
+  title = "Customer Notes",
+  subtitle = "Client-facing scope notes and clarifications",
+  emptyMessage = "No customer notes yet.",
+  addLabel = "Add Customer Note",
 }: EstimateNotesClarificationsProps): React.ReactElement {
-  const contentId = React.useId();
-  const [addOpen, setAddOpen] = React.useState(false);
-  const [expanded, setExpanded] = React.useState(!defaultCollapsed || notes.length > 0);
-
+  const root = React.useRef<HTMLElement>(null);
+  const pendingFocus = React.useRef<string | null>(null);
+  const [dragged, setDragged] = React.useState<string | null>(null);
   React.useEffect(() => {
-    if (notes.length > 0) setExpanded(true);
-  }, [notes.length]);
-
-  const updateNote = (id: string, patch: Partial<EstimateNoteBlock>): void => {
-    onNotesChange(notes.map((n) => (n.id === id ? { ...n, ...patch } : n)));
+    if (!pendingFocus.current) return;
+    const input = root.current?.querySelector<HTMLInputElement>(
+      `[data-note-title="${pendingFocus.current}"]`
+    );
+    if (input) {
+      input.focus();
+      input.select();
+      pendingFocus.current = null;
+    }
+  }, [notes]);
+  const update = (id: string, patch: Partial<EstimateNoteBlock>): void =>
+    onNotesChange(notes.map((note) => (note.id === id ? { ...note, ...patch } : note)));
+  const move = (id: string, destination: number): void => {
+    if (disabled) return;
+    const next = [...notes];
+    const index = next.findIndex((note) => note.id === id);
+    if (index < 0 || destination < 0 || destination >= next.length) return;
+    next.splice(destination, 0, ...next.splice(index, 1));
+    onNotesChange(next);
   };
-
-  const duplicateNote = (id: string): void => {
-    const src = notes.find((n) => n.id === id);
-    if (!src) return;
-    onNotesChange([
-      ...notes,
-      {
-        ...src,
-        id: `note-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-        title: src.title ? `${src.title} (copy)` : "Copy",
-      },
-    ]);
-  };
-
-  const deleteNote = (id: string): void => {
-    onNotesChange(notes.filter((n) => n.id !== id));
-  };
-
-  const addNote = (type: EstimateNoteType): void => {
-    onNotesChange([...notes, createEstimateNoteBlock(type)]);
-    setExpanded(true);
-    setAddOpen(false);
-  };
-
   return (
-    <section className={EB.section}>
-      <div className={ebGlassPanel("eb-notes-clarifications-panel")}>
-        <div className="eb-notes-heading-row flex items-center justify-between gap-2">
-          <div className="min-w-0">
-            <h2 className={EB.scopeHeading}>
-              <button
-                type="button"
-                className="eb-notes-disclosure flex min-h-11 items-center gap-1.5 text-left"
-                aria-expanded={expanded}
-                aria-controls={contentId}
-                onClick={() => setExpanded(!expanded)}
-              >
-                <ChevronDown
-                  aria-hidden
-                  className={cn(
-                    "h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform",
-                    expanded && "rotate-180"
-                  )}
-                />
-                {title}
-              </button>
-            </h2>
-            <p className={EB.scopeSubtitle}>{subtitle}</p>
-          </div>
-          <DropdownMenu open={addOpen} onOpenChange={setAddOpen}>
-            <DropdownMenuTrigger asChild>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className={cn("min-h-11 shrink-0 px-2.5 md:min-h-8", EB.actionSecondary)}
-                disabled={disabled}
-                aria-label={addLabel}
-              >
-                <Plus className="h-3.5 w-3.5 mr-1.5" aria-hidden />
-                {addLabel}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className={cn(EB.builderPickerMenu, EB.commandMenu)}>
-              {allowedTypes.map((type) => (
-                <DropdownMenuItem
-                  key={type}
-                  className={EB.commandMenuItem}
+    <section ref={root} className="eb-note-cards">
+      <header className="eb-note-cards-heading">
+        <div>
+          <h2>{title}</h2>
+          <p>{subtitle}</p>
+        </div>
+      </header>
+      {!notes.length ? <p className="eb-note-cards-empty">{emptyMessage}</p> : null}
+      {notes.map((note, index) => (
+        <article
+          key={note.id}
+          className="eb-note-card"
+          onDragOver={(event) => {
+            if (dragged && !disabled) event.preventDefault();
+          }}
+          onDrop={(event) => {
+            event.preventDefault();
+            if (dragged) move(dragged, index);
+            setDragged(null);
+          }}
+        >
+          <div className="eb-note-card-heading">
+            <button
+              type="button"
+              className="eb-note-drag"
+              aria-label={`Drag ${note.title} to reorder`}
+              disabled={disabled}
+              draggable={!disabled}
+              onDragStart={(event) => {
+                setDragged(note.id);
+                event.dataTransfer.effectAllowed = "move";
+                event.dataTransfer.setData("text/plain", note.id);
+              }}
+              onDragEnd={() => setDragged(null)}
+            >
+              <GripVertical size={14} />
+            </button>
+            <input
+              data-note-title={note.id}
+              value={note.title}
+              placeholder="Note title"
+              aria-label="Note title"
+              disabled={disabled}
+              onChange={(event) => update(note.id, { title: event.target.value })}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || (event.key === "Tab" && !event.shiftKey)) {
+                  event.preventDefault();
+                  event.currentTarget
+                    .closest("article")
+                    ?.querySelector<HTMLElement>('[role="textbox"]')
+                    ?.focus();
+                }
+              }}
+            />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  aria-label={`Actions for ${note.title}`}
                   disabled={disabled}
-                  onSelect={() => addNote(type)}
                 >
-                  {NOTE_TYPE_LABELS[type]}
+                  <MoreVertical size={14} />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className={cn(EB.lineItemMoreMenu, EB.commandMenu)}>
+                <DropdownMenuItem
+                  onSelect={() => {
+                    const copy = {
+                      ...note,
+                      id: crypto.randomUUID(),
+                      title: `${note.title} (copy)`,
+                    };
+                    const next = [...notes];
+                    next.splice(index + 1, 0, copy);
+                    onNotesChange(next);
+                  }}
+                >
+                  <Copy size={14} />
+                  Duplicate
                 </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-        <div id={contentId} hidden={!expanded} className="eb-notes-content mt-3 space-y-3">
-          {notes.length === 0 ? (
-            <p className={EB.scopeEmptyMessage}>{emptyMessage}</p>
-          ) : (
-            notes.map((note) => (
-              <div key={note.id} className={EB.noteBlock}>
-                <div className="mb-2 flex items-start justify-between gap-2">
-                  <EstimateAutoResizeTextarea
-                    value={note.title}
-                    onChange={(e) => updateNote(note.id, { title: e.target.value })}
-                    disabled={disabled}
-                    rows={1}
-                    minHeight={32}
-                    maxHeight={112}
-                    className={ebInput(
-                      "eb-note-title-textarea min-h-8 w-full min-w-0 border-0 bg-transparent px-0 py-1 text-hh-body-strong text-foreground shadow-none focus-visible:ring-0"
-                    )}
-                    aria-label="Note title"
-                  />
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className={EB.lineItemMoreTrigger}
-                        aria-label="Note actions"
-                        disabled={disabled}
-                      >
-                        <MoreVertical className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent
-                      align="end"
-                      className={cn(EB.lineItemMoreMenu, EB.commandMenu)}
-                    >
-                      <DropdownMenuItem
-                        className={EB.lineItemMoreMenuItem}
-                        disabled={disabled}
-                        onSelect={() => duplicateNote(note.id)}
-                      >
-                        <Copy className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
-                        Duplicate
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        className={cn(EB.lineItemMoreMenuItem, EB.lineItemMoreMenuItemDanger)}
-                        disabled={disabled}
-                        onSelect={() => deleteNote(note.id)}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-                <EstimateAutoResizeTextarea
-                  value={note.body}
-                  onChange={(e) => updateNote(note.id, { body: e.target.value })}
-                  disabled={disabled}
-                  rows={2}
-                  minHeight={54}
-                  maxHeight={360}
-                  className={cn(
-                    EB.noteBlockTextarea,
-                    ebInput("w-full text-hh-table-cell leading-[1.45]")
-                  )}
-                  placeholder={`${NOTE_TYPE_LABELS[note.type]} details…`}
-                  aria-label={`${note.title} body`}
-                />
-              </div>
-            ))
-          )}
-        </div>
-      </div>
+                <DropdownMenuItem disabled={index === 0} onSelect={() => move(note.id, index - 1)}>
+                  <ArrowUp size={14} />
+                  Move up
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  disabled={index === notes.length - 1}
+                  onSelect={() => move(note.id, index + 1)}
+                >
+                  <ArrowDown size={14} />
+                  Move down
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className={EB.lineItemMoreMenuItemDanger}
+                  onSelect={() => onNotesChange(notes.filter((entry) => entry.id !== note.id))}
+                >
+                  <Trash2 size={14} />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+          <EstimateNoteBody
+            body={note.body}
+            label={`${note.title} description`}
+            disabled={disabled}
+            onChange={(body) => update(note.id, { body })}
+          />
+        </article>
+      ))}
+      <Button
+        type="button"
+        variant="ghost"
+        disabled={disabled}
+        className="eb-note-add"
+        onClick={() => {
+          const note = createEstimateNoteBlock(allowedTypes[0] ?? "custom");
+          pendingFocus.current = note.id;
+          onNotesChange([...notes, note]);
+        }}
+      >
+        <Plus size={14} />
+        {addLabel}
+      </Button>
     </section>
   );
 }

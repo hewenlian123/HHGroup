@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { createEstimateDraftRetryRegistry } from "./estimate-mutation-coordinator";
 
 import type { EstimateSaveStatus } from "./estimate-builder-save-status";
 import {
@@ -27,6 +28,8 @@ type EstimateDocumentSaveContextValue = {
     operation: () => Promise<T>
   ) => Promise<T>;
   waitForPendingSaves: () => Promise<boolean>;
+  registerSaveRetry: (operationKey: string, retry: () => Promise<boolean>) => () => void;
+  retryFailedSaves: () => Promise<void>;
   resetSaveState: () => void;
 };
 
@@ -42,6 +45,7 @@ export function EstimateDocumentSaveProvider({
   const [state, setState] = React.useState(createEstimateDocumentSaveState);
   const stateRef = React.useRef(state);
   const pendingRef = React.useRef(new Set<Promise<unknown>>());
+  const retryRegistryRef = React.useRef(createEstimateDraftRetryRegistry());
 
   const apply = React.useCallback(
     (action: EstimateDocumentSaveAction): EstimateDocumentSaveState => {
@@ -95,6 +99,14 @@ export function EstimateDocumentSaveProvider({
     );
   }, []);
 
+  const registerSaveRetry = retryRegistryRef.current.register;
+
+  const retryFailedSaves = React.useCallback(async (): Promise<void> => {
+    await waitForPendingSaves();
+    // Only mounted, explicitly registered draft updates may be retried; never replay actions.
+    await retryRegistryRef.current.retry(stateRef.current.failedOperationKeys);
+  }, [waitForPendingSaves]);
+
   const resetSaveState = React.useCallback((): void => {
     apply({ type: "reset" });
   }, [apply]);
@@ -106,9 +118,19 @@ export function EstimateDocumentSaveProvider({
       markUnsaved,
       trackMutation,
       waitForPendingSaves,
+      registerSaveRetry,
+      retryFailedSaves,
       resetSaveState,
     }),
-    [markUnsaved, resetSaveState, state, trackMutation, waitForPendingSaves]
+    [
+      markUnsaved,
+      resetSaveState,
+      state,
+      trackMutation,
+      waitForPendingSaves,
+      registerSaveRetry,
+      retryFailedSaves,
+    ]
   );
 
   return (

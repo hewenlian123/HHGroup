@@ -108,7 +108,6 @@ function EstimateDetailClientContent({
   estimateNumber,
   customerId,
   revisionContext,
-  estimateUpdatedAt,
   initialStatus,
   meta,
   items,
@@ -150,6 +149,7 @@ function EstimateDetailClientContent({
     status: saveStatus,
     trackMutation,
     waitForPendingSaves,
+    retryFailedSaves,
     resetSaveState,
   } = useEstimateDocumentSave();
 
@@ -191,6 +191,7 @@ function EstimateDetailClientContent({
         }
       }
 
+      await retryFailedSaves();
       const settled = await waitForPendingSaves();
       if (!settled) {
         toast({
@@ -241,8 +242,13 @@ function EstimateDetailClientContent({
     window.requestAnimationFrame(() => {
       const section = document.getElementById(sectionId);
       if (!section) return;
-      section.scrollIntoView({ behavior: "auto", block: "start" });
-      section.focus({ preventScroll: true });
+      if (section instanceof HTMLDetailsElement) section.open = true;
+      window.requestAnimationFrame(() =>
+        window.requestAnimationFrame(() => {
+          section.scrollIntoView({ behavior: "auto", block: "start" });
+          section.focus({ preventScroll: true });
+        })
+      );
     });
   };
 
@@ -467,7 +473,7 @@ function EstimateDetailClientContent({
         }
         onNotesClick={() => {
           if (!isLocked && !editing) setEditing(true);
-          focusContinuousSection("estimate-terms-notes");
+          focusContinuousSection("estimate-customer-notes");
         }}
         onPaymentScheduleClick={() => {
           if (!isLocked && !editing) setEditing(true);
@@ -540,7 +546,7 @@ function EstimateDetailClientContent({
       ) : null}
 
       <EstimateEditor
-        key={`${estimateId}-${estimateUpdatedAt}`}
+        key={estimateId}
         estimateId={estimateId}
         estimateNumber={estimateNumber}
         customerId={customerId}
@@ -561,6 +567,15 @@ function EstimateDetailClientContent({
         detailsSurface={detailsSurface}
         onSaveDetails={() => void onSave()}
         saving={commandBusy || wholeDocumentSaving}
+        onPricingInspectorPricingClick={
+          isLocked
+            ? undefined
+            : () => {
+                if (!editing) setEditing(true);
+                setDetailsSurface("pricing");
+                setDetailsOpen(true);
+              }
+        }
         onPricingInspectorDetailsClick={
           isLocked
             ? undefined

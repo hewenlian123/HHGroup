@@ -122,3 +122,31 @@ export function buildEstimatePageIdentity(
 ): string {
   return `${estimateNumber} · Page ${pageNumber} of ${pageCount}`;
 }
+
+/** Letter content after padding, document/scope headers, and footer clearance (96dpi). */
+export function estimateScopePageBudget(firstPage: boolean, hasSummary: boolean): number {
+  // The summary is 127px plus its 40px top margin; reserve 180px on every candidate final page.
+  return (firstPage ? 630 : 910) - (hasSummary ? 180 : 0);
+}
+
+export function estimateScopeRowHeight(
+  title: string,
+  body: string,
+  showLineAmounts: boolean
+): number {
+  const printableBody = body
+    .replace(/<\s*br\s*\/?\s*>/gi, "\n")
+    .replace(/<\s*\/?\s*(?:p|div|li|ul|ol)\b[^>]*>/gi, "\n")
+    .replace(/<[^>]*>/g, "")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/\u2028/g, "\n");
+  const titleLines = Math.max(1, Math.ceil(title.trim().length / 60));
+  const bodyLines = printableBody
+    .split(/\r?\n/)
+    .filter((line) => line.trim())
+    .reduce((total, line) => total + Math.max(1, Math.ceil(line.trim().length / 70)), 0);
+  // ponytail: conservative wrapped-text estimate; use measured pagination if document CSS changes.
+  const textHeight = titleLines * 19.25 + (bodyLines ? 22 + bodyLines * 19.5 : 0);
+  // Itemized amount + Qty + Unit column is 58.75px even when the title is only one line.
+  return Math.max(showLineAmounts ? 58.75 : 19.25, textHeight) + 12;
+}

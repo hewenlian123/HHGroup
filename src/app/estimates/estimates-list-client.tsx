@@ -32,12 +32,13 @@ import {
 } from "@/components/mobile/mobile-list-chrome";
 import { cn } from "@/lib/utils";
 import "./estimate-list-operational.css";
+import "./estimate-module.css";
 
-const PAGE_BG = "estimate-list-workspace text-[var(--hh-text-secondary)]";
+const PAGE_BG = "estimate-module estimate-list-workspace text-[var(--hh-text-secondary)]";
 const FIELD =
   "estimate-list-search-field text-hh-control h-hh-control-standard rounded-hh-compact border border-[var(--hh-border-default)] bg-[var(--hh-surface-workspace)] text-[var(--hh-text-primary)] shadow-none transition-[border-color,background-color,box-shadow] duration-150 placeholder:text-[var(--hh-text-muted)] hover:border-[var(--hh-border-input)] hover:bg-[var(--hh-surface-hover)] focus-visible:border-[var(--hh-accent-primary)] focus-visible:bg-[var(--hh-surface-workspace)] focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)]";
 const PRIMARY_ACTION =
-  "rounded-hh-compact border border-[var(--hh-accent-primary)] bg-[var(--hh-accent-primary)] text-white shadow-none hover:border-[var(--hh-accent-hover)] hover:bg-[var(--hh-accent-hover)] focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)]";
+  "estimate-module-primary rounded-hh-compact shadow-none focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)]";
 
 const STATUS_FILTERS: ReadonlyArray<{
   value: EstimateStatus | "all";
