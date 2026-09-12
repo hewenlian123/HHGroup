@@ -1,3 +1,7 @@
+// PRESENTATION SNAPSHOT: task-scoped evidence for the current implementation only.
+// Explicit user-requested redesign may replace or retire these presentation assertions.
+// This file is not permanent UI authority.
+
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -6,13 +10,12 @@ import test from "node:test";
 const ROOT = process.cwd();
 const source = (path) => readFileSync(resolve(ROOT, path), "utf8");
 
-test("Figma v2 Builder states preserve production editing and save ownership", () => {
+test("Builder states preserve production editing and save ownership", () => {
   const detail = source("src/app/estimates/[id]/estimate-detail-client.tsx");
   const editor = source("src/app/estimates/_components/estimate-editor.tsx");
   const saveStatus = source("src/app/estimates/_components/estimate-builder-save-status.tsx");
   const shell = source("src/app/estimates/_components/estimate-builder-shell.tsx");
 
-  assert.match(shell, /Shared Figma v2 light workspace canvas/);
   assert.match(shell, /className=\{cn\("estimate-builder", className\)\}/);
   assert.match(detail, /<EstimateDocumentSaveProvider>/);
   assert.match(detail, /const isLocked = !\["Draft", "Sent"\]\.includes\(status\)/);
@@ -117,17 +120,17 @@ test("Preview has a light application shell while Print and PDF preserve white L
   assert.match(globals, /@media print \{[\s\S]*?@page \{[\s\S]*?size: Letter/);
 });
 
-test("Figma remains outside Auth, API, database, and lifecycle calculation ownership", () => {
-  const mapping = source("docs/FIGMA_CODE_MAPPING_V2.md");
+test("presentation remains outside Auth, API, database, document, and calculation ownership", () => {
+  const policy = source("docs/UI_UX_CHANGE_POLICY.md");
   const actions = source("src/app/estimates/[id]/actions.ts");
   const database = source("src/lib/estimates-db.ts");
+  const customerDocuments = [
+    source("src/app/estimates/[id]/preview/estimate-preview-content.tsx"),
+    source("src/app/estimates/_components/estimate-print-document.tsx"),
+  ].join("\n");
 
-  assert.match(mapping, /current WebApp remains authoritative/);
-  assert.match(mapping, /Internal notes never enter Preview, Print, or PDF/);
-  assert.match(
-    mapping,
-    /server-action exports, FormData field names, Auth guards, APIs, database schema, RPCs, and calculations/
-  );
+  assert.match(policy, /Presentation changes must preserve business behavior/);
+  assert.doesNotMatch(customerDocuments, /internalNotes|internal_notes|Internal Notes/);
   assert.match(actions, /requireSupabaseOwnerOrAdminServerAction/);
   assert.match(database, /transitionEstimateStatusWithActivityWithClient/);
   assert.match(database, /paymentMilestoneAmount/);

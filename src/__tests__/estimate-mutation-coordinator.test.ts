@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  createEstimateDraftRetryRegistry,
   createEstimateMutationSingleFlight,
   createEstimateSerialMutationQueue,
 } from "@/app/estimates/_components/estimate-mutation-coordinator";
@@ -73,4 +74,33 @@ describe("Estimate mutation coordination", () => {
     await expect(recovered).resolves.toBe("saved");
     expect(persisted).toEqual(["latest"]);
   });
+});
+
+it("retries the current registered draft once without replaying destructive or unmounted work", async () => {
+  const registry = createEstimateDraftRetryRegistry();
+  const submitted: string[] = [];
+  let draft = "failed title";
+  const unregisterOld = registry.register("line:update:1", async () => {
+    submitted.push("stale handler");
+    return false;
+  });
+  registry.register("line:update:1", async () => {
+    submitted.push(draft);
+    return false;
+  });
+  unregisterOld();
+  const unregisterRemoved = registry.register("line:update:removed", async () => {
+    submitted.push("unmounted");
+    return true;
+  });
+  unregisterRemoved();
+  draft = "latest draft";
+  const failedKeys = ["line:update:1", "line:delete:1", "line:duplicate:1", "line:update:removed"];
+  await registry.retry(failedKeys);
+  expect(submitted).toEqual(["latest draft"]);
+  expect(failedKeys).toHaveLength(4);
+  // Another explicit Save is required after another failure; no automatic retry loop.
+  draft = "corrected draft";
+  await registry.retry(failedKeys);
+  expect(submitted).toEqual(["latest draft", "corrected draft"]);
 });

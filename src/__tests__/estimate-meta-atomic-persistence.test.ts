@@ -33,7 +33,6 @@ const CANONICAL_PATCH = {
   profit_pct: 10,
   estimate_date: "2026-08-30",
   valid_until: "2026-09-30",
-  notes: "Persist all pricing fields together.",
   sales_person: "Owner",
 };
 
@@ -111,7 +110,6 @@ describe("Estimate meta atomic persistence contract", () => {
         profitPct: 10,
         estimateDate: "2026-08-30",
         validUntil: "2026-09-30",
-        notes: "Persist all pricing fields together.",
         salesPerson: "Owner",
       })
     ).resolves.toBe(true);
@@ -129,12 +127,10 @@ describe("Estimate meta atomic persistence contract", () => {
     const payload = {
       tax: 72.5,
       discount: 10,
-      notes: "Persist all pricing fields together.",
     };
     const patch = {
       tax: 72.5,
       discount: 10,
-      notes: "Persist all pricing fields together.",
     };
 
     await expect(updateEstimateMetaWithClient(db as never, ESTIMATE_ID, payload)).resolves.toBe(

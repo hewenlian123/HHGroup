@@ -1,3 +1,7 @@
+// MIXED CONTRACT: behavior, financial, accessibility, and responsive assertions remain active.
+// Presentation snapshot assertions are task-scoped current evidence and may be replaced by
+// an explicit user-requested redesign; they are not permanent UI authority.
+
 import { expect, test, type Page, type TestInfo } from "./estimate-playwright-test";
 
 import { gotoWithE2EAuth, loginAsE2EOwner, reloadWithE2EAuth } from "./e2e-auth-owner";
@@ -255,7 +259,7 @@ test("section-header Add line keeps long-estimate entry anchored in context", as
   await expect(firstSection.locator("[data-estimate-line-item-id]")).toHaveCount(2);
 });
 
-test("central Builder exposes V2 contrast and forced-colors focus states at runtime", async ({
+test("central Builder exposes contrast and forced-colors focus states at runtime", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1440, height: 900 });

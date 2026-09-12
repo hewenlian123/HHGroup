@@ -3,20 +3,20 @@ import { describe, expect, it } from "vitest";
 import { resolveDuplicateEstimateLineSortOrder } from "@/lib/estimate-line-order";
 
 describe("resolveDuplicateEstimateLineSortOrder", () => {
-  it("places a duplicate between its source and the next line in the same section", () => {
+  it("appends a duplicate using an integer without shifting existing rows", () => {
     expect(
       resolveDuplicateEstimateLineSortOrder(
         [
           { id: "a", costCode: "100", sortOrder: 2 },
           { id: "b", costCode: "100", sortOrder: 3 },
-          { id: "c", costCode: "200", sortOrder: 2.5 },
+          { id: "c", costCode: "200", sortOrder: 4 },
         ],
         "a"
       )
-    ).toBe(2.5);
+    ).toBe(5);
   });
 
-  it("places a duplicate immediately after the final line in its section", () => {
+  it("uses an unused integer across sections when the source is its final line", () => {
     expect(
       resolveDuplicateEstimateLineSortOrder(
         [
@@ -25,7 +25,7 @@ describe("resolveDuplicateEstimateLineSortOrder", () => {
         ],
         "a"
       )
-    ).toBe(2.5);
+    ).toBe(4);
   });
 
   it("falls back to the existing append behavior when persisted order is unavailable", () => {

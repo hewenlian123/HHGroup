@@ -30,24 +30,10 @@ test("empty scope search dismisses with Escape", async ({ page }) => {
   await expect(search).toBeFocused();
 });
 
-test("notes tabs support arrow keys and retain audience panels", async ({ page }) => {
-  const customer = page.getByRole("tab", { name: "Customer Notes", exact: true });
-  await customer.focus();
-  await page.keyboard.press("ArrowRight");
-  await expect(page.getByRole("tab", { name: "Terms", exact: true })).toBeFocused();
-  await expect(page.getByRole("tabpanel", { name: "Terms", exact: true })).toBeVisible();
-  await page.keyboard.press("End");
-  await expect(page.getByRole("tab", { name: "Internal Notes", exact: true })).toBeFocused();
-  await expect(
-    page.getByText("Internal notes never appear in customer Preview, Print, or PDF documents.")
-  ).toBeVisible();
-  await page.keyboard.press("Home");
-  await expect(customer).toBeFocused();
-  const disclosure = page.getByRole("button", { name: "Customer Notes", exact: true });
-  await disclosure.click();
-  await expect(disclosure).toHaveAttribute("aria-expanded", "false");
-  await page.keyboard.press("Enter");
-  await expect(disclosure).toHaveAttribute("aria-expanded", "true");
+test("customer notes are directly visible without audience tabs", async ({ page }) => {
+  await expect(page.getByRole("heading", { name: "Customer Notes", exact: true })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Customer Notes", exact: true })).toHaveCount(0);
+  await expect(page.getByText("Client-facing scope notes and clarifications", { exact: true })).toBeVisible();
 });
 
 for (const width of [1440, 1140, 1024, 768, 640, 390]) {

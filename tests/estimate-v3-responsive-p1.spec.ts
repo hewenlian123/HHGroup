@@ -1,3 +1,7 @@
+// MIXED CONTRACT: behavior, financial, accessibility, and responsive assertions remain active.
+// Presentation snapshot assertions are task-scoped current evidence and may be replaced by
+// an explicit user-requested redesign; they are not permanent UI authority.
+
 import { mkdir, writeFile } from "node:fs/promises";
 
 import { expect, test, type Locator, type Page } from "./estimate-playwright-test";
@@ -183,7 +187,7 @@ test.afterAll(async () => {
   await cleanupDenseEstimateFixture();
 });
 
-test("Estimate V3 dense worksheet preserves construction scope and financial semantics at every viewport", async ({
+test("Estimate worksheet preserves construction scope and financial semantics at every viewport", async ({
   page,
 }) => {
   test.setTimeout(180_000);
@@ -341,7 +345,7 @@ test("Estimate V3 dense worksheet preserves construction scope and financial sem
   expect(runtimeErrors).toEqual([]);
 });
 
-test("Estimate V3 mobile 390 completes open edit save and preview in one context", async ({
+test("Estimate mobile 390 completes open edit save and preview in one context", async ({
   page,
 }) => {
   test.setTimeout(180_000);

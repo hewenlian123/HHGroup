@@ -19,12 +19,13 @@ describe("Estimate Builder productivity keyboard contracts", () => {
     expect(isEstimateSaveShortcut({ key: "s" })).toBe(false);
   });
 
-  it("commits a line only from an unmodified, non-composing Enter key", () => {
+  it("commits a line from unmodified Enter or forward Tab, never reverse Tab or IME", () => {
     expect(shouldCommitEstimateLineFromPrice({ key: "Enter" })).toBe(true);
     expect(shouldCommitEstimateLineFromPrice({ key: "Enter", shiftKey: true })).toBe(false);
     expect(shouldCommitEstimateLineFromPrice({ key: "Enter", metaKey: true })).toBe(false);
     expect(shouldCommitEstimateLineFromPrice({ key: "Enter", isComposing: true })).toBe(false);
-    expect(shouldCommitEstimateLineFromPrice({ key: "Tab" })).toBe(false);
+    expect(shouldCommitEstimateLineFromPrice({ key: "Tab" })).toBe(true);
+    expect(shouldCommitEstimateLineFromPrice({ key: "Tab", shiftKey: true })).toBe(false);
   });
 });
 

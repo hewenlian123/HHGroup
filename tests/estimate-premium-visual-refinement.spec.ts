@@ -1,3 +1,7 @@
+// PRESENTATION SNAPSHOT: task-scoped evidence for the current implementation only.
+// Explicit user-requested redesign may replace or retire these presentation assertions.
+// This file is not permanent UI authority.
+
 import { expect, test, type Page, type TestInfo } from "./estimate-playwright-test";
 import { mkdir } from "node:fs/promises";
 
@@ -39,7 +43,7 @@ async function capture(page: Page, testInfo: TestInfo, name: string): Promise<vo
   await testInfo.attach(name, { path, contentType: "image/png" });
 }
 
-test("dense Estimate preserves ordered V3 worksheet scope and exact financial output", async ({
+test("Estimate preserves ordered worksheet scope and exact financial output", async ({
   page,
 }, testInfo) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
@@ -97,7 +101,7 @@ test("desktop Edit exposes keyboard-focusable current line controls", async ({
   await capture(page, testInfo, "existing-edit-1440");
 });
 
-test("New Estimate presents the current V3 command, worksheet, and pricing surfaces", async ({
+test("New Estimate presents the current command, worksheet, and pricing workflow", async ({
   page,
 }, testInfo) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
@@ -121,7 +125,7 @@ for (const viewport of [
   { name: "ipad-portrait", width: 820, height: 1180 },
   { name: "mobile-390", width: 390, height: 844 },
 ] as const) {
-  test(`dense V3 Estimate remains usable at ${viewport.name}`, async ({ page }, testInfo) => {
+  test(`Estimate remains usable at ${viewport.name}`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
     await loginAsE2EOwner(page, `/estimates/${DENSE_ESTIMATE_ID}`);
     await page.getByRole("toolbar", { name: "Scope tools" }).scrollIntoViewIfNeeded();

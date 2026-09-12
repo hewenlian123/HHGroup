@@ -404,8 +404,10 @@ test("EST-0063 keeps financial, List, Preview, Print, PDF, and responsive parity
       exact: true,
     })
     .click();
-  await page.getByRole("button", { name: /^Edit line item 1:/ }).click();
-  const mobileTitle = page.getByLabel("Line item 1 title").locator("visible=true").first();
+  await page.getByRole("button", { name: "Inspect line 1", exact: true }).click();
+  const mobileTitle = page
+    .getByRole("region", { name: "Item inspector", exact: true })
+    .getByRole("textbox", { name: "Line item title", exact: true });
   const mobileTitleValue = await mobileTitle.inputValue();
   await mobileTitle.fill(mobileTitleValue);
   await mobileTitle.press("Tab");

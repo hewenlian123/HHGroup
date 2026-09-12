@@ -274,7 +274,7 @@ test("line item status and notes persist to customer preview and print", async (
   const detailHeader = page.getByTestId("estimate-detail-header");
   await detailHeader.getByRole("button", { name: "Estimate actions", exact: true }).click();
   await page.getByRole("menuitem", { name: "Notes", exact: true }).click();
-  const notesSheet = page.getByTestId("estimate-notes-sheet");
+  const notesSheet = page.getByRole("region", { name: "Terms and notes", exact: true });
   await expect(notesSheet).toBeVisible({ timeout: 30_000 });
   await expect(notesSheet.getByLabel("Note title")).toHaveValue("Exclusions", {
     timeout: 30_000,

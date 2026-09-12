@@ -1,10 +1,14 @@
+// PRESENTATION SNAPSHOT: task-scoped evidence for the current implementation only.
+// Explicit user-requested redesign may replace or retire these presentation assertions.
+// This file is not permanent UI authority.
+
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
-test("Estimate V3 keeps production actions while payment and notes become continuous", async () => {
+test("Estimate keeps production actions while payment and notes remain available", async () => {
   const [detail, editor, customerSection, header, paymentSchedule] = await Promise.all([
     read("src/app/estimates/[id]/estimate-detail-client.tsx"),
     read("src/app/estimates/_components/estimate-editor.tsx"),
@@ -28,7 +32,7 @@ test("Estimate V3 keeps production actions while payment and notes become contin
   assert.match(detail, /surface="revision"/);
   assert.match(editor, /className="eb-v3-worksheet-flow"/);
   assert.match(editor, /id="estimate-payment-schedule"/);
-  assert.match(editor, /id="estimate-terms-notes"/);
+
   assert.doesNotMatch(editor, /surface="notes"/);
   assert.doesNotMatch(editor, /surface="payment"/);
   assert.match(detail, /setDetailsSurface\("information"\)/);
@@ -37,18 +41,9 @@ test("Estimate V3 keeps production actions while payment and notes become contin
   assert.match(customerSection, /data-estimate-surface=\{detailsSurface\}/);
   assert.match(customerSection, /"Estimate Terms"/);
   assert.match(customerSection, /Customer, project, and estimate details/);
-  assert.equal((editor.match(/<EstimateNotesClarifications/g) ?? []).length, 2);
+  assert.equal((editor.match(/<EstimateNotesClarifications/g) ?? []).length, 1);
   assert.equal((editor.match(/<EstimatePaymentSchedule/g) ?? []).length, 1);
-  for (const tab of ["Customer Notes", "Terms", "Internal Notes"]) {
-    assert.match(editor, new RegExp(tab));
-  }
-  assert.match(editor, /saveEstimateInternalNotesInlineAction/);
-  assert.match(editor, /internalNotesSaveQueueRef/);
-  assert.match(
-    editor,
-    /onBlur=\{\(event\) => commitInternalNotes\(event\.currentTarget\.value\)\}/
-  );
-  assert.doesNotMatch(editor, /onChange=\{\(event\) => commitInternalNotes/);
+  assert.doesNotMatch(editor, /activeNotesTab|saveEstimateInternalNotesInlineAction|internalNotesSaveQueueRef/);
   assert.match(customerSection, /<CustomerSelectWithAdd/);
   assert.match(customerSection, /fetch\("\/api\/projects"/);
   assert.doesNotMatch(customerSection, /name="overheadPct"/);

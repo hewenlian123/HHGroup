@@ -1,10 +1,14 @@
+// PRESENTATION SNAPSHOT: task-scoped evidence for the current implementation only.
+// Explicit user-requested redesign may replace or retire these presentation assertions.
+// This file is not permanent UI authority.
+
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 
-test("Estimate V3 mounts one customer-facing worksheet without a left section outline", () => {
+test("the current Estimate snapshot mounts one customer-facing worksheet", () => {
   const existingEditor = read("src/app/estimates/_components/estimate-editor.tsx");
   const newEditor = read("src/app/estimates/new/new-estimate-editor.tsx");
 
@@ -14,7 +18,7 @@ test("Estimate V3 mounts one customer-facing worksheet without a left section ou
   assert.match(newEditor, /eb-estimate-workbench--v3/);
 });
 
-test("Estimate V3 inspector exposes customer totals and payment reconciliation only", () => {
+test("Estimate exposes customer totals and payment reconciliation", () => {
   const summary = read("src/app/estimates/_components/estimate-builder-summary.tsx");
 
   for (const label of ["Subtotal", "Discount", "Tax", "Total", "Scheduled", "Remaining"]) {
@@ -26,7 +30,7 @@ test("Estimate V3 inspector exposes customer totals and payment reconciliation o
   assert.doesNotMatch(summary, /label="(?:Material|Labor|Subcontract(?:or)?)"/);
 });
 
-test("Estimate V3 details no longer edits legacy internal planning fields", () => {
+test("Estimate details do not edit retired internal planning fields", () => {
   const details = read("src/app/estimates/_components/estimate-edit-customer-section.tsx");
 
   assert.doesNotMatch(details, /name="overheadPct"/);
@@ -37,7 +41,7 @@ test("Estimate V3 details no longer edits legacy internal planning fields", () =
   assert.match(details, /name="discount"/);
 });
 
-test("Estimate V3 desktop worksheet names every customer quote field", () => {
+test("the current desktop worksheet names every customer quote field", () => {
   const header = read("src/app/estimates/_components/estimate-line-item-grid-header.tsx");
 
   for (const label of [
@@ -55,7 +59,7 @@ test("Estimate V3 desktop worksheet names every customer quote field", () => {
   assert.doesNotMatch(header, />Qty \/ Unit</);
 });
 
-test("Estimate V3 is a continuous worksheet followed by payment and terms", () => {
+test("the current Estimate snapshot places payment and terms after the worksheet", () => {
   for (const path of [
     "src/app/estimates/_components/estimate-editor.tsx",
     "src/app/estimates/new/new-estimate-editor.tsx",
@@ -71,7 +75,7 @@ test("Estimate V3 is a continuous worksheet followed by payment and terms", () =
   }
 });
 
-test("Estimate V3 desktop cascade removes the outline track and aligns quote fields", () => {
+test("the current desktop snapshot aligns quote fields", () => {
   const css = read("src/app/estimates/_components/estimate-builder-operational.css");
   const v3Cascade = css.slice(css.indexOf("HH Group Estimate V3"));
 

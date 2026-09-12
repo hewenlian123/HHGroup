@@ -337,7 +337,8 @@ describe("Estimate Phase 3A revision contract", () => {
     expect(header).toContain("Current revision");
     expect(header).toContain('label: "Estimate date"');
     expect(header).toContain('label: "Valid until"');
-    expect(header).toContain("formatEstimateCurrency(grandTotal)");
+    expect(header).toContain("estimateInspectorTotal(grandTotal, inspector?.pricing ?? null)");
+    expect(header).toContain("formatEstimateCurrency(previewTotal)");
     expect(header).toContain('data-testid="create-estimate-revision-action"');
     expect(detail).toContain("revisionContext.revisions.map");
     expect(detail).toContain('data-testid="estimate-revision-family-list"');

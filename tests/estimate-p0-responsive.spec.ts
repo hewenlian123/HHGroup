@@ -1,3 +1,7 @@
+// MIXED CONTRACT: behavior, financial, accessibility, and responsive assertions remain active.
+// Presentation snapshot assertions are task-scoped current evidence and may be replaced by
+// an explicit user-requested redesign; they are not permanent UI authority.
+
 import { expect, test, type Page, type TestInfo } from "./estimate-playwright-test";
 
 import { E2E_PRESERVED_ESTIMATE_ID } from "./e2e-cleanup-db";

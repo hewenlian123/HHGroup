@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   buildEstimatePageIdentity,
+  estimateScopePageBudget,
+  estimateScopeRowHeight,
   estimateDocumentIdentity,
   paginateEstimatePaymentSchedule,
 } from "@/app/estimates/_components/estimate-document-pagination";
@@ -111,4 +113,16 @@ describe("Estimate customer document pagination", () => {
   it("builds restrained continuation-page identity", () => {
     expect(buildEstimatePageIdentity("EST-0079", 3, 12)).toBe("EST-0079 · Page 3 of 12");
   });
+});
+
+it("reserves financial summary space and the actual itemized price-column height", () => {
+  const shortRow = estimateScopeRowHeight("Short item", "", true);
+  expect(shortRow).toBe(70.75);
+  expect(estimateScopeRowHeight("Short item", "", false)).toBe(31.25);
+  const longRow = estimateScopeRowHeight("Item A", "word ".repeat(39), true);
+  expect(longRow).toBeGreaterThanOrEqual(98.25 + 12);
+  const observedScopeHeight = 2 * 50 + 7 * shortRow + longRow;
+  expect(observedScopeHeight).toBeGreaterThan(estimateScopePageBudget(true, true));
+  expect(estimateScopePageBudget(true, false) - estimateScopePageBudget(true, true)).toBe(180);
+  expect(estimateScopePageBudget(false, false) - estimateScopePageBudget(false, true)).toBe(180);
 });

@@ -5,6 +5,8 @@ import { loginAsE2EOwner, reloadWithE2EAuth } from "./e2e-auth-owner";
 import { deleteLocalEstimateFixtureGraphs } from "./e2e-estimate-fixture-teardown";
 import { assertE2ESupabaseUrlSafeForMutations } from "./e2e-supabase-url-guard";
 
+test.use({ actionTimeout: 10_000 });
+
 function localAdmin(): SupabaseClient {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
@@ -281,12 +283,12 @@ test("Estimate items reorder atomically within/across Sections and persist after
     await reloadWithE2EAuth(page);
     await page.getByRole("button", { name: "Edit", exact: true }).click();
     const bravoMobile = page.locator(
-      `[data-estimate-section-mobile-id="100000"] [data-estimate-line-item-id="${bravo}"]`
+      `[data-estimate-section-id="100000"] [data-estimate-line-item-id="${bravo}"]`
     );
-    await bravoMobile.locator(".eb-line-item-mobile-summary").click();
+    await bravoMobile.scrollIntoViewIfNeeded();
     await bravoMobile.getByRole("button", { name: "More actions" }).click();
     await expect(page.getByRole("menuitem", { name: "Move line item up" })).toBeDisabled();
-    await page.getByRole("menuitem", { name: "Move to section" }).hover();
+    await page.getByRole("menuitem", { name: "Move to section" }).click();
     await performAndWaitForEstimateRefresh(page, estimateId, () =>
       page.getByRole("menuitem", { name: "Section Two", exact: true }).press("Enter")
     );

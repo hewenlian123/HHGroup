@@ -1,3 +1,7 @@
+// MIXED CONTRACT: behavior, financial, accessibility, and responsive assertions remain active.
+// Presentation snapshot assertions are task-scoped current evidence and may be replaced by
+// an explicit user-requested redesign; they are not permanent UI authority.
+
 import { randomUUID } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -154,7 +158,6 @@ async function seedHistoricalFixture(): Promise<string> {
         profit_pct: 0,
         estimate_date: today,
         valid_until: null,
-        notes: null,
         sales_person: null,
         document_notes: [],
       })
@@ -228,7 +231,6 @@ async function seedCurrentFixture(): Promise<string> {
     address: "100 Local Compatibility Way",
     estimateDate: new Date().toISOString().slice(0, 10),
     validUntil: "",
-    notes: "",
     documentNotes: [],
     salesPerson: "Local QA",
     documentStyle: "proposal",

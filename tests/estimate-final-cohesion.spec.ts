@@ -1,3 +1,7 @@
+// PRESENTATION SNAPSHOT: task-scoped evidence for the current implementation only.
+// Explicit user-requested redesign may replace or retire these presentation assertions.
+// This file is not permanent UI authority.
+
 import { expect, test, type Page, type TestInfo } from "./estimate-playwright-test";
 import { mkdir } from "node:fs/promises";
 
@@ -28,7 +32,7 @@ async function capture(page: Page, testInfo: TestInfo, name: string): Promise<vo
   await testInfo.attach(name, { path, contentType: "image/png" });
 }
 
-test("Estimate List uses the Certified V2 operational hierarchy", async ({ page }, testInfo) => {
+test("Estimate List remains operational in the current implementation", async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await loginAsE2EOwner(page, "/estimates");
 
@@ -76,7 +80,7 @@ for (const viewport of [
   });
 }
 
-test("Estimate Builder transient controls use the Certified V2 component language", async ({
+test("Estimate Builder transient controls use the current shared components", async ({
   page,
 }, testInfo) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
@@ -101,7 +105,7 @@ test("Estimate Builder transient controls use the Certified V2 component languag
   await capture(page, testInfo, "estimate-builder-transient-controls-1440");
 });
 
-test("Estimate Preview and Print expose the current V2 action surfaces", async ({
+test("Estimate Preview and Print expose their required actions", async ({
   page,
 }, testInfo) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
@@ -129,7 +133,7 @@ test("Estimate Preview and Print expose the current V2 action surfaces", async (
   await capture(page, testInfo, "estimate-print-operational-1440");
 });
 
-test("Estimate Certified V2 surfaces honor reduced motion without spatial animation", async ({
+test("Estimate surfaces honor reduced motion without spatial animation", async ({
   page,
 }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });

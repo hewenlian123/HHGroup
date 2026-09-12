@@ -15,7 +15,6 @@ function templateRecord(): EstimateTemplateRecord {
     description: "Keeps supported estimate fields",
     category: "General",
     defaultTaxRate: 4.712,
-    defaultTerms: "Due by milestone",
     isArchived: false,
     createdAt: "2026-08-21T00:00:00.000Z",
     updatedAt: "2026-08-21T00:00:00.000Z",

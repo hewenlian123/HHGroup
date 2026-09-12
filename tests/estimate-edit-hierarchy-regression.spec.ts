@@ -1,3 +1,7 @@
+// MIXED CONTRACT: behavior, financial, accessibility, and responsive assertions remain active.
+// Presentation snapshot assertions are task-scoped current evidence and may be replaced by
+// an explicit user-requested redesign; they are not permanent UI authority.
+
 import { expect, test, type Page, type TestInfo } from "./estimate-playwright-test";
 import { mkdir } from "node:fs/promises";
 
@@ -123,7 +127,7 @@ test("Existing Estimate Edit mode has one identity hierarchy and canonical detai
   await capture(page, testInfo, "existing-estimate-edit-1440");
 });
 
-test("editable Section titles use current V2 field and control states", async ({
+test("editable Section titles keep functional field and control states", async ({
   page,
 }, testInfo) => {
   const runtime = collectRuntimeErrors(page);

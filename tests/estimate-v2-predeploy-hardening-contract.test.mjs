@@ -1,3 +1,7 @@
+// PRESENTATION SNAPSHOT: task-scoped evidence for the current implementation only.
+// Explicit user-requested redesign may replace or retire these presentation assertions.
+// This file is not permanent UI authority.
+
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -47,7 +51,7 @@ test("Estimate Preview keeps a visible focus outline in forced colors", () => {
   );
 });
 
-test("the Certified V2 Estimate composition does not mount superseded overview contracts", () => {
+test("the current Estimate snapshot does not mount superseded overview components", () => {
   const builderGlass = source("src/app/estimates/_components/estimate-builder-glass.css");
   const builderOperational = source(
     "src/app/estimates/_components/estimate-builder-operational.css"

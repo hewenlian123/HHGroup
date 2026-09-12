@@ -1,3 +1,7 @@
+// PRESENTATION SNAPSHOT: task-scoped evidence for the current implementation only.
+// Explicit user-requested redesign may replace or retire these presentation assertions.
+// This file is not permanent UI authority.
+
 import { expect, test, type Page, type TestInfo } from "./estimate-playwright-test";
 import { mkdir } from "node:fs/promises";
 
@@ -72,7 +76,7 @@ test.beforeEach(async ({ page }) => {
 });
 test.afterEach(({ page }) => expect(browserErrors.get(page) ?? []).toEqual([]));
 
-test("Existing Estimate exposes the V3 command, worksheet navigation, scope, and pricing hierarchy", async ({
+test("Existing Estimate exposes its command, worksheet navigation, scope, and pricing workflow", async ({
   page,
 }, testInfo) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
@@ -153,7 +157,7 @@ test("Existing Edit Details separates information from current pricing controls"
   await capture(page, testInfo, "edit-details-1440");
 });
 
-test("New Estimate uses V2 details and the collapsed-description interaction", async ({
+test("New Estimate keeps details and the collapsed-description interaction", async ({
   page,
 }, testInfo) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
@@ -272,7 +276,7 @@ for (const viewport of [
   { name: "ipad-portrait", width: 820, height: 1180 },
   { name: "mobile-390", width: 390, height: 844 },
 ] as const) {
-  test(`Certified V2 Estimate remains usable at ${viewport.name}`, async ({ page }, testInfo) => {
+  test(`Estimate remains usable at ${viewport.name}`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
     await loginAsE2EOwner(page, `/estimates/${DENSE_ESTIMATE_ID}`);
     await expect(page.getByTestId("estimate-detail-header")).toBeVisible();

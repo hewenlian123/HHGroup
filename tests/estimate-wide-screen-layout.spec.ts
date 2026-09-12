@@ -1,3 +1,7 @@
+// PRESENTATION SNAPSHOT: task-scoped evidence for the current implementation only.
+// Explicit user-requested redesign may replace or retire these presentation assertions.
+// This file is not permanent UI authority.
+
 import { expect, test, type Page } from "./estimate-playwright-test";
 
 import { loginAsE2EOwner } from "./e2e-auth-owner";

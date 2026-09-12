@@ -800,7 +800,7 @@ test("keeps saved estimate detail header actions compact on desktop and mobile",
   await expectNoHorizontalOverflow(page);
 });
 
-test("renders the intentionally empty legacy estimate in the current V2 workspace", async ({
+test("renders the intentionally empty legacy estimate in the current workspace", async ({
   page,
 }) => {
   test.setTimeout(90_000);
