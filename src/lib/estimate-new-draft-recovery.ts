@@ -24,6 +24,7 @@ export type EstimateNewDraftMilestone = {
   description: string;
   amount: number;
   dueDate?: string;
+  paymentTerm?: string | null;
 };
 
 export type EstimateNewDraftData = {
@@ -76,7 +77,7 @@ const LINE_ITEM_STATUSES = new Set([
 const NOTE_TYPES = new Set([
   "exclusions",
   "assumptions",
-  "payment_terms",
+  
   "warranty",
   "schedule_note",
   "custom",
@@ -173,6 +174,7 @@ function normalizeMilestones(value: unknown): EstimateNewDraftMilestone[] {
         description: stringValue(entry.description),
         amount: finiteNumber(entry.amount),
         ...(dueDate ? { dueDate } : {}),
+        paymentTerm: stringValue(entry.paymentTerm) || null,
       },
     ];
   });

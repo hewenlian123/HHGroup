@@ -19,7 +19,7 @@ import {
   readEstimateDocumentStyleFromCostCategoryNames,
   type EstimateDocumentStyle,
 } from "@/lib/estimate-document-style";
-import { normalizeEstimateNoteBlocks, type EstimateNoteBlock } from "@/lib/estimate-notes";
+import { preserveRetiredEstimateNotes, normalizeEstimateNoteBlocks, type EstimateNoteBlock } from "@/lib/estimate-notes";
 import { resolveDuplicateEstimateLineSortOrder } from "@/lib/estimate-line-order";
 import {
   linkEstimateMilestoneInvoiceWithActivityWithClient,
@@ -67,7 +67,7 @@ export type EstimateMetaRecord = {
   profitPct: number;
   estimateDate: string | null;
   validUntil: string | null;
-  notes: string | null;
+  
   documentNotes: EstimateNoteBlock[];
   salesPerson: string | null;
   documentStyle: EstimateDocumentStyle;
@@ -79,6 +79,7 @@ export type EstimateItemRow = {
   id: string;
   estimateId: string;
   costCode: string;
+  itemName?: string;
   desc: string;
   qty: number;
   unit: string;
@@ -124,6 +125,7 @@ export type PaymentScheduleItem = {
   description: string | null;
   amount: number;
   dueDate: string | null;
+  paymentTerm?: string | null;
   status: "draft" | "invoiced" | "paid";
   invoiceId: string | null;
   createdAt: string;
@@ -135,6 +137,7 @@ export type PaymentScheduleWriteInput = {
   description?: string | null;
   amount: number;
   dueDate?: string | null;
+  paymentTerm?: string | null;
   status?: "draft" | "invoiced" | "paid";
   invoiceId?: string | null;
 };
@@ -325,7 +328,7 @@ export async function createEstimateWithClient(
     clientEmail?: string;
     estimateDate?: string;
     validUntil?: string;
-    notes?: string;
+    
     documentNotes?: EstimateNoteBlock[];
     salesPerson?: string;
     documentStyle?: EstimateDocumentStyle;
@@ -386,7 +389,7 @@ export async function createEstimateWithClient(
   };
   if (payload.validUntil != null && payload.validUntil !== "")
     metaIns.valid_until = payload.validUntil;
-  if (payload.notes != null) metaIns.notes = payload.notes;
+  
   if (payload.documentNotes != null)
     metaIns.document_notes = normalizeEstimateNoteBlocks(payload.documentNotes);
   if (payload.salesPerson != null) metaIns.sales_person = payload.salesPerson;
@@ -430,7 +433,7 @@ export async function createEstimate(payload: {
   clientEmail?: string;
   estimateDate?: string;
   validUntil?: string;
-  notes?: string;
+  
   documentNotes?: EstimateNoteBlock[];
   salesPerson?: string;
   documentStyle?: EstimateDocumentStyle;
@@ -453,7 +456,7 @@ export async function createEstimateWithItemsWithClient(
     clientEmail?: string;
     estimateDate?: string;
     validUntil?: string;
-    notes?: string;
+    
     documentNotes?: EstimateNoteBlock[];
     salesPerson?: string;
     documentStyle?: EstimateDocumentStyle;
@@ -464,6 +467,7 @@ export async function createEstimateWithItemsWithClient(
     categoryNames?: Record<string, string>;
     items: Array<{
       costCode: string;
+      itemName?: string;
       desc: string;
       qty: number;
       unit: string;
@@ -478,6 +482,7 @@ export async function createEstimateWithItemsWithClient(
       description?: string | null;
       amount: number;
       dueDate?: string | null;
+      paymentTerm?: string | null;
     }>;
     activityActor?: EstimateActivityActor;
   }
@@ -492,7 +497,7 @@ export async function createEstimateWithItemsWithClient(
     clientEmail: payload.clientEmail,
     estimateDate: payload.estimateDate,
     validUntil: payload.validUntil,
-    notes: payload.notes,
+    
     documentNotes: payload.documentNotes,
     salesPerson: payload.salesPerson,
     documentStyle: payload.documentStyle,
@@ -521,6 +526,7 @@ export async function createEstimateWithItemsWithClient(
     const itemRows = payload.items.map((it, idx) => ({
       estimate_id: id,
       cost_code: it.costCode,
+      item_name: it.itemName ?? "",
       desc: it.desc,
       qty: it.qty,
       unit: it.unit,
@@ -542,6 +548,7 @@ export async function createEstimateWithItemsWithClient(
         sort_order: idx,
         title: ps.title,
         description: ps.description ?? null,
+        payment_term: ps.paymentTerm ?? null,
         amount: normalizePaymentAmount(ps.amount),
         due_date: ps.dueDate ?? null,
         status: "draft",
@@ -576,7 +583,7 @@ export async function createEstimateWithItems(payload: {
   clientEmail?: string;
   estimateDate?: string;
   validUntil?: string;
-  notes?: string;
+  
   documentNotes?: EstimateNoteBlock[];
   salesPerson?: string;
   tax?: number;
@@ -586,6 +593,7 @@ export async function createEstimateWithItems(payload: {
   categoryNames?: Record<string, string>;
   items: Array<{
     costCode: string;
+    itemName?: string;
     desc: string;
     qty: number;
     unit: string;
@@ -600,6 +608,7 @@ export async function createEstimateWithItems(payload: {
     description?: string | null;
     amount: number;
     dueDate?: string | null;
+    paymentTerm?: string | null;
   }>;
 }): Promise<string> {
   return createEstimateWithItemsWithClient(client(), payload);
@@ -920,7 +929,7 @@ function mapEstimateMetaRow(row: Record<string, unknown>): EstimateMetaRecord {
     profitPct: Number(row.profit_pct ?? 0),
     estimateDate: (row.estimate_date as string) ?? null,
     validUntil: (row.valid_until as string) ?? null,
-    notes: (row.notes as string) ?? null,
+    
     documentNotes: normalizeEstimateNoteBlocks(row.document_notes),
     salesPerson: (row.sales_person as string) ?? null,
     documentStyle: readEstimateDocumentStyleFromCostCategoryNames(row.cost_category_names),
@@ -1145,7 +1154,7 @@ function toSnapshotRecord(r: Record<string, unknown>): EstimateSnapshotRecord {
           profitPct: Number((metaJson.profitPct as number) ?? 0) || 0,
           estimateDate: (metaJson.estimateDate as string | null) ?? null,
           validUntil: (metaJson.validUntil as string | null) ?? null,
-          notes: (metaJson.notes as string | null) ?? null,
+          
           documentNotes: normalizeEstimateNoteBlocks(metaJson.documentNotes),
           salesPerson: (metaJson.salesPerson as string | null) ?? null,
           ...(metaJson.categoryNames && typeof metaJson.categoryNames === "object"
@@ -1159,6 +1168,7 @@ function toSnapshotRecord(r: Record<string, unknown>): EstimateSnapshotRecord {
         id: (it.id as string) ?? "",
         estimateId: (it.estimateId as string) ?? (r.estimate_id as string) ?? "",
         costCode: (it.costCode as string) ?? "",
+        ...(typeof it.itemName === "string" ? { itemName: it.itemName } : {}),
         desc: (it.desc as string) ?? "",
         qty: Number(it.qty) || 0,
         unit: (it.unit as string) ?? "EA",
@@ -1336,7 +1346,7 @@ export async function updateEstimateMetaWithClient(
     profitPct?: number;
     estimateDate?: string;
     validUntil?: string;
-    notes?: string;
+    
     documentNotes?: EstimateNoteBlock[];
     salesPerson?: string;
     documentStyle?: EstimateDocumentStyle;
@@ -1374,9 +1384,15 @@ export async function updateEstimateMetaWithClient(
 
   if (payload.estimateDate != null) patch.estimate_date = payload.estimateDate || null;
   if (payload.validUntil != null) patch.valid_until = payload.validUntil || null;
-  if (payload.notes != null) patch.notes = payload.notes;
-  if (payload.documentNotes != null)
-    patch.document_notes = normalizeEstimateNoteBlocks(payload.documentNotes);
+  
+  if (payload.documentNotes != null) {
+    const { data: existing, error: notesReadError } = await c
+      .from("estimate_meta").select("document_notes").eq("estimate_id", estimateId).single();
+    if (notesReadError || !existing) return false;
+    patch.document_notes = preserveRetiredEstimateNotes(
+      existing.document_notes, normalizeEstimateNoteBlocks(payload.documentNotes)
+    );
+  }
   if (payload.salesPerson != null) patch.sales_person = payload.salesPerson;
   if (payload.documentStyle != null) patch.document_style = payload.documentStyle;
 
@@ -1413,7 +1429,7 @@ export async function updateEstimateMeta(
     profitPct?: number;
     estimateDate?: string;
     validUntil?: string;
-    notes?: string;
+    
     documentNotes?: EstimateNoteBlock[];
     salesPerson?: string;
     documentStyle?: EstimateDocumentStyle;
@@ -1474,6 +1490,7 @@ export async function reorderEstimateCategories(
 
 type LineItemInsertPayload = {
   costCode: string;
+  itemName?: string;
   desc: string;
   qty: number;
   unit: string;
@@ -1501,6 +1518,7 @@ function mapEstimateItemRow(r: Record<string, unknown>): EstimateItemRow {
     id: r.id as string,
     estimateId: r.estimate_id as string,
     costCode: (r.cost_code as string) ?? "",
+    itemName: (r.item_name as string) ?? "",
     desc: (r.desc as string) ?? "",
     qty: Number(r.qty),
     unit: (r.unit as string) ?? "EA",
@@ -1601,6 +1619,7 @@ export async function addLineItemWithClient(
   const { data: inserted, error } = await insertEstimateItemRowWithAdvancedFallback(c, {
     estimate_id: estimateId,
     cost_code: item.costCode,
+    item_name: item.itemName ?? "",
     desc: item.desc,
     qty: item.qty,
     unit: item.unit,
@@ -1694,7 +1713,8 @@ export async function createCustomEstimateCategoryWithClient(
     if (!fallbackErr) {
       const item = await addLineItemWithClient(c, estimateIdSafe, {
         costCode,
-        desc: "New item",
+        itemName: "New item",
+        desc: "",
         qty: 1,
         unit: "EA",
         unitCost: 0,
@@ -1720,7 +1740,8 @@ export async function createCustomEstimateCategoryWithClient(
 
   const item = await addLineItemWithClient(c, estimateIdSafe, {
     costCode,
-    desc: "New item",
+    itemName: "New item",
+    desc: "",
     qty: 1,
     unit: "EA",
     unitCost: 0,
@@ -1801,7 +1822,8 @@ export async function createEstimateCategoryWithExplicitCodeWithClient(
     if (!fallbackErr) {
       const item = await addLineItemWithClient(c, estimateIdSafe, {
         costCode,
-        desc: "New item",
+        itemName: "New item",
+        desc: "",
         qty: 1,
         unit: "EA",
         unitCost: 0,
@@ -1827,7 +1849,8 @@ export async function createEstimateCategoryWithExplicitCodeWithClient(
 
   const item = await addLineItemWithClient(c, estimateIdSafe, {
     costCode,
-    desc: "New item",
+    itemName: "New item",
+    desc: "",
     qty: 1,
     unit: "EA",
     unitCost: 0,
@@ -1914,6 +1937,7 @@ export async function updateLineItemWithClient(
   estimateId: string,
   itemId: string,
   payload: {
+    itemName?: string;
     desc?: string;
     qty?: number;
     unit?: string;
@@ -1933,6 +1957,7 @@ export async function updateLineItemWithClient(
   const { data: est } = await c.from("estimates").select("status").eq("id", estimateId).single();
   if (!est || !["Draft", "Sent"].includes(est.status as string)) return false;
   const up: Record<string, unknown> = {};
+  if (payload.itemName != null) up.item_name = payload.itemName;
   if (payload.desc != null) up.desc = payload.desc;
   if (payload.qty != null) up.qty = payload.qty;
   if (payload.unit != null) up.unit = payload.unit;
@@ -1979,6 +2004,7 @@ export async function updateLineItem(
   estimateId: string,
   itemId: string,
   payload: {
+    itemName?: string;
     desc?: string;
     qty?: number;
     unit?: string;
@@ -2164,7 +2190,8 @@ export async function duplicateLineItemWithClient(
   );
   return addLineItemWithClient(c, estimateId, {
     costCode: (row.cost_code as string) ?? "",
-    desc: `${(row.desc as string) ?? ""} (copy)`,
+    itemName: `${(row.item_name as string) || "Untitled item"} (copy)`,
+    desc: (row.desc as string) ?? "",
     qty: Number(row.qty),
     unit: (row.unit as string) ?? "EA",
     unitCost: Number(row.unit_cost),
@@ -2266,6 +2293,7 @@ function mapPaymentScheduleRow(
       estimateId
     ),
     dueDate: (row.due_date as string) ?? null,
+    paymentTerm: (row.payment_term as string) ?? null,
     status: normalizePaymentStatus(row.status),
     invoiceId: (row.invoice_id as string) ?? null,
     createdAt: (row.created_at as string) ?? "",
@@ -2354,6 +2382,7 @@ export async function addPaymentMilestoneWithClient(
       description: item.description?.trim() || null,
       amount,
       due_date: item.dueDate ?? null,
+      payment_term: item.paymentTerm?.trim() || null,
       status: item.status ?? "draft",
       invoice_id: item.invoiceId ?? null,
     })
@@ -2386,6 +2415,7 @@ export async function updatePaymentMilestoneWithClient(
     up.amount = amount;
   }
   if (payload.dueDate !== undefined) up.due_date = payload.dueDate ?? null;
+  if (payload.paymentTerm !== undefined) up.payment_term = payload.paymentTerm?.trim() || null;
   if (payload.status != null) up.status = payload.status;
   if (payload.invoiceId !== undefined) up.invoice_id = payload.invoiceId ?? null;
   if (Object.keys(up).length === 0) return true;

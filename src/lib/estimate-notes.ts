@@ -1,7 +1,7 @@
 export const ESTIMATE_NOTE_TYPES = [
   "exclusions",
   "assumptions",
-  "payment_terms",
+  
   "warranty",
   "schedule_note",
   "custom",
@@ -19,7 +19,7 @@ export type EstimateNoteBlock = {
 export const NOTE_TYPE_LABELS: Record<EstimateNoteType, string> = {
   exclusions: "Exclusions",
   assumptions: "Assumptions",
-  payment_terms: "Payment Terms",
+  
   warranty: "Warranty",
   schedule_note: "Schedule Note",
   custom: "Custom Note",
@@ -35,6 +35,7 @@ export function normalizeEstimateNoteBlocks(input: unknown): EstimateNoteBlock[]
   input.forEach((raw, index) => {
     if (!raw || typeof raw !== "object") return;
     const row = raw as Record<string, unknown>;
+    if (row.type === "payment_terms") return;
     const type = ESTIMATE_NOTE_TYPES.includes(row.type as EstimateNoteType)
       ? (row.type as EstimateNoteType)
       : "custom";
@@ -49,4 +50,12 @@ export function normalizeEstimateNoteBlocks(input: unknown): EstimateNoteBlock[]
     });
   });
   return out;
+}
+
+/** Keep retired records in storage when editing customer notes; never expose them as cards. */
+export function preserveRetiredEstimateNotes(existing: unknown, customerNotes: EstimateNoteBlock[]): unknown[] {
+  const retired = Array.isArray(existing) ? existing.filter((note) =>
+    note && typeof note === "object" && note.type === "payment_terms"
+  ) : [];
+  return [...customerNotes, ...retired];
 }
