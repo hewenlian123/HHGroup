@@ -50,6 +50,7 @@ function draft(): EstimateNewDraftData {
         id: "milestone-1",
         title: "Deposit",
         description: "Tax-inclusive fixed amount",
+        paymentTerm: null,
         amount: 2556.19,
         dueDate: "2026-08-30",
       },

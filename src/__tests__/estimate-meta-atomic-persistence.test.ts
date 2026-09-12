@@ -84,9 +84,12 @@ function createRpcOnlyClient(result?: { data: unknown; error: { message: string 
   );
   return {
     rpc,
-    from: vi.fn(() => {
-      throw new Error("Atomic Estimate meta persistence must not use direct table writes.");
-    }),
+    // Only SELECT is exposed: a direct update/insert still fails this atomic-write contract.
+    from: vi.fn(() => ({
+      select: () => ({ eq: () => ({ single: async () => ({
+        data: { document_notes: [] }, error: null,
+      }) }) }),
+    })),
   };
 }
 

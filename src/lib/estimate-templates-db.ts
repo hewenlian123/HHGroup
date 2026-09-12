@@ -1,3 +1,4 @@
+import { estimateLineItemText } from "@/lib/sanitize-line-item-html";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   groupEstimateItemsByCategoryId,
@@ -231,9 +232,10 @@ export async function duplicateEstimateTemplate(
 }
 
 export function estimateItemToTemplateLineItem(row: EstimateItemRow): EstimateTemplateLineItem {
+  const text = estimateLineItemText(row);
   return {
-    title: row.itemName || "Line item",
-    description: row.desc,
+    title: text.title || "Line item",
+    description: text.body,
     qty: row.qty,
     unit: row.unit || "EA",
     unitPrice: row.unitCost,
