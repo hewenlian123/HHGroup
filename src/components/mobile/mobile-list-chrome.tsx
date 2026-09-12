@@ -80,18 +80,23 @@ export function MobileFilterSheet({
   open,
   onOpenChange,
   title = "Filters",
+  desktopBreakpoint = "md",
   children,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title?: string;
+  desktopBreakpoint?: "md" | "lg";
   children: React.ReactNode;
 }) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="bottom"
-        className="max-h-[90vh] overflow-y-auto rounded-t-[1.5rem] p-4 pb-[max(1rem,env(safe-area-inset-bottom))] md:hidden"
+        className={cn(
+          "max-h-[90vh] overflow-y-auto rounded-t-[1.5rem] p-4 pb-[max(1rem,env(safe-area-inset-bottom))]",
+          desktopBreakpoint === "lg" ? "lg:hidden" : "md:hidden"
+        )}
       >
         <SheetHeader className="text-left">
           <SheetTitle className={TYPO.sectionTitle}>{title}</SheetTitle>
@@ -108,6 +113,7 @@ export function MobileSearchFiltersRow({
   activeFilterCount,
   filterSheetOpen,
   filtersTriggerClassName,
+  desktopBreakpoint = "md",
 }: {
   searchSlot: React.ReactNode;
   onOpenFilters: () => void;
@@ -116,9 +122,15 @@ export function MobileSearchFiltersRow({
   filterSheetOpen: boolean;
   /** e.g. min-h-[44px] to align with touch-sized search inputs */
   filtersTriggerClassName?: string;
+  desktopBreakpoint?: "md" | "lg";
 }) {
   return (
-    <div className="flex items-center gap-2 md:hidden">
+    <div
+      className={cn(
+        "flex items-center gap-2",
+        desktopBreakpoint === "lg" ? "lg:hidden" : "md:hidden"
+      )}
+    >
       <div className="min-w-0 flex-1">{searchSlot}</div>
       <Button
         type="button"

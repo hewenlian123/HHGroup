@@ -1,8 +1,11 @@
 "use client";
 
+import { useFinanceQueryState } from "@/hooks/use-finance-query-state";
+import { financePathWithReturn, financeReturnPath } from "@/lib/finance-navigation";
+
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, usePathname, useSearchParams } from "next/navigation";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { Button } from "@/components/ui/button";
 import {
@@ -91,9 +94,12 @@ export function ContactsDirectory({
   vendorOnly?: boolean;
 }) {
   const vendors = useVendors();
-  const [query, setQuery] = useState("");
-  const [role, setRole] = useState("all");
-  const [status, setStatus] = useState("all");
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const context = `${pathname}?${searchParams.toString()}`;
+  const [query, setQuery] = useFinanceQueryState("q", "");
+  const [role, setRole] = useFinanceQueryState("role", "all");
+  const [status, setStatus] = useFinanceQueryState("status", "all");
   const all: ContactGroup[] = [...groups, { role: "Vendor", entries: vendors.entries }];
   const entries = all.flatMap((group) =>
     (group.entries ?? []).map((entry) => ({ ...entry, role: group.role }))
@@ -125,7 +131,11 @@ export function ContactsDirectory({
           <div className="min-w-0">
             <Link
               className="inline-flex min-h-11 items-center break-words font-medium underline-offset-2 hover:underline"
-              href={entry.href}
+              href={
+                entry.href.startsWith("/vendors/")
+                  ? financePathWithReturn(entry.href, context)
+                  : entry.href
+              }
               prefetch={false}
             >
               {entry.name || "Unnamed contact"}
@@ -265,7 +275,11 @@ export function ContactsDirectory({
             {recent.map((entry) => (
               <Link
                 key={`${entry.role}:${entry.id}`}
-                href={entry.href}
+                href={
+                  entry.href.startsWith("/vendors/")
+                    ? financePathWithReturn(entry.href, context)
+                    : entry.href
+                }
                 prefetch={false}
                 className="flex min-h-11 flex-wrap items-center justify-between gap-2 border-b border-[var(--hh-border-subtle)] py-2 text-sm"
               >
@@ -291,7 +305,11 @@ export function ContactsDirectory({
               .map((entry) => (
                 <Link
                   key={`${entry.role}:${entry.id}`}
-                  href={entry.href}
+                  href={
+                    entry.href.startsWith("/vendors/")
+                      ? financePathWithReturn(entry.href, context)
+                      : entry.href
+                  }
                   prefetch={false}
                   className="flex min-h-11 items-center gap-2 text-sm underline"
                 >
@@ -330,6 +348,9 @@ export function ContactsDirectory({
 
 export function VendorDetail() {
   const { id } = useParams<{ id: string }>();
+  const searchParams = useSearchParams();
+  const context = `/vendors/${id}?${searchParams.toString()}`;
+  const returnHref = financeReturnPath(searchParams.get("returnTo"), "/vendors");
   const vendors = useVendors();
   const vendor = vendors.entries?.find((entry) => entry.id === id);
   if (vendors.loading)
@@ -354,7 +375,7 @@ export function VendorDetail() {
           </Button>
         )}
         <Button asChild variant="outline" className="min-h-11">
-          <Link href="/vendors">Back to Vendors</Link>
+          <Link href={returnHref}>Back to Vendors</Link>
         </Button>
       </PageLayout>
     );
@@ -362,7 +383,7 @@ export function VendorDetail() {
     <NeoPanel title={label} bodyClassName="space-y-3 p-4">
       <p className="text-sm text-[var(--hh-text-secondary)]">{description}</p>
       <Button asChild variant="outline" className="min-h-11">
-        <Link href={href} prefetch={false}>
+        <Link href={financePathWithReturn(href, context)} prefetch={false}>
           {label}
         </Link>
       </Button>
@@ -377,7 +398,7 @@ export function VendorDetail() {
           description="Vendor profile"
           actions={
             <Button asChild variant="outline" className="min-h-11">
-              <Link href="/vendors">Back to Vendors</Link>
+              <Link href={returnHref}>Back to Vendors</Link>
             </Button>
           }
         />
@@ -414,23 +435,23 @@ export function VendorDetail() {
           {
             label: "Bills",
             content: workflow(
-              "Search bills by name",
-              `/bills?search=${encodeURIComponent(vendor.name)}`,
-              "These are name search results. Review each bill to confirm its payee; matching names do not establish a vendor relationship."
+              "Browse all bills",
+              "/financial/payables?tab=bills",
+              "Vendor-scoped bills are unavailable: bills do not have a reliable Vendor ID relationship. This opens all bills."
             ),
           },
           {
             label: "Payments",
             content: workflow(
-              "Open vendor payments",
+              "Browse all outgoing payments",
               "/financial/payables/payments",
-              "Vendor-specific payment history is unavailable. Review payments in Payables."
+              "Vendor-scoped payments are unavailable: payments link to bills without a reliable Vendor ID relationship. This opens all outgoing payments."
             ),
           },
           {
             label: "Expenses",
             content: workflow(
-              "Open expenses",
+              "Browse all expenses",
               "/financial/expenses",
               "Vendor-specific expense history is unavailable. Review the payee on each expense."
             ),

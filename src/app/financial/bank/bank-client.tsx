@@ -1,5 +1,9 @@
 "use client";
 
+import { useFinanceQueryState } from "@/hooks/use-finance-query-state";
+import { useSearchParams } from "next/navigation";
+import { financePathWithReturn } from "@/lib/finance-navigation";
+
 import * as React from "react";
 import { ErrorRetry, LoadingState } from "@/components/ui/system-state";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
@@ -192,9 +196,17 @@ export default function BankReconcileClient() {
   const [vendorsList, setVendorsList] = React.useState<string[]>([]);
   const [paymentMethodsList, setPaymentMethodsList] = React.useState<string[]>(["ACH"]);
 
-  const [search, setSearch] = React.useState("");
-  const [tab, setTab] = React.useState<TabFilter>("unmatched");
-  const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
+  const searchParams = useSearchParams();
+  const context = `/financial/bank?${searchParams.toString()}`;
+  const [search, setSearch] = useFinanceQueryState("q", "");
+  const [tab, setTab] = useFinanceQueryState<TabFilter>("tab", "unmatched");
+  const [selectedIds, setSelectedIds] = React.useState<Set<string>>(
+    () => new Set((searchParams.get("selected") ?? "").split(",").filter(Boolean))
+  );
+  const [, setSelectedQuery] = useFinanceQueryState("selected", "");
+  React.useEffect(() => {
+    setSelectedQuery([...selectedIds].join(","));
+  }, [selectedIds, setSelectedQuery]);
   const [importMessage, setImportMessage] = React.useState<string | null>(null);
   const [toastMessage, setToastMessage] = React.useState<string | null>(null);
 
@@ -1118,7 +1130,12 @@ export default function BankReconcileClient() {
                 <div className="flex flex-col gap-2">
                   {selectedTxFromList?.linkedExpenseId ? (
                     <Button asChild variant="outline">
-                      <Link href={`/financial/expenses/${selectedTxFromList.linkedExpenseId}`}>
+                      <Link
+                        href={financePathWithReturn(
+                          `/financial/expenses/${selectedTxFromList.linkedExpenseId}`,
+                          context
+                        )}
+                      >
                         Open Expense
                       </Link>
                     </Button>
@@ -1201,7 +1218,14 @@ export default function BankReconcileClient() {
                                   size="sm"
                                   className="btn-outline-ghost h-8"
                                 >
-                                  <Link href={`/financial/expenses/${s.expense.id}`}>View</Link>
+                                  <Link
+                                    href={financePathWithReturn(
+                                      `/financial/expenses/${s.expense.id}`,
+                                      context
+                                    )}
+                                  >
+                                    View
+                                  </Link>
                                 </Button>
                                 <Button
                                   variant="outline"

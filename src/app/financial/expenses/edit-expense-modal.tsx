@@ -52,13 +52,12 @@ import type { PaymentAccountRow } from "@/lib/data";
 import type { SubcontractDeductionOption } from "@/lib/data";
 import { persistLastExpensePaymentAccountId } from "@/lib/expense-payment-preferences";
 import {
-  deriveExpenseWorkflowStatus,
   expenseCostAllocationFromProjectId,
   expenseCostAllocationRequiresProject,
   expenseNeedsReviewFromDb,
   expenseSourceTypeIsWorkerReimbursement,
   expenseStatusUiLabel,
-  preserveConfirmedExpenseStatusOnCompleteSave,
+  expenseStatusAfterSave,
   EXPENSE_COST_ALLOCATION_OVERHEAD,
   EXPENSE_COST_ALLOCATION_PROJECT_COST,
   EXPENSE_PROJECT_SELECT_NONE,
@@ -361,8 +360,8 @@ export function EditExpenseModal({
 
   const handleSave = () => {
     if (!expense || saving) return;
-    const numAmount = parseFloat(amount);
-    if (Number.isNaN(numAmount) || numAmount < 0) {
+    const numAmount = Number(amount);
+    if (!amount.trim() || !Number.isFinite(numAmount) || numAmount < 0) {
       toast({ title: "Invalid amount", variant: "error" });
       return;
     }
@@ -427,10 +426,7 @@ export function EditExpenseModal({
           (await defaultPaymentMethodName()) ||
           (expense.paymentMethod ?? "").trim() ||
           "Cash";
-        const workflowStatus = preserveConfirmedExpenseStatusOnCompleteSave(
-          expense.status,
-          deriveExpenseWorkflowStatus(projectId, category || "Other", costAllocation)
-        );
+        const workflowStatus = expenseStatusAfterSave(expense.status);
         onSave({
           expenseId: expense.id,
           date: expenseDate.slice(0, 10),
@@ -691,7 +687,7 @@ export function EditExpenseModal({
                       className="flex h-10 w-full items-center justify-start gap-2 rounded-sm border-border/60 px-3 py-0 text-sm font-normal"
                     >
                       {(() => {
-                        const w = deriveExpenseWorkflowStatus(projectId, category, costAllocation);
+                        const w = expenseStatusAfterSave(expense.status);
                         return (
                           <>
                             <span

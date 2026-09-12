@@ -1580,6 +1580,10 @@ export function AttachmentPreviewModal({
     if (!isOpen) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
+        if (deleteConfirmOpen) {
+          if (!deleteBusy) setDeleteConfirmOpen(false);
+          return;
+        }
         onClose();
         return;
       }
@@ -1594,7 +1598,7 @@ export function AttachmentPreviewModal({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [isOpen, onClose, itemCount, goNext, goPrev]);
+  }, [isOpen, onClose, itemCount, goNext, goPrev, deleteConfirmOpen, deleteBusy]);
 
   React.useEffect(() => {
     if (!isOpen || presentation?.kind === "receipt") return;

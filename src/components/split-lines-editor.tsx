@@ -36,6 +36,8 @@ export interface SplitLinesEditorProps {
   lines: SplitLineRow[];
   onLineChange: (lineId: string, patch: Partial<SplitLineRow>) => void;
   onAddLine: () => void;
+  onSaveLine?: (lineId: string) => void;
+  isLineDirty?: (lineId: string) => boolean;
   onDeleteLine: (lineId: string) => void;
   /** Show cost code column (e.g. expense detail) */
   showCostCode?: boolean;
@@ -75,6 +77,8 @@ export function SplitLinesEditor({
   lines,
   onLineChange,
   onAddLine,
+  onSaveLine,
+  isLineDirty,
   onDeleteLine,
   showCostCode = false,
   showHeaderVendorPayment = false,
@@ -350,6 +354,16 @@ export function SplitLinesEditor({
                   />
                 </TableCell>
                 <TableCell>
+                  {onSaveLine && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={!isLineDirty?.(line.id)}
+                      onClick={() => onSaveLine(line.id)}
+                    >
+                      Save line
+                    </Button>
+                  )}
                   <Button
                     type="button"
                     variant="outline"

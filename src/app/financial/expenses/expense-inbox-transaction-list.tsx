@@ -1860,8 +1860,12 @@ export function ExpenseInboxTransactionList({
   const [expandedByDate, setExpandedByDate] = React.useState<Record<string, boolean>>({});
 
   React.useEffect(() => {
-    clearBulkSelection();
-  }, [dateChunksIdentity, clearBulkSelection]);
+    const visibleIds = new Set(dateChunks.flatMap((chunk) => chunk.rows.map((row) => row.id)));
+    setSelectedIds((previous) => {
+      const retained = [...previous].filter((id) => visibleIds.has(id));
+      return retained.length === previous.size ? previous : new Set(retained);
+    });
+  }, [dateChunksIdentity, dateChunks]);
 
   React.useEffect(() => {
     if (api.autoExpandDateGroups) {
@@ -1917,7 +1921,6 @@ export function ExpenseInboxTransactionList({
         const result = await fn(ids);
         if (result !== false) clearBulkSelection();
       } catch (cause) {
-        clearBulkSelection();
         throw cause;
       }
     },

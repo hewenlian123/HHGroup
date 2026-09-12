@@ -1,14 +1,13 @@
 "use client";
 
+import { financePathWithReturn } from "@/lib/finance-navigation";
+
 import * as React from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ArrowLeft, Download, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  appendEstimateReturnPath,
-  safeEstimateReturnPath,
-} from "@/app/estimates/_components/estimate-workflow-continuity";
+import { safeEstimateReturnPath } from "@/app/estimates/_components/estimate-workflow-continuity";
 
 type InvoicePreviewShellProps = {
   invoiceId: string;
@@ -28,9 +27,9 @@ function safePdfFilename(invoiceNo: string): string {
 export function InvoicePreviewShell({ invoiceId, invoiceNo, children }: InvoicePreviewShellProps) {
   const searchParams = useSearchParams();
   const estimateReturnPath = safeEstimateReturnPath(searchParams.get("returnTo"));
-  const invoiceReturnPath = appendEstimateReturnPath(
+  const invoiceReturnPath = financePathWithReturn(
     `/financial/invoices/${invoiceId}`,
-    estimateReturnPath
+    searchParams.get("returnTo")
   );
   const invoiceDocumentRef = React.useRef<HTMLDivElement>(null);
   const autoDownloadStarted = React.useRef(false);

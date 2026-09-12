@@ -1,15 +1,13 @@
+import { expenseRequiresReceiptReview } from "@/lib/expense-workflow-status";
+import { getExpenseTotal } from "@/lib/expense-domain";
 import { NextResponse } from "next/server";
 import { requireSupabaseOwnerOrAdminWithClient } from "@/lib/auth-boundary";
-import {
-  ensureWorkerReimbursementForApprovedExpense,
-  getExpenseById,
-  syncExpenseHeaderAmountFromLinesWithClient,
-} from "@/lib/expenses-db";
+import { getExpenseById, syncExpenseHeaderAmountFromLinesWithClient } from "@/lib/expenses-db";
 import {
   expenseNeedsReviewFromDb,
+  expenseSourceTypeIsWorkerReimbursement,
   validateApproveInboxUploadDraft,
 } from "@/lib/expense-workflow-status";
-import { isInboxUploadExpenseReference } from "@/lib/inbox-upload-constants";
 import {
   SUPABASE_MISSING_SERVER_ENV_MESSAGE,
   getServerSupabaseInternalNoStore,
@@ -58,13 +56,24 @@ export async function POST(
   const current = await getExpenseById(expenseId, supabase);
   if (!current) return apiError(404, "Inbox draft was not found.");
 
-  if (!isInboxUploadExpenseReference(current.referenceNo)) {
+  if (!expenseRequiresReceiptReview(current)) {
     return apiError(409, "Only Inbox receipt drafts can be approved here.");
   }
 
   if (!expenseNeedsReviewFromDb(current.status)) {
     return apiError(409, "This Inbox draft is already approved or done.");
   }
+
+  if (expenseSourceTypeIsWorkerReimbursement(current.sourceType)) {
+    return apiError(
+      409,
+      "BLOCKED: Expense reimbursement bridge is retired. Use canonical Receipt approval."
+    );
+  }
+
+  const total = getExpenseTotal(current);
+  if (!Number.isFinite(total) || total <= 0)
+    return apiError(409, "Amount must be greater than 0 before approval.");
 
   const gate = validateApproveInboxUploadDraft(current);
   if (gate) return apiError(409, gateMessage(gate));
@@ -84,16 +93,6 @@ export async function POST(
     .update({ status: "approved" })
     .eq("id", expenseId);
   if (error) return apiError(500, "Could not approve Inbox draft.", error.message);
-
-  try {
-    await ensureWorkerReimbursementForApprovedExpense(expenseId, supabase);
-  } catch (bridgeError) {
-    return apiError(
-      500,
-      "Inbox draft approved, but worker reimbursement could not be created.",
-      bridgeError instanceof Error ? bridgeError.message : String(bridgeError)
-    );
-  }
 
   const updated = await getExpenseById(expenseId, supabase);
   if (!updated) return apiError(500, "Inbox draft approved, but the expense could not reload.");

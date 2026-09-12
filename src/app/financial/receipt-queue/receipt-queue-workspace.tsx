@@ -1515,7 +1515,7 @@ export function ReceiptQueueWorkspace() {
         void (async () => {
           try {
             await finalizeConfirmMutation.mutateAsync(live);
-            if (mountedRef.current) hotToast.success("Confirmed");
+            if (mountedRef.current) hotToast.success("Sent to Review");
           } catch (err) {
             if (!mountedRef.current) return;
             setRows(snapshot);

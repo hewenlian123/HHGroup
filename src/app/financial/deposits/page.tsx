@@ -1,5 +1,12 @@
 "use client";
 
+import { FinanceContextBack } from "@/components/financial/finance-context-back";
+
+import { useRouter, useSearchParams } from "next/navigation";
+import { financePathWithReturn } from "@/lib/finance-navigation";
+
+import { useFinanceQueryState } from "@/hooks/use-finance-query-state";
+
 import * as React from "react";
 import { ErrorRetry, LoadingState } from "@/components/ui/system-state";
 import { loadDepositsAction } from "./actions";
@@ -40,16 +47,18 @@ export default function DepositsPage() {
 }
 
 function DepositsPageInner() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [deposits, setDeposits] = React.useState<DepositWithMeta[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [loadError, setLoadError] = React.useState<string | null>(null);
   const readSequence = React.useRef(0);
   const [filtersOpen, setFiltersOpen] = React.useState(false);
-  const [searchQuery, setSearchQuery] = React.useState("");
-  const [projectFilter, setProjectFilter] = React.useState("");
-  const [accountFilter, setAccountFilter] = React.useState("");
-  const [dateFrom, setDateFrom] = React.useState("");
-  const [dateTo, setDateTo] = React.useState("");
+  const [searchQuery, setSearchQuery] = useFinanceQueryState("q", "");
+  const [projectFilter, setProjectFilter] = useFinanceQueryState("project", "");
+  const [accountFilter, setAccountFilter] = useFinanceQueryState("account", "");
+  const [dateFrom, setDateFrom] = useFinanceQueryState("dateFrom", "");
+  const [dateTo, setDateTo] = useFinanceQueryState("dateTo", "");
 
   const load = React.useCallback(async () => {
     const sequence = ++readSequence.current;
@@ -171,6 +180,7 @@ function DepositsPageInner() {
           mobileListPagePaddingClass
         )}
       >
+        <FinanceContextBack />
         <div className="hidden md:block">
           <PageHeader
             className="gap-1 border-b border-[var(--hh-border)] pb-2 lg:items-baseline lg:gap-x-4 [&_h1]:text-[var(--hh-text-primary)] [&_p]:mt-0 [&_p]:text-[var(--hh-text-secondary)]"
@@ -511,7 +521,13 @@ function DepositsPageInner() {
                       actions={[
                         {
                           label: "View payments",
-                          onClick: () => (window.location.href = "/financial/payments"),
+                          onClick: () =>
+                            router.push(
+                              financePathWithReturn(
+                                `/financial/payments${row.payment_id ? `?paymentId=${encodeURIComponent(row.payment_id)}` : ""}`,
+                                `/financial/deposits?${searchParams.toString()}`
+                              )
+                            ),
                         },
                       ]}
                     />

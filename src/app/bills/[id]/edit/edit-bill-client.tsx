@@ -1,8 +1,10 @@
 "use client";
 
+import { financeBillEditReturn } from "@/lib/finance-navigation";
+
 import { syncRouterNonBlocking } from "@/components/perf/sync-router-non-blocking";
 import * as React from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   NeoFieldLabel,
@@ -42,6 +44,8 @@ async function readApiMessage(response: Response, fallback: string): Promise<str
 
 export function EditBillClient({ bill, projects, learnedCategories = [] }: Props) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const detailHref = financeBillEditReturn(bill.id, searchParams.get("returnTo"));
   const [billNo, setBillNo] = React.useState(bill.bill_no ?? "");
   const [vendorName, setVendorName] = React.useState(bill.vendor_name);
   const [billType, setBillType] = React.useState(bill.bill_type);
@@ -93,7 +97,7 @@ export function EditBillClient({ bill, projects, learnedCategories = [] }: Props
       if (!response.ok) {
         throw new Error(await readApiMessage(response, "Failed to update bill."));
       }
-      router.push(`/bills/${bill.id}`);
+      router.push(detailHref);
       syncRouterNonBlocking(router);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to update bill.");
@@ -258,7 +262,7 @@ export function EditBillClient({ bill, projects, learnedCategories = [] }: Props
               className={billsSecondaryButtonClass}
               asChild
             >
-              <Link href={`/bills/${bill.id}`}>Cancel</Link>
+              <Link href={detailHref}>Cancel</Link>
             </Button>
           </div>
         </form>

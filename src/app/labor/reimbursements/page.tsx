@@ -70,8 +70,6 @@ function todayLocalISODate(): string {
   return `${y}-${m}-${day}`;
 }
 
-const STATUS_OPTIONS: WorkerReimbursementStatus[] = ["pending", "approved", "paid", "settled"];
-
 const rbShell =
   "border border-[color:var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[color:var(--hh-text-primary)] transition-colors duration-120";
 
@@ -167,7 +165,14 @@ function ReimbursementCheckbox({
   );
 }
 
-function ReimbursementStatusChip({ status }: { status: WorkerReimbursementStatus }) {
+function ReimbursementStatusChip({
+  status,
+  workflowClass,
+}: Pick<WorkerReimbursement, "status" | "workflowClass">) {
+  if (workflowClass !== "canonical")
+    return <NeoStatus label={`Legacy / Unverified · ${status ?? "NULL"}`} variant="warning" />;
+  if (!["pending", "approved", "paid", "settled"].includes(status ?? ""))
+    return <NeoStatus label={status ?? "NULL"} variant="warning" />;
   if (status === "paid") {
     return <NeoStatus label="Paid" variant="success" />;
   }
@@ -256,8 +261,13 @@ function WorkerReimbursementsPageContent() {
     status: "pending" as WorkerReimbursementStatus,
   });
   const { openPreview } = useAttachmentPreview();
-  const [payModal, setPayModal] = React.useState<{ id: string; amount: number } | null>(null);
+  const [payModal, setPayModal] = React.useState<{
+    id: string;
+    amount: number;
+    paymentIntent: string;
+  } | null>(null);
   const [payAmount, setPayAmount] = React.useState("");
+  const [payDate, setPayDate] = React.useState(todayLocalISODate());
   const [payMethod, setPayMethod] = React.useState("");
   const [payNote, setPayNote] = React.useState("");
   const [payError, setPayError] = React.useState<string | null>(null);
@@ -265,11 +275,13 @@ function WorkerReimbursementsPageContent() {
   const [schemaWarning, setSchemaWarning] = React.useState<string | null>(null);
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
   const [batchPaymentModal, setBatchPaymentModal] = React.useState<{
+    paymentIntent: string;
     workerId: string;
     workerName: string;
     items: WorkerReimbursement[];
     totalAmount: number;
   } | null>(null);
+  const [batchPayDate, setBatchPayDate] = React.useState(todayLocalISODate());
   const [batchPayMethod, setBatchPayMethod] = React.useState("");
   const [batchPayNote, setBatchPayNote] = React.useState("");
   const [batchPaySubmitting, setBatchPaySubmitting] = React.useState(false);
@@ -353,7 +365,7 @@ function WorkerReimbursementsPageContent() {
     const q = query.trim().toLowerCase();
     const base = q
       ? rows.filter((r) => {
-          const worker = r.workerName ?? workerById.get(r.workerId) ?? r.workerId ?? "";
+          const worker = r.workerName ?? workerById.get(r.workerId ?? "") ?? r.workerId ?? "";
           const project =
             r.projectName ??
             (r.projectId ? (projectById.get(r.projectId) ?? r.projectId) : "") ??
@@ -388,9 +400,15 @@ function WorkerReimbursementsPageContent() {
     return sorted;
   }, [rows, query, workerById, projectById, sort]);
 
+  const hasLegacyObligations = rows.some((r) => r.workflowClass !== "canonical");
+
   const reimbursementStats = React.useMemo(() => {
-    const pending = rows.filter((r) => r.status === "pending" || r.status === "approved");
-    const paid = rows.filter((r) => r.status === "paid" || r.status === "settled");
+    const pending = rows.filter(
+      (r) => r.workflowClass === "canonical" && (r.status === "pending" || r.status === "approved")
+    );
+    const paid = rows.filter(
+      (r) => r.workflowClass === "canonical" && (r.status === "paid" || r.status === "settled")
+    );
     const pendingTotal = pending.reduce((s, r) => s + (Number(r.amount) || 0), 0);
     const paidTotal = paid.reduce((s, r) => s + (Number(r.amount) || 0), 0);
     const missingReceipt = pending.filter((r) => !hasReceiptUrl(r)).length;
@@ -440,20 +458,9 @@ function WorkerReimbursementsPageContent() {
     clearNewQueryParam();
   };
 
-  const openNewReimbursementForm = React.useCallback((initialWorkerId = "") => {
-    setEditingId(null);
-    setForm({
-      workerId: initialWorkerId,
-      projectId: "",
-      vendor: "",
-      amount: "",
-      receiptUrl: "",
-      description: "",
-      reimbursementDate: todayLocalISODate(),
-      status: "pending",
-    });
-    setShowForm(true);
-  }, []);
+  const openNewReimbursementForm = React.useCallback(() => {
+    router.push("/labor/receipts");
+  }, [router]);
 
   React.useEffect(() => {
     const initialWorkerId = searchParams.get("workerId")?.trim();
@@ -469,7 +476,7 @@ function WorkerReimbursementsPageContent() {
       !showForm &&
       !editingId
     ) {
-      openNewReimbursementForm(initialWorkerId);
+      openNewReimbursementForm();
     }
   }, [editingId, openNewReimbursementForm, searchParams, showForm, workerById, workers]);
 
@@ -503,7 +510,6 @@ function WorkerReimbursementsPageContent() {
             amount,
             receiptUrl: form.receiptUrl.trim() || null,
             description: form.description.trim() || null,
-            status: form.status,
             reimbursementDate,
           }),
         });
@@ -522,7 +528,6 @@ function WorkerReimbursementsPageContent() {
             amount,
             receiptUrl: form.receiptUrl.trim() || null,
             description: form.description.trim() || null,
-            status: form.status,
             reimbursementDate,
           }),
         });
@@ -542,33 +547,10 @@ function WorkerReimbursementsPageContent() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    setMessage(null);
-    let snapshot: WorkerReimbursement[] | undefined;
-    setRows((prev) => {
-      snapshot = prev;
-      return prev.filter((r) => r.id !== id);
-    });
-    try {
-      const res = await fetch(`/api/worker-reimbursements/${id}`, { method: "DELETE" });
-      if (res.status === 404) {
-        void load();
-        return;
-      }
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.message ?? "Delete failed.");
-      }
-      void load();
-    } catch (e) {
-      if (snapshot) setRows(snapshot);
-      setMessage(e instanceof Error ? e.message : "Delete failed.");
-    }
-  };
-
   const openPayModal = (r: WorkerReimbursement) => {
-    setPayModal({ id: r.id, amount: r.amount });
+    setPayModal({ id: r.id, amount: r.amount, paymentIntent: crypto.randomUUID() });
     setPayAmount(String(r.amount));
+    setPayDate(todayLocalISODate());
     setPayMethod("");
     setPayNote("");
     setPayError(null);
@@ -584,7 +566,12 @@ function WorkerReimbursementsPageContent() {
       const res = await fetch(`/api/worker-reimbursements/${payModal.id}/pay`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ method: payMethod.trim() || null, note: payNote.trim() || null }),
+        body: JSON.stringify({
+          idempotency_key: payModal.paymentIntent,
+          method: payMethod.trim() || null,
+          note: payNote.trim() || null,
+          paymentDate: payDate,
+        }),
       });
       const data = await res.json();
       if (res.status === 404) {
@@ -602,7 +589,9 @@ function WorkerReimbursementsPageContent() {
       setPayModal(null);
       await load();
       // Keep user on Reimbursements page; expense is created in background.
-      setMessage(data.expenseWarning ? `已标记为已付款。${data.expenseWarning}` : "已标记为已付款");
+      setMessage(
+        data.expenseWarning ? `Payment recorded。${data.expenseWarning}` : "Payment recorded"
+      );
     } catch (e) {
       const errMsg = e instanceof Error ? e.message : "Pay failed.";
       setPayError(errMsg);
@@ -612,35 +601,17 @@ function WorkerReimbursementsPageContent() {
     }
   };
 
-  const projectIds = React.useMemo(() => new Set(projects.map((p) => p.id)), [projects]);
-
-  const handleEdit = (row: WorkerReimbursement) => {
-    const projectId = row.projectId && projectIds.has(row.projectId) ? row.projectId : "";
-    setForm({
-      workerId: row.workerId,
-      projectId,
-      vendor: row.vendor ?? "",
-      amount: String(row.amount ?? 0),
-      receiptUrl: row.receiptUrl ?? "",
-      description: row.description ?? "",
-      reimbursementDate:
-        row.reimbursementDate?.trim().slice(0, 10) ||
-        String(row.createdAt ?? "").slice(0, 10) ||
-        todayLocalISODate(),
-      status: (row.status as WorkerReimbursementStatus) ?? "pending",
-    });
-    setEditingId(row.id);
-    setShowForm(true);
-  };
-
   const toggleSort = (key: "reimbursementDate" | "createdAt" | "amount" | "status") => {
     setSort((s) =>
       s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" }
     );
   };
 
-  const pendingOnPage = React.useMemo(() => paged.filter((r) => r.status === "pending"), [paged]);
-  const toggleSelection = (id: string, status: string) => {
+  const pendingOnPage = React.useMemo(
+    () => paged.filter((r) => r.workflowClass === "canonical" && r.status === "pending"),
+    [paged]
+  );
+  const toggleSelection = (id: string, status: string | null) => {
     if (status !== "pending") return;
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -670,14 +641,17 @@ function WorkerReimbursementsPageContent() {
   const openCreateWorkerPayment = () => {
     if (selectedRows.length === 0 || !selectedSameWorker) return;
     const workerId = selectedRows[0].workerId;
+    if (!workerId) return;
     const workerNameStr = workerName(selectedRows[0]);
     const totalAmount = selectedRows.reduce((s, r) => s + (r.amount ?? 0), 0);
     setBatchPaymentModal({
+      paymentIntent: crypto.randomUUID(),
       workerId,
       workerName: String(workerNameStr ?? "—"),
       items: selectedRows,
       totalAmount,
     });
+    setBatchPayDate(todayLocalISODate());
     setBatchPayMethod("");
     setBatchPayNote("");
   };
@@ -691,8 +665,10 @@ function WorkerReimbursementsPageContent() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          idempotency_key: batchPaymentModal.paymentIntent,
           reimbursementIds: batchPaymentModal.items.map((r) => r.id),
           paymentMethod: batchPayMethod.trim() || null,
+          paymentDate: batchPayDate,
           note: batchPayNote.trim() || null,
         }),
       });
@@ -709,7 +685,7 @@ function WorkerReimbursementsPageContent() {
   };
 
   const workerName = (r: WorkerReimbursement) =>
-    r.workerName ?? workerById.get(r.workerId) ?? r.workerId;
+    r.workerId == null ? "NULL Worker" : (r.workerName ?? workerById.get(r.workerId) ?? r.workerId);
   const projectName = (r: WorkerReimbursement) =>
     r.projectName ?? (r.projectId ? (projectById.get(r.projectId) ?? r.projectId) : null) ?? "—";
 
@@ -732,14 +708,17 @@ function WorkerReimbursementsPageContent() {
             align="end"
             className="expenses-ui reimbursement-floating-surface min-w-[10rem] rounded-lg"
           >
-            <DropdownMenuItem onSelect={() => router.push(workerDetailHref(r.workerId))}>
+            <DropdownMenuItem
+              disabled={!r.workerId}
+              onSelect={() => router.push(workerDetailHref(r.workerId ?? ""))}
+            >
               Open Worker
             </DropdownMenuItem>
-            {r.status === "pending" && (
+            {r.workflowClass === "canonical" && r.status === "pending" && (
               <>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem disabled={isBusy} onSelect={() => openPayModal(r)}>
-                  {isBusy ? "…" : "Mark as Paid"}
+                  {isBusy ? "…" : "Record Payment"}
                 </DropdownMenuItem>
                 {r.receiptUrl && (
                   <DropdownMenuItem
@@ -760,14 +739,8 @@ function WorkerReimbursementsPageContent() {
                     View Receipt
                   </DropdownMenuItem>
                 )}
-                <DropdownMenuItem onSelect={() => handleEdit(r)}>Edit</DropdownMenuItem>
+
                 <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  className="text-destructive focus:text-destructive"
-                  onSelect={() => handleDelete(r.id)}
-                >
-                  Delete
-                </DropdownMenuItem>
               </>
             )}
           </DropdownMenuContent>
@@ -827,10 +800,10 @@ function WorkerReimbursementsPageContent() {
                 variant="outline"
                 className={cn("w-full max-md:min-h-11 sm:w-auto", rbHeaderActionButton)}
                 onClick={() => openNewReimbursementForm()}
-                aria-label="+ New Reimbursement"
+                aria-label="Review Worker Receipts"
               >
                 <Plus className="mr-1.5 h-3.5 w-3.5" aria-hidden />
-                New Reimbursement
+                Review Worker Receipts
               </Button>
             </div>
           }
@@ -840,7 +813,7 @@ function WorkerReimbursementsPageContent() {
         title="Reimbursements"
         fab={
           <MobileFabButton
-            ariaLabel="New reimbursement"
+            ariaLabel="Review Worker Receipts"
             onClick={() => openNewReimbursementForm()}
             className="h-11 w-11 min-h-[44px] min-w-[44px]"
           />
@@ -858,7 +831,7 @@ function WorkerReimbursementsPageContent() {
           )}
         >
           <span className="font-semibold tabular-nums text-[color:var(--hh-text-primary)]">
-            {reimbursementStats.pendingCount}
+            {hasLegacyObligations ? "Needs evidence" : reimbursementStats.pendingCount}
           </span>
           Pending
         </span>
@@ -869,7 +842,7 @@ function WorkerReimbursementsPageContent() {
           )}
         >
           <span className="font-semibold tabular-nums text-[color:var(--hh-warning)]">
-            {reimbursementStats.missingReceipt}
+            {hasLegacyObligations ? "Needs evidence" : reimbursementStats.missingReceipt}
           </span>
           Missing receipt
         </span>
@@ -880,7 +853,7 @@ function WorkerReimbursementsPageContent() {
           )}
         >
           <span className="font-semibold tabular-nums text-[color:var(--hh-text-primary)]">
-            {reimbursementStats.readyToPay}
+            {hasLegacyObligations ? "Needs evidence" : reimbursementStats.readyToPay}
           </span>
           With receipt
         </span>
@@ -896,8 +869,10 @@ function WorkerReimbursementsPageContent() {
           </span>
           <div className="min-w-0">
             <p className={rbKpiLabelClass}>In queue</p>
-            <p className={rbKpiValueClass}>{reimbursementStats.pendingCount}</p>
-            <p className={rbKpiMetaClass}>Pending review</p>
+            <p className={rbKpiValueClass}>
+              {hasLegacyObligations ? "Needs evidence" : reimbursementStats.pendingCount}
+            </p>
+            <p className={rbKpiMetaClass}>Awaiting payment</p>
           </div>
         </div>
         <div className={cn(rbShell, rbKpiCardClass)}>
@@ -905,9 +880,11 @@ function WorkerReimbursementsPageContent() {
             <DollarSign className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
           </span>
           <div className="min-w-0">
-            <p className={rbKpiLabelClass}>Owed pending</p>
+            <p className={rbKpiLabelClass}>Open recorded amount</p>
             <p className={cn(rbKpiValueClass, "truncate")}>
-              {formatCurrency(reimbursementStats.pendingTotal)}
+              {hasLegacyObligations
+                ? "Unavailable"
+                : formatCurrency(reimbursementStats.pendingTotal)}
             </p>
             <p className={rbKpiMetaClass}>Before payout</p>
           </div>
@@ -918,7 +895,9 @@ function WorkerReimbursementsPageContent() {
           </span>
           <div className="min-w-0">
             <p className={rbKpiLabelClass}>Paid items</p>
-            <p className={rbKpiValueClass}>{reimbursementStats.paidCount}</p>
+            <p className={rbKpiValueClass}>
+              {hasLegacyObligations ? "Needs evidence" : reimbursementStats.paidCount}
+            </p>
             <p className={rbKpiMetaClass}>Settled records</p>
           </div>
         </div>
@@ -929,9 +908,9 @@ function WorkerReimbursementsPageContent() {
           <div className="min-w-0">
             <p className={rbKpiLabelClass}>Paid out</p>
             <p className={cn(rbKpiValueClass, "truncate")}>
-              {formatCurrency(reimbursementStats.paidTotal)}
+              {hasLegacyObligations ? "Unavailable" : formatCurrency(reimbursementStats.paidTotal)}
             </p>
-            <p className={rbKpiMetaClass}>Cash settled</p>
+            <p className={rbKpiMetaClass}>Recorded paid amount</p>
           </div>
         </div>
       </div>
@@ -1141,22 +1120,9 @@ function WorkerReimbursementsPageContent() {
                 className={cn(rbFormControlClass, "min-w-[120px]")}
               />
             </div>
-            <div>
-              <label className={rbFormLabelClass}>Status</label>
-              <Select
-                value={form.status}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, status: e.target.value as WorkerReimbursementStatus }))
-                }
-                className={cn(rbFormControlClass, "min-w-[100px]")}
-              >
-                {STATUS_OPTIONS.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </Select>
-            </div>
+            <p className="text-sm text-muted-foreground">
+              Editing preserves status. Payment is recorded separately.
+            </p>
             <Button type="submit" size="sm" className="min-h-11 md:min-h-9">
               Save
             </Button>
@@ -1202,7 +1168,7 @@ function WorkerReimbursementsPageContent() {
                 )}
               >
                 <div className="flex items-start gap-2">
-                  {r.status === "pending" ? (
+                  {r.workflowClass === "canonical" && r.status === "pending" ? (
                     <ReimbursementCheckbox
                       ariaLabel={`Select ${workerName(r)}`}
                       checked={selectedIds.has(r.id)}
@@ -1239,7 +1205,7 @@ function WorkerReimbursementsPageContent() {
                       <NeoAmount className="text-base tracking-normal">
                         {formatCurrency(r.amount)}
                       </NeoAmount>
-                      <ReimbursementStatusChip status={r.status} />
+                      <ReimbursementStatusChip status={r.status} workflowClass={r.workflowClass} />
                       {r.receiptUrl ? (
                         <button
                           type="button"
@@ -1389,13 +1355,12 @@ function WorkerReimbursementsPageContent() {
                     selectedIds.has(r.id) &&
                       "bg-[var(--hh-l3-selected)] shadow-[inset_2px_0_0_0_var(--hh-text-tertiary)]"
                   )}
-                  onClick={() => handleEdit(r)}
                 >
                   <td
                     className="w-12 px-2 py-2 text-center align-middle"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    {r.status === "pending" ? (
+                    {r.workflowClass === "canonical" && r.status === "pending" ? (
                       <div className="flex min-h-10 min-w-10 items-center justify-center">
                         <ReimbursementCheckbox
                           ariaLabel={`Select ${workerName(r)} ${formatCurrency(r.amount)}`}
@@ -1462,7 +1427,7 @@ function WorkerReimbursementsPageContent() {
                     </NeoAmount>
                   </td>
                   <td className="whitespace-nowrap px-3 py-2.5 align-middle">
-                    <ReimbursementStatusChip status={r.status} />
+                    <ReimbursementStatusChip status={r.status} workflowClass={r.workflowClass} />
                   </td>
                   <td
                     className="whitespace-nowrap px-3 py-2.5 align-middle"
@@ -1549,6 +1514,11 @@ function WorkerReimbursementsPageContent() {
         </div>
       </div>
 
+      <p className="text-sm text-muted-foreground">
+        Legacy statuses are shown as recorded. Payment requires a matching approved receipt;
+        verified balances are available in the ledger.
+      </p>
+
       {/* Create Worker Payment (batch) modal */}
       <Dialog
         open={!!batchPaymentModal}
@@ -1582,6 +1552,17 @@ function WorkerReimbursementsPageContent() {
                 <p className="text-sm font-semibold tabular-nums">
                   {formatCurrency(batchPaymentModal.totalAmount)}
                 </p>
+              </div>
+              <div>
+                <label className={rbFormLabelClass}>Payment Date</label>
+                <Input
+                  type="date"
+                  aria-label="Payment Date"
+                  required
+                  value={batchPayDate}
+                  onChange={(e) => setBatchPayDate(e.target.value)}
+                  className={rbFormControlClass}
+                />
               </div>
               <div>
                 <label className={rbFormLabelClass}>Payment Method</label>
@@ -1627,14 +1608,13 @@ function WorkerReimbursementsPageContent() {
         </DialogContent>
       </Dialog>
 
-      {/* Mark as Paid modal */}
+      {/* Record Payment modal */}
       <Dialog open={!!payModal} onOpenChange={(open) => !open && setPayModal(null)}>
         <DialogContent className="expenses-ui reimbursement-task-dialog max-w-sm gap-3">
           <DialogHeader>
-            <DialogTitle>Mark as Paid</DialogTitle>
+            <DialogTitle>Record Payment</DialogTitle>
             <p className="text-xs text-muted-foreground font-normal mt-1">
-              This will mark the reimbursement as paid and add it to Project Expenses (category:
-              Worker Reimbursement).
+              Record a full payment against this obligation. Paid requires a real payment record.
             </p>
           </DialogHeader>
           <form onSubmit={handlePay} className="flex flex-col gap-3">
@@ -1642,6 +1622,17 @@ function WorkerReimbursementsPageContent() {
             <div>
               <label className={rbFormLabelClass}>Amount</label>
               <p className="text-sm font-medium tabular-nums">${payAmount}</p>
+            </div>
+            <div>
+              <label className={rbFormLabelClass}>Payment Date</label>
+              <Input
+                type="date"
+                aria-label="Payment Date"
+                required
+                value={payDate}
+                onChange={(e) => setPayDate(e.target.value)}
+                className={rbFormControlClass}
+              />
             </div>
             <div>
               <label className={rbFormLabelClass}>Payment Method</label>
@@ -1674,7 +1665,7 @@ function WorkerReimbursementsPageContent() {
                 Cancel
               </Button>
               <Button type="submit" size="sm" className="h-9 rounded-md">
-                Mark as Paid
+                Record Payment
               </Button>
             </div>
           </form>

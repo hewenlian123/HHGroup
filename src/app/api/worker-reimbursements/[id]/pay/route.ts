@@ -24,6 +24,23 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   try {
     const body = await req.json().catch(() => ({}));
+    const intent = body.idempotency_key;
+    if (
+      intent !== undefined &&
+      (typeof intent !== "string" || !intent.trim() || intent.length > 160)
+    ) {
+      return NextResponse.json({ message: "Invalid payment intent." }, { status: 400 });
+    }
+
+    if (
+      body.paymentDate !== undefined &&
+      (typeof body.paymentDate !== "string" ||
+        !/^\d{4}-\d{2}-\d{2}$/.test(body.paymentDate) ||
+        Number.isNaN(Date.parse(body.paymentDate)) ||
+        new Date(body.paymentDate).toISOString().slice(0, 10) !== body.paymentDate)
+    ) {
+      return NextResponse.json({ message: "Invalid payment date." }, { status: 400 });
+    }
     const existing = await getReimbursementById(reimbursementId, supabase);
     if (!existing) {
       return NextResponse.json({ message: "Reimbursement not found." }, { status: 404 });
@@ -32,9 +49,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const result = await recordReimbursementPaymentAtomicWithClient(
       [reimbursementId],
       {
-        idempotencyKey: `reimbursement-pay:${reimbursementId}`,
+        idempotencyKey: intent
+          ? `reimbursement-intent:${intent.trim()}`
+          : `reimbursement-pay:${reimbursementId}`,
         paymentMethod: body?.method ?? null,
         note: body?.note ?? null,
+        paymentDate: body.paymentDate,
       },
       supabase
     );

@@ -3,7 +3,8 @@
 import { syncRouterNonBlocking } from "@/components/perf/sync-router-non-blocking";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import * as React from "react";
-import { useRouter } from "next/navigation";
+import { financeReturnPath, financePathWithReturn } from "@/lib/finance-navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { useAttachmentPreview } from "@/contexts/attachment-preview-context";
@@ -20,7 +21,6 @@ import {
   getVendors,
   getPaymentAccounts,
   getSubcontractDeductionOptions,
-  updateExpenseReceiptUrl,
   type PaymentAccountRow,
   type SubcontractDeductionOption,
 } from "@/lib/data";
@@ -107,11 +107,22 @@ function parseCurrency(input: string): number {
 }
 
 export default function NewExpensePage() {
+  return (
+    <React.Suspense fallback={null}>
+      <NewExpensePageContent />
+    </React.Suspense>
+  );
+}
+
+function NewExpensePageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const returnHref = financeReturnPath(searchParams.get("returnTo"), "/financial/inbox");
   const { toast } = useToast();
 
   const [loading, setLoading] = React.useState(true);
   const [saving, setSaving] = React.useState(false);
+  const uploadedReceiptRef = React.useRef<{ file: File; path: string } | null>(null);
   const atomicSubmissionRef = React.useRef<IdempotentSubmission | null>(null);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -306,9 +317,28 @@ export default function NewExpensePage() {
 
     setSaving(true);
     try {
+      if (receiptFile && uploadedReceiptRef.current?.file !== receiptFile) {
+        const uploadData = new FormData();
+        uploadData.set("file", receiptFile);
+        const uploadResponse = await fetch("/api/quick-expense/upload-attachment", {
+          method: "POST",
+          body: uploadData,
+          credentials: "same-origin",
+        });
+        const uploadBody = (await uploadResponse.json().catch(() => ({}))) as {
+          ok?: boolean;
+          path?: string;
+        };
+        if (!uploadResponse.ok || !uploadBody.ok || !uploadBody.path) {
+          throw new Error("Receipt upload failed.");
+        }
+        uploadedReceiptRef.current = { file: receiptFile, path: uploadBody.path };
+      }
       const selectedAccount = accounts.find((account) => account.id === accountId);
       const createPayload = {
         date,
+        sourceType: receiptFile ? ("receipt_upload" as const) : ("company" as const),
+        receiptUrl: receiptFile ? uploadedReceiptRef.current?.path : null,
         vendorName: vendorName.trim(),
         referenceNo: referenceNo.trim() || undefined,
         notes: notes.trim() || undefined,
@@ -343,23 +373,6 @@ export default function NewExpensePage() {
         ...createPayload,
         idempotencyKey: atomicSubmissionRef.current.key,
       });
-      if (receiptFile) {
-        const uploadData = new FormData();
-        uploadData.set("file", receiptFile);
-        const uploadResponse = await fetch("/api/quick-expense/upload-attachment", {
-          method: "POST",
-          body: uploadData,
-          credentials: "same-origin",
-        });
-        const uploadBody = (await uploadResponse.json().catch(() => ({}))) as {
-          ok?: boolean;
-          path?: string;
-        };
-        if (!uploadResponse.ok || !uploadBody.ok || !uploadBody.path) {
-          throw new Error("Receipt upload failed.");
-        }
-        await updateExpenseReceiptUrl(created.id, uploadBody.path);
-      }
       const pa = paymentAccountId.trim();
       if (pa) {
         persistLastExpensePaymentAccountId(pa);
@@ -367,7 +380,7 @@ export default function NewExpensePage() {
       }
       atomicSubmissionRef.current = null;
       toast({ title: "Created", description: "Expense created.", variant: "success" });
-      router.push("/financial/expenses");
+      router.push(financePathWithReturn(`/financial/expenses/${created.id}`, returnHref));
       syncRouterNonBlocking(router);
     } catch (e2: unknown) {
       const msg = e2 instanceof Error ? e2.message : "Failed to create expense.";
@@ -946,7 +959,7 @@ export default function NewExpensePage() {
               variant="outline"
               size="sm"
               className="btn-outline-ghost h-8"
-              onClick={() => router.push("/financial/expenses")}
+              onClick={() => router.push(returnHref)}
             >
               Cancel
             </Button>

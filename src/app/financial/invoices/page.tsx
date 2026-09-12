@@ -1,5 +1,10 @@
 "use client";
 
+import { useFinanceRecordFocus } from "@/hooks/use-finance-query-state";
+import { financePathWithReturn } from "@/lib/finance-navigation";
+
+import { FinanceContextBack } from "@/components/financial/finance-context-back";
+
 import * as React from "react";
 import { startTransition } from "react";
 import Link from "next/link";
@@ -252,6 +257,7 @@ function InvoicesPageInner() {
   const customerId = searchParams.get("customerId") ?? "";
   const [invoices, setInvoices] = React.useState<InvoiceWithDerived[]>([]);
   const [loading, setLoading] = React.useState(true);
+  useFinanceRecordFocus(!loading);
   const [refreshing, setRefreshing] = React.useState(false);
   const [loadError, setLoadError] = React.useState<string | null>(null);
   const search = searchParams.get("q") ?? "";
@@ -271,7 +277,7 @@ function InvoicesPageInner() {
   const invoiceDetailHref = (invoiceId: string) => {
     const query = searchParams.toString();
     const returnTo = `/financial/invoices${query ? `?${query}` : ""}`;
-    return `/financial/invoices/${invoiceId}?${new URLSearchParams({ returnTo })}`;
+    return financePathWithReturn(`/financial/invoices/${invoiceId}`, returnTo, invoiceId);
   };
   const [voidBusyId, setVoidBusyId] = React.useState<string | null>(null);
   const [projects, setProjects] = React.useState<Project[]>([]);
@@ -639,6 +645,7 @@ function InvoicesPageInner() {
             </Link>
           </p>
         ) : null}
+        <FinanceContextBack />
         <div className="hidden md:block">
           <PageHeader
             title={
@@ -1162,6 +1169,7 @@ function InvoicesPageInner() {
                     <tr
                       key={inv.id}
                       data-testid={`invoice-row-${inv.invoiceNo}`}
+                      data-finance-record={inv.id}
                       className={listTableRowClassName}
                       onClick={() => startTransition(() => router.push(invoiceDetailHref(inv.id)))}
                       onKeyDown={(e) => {
@@ -1265,7 +1273,11 @@ function InvoicesPageInner() {
                   inv.computedStatus === "Draft"
                     ? {
                         label: "Edit draft",
-                        href: `/financial/invoices/${inv.id}/edit`,
+                        href: financePathWithReturn(
+                          `/financial/invoices/${inv.id}/edit`,
+                          `/financial/invoices?${searchParams.toString()}`,
+                          inv.id
+                        ),
                       }
                     : canRecordPayment
                       ? {
@@ -1322,6 +1334,8 @@ function InvoicesPageInner() {
                   <NeoMobileCard
                     key={inv.id}
                     data-testid={`invoice-mobile-card-${inv.invoiceNo}`}
+                    data-finance-record={inv.id}
+                    tabIndex={-1}
                     className="p-3"
                   >
                     <div className="flex items-start gap-3">

@@ -1,3 +1,8 @@
+import {
+  isWorkerFinanceApiWrite,
+  workerFinanceSchemaReady,
+  workerFinanceMaintenanceResponse,
+} from "@/lib/worker-finance-write-pause";
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -368,6 +373,9 @@ async function requiresDeviceUnlock(
 /** Default-deny Auth boundary for application pages and Route Handlers. */
 export async function middleware(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
+  if (isWorkerFinanceApiWrite(pathname, request.method) && !(await workerFinanceSchemaReady())) {
+    return workerFinanceMaintenanceResponse();
+  }
 
   if (pathname.startsWith("/_next/static/chunks/")) {
     if (process.env.NODE_ENV !== "development") {

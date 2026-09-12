@@ -1,8 +1,10 @@
 "use client";
 
+import { financePathWithReturn } from "@/lib/finance-navigation";
+
 import * as React from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import {
   NeoActionFooter,
@@ -143,7 +145,11 @@ export default function EditInvoiceClient({
 }) {
   const router = useRouter();
   const { toast } = useToast();
-  const detailHref = `/financial/invoices/${invoice.id}`;
+  const searchParams = useSearchParams();
+  const detailHref = financePathWithReturn(
+    `/financial/invoices/${invoice.id}`,
+    searchParams.get("returnTo")
+  );
   const [loading, setLoading] = React.useState(true);
   const [saving, setSaving] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);

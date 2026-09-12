@@ -573,12 +573,10 @@ export async function pickerItemsPaymentSource(
   return items;
 }
 
-export async function defaultPaymentMethodName(): Promise<string | null> {
-  if (!(await expenseOptionsTableAvailable())) {
-    const legacy = await legacyRowsByStoredNameType("payment_method");
-    return legacy.find((r) => r.active)?.name ?? DEFAULT_PAYMENT_METHODS[0] ?? null;
-  }
-  const rows = await listExpenseOptionsByType("payment_method");
+export async function defaultPaymentMethodName(
+  explicitClient?: SupabaseClient
+): Promise<string | null> {
+  const rows = await listExpenseOptionsByType("payment_method", explicitClient);
   if (rows.length === 0) {
     const legacy = await legacyRowsByStoredNameType("payment_method");
     return legacy.find((r) => r.active)?.name ?? DEFAULT_PAYMENT_METHODS[0] ?? null;

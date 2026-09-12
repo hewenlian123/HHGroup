@@ -1,5 +1,11 @@
 "use client";
 
+import {
+  financePathWithReturn,
+  financeReturnPath,
+  financeReturnLabel,
+} from "@/lib/finance-navigation";
+
 import * as React from "react";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import Link from "next/link";
@@ -68,10 +74,7 @@ import { useAttachmentPreview } from "@/contexts/attachment-preview-context";
 import { useToast } from "@/components/toast/toast-provider";
 import { voidInvoiceFromClient } from "@/lib/invoice-void-client";
 import { formatCurrency, formatDate } from "@/lib/formatters";
-import {
-  appendEstimateReturnPath,
-  safeEstimateReturnPath,
-} from "@/app/estimates/_components/estimate-workflow-continuity";
+import { safeEstimateReturnPath } from "@/app/estimates/_components/estimate-workflow-continuity";
 import type { InvoiceDetailData } from "@/lib/invoice-detail-read";
 
 type EditLineDraft = {
@@ -171,10 +174,7 @@ export default function InvoiceDetailClient({
   const id = invoiceId;
   const estimateReturnPath = safeEstimateReturnPath(searchParams.get("returnTo"));
   const listReturnTo = searchParams.get("returnTo");
-  const invoiceListReturnPath =
-    listReturnTo && /^\/financial\/invoices(?:\?|$)/.test(listReturnTo)
-      ? listReturnTo
-      : "/financial/invoices";
+  const invoiceListReturnPath = financeReturnPath(listReturnTo, "/financial/invoices");
   const [invoice, setInvoice] = React.useState<InvoiceWithDerived | null>(initialData.invoice);
   const [notFound, setNotFound] = React.useState(false);
   const [payments, setPayments] = React.useState<InvoicePayment[]>(initialData.payments);
@@ -231,9 +231,14 @@ export default function InvoiceDetailClient({
       invoice.computedStatus !== "Draft" &&
       invoice.balanceDue > 0
     ) {
-      router.replace(recordPaymentPathForInvoice(invoice));
+      router.replace(
+        financePathWithReturn(
+          recordPaymentPathForInvoice(invoice),
+          financePathWithReturn(`/financial/invoices/${id}`, listReturnTo)
+        )
+      );
     }
-  }, [router, searchParams, invoice]);
+  }, [router, searchParams, invoice, id, listReturnTo]);
 
   useOnAppSync(
     React.useCallback(() => {
@@ -301,8 +306,8 @@ export default function InvoiceDetailClient({
 
   const startEditing = React.useCallback(() => {
     if (!id || !invoice || invoice.status !== "Draft") return;
-    router.push(`/financial/invoices/${id}/edit`);
-  }, [id, invoice, router]);
+    router.push(financePathWithReturn(`/financial/invoices/${id}/edit`, listReturnTo));
+  }, [id, invoice, router, listReturnTo]);
 
   const cancelEditing = React.useCallback(() => {
     if (invoice) resetEditDraft(invoice);
@@ -406,7 +411,7 @@ export default function InvoiceDetailClient({
         return;
       }
       toast({ title: "Invoice returned to draft", variant: "success" });
-      router.push(`/financial/invoices/${id}/edit`);
+      router.push(financePathWithReturn(`/financial/invoices/${id}/edit`, listReturnTo));
     } finally {
       setActionBusy(false);
     }
@@ -500,7 +505,7 @@ export default function InvoiceDetailClient({
     setActionBusy(true);
     const result = await deleteInvoiceAction(id);
     setActionBusy(false);
-    if (result.ok) router.push("/financial/invoices");
+    if (result.ok) router.push(invoiceListReturnPath);
     else {
       if (result.dependencies?.blockers.length) {
         setDeleteDependencies(result.dependencies);
@@ -620,7 +625,10 @@ export default function InvoiceDetailClient({
   const displayedBalance = editing
     ? Math.max(0, editTotal - invoice.paidTotal)
     : invoice.balanceDue;
-  const recordPaymentHref = recordPaymentPathForInvoice(invoice);
+  const recordPaymentHref = financePathWithReturn(
+    recordPaymentPathForInvoice(invoice),
+    financePathWithReturn(`/financial/invoices/${id}`, listReturnTo)
+  );
 
   return (
     <div
@@ -636,7 +644,7 @@ export default function InvoiceDetailClient({
             className="mb-3 inline-flex min-h-[44px] items-center gap-1.5 rounded-hh-standard text-hh-body font-medium text-[var(--hh-text-secondary)] transition-colors hover:text-[var(--hh-text-primary)]"
           >
             <ArrowLeft className="h-4 w-4" />
-            {estimateReturnPath ? "Back to estimate" : "Invoices"}
+            {estimateReturnPath ? "Back to estimate" : financeReturnLabel(invoiceListReturnPath)}
           </Link>
           <div className="flex flex-wrap items-center gap-3">
             <h1 className="text-hh-page-title font-semibold leading-tight tracking-normal text-[var(--hh-text-primary)] md:text-hh-page-title">
@@ -710,9 +718,9 @@ export default function InvoiceDetailClient({
                 <div className="inline-flex min-h-[44px] items-center gap-1 rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-1 shadow-operational xl:min-h-0">
                   <Button asChild variant="ghost" size="sm" className={toolbarButtonClass}>
                     <Link
-                      href={appendEstimateReturnPath(
+                      href={financePathWithReturn(
                         `/financial/invoices/${id}/preview`,
-                        estimateReturnPath
+                        invoiceListReturnPath
                       )}
                       prefetch={false}
                       data-testid="invoice-detail-preview-link"
@@ -722,7 +730,13 @@ export default function InvoiceDetailClient({
                     </Link>
                   </Button>
                   <Button asChild variant="ghost" size="sm" className={toolbarButtonClass}>
-                    <Link href={`/financial/invoices/${id}/print`} prefetch={false}>
+                    <Link
+                      href={financePathWithReturn(
+                        `/financial/invoices/${id}/print`,
+                        invoiceListReturnPath
+                      )}
+                      prefetch={false}
+                    >
                       <FileText className="h-4 w-4" />
                       Print
                     </Link>
@@ -782,9 +796,9 @@ export default function InvoiceDetailClient({
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
                       <Link
-                        href={appendEstimateReturnPath(
+                        href={financePathWithReturn(
                           `/financial/invoices/${id}/preview?download=1`,
-                          estimateReturnPath
+                          invoiceListReturnPath
                         )}
                         prefetch={false}
                       >

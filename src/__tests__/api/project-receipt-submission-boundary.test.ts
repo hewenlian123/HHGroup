@@ -4,7 +4,7 @@ const mocks = vi.hoisted(() => ({
   company: vi.fn(),
   guard: vi.fn(),
   anonInsert: vi.fn(),
-  sessionInsert: vi.fn(),
+  sessionRpc: vi.fn(),
 }));
 vi.mock("@/lib/auth-boundary", () => ({
   requireOrganizationRequestClient: mocks.guard,
@@ -29,10 +29,10 @@ const request = (project: string | null) =>
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.anonInsert.mockResolvedValue({ error: null });
-  mocks.sessionInsert.mockResolvedValue({ error: null });
+  mocks.sessionRpc.mockResolvedValue({ error: null });
   mocks.company.mockResolvedValue({
     ok: true,
-    client: { from: () => ({ insert: mocks.sessionInsert }) },
+    client: { rpc: mocks.sessionRpc },
     sessionResponse: NextResponse.next(),
   });
 });
@@ -45,14 +45,14 @@ describe("receipt project assignment authorization", () => {
     const response = await POST(request(projectId));
     expect(response.status).toBe(403);
     expect(mocks.anonInsert).not.toHaveBeenCalled();
-    expect(mocks.sessionInsert).not.toHaveBeenCalled();
+    expect(mocks.sessionRpc).not.toHaveBeenCalled();
   });
   it("uses the scoped writable session and rotates cookies for project assignment", async () => {
     const sessionResponse = NextResponse.next();
     sessionResponse.cookies.set("sb-session", "rotated");
     mocks.guard.mockResolvedValue({
       ok: true,
-      client: { from: () => ({ insert: mocks.sessionInsert }) },
+      client: { rpc: mocks.sessionRpc },
       sessionResponse,
     });
     const response = await POST(request(projectId));
@@ -61,8 +61,12 @@ describe("receipt project assignment authorization", () => {
       projectId,
       noStore: true,
     });
-    expect(mocks.sessionInsert).toHaveBeenCalledWith(
-      expect.objectContaining({ project_id: projectId })
+    expect(mocks.sessionRpc).toHaveBeenCalledWith(
+      "intake_worker_receipt_atomic",
+      expect.objectContaining({
+        p_receipt_id: "33333333-3333-4333-8333-333333333333",
+        p_payload: expect.objectContaining({ project_id: projectId }),
+      })
     );
     expect(mocks.anonInsert).not.toHaveBeenCalled();
     expect(response.cookies.get("sb-session")?.value).toBe("rotated");
@@ -70,7 +74,13 @@ describe("receipt project assignment authorization", () => {
   it("preserves unassigned intake through the authenticated company client", async () => {
     expect((await POST(request(null))).status).toBe(200);
     expect(mocks.company).toHaveBeenCalledOnce();
-    expect(mocks.sessionInsert).toHaveBeenCalledWith(expect.objectContaining({ project_id: null }));
+    expect(mocks.sessionRpc).toHaveBeenCalledWith(
+      "intake_worker_receipt_atomic",
+      expect.objectContaining({
+        p_receipt_id: "33333333-3333-4333-8333-333333333333",
+        p_payload: expect.objectContaining({ project_id: null }),
+      })
+    );
     expect(mocks.anonInsert).not.toHaveBeenCalled();
   });
   it("denies anonymous unassigned intake before insertion", async () => {
@@ -79,7 +89,7 @@ describe("receipt project assignment authorization", () => {
       response: NextResponse.json({ ok: false }, { status: 401 }),
     });
     expect((await POST(request(null))).status).toBe(401);
-    expect(mocks.sessionInsert).not.toHaveBeenCalled();
+    expect(mocks.sessionRpc).not.toHaveBeenCalled();
     expect(mocks.anonInsert).not.toHaveBeenCalled();
   });
 });

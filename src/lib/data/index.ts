@@ -1995,6 +1995,7 @@ export async function createExpense(
     lines?: Array<Omit<ExpenseLine, "id">>;
     subcontractDeduction?: import("../subcontract-deductions-db").SubcontractDeductionInput | null;
     idempotencyKey: string;
+    initialStatus?: NonNullable<Expense["status"]>;
   }
 ): Promise<Expense> {
   const lines = payload.lines?.length
@@ -2006,7 +2007,7 @@ export async function createExpense(
         amount: l.amount ?? 0,
       }))
     : undefined;
-  let paymentMethod = payload.paymentMethod ?? "Card";
+  let paymentMethod = payload.paymentMethod;
   if (payload.accountId && !payload.paymentMethod) {
     const accounts = await accountsDb.getAccounts();
     const acc = accounts.find((a) => a.id === payload.accountId);
@@ -2024,7 +2025,10 @@ export async function createExpense(
     linkedBankTxId: payload.linkedBankTxId,
     subcontractDeduction: payload.subcontractDeduction ?? null,
     idempotencyKey: payload.idempotencyKey,
-    initialStatus: payload.status,
+    initialStatus: payload.initialStatus ?? payload.status,
+    sourceType: payload.sourceType,
+    receiptUrl: payload.receiptUrl,
+    paymentAccountId: payload.paymentAccountId,
   });
 }
 

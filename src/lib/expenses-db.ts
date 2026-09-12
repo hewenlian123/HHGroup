@@ -1052,46 +1052,54 @@ async function createExpenseAtomicWithClient(
   return result as AtomicExpenseCreateResult & { expense_id: string };
 }
 
-export async function createExpense(payload: {
-  date: string;
-  vendorName: string;
-  paymentMethod?: string | null;
-  referenceNo?: string;
-  notes?: string;
-  cardName?: string | null;
-  accountId?: string | null;
-  paymentAccountId?: string | null;
-  lines: Array<{
-    projectId: string | null;
-    category: string;
-    costCode?: string | null;
-    memo?: string | null;
-    amount: number;
-  }>;
-  linkedBankTxId?: string | null;
-  subcontractDeduction?: SubcontractDeductionInput | null;
-  idempotencyKey: string;
-  initialStatus?: NonNullable<Expense["status"]>;
-}): Promise<Expense> {
+export async function createExpense(
+  payload: {
+    date: string;
+    vendorName: string;
+    paymentMethod?: string | null;
+    referenceNo?: string;
+    notes?: string;
+    cardName?: string | null;
+    accountId?: string | null;
+    paymentAccountId?: string | null;
+    lines: Array<{
+      projectId: string | null;
+      category: string;
+      costCode?: string | null;
+      memo?: string | null;
+      amount: number;
+    }>;
+    linkedBankTxId?: string | null;
+    subcontractDeduction?: SubcontractDeductionInput | null;
+    idempotencyKey: string;
+    initialStatus?: NonNullable<Expense["status"]>;
+    sourceType?: Expense["sourceType"];
+    receiptUrl?: string | null;
+  },
+  explicitClient?: SupabaseClient
+): Promise<Expense> {
   if (payload.linkedBankTxId) {
     throw new Error("Bank-linked expenses must be created by the atomic bank reconciliation RPC.");
   }
   const idempotencyKey = payload.idempotencyKey?.trim();
   if (!idempotencyKey) throw new Error("Expense idempotency key is required.");
-  const c = client();
+  const c = client(explicitClient);
   const date = payload.date?.slice(0, 10) ?? new Date().toISOString().slice(0, 10);
   const vendor = (payload.vendorName ?? "").trim();
   if (!vendor) throw new Error("Vendor name is required");
   const lines = payload.lines?.length ? payload.lines : [];
   const normalizedLines = lines.map((line) => {
     const amount = Number(line.amount);
-    if (!Number.isFinite(amount)) throw new Error("Expense line amount must be a valid number.");
+    if (!Number.isFinite(amount) || amount < 0)
+      throw new Error("Expense line amount must be a valid number.");
     return { ...line, amount };
   });
   const totalAmount = normalizedLines.reduce((sum, line) => sum + line.amount, 0);
-  if (!(totalAmount > 0)) throw new Error("Amount must be greater than 0");
+  const draft = payload.initialStatus === "draft" || payload.initialStatus === "needs_review";
+  if (!normalizedLines.length || (!draft && !(totalAmount > 0)))
+    throw new Error("Amount must be greater than 0");
   const paymentMethodValue =
-    payload.paymentMethod?.trim() || (await defaultPaymentMethodName()) || "Other";
+    payload.paymentMethod?.trim() || (await defaultPaymentMethodName(c)) || "Other";
 
   const byProject = new Map<string | null, typeof normalizedLines>();
   for (const line of normalizedLines) {
@@ -1126,8 +1134,19 @@ export async function createExpense(payload: {
     cardName: payload.cardName?.trim() || null,
     accountId: payload.accountId ?? null,
     paymentAccountId: payload.paymentAccountId ?? null,
-    sourceType: "company",
-    status: expenseStatusForDatabase(payload.initialStatus ?? "pending"),
+    sourceType: payload.sourceType ?? "company",
+    receiptUrl: payload.receiptUrl?.trim() || null,
+    status: expenseStatusForDatabase(
+      payload.sourceType === "receipt_upload"
+        ? payload.initialStatus === "draft"
+          ? "draft"
+          : "needs_review"
+        : (payload.initialStatus ??
+            deriveExpenseWorkflowStatus(
+              normalizedLines[0]?.projectId,
+              normalizedLines[0]?.category
+            ))
+    ),
     groups,
     deduction,
   });
@@ -1188,58 +1207,26 @@ export async function createQuickExpenseWithClient(
     subcontractDeduction?: SubcontractDeductionInput | null;
   }
 ): Promise<Expense> {
-  const c = client(explicitClient);
-  const idempotencyKey = payload.idempotencyKey?.trim();
-  if (!idempotencyKey) throw new Error("Expense idempotency key is required.");
-  const date = payload.date?.slice(0, 10) ?? new Date().toISOString().slice(0, 10);
-  const vendor = (payload.vendorName ?? "").trim() || "Unknown";
-  const total = Number(payload.totalAmount);
-  if (!Number.isFinite(total) || total < 0) {
-    throw new Error("Quick expense amount must be a valid non-negative number.");
-  }
-  const receiptUrl = (payload.receiptUrl ?? "").trim();
-  const category = (payload.category ?? "Other").trim() || "Other";
-  const notes = (payload.notes ?? "").trim();
-  const rawPid = payload.projectId;
-  const projectId = rawPid != null && String(rawPid).trim() !== "" ? String(rawPid).trim() : null;
-  const sourceType = expenseSourceTypeForDatabase(
-    payload.sourceType ?? (receiptUrl ? "receipt_upload" : "company")
+  const projectId = payload.projectId?.trim() || null;
+  const receiptUrl = payload.receiptUrl?.trim() || null;
+  return createExpense(
+    {
+      ...payload,
+      vendorName: payload.vendorName.trim() || "Unknown",
+      referenceNo: payload.referenceNo ?? undefined,
+      sourceType: payload.sourceType ?? (receiptUrl ? "receipt_upload" : "company"),
+      receiptUrl,
+      lines: [
+        {
+          projectId,
+          category: payload.category?.trim() || "Other",
+          memo: payload.notes?.trim() || null,
+          amount: payload.totalAmount,
+        },
+      ],
+    },
+    explicitClient
   );
-  const paymentMethodValue = (await defaultPaymentMethodName()) || "Other";
-  /** Prefer explicit payload (Quick modal); else derive from project+category before receipt fallback. */
-  const workflowDefault = deriveExpenseWorkflowStatus(projectId, category);
-  const resolvedStatus = expenseStatusForDatabase(
-    payload.initialStatus ??
-      (workflowDefault === "reviewed" ? "reviewed" : receiptUrl ? "needs_review" : "pending")
-  );
-  const deduction = payload.subcontractDeduction
-    ? {
-        ...payload.subcontractDeduction,
-        projectId: payload.subcontractDeduction.projectId ?? projectId,
-        amount: payload.subcontractDeduction.amount ?? total,
-      }
-    : null;
-  const result = await createExpenseAtomicWithClient(c, idempotencyKey, {
-    expenseDate: date,
-    vendorName: vendor,
-    paymentMethod: paymentMethodValue,
-    referenceNo: payload.referenceNo?.trim() || null,
-    notes: notes || null,
-    receiptUrl: receiptUrl || null,
-    paymentAccountId: payload.paymentAccountId?.trim() || null,
-    sourceType,
-    status: resolvedStatus,
-    groups: [
-      {
-        projectId,
-        lines: [{ projectId, category, memo: notes || null, amount: total }],
-      },
-    ],
-    deduction,
-  });
-  const exp = await getExpenseById(result.expense_id, explicitClient);
-  if (!exp) throw new Error("Failed to load created expense.");
-  return exp;
 }
 
 const REIMBURSEMENT_CATEGORY = "reimbursement";
@@ -1270,180 +1257,10 @@ type ExpenseWorkerReimbursementSourceRow = {
   expense_date?: string | null;
 };
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
 function workerReimbursementSourceTypeFromRow(row: ExpenseWorkerReimbursementSourceRow): boolean {
   const sourceType = expenseSourceTypeForDatabase(row.source_type);
   if (sourceType === "reimbursement") return true;
   return String(row.source ?? "").trim() === WORKER_REIMBURSEMENT_SOURCE;
-}
-
-type ExpenseReimbursementLineBridge = {
-  projectId: string | null;
-  amount: number | null;
-};
-
-async function firstExpenseLineForWorkerReimbursementBridge(
-  c: SupabaseClient,
-  expenseId: string
-): Promise<ExpenseReimbursementLineBridge> {
-  const { data, error } = await c
-    .from("expense_lines")
-    .select("project_id, amount, total")
-    .eq("expense_id", expenseId)
-    .limit(1);
-  if (error) {
-    if (isMissingTable(error) || isMissingColumn(error)) return { projectId: null, amount: null };
-    throw new Error(error.message ?? "Failed to load expense line project.");
-  }
-  const row =
-    (data?.[0] as
-      | {
-          project_id?: string | null;
-          amount?: number | string | null;
-          total?: number | string | null;
-        }
-      | undefined) ?? null;
-  const projectId = row?.project_id ? String(row.project_id) : null;
-  const amount = Number(row?.amount ?? row?.total);
-  return { projectId, amount: Number.isFinite(amount) && amount > 0 ? amount : null };
-}
-
-async function existingWorkerReimbursementById(
-  c: SupabaseClient,
-  reimbursementId: string
-): Promise<{ id: string } | null> {
-  if (!UUID_RE.test(reimbursementId)) return null;
-  const { data, error } = await c
-    .from("worker_reimbursements")
-    .select("id")
-    .eq("id", reimbursementId)
-    .maybeSingle();
-  if (error) {
-    if (isMissingTable(error) || isMissingColumn(error)) return null;
-    throw new Error(error.message ?? "Failed to load linked worker reimbursement.");
-  }
-  return data as { id: string } | null;
-}
-
-async function existingWorkerReimbursementByReceiptUrl(
-  c: SupabaseClient,
-  params: { workerId: string; receiptUrl: string | null | undefined }
-): Promise<{ id: string } | null> {
-  const receiptUrl = String(params.receiptUrl ?? "").trim();
-  if (!receiptUrl) return null;
-  const { data, error } = await c
-    .from("worker_reimbursements")
-    .select("id")
-    .eq("worker_id", params.workerId)
-    .eq("receipt_url", receiptUrl)
-    .limit(1);
-  if (error) {
-    if (isMissingTable(error) || isMissingColumn(error)) return null;
-    throw new Error(error.message ?? "Failed to load receipt-linked worker reimbursement.");
-  }
-  return ((data ?? []) as { id: string }[])[0] ?? null;
-}
-
-async function linkExpenseToWorkerReimbursement(
-  c: SupabaseClient,
-  expenseId: string,
-  reimbursementId: string
-): Promise<void> {
-  const fullPatch = {
-    source: WORKER_REIMBURSEMENT_SOURCE,
-    source_id: reimbursementId,
-    source_type: "reimbursement",
-  };
-  let res = await c.from("expenses").update(fullPatch).eq("id", expenseId);
-  if (!res.error) return;
-  if (errorSuggestsMissingNamedColumn(res.error, "source_type")) {
-    const { source_type, ...withoutSourceType } = fullPatch;
-    void source_type;
-    res = await c.from("expenses").update(withoutSourceType).eq("id", expenseId);
-  }
-  if (res.error && errorSuggestsMissingNamedColumn(res.error, "source_id")) {
-    res = await c
-      .from("expenses")
-      .update({ source: WORKER_REIMBURSEMENT_SOURCE })
-      .eq("id", expenseId);
-  }
-  if (res.error && errorSuggestsMissingNamedColumn(res.error, "source")) {
-    return;
-  }
-  if (res.error) throw new Error(res.error.message ?? "Failed to link expense reimbursement.");
-}
-
-async function insertWorkerReimbursementForExpense(
-  c: SupabaseClient,
-  row: ExpenseWorkerReimbursementSourceRow,
-  projectId: string | null,
-  amount: number
-): Promise<{ id: string }> {
-  const vendor =
-    String(row.vendor_name ?? "").trim() ||
-    String(row.vendor ?? "").trim() ||
-    "Worker Reimbursement";
-  const notes = String(row.notes ?? "").trim();
-  const description = notes || `${vendor} · Company reimbursement`;
-  const receiptUrl = String(row.receipt_url ?? "").trim() || null;
-  const reimbursementDate =
-    typeof row.expense_date === "string" && /^\d{4}-\d{2}-\d{2}/.test(row.expense_date)
-      ? row.expense_date.slice(0, 10)
-      : new Date().toISOString().slice(0, 10);
-
-  const fullInsert = {
-    worker_id: row.worker_id,
-    project_id: projectId,
-    vendor,
-    amount,
-    description,
-    receipt_url: receiptUrl,
-    status: "pending",
-    reimbursement_date: reimbursementDate,
-  };
-  const attempts: Record<string, unknown>[] = [
-    fullInsert,
-    (() => {
-      const { reimbursement_date, ...withoutDate } = fullInsert;
-      void reimbursement_date;
-      return withoutDate;
-    })(),
-    (() => {
-      const { reimbursement_date, vendor: _vendor, ...legacy } = fullInsert;
-      void reimbursement_date;
-      void _vendor;
-      return legacy;
-    })(),
-    {
-      worker_id: row.worker_id,
-      project_id: projectId,
-      amount,
-      description,
-      receipt_url: receiptUrl,
-      status: "pending",
-    },
-    {
-      worker_id: row.worker_id,
-      project_id: projectId,
-      amount,
-      notes: description,
-      receipt_url: receiptUrl,
-    },
-  ];
-
-  let lastError = "";
-  for (const payload of attempts) {
-    const { data, error } = await c
-      .from("worker_reimbursements")
-      .insert(payload)
-      .select("id")
-      .single();
-    if (!error && data?.id) return { id: String(data.id) };
-    lastError = error?.message ?? "";
-    if (error && !isMissingColumn(error)) break;
-  }
-  throw new Error(lastError || "Failed to create worker reimbursement from expense.");
 }
 
 /**
@@ -1469,33 +1286,9 @@ export async function ensureWorkerReimbursementForApprovedExpense(
   if (!workerReimbursementSourceTypeFromRow(row)) {
     return { reimbursementId: null, created: false, skippedReason: "not_worker_reimbursement" };
   }
-  const workerId = String(row.worker_id ?? "").trim();
-  if (!workerId) return { reimbursementId: null, created: false, skippedReason: "missing_worker" };
-
-  const linkedId = String(row.source_id ?? "").trim();
-  if (linkedId) {
-    const existing = await existingWorkerReimbursementById(c, linkedId);
-    if (existing) return { reimbursementId: existing.id, created: false };
-  }
-
-  const receiptLinked = await existingWorkerReimbursementByReceiptUrl(c, {
-    workerId,
-    receiptUrl: row.receipt_url,
-  });
-  if (receiptLinked) {
-    await linkExpenseToWorkerReimbursement(c, expenseId, receiptLinked.id);
-    return { reimbursementId: receiptLinked.id, created: false };
-  }
-
-  const line = await firstExpenseLineForWorkerReimbursementBridge(c, expenseId);
-  const amount = line.amount ?? Number(row.amount ?? row.total);
-  if (!Number.isFinite(amount) || amount <= 0) {
-    return { reimbursementId: null, created: false, skippedReason: "missing_amount" };
-  }
-  const projectId = String(row.project_id ?? "").trim() || line.projectId;
-  const created = await insertWorkerReimbursementForExpense(c, row, projectId || null, amount);
-  await linkExpenseToWorkerReimbursement(c, expenseId, created.id);
-  return { reimbursementId: created.id, created: true };
+  throw new Error(
+    "BLOCKED: Expense reimbursement bridge is retired. Use canonical Receipt approval."
+  );
 }
 
 /** Create an expense + one line for a paid worker reimbursement. Prevents duplicates by reference_no or source/source_id.
@@ -1907,27 +1700,10 @@ export async function updateExpenseStatus(
   return getExpenseById(expenseId);
 }
 
-/** Set status to 'reimbursed' for all expenses with the given worker_id and status in ('pending','needs_review','approved'). Returns count updated. */
+/** Legacy shortcut is closed: only a recorded payment can settle an obligation. */
 export async function markWorkerExpensesReimbursed(workerId: string): Promise<number> {
-  const c = client();
-  const { data: rows, error } = await c
-    .from("expenses")
-    .select("id")
-    .eq("worker_id", workerId)
-    .or("status.eq.pending,status.eq.needs_review,status.eq.approved");
-  if (error) {
-    if (isMissingColumn(error)) return 0;
-    throw new Error((error as { message?: string }).message ?? "Failed to update");
-  }
-  const ids = (rows ?? []).map((r: { id: string }) => r.id);
-  if (ids.length === 0) return 0;
-  const { error: updateError } = await c
-    .from("expenses")
-    .update({ status: "reimbursed" })
-    .in("id", ids);
-  if (updateError)
-    throw new Error((updateError as { message?: string }).message ?? "Failed to update");
-  return ids.length;
+  void workerId;
+  throw new Error("Continue to Payment in Labor Reimbursements. A payment record is required.");
 }
 
 export async function addExpenseLine(

@@ -184,7 +184,11 @@ export async function POST(req: Request) {
         });
         steps.push("receipt created");
         log("reimbursement_workflow", "receipt upload");
-        const { reimbursementCreated } = await approveWorkerReceiptWithClient(server, receipt.id);
+        const { reimbursementCreated } = await approveWorkerReceiptWithClient(
+          server,
+          receipt.id,
+          strictGuard.context.user.id
+        );
         if (!reimbursementCreated) {
           tests.push({
             name: "reimbursement_workflow",

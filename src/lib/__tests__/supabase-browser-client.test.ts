@@ -54,7 +54,8 @@ describe("createBrowserClient", () => {
     expect(createSsrBrowserClientMock).toHaveBeenCalledTimes(1);
     expect(createSsrBrowserClientMock).toHaveBeenCalledWith(
       "https://example.supabase.co",
-      "anon-key"
+      "anon-key",
+      { global: { fetch: expect.any(Function) } }
     );
     expect(createClientMock).not.toHaveBeenCalled();
   });

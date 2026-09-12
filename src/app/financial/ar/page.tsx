@@ -1,3 +1,7 @@
+import { getReportsData, getReportDateRange } from "@/lib/reports-db";
+import { FinanceContextBack } from "@/components/financial/finance-context-back";
+
+import { financePathWithReturn } from "@/lib/finance-navigation";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Select } from "@/components/ui/native-select";
@@ -26,6 +30,7 @@ import { emitRscTiming } from "@/lib/performance/server-timing";
 
 function getAgingBucket(dueDate: string): string {
   const today = new Date().toISOString().slice(0, 10);
+  if (!dueDate) return "No due date";
   if (dueDate >= today) return "Current";
   const due = new Date(dueDate).getTime();
   const t = new Date(today).getTime();
@@ -50,7 +55,7 @@ export const dynamic = "force-dynamic";
 export default async function ARPage({
   searchParams,
 }: {
-  searchParams: Promise<{ invoice?: string; customerId?: string }>;
+  searchParams: Promise<Record<string, string | undefined>>;
 }) {
   const pageStartedAt = performance.now();
   const authStartedAt = performance.now();
@@ -58,9 +63,25 @@ export default async function ARPage({
   const authDuration = performance.now() - authStartedAt;
   if (!guard.ok) notFound();
   const serverDataStartedAt = performance.now();
+  const params = await searchParams;
+  const { customerId, invoice: requestedInvoiceId } = params;
+  const projectId = params.projectId || params.project_id;
+  const todayForSummary = new Date().toISOString().slice(0, 10);
   let model;
+  let reporting;
   try {
-    model = await loadARPageReadModel(guard.client);
+    [model, reporting] = await Promise.all([
+      loadARPageReadModel(guard.client),
+      getReportsData(
+        getReportDateRange({
+          period: "custom",
+          from: `${todayForSummary.slice(0, 7)}-01`,
+          to: todayForSummary,
+        }),
+        guard.client,
+        { projectId, customerId }
+      ),
+    ]);
   } catch {
     return (
       <ServerDataLoadFallback
@@ -70,11 +91,23 @@ export default async function ARPage({
       />
     );
   }
-  const { summary, projects, invoices, payments } = model;
-  const { customerId, invoice: requestedInvoiceId } = await searchParams;
-  const outstanding = customerId
-    ? model.outstanding.filter((invoice) => invoice.customerId === customerId)
-    : model.outstanding;
+  const { projects, invoices, payments } = model;
+  const context = `/financial/ar?${new URLSearchParams(Object.entries(params).filter((entry): entry is [string, string] => entry[1] !== undefined)).toString()}`;
+  const amounts = new Map(reporting.records.outstandingAr.map((row) => [row.id, row]));
+  const outstanding = invoices
+    .filter((invoice) => amounts.has(invoice.id))
+    .map((invoice) => ({
+      ...invoice,
+      balanceDue: amounts.get(invoice.id)!.amount,
+      dueDate: amounts.get(invoice.id)!.dueDate || "",
+    }));
+  const summary = {
+    totalAR: reporting.records.outstandingAr.reduce((n, r) => n + r.amount, 0),
+    overdueAR: reporting.records.outstandingAr
+      .filter((r) => r.dueDate && r.dueDate < todayForSummary)
+      .reduce((n, r) => n + r.amount, 0),
+    paidThisMonth: reporting.records.cashCollected.reduce((n, r) => n + r.amount, 0),
+  };
   const customers = new Map(
     invoices
       .filter((invoice) => invoice.customerId)
@@ -89,6 +122,13 @@ export default async function ARPage({
   const recentPayments = customerId ? history : history.slice(0, 8);
   const customerQuery = customerId ? `?${new URLSearchParams({ customerId })}` : "";
   const serverDataCompletedAt = performance.now();
+  const reportHref = (metric: string, extra: Record<string, string> = {}) =>
+    financePathWithReturn(
+      `/reports?${new URLSearchParams({ metric, period: "all-time", ...(customerId ? { customerId } : {}), ...(projectId ? { projectId } : {}), ...extra })}`,
+      context
+    );
+  const yesterday = new Date(`${todayForSummary}T00:00:00Z`);
+  yesterday.setUTCDate(yesterday.getUTCDate() - 1);
   const projectNameById = new Map(projects.map((p) => [p.id, p.name]));
 
   const byBucket: Record<string, typeof outstanding> = {};
@@ -97,7 +137,7 @@ export default async function ARPage({
     if (!byBucket[bucket]) byBucket[bucket] = [];
     byBucket[bucket].push(inv);
   }
-  const bucketOrder = ["Current", "1–30", "31–60", "61–90", "90+"];
+  const bucketOrder = ["Current", "1–30", "31–60", "61–90", "90+", "No due date"];
   const sortedBuckets = bucketOrder.filter((b) => byBucket[b]?.length);
 
   const selectedInvoice =
@@ -116,6 +156,7 @@ export default async function ARPage({
       data-revenue-ar-v2
       className="page-container page-stack py-4 text-[var(--hh-text-secondary)] md:py-6"
     >
+      <FinanceContextBack />
       <div className="hidden md:block">
         <PageHeader
           title="Billing"
@@ -128,7 +169,9 @@ export default async function ARPage({
                 size="sm"
                 className={cn(OS.secondaryButton, "h-11 min-h-[44px] xl:h-9 xl:min-h-0")}
               >
-                <Link href={`/financial/payments${customerQuery}`}>Received payments</Link>
+                <Link href={financePathWithReturn(`/financial/payments${customerQuery}`, context)}>
+                  Received payments
+                </Link>
               </Button>
               <Button
                 asChild
@@ -148,31 +191,45 @@ export default async function ARPage({
 
       <section data-testid="ar-workspace-summary" aria-label="Accounts receivable summary">
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4 md:gap-3">
-          <KpiTile
-            label="Outstanding"
-            value={formatCurrency(summary.totalAR)}
-            meta="Open invoice balances"
-          />
-          <KpiTile
-            label="Overdue"
-            value={formatCurrency(summary.overdueAR)}
-            tone="negative"
-            meta="Past due balances"
-          />
-          <KpiTile
-            label="Paid this month"
-            value={formatCurrency(summary.paidThisMonth)}
-            tone="positive"
-            meta="Posted customer payments"
-          />
-          <KpiTile
-            label="Awaiting payment"
-            value={String(model.outstanding.length)}
-            meta="Open invoices across all customers"
-          />
+          <Link href={reportHref("outstandingAr")}>
+            <KpiTile
+              label="Outstanding"
+              value={formatCurrency(summary.totalAR)}
+              meta="Open invoice balances"
+            />
+          </Link>
+          <Link href={reportHref("outstandingAr", { dueTo: yesterday.toISOString().slice(0, 10) })}>
+            <KpiTile
+              label="Overdue"
+              value={formatCurrency(summary.overdueAR)}
+              tone="negative"
+              meta="Past due balances"
+            />
+          </Link>
+          <Link
+            href={reportHref("cashCollected", {
+              period: "custom",
+              from: todayForSummary.slice(0, 7) + "-01",
+              to: todayForSummary,
+            })}
+          >
+            <KpiTile
+              label="Collected Cash · month to date"
+              value={formatCurrency(summary.paidThisMonth)}
+              tone="positive"
+              meta="Posted payments through today"
+            />
+          </Link>
+          <Link href={reportHref("outstandingAr")}>
+            <KpiTile
+              label="Awaiting payment"
+              value={String(outstanding.length)}
+              meta="Open invoices in current scope"
+            />
+          </Link>
         </div>
         <p className="mt-2 text-hh-metadata text-[var(--hh-text-secondary)]">
-          Company-wide balances · Posted invoice payments are counted once.
+          Current scope balances · Posted invoice payments are counted once.
         </p>
       </section>
 
@@ -207,7 +264,10 @@ export default async function ARPage({
             View invoices
           </Link>{" "}
           ·{" "}
-          <Link className="underline" href={`/financial/payments${customerQuery}`}>
+          <Link
+            className="underline"
+            href={financePathWithReturn(`/financial/payments${customerQuery}`, context)}
+          >
             Received payments
           </Link>
         </p>
@@ -280,7 +340,10 @@ export default async function ARPage({
                               )}
                             >
                               <Link
-                                href={`/financial/invoices/${invoice.id}`}
+                                href={financePathWithReturn(
+                                  `/financial/invoices/${invoice.id}`,
+                                  context
+                                )}
                                 className="block truncate font-medium text-[var(--hh-text-primary)] hover:underline"
                               >
                                 {invoice.invoiceNo}
@@ -333,7 +396,10 @@ export default async function ARPage({
                                   className={cn(OS.secondaryButton, "h-8 xl:hidden")}
                                 >
                                   <Link
-                                    href={`/financial/invoices/${invoice.id}?recordPayment=1`}
+                                    href={financePathWithReturn(
+                                      `/financial/invoices/${invoice.id}?recordPayment=1`,
+                                      context
+                                    )}
                                     aria-label="Receive payment"
                                   >
                                     Receive
@@ -360,7 +426,13 @@ export default async function ARPage({
                           )}
                         >
                           <div className="flex items-start justify-between gap-3">
-                            <Link href={`/financial/invoices/${invoice.id}`} className="min-w-0">
+                            <Link
+                              href={financePathWithReturn(
+                                `/financial/invoices/${invoice.id}`,
+                                context
+                              )}
+                              className="min-w-0"
+                            >
                               <p className="truncate text-hh-body font-semibold text-[var(--hh-text-primary)]">
                                 {invoice.clientName}
                               </p>
@@ -398,7 +470,12 @@ export default async function ARPage({
                               size="sm"
                               className={cn(OS.secondaryButton, "h-11 min-h-[44px]")}
                             >
-                              <Link href={`/financial/invoices/${invoice.id}?recordPayment=1`}>
+                              <Link
+                                href={financePathWithReturn(
+                                  `/financial/invoices/${invoice.id}?recordPayment=1`,
+                                  context
+                                )}
+                              >
                                 Receive payment
                               </Link>
                             </Button>
@@ -454,12 +531,22 @@ export default async function ARPage({
                     size="sm"
                     className={cn(OS.secondaryButton, "h-9")}
                   >
-                    <Link href={`/financial/invoices/${selectedInvoice.id}`}>
+                    <Link
+                      href={financePathWithReturn(
+                        `/financial/invoices/${selectedInvoice.id}`,
+                        context
+                      )}
+                    >
                       Open full invoice
                     </Link>
                   </Button>
                   <Button asChild size="sm" className={cn(OS.primaryButton, "h-9")}>
-                    <Link href={`/financial/invoices/${selectedInvoice.id}?recordPayment=1`}>
+                    <Link
+                      href={financePathWithReturn(
+                        `/financial/invoices/${selectedInvoice.id}?recordPayment=1`,
+                        context
+                      )}
+                    >
                       <CreditCard className="mr-1.5 h-3.5 w-3.5" aria-hidden />
                       Receive payment
                     </Link>
@@ -475,7 +562,9 @@ export default async function ARPage({
         description="Invoice ledger history, including partial and voided payments. Open the linked record for full details."
         action={
           <Button asChild variant="ghost" size="sm">
-            <Link href={`/financial/payments${customerQuery}`}>Received payments</Link>
+            <Link href={financePathWithReturn(`/financial/payments${customerQuery}`, context)}>
+              Received payments
+            </Link>
           </Button>
         }
         bodyClassName="p-0"
@@ -512,7 +601,7 @@ export default async function ARPage({
                         </p>
                       </td>
                       <td>
-                        <Link href={href} className="underline">
+                        <Link href={financePathWithReturn(href, context)} className="underline">
                           {invoice?.invoiceNo ?? "View invoice"}
                         </Link>
                       </td>
@@ -546,7 +635,10 @@ export default async function ARPage({
                       </span>
                       <NeoAmount>{formatCurrency(payment.amount)}</NeoAmount>
                     </div>
-                    <Link href={href} className="inline-flex min-h-11 items-center underline">
+                    <Link
+                      href={financePathWithReturn(href, context)}
+                      className="inline-flex min-h-11 items-center underline"
+                    >
                       {invoice?.invoiceNo ?? "View invoice"}
                     </Link>
                     <p className="text-hh-metadata">

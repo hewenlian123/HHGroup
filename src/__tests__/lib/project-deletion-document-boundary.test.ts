@@ -1,8 +1,16 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { deleteProjectWithClient, forceDeleteProjectWithClient } from "@/lib/projects-db";
 
+// This suite isolates document guards; the real pause guard has dedicated negative tests.
+vi.mock("@/lib/worker-finance-write-pause", async (original) => ({
+  ...(await original<typeof import("@/lib/worker-finance-write-pause")>()),
+  assertWorkerFinanceWritesAvailable: vi.fn(async () => undefined),
+}));
+
 describe("project deletion document boundary", () => {
+  beforeEach(() => vi.stubEnv("HH_WORKER_FINANCE_WRITES", "canonical"));
+  afterEach(() => vi.unstubAllEnvs());
   for (const remove of [deleteProjectWithClient, forceDeleteProjectWithClient]) {
     it(`${remove.name} blocks attached documents before any delete`, async () => {
       const mutate = vi.fn();

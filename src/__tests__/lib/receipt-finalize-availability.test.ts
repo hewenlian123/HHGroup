@@ -61,6 +61,7 @@ describe("receipt finalization availability", () => {
       for (const [payload] of mocks.createQuickExpense.mock.calls) {
         expect(payload).toMatchObject({
           idempotencyKey: "receipt-queue:queue-1",
+          initialStatus: "needs_review",
           date: "2026-09-05",
           vendorName: "Supplier",
           totalAmount: 25.5,

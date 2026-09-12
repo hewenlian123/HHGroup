@@ -174,7 +174,7 @@ export async function getDepositsByInvoiceId(
 /** Sum of deposits.amount (Cash In for dashboard). */
 export async function getTotalDepositsAmount(explicitClient?: SupabaseClient): Promise<number> {
   const c = client(explicitClient);
-  const { data: rows, error } = await c.from("deposits").select("amount");
+  const { data: rows, error } = await c.from("deposits").select("amount").neq("status", "void");
   if (error) financialDataUnavailable("deposit total", error);
   if (!rows) financialDataUnavailable("deposit total", null);
   return (rows as { amount: number }[]).reduce((s, r) => s + Number(r.amount ?? 0), 0);

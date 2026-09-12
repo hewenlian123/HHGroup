@@ -1,3 +1,4 @@
+import { workerFinanceFetch } from "@/lib/worker-finance-write-pause";
 /**
  * Server-side Supabase helpers.
  *
@@ -26,7 +27,7 @@ function envServerSecret(): string | null {
 }
 
 const noStoreFetch: typeof fetch = (input, init) =>
-  fetch(input, {
+  workerFinanceFetch(input, {
     ...init,
     cache: "no-store",
   });
@@ -34,7 +35,7 @@ const noStoreFetch: typeof fetch = (input, init) =>
 function serverClientOptions(noStore = false) {
   return {
     auth: { persistSession: false, autoRefreshToken: false },
-    ...(noStore ? { global: { fetch: noStoreFetch } } : {}),
+    global: { fetch: noStore ? noStoreFetch : workerFinanceFetch },
   };
 }
 
@@ -59,6 +60,7 @@ export function createTransientSupabaseClient(): SupabaseClient | null {
   const anon = envAnon();
   if (!url || !anon) return null;
   return createClient(url, anon, {
+    global: { fetch: workerFinanceFetch },
     auth: {
       autoRefreshToken: false,
       detectSessionInUrl: false,
@@ -156,7 +158,7 @@ export async function createServerSupabaseClient(
   const cookieStore = cookies();
 
   return createServerClient(url, anon, {
-    ...(options.noStore ? { global: { fetch: noStoreFetch } } : {}),
+    global: { fetch: options.noStore ? noStoreFetch : workerFinanceFetch },
     cookies: {
       getAll() {
         return cookieStore.getAll();
@@ -216,7 +218,7 @@ export function createRouteSupabaseClient(
   const forwardedAuthorization =
     requestAuthorization?.kind === "bearer" ? requestAuthorization.authorization : null;
   const globalOptions = {
-    ...(options.noStore ? { fetch: noStoreFetch } : {}),
+    fetch: options.noStore ? noStoreFetch : workerFinanceFetch,
     ...(forwardedAuthorization ? { headers: { Authorization: forwardedAuthorization } } : {}),
   };
 
@@ -250,6 +252,7 @@ function createRequestReadOnlySupabaseClient(
   if (!url || !anon) return null;
 
   return createServerClient(url, anon, {
+    global: { fetch: workerFinanceFetch },
     cookies: {
       getAll() {
         return requestCookies(request);

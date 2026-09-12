@@ -1,3 +1,4 @@
+import { readCompleteRows } from "@/lib/read-complete-rows";
 import { expenseCountsTowardCanonicalProjectCost } from "@/lib/expense-canonical-cost";
 import {
   changeOrderAmountValue,
@@ -107,19 +108,17 @@ async function buildEligibleExpenseIdSetForCost(
 ): Promise<Set<string>> {
   const uniq = [...new Set(expenseIds.filter((id) => id && id.length > 0))];
   if (uniq.length === 0) return new Set();
-  const { data, error } = await c
-    .from("expenses")
-    .select("id, status, reference_no")
-    .in("id", uniq);
-  if (error) failFinancialRead("expenses (canonical cost filter)", error);
-  if (!data) return new Set();
   const out = new Set<string>();
-  for (const row of data as Array<{
-    id: string;
-    status?: string | null;
-    reference_no?: string | null;
-  }>) {
-    if (expenseCountsTowardCanonicalProjectCost(row)) out.add(row.id);
+  for (let offset = 0; offset < uniq.length; offset += 100) {
+    const { data } = await readCompleteRows(() =>
+      c
+        .from("expenses")
+        .select("id, status, reference_no", { count: "exact" })
+        .in("id", uniq.slice(offset, offset + 100))
+    );
+    for (const row of data) {
+      if (expenseCountsTowardCanonicalProjectCost(row)) out.add(row.id);
+    }
   }
   return out;
 }
@@ -222,10 +221,12 @@ async function fetchLaborCostBatch(
   if (!idList) return map;
 
   const c = client(explicitClient);
-  const byProjectId = await c
-    .from("labor_entries")
-    .select("project_id, cost_amount, status")
-    .in("project_id", projectIds);
+  const byProjectId = await readCompleteRows(() =>
+    c
+      .from("labor_entries")
+      .select("id, project_id, cost_amount, status", { count: "exact" })
+      .in("project_id", projectIds)
+  );
 
   let list: LaborCostRow[] = [];
   if (!byProjectId.error && Array.isArray(byProjectId.data)) {
@@ -483,17 +484,23 @@ export async function getCanonicalProjectProfitBatch(
   // 1. Budgets + non-labor cost sources
   const [projectsRes, cosRes, subBillsRes, expenseByProject, laborByProject, commissionByProject] =
     await Promise.all([
-      c.from("projects").select("id, budget").in("id", projectIds),
-      c
-        .from("project_change_orders")
-        .select(`project_id,${PROJECT_CHANGE_ORDER_AMOUNT_COLUMNS}`)
-        .in("project_id", projectIds)
-        .eq("status", "Approved"),
-      c
-        .from("subcontract_bills")
-        .select("project_id, amount")
-        .in("project_id", projectIds)
-        .eq("status", "Approved"),
+      readCompleteRows(() =>
+        c.from("projects").select("id, budget", { count: "exact" }).in("id", projectIds)
+      ),
+      readCompleteRows(() =>
+        c
+          .from("project_change_orders")
+          .select(`id, project_id,${PROJECT_CHANGE_ORDER_AMOUNT_COLUMNS}`, { count: "exact" })
+          .in("project_id", projectIds)
+          .eq("status", "Approved")
+      ),
+      readCompleteRows(() =>
+        c
+          .from("subcontract_bills")
+          .select("id, project_id, amount", { count: "exact" })
+          .in("project_id", projectIds)
+          .eq("status", "Approved")
+      ),
       getExpenseCostBatch(projectIds, explicitClient),
       fetchLaborCostBatch(projectIds, explicitClient),
       getCommissionCostByProjectBatch(projectIds, explicitClient),
@@ -572,10 +579,12 @@ async function getExpenseCostBatch(
 
   // Fast path: already know the schema
   if (expenseLinesHasProjectId === true) {
-    const { data, error } = await c
-      .from("expense_lines")
-      .select("project_id, amount, expense_id")
-      .in("project_id", projectIds);
+    const { data, error } = await readCompleteRows(() =>
+      c
+        .from("expense_lines")
+        .select("id, project_id, amount, expense_id", { count: "exact" })
+        .in("project_id", projectIds)
+    );
     if (!error && Array.isArray(data)) {
       const rows = data as Array<{ project_id?: string; amount?: unknown; expense_id?: string }>;
       const eids = [...new Set(rows.map((r) => r.expense_id).filter((id): id is string => !!id))];
@@ -604,10 +613,12 @@ async function getExpenseCostBatch(
 
   if (!error) {
     expenseLinesHasProjectId = true;
-    const full = await c
-      .from("expense_lines")
-      .select("project_id, amount, expense_id")
-      .in("project_id", projectIds);
+    const full = await readCompleteRows(() =>
+      c
+        .from("expense_lines")
+        .select("id, project_id, amount, expense_id", { count: "exact" })
+        .in("project_id", projectIds)
+    );
     if (!full.error && Array.isArray(full.data)) {
       const rows = full.data as Array<{
         project_id?: string;
@@ -645,10 +656,12 @@ async function getExpenseCostBatchViaJoin(
   if (projectIds.length === 0) return map;
 
   const c = client(explicitClient);
-  const { data: headers, error } = await c
-    .from("expenses")
-    .select("id, project_id, status, reference_no")
-    .in("project_id", projectIds);
+  const { data: headers, error } = await readCompleteRows(() =>
+    c
+      .from("expenses")
+      .select("id, project_id, status, reference_no", { count: "exact" })
+      .in("project_id", projectIds)
+  );
   if (error) failFinancialRead("expenses batch (join path)", error);
   const byExpense = new Map<string, string>();
   const expenseIds: string[] = [];
@@ -668,10 +681,12 @@ async function getExpenseCostBatchViaJoin(
   }
   if (expenseIds.length === 0) return map;
 
-  const { data: lines, error: le } = await c
-    .from("expense_lines")
-    .select("expense_id, amount")
-    .in("expense_id", expenseIds);
+  const { data: lines, error: le } = await readCompleteRows(() =>
+    c
+      .from("expense_lines")
+      .select("id, expense_id, amount", { count: "exact" })
+      .in("expense_id", expenseIds)
+  );
   if (le) failFinancialRead("expense_lines batch (join path)", le);
   if (!lines) return map;
   for (const row of lines as Array<{ expense_id?: string; amount?: unknown }>) {

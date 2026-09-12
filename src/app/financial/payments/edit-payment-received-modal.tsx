@@ -155,6 +155,8 @@ export function EditPaymentReceivedModal({
   onSuccess,
 }: EditPaymentReceivedModalProps) {
   const { toast } = useToast();
+  const onOpenChangeRef = React.useRef(onOpenChange);
+  onOpenChangeRef.current = onOpenChange;
   const { openPreview } = useAttachmentPreview();
   const cameraInputRef = React.useRef<HTMLInputElement | null>(null);
   const uploadInputRef = React.useRef<HTMLInputElement | null>(null);
@@ -273,7 +275,7 @@ export function EditPaymentReceivedModal({
             description: err instanceof Error ? err.message : undefined,
             variant: "error",
           });
-          onOpenChange(false);
+          onOpenChangeRef.current(false);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -283,7 +285,7 @@ export function EditPaymentReceivedModal({
     return () => {
       cancelled = true;
     };
-  }, [cleanupDrafts, onOpenChange, open, paymentId, toast]);
+  }, [cleanupDrafts, open, paymentId, toast]);
 
   const updateDraft = React.useCallback(
     (draftId: string, patch: Partial<PaymentAttachmentDraft>) => {

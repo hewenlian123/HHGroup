@@ -18,6 +18,12 @@ vi.mock("@/lib/organization-membership", async (original) => ({
   hasCompanyAdministratorMembership: companyAccess,
 }));
 
+// Pause/schema behavior is exercised by worker-finance-write-pause.test.ts.
+vi.mock("@/lib/worker-finance-write-pause", async (original) => ({
+  ...(await original<typeof import("@/lib/worker-finance-write-pause")>()),
+  workerFinanceSchemaReady: vi.fn(async () => true),
+}));
+
 import { middleware } from "@/middleware";
 
 const ORIGINAL_ENV = { ...process.env };
@@ -33,6 +39,7 @@ describe("middleware Auth rollout behavior", () => {
     companyAccess.mockReset().mockResolvedValue(true);
     process.env = {
       ...ORIGINAL_ENV,
+      HH_WORKER_FINANCE_WRITES: "canonical",
       VERCEL_ENV: "production",
       NODE_ENV: "production",
     };

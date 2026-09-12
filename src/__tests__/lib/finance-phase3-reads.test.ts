@@ -26,7 +26,13 @@ function fixture(rows: Record<string, unknown[]> = {}, denied?: string, code = "
                 }
               : (rows[table] ?? [])
           ),
-          { status: table === denied ? 403 : 200, headers: { "Content-Type": "application/json" } }
+          {
+            status: table === denied ? 403 : 200,
+            headers: {
+              "Content-Type": "application/json",
+              "Content-Range": `0-${Math.max(0, (rows[table] ?? []).length - 1)}/${(rows[table] ?? []).length}`,
+            },
+          }
         );
       },
     },
@@ -71,7 +77,7 @@ describe("Phase 3 authenticated financial reads", () => {
   it("passes the session through canonical project cost with unchanged spent", async () => {
     const { client } = fixture({
       projects: [{ id: "p1", name: "Fixture", budget: 1000, status: "active" }],
-      subcontract_bills: [{ project_id: "p1", amount: 75.25 }],
+      subcontract_bills: [{ id: "sb1", project_id: "p1", amount: 75.25 }],
       invoices: [{ id: "i1", total: 500.25, status: "Sent" }],
       invoice_payments: [{ amount: 125.25, status: "Posted" }],
     });

@@ -295,7 +295,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if (Object.prototype.hasOwnProperty.call(body, "notes")) {
     patch.notes = stringOrNull(body.notes);
   }
-  if (Object.prototype.hasOwnProperty.call(body, "status")) {
+  if (Object.prototype.hasOwnProperty.call(body, "status") && Object.keys(body).length === 1) {
     const status = optionalStatus(body.status);
     if (!status) return apiError(400, "Invalid expense status.");
     patch.status = status;
@@ -360,6 +360,18 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const amount = Number(body.amount);
     if (!Number.isFinite(amount) || amount < 0)
       return apiError(400, "Line amount must be a valid number.");
+    const { data: amountLines, error: amountLinesError } = await supabase
+      .from("expense_lines")
+      .select("id")
+      .eq("expense_id", id);
+    if (amountLinesError) return apiError(500, amountLinesError.message);
+    if (amountLines?.length !== 1) {
+      return apiError(
+        400,
+        "Edit split amounts in their individual expense lines; the expense total is calculated from those lines."
+      );
+    }
+    linePatch.lineId = amountLines[0].id;
     linePatch.amount = amount;
   }
 

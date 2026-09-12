@@ -1,5 +1,21 @@
 "use client";
 
+import {
+  financePathWithReturn,
+  financePaymentActionReturn,
+  financeRecordPath,
+} from "@/lib/finance-navigation";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from "@/components/ui/sheet";
+import { FinanceContextBack } from "@/components/financial/finance-context-back";
+
+import { useFinanceQueryState } from "@/hooks/use-finance-query-state";
+
 import * as React from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -29,12 +45,9 @@ import {
   CalendarDays,
   Download,
   Link2,
-  Mail,
   Paperclip,
-  Pencil,
   Plus,
   Printer,
-  ReceiptText,
   Search,
   Wallet,
 } from "lucide-react";
@@ -92,6 +105,21 @@ function PaymentsReceivedPageInner() {
   const { openPreview } = useAttachmentPreview();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const detailId = searchParams.get("paymentDetail");
+  const paymentTrigger = React.useRef<HTMLElement | null>(null);
+  const openPaymentDetail = (id: string) => {
+    paymentTrigger.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    window.history.replaceState(
+      null,
+      "",
+      financeRecordPath(
+        `${window.location.pathname}${window.location.search}${window.location.hash}`,
+        "paymentDetail",
+        id
+      )
+    );
+  };
   const [payments, setPayments] = React.useState<PaymentReceivedWithMeta[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [loadError, setLoadError] = React.useState<string | null>(null);
@@ -115,11 +143,11 @@ function PaymentsReceivedPageInner() {
   const [modalOpen, setModalOpen] = React.useState(false);
   const [prefillInvoiceId, setPrefillInvoiceId] = React.useState<string | null>(null);
   const [editPaymentId, setEditPaymentId] = React.useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = React.useState("");
-  const [methodFilter, setMethodFilter] = React.useState("");
-  const [accountFilter, setAccountFilter] = React.useState("");
-  const [dateFrom, setDateFrom] = React.useState("");
-  const [dateTo, setDateTo] = React.useState("");
+  const [searchQuery, setSearchQuery] = useFinanceQueryState("q", "");
+  const [methodFilter, setMethodFilter] = useFinanceQueryState("method", "");
+  const [accountFilter, setAccountFilter] = useFinanceQueryState("account", "");
+  const [dateFrom, setDateFrom] = useFinanceQueryState("dateFrom", "");
+  const [dateTo, setDateTo] = useFinanceQueryState("dateTo", "");
   const [voidTarget, setVoidTarget] = React.useState<PaymentReceivedWithMeta | null>(null);
   const [deleteTarget, setDeleteTarget] = React.useState<PaymentReceivedWithMeta | null>(null);
   const [deleteDependencies, setDeleteDependencies] =
@@ -169,11 +197,18 @@ function PaymentsReceivedPageInner() {
     (open: boolean) => {
       setModalOpen(open);
       if (!open) {
-        if (prefillInvoiceId) clearPaymentQuery();
+        if (prefillInvoiceId)
+          router.replace(
+            financePaymentActionReturn(
+              window.location.href.replace(window.location.origin, ""),
+              "invoiceId"
+            ),
+            { scroll: false }
+          );
         setPrefillInvoiceId(null);
       }
     },
-    [clearPaymentQuery, prefillInvoiceId]
+    [router, prefillInvoiceId]
   );
 
   const load = React.useCallback(async () => {
@@ -331,8 +366,13 @@ function PaymentsReceivedPageInner() {
     if (sendReceipt) {
       void openSendReceipt(sendReceipt);
     }
-  }, [openSendReceipt, searchParams]);
+  }, [openSendReceipt, searchParams, setSearchQuery]);
 
+  const detailPayment = payments.find(
+    (row) =>
+      row.id === detailId &&
+      (!customerId || invoiceById.get(row.invoice_id)?.customerId === customerId)
+  );
   const methodOptions = React.useMemo(() => {
     const set = new Set<string>();
     for (const p of payments) {
@@ -580,6 +620,7 @@ function PaymentsReceivedPageInner() {
         </p>
 
         {/* Post-payment return context */}
+        <FinanceContextBack />
         {paymentReturnContext ? (
           <section className="rounded-hh-standard border border-[var(--hh-success-border)] bg-[var(--hh-success-soft-fill)] px-3 py-3 text-sm text-[var(--hh-success)] shadow-operational">
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -857,9 +898,14 @@ function PaymentsReceivedPageInner() {
                   >
                     <div className="min-w-0">
                       <div className="flex min-w-0 items-center gap-2">
-                        <span className="truncate text-sm font-semibold text-foreground">
+                        <button
+                          type="button"
+                          className="hh-focus-ring truncate text-left text-sm font-semibold text-foreground underline"
+                          onClick={() => openPaymentDetail(row.id)}
+                          aria-label={`View payment ${row.invoice_no || row.id}`}
+                        >
                           {row.customer_name || "—"}
-                        </span>
+                        </button>
                         {paymentVoided ? (
                           <span className="shrink-0 rounded-full border border-border bg-muted px-2 py-0.5 text-hh-table-header font-medium uppercase tracking-normal text-muted-foreground">
                             Voided
@@ -952,68 +998,27 @@ function PaymentsReceivedPageInner() {
                         ) : null}
                       </div>
                       <div className="flex flex-wrap items-center justify-end gap-1.5">
-                        {!paymentVoided ? (
-                          <>
-                            <Button
-                              asChild
-                              size="sm"
-                              variant="outline"
-                              className="h-11 min-h-[44px] lg:h-8 lg:min-h-0 rounded-hh-compact px-2 text-xs shadow-none"
-                            >
-                              <Link
-                                href={`/financial/payments?editPayment=${encodeURIComponent(row.id)}`}
-                              >
-                                <Pencil className="mr-1 h-3.5 w-3.5" />
-                                Edit
-                              </Link>
-                            </Button>
-                            <Button
-                              asChild
-                              size="sm"
-                              variant="outline"
-                              className="h-11 min-h-[44px] lg:h-8 lg:min-h-0 rounded-hh-compact px-2 text-xs shadow-none"
-                            >
-                              <Link
-                                href={`/financial/payments?receipt=${encodeURIComponent(row.id)}`}
-                              >
-                                <ReceiptText className="mr-1 h-3.5 w-3.5" />
-                                Receipt
-                              </Link>
-                            </Button>
-                            {receiptActionBusyId === row.id ? (
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="outline"
-                                className="h-11 min-h-[44px] lg:h-8 lg:min-h-0 rounded-hh-compact px-2 text-xs shadow-none"
-                                disabled
-                              >
-                                <Mail className="mr-1 h-3.5 w-3.5" />
-                                Send
-                              </Button>
-                            ) : (
-                              <Button
-                                asChild
-                                size="sm"
-                                variant="outline"
-                                className="h-11 min-h-[44px] lg:h-8 lg:min-h-0 rounded-hh-compact px-2 text-xs shadow-none"
-                              >
-                                <Link
-                                  href={`/financial/payments?sendReceipt=${encodeURIComponent(row.id)}`}
-                                >
-                                  <Mail className="mr-1 h-3.5 w-3.5" />
-                                  Send
-                                </Link>
-                              </Button>
-                            )}
-                          </>
-                        ) : null}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-11 min-h-[44px] lg:h-8 lg:min-h-0 rounded-hh-compact px-2 text-xs shadow-none"
+                          onClick={() => openPaymentDetail(row.id)}
+                        >
+                          View payment
+                        </Button>
                         <RowActionsMenu
                           appearance="list"
                           ariaLabel={`Actions for payment ${row.invoice_no ?? ""}`}
                           actions={[
                             ...(!paymentVoided
                               ? [
+                                  { label: "Edit", onClick: () => setEditPaymentId(row.id) },
+                                  { label: "Receipt", onClick: () => openReceiptPreview(row.id) },
+                                  {
+                                    label: "Send receipt",
+                                    onClick: () => void openSendReceipt(row.id),
+                                    disabled: receiptActionBusyId === row.id,
+                                  },
                                   {
                                     label: (
                                       <span className="inline-flex items-center gap-2">
@@ -1127,12 +1132,130 @@ function PaymentsReceivedPageInner() {
           }}
           preselectedInvoiceId={prefillInvoiceId}
         />
+        <Sheet
+          open={!!detailId}
+          onOpenChange={(open) => {
+            if (!open)
+              window.history.replaceState(
+                null,
+                "",
+                financeRecordPath(
+                  `${window.location.pathname}${window.location.search}${window.location.hash}`,
+                  "paymentDetail",
+                  null
+                )
+              );
+          }}
+        >
+          <SheetContent
+            className="md:max-w-xl"
+            onCloseAutoFocus={(event) => {
+              event.preventDefault();
+              paymentTrigger.current?.focus({ preventScroll: true });
+            }}
+          >
+            <SheetHeader className="mb-4 pr-11 text-left">
+              <SheetTitle>Payment details</SheetTitle>
+              <SheetDescription>Customer payment · Money in</SheetDescription>
+            </SheetHeader>
+            {loading ? (
+              <p role="status">Loading payment…</p>
+            ) : loadError ? (
+              <p role="alert">{loadError}</p>
+            ) : !detailPayment ? (
+              <p role="alert">Payment unavailable in this customer scope.</p>
+            ) : (
+              <div className="space-y-4">
+                <dl className="grid grid-cols-2 gap-3 break-words text-hh-body">
+                  {Object.entries({
+                    Invoice: detailPayment.invoice_no || "—",
+                    Customer: detailPayment.customer_name || "—",
+                    Project: detailPayment.project_name || "—",
+                    Amount: formatCurrency(detailPayment.amount),
+                    Method: detailPayment.payment_method || "—",
+                    Account: detailPayment.deposit_account || "—",
+                    Date: formatDate(detailPayment.payment_date),
+                    Source: "Customer invoice payment",
+                    Status: isVoidedPaymentStatus(detailPayment.status)
+                      ? "Voided"
+                      : detailPayment.status || "Recorded",
+                    Reference: paymentReference.get(detailPayment.id) || "—",
+                    Notes: detailPayment.notes || "—",
+                  }).map(([label, value]) => (
+                    <React.Fragment key={label}>
+                      <dt className="text-[var(--hh-text-secondary)]">{label}</dt>
+                      <dd className="min-w-0 whitespace-pre-wrap">{value}</dd>
+                    </React.Fragment>
+                  ))}
+                </dl>
+                <div className="flex flex-wrap gap-2">
+                  {!isVoidedPaymentStatus(detailPayment.status) ? (
+                    <>
+                      <Button onClick={() => setEditPaymentId(detailPayment.id)}>Edit</Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => openReceiptPreview(detailPayment.id)}
+                      >
+                        Receipt
+                      </Button>
+                      <RowActionsMenu
+                        ariaLabel="More payment actions"
+                        actions={[
+                          {
+                            label: "Send receipt",
+                            onClick: () => void openSendReceipt(detailPayment.id),
+                            disabled: receiptActionBusyId === detailPayment.id,
+                          },
+                          {
+                            label: "Void payment",
+                            destructive: true,
+                            onClick: () => setVoidTarget(detailPayment),
+                          },
+                        ]}
+                      />
+                    </>
+                  ) : null}
+                  {detailPayment.attachments.length ? (
+                    <Button
+                      variant="outline"
+                      disabled={openingPaymentAttachmentsId === detailPayment.id}
+                      onClick={() =>
+                        void openPaymentAttachments(detailPayment.id, detailPayment.attachments)
+                      }
+                    >
+                      Attachments ({detailPayment.attachments.length})
+                    </Button>
+                  ) : (
+                    <p className="text-hh-metadata">No attachments</p>
+                  )}
+                  <Button asChild variant="ghost">
+                    <Link
+                      href={financePathWithReturn(
+                        `/financial/invoices/${detailPayment.invoice_id}`,
+                        `/financial/payments?${searchParams}`
+                      )}
+                    >
+                      Open related invoice
+                    </Link>
+                  </Button>
+                </div>
+              </div>
+            )}
+          </SheetContent>
+        </Sheet>
         <EditPaymentReceivedModal
           open={!!editPaymentId}
           paymentId={editPaymentId}
           onOpenChange={(open) => {
             if (!open) {
-              if (editPaymentId) clearPaymentQuery();
+              if (editPaymentId && searchParams.has("editPayment"))
+                router.replace(
+                  financePaymentActionReturn(
+                    window.location.href.replace(window.location.origin, ""),
+                    "editPayment"
+                  ),
+                  { scroll: false }
+                );
               setEditPaymentId(null);
             }
           }}

@@ -120,6 +120,7 @@ function deniedClient(tableName: string): SupabaseClient {
       const builder: Record<string, unknown> = {
         select: () => builder,
         eq: () => builder,
+        neq: () => builder,
         order: () => builder,
         then: result.then.bind(result),
       };

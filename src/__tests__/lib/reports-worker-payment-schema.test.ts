@@ -66,7 +66,10 @@ function reportClient(paymentMode: "canonical" | "baseline" | "denied" | "null" 
         }
         return new Response(JSON.stringify(data), {
           status,
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            "Content-Range": `0-0/${Array.isArray(data) ? data.length : 0}`,
+          },
         });
       },
     },
@@ -80,7 +83,7 @@ describe("report worker payment schema", () => {
     it(`preserves settled labor and exact amounts with ${mode} payment rows`, async () => {
       vi.mocked(getServerSupabaseInternalNoStore).mockReturnValue(reportClient(mode));
       const result = await getReportsData(range);
-      expect(result.apAging.rows).toMatchObject([
+      expect(result.otherPayables.rows).toMatchObject([
         { id: "unpaid-entry", amount: 75, project: "Fixture Project" },
       ]);
       expect(result.monthly.kpis.find((kpi) => kpi.key === "laborCost")?.value).toBe(200);
@@ -94,6 +97,6 @@ describe("report worker payment schema", () => {
   it("accepts a successful empty payment ledger", async () => {
     vi.mocked(getServerSupabaseInternalNoStore).mockReturnValue(reportClient("empty"));
     const result = await getReportsData(range);
-    expect(result.apAging.rows.map((row) => row.amount)).toEqual([125, 75]);
+    expect(result.otherPayables.rows.map((row) => row.amount)).toEqual([125, 75]);
   });
 });

@@ -1,3 +1,4 @@
+import { readCompleteRows } from "@/lib/read-complete-rows";
 /**
  * Commissions (`commissions`) and payment rows (`commission_payments`).
  * paid_amount is always SUM(commission_payments.amount); never stored on the commission row.
@@ -137,10 +138,12 @@ export async function getCommissionCostByProjectBatch(
   if (ids.length === 0) return byProject;
 
   const c = client(explicitClient);
-  const { data: canonicalRows, error } = await c
-    .from(TABLE_COMMISSIONS)
-    .select("id, project_id, commission_amount")
-    .in("project_id", ids);
+  const { data: canonicalRows, error } = await readCompleteRows(() =>
+    c
+      .from(TABLE_COMMISSIONS)
+      .select("id, project_id, commission_amount", { count: "exact" })
+      .in("project_id", ids)
+  );
   if (error) financialDataUnavailable(LEGACY_COMMISSIONS, error);
 
   const canonicalIds = new Set<string>();
@@ -152,10 +155,12 @@ export async function getCommissionCostByProjectBatch(
     byProject.set(projectId, (byProject.get(projectId) ?? 0) + commissionCostFromRow(row));
   }
 
-  const { data: legacyRows, error: legacyError } = await c
-    .from(LEGACY_COMMISSIONS)
-    .select("id, project_id, commission_amount, status")
-    .in("project_id", ids);
+  const { data: legacyRows, error: legacyError } = await readCompleteRows(() =>
+    c
+      .from(LEGACY_COMMISSIONS)
+      .select("id, project_id, commission_amount, status", { count: "exact" })
+      .in("project_id", ids)
+  );
   if (legacyError) throw new Error(humanizeSupabaseRequestError(legacyError));
   for (const row of (legacyRows ?? []) as CommissionCostRow[]) {
     const id = String(row.id ?? "").trim();

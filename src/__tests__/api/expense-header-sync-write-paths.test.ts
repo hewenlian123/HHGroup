@@ -61,8 +61,9 @@ function createApproveInboxSupabase(events: string[]) {
   };
 }
 
-function createPatchSupabase(events: string[]) {
+function createPatchSupabase(events: string[], lines = [{ id: "line-1" }]) {
   return {
+    from: () => ({ select: () => ({ eq: async () => ({ data: lines, error: null }) }) }),
     rpc: vi.fn(async (name: string, args: Record<string, unknown>) => {
       events.push(`rpc:${name}`);
       const linePatch = args.p_line_patch as { amount?: number };
@@ -108,35 +109,58 @@ describe("expense header sync write paths", () => {
     mocks.requireAuthenticatedUser.mockResolvedValue({ ok: true, user: { id: "user-1" } });
   });
 
-  it("syncs a stale inbox draft header before approving it", async () => {
+  it.each(["INBOX-UP-test", undefined])(
+    "syncs receipt header before approval with reference %s",
+    async (referenceNo) => {
+      const events: string[] = [];
+      const supabase = createApproveInboxSupabase(events);
+      const current = { ...approvedInboxDraft(52.34), referenceNo };
+
+      mocks.getServerSupabaseInternalNoStore.mockReturnValue(supabase);
+      mocks.getExpenseById.mockResolvedValueOnce(current).mockResolvedValueOnce({
+        ...current,
+        status: "approved",
+      });
+      mocks.syncExpenseHeaderAmountFromLinesWithClient.mockImplementation(async () => {
+        events.push("sync:52.34");
+        return 52.34;
+      });
+      mocks.ensureWorkerReimbursementForApprovedExpense.mockImplementation(async () => {
+        events.push("bridge");
+      });
+
+      const { POST } = await import("@/app/api/financial/expenses/[id]/approve-inbox/route");
+      const response = await POST(
+        new Request("http://localhost/api/financial/expenses/expense-1"),
+        {
+          params: Promise.resolve({ id: "expense-1" }),
+        }
+      );
+
+      expect(response.status).toBe(200);
+      expect(mocks.syncExpenseHeaderAmountFromLinesWithClient).toHaveBeenCalledWith(
+        supabase,
+        "expense-1"
+      );
+      expect(events).toEqual(["sync:52.34", "status:approved"]);
+    }
+  );
+
+  it("blocks Expense reimbursement approval before amount or status mutation", async () => {
     const events: string[] = [];
-    const supabase = createApproveInboxSupabase(events);
-    const current = approvedInboxDraft(52.34);
-
-    mocks.getServerSupabaseInternalNoStore.mockReturnValue(supabase);
-    mocks.getExpenseById.mockResolvedValueOnce(current).mockResolvedValueOnce({
-      ...current,
-      status: "approved",
+    mocks.getServerSupabaseInternalNoStore.mockReturnValue(createApproveInboxSupabase(events));
+    mocks.getExpenseById.mockResolvedValue({
+      ...approvedInboxDraft(52.34),
+      sourceType: "reimbursement",
     });
-    mocks.syncExpenseHeaderAmountFromLinesWithClient.mockImplementation(async () => {
-      events.push("sync:52.34");
-      return 52.34;
-    });
-    mocks.ensureWorkerReimbursementForApprovedExpense.mockImplementation(async () => {
-      events.push("bridge");
-    });
-
     const { POST } = await import("@/app/api/financial/expenses/[id]/approve-inbox/route");
     const response = await POST(new Request("http://localhost/api/financial/expenses/expense-1"), {
       params: Promise.resolve({ id: "expense-1" }),
     });
-
-    expect(response.status).toBe(200);
-    expect(mocks.syncExpenseHeaderAmountFromLinesWithClient).toHaveBeenCalledWith(
-      supabase,
-      "expense-1"
-    );
-    expect(events).toEqual(["sync:52.34", "status:approved", "bridge"]);
+    expect(response.status).toBe(409);
+    expect(events).toEqual([]);
+    expect(mocks.syncExpenseHeaderAmountFromLinesWithClient).not.toHaveBeenCalled();
+    expect(mocks.ensureWorkerReimbursementForApprovedExpense).not.toHaveBeenCalled();
   });
 
   it("updates a line amount and its header mirrors through one atomic RPC", async () => {
@@ -158,7 +182,7 @@ describe("expense header sync write paths", () => {
     expect(supabase.rpc).toHaveBeenCalledWith("update_expense_atomic", {
       p_expense_id: "expense-1",
       p_header_patch: { vendorName: "Home Depot" },
-      p_line_patch: { amount: 323.54 },
+      p_line_patch: { lineId: "line-1", amount: 323.54 },
       p_apply_deduction: false,
       p_deduction: null,
     });
@@ -170,6 +194,35 @@ describe("expense header sync write paths", () => {
       total: 323.54,
     });
     expect(events).toEqual(["rpc:update_expense_atomic"]);
+  });
+
+  it("does not approve a zero-amount receipt draft", async () => {
+    const events: string[] = [];
+    mocks.getServerSupabaseInternalNoStore.mockReturnValue(createApproveInboxSupabase(events));
+    mocks.getExpenseById.mockResolvedValue(approvedInboxDraft(0));
+    const { POST } = await import("@/app/api/financial/expenses/[id]/approve-inbox/route");
+    const response = await POST(new Request("http://localhost/api/financial/expenses/expense-1"), {
+      params: Promise.resolve({ id: "expense-1" }),
+    });
+    expect(response.status).toBe(409);
+    expect(events).toEqual([]);
+  });
+
+  it("saving fields cannot implicitly approve a receipt", async () => {
+    const events: string[] = [];
+    const supabase = createPatchSupabase(events);
+    mocks.getServerSupabaseInternalNoStore.mockReturnValue(supabase);
+    const { PATCH } = await import("@/app/api/expenses/[id]/route");
+    const response = await PATCH(
+      new Request("http://localhost/api/expenses/expense-1", {
+        method: "PATCH",
+        body: JSON.stringify({ notes: "Edited", status: "approved" }),
+      }),
+      { params: Promise.resolve({ id: "expense-1" }) }
+    );
+    expect(response.status).toBe(200);
+    expect(supabase.rpc.mock.calls[0][1].p_header_patch).toEqual({ notes: "Edited" });
+    expect((await response.json()).expense.status).toBe("needs_review");
   });
 
   it("accepts a line-only patch and returns the complete expense header", async () => {
@@ -191,7 +244,7 @@ describe("expense header sync write paths", () => {
     expect(supabase.rpc).toHaveBeenCalledWith("update_expense_atomic", {
       p_expense_id: "expense-1",
       p_header_patch: {},
-      p_line_patch: { amount: 75 },
+      p_line_patch: { lineId: "line-1", amount: 75 },
       p_apply_deduction: false,
       p_deduction: null,
     });
@@ -229,5 +282,20 @@ describe("expense header sync write paths", () => {
     });
     expect(mocks.syncExpenseHeaderAmountFromLinesWithClient).not.toHaveBeenCalled();
     expect(events).toEqual(["rpc:update_expense_atomic"]);
+  });
+  it("rejects an expense total as an ambiguous split line amount without writing", async () => {
+    const events: string[] = [];
+    const supabase = createPatchSupabase(events, [{ id: "line-1" }, { id: "line-2" }]);
+    mocks.getServerSupabaseInternalNoStore.mockReturnValue(supabase);
+    const { PATCH } = await import("@/app/api/expenses/[id]/route");
+    const response = await PATCH(
+      new Request("http://localhost/api/expenses/expense-1", {
+        method: "PATCH",
+        body: JSON.stringify({ amount: 40, notes: "Description only" }),
+      }),
+      { params: Promise.resolve({ id: "expense-1" }) }
+    );
+    expect(response.status).toBe(400);
+    expect(events).toEqual([]);
   });
 });

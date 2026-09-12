@@ -14,9 +14,10 @@ beforeAll(() => {
     const { renderToStaticMarkup } = require('react-dom/server');
     let mode = 'empty';
     const mock = (name, exports) => { const id = require.resolve(name); require.cache[id] = { id, filename: id, loaded: true, exports }; };
-    mock('next/navigation', { useRouter: () => ({ refresh() {} }) });
+    mock('next/navigation', { useRouter: () => ({ refresh() {} }), useSearchParams: () => new URLSearchParams() });
     mock('./src/lib/auth-boundary.ts', { requireSupabaseOwnerOrAdminServerActionClient: async () => mode === 'denied' ? { ok: false, error: 'Permission denied' } : { ok: true, client: { session: 'fixture' } } });
     const read = (value) => async (client) => { if (mode === 'error') throw Error('unavailable'); if (!client?.session) throw Error('session missing'); return value; };
+    mock('./src/lib/reports-db.ts', { getReportDateRange: () => ({}), getReportsData: async (range, client) => read({monthly:{kpis:[{key:'invoicedRevenue',label:'Invoiced Revenue',value:0}]}})(client) });
     mock('./src/lib/data/index.ts', {
       getTotalLaborCost: read(0),
       getCompanyFinancialDashboard: read({ budget: 0, spent: 0, revenue: 0, collected: 0, profit: 0, cashflow: 0 }),
@@ -30,7 +31,7 @@ beforeAll(() => {
       const output = {};
       for (const [name,path] of Object.entries(paths)) {
         const Page = require(path).default; output[name] = {};
-        for (const state of ['empty','error','denied']) { mode = state; output[name][state] = renderToStaticMarkup(await Page()); }
+        for (const state of ['empty','error','denied']) { mode = state; output[name][state] = renderToStaticMarkup(await Page({})); }
       }
       process.stdout.write(JSON.stringify(output));
     })().catch(e => { console.error(e); process.exit(1); });

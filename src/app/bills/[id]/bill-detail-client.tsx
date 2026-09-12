@@ -1,9 +1,11 @@
 "use client";
 
+import { financePathWithReturn, financeReturnPath } from "@/lib/finance-navigation";
+
 import { syncRouterNonBlocking } from "@/components/perf/sync-router-non-blocking";
 import * as React from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   KpiTile,
   NeoAmount,
@@ -40,6 +42,7 @@ type Props = {
   bill: ApBillWithProject;
   payments: ApBillPaymentRow[];
   addPaymentOpen: boolean;
+  drawerReturnTo?: string;
 };
 
 async function readApiMessage(response: Response, fallback: string): Promise<string> {
@@ -47,8 +50,14 @@ async function readApiMessage(response: Response, fallback: string): Promise<str
   return typeof body?.message === "string" ? body.message : fallback;
 }
 
-export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPaymentOpen }: Props) {
+export function BillDetailClient({
+  bill,
+  payments,
+  addPaymentOpen: initialAddPaymentOpen,
+  drawerReturnTo,
+}: Props) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { openPreview } = useAttachmentPreview();
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -210,7 +219,7 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
       method: "DELETE",
     });
     if (response.ok) {
-      router.push("/bills");
+      router.push(financeReturnPath(searchParams.get("returnTo"), "/bills"));
       syncRouterNonBlocking(router);
     } else {
       setError(await readApiMessage(response, "Failed to delete bill."));
@@ -219,6 +228,11 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
 
   return (
     <div className="mx-auto flex min-w-0 max-w-[1000px] flex-col gap-4 md:gap-5">
+      {error && !addPaymentOpen ? (
+        <p role="alert" className="text-[var(--hh-danger)]">
+          {error}
+        </p>
+      ) : null}
       <NeoPanel title="Bill details" bodyClassName="px-4 py-4 md:px-6 md:py-5">
         <dl className={billsDetailDlClass}>
           <dt className={billsDetailDtClass}>Bill no.</dt>
@@ -228,7 +242,21 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
           <dt className={billsDetailDtClass}>Type</dt>
           <dd className={billsDetailDdClass}>{bill.bill_type}</dd>
           <dt className={billsDetailDtClass}>Project</dt>
-          <dd className={billsDetailDdClass}>{bill.project_name ?? "—"}</dd>
+          <dd className={billsDetailDdClass}>
+            {bill.project_id ? (
+              <Link
+                className="underline"
+                href={financePathWithReturn(
+                  `/projects/${bill.project_id}`,
+                  drawerReturnTo ?? `/bills/${bill.id}`
+                )}
+              >
+                {bill.project_name ?? "Open project"}
+              </Link>
+            ) : (
+              "—"
+            )}
+          </dd>
           <dt className={billsDetailDtClass}>Subcontract</dt>
           <dd className={billsDetailDdClass}>
             {bill.project_id && bill.subcontract_id ? (
@@ -269,7 +297,9 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
         </dl>
       </NeoPanel>
 
-      <section className="grid min-w-0 gap-3 sm:grid-cols-3">
+      <section
+        className={cn("grid min-w-0 gap-3", drawerReturnTo ? "grid-cols-3" : "sm:grid-cols-3")}
+      >
         <KpiTile label="Total amount" value={formatCurrency(bill.amount)} />
         <KpiTile label="Paid amount" value={formatCurrency(bill.paid_amount)} tone="positive" />
         <KpiTile label="Balance" value={formatCurrency(bill.balance_amount)} />
@@ -279,14 +309,14 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
         title="Payment history"
         description={payments.length === 0 ? "No payments recorded yet." : undefined}
         action={
-          canAddPayment ? (
+          canAddPayment && !drawerReturnTo ? (
             <Button
-              variant="outline"
+              variant={drawerReturnTo ? "default" : "outline"}
               size="sm"
-              className={billsGhostButtonClass}
+              className={drawerReturnTo ? billsPrimaryButtonClass : billsGhostButtonClass}
               onClick={() => setAddPaymentOpen(true)}
             >
-              Add payment
+              {drawerReturnTo ? "Pay bill" : "Add payment"}
             </Button>
           ) : undefined
         }
@@ -339,21 +369,39 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
         )}
       </NeoPanel>
 
-      {bill.notes ? (
+      {bill.notes || drawerReturnTo ? (
         <NeoPanel title="Notes" bodyClassName="px-4 py-4 md:px-6 md:py-5">
-          <p className="text-hh-table-cell text-[var(--hh-text-secondary)]">{bill.notes}</p>
+          <p className="text-hh-table-cell text-[var(--hh-text-secondary)]">
+            {bill.notes || "No notes"}
+          </p>
         </NeoPanel>
       ) : null}
 
       <div
         className={cn(
           "flex flex-wrap items-center gap-2 border-t border-[var(--hh-border)] pt-4",
-          "max-md:[&_button]:min-h-11 max-md:[&_a]:min-h-11"
+          "max-md:[&_button]:min-h-11 max-md:[&_a]:min-h-11",
+          drawerReturnTo && "order-first border-t-0 pt-0"
         )}
       >
+        {drawerReturnTo && canAddPayment ? (
+          <Button size="sm" onClick={() => setAddPaymentOpen(true)}>
+            Pay bill
+          </Button>
+        ) : null}
         <Button variant="outline" size="sm" className={billsGhostButtonClass} asChild>
-          <Link href={`/bills/${bill.id}/edit`}>Edit bill</Link>
+          <Link
+            href={financePathWithReturn(
+              `/bills/${bill.id}/edit`,
+              drawerReturnTo ?? searchParams.get("returnTo")
+            )}
+          >
+            Edit bill
+          </Link>
         </Button>
+        {drawerReturnTo && !bill.attachment_url ? (
+          <p className="text-hh-metadata">No attachments</p>
+        ) : null}
         {bill.attachment_url ? (
           <Button
             variant="outline"
@@ -394,7 +442,15 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
             Approve
           </Button>
         ) : null}
-        {canVoid &&
+        {drawerReturnTo && canVoid ? (
+          <Button asChild variant="outline" size="sm">
+            <Link href={financePathWithReturn(`/bills/${bill.id}`, drawerReturnTo)}>
+              Void · review full bill
+            </Link>
+          </Button>
+        ) : null}
+        {!drawerReturnTo &&
+          canVoid &&
           (!voidConfirm ? (
             <Button
               variant="outline"
@@ -425,7 +481,8 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
             </>
           ))}
 
-        {bill.status === "Draft" &&
+        {!drawerReturnTo &&
+          bill.status === "Draft" &&
           payments.length === 0 &&
           (!deleteConfirm ? (
             <Button

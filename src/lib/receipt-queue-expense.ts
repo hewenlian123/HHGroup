@@ -22,26 +22,22 @@ function resolveQueueExpenseDate(row: ReceiptQueueRow): string {
 export async function finalizeReceiptQueueExpense(
   supabase: SupabaseClient,
   row: ReceiptQueueRow,
-  mode: "confirm" | "bulk"
+  _mode: "confirm" | "bulk"
 ): Promise<void> {
+  void _mode;
   if (finalizeReceiptQueueExpenseInflight.has(row.id)) {
     return;
   }
   finalizeReceiptQueueExpenseInflight.add(row.id);
   try {
-    const total =
-      mode === "bulk"
-        ? (() => {
-            const raw = String(row.amount ?? "")
-              .replace(/,/g, "")
-              .trim();
-            const n = parseFloat(raw);
-            return Number.isFinite(n) && n >= 0 ? n : 0;
-          })()
-        : Number(row.amount);
-    if (mode === "confirm" && (!Number.isFinite(total) || total <= 0)) {
-      throw new Error("Amount required");
-    }
+    // Both legacy actions only transfer into Review; neither approves the expense.
+    const total = Number(
+      String(row.amount ?? "")
+        .replace(/,/g, "")
+        .trim()
+    );
+    if (!Number.isFinite(total) || total < 0)
+      throw new Error("Amount must be a valid non-negative number.");
     const receiptUrl = (row.receipt_public_url ?? "").trim() || undefined;
     const stRaw = (row.source_type ?? "receipt_upload").trim();
     const st: "company" | "receipt_upload" | "reimbursement" =
@@ -61,7 +57,7 @@ export async function finalizeReceiptQueueExpense(
       category,
       projectId: row.project_id || null,
       paymentAccountId: paId,
-      ...(mode === "bulk" ? { initialStatus: "needs_review" as const } : {}),
+      initialStatus: "needs_review",
     });
     if (typeof window !== "undefined" && paId) {
       rememberExpenseVendorPaymentAccount(row.vendor_name.trim() || "Unknown", paId);

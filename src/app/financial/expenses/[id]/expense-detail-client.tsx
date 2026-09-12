@@ -1,5 +1,7 @@
 "use client";
 
+import { financeReturnLabel } from "@/lib/finance-navigation";
+
 import "../expenses-ui-theme.css";
 import { syncRouterNonBlocking } from "@/components/perf/sync-router-non-blocking";
 import * as React from "react";
@@ -17,7 +19,6 @@ import { ExpensePaymentMethodSelect } from "@/components/expense-payment-method-
 import { SplitLinesEditor, type SplitLineRow } from "@/components/split-lines-editor";
 import { useAttachmentPreview } from "@/contexts/attachment-preview-context";
 import { formatCurrency, formatDate } from "@/lib/formatters";
-import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { hawaiiTodayYmd } from "@/lib/hawaii-calendar-date";
 import { cn } from "@/lib/utils";
@@ -31,6 +32,8 @@ type ExpenseRow = {
   reference_no: string | null;
   notes: string | null;
   total: number | null;
+  status?: string;
+  source_type?: string;
 };
 
 type ExpenseLineRow = {
@@ -40,6 +43,7 @@ type ExpenseLineRow = {
   category: string | null;
   cost_code: string | null;
   memo: string | null;
+  description?: string | null;
   amount: number | null;
 };
 
@@ -127,7 +131,11 @@ export function ExpenseDetailClient({ id, returnHref }: { id: string; returnHref
   const [saving, setSaving] = React.useState(false);
   const [message, setMessage] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
+  const [savedExpense, setSavedExpense] = React.useState<ExpenseRow | null>(null);
+  const [discardHref, setDiscardHref] = React.useState<string | null>(null);
+  const dirtyRef = React.useRef(false);
   const [expense, setExpense] = React.useState<ExpenseRow | null>(null);
+  const [savedLines, setSavedLines] = React.useState<ExpenseLineRow[]>([]);
   const [lines, setLines] = React.useState<ExpenseLineRow[]>([]);
   const [projects, setProjects] = React.useState<ProjectOption[]>([]);
   const [categories, setCategories] = React.useState<{ options: string[]; disabled: Set<string> }>({
@@ -173,7 +181,13 @@ export function ExpenseDetailClient({ id, returnHref }: { id: string; returnHref
     }
 
     setExpense(body.expense);
-    setLines(body.lines ?? []);
+    setSavedExpense(body.expense);
+    const loadedLines = (body.lines ?? []).map((line) => ({
+      ...line,
+      memo: line.description ?? line.memo ?? null,
+    }));
+    setLines(loadedLines);
+    setSavedLines(loadedLines);
     setProjects(body.projects ?? []);
 
     setVendors(
@@ -211,10 +225,65 @@ export function ExpenseDetailClient({ id, returnHref }: { id: string; returnHref
 
   useOnAppSync(
     React.useCallback(() => {
-      void refresh();
+      if (!dirtyRef.current) void refresh();
     }, [refresh]),
     [refresh]
   );
+
+  const dirty =
+    JSON.stringify(expense) !== JSON.stringify(savedExpense) ||
+    JSON.stringify(lines) !== JSON.stringify(savedLines);
+  dirtyRef.current = dirty;
+  React.useEffect(() => {
+    if (!dirty) return;
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    const protectLink = (event: MouseEvent) => {
+      if (
+        !dirtyRef.current ||
+        event.button !== 0 ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.shiftKey ||
+        event.altKey
+      )
+        return;
+      const link = (event.target as Element | null)?.closest<HTMLAnchorElement>("a[href]");
+      if (
+        !link ||
+        link.target === "_blank" ||
+        link.hasAttribute("download") ||
+        link.href === window.location.href
+      )
+        return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      setDiscardHref(link.href);
+    };
+    const navigation = (window as Window & { navigation?: EventTarget }).navigation;
+    const protectNavigation = (event: Event) => {
+      const destination = (event as Event & { destination?: { url: string } }).destination;
+      if (
+        !dirtyRef.current ||
+        !event.cancelable ||
+        !destination ||
+        destination.url === window.location.href
+      )
+        return;
+      event.preventDefault();
+      setDiscardHref(destination.url);
+    };
+    window.addEventListener("beforeunload", warn);
+    document.addEventListener("click", protectLink, true);
+    navigation?.addEventListener("navigate", protectNavigation);
+    return () => {
+      window.removeEventListener("beforeunload", warn);
+      document.removeEventListener("click", protectLink, true);
+      navigation?.removeEventListener("navigate", protectNavigation);
+    };
+  }, [dirty]);
 
   const linesTotal = React.useMemo(() => {
     return lines.reduce((s, l) => s + safeNumber(l.amount), 0);
@@ -242,74 +311,57 @@ export function ExpenseDetailClient({ id, returnHref }: { id: string; returnHref
     [lines]
   );
 
+  const headerSaveInFlightRef = React.useRef(false);
   const saveHeader = React.useCallback(
     async (patch: Partial<ExpenseRow>): Promise<boolean> => {
-      if (!expense) return false;
+      if (!expense || headerSaveInFlightRef.current) return false;
+      headerSaveInFlightRef.current = true;
       setSaving(true);
       setError(null);
       setMessage(null);
-      const response = await fetch(`/api/expenses/${encodeURIComponent(expense.id)}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify(patch),
-      });
-      const body = await readJson<{ ok: boolean; message?: string; expense?: ExpenseRow }>(
-        response
-      );
-      if (!response.ok || !body?.ok || !body.expense) {
-        setError(body?.message || "Failed to save expense.");
+      try {
+        const response = await fetch(`/api/expenses/${encodeURIComponent(expense.id)}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify(patch),
+        });
+        const body = await readJson<{ ok: boolean; message?: string; expense?: ExpenseRow }>(
+          response
+        );
+        if (!response.ok || !body?.ok || !body.expense) {
+          setError(body?.message || "Failed to save expense.");
+          setSaving(false);
+          return false;
+        }
+        setExpense((current) => (current === expense ? body.expense! : current));
+        setSavedExpense(body.expense);
         setSaving(false);
+        setMessage("Saved.");
+        return true;
+      } catch (cause) {
+        setError(cause instanceof Error ? cause.message : "Failed to save expense.");
         return false;
+      } finally {
+        headerSaveInFlightRef.current = false;
+        setSaving(false);
       }
-      setExpense(body.expense);
-      setSaving(false);
-      setMessage("Saved.");
-      return true;
     },
     [expense]
   );
 
-  const headerForSave = expense
-    ? {
-        expense_date: expense.expense_date ?? undefined,
-        vendor_name: toNullable(expense.vendor_name ?? "") ?? undefined,
-        payment_method: toNullable(expense.payment_method ?? "") ?? "ACH",
-        reference_no: toNullable(expense.reference_no ?? "") ?? undefined,
-        notes: toNullable(expense.notes ?? "") ?? undefined,
-      }
-    : null;
-  const debouncedHeader = useDebouncedValue(headerForSave, 800);
-  const lastSavedHeaderRef = React.useRef<typeof headerForSave>(null);
-  const initialLoadDoneRef = React.useRef(false);
-
-  React.useEffect(() => {
-    if (!expense || !debouncedHeader) return;
-    if (!initialLoadDoneRef.current) {
-      initialLoadDoneRef.current = true;
-      lastSavedHeaderRef.current = debouncedHeader;
-      return;
-    }
-    const prev = lastSavedHeaderRef.current;
-    if (
-      prev &&
-      prev.expense_date === debouncedHeader.expense_date &&
-      prev.vendor_name === debouncedHeader.vendor_name &&
-      prev.payment_method === debouncedHeader.payment_method &&
-      prev.reference_no === debouncedHeader.reference_no &&
-      prev.notes === debouncedHeader.notes
-    )
-      return;
-    void saveHeader({
-      expense_date: debouncedHeader.expense_date,
-      vendor_name: debouncedHeader.vendor_name ?? undefined,
-      payment_method: debouncedHeader.payment_method,
-      reference_no: debouncedHeader.reference_no ?? undefined,
-      notes: debouncedHeader.notes ?? undefined,
-    }).then((ok) => {
-      if (ok) lastSavedHeaderRef.current = debouncedHeader;
-    });
-  }, [debouncedHeader, expense, saveHeader]);
-
+  const headerForSave = React.useMemo(
+    () =>
+      expense
+        ? {
+            expense_date: expense.expense_date ?? undefined,
+            vendor_name: toNullable(expense.vendor_name ?? "") ?? undefined,
+            payment_method: toNullable(expense.payment_method ?? "") ?? "ACH",
+            reference_no: toNullable(expense.reference_no ?? "") ?? undefined,
+            notes: toNullable(expense.notes ?? ""),
+          }
+        : null,
+    [expense]
+  );
   const runExpenseAction = React.useCallback(
     async (payload: Record<string, unknown>): Promise<ExpenseActionResponse | null> => {
       const response = await fetch(`/api/expenses/${encodeURIComponent(id)}`, {
@@ -327,40 +379,67 @@ export function ExpenseDetailClient({ id, returnHref }: { id: string; returnHref
     [id]
   );
 
-  const upsertLine = async (lineId: string, patch: Partial<SplitLineRow>) => {
-    const existing = lines.find((l) => l.id === lineId);
-    if (!existing) return;
-    const payload = {
-      project_id: patch.projectId !== undefined ? patch.projectId : existing.project_id,
-      category: patch.category !== undefined ? patch.category : existing.category,
-      cost_code: patch.costCode !== undefined ? (patch.costCode ?? null) : existing.cost_code,
-      memo: patch.memo !== undefined ? (patch.memo ?? null) : existing.memo,
-      amount: patch.amount !== undefined ? patch.amount : existing.amount,
-    };
-    const body = await runExpenseAction({
-      action: "update-line",
-      lineId,
-      patch: {
-        projectId: payload.project_id,
-        category: payload.category,
-        costCode: payload.cost_code,
-        memo: payload.memo,
-        amount: payload.amount,
-      },
-    });
-    if (body?.line) {
-      setLines((prev) => prev.map((l) => (l.id === lineId ? body.line! : l)));
+  const upsertLine = (lineId: string, patch: Partial<SplitLineRow>) => {
+    setLines((current) =>
+      current.map((line) =>
+        line.id !== lineId
+          ? line
+          : {
+              ...line,
+              ...(patch.projectId !== undefined ? { project_id: patch.projectId } : {}),
+              ...(patch.category !== undefined ? { category: patch.category } : {}),
+              ...(patch.costCode !== undefined ? { cost_code: patch.costCode } : {}),
+              ...(patch.memo !== undefined ? { memo: patch.memo } : {}),
+              ...(patch.amount !== undefined ? { amount: patch.amount } : {}),
+            }
+      )
+    );
+  };
+
+  const saveLine = async (lineId: string) => {
+    const line = lines.find((item) => item.id === lineId);
+    if (!line || saving) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const body = await runExpenseAction({
+        action: "update-line",
+        lineId,
+        patch: {
+          projectId: line.project_id,
+          category: line.category,
+          costCode: line.cost_code,
+          memo: line.memo,
+          amount: line.amount,
+        },
+      });
+      if (body?.line) {
+        body.line = { ...body.line, memo: body.line.description ?? body.line.memo ?? null };
+        setLines((current) => current.map((item) => (item.id === lineId ? body.line! : item)));
+        setSavedLines((current) => current.map((item) => (item.id === lineId ? body.line! : item)));
+        setMessage("Line saved.");
+      }
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Failed to save line.");
+    } finally {
+      setSaving(false);
     }
   };
 
   const addLine = async () => {
     const body = await runExpenseAction({ action: "add-line" });
-    if (body?.line) setLines((prev) => [...prev, body.line!]);
+    if (body?.line) {
+      setLines((prev) => [...prev, body.line!]);
+      setSavedLines((prev) => [...prev, body.line!]);
+    }
   };
 
   const deleteLine = async (lineId: string) => {
     const body = await runExpenseAction({ action: "delete-line", lineId });
-    if (body?.ok) setLines((prev) => prev.filter((l) => l.id !== lineId));
+    if (body?.ok) {
+      setLines((prev) => prev.filter((l) => l.id !== lineId));
+      setSavedLines((prev) => prev.filter((l) => l.id !== lineId));
+    }
   };
 
   const addVendor = async (name: string): Promise<string> => {
@@ -541,16 +620,44 @@ export function ExpenseDetailClient({ id, returnHref }: { id: string; returnHref
         <div className="flex items-center justify-between gap-3">
           <Link
             href={returnHref}
+            onClick={(event) => {
+              if (dirty) {
+                event.preventDefault();
+                setDiscardHref(returnHref);
+              }
+            }}
             className="inline-flex min-h-11 items-center gap-2 rounded-lg text-sm text-[var(--hh-text-secondary)] outline-none hover:text-[var(--hh-text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)] md:min-h-9"
           >
             <ArrowLeft className="h-4 w-4" />
-            {returnHref.startsWith("/projects/") ? "Project workspace" : "Expenses"}
+            {financeReturnLabel(returnHref)}
           </Link>
-          <Button variant="outline" onClick={() => syncRouterNonBlocking(router)} disabled={saving}>
+          <Button
+            variant="outline"
+            onClick={() => syncRouterNonBlocking(router)}
+            disabled={saving || dirty}
+          >
             Refresh
           </Button>
         </div>
 
+        {expense &&
+          (expense.status === "draft" ||
+            expense.status === "needs_review" ||
+            expense.status === "pending") && (
+            <Button asChild variant="outline" disabled={dirty || saving}>
+              <Link
+                href={`/financial/inbox?ops_record=${encodeURIComponent(id)}`}
+                onClick={(event) => {
+                  if (dirty || saving) event.preventDefault();
+                }}
+              >
+                Review and approve
+              </Link>
+            </Button>
+          )}
+        {dirty && (
+          <p role="status">Unsaved changes. Save details and each edited line before leaving.</p>
+        )}
         {error ? (
           <div
             role="alert"
@@ -672,13 +779,11 @@ export function ExpenseDetailClient({ id, returnHref }: { id: string; returnHref
                       vendor_name: headerForSave.vendor_name ?? undefined,
                       payment_method: headerForSave.payment_method,
                       reference_no: headerForSave.reference_no ?? undefined,
-                      notes: headerForSave.notes ?? undefined,
-                    }).then((ok) => {
-                      if (ok) lastSavedHeaderRef.current = headerForSave;
+                      notes: headerForSave.notes,
                     });
                   }}
                 >
-                  Save header
+                  Save details
                 </Button>
               </div>
             </div>
@@ -854,35 +959,42 @@ export function ExpenseDetailClient({ id, returnHref }: { id: string; returnHref
               ))}
             </div>
           ) : (
-            <SplitLinesEditor
-              overlayClassName="expenses-ui-dialog"
-              lines={splitLinesForEditor}
-              onLineChange={(lineId, patch) => void upsertLine(lineId, patch)}
-              onAddLine={() => void addLine()}
-              onDeleteLine={(lineId) => void deleteLine(lineId)}
-              showCostCode
-              projects={projects.map((p) => ({ id: p.id, name: p.name ?? p.id }))}
-              categories={categories.options.length ? categories.options : ["Other"]}
-              vendorsList={vendors.options}
-              paymentMethodsList={paymentMethods.options}
-              onAddCategory={(name) => {
-                void addCategory(name);
-                return name;
-              }}
-              onAddVendor={(name) => {
-                void addVendor(name);
-                return name;
-              }}
-              onAddPaymentMethod={(name) => {
-                void addPaymentMethod(name);
-                return name;
-              }}
-              onToast={(msg) => setMessage(msg)}
-              isExpenseCategoryDisabled={(name) => categories.disabled.has(name)}
-              isVendorDisabled={(name) => vendors.disabled.has(name)}
-              isPaymentMethodDisabled={(name) => paymentMethods.disabled.has(name)}
-              minLines={1}
-            />
+            <fieldset disabled={saving}>
+              <SplitLinesEditor
+                overlayClassName="expenses-ui-dialog"
+                lines={splitLinesForEditor}
+                onLineChange={upsertLine}
+                onSaveLine={(lineId) => void saveLine(lineId)}
+                isLineDirty={(lineId) =>
+                  JSON.stringify(lines.find((line) => line.id === lineId)) !==
+                  JSON.stringify(savedLines.find((line) => line.id === lineId))
+                }
+                onAddLine={() => void addLine()}
+                onDeleteLine={(lineId) => void deleteLine(lineId)}
+                showCostCode
+                projects={projects.map((p) => ({ id: p.id, name: p.name ?? p.id }))}
+                categories={categories.options.length ? categories.options : ["Other"]}
+                vendorsList={vendors.options}
+                paymentMethodsList={paymentMethods.options}
+                onAddCategory={(name) => {
+                  void addCategory(name);
+                  return name;
+                }}
+                onAddVendor={(name) => {
+                  void addVendor(name);
+                  return name;
+                }}
+                onAddPaymentMethod={(name) => {
+                  void addPaymentMethod(name);
+                  return name;
+                }}
+                onToast={(msg) => setMessage(msg)}
+                isExpenseCategoryDisabled={(name) => categories.disabled.has(name)}
+                isVendorDisabled={(name) => vendors.disabled.has(name)}
+                isPaymentMethodDisabled={(name) => paymentMethods.disabled.has(name)}
+                minLines={1}
+              />
+            </fieldset>
           )}
 
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -920,6 +1032,19 @@ export function ExpenseDetailClient({ id, returnHref }: { id: string; returnHref
           </div>
         </Card>
       </div>
+      <ConfirmDialog
+        open={discardHref !== null}
+        onOpenChange={(open) => {
+          if (!open) setDiscardHref(null);
+        }}
+        title="Discard unsaved changes?"
+        description="Your saved expense will stay unchanged."
+        confirmLabel="Discard changes"
+        onConfirm={() => {
+          dirtyRef.current = false;
+          if (discardHref) router.push(discardHref);
+        }}
+      />
       <ConfirmDialog
         open={!!attachmentDeleteTarget}
         onOpenChange={(open) => {

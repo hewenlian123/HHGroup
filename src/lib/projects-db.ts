@@ -1,3 +1,4 @@
+import { assertWorkerFinanceWritesAvailable } from "@/lib/worker-finance-write-pause";
 /**
  * Projects — Supabase only. No mock data.
  * Table: projects.
@@ -617,6 +618,7 @@ export async function forceDeleteProjectWithClient(
   explicitClient: SupabaseClient,
   id: string
 ): Promise<void> {
+  await assertWorkerFinanceWritesAvailable();
   const c = client(explicitClient);
   await assertNoProjectDocuments(c, id);
   for (const { table, orColumns } of FORCE_DELETE_ORDER) {

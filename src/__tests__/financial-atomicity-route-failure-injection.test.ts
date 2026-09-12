@@ -248,7 +248,19 @@ describe("financial atomicity failure injection", () => {
     mocks.client = {
       rpc,
       from(table: string) {
-        throw new Error(`Atomic update must not write ${table} directly`);
+        if (table !== "expense_lines") throw new Error(`Unexpected table read: ${table}`);
+        return {
+          select(columns: string) {
+            if (columns !== "id") throw new Error(`Unexpected columns: ${columns}`);
+            return {
+              async eq(column: string, id: string) {
+                expect(column).toBe("expense_id");
+                expect(id).toBe(state.header.id);
+                return { data: [{ id: state.line.id }], error: null };
+              },
+            };
+          },
+        };
       },
     };
 
@@ -450,4 +462,70 @@ describe("financial atomicity failure injection", () => {
     expect(await repeated.json()).toEqual({ ok: true, payment, reused: true });
     expect(state.rpcAttempts).toBe(3);
   });
+});
+
+it("T3 forwards the chosen reimbursement payment date to the atomic operation", async () => {
+  mocks.getReimbursementById.mockResolvedValue({ id: "r", amount: 25.5 });
+  mocks.recordReimbursementPaymentAtomicWithClient.mockResolvedValue({
+    reimbursements: [{}],
+    payment: {},
+    expenseIds: ["e"],
+  });
+  const route = await import("@/app/api/worker-reimbursements/[id]/pay/route");
+  const response = await route.POST(
+    new Request("http://localhost/api/worker-reimbursements/r/pay", {
+      method: "POST",
+      body: JSON.stringify({ method: "Cash", note: "PW T3", paymentDate: "2026-09-08" }),
+    }),
+    { params: Promise.resolve({ id: "r" }) }
+  );
+  expect(response.status).toBe(200);
+  expect(mocks.recordReimbursementPaymentAtomicWithClient.mock.calls[0][1]).toMatchObject({
+    paymentDate: "2026-09-08",
+  });
+});
+
+it("T3 retires manual obligation creation without receipt review", async () => {
+  const route = await import("@/app/api/worker-reimbursements/route");
+  const response = await route.POST(
+    new Request("http://localhost/api/worker-reimbursements", {
+      method: "POST",
+      body: JSON.stringify({ workerId: "w", amount: 25.5, status: "settled" }),
+    })
+  );
+  expect(response.status).toBe(410);
+});
+
+describe("T3 repayment intent", () => {
+  it.each(["single", "batch"])(
+    "preserves retry identity and accepts a new %s payment intent",
+    async (mode) => {
+      mocks.getReimbursementById.mockResolvedValue({ id: "r", status: "pending" });
+      mocks.recordReimbursementPaymentAtomicWithClient.mockResolvedValue({
+        payment: { id: "p" },
+        reimbursements: [{ id: "r" }],
+        expenseIds: ["e"],
+        updatedCount: 1,
+        reused: false,
+      });
+      const single = await import("@/app/api/worker-reimbursements/[id]/pay/route");
+      const batch = await import("@/app/api/worker-reimbursements/create-payment/route");
+      for (const key of ["intent-original", "intent-original", "intent-repay"]) {
+        const req = new Request("http://localhost/api/worker-reimbursements/r/pay", {
+          method: "POST",
+          body: JSON.stringify({ idempotency_key: key, reimbursementIds: ["r"] }),
+        });
+        const response =
+          mode === "single"
+            ? await single.POST(req, { params: Promise.resolve({ id: "r" }) })
+            : await batch.POST(req);
+        expect(response.status).toBe(200);
+      }
+      const keys = mocks.recordReimbursementPaymentAtomicWithClient.mock.calls.map(
+        (args) => args[1].idempotencyKey
+      );
+      expect(keys[0]).toBe(keys[1]);
+      expect(keys[2]).not.toBe(keys[0]);
+    }
+  );
 });

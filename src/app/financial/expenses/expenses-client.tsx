@@ -1,5 +1,12 @@
 "use client";
 
+import { isInboxUploadExpenseReference } from "@/lib/inbox-upload-constants";
+import { expenseRequiresReceiptReview } from "@/lib/expense-workflow-status";
+
+import { FinanceContextBack } from "@/components/financial/finance-context-back";
+
+import { useFinanceQueryState } from "@/hooks/use-finance-query-state";
+
 import "./expenses-ui-theme.css";
 import Link from "next/link";
 import { KpiTile } from "@/components/base";
@@ -118,10 +125,7 @@ import {
   validateApproveInboxUploadDraft,
   validateMarkDoneRequiresProjectAndCategory,
 } from "@/lib/expense-workflow-status";
-import {
-  isInboxUploadExpenseReference,
-  stripInboxUploadNoiseFromText,
-} from "@/lib/inbox-upload-constants";
+import { stripInboxUploadNoiseFromText } from "@/lib/inbox-upload-constants";
 import { getExpenseReceiptItems } from "@/lib/expense-receipt-items";
 import { buildReceiptPreviewShellFiles } from "@/lib/receipt-preview-shell-files";
 import {
@@ -143,7 +147,7 @@ type ExpenseReviewApiPayload = {
   expenseId: string;
   date: string;
   vendorName: string;
-  amount: number;
+  amount?: number;
   projectId: string | null;
   workerId: string | null;
   category: string;
@@ -298,7 +302,12 @@ function mergeExpenseReviewPatch(e: Expense, p: ExpenseReviewSavePatch): Expense
     e.lines.length > 0
       ? e.lines.map((line, idx) =>
           idx === 0
-            ? { ...line, projectId: p.projectId, category: p.category, amount: p.amount }
+            ? {
+                ...line,
+                projectId: p.projectId,
+                category: p.category,
+                amount: e.lines.length === 1 ? p.amount : line.amount,
+              }
             : line
         )
       : [
@@ -610,9 +619,13 @@ export function ExpensesPageClient({
     void loadBrowserSupabase();
   }, [loadBrowserSupabase]);
 
-  const [expenseSort, setExpenseSort] = React.useState<ExpenseListSort>(() =>
-    readStoredExpenseSort()
-  );
+  const [expenseSort, setExpenseSort] = React.useState<ExpenseListSort>(() => {
+    const [field, order] = (searchParams.get("sort") ?? "").split("|");
+    return (field === "date" || field === "amount" || field === "vendor") &&
+      (order === "asc" || order === "desc")
+      ? { field, order }
+      : readStoredExpenseSort();
+  });
   const initialSortMatches = Boolean(initialData && isDefaultExpenseListSort(expenseSort));
 
   const readCachedCategories = React.useCallback(
@@ -746,18 +759,23 @@ export function ExpensesPageClient({
   const expensesListRefetching = Boolean(
     expensesQueryFetching && expensesQueryData !== undefined && !expensesQueryError
   );
-  const [searchInput, setSearchInput] = React.useState("");
+  const [searchInput, setSearchInput] = useFinanceQueryState("q", "");
   const [debouncedSearch, setDebouncedSearch] = React.useState("");
   React.useEffect(() => {
     const t = window.setTimeout(() => setDebouncedSearch(searchInput.trim()), 280);
     return () => window.clearTimeout(t);
   }, [searchInput]);
-  const [projectFilter, setProjectFilter] = React.useState("");
-  const [categoryFilter, setCategoryFilter] = React.useState("");
-  const [expenseDateFilter, setExpenseDateFilter] = React.useState<ExpenseDateFilterValue>(() =>
-    defaultExpenseDateFilterForPool(inboxMode ? "inbox" : "expenses")
-  );
-  const [sourceTypeFilter, setSourceTypeFilter] = React.useState("");
+  const [projectFilter, setProjectFilter] = useFinanceQueryState("project_id", "");
+  const [categoryFilter, setCategoryFilter] = useFinanceQueryState("category", "");
+  const [expenseDateFilter, setExpenseDateFilter] = React.useState<ExpenseDateFilterValue>(() => {
+    const start = searchParams.get("dateFrom") ?? "";
+    const end = searchParams.get("dateTo") ?? "";
+    if (searchParams.get("dateRange") === "all") return { kind: "all" };
+    if (/^\d{4}-\d{2}-\d{2}$/.test(start) && /^\d{4}-\d{2}-\d{2}$/.test(end))
+      return { kind: "range", start, end, preset: "custom" };
+    return defaultExpenseDateFilterForPool(inboxMode ? "inbox" : "expenses");
+  });
+  const [sourceTypeFilter, setSourceTypeFilter] = useFinanceQueryState("sourceType", "");
   const [activeExpenseId, setActiveExpenseId] = React.useState<string | null>(null);
   const selectedExpenseIdFromUrl = (searchParams.get("ops_record") ?? "").trim();
   const receiptEvidenceRequested = searchParams.get("ops_preview") === "receipt";
@@ -787,22 +805,31 @@ export function ExpensesPageClient({
         (order === "asc" || order === "desc")
       ) {
         setExpenseSort({ field, order });
-        const sp = new URLSearchParams(searchParams.toString());
+        const sp = new URLSearchParams(window.location.search);
+        sp.set("sort", `${field}|${order}`);
         sp.set("page", "1");
         router.push(`${listPath}?${sp.toString()}`, { scroll: false });
       }
     },
-    [router, searchParams, listPath]
+    [router, listPath]
   );
 
   const onExpenseDateFilterChange = React.useCallback(
     (next: ExpenseDateFilterValue) => {
       setExpenseDateFilter(next);
-      const sp = new URLSearchParams(searchParams.toString());
+      const sp = new URLSearchParams(window.location.search);
+      sp.set("dateRange", next.kind);
+      if (next.kind === "range") {
+        sp.set("dateFrom", next.start);
+        sp.set("dateTo", next.end);
+      } else {
+        sp.delete("dateFrom");
+        sp.delete("dateTo");
+      }
       sp.set("page", "1");
       router.push(`${listPath}?${sp.toString()}`, { scroll: false });
     },
-    [router, searchParams, listPath]
+    [router, listPath]
   );
   const clearAdvancedFilters = React.useCallback(() => {
     setProjectFilter("");
@@ -810,19 +837,12 @@ export function ExpensesPageClient({
     setSourceTypeFilter("");
     setExpenseDateFilter({ kind: "all" });
     setExpenseSort(defaultExpenseListSort);
-    const sp = new URLSearchParams(searchParams.toString());
+    const sp = new URLSearchParams(window.location.search);
+    sp.set("dateRange", "all");
+    for (const key of ["sort", "dateFrom", "dateTo"]) sp.delete(key);
     sp.set("page", "1");
     router.push(`${listPath}?${sp.toString()}`, { scroll: false });
-  }, [listPath, router, searchParams]);
-  const appliedProjectIdFromUrl = React.useRef(false);
-  React.useEffect(() => {
-    if (appliedProjectIdFromUrl.current) return;
-    const pid = searchParams.get("project_id");
-    if (pid) {
-      setProjectFilter(pid);
-      appliedProjectIdFromUrl.current = true;
-    }
-  }, [searchParams]);
+  }, [listPath, router, setProjectFilter, setCategoryFilter, setSourceTypeFilter]);
   const [receiptPreview, setReceiptPreview] = React.useState<{
     items: ExpenseReceiptApiItem[];
     index: number;
@@ -1047,7 +1067,11 @@ export function ExpensesPageClient({
 
   const page = Math.max(1, Number(searchParams.get("page") ?? "1") || 1);
   /** Page size counts **date groups** (calendar days), not individual expenses. */
-  const [pageSize, setPageSize] = React.useState(25);
+  const [pageSize, setPageSize] = React.useState(() =>
+    [25, 50, 100].includes(Number(searchParams.get("pageSize")))
+      ? Number(searchParams.get("pageSize"))
+      : 25
+  );
   const total = filteredSortedExpenses.length;
   const allDateGroups = React.useMemo(
     () => buildExpenseDateGroups(filteredSortedExpenses),
@@ -1086,11 +1110,12 @@ export function ExpensesPageClient({
   const setPageSizeAndReset = React.useCallback(
     (next: number) => {
       setPageSize(next);
-      const sp = new URLSearchParams(searchParams.toString());
+      const sp = new URLSearchParams(window.location.search);
+      sp.set("pageSize", String(next));
       sp.set("page", "1");
       router.push(`${listPath}?${sp.toString()}`, { scroll: false });
     },
-    [router, searchParams, listPath]
+    [router, listPath]
   );
 
   const listRowsRef = React.useRef(flatListRows);
@@ -1158,12 +1183,15 @@ export function ExpensesPageClient({
     setCategoryFilter("");
     setSourceTypeFilter("");
     setExpenseDateFilter({ kind: "all" });
-    const sp = new URLSearchParams(searchParams.toString());
+    const sp = new URLSearchParams(window.location.search);
+    sp.set("dateRange", "all");
+    sp.delete("dateFrom");
+    sp.delete("dateTo");
     sp.delete("project_id");
     sp.set("page", "1");
     const qs = sp.toString();
     startTransition(() => router.replace(qs ? `${listPath}?${qs}` : listPath, { scroll: false }));
-  }, [router, searchParams, listPath]);
+  }, [router, listPath, setSearchInput, setProjectFilter, setCategoryFilter, setSourceTypeFilter]);
 
   const { rowHighlightRefs, autoExpandDateGroupsForHighlight } = useInboxUploadHighlight({
     inboxMode,
@@ -1458,7 +1486,7 @@ export function ExpensesPageClient({
           expenseId: payload.expenseId,
           date: payload.date,
           vendorName: payload.vendorName,
-          amount: payload.amount,
+          amount: payload.amount !== getExpenseTotal(target) ? payload.amount : undefined,
           projectId: payload.projectId,
           workerId: payload.workerId,
           category: payload.category,
@@ -1521,7 +1549,7 @@ export function ExpensesPageClient({
 
   const handlePreviewMarkReviewed = React.useCallback(
     async (expense: Expense): Promise<boolean> => {
-      const inboxRef = isInboxUploadExpenseReference(expense.referenceNo);
+      const inboxRef = expenseRequiresReceiptReview(expense);
       const gate = inboxRef
         ? validateApproveInboxUploadDraft(expense)
         : validateMarkDoneRequiresProjectAndCategory(expense);
@@ -1587,17 +1615,17 @@ export function ExpensesPageClient({
       setFocusReviewOnOpen(Boolean(opts?.focusReview));
       setPreviewOpen(true);
       setActiveExpenseId(row.id);
-      const params = new URLSearchParams(searchParams.toString());
+      const params = new URLSearchParams(window.location.search);
       params.set("ops_record", row.id);
       params.delete("ops_preview");
-      router.push(`${listPath}?${params.toString()}`, { scroll: false });
+      window.history.pushState(null, "", `${listPath}?${params.toString()}`);
       window.requestAnimationFrame(() => {
         window.requestAnimationFrame(() => {
           rowElsRef.current[row.id]?.scrollIntoView({ block: "nearest" });
         });
       });
     },
-    [listPath, router, searchParams]
+    [listPath]
   );
 
   const closeExpenseWorkspaceDetail = React.useCallback(() => {
@@ -1605,21 +1633,24 @@ export function ExpensesPageClient({
     setPreviewExpense(null);
     setActiveExpenseId(null);
     setFocusReviewOnOpen(false);
-    const params = new URLSearchParams(searchParams.toString());
+    const params = new URLSearchParams(window.location.search);
+    const selected = params.get("ops_record");
+    if (selected) params.set("selectedRecord", selected);
     params.delete("ops_record");
     params.delete("ops_preview");
     const query = params.toString();
-    router.push(query ? `${listPath}?${query}` : listPath, { scroll: false });
-  }, [listPath, router, searchParams]);
+    window.history.replaceState(null, "", query ? `${listPath}?${query}` : listPath);
+    if (selected) window.requestAnimationFrame(() => rowElsRef.current[selected]?.focus());
+  }, [listPath]);
 
   const updateWorkspaceReceiptContext = React.useCallback(
     (open: boolean) => {
-      const params = new URLSearchParams(searchParams.toString());
+      const params = new URLSearchParams(window.location.search);
       if (open) params.set("ops_preview", "receipt");
       else params.delete("ops_preview");
-      router.replace(`${listPath}?${params.toString()}`, { scroll: false });
+      window.history.replaceState(null, "", `${listPath}?${params.toString()}`);
     },
-    [listPath, router, searchParams]
+    [listPath]
   );
 
   React.useEffect(() => {
@@ -1834,7 +1865,7 @@ export function ExpensesPageClient({
     (expense: Expense) => {
       const current = expense.status ?? "pending";
       const goingDone = expenseNeedsReviewFromDb(current);
-      const inboxRef = isInboxUploadExpenseReference(expense.referenceNo);
+      const inboxRef = expenseRequiresReceiptReview(expense);
       if (goingDone) {
         const gate = inboxRef
           ? validateApproveInboxUploadDraft(expense)
@@ -1943,7 +1974,7 @@ export function ExpensesPageClient({
             skipped++;
             continue;
           }
-          const inboxRef = isInboxUploadExpenseReference(expense.referenceNo);
+          const inboxRef = expenseRequiresReceiptReview(expense);
           const gate = inboxRef
             ? validateApproveInboxUploadDraft(expense)
             : validateMarkDoneRequiresProjectAndCategory(expense);
@@ -2199,14 +2230,14 @@ export function ExpensesPageClient({
       setFocusReviewOnOpen(false);
       setPreviewOpen(true);
       setActiveExpenseId(expense.id);
-      const params = new URLSearchParams(searchParams.toString());
+      const params = new URLSearchParams(window.location.search);
       params.set("ops_record", expense.id);
       params.delete("ops_preview");
       const href = `${listPath}?${params.toString()}`;
-      if (history === "replace") router.replace(href, { scroll: false });
-      else router.push(href, { scroll: false });
+      if (history === "replace") window.history.replaceState(null, "", href);
+      else window.history.pushState(null, "", href);
     },
-    [listPath, router, searchParams]
+    [listPath]
   );
 
   const previewModalNav = React.useMemo(() => {
@@ -2339,6 +2370,7 @@ export function ExpensesPageClient({
       data-expenses-list-page={inboxMode ? "inbox" : "expenses"}
       data-expense-workspace-detail-open={previewOpen ? "true" : "false"}
     >
+      <FinanceContextBack />
       {availability}
       <div
         hidden={ledgerUnavailable}

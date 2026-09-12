@@ -78,14 +78,51 @@ function avatarTone(seed: string): string {
 }
 
 function workerFilterKey(receipt: ReceiptRow): string {
-  return receipt.workerId ?? `__name:${receipt.workerName}`;
+  return (
+    receipt.workerId ??
+    `__name:${receipt.workerId == null ? `NULL Worker · ${receipt.workerName}` : receipt.workerName}`
+  );
 }
 
-function ReceiptStatus({ status }: { status: WorkerReceiptStatus }) {
+function ReceiptStatus({ status, workflowClass }: Pick<WorkerReceipt, "status" | "workflowClass">) {
+  if (workflowClass !== "canonical")
+    return <NeoStatus label={`Legacy / Unverified · ${status ?? "NULL"}`} variant="warning" />;
   if (status === "Pending") return <NeoStatus label="Pending" variant="warning" />;
   if (status === "Approved") return <NeoStatus label="Approved" variant="success" />;
   if (status === "Rejected") return <NeoStatus label="Rejected" variant="danger" />;
-  return <NeoStatus label="Paid" variant="success" />;
+  if (status === "Paid") return <NeoStatus label="Paid" variant="success" />;
+  return <NeoStatus label={status ?? "NULL"} variant="warning" />;
+}
+
+function useReceiptPreviewUrl(reference: string | null, retryKey = 0) {
+  const [result, setResult] = React.useState<{
+    reference: string;
+    url: string | null;
+    failed: boolean;
+  } | null>(null);
+  React.useEffect(() => {
+    if (!reference) return;
+    let active = true;
+    setResult(null);
+    void fetch("/api/worker-receipts/view", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ receiptUrl: reference }),
+    })
+      .then(async (response) => {
+        const body = await response.json();
+        if (!response.ok || typeof body.signedUrl !== "string" || !body.signedUrl)
+          throw new Error("Receipt preview unavailable");
+        if (active) setResult({ reference, url: body.signedUrl, failed: false });
+      })
+      .catch(() => {
+        if (active) setResult({ reference, url: null, failed: true });
+      });
+    return () => {
+      active = false;
+    };
+  }, [reference, retryKey]);
+  return result?.reference === reference ? result : null;
 }
 
 function ReceiptEvidence({
@@ -100,6 +137,7 @@ function ReceiptEvidence({
   const [failed, setFailed] = React.useState(false);
   const [retryKey, setRetryKey] = React.useState(0);
   const receiptUrl = receipt.receiptUrl?.trim() || null;
+  const preview = useReceiptPreviewUrl(receiptUrl, retryKey);
   const isPdf = receiptUrl ? receiptUrl.split("?")[0]?.toLowerCase().endsWith(".pdf") : false;
 
   React.useEffect(() => {
@@ -131,7 +169,7 @@ function ReceiptEvidence({
     );
   }
 
-  if (failed) {
+  if (failed || preview?.failed) {
     return (
       <div
         data-worker-receipt-evidence
@@ -169,6 +207,8 @@ function ReceiptEvidence({
     );
   }
 
+  if (!preview?.url) return <p role="status">Loading receipt preview…</p>;
+
   return (
     <div
       data-worker-receipt-evidence
@@ -182,7 +222,7 @@ function ReceiptEvidence({
       {isPdf ? (
         <iframe
           key={`${receipt.id}-${retryKey}`}
-          src={receiptUrl}
+          src={preview.url}
           title="Receipt evidence"
           className={cn(
             "w-full border-0 bg-white",
@@ -193,8 +233,8 @@ function ReceiptEvidence({
       ) : (
         <Image
           key={`${receipt.id}-${retryKey}`}
-          src={receiptUrl}
-          alt={`Receipt evidence for ${receipt.workerName}`}
+          src={preview.url}
+          alt={`Receipt evidence for ${receipt.workerId == null ? `NULL Worker · ${receipt.workerName}` : receipt.workerName}`}
           width={1024}
           height={768}
           unoptimized
@@ -256,7 +296,7 @@ function ReceiptDetail({
             Worker receipt
           </p>
           <div className="mt-1 flex flex-wrap items-center gap-2">
-            <ReceiptStatus status={receipt.status} />
+            <ReceiptStatus status={receipt.status} workflowClass={receipt.workflowClass} />
             <span className={cn("text-hh-status", LEDGER_DATE_CLASS)}>
               Submitted {formatLedgerDate(receipt.createdAt, "compact")}
             </span>
@@ -265,7 +305,7 @@ function ReceiptDetail({
         <div className="flex shrink-0 items-center gap-1">
           <RowActionsMenu
             appearance="list"
-            ariaLabel={`More actions for ${receipt.workerName}`}
+            ariaLabel={`More actions for ${receipt.workerId == null ? `NULL Worker · ${receipt.workerName}` : receipt.workerName}`}
             actions={overflowActions}
           />
           {onClose ? (
@@ -300,7 +340,7 @@ function ReceiptDetail({
             Worker
           </p>
           <h2 className="mt-1 text-hh-section-title font-semibold leading-snug text-[var(--hh-text-strong)]">
-            {receipt.workerName}
+            {receipt.workerId == null ? `NULL Worker · ${receipt.workerName}` : receipt.workerName}
           </h2>
           <p className="mt-1 text-sm font-medium text-[var(--hh-text-secondary)]">
             {receipt.projectId ? receipt.projectName || "—" : "No project assigned"}
@@ -336,7 +376,7 @@ function ReceiptDetail({
             <dt className="text-hh-status font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]">
               Status
             </dt>
-            <dd className="mt-1 text-[var(--hh-text-primary)]">{receipt.status}</dd>
+            <dd className="mt-1 text-[var(--hh-text-primary)]">{receipt.status ?? "NULL"}</dd>
           </div>
         </dl>
 
@@ -355,6 +395,12 @@ function ReceiptDetail({
           </div>
         ) : null}
 
+        {receipt.workflowClass !== "canonical" ? (
+          <p className="text-sm text-[var(--hh-text-secondary)]">
+            Legacy / Unverified: this historical receipt has no verified canonical intake evidence.
+            Its original status is preserved; approval and payment actions are unavailable.
+          </p>
+        ) : null}
         {receipt.status === "Rejected" && receipt.rejectionReason ? (
           <div className="mt-5 rounded-md border border-[var(--hh-danger-border)] bg-[var(--hh-danger-soft-fill)] px-3 py-2.5 text-xs leading-relaxed text-[var(--hh-danger)]">
             <p className="font-semibold">Rejection reason</p>
@@ -425,11 +471,15 @@ function ReceiptDetail({
             </Link>
           ) : (
             <span className="text-hh-status text-[var(--hh-text-tertiary)]">
-              {receipt.status === "Pending" ? "Awaiting review" : "Review complete"}
+              {receipt.workflowClass !== "canonical"
+                ? "Historical evidence is unverified; financial changes are blocked."
+                : receipt.status === "Pending"
+                  ? "Awaiting review"
+                  : "Review complete"}
             </span>
           )}
         </div>
-        {receipt.status === "Pending" ? (
+        {receipt.workflowClass === "canonical" && receipt.status === "Pending" ? (
           <div className="ml-auto flex gap-2">
             <Button
               type="button"
@@ -489,6 +539,8 @@ export function ReceiptsClient({
   const [message, setMessage] = React.useState<string | null>(null);
   const [successMessage, setSuccessMessage] = React.useState<string | null>(null);
   const [viewReceiptUrl, setViewReceiptUrl] = React.useState<string | null>(null);
+  const [viewRetryKey, setViewRetryKey] = React.useState(0);
+  const fullPreview = useReceiptPreviewUrl(viewReceiptUrl, viewRetryKey);
   const [filtersOpen, setFiltersOpen] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState("");
   const [statusFilter, setStatusFilter] = React.useState(initialFilters.status ?? "");
@@ -505,8 +557,6 @@ export function ReceiptsClient({
   const [mobileDetailOpen, setMobileDetailOpen] = React.useState(false);
   const lastSelectionTrigger = React.useRef<HTMLElement | null>(null);
   const routeSelectedId = searchParams.get("ops_record")?.trim() || null;
-
-  React.useEffect(() => setRows(initialRows), [initialRows]);
 
   React.useEffect(() => {
     setSelectedId((current) => (current === routeSelectedId ? current : routeSelectedId));
@@ -525,7 +575,13 @@ export function ReceiptsClient({
       ]);
       const receiptData = await receiptResponse.json();
       if (!receiptResponse.ok) throw new Error(receiptData.message ?? "Failed to refresh");
-      const projectData = projectResponse.ok ? await projectResponse.json() : { projects: [] };
+      if (!Array.isArray(receiptData.receipts))
+        throw new Error("Invalid receipt response. Existing receipts have been kept.");
+      if (!projectResponse.ok)
+        throw new Error("Failed to refresh projects. Existing receipts have been kept.");
+      const projectData = await projectResponse.json();
+      if (!Array.isArray(projectData.projects))
+        throw new Error("Invalid project response. Existing receipts have been kept.");
       const projectById = new Map<string, string>(
         (projectData.projects ?? []).map((project: { id: string; name: string | null }) => [
           project.id,
@@ -560,8 +616,8 @@ export function ReceiptsClient({
     for (const receipt of rows) {
       totalAmount += receipt.amount;
       workers.add(workerFilterKey(receipt));
-      if (receipt.status === "Pending") pending += 1;
-      if (receipt.status === "Approved") approved += 1;
+      if (receipt.workflowClass === "canonical" && receipt.status === "Pending") pending += 1;
+      if (receipt.workflowClass === "canonical" && receipt.status === "Approved") approved += 1;
       if (!receipt.receiptUrl?.trim() || !receipt.projectId) missing += 1;
     }
     return { pending, approved, totalAmount, workers: workers.size, missing };
@@ -800,35 +856,29 @@ export function ReceiptsClient({
     ...(receipt.receiptUrl
       ? [{ label: "View receipt", onClick: () => selectReceipt(receipt.id) }]
       : []),
-    ...(receipt.status === "Pending"
+    ...(receipt.workflowClass === "canonical" && receipt.status === "Pending"
       ? [
           {
             label: "Approve",
             onClick: () => void approve(receipt.id),
-            disabled: busyId === receipt.id,
+            disabled: busyId === receipt.id || receipt.workflowClass !== "canonical",
           },
           {
             label: "Reject",
             onClick: () => openReject(receipt.id),
-            disabled: busyId === receipt.id,
+            disabled: busyId === receipt.id || receipt.workflowClass !== "canonical",
           },
         ]
       : []),
-    ...(receipt.status === "Approved"
+    ...(receipt.workflowClass === "canonical" && receipt.status === "Rejected"
       ? [
           {
             label: "Reset to Pending",
             onClick: () => void resetToPending(receipt.id),
-            disabled: busyId === receipt.id,
+            disabled: busyId === receipt.id || receipt.workflowClass !== "canonical",
           },
         ]
       : []),
-    {
-      label: "Delete",
-      onClick: () => setDeleteTarget(receipt),
-      destructive: true,
-      disabled: busyId === receipt.id,
-    },
   ];
 
   const controlClass =
@@ -969,6 +1019,7 @@ export function ReceiptsClient({
         ) : null}
 
         <MobileSearchFiltersRow
+          desktopBreakpoint="lg"
           filterSheetOpen={filtersOpen}
           onOpenFilters={() => setFiltersOpen(true)}
           activeFilterCount={activeFilterCount}
@@ -1007,7 +1058,12 @@ export function ReceiptsClient({
           </div>
         </div>
 
-        <MobileFilterSheet open={filtersOpen} onOpenChange={setFiltersOpen} title="Filters">
+        <MobileFilterSheet
+          desktopBreakpoint="lg"
+          open={filtersOpen}
+          onOpenChange={setFiltersOpen}
+          title="Filters"
+        >
           <div className="grid gap-4">
             <div className="space-y-1.5">
               <p className="text-xs font-medium text-[var(--hh-text-secondary)]">Worker</p>
@@ -1152,7 +1208,7 @@ export function ReceiptsClient({
                         data-worker-receipt-control
                         className="flex min-h-[78px] min-w-0 flex-1 items-center gap-3 px-3.5 py-3 text-left outline-none"
                         onClick={(event) => selectReceipt(receipt.id, event.currentTarget)}
-                        aria-label={`Review receipt from ${receipt.workerName}`}
+                        aria-label={`Review receipt from ${receipt.workerId == null ? `NULL Worker · ${receipt.workerName}` : receipt.workerName}`}
                       >
                         <span
                           className={cn(
@@ -1166,7 +1222,9 @@ export function ReceiptsClient({
                         <span className="min-w-0 flex-1">
                           <span className="flex min-w-0 items-start justify-between gap-3">
                             <span className="min-w-0 truncate text-hh-table-cell font-semibold text-[var(--hh-text-primary)]">
-                              {receipt.workerName}
+                              {receipt.workerId == null
+                                ? `NULL Worker · ${receipt.workerName}`
+                                : receipt.workerName}
                             </span>
                             <span className="hh-fin shrink-0 text-hh-body-strong font-semibold text-[var(--hh-text-strong)]">
                               {formatCurrency(receipt.amount)}
@@ -1184,7 +1242,10 @@ export function ReceiptsClient({
                             </span>
                           </span>
                           <span className="mt-1.5 flex flex-wrap items-center gap-2">
-                            <ReceiptStatus status={receipt.status} />
+                            <ReceiptStatus
+                              status={receipt.status}
+                              workflowClass={receipt.workflowClass}
+                            />
                             {missingReceipt ? (
                               <span className="inline-flex items-center gap-1 text-hh-status font-medium text-[var(--hh-warning)]">
                                 <Paperclip className="h-3 w-3" aria-hidden /> Missing receipt
@@ -1201,7 +1262,7 @@ export function ReceiptsClient({
                       <div className="flex shrink-0 items-start px-1.5 pt-2.5">
                         <RowActionsMenu
                           appearance="list"
-                          ariaLabel={`Actions for receipt ${receipt.workerName}`}
+                          ariaLabel={`Actions for receipt ${receipt.workerId == null ? `NULL Worker · ${receipt.workerName}` : receipt.workerName}`}
                           actions={rowActions(receipt)}
                         />
                       </div>
@@ -1424,17 +1485,24 @@ export function ReceiptsClient({
             <DialogTitle>Receipt evidence</DialogTitle>
             <DialogDescription>Full-size worker receipt evidence.</DialogDescription>
           </DialogHeader>
-          {viewReceiptUrl ? (
-            viewReceiptUrl.split("?")[0]?.toLowerCase().endsWith(".pdf") ? (
+          {fullPreview?.failed ? (
+            <div role="alert">
+              Receipt preview unavailable{" "}
+              <Button onClick={() => setViewRetryKey((key) => key + 1)}>Retry</Button>
+            </div>
+          ) : viewReceiptUrl && !fullPreview?.url ? (
+            <p role="status">Loading receipt preview…</p>
+          ) : fullPreview?.url ? (
+            fullPreview.url.split("?")[0]?.toLowerCase().endsWith(".pdf") ? (
               <iframe
-                src={viewReceiptUrl}
+                src={fullPreview.url}
                 title="Receipt evidence"
                 className="min-h-[75vh] w-full rounded-lg border-0 bg-white"
               />
             ) : (
               <div className="flex min-h-[70vh] items-center justify-center rounded-lg bg-white p-2">
                 <Image
-                  src={viewReceiptUrl}
+                  src={fullPreview.url}
                   alt="Full-size receipt evidence"
                   width={1440}
                   height={1080}

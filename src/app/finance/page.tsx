@@ -1,3 +1,5 @@
+import { getReportsData, getReportDateRange } from "@/lib/reports-db";
+import { financePathWithReturn } from "@/lib/finance-navigation";
 import Link from "next/link";
 import { requireSupabaseOwnerOrAdminServerActionClient } from "@/lib/auth-boundary";
 import { PermissionDenied } from "@/components/ui/system-state";
@@ -12,8 +14,8 @@ import {
   PageHeader,
 } from "@/components/base";
 import { tableRawTdClass, tableRawThClass } from "@/components/ui/table";
-import { getFinanceOverviewStats, getRecentTransactions } from "@/lib/data";
-import { DollarSign, Banknote, ShoppingCart, Clock, TrendingUp, Activity } from "lucide-react";
+import { getRecentTransactions } from "@/lib/data";
+import { DollarSign, Activity } from "lucide-react";
 import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
 import { TYPO } from "@/lib/typography";
 import { cn } from "@/lib/utils";
@@ -29,7 +31,27 @@ function fmtUsd(n: number): string {
   });
 }
 
-export default async function FinanceOverviewPage() {
+export default async function FinanceOverviewPage({
+  searchParams,
+}: {
+  searchParams?: Record<string, string | string[] | undefined>;
+}) {
+  const range = getReportDateRange({
+    period: searchParams?.period,
+    from: searchParams?.from,
+    to: searchParams?.to,
+  });
+  const scalar = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
+  const scope = {
+    projectId: scalar(searchParams?.projectId),
+    customerId: scalar(searchParams?.customerId),
+  };
+  const contextParams = new URLSearchParams(
+    Object.entries(searchParams || {}).flatMap(([key, value]) =>
+      value === undefined ? [] : [[key, scalar(value)!]]
+    )
+  );
+  const context = `/finance?${contextParams}`;
   const guard = await requireSupabaseOwnerOrAdminServerActionClient({ noStore: true });
   if (!guard.ok)
     return (
@@ -37,39 +59,47 @@ export default async function FinanceOverviewPage() {
         <PermissionDenied description={guard.error} />
       </div>
     );
-  let stats: Awaited<ReturnType<typeof getFinanceOverviewStats>>;
+  let stats: Awaited<ReturnType<typeof getReportsData>>;
   let recent: Awaited<ReturnType<typeof getRecentTransactions>>;
   try {
     [stats, recent] = await Promise.all([
-      getFinanceOverviewStats(guard.client),
+      getReportsData(range, guard.client, scope),
       getRecentTransactions(15, guard.client),
     ]);
   } catch {
     return <FinanceUnavailable title="Finance overview unavailable" />;
   }
 
-  const cards = [
-    { label: "Revenue", value: stats.revenue, icon: DollarSign, href: "/financial/invoices" },
-    { label: "Total Bills", value: stats.totalBills, icon: Banknote, href: "/bills" },
-    {
-      label: "Total Expenses",
-      value: stats.totalExpenses,
-      icon: ShoppingCart,
-      href: "/financial/expenses",
-    },
-    { label: "Total Labor Cost", value: stats.totalLaborCost, icon: Clock, href: "/labor/entries" },
-    { label: "Profit", value: stats.profit, icon: TrendingUp },
-  ];
+  const reportParams = new URLSearchParams({
+    period: range.period,
+    from: range.start,
+    to: range.end,
+    ...Object.fromEntries(
+      Object.entries(scope).filter((entry): entry is [string, string] => !!entry[1])
+    ),
+  });
+  const cards = stats.monthly.kpis.map((k) => ({
+    label: k.label,
+    value: k.value,
+    kind: k.kind,
+    icon: DollarSign,
+    href: financePathWithReturn(`/reports?${reportParams}&metric=${k.key}`, context),
+  }));
 
   return (
     <PageLayout
       header={
         <PageHeader
           title="Finance Overview"
-          description="Summary of revenue, bills, expenses, labor cost, and profit."
+          description={`Reporting activity ${range.start} to ${range.end}; AR/AP are current balances across all dates. Select a metric for its definition and records.`}
         />
       }
     >
+      {[stats.projectReviewWarning, ...(stats.warnings || [])].filter(Boolean).length > 0 ? (
+        <p role="status">
+          {[stats.projectReviewWarning, ...(stats.warnings || [])].filter(Boolean).join(" ")}
+        </p>
+      ) : null}
       <nav aria-label="Finance reports" className="flex flex-wrap gap-4 text-sm">
         <Link
           prefetch={false}
@@ -80,13 +110,6 @@ export default async function FinanceOverviewPage() {
         </Link>
         <Link
           prefetch={false}
-          href="/financial/dashboard"
-          className="inline-flex min-h-11 items-center underline"
-        >
-          Project portfolio summary
-        </Link>
-        <Link
-          prefetch={false}
           href="/reports"
           className="inline-flex min-h-11 items-center underline"
         >
@@ -94,7 +117,7 @@ export default async function FinanceOverviewPage() {
         </Link>
       </nav>
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        {cards.map(({ label, value, icon: Icon, href }) => {
+        {cards.map(({ label, value, kind, icon: Icon, href }) => {
           const tone = label === "Profit" ? (value >= 0 ? "positive" : "negative") : "neutral";
           const content = (
             <KpiTile
@@ -104,7 +127,7 @@ export default async function FinanceOverviewPage() {
                   <Icon className="h-4 w-4 text-[var(--hh-text-tertiary)]" />
                 </span>
               }
-              value={fmtUsd(value)}
+              value={kind === "count" ? String(value) : fmtUsd(value)}
               tone={tone}
               className="min-h-[116px]"
             />

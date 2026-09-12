@@ -351,7 +351,7 @@ export const ReceiptQueueRowCard = React.memo(function ReceiptQueueRowCard({
       disabled={busy || bulkAdding || captureUploading || rowLocked}
       onClick={() => onConfirm(row)}
     >
-      Confirm
+      Send to Review
     </Button>
   );
 

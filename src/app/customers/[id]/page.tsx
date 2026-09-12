@@ -5,7 +5,8 @@ import * as React from "react";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { useBreadcrumbEntityLabel } from "@/contexts/breadcrumb-override-context";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { financePathWithReturn } from "@/lib/finance-navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { runOptimisticPersist } from "@/lib/optimistic-save";
 import {
   EmptyState,
@@ -74,6 +75,7 @@ async function readCustomerDetail(id: string): Promise<CustomerDetailResponse> {
 
 export default function CustomerDetailPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const router = useRouter();
   const id = params?.id as string | undefined;
 
@@ -284,7 +286,13 @@ export default function CustomerDetailPage() {
         Open this customer’s records in Finance.
       </p>
       <Button asChild variant="outline" className="min-h-11">
-        <Link href={`${href}?customerId=${encodeURIComponent(id!)}`} prefetch={false}>
+        <Link
+          href={financePathWithReturn(
+            `${href}?customerId=${encodeURIComponent(id!)}`,
+            `/customers/${id}?${searchParams}`
+          )}
+          prefetch={false}
+        >
           {label}
         </Link>
       </Button>

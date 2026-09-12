@@ -1,3 +1,4 @@
+import { financePathWithReturn } from "@/lib/finance-navigation";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { unstable_noStore as noStore } from "next/cache";
@@ -14,8 +15,16 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 export const fetchCache = "force-no-store";
 
-export default async function InvoicePrintPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function InvoicePrintPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ returnTo?: string }>;
+}) {
   const { id } = await params;
+  const { returnTo } = await searchParams;
+  const detailHref = financePathWithReturn(`/financial/invoices/${id}`, returnTo);
   noStore();
   const guard = await requireSupabaseOwnerOrAdminServerActionClient({ noStore: true });
   if (!guard.ok) notFound();
@@ -67,7 +76,7 @@ export default async function InvoicePrintPage({ params }: { params: Promise<{ i
         company={company}
       />
       <p className="mt-6 text-center text-xs text-zinc-500 print:hidden">
-        <Link href={`/financial/invoices/${id}`} className="text-blue-600 underline">
+        <Link href={detailHref} className="text-blue-600 underline">
           View in app
         </Link>
       </p>

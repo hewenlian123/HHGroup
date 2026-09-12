@@ -22,7 +22,9 @@ describe("worker receipt runtime security contract", () => {
     expect(submit).toContain("requireCompanyRequestClient(req)");
     expect(submit).toContain("let supabase = companyGuard.client");
     expect(submit).not.toContain("getServerSupabaseAdmin");
-    expect(submit).toContain('.from("worker_receipts").insert');
+    expect(submit).toContain('supabase.rpc("intake_worker_receipt_atomic"');
+    expect(submit).not.toContain('.from("worker_receipts").insert');
+    expect(submit).toContain('p_receipt_id: receiptUrl.slice("uploads/".length).split(".")[0]');
     expect(submit).not.toContain(".select(");
     expect(submit).toContain("return finish(NextResponse.json({ ok: true }))");
   });

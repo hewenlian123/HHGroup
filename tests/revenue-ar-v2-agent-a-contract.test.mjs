@@ -13,12 +13,11 @@ test("AR workspace keeps the Figma command hierarchy, grouped queue, and read-on
   assert.match(ar, /data-testid="ar-workspace-summary"/);
   assert.match(ar, /data-testid="ar-invoice-queue"/);
   assert.match(ar, /data-testid="ar-selected-invoice-context"/);
-  assert.match(ar, /searchParams:\s*Promise<\{ invoice\?: string; customerId\?: string \}>/);
-  assert.match(ar, /const \{ customerId, invoice: requestedInvoiceId \} = await searchParams/);
-  assert.match(
-    ar,
-    /model\.outstanding\.filter\(\(invoice\) => invoice\.customerId === customerId\)/
-  );
+  assert.match(ar, /searchParams:\s*Promise<Record<string, string \| undefined>>/);
+  assert.match(ar, /const \{ customerId, invoice: requestedInvoiceId \} = params/);
+  assert.match(ar, /getReportsData\([\s\S]*?\{ projectId, customerId \}/);
+  assert.match(ar, /reporting\.records\.outstandingAr\.map/);
+  assert.match(ar, /\.filter\(\(invoice\) => amounts\.has\(invoice\.id\)\)/);
   assert.match(ar, /outstanding\.find\(\(invoice\) => invoice\.id === requestedInvoiceId\)/);
   assert.match(ar, /View context/);
   assert.match(ar, /aria-current=\{selected \? "true" : undefined\}/);

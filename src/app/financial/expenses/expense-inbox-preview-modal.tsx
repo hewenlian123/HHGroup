@@ -1,5 +1,7 @@
 "use client";
 
+import { expenseRequiresReceiptReview } from "@/lib/expense-workflow-status";
+
 import "./expenses-ui-theme.css";
 import * as React from "react";
 import Link from "next/link";
@@ -41,12 +43,8 @@ import { persistLastExpensePaymentAccountId } from "@/lib/expense-payment-prefer
 import type { ExpenseReviewSavePatch } from "./edit-expense-modal";
 import { defaultPaymentMethodName, isPaymentAccountOptionActive } from "@/lib/expense-options-db";
 import { cn } from "@/lib/utils";
+import { stripInboxUploadNoiseFromText } from "@/lib/inbox-upload-constants";
 import {
-  isInboxUploadExpenseReference,
-  stripInboxUploadNoiseFromText,
-} from "@/lib/inbox-upload-constants";
-import {
-  deriveExpenseWorkflowStatus,
   expenseCostAllocationFromProjectId,
   expenseCostAllocationRequiresProject,
   expenseHasCategoryForWorkflow,
@@ -54,7 +52,7 @@ import {
   expenseNeedsReviewFromDb,
   expenseSourceTypeIsWorkerReimbursement,
   expenseStatusUiLabel,
-  preserveConfirmedExpenseStatusOnCompleteSave,
+  expenseStatusAfterSave,
   validateApproveInboxUploadDraft,
   EXPENSE_COST_ALLOCATION_OVERHEAD,
   EXPENSE_COST_ALLOCATION_PROJECT_COST,
@@ -86,7 +84,7 @@ import {
   composeExpenseDescription,
   parseExpenseDescription,
 } from "@/lib/expense-form-system";
-import { AlertCircle, ArrowLeft, ChevronDown, ExternalLink, FileText, X } from "lucide-react";
+import { AlertCircle, ChevronDown, ExternalLink, FileText, X } from "lucide-react";
 
 type ProjectOption = { id: string; name: string | null };
 type WorkerOption = { id: string; name: string };
@@ -599,10 +597,7 @@ export function ExpenseInboxPreviewModal({
           focusReviewControl("worker");
           return;
         }
-      } else if (
-        isInboxUploadExpenseReference(candidate.referenceNo) &&
-        !candidate.paymentAccountId?.trim()
-      ) {
+      } else if (expenseRequiresReceiptReview(candidate) && !candidate.paymentAccountId?.trim()) {
         focusReviewControl("paymentAccount");
         return;
       }
@@ -1091,8 +1086,8 @@ export function ExpenseInboxPreviewModal({
   const handleSave = async (advanceAfterSave = false): Promise<Expense | null> => {
     if (!expense || saving) return null;
     setReviewFeedback(null);
-    const numAmount = parseFloat(amount);
-    if (Number.isNaN(numAmount) || numAmount < 0) {
+    const numAmount = Number(amount);
+    if (!amount.trim() || !Number.isFinite(numAmount) || numAmount < 0) {
       setReviewErrors((current) => ({
         ...current,
         amount: "Enter a valid amount of zero or more.",
@@ -1170,18 +1165,7 @@ export function ExpenseInboxPreviewModal({
           null)
         : null;
       const pm = paymentMethod.trim() || (await defaultPaymentMethodName()) || "Cash";
-      let workflowStatus = preserveConfirmedExpenseStatusOnCompleteSave(
-        expense.status,
-        deriveExpenseWorkflowStatus(projectId, category || "Other", costAllocation)
-      );
-      /* INBOX-UP drafts must stay in the Inbox pool until explicit Approve — DB `reviewed` removes them from Inbox. */
-      if (
-        isInboxUploadExpenseReference(expense.referenceNo) &&
-        workflowStatus === "reviewed" &&
-        expenseNeedsReviewFromDb(expense.status)
-      ) {
-        workflowStatus = "needs_review";
-      }
+      const workflowStatus = expenseStatusAfterSave(expense.status);
       const saved = await onSave({
         expenseId: expense.id,
         date: expenseDate.slice(0, 10),
@@ -1238,7 +1222,7 @@ export function ExpenseInboxPreviewModal({
   const handleMarkReviewed = async (candidate?: Expense) => {
     const expenseToReview = candidate ?? expense;
     if (!expenseToReview || markBusy) return;
-    if (isInboxUploadExpenseReference(expenseToReview.referenceNo)) {
+    if (expenseRequiresReceiptReview(expenseToReview)) {
       const gate = validateApproveInboxUploadDraft(expenseToReview, costAllocation);
       if (gate === "project") {
         setReviewErrors((current) => ({
@@ -1389,7 +1373,7 @@ export function ExpenseInboxPreviewModal({
   const renderEditSurface = mode === "edit" || inlineReviewWorkspace;
   const detailMode = inlineReviewWorkspace ? "review" : mode;
   const showMarkDone = expenseNeedsReviewFromDb(expense.status);
-  const inboxUploadPreview = isInboxUploadExpenseReference(expense.referenceNo);
+  const inboxUploadPreview = expenseRequiresReceiptReview(expense);
   const workerRequiredForApproval = expenseSourceTypeIsWorkerReimbursement(sourceType);
   const showCorePaymentAccount =
     inlineReviewWorkspace && inboxUploadPreview && !workerRequiredForApproval;
@@ -1424,7 +1408,7 @@ export function ExpenseInboxPreviewModal({
       : "divide-y divide-[var(--hh-border)]";
   const handlePanelKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
     if (
-      inlineReviewWorkspace &&
+      (inlineReviewWorkspace || mode === "edit") &&
       (event.metaKey || event.ctrlKey) &&
       !event.altKey &&
       !event.shiftKey
@@ -1435,7 +1419,7 @@ export function ExpenseInboxPreviewModal({
         if (reviewDraftDirty && !saving && !markBusy) void handleSave(false);
         return;
       }
-      if (event.key === "Enter") {
+      if (event.key === "Enter" && inlineReviewWorkspace) {
         event.preventDefault();
         event.stopPropagation();
         if (!saving && !markBusy) void handleInlineReviewComplete();
@@ -1659,10 +1643,11 @@ export function ExpenseInboxPreviewModal({
               variant="ghost"
               size="icon"
               className="expense-detail-back h-11 w-11 shrink-0 rounded-md text-[var(--hh-text-secondary)] lg:hidden"
-              aria-label={evidenceFirst ? "Back to receipt queue" : "Back to expense queue"}
-              onClick={() => onOpenChange(false)}
+              aria-label={evidenceFirst ? "Close receipt detail" : "Close expense detail"}
+              disabled={saving || markBusy}
+              onClick={requestPanelClose}
             >
-              <ArrowLeft className="h-4 w-4" aria-hidden />
+              <X className="h-4 w-4" aria-hidden />
             </Button>
             <div className="min-w-0 flex-1">
               <p className="text-hh-status font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]">

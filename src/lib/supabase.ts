@@ -1,3 +1,4 @@
+import { workerFinanceFetch } from "@/lib/worker-finance-write-pause";
 import { createBrowserClient as createSsrBrowserClient } from "@supabase/ssr";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
@@ -16,6 +17,7 @@ export function createBrowserClient(url: string, anonKey: string): SupabaseClien
 
   if (!isBrowser) {
     return createClient(url, anonKey, {
+      global: { fetch: workerFinanceFetch },
       auth: {
         persistSession: false,
         autoRefreshToken: false,
@@ -29,7 +31,7 @@ export function createBrowserClient(url: string, anonKey: string): SupabaseClien
   const cached = clients.get(cacheKey);
   if (cached) return cached;
 
-  const client = createSsrBrowserClient(url, anonKey);
+  const client = createSsrBrowserClient(url, anonKey, { global: { fetch: workerFinanceFetch } });
   clients.set(cacheKey, client);
   return client;
 }

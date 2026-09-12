@@ -105,17 +105,20 @@ export async function POST(req: Request) {
     }
 
     try {
-      const { error } = await supabase.from("worker_receipts").insert({
-        worker_id: workerId,
-        worker_name: workerName || "Worker",
-        project_id: projectId,
-        expense_type: expenseType,
-        vendor,
-        amount,
-        receipt_url: receiptUrl,
-        description,
-        notes,
-        receipt_date: receiptDate,
+      const { error } = await supabase.rpc("intake_worker_receipt_atomic", {
+        p_receipt_id: receiptUrl.slice("uploads/".length).split(".")[0],
+        p_payload: {
+          worker_id: workerId,
+          worker_name: workerName || "Worker",
+          project_id: projectId,
+          expense_type: expenseType,
+          vendor,
+          amount,
+          receipt_url: receiptUrl,
+          description,
+          notes,
+          receipt_date: receiptDate,
+        },
       });
       if (error) throw new Error(error.message ?? "Failed to create receipt upload.");
       return finish(NextResponse.json({ ok: true }));

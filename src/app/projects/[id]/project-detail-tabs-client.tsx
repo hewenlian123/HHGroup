@@ -1,5 +1,7 @@
 "use client";
 
+import { financeReturnPath, financeReturnLabel } from "@/lib/finance-navigation";
+
 import {
   dispatchClientDataSync,
   type AppSyncDetail,
@@ -877,11 +879,13 @@ export function ProjectDetailTabsClient({
       header={
         <div className="space-y-4">
           <Link
-            href="/projects"
+            href={financeReturnPath(searchParams.get("returnTo"), "/projects")}
             className="inline-flex min-h-11 items-center gap-1.5 rounded-hh-standard px-1 text-hh-metadata font-medium text-[var(--hh-text-secondary)] hover:text-[var(--hh-text-primary)] lg:min-h-9"
           >
             <ArrowLeft className="h-4 w-4" />
-            Projects
+            {searchParams.get("returnTo")
+              ? financeReturnLabel(financeReturnPath(searchParams.get("returnTo"), "/projects"))
+              : "Projects"}
           </Link>
           <div data-project-context={projectId} className={cn(OS.card, "p-5 sm:p-6")}>
             <div className="flex flex-wrap items-start justify-between gap-4">
