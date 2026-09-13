@@ -43,8 +43,8 @@ export async function ExpenseWorkspacePage({ pool }: { pool: "expenses" | "inbox
   return (
     <React.Suspense
       fallback={
-        <div className="expenses-ui pb-[max(1rem,env(safe-area-inset-bottom,0px))] pt-[max(0.35rem,env(safe-area-inset-top,0px))]">
-          <div className="expenses-ui-content page-shell-wide mx-auto w-full max-w-[430px] px-3 py-4 sm:max-w-[460px] md:px-8">
+        <div className="expenses-ui">
+          <div className="expenses-ui-content expenses-page-shell">
             <ExpensesListSkeleton rows={6} showStatCards mode="ledger" />
           </div>
         </div>

@@ -142,7 +142,7 @@ export function ExpenseReceiptPreviewDialog({
               Preview of expense receipt. Use download or replace from the footer.
             </DialogPrimitive.Description>
 
-            <header className="flex shrink-0 items-center justify-between gap-3 border-b border-border/60 px-4 py-3 pr-12">
+            <header className="flex shrink-0 items-center justify-between gap-3 border-b border-[var(--hh-border)] px-4 py-3 pr-12">
               <span
                 className="min-w-0 truncate text-sm font-medium text-foreground"
                 title={headerTitle}
@@ -179,7 +179,7 @@ export function ExpenseReceiptPreviewDialog({
                 <>
                   {loadPhase === "loading" ? (
                     <div
-                      className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-[var(--hh-l1-workspace)]/90 px-6"
+                      className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-[var(--hh-l1-workspace)] px-6"
                       aria-busy
                     >
                       <Skeleton className="h-[min(50vh_320px)] w-full max-w-lg rounded-md" />
@@ -211,7 +211,7 @@ export function ExpenseReceiptPreviewDialog({
               )}
             </div>
 
-            <footer className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-border/60 px-4 py-3">
+            <footer className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-[var(--hh-border)] px-4 py-3">
               <div className="flex flex-wrap items-center gap-2">
                 {expenseId ? (
                   <>

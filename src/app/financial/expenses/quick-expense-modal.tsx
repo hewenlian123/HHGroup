@@ -1580,7 +1580,7 @@ export function QuickExpenseModal({
                     >
                       <button
                         type="button"
-                        className="h-14 w-14 shrink-0 overflow-hidden rounded-sm border border-border/60 touch-manipulation"
+                        className="h-14 w-14 shrink-0 overflow-hidden rounded-sm border border-[var(--hh-border)] touch-manipulation"
                         onClick={() => openAttachmentSlotsAt(idx)}
                         disabled={!slot.previewUrl || saving}
                         aria-label="Preview receipt"
@@ -1654,7 +1654,7 @@ export function QuickExpenseModal({
                     data-new-expense-receipt-dropzone="true"
                     className={cn(
                       "flex min-h-[68px] w-full min-w-0 touch-manipulation items-center justify-center gap-3 rounded-md border border-solid border-[var(--hh-border)] bg-[var(--hh-l3-hover)] px-4 py-3 text-left shadow-none transition-colors",
-                      "hover:border-[var(--hh-border-strong)] hover:bg-muted/20 active:bg-muted/30 focus-visible:border-[var(--hh-border-strong)] focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)]",
+                      "hover:border-[var(--hh-border-strong)] hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-hover)] focus-visible:border-[var(--hh-border-strong)] focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)]",
                       "disabled:pointer-events-none disabled:opacity-50"
                     )}
                     onClick={() => {
@@ -1870,7 +1870,7 @@ export function QuickExpenseModal({
                             <button
                               key={s.clientId ?? idx}
                               type="button"
-                              className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-sm border border-border/60 focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                              className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-sm border border-[var(--hh-border)] focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                               onClick={() => openAttachmentSlotsAt(idx)}
                               disabled={saving}
                               aria-label={`View attachment ${idx + 1}`}
@@ -1933,7 +1933,7 @@ export function QuickExpenseModal({
                   data-new-expense-save="true"
                   data-new-expense-save-readiness={saveVisualReadiness}
                   style={primarySaveDisabledStyle}
-                  className="h-12 min-h-[48px] w-full touch-manipulation rounded-xl disabled:border disabled:border-border/40 disabled:bg-muted/70 disabled:text-muted-foreground disabled:opacity-100 disabled:shadow-none"
+                  className="h-12 min-h-[48px] w-full touch-manipulation rounded-xl disabled:border disabled:border-[var(--hh-border)] disabled:bg-[var(--hh-l3-hover)] disabled:text-muted-foreground disabled:opacity-100 disabled:shadow-none"
                   disabled={submitDisabled}
                 >
                   <SubmitSpinner loading={saving} className="mr-2" />
@@ -2013,7 +2013,7 @@ export function QuickExpenseModal({
                     data-new-expense-save="true"
                     data-new-expense-save-readiness={saveVisualReadiness}
                     style={primarySaveDisabledStyle}
-                    className="h-10 w-40 rounded-md disabled:border disabled:border-border/40 disabled:bg-muted/70 disabled:text-muted-foreground disabled:opacity-100 disabled:shadow-none"
+                    className="h-10 w-40 rounded-md disabled:border disabled:border-[var(--hh-border)] disabled:bg-[var(--hh-l3-hover)] disabled:text-muted-foreground disabled:opacity-100 disabled:shadow-none"
                     disabled={submitDisabled}
                   >
                     <SubmitSpinner loading={saving} className="mr-2" />
@@ -2037,8 +2037,8 @@ export function QuickExpenseModal({
       </Dialog>
       {debugToolsEnabled ? (
         <Dialog open={debugOpen} onOpenChange={setDebugOpen}>
-          <DialogContent className="expenses-ui-dialog max-w-2xl border-border/60">
-            <DialogHeader className="border-b border-border/60 pb-2">
+          <DialogContent className="expenses-ui-dialog max-w-2xl border-[var(--hh-border)]">
+            <DialogHeader className="border-b border-[var(--hh-border)] pb-2">
               <DialogTitle className="text-base font-medium">OCR Diagnostics</DialogTitle>
             </DialogHeader>
             <div className="space-y-3 py-3">
@@ -2059,7 +2059,7 @@ export function QuickExpenseModal({
                 <div className="mb-1 text-xs font-medium text-muted-foreground uppercase tracking-normal">
                   Parsed JSON
                 </div>
-                <pre className="max-h-40 overflow-auto rounded-sm border border-border/60 p-2 text-xs">
+                <pre className="max-h-40 overflow-auto rounded-sm border border-[var(--hh-border)] p-2 text-xs">
                   {JSON.stringify(debugData?.parsed ?? {}, null, 2)}
                 </pre>
               </div>
@@ -2067,7 +2067,7 @@ export function QuickExpenseModal({
                 <div className="mb-1 text-xs font-medium text-muted-foreground uppercase tracking-normal">
                   Parsed Items
                 </div>
-                <pre className="max-h-28 overflow-auto rounded-sm border border-border/60 p-2 text-xs">
+                <pre className="max-h-28 overflow-auto rounded-sm border border-[var(--hh-border)] p-2 text-xs">
                   {JSON.stringify(debugData?.parsedItems ?? [], null, 2)}
                 </pre>
               </div>
@@ -2075,7 +2075,7 @@ export function QuickExpenseModal({
                 <div className="mb-1 text-xs font-medium text-muted-foreground uppercase tracking-normal">
                   Matched Rules
                 </div>
-                <pre className="max-h-28 overflow-auto rounded-sm border border-border/60 p-2 text-xs">
+                <pre className="max-h-28 overflow-auto rounded-sm border border-[var(--hh-border)] p-2 text-xs">
                   {JSON.stringify(debugData?.matchedRules ?? [], null, 2)}
                 </pre>
               </div>
@@ -2092,7 +2092,7 @@ export function QuickExpenseModal({
                 <div className="mb-1 text-xs font-medium text-muted-foreground uppercase tracking-normal">
                   Confidence
                 </div>
-                <pre className="max-h-28 overflow-auto rounded-sm border border-border/60 p-2 text-xs">
+                <pre className="max-h-28 overflow-auto rounded-sm border border-[var(--hh-border)] p-2 text-xs">
                   {JSON.stringify(debugData?.confidence ?? {}, null, 2)}
                 </pre>
               </div>
@@ -2100,7 +2100,7 @@ export function QuickExpenseModal({
                 <div className="mb-1 text-xs font-medium text-muted-foreground uppercase tracking-normal">
                   Raw OCR Text
                 </div>
-                <pre className="max-h-48 overflow-auto rounded-sm border border-border/60 p-2 text-xs whitespace-pre-wrap">
+                <pre className="max-h-48 overflow-auto rounded-sm border border-[var(--hh-border)] p-2 text-xs whitespace-pre-wrap">
                   {debugData?.rawText ?? ""}
                 </pre>
               </div>

@@ -39,7 +39,7 @@ export function ExpenseOperationsWorkspaceNav({
   const workerInboxActive = pathname.startsWith("/financial/inbox/worker");
 
   const surfaces =
-    activeSurface === "reimbursements" || workerInboxActive
+    activeSurface === "reimbursements"
       ? SURFACES.filter((s) => s.id !== "overview")
       : SURFACES.filter((s) => s.id !== "reimbursements");
 

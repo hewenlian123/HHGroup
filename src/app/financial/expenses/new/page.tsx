@@ -52,7 +52,7 @@ import {
 type ProjectOption = { id: string; name: string | null };
 
 const FIELD_LABEL = "text-xs uppercase tracking-normal text-muted-foreground";
-const CONTROL_CLASS = "h-10 rounded-sm border-border/60 text-sm";
+const CONTROL_CLASS = "h-10 rounded-sm border-[var(--hh-border)] text-sm";
 const SELECT_TRIGGER = cn(CONTROL_CLASS, "[&>span]:line-clamp-1");
 
 type LineForm = {
@@ -392,7 +392,10 @@ function NewExpensePageContent() {
   };
 
   return (
-    <div className="page-container page-stack flex justify-center py-6 md:py-8">
+    <div
+      data-hh-appearance="radix-expenses"
+      className="page-container page-stack flex justify-center py-6 md:py-8"
+    >
       <div className="w-full max-w-3xl space-y-7">
         <PageHeader
           title="New expense"
@@ -402,7 +405,7 @@ function NewExpensePageContent() {
         {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
         <form onSubmit={onSubmit} className="space-y-6">
-          <section className="space-y-3 border-b border-border/60 pb-6">
+          <section className="space-y-3 border-b border-[var(--hh-border)] pb-6">
             <h2 className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
               Core
             </h2>
@@ -628,7 +631,7 @@ function NewExpensePageContent() {
           </div>
 
           {showAdvanced ? (
-            <section className="space-y-4 border-b border-border/60 pb-6">
+            <section className="space-y-4 border-b border-[var(--hh-border)] pb-6">
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <label className={FIELD_LABEL}>Payment source</label>
@@ -689,7 +692,7 @@ function NewExpensePageContent() {
             />
             <label
               htmlFor="receipt-upload"
-              className="flex cursor-pointer flex-col items-center justify-center border border-dashed border-border/60 px-4 py-6 text-center text-sm text-muted-foreground"
+              className="flex cursor-pointer flex-col items-center justify-center border border-dashed border-[var(--hh-border)] px-4 py-6 text-center text-sm text-muted-foreground"
               onDragOver={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -723,7 +726,7 @@ function NewExpensePageContent() {
                       fileType: receiptPreviewFileType,
                     })
                   }
-                  className="cursor-pointer overflow-hidden rounded-sm border border-border/60 p-0.5"
+                  className="cursor-pointer overflow-hidden rounded-sm border border-[var(--hh-border)] p-0.5"
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={receiptPreviewUrl} alt="" className="h-16 w-16 object-cover" />
@@ -769,7 +772,7 @@ function NewExpensePageContent() {
                       fileType: "pdf",
                     })
                   }
-                  className="flex h-16 w-16 cursor-pointer items-center justify-center rounded-sm border border-border/60 text-hh-status font-medium text-muted-foreground"
+                  className="flex h-16 w-16 cursor-pointer items-center justify-center rounded-sm border border-[var(--hh-border)] text-hh-status font-medium text-muted-foreground"
                 >
                   PDF
                 </button>
@@ -797,7 +800,7 @@ function NewExpensePageContent() {
           </section>
 
           {showSplitLines ? (
-            <section className="space-y-3 border-b border-border/60 pb-6">
+            <section className="space-y-3 border-b border-[var(--hh-border)] pb-6">
               <div className="flex items-center justify-between">
                 <h2 className="text-sm font-medium text-foreground">Split lines</h2>
                 <Button
@@ -946,7 +949,7 @@ function NewExpensePageContent() {
                 ))}
               </div>
 
-              <div className="mt-2 flex items-center justify-between border-t border-border/60 pt-3 text-sm">
+              <div className="mt-2 flex items-center justify-between border-t border-[var(--hh-border)] pt-3 text-sm">
                 <span className="text-muted-foreground">Total</span>
                 <span className="tabular-nums font-medium">{formatCurrency(total)}</span>
               </div>

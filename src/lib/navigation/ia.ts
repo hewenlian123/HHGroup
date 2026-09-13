@@ -335,6 +335,10 @@ export function getHhProjectOsWorkspace(
   pathname: string | null | undefined
 ): HhProjectOsNavSection | null {
   const path = normalizeHhProjectOsPath(pathname);
+  // Finance receipt review shares the Finance shell; standalone intake keeps its own workspace.
+  if (path === "/financial/inbox" || path.startsWith("/financial/inbox/")) {
+    return HH_PROJECT_OS_NAV_SECTIONS.find((item) => item.key === "FINANCIAL") ?? null;
+  }
   return HH_PROJECT_OS_NAV_SECTIONS.reduce<HhProjectOsNavSection | null>(
     (active, item) =>
       matchedPathLength(path, item) > (active ? matchedPathLength(path, active) : 0)

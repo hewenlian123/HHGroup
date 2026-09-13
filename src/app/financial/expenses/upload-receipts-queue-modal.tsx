@@ -107,8 +107,8 @@ function PendingReceiptRow({
   }, [item.file, item.id]);
 
   return (
-    <div className="flex min-h-[52px] items-center gap-3 rounded-xl border border-black/[0.06] bg-muted/[0.2] px-3 py-2.5 dark:border-white/[0.08]">
-      <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted/50">
+    <div className="flex min-h-[52px] items-center gap-3 rounded-xl border border-[var(--hh-border)] bg-[var(--hh-l3-hover)] px-3 py-2.5 dark:border-[var(--hh-border)]">
+      <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[var(--hh-l3-hover)]">
         {preview ? (
           // eslint-disable-next-line @next/next/no-img-element -- blob preview for local file selection
           <img src={preview} alt="" className="h-full w-full object-cover" />
@@ -127,7 +127,7 @@ function PendingReceiptRow({
         disabled={disabled}
         onClick={onRemove}
         className={cn(
-          "shrink-0 rounded-md px-2 py-1.5 text-hh-metadata font-medium text-muted-foreground transition-colors hover:bg-muted/80 hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+          "shrink-0 rounded-md px-2 py-1.5 text-hh-metadata font-medium text-muted-foreground transition-colors hover:bg-[var(--hh-l3-hover)] hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
         )}
       >
         Remove
@@ -411,7 +411,7 @@ export function UploadReceiptsQueueModal({ open, onOpenChange, onSuccess }: Prop
           data-expense-component-surface="receipt-upload"
         >
           <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-            <div className="relative z-10 flex shrink-0 items-start justify-between gap-3 border-b border-border/60 bg-background pb-4 max-md:gap-2 max-md:pb-3">
+            <div className="relative z-10 flex shrink-0 items-start justify-between gap-3 border-b border-[var(--hh-border)] bg-background pb-4 max-md:gap-2 max-md:pb-3">
               <div className="min-w-0 flex-1 space-y-2 text-left">
                 <DialogTitle className="text-hh-section-title font-semibold tracking-normal text-foreground">
                   Upload receipt
@@ -426,7 +426,7 @@ export function UploadReceiptsQueueModal({ open, onOpenChange, onSuccess }: Prop
                 disabled={busy}
                 data-testid="upload-receipt-modal-close"
                 className={cn(
-                  "relative z-10 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 disabled:pointer-events-none disabled:opacity-40",
+                  "relative z-10 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-[var(--hh-l3-hover)] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)] disabled:pointer-events-none disabled:opacity-40",
                   "touch-manipulation"
                 )}
                 aria-label="Close"
@@ -478,13 +478,16 @@ export function UploadReceiptsQueueModal({ open, onOpenChange, onSuccess }: Prop
                       data-testid="upload-receipt-take-photo"
                       onClick={handleTakePhotoClick}
                       className={cn(
-                        "group flex min-h-[76px] w-full items-center gap-4 rounded-hh-standard border border-black/[0.07] bg-background px-4 py-4 text-left transition-[background-color,border-color,opacity] duration-120 disabled:pointer-events-none disabled:opacity-45 dark:border-white/[0.09]",
-                        "hover:bg-muted/35 hover:border-black/[0.1] dark:hover:border-white/[0.12]",
+                        "group flex min-h-[76px] w-full items-center gap-4 rounded-hh-standard border border-[var(--hh-border)] bg-background px-4 py-4 text-left transition-[background-color,border-color,opacity] duration-120 disabled:pointer-events-none disabled:opacity-45 dark:border-[var(--hh-border)]",
+                        "hover:bg-[var(--hh-l3-hover)] hover:border-[var(--hh-border)] dark:hover:border-[var(--hh-border)]",
                         "touch-manipulation"
                       )}
                     >
-                      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-muted/55 dark:bg-muted/40">
-                        <Camera className="h-5 w-5 text-foreground/80" strokeWidth={1.5} />
+                      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[var(--hh-l3-hover)] dark:bg-[var(--hh-l3-hover)]">
+                        <Camera
+                          className="h-5 w-5 text-[var(--hh-text-primary)]"
+                          strokeWidth={1.5}
+                        />
                       </span>
                       <span className="min-w-0 flex-1">
                         <span className="block text-hh-body font-medium tracking-normal text-foreground">
@@ -495,7 +498,7 @@ export function UploadReceiptsQueueModal({ open, onOpenChange, onSuccess }: Prop
                         </span>
                       </span>
                       <ChevronRight
-                        className="h-5 w-5 shrink-0 text-muted-foreground/70"
+                        className="h-5 w-5 shrink-0 text-[var(--hh-text-secondary)]"
                         strokeWidth={1.5}
                       />
                     </button>
@@ -506,13 +509,16 @@ export function UploadReceiptsQueueModal({ open, onOpenChange, onSuccess }: Prop
                       data-testid="upload-receipt-upload-files"
                       onClick={handleUploadFilesClick}
                       className={cn(
-                        "group flex min-h-[76px] w-full items-center gap-4 rounded-hh-standard border border-black/[0.07] bg-background px-4 py-4 text-left transition-[background-color,border-color,opacity] duration-120 disabled:pointer-events-none disabled:opacity-45 dark:border-white/[0.09]",
-                        "hover:bg-muted/35 hover:border-black/[0.1] dark:hover:border-white/[0.12]",
+                        "group flex min-h-[76px] w-full items-center gap-4 rounded-hh-standard border border-[var(--hh-border)] bg-background px-4 py-4 text-left transition-[background-color,border-color,opacity] duration-120 disabled:pointer-events-none disabled:opacity-45 dark:border-[var(--hh-border)]",
+                        "hover:bg-[var(--hh-l3-hover)] hover:border-[var(--hh-border)] dark:hover:border-[var(--hh-border)]",
                         "touch-manipulation"
                       )}
                     >
-                      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-muted/55 dark:bg-muted/40">
-                        <Upload className="h-5 w-5 text-foreground/80" strokeWidth={1.5} />
+                      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[var(--hh-l3-hover)] dark:bg-[var(--hh-l3-hover)]">
+                        <Upload
+                          className="h-5 w-5 text-[var(--hh-text-primary)]"
+                          strokeWidth={1.5}
+                        />
                       </span>
                       <span className="min-w-0 flex-1">
                         <span className="block text-hh-body font-medium tracking-normal text-foreground">
@@ -523,7 +529,7 @@ export function UploadReceiptsQueueModal({ open, onOpenChange, onSuccess }: Prop
                         </span>
                       </span>
                       <ChevronRight
-                        className="h-5 w-5 shrink-0 text-muted-foreground/70"
+                        className="h-5 w-5 shrink-0 text-[var(--hh-text-secondary)]"
                         strokeWidth={1.5}
                       />
                     </button>
@@ -555,24 +561,24 @@ export function UploadReceiptsQueueModal({ open, onOpenChange, onSuccess }: Prop
                     className={cn(
                       "flex w-full flex-col items-center justify-center overflow-hidden rounded-hh-standard border border-dashed px-4 transition-[border-color,background-color] duration-200",
                       "min-h-[72px] md:min-h-[96px]",
-                      "border-black/[0.14] bg-muted/[0.35] dark:border-white/[0.12] dark:bg-muted/25",
+                      "border-[var(--hh-border)] bg-[var(--hh-l3-hover)] dark:border-[var(--hh-border)] dark:bg-[var(--hh-l3-hover)]",
                       !busy &&
-                        "hover:border-black/[0.22] hover:bg-muted/45 dark:hover:border-white/[0.18]",
+                        "hover:border-[var(--hh-border)] hover:bg-[var(--hh-l3-hover)] dark:hover:border-[var(--hh-border)]",
                       dragOver &&
                         !busy &&
-                        "border-foreground/22 bg-muted/55 shadow-[inset_0_0_0_1px_rgba(15,23,42,0.06)] dark:bg-muted/40",
+                        "border-[var(--hh-border-strong)] bg-[var(--hh-l3-hover)] shadow-[var(--hh-shadow-selected)] dark:bg-[var(--hh-l3-hover)]",
                       busy && "pointer-events-none opacity-45"
                     )}
                   >
                     <div className="hidden w-full flex-col items-center justify-center gap-0.5 py-3 text-center md:flex">
-                      <span className="text-hh-body font-medium tracking-normal text-foreground/90">
+                      <span className="text-hh-body font-medium tracking-normal text-[var(--hh-text-primary)]">
                         Drop receipts here
                       </span>
                       <span className="text-hh-metadata text-muted-foreground">
                         Photos or PDFs · Multiple files supported
                       </span>
                     </div>
-                    <p className="w-full px-1 py-2 text-center text-hh-table-cell leading-snug text-foreground/85 md:hidden">
+                    <p className="w-full px-1 py-2 text-center text-hh-table-cell leading-snug text-[var(--hh-text-primary)] md:hidden">
                       Drop or upload multiple receipts
                     </p>
                   </div>
@@ -647,12 +653,12 @@ export function UploadReceiptsQueueModal({ open, onOpenChange, onSuccess }: Prop
                       role="status"
                       aria-live="polite"
                       className={cn(
-                        "inline-flex w-fit max-w-full items-center rounded-full border border-black/[0.06] bg-muted/25 px-3 py-1.5 text-hh-metadata font-medium tracking-normal text-muted-foreground dark:border-white/[0.08] dark:bg-muted/20"
+                        "inline-flex w-fit max-w-full items-center rounded-full border border-[var(--hh-border)] bg-[var(--hh-l3-hover)] px-3 py-1.5 text-hh-metadata font-medium tracking-normal text-muted-foreground dark:border-[var(--hh-border)] dark:bg-[var(--hh-l3-hover)]"
                       )}
                     >
                       {STATUS_COPY[statusPhase]}
                     </div>
-                    <p className="text-hh-metadata leading-snug text-muted-foreground/90">
+                    <p className="text-hh-metadata leading-snug text-[var(--hh-text-secondary)]">
                       Drafts stay in Inbox until approved.
                     </p>
                   </div>

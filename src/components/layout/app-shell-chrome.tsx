@@ -138,6 +138,8 @@ export function AppShellChrome({
   return (
     <>
       {workspace &&
+        pathname !== "/financial/inbox" &&
+        pathname !== "/financial/inbox/worker" &&
         !integratedEstimateWorkspace &&
         createPortal(<WorkspaceNavigation pathname={pathname ?? ""} />, workspace)}
       {createPortal(

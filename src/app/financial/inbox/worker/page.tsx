@@ -40,9 +40,6 @@ export default async function WorkerSubmittedInboxPage({ searchParams }: Props) 
     dataLoadWarning = serverDataLoadWarning(error, "worker-submitted receipts");
   }
 
-  const filteredReceipts = projectIdFilter
-    ? receipts.filter((receipt) => receipt.projectId === projectIdFilter)
-    : receipts;
   let projects: Awaited<ReturnType<typeof getProjects>> = [];
   try {
     projects = await getProjects(supabase);
@@ -51,7 +48,7 @@ export default async function WorkerSubmittedInboxPage({ searchParams }: Props) 
     dataLoadWarning ??= serverDataLoadWarning(error, "projects");
   }
   const projectById = new Map(projects.map((project) => [project.id, project.name ?? ""]));
-  const initialRows: ReceiptRow[] = filteredReceipts.map((receipt) => ({
+  const initialRows: ReceiptRow[] = receipts.map((receipt) => ({
     ...receipt,
     projectName: receipt.projectId ? (projectById.get(receipt.projectId) ?? "") : "",
   }));

@@ -249,7 +249,8 @@ export function ExpenseEditAttachmentsSection({
         onDrop={onDrop}
         className={cn(
           "transition-[border-color,box-shadow,background-color] duration-fast ease-motion-out",
-          dragActive && "rounded-2xl border border-dashed border-primary/40 bg-primary/[0.05] p-2",
+          dragActive &&
+            "rounded-2xl border border-dashed border-[var(--hh-brand-gold-border)] bg-[var(--hh-brand-selected)] p-2",
           !dragActive && "border border-transparent",
           !dragActive && (showEmptyIdle ? "p-0" : "p-1"),
           busy && "pointer-events-none opacity-60"
