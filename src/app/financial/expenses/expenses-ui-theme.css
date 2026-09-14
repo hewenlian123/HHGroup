@@ -2483,10 +2483,10 @@ body:has(.expenses-ui) [data-sidebar-navigation] a[aria-current="page"] svg {
 
 /* Expenses List polish: one content-sized ledger surface, using existing Radix roles. */
 .expenses-ui[data-expenses-list-page="expenses"] [data-expenses-pagination-controls] {
-  gap: 12px;
+  gap: 6px;
 }
 .expenses-ui[data-expenses-list-page="expenses"] [data-expenses-pagination] {
-  padding: 6px 12px;
+  padding: 4px 12px;
   background: var(--hh-surface-primary);
   border-top: 1px solid var(--hh-border-subtle);
   font-size: 11px;
@@ -2506,7 +2506,7 @@ body:has(.expenses-ui) [data-sidebar-navigation] a[aria-current="page"] svg {
   > span:last-child {
   flex: 1;
   justify-content: flex-end;
-  gap: 8px;
+  gap: 6px;
   font-size: 11px;
 }
 .expenses-ui[data-expenses-list-page="expenses"]
@@ -2516,7 +2516,7 @@ body:has(.expenses-ui) [data-sidebar-navigation] a[aria-current="page"] svg {
   font-weight: 600;
 }
 .expenses-ui[data-expenses-list-page="expenses"] .expense-ledger-date-group button {
-  padding-block: 5px;
+  padding-block: 4px;
   font-size: 12px;
   line-height: 18px;
 }
@@ -2536,8 +2536,9 @@ body:has(.expenses-ui) [data-sidebar-navigation] a[aria-current="page"] svg {
   [data-expense-merchant]
   > p
   + p {
+  margin-top: 1px;
   font-size: 11px;
-  line-height: 16px;
+  line-height: 15px;
   color: var(--hh-text-secondary);
 }
 .expenses-ui[data-expenses-list-page="expenses"]
@@ -2545,7 +2546,7 @@ body:has(.expenses-ui) [data-sidebar-navigation] a[aria-current="page"] svg {
   [data-expense-merchant]
   > p:first-child {
   font-size: 13px;
-  line-height: 19px;
+  line-height: 18px;
   font-weight: 600;
 }
 .expenses-ui[data-expenses-list-page="expenses"] .expense-compact-table-scroll {
@@ -2553,8 +2554,8 @@ body:has(.expenses-ui) [data-sidebar-navigation] a[aria-current="page"] svg {
   overflow-y: auto;
 }
 .expenses-ui[data-expenses-list-page="expenses"] .expense-compact-table-scroll .exp-row {
-  height: 48px;
-  min-height: 48px;
+  height: 46px;
+  min-height: 46px;
 }
 .expenses-ui[data-expenses-list-page="expenses"] .expense-compact-table-scroll .exp-row > td {
   padding-block: 4px;
@@ -2573,7 +2574,7 @@ body:has(.expenses-ui) [data-sidebar-navigation] a[aria-current="page"] svg {
   top: 0;
   z-index: 2;
   height: 32px;
-  padding-block: 8px;
+  padding-block: 7px;
   background-color: var(--gray-3);
   color: var(--hh-text-secondary);
   font-size: 11px;
@@ -2615,17 +2616,17 @@ body:has(.expenses-ui) [data-sidebar-navigation] a[aria-current="page"] svg {
 .expenses-ui[data-expenses-list-page="expenses"]
   [data-expenses-list-toolbar="desktop"]
   > div:first-child {
-  flex: 1 1 260px;
+  flex: 1 1 240px;
   max-width: none;
-  min-width: 220px;
+  min-width: 180px;
 }
 .expenses-ui[data-expenses-list-page="expenses"] [data-expenses-list-toolbar="desktop"] {
-  gap: 8px;
+  gap: 6px;
 }
 .expenses-ui[data-expenses-list-page="expenses"]
   .expense-operations-ledger-panel
   > [data-neo-toolbar="true"] {
-  padding: 8px 12px;
+  padding: 6px 12px;
   border-bottom: 1px solid var(--hh-border-subtle);
 }
 .expenses-ui[data-expenses-list-page="expenses"] .expense-operations-ledger-panel {
@@ -2635,23 +2636,23 @@ body:has(.expenses-ui) [data-sidebar-navigation] a[aria-current="page"] svg {
   box-shadow: var(--hh-shadow-operational);
 }
 .expenses-ui[data-expenses-list-page="expenses"] [data-expenses-kpi-strip] dd {
-  margin-top: 3px;
+  margin-top: 2px;
   font-size: 22px;
   font-weight: 600;
-  line-height: 28px;
+  line-height: 26px;
   color: var(--hh-text-primary);
   font-variant-numeric: tabular-nums;
 }
 .expenses-ui[data-expenses-list-page="expenses"] [data-expenses-kpi-strip] dt {
-  font-size: 11px;
-  font-weight: 500;
-  line-height: 16px;
+  font-size: 10px;
+  font-weight: 400;
+  line-height: 14px;
 }
 .expenses-ui[data-expenses-list-page="expenses"] [data-expenses-kpi-strip] dl {
   column-gap: 16px;
 }
 .expenses-ui[data-expenses-list-page="expenses"] [data-expenses-kpi-strip] {
-  padding-block: 4px;
+  padding-block: 0;
   background: var(--hh-surface-subtle);
   border: 0;
 }
@@ -2715,19 +2716,20 @@ body:has(.expenses-ui) [data-sidebar-navigation] a[aria-current="page"] svg {
 /* Final precision details stay within the list and reuse official Radix steps. */
 .expenses-ui[data-expenses-list-page="expenses"] [data-expenses-kpi-strip] dl > div {
   position: relative;
+  padding-block: 6px;
 }
 .expenses-ui[data-expenses-list-page="expenses"] [data-expenses-kpi-strip] dl > div + div::before {
   content: "";
   position: absolute;
   inset-inline-start: -8px;
-  top: 14px;
-  bottom: 14px;
+  top: 10px;
+  bottom: 10px;
   width: 1px;
   background: var(--hh-border-subtle);
 }
 .expenses-ui[data-expenses-list-page="expenses"] .expense-primary-filters {
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 .expenses-ui[data-expenses-list-page="expenses"]
   [data-expenses-list-toolbar="desktop"]
@@ -2774,6 +2776,41 @@ body:has(.expenses-ui) [data-sidebar-navigation] a[aria-current="page"] svg {
     :is(input, select, button):focus-visible {
     outline: 2px solid Highlight;
   }
+}
+
+/* Stable group columns and compact status text; no state or amount color overrides. */
+.expenses-ui[data-expenses-list-page="expenses"]
+  [data-expense-date-group="desktop"]
+  button
+  > span:last-child {
+  display: grid;
+  grid-template-columns: minmax(64px, max-content) 8px minmax(96px, max-content);
+  text-align: right;
+  white-space: nowrap;
+}
+.expenses-ui[data-expenses-list-page="expenses"]
+  .expense-compact-table-scroll
+  .expense-status-badge {
+  height: 20px;
+  min-height: 20px;
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.expenses-ui[data-expenses-list-page="expenses"]
+  .expense-compact-table-scroll
+  .expense-status-inline
+  [data-testid="expense-status-inline-dot"] {
+  font-size: 8px;
+}
+.expenses-ui[data-expenses-list-page="expenses"]
+  [data-expenses-pagination-controls]
+  > div:first-child
+  > span {
+  min-width: 24px;
 }
 
 /* Receipt Inbox: connected operational surfaces; existing responsive workflow is retained. */
