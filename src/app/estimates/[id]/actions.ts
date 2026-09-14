@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { revalidateEstimatePaths } from "@/app/estimates/revalidate-estimate-paths";
+import { getSupabaseServerPostgres } from "@/lib/supabase-server-postgres";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { requireSupabaseOwnerOrAdminServerAction } from "@/lib/auth-boundary";
 import { getServerSupabaseAdmin } from "@/lib/supabase-server";
@@ -12,6 +13,7 @@ import {
   updateLineItemWithClient,
   duplicateLineItemWithClient,
   deleteLineItemWithClient,
+  deleteEstimateSectionWithSql,
   createCustomEstimateCategoryWithClient,
   createEstimateCategoryWithExplicitCodeWithClient,
   addPaymentMilestoneWithClient,
@@ -1092,6 +1094,37 @@ export async function addLineItemCatalogInlineAction(
     return { ok: true };
   } catch (e) {
     return { ok: false, error: safeEstimateActionError(e, "Could not add line item.") };
+  }
+}
+
+export async function deleteEstimateSectionAction(
+  estimateId: string,
+  costCode: string
+): Promise<{ ok: boolean; error?: string }> {
+  if (!estimateId.trim() || !costCode.trim())
+    return { ok: false, error: "Estimate and section are required." };
+  try {
+    const db = await getEstimateWriteClient();
+    if (!db) return { ok: false, error: "Database is not configured or access was denied." };
+    const sql = getSupabaseServerPostgres();
+    if (!sql)
+      return {
+        ok: false,
+        error: "Section deletion requires the server database connection to be configured.",
+      };
+    await deleteEstimateSectionWithSql(sql, estimateId, costCode);
+    revalidateEstimatePaths(estimateId);
+    revalidatePath("/estimates");
+    return { ok: true };
+  } catch (error) {
+    if (error instanceof Error && error.message.includes("Payment schedule total")) {
+      return {
+        ok: false,
+        error:
+          "Adjust the Payment Schedule before deleting this section: scheduled payments would exceed the new estimate total.",
+      };
+    }
+    return { ok: false, error: safeEstimateActionError(error, "Could not delete section.") };
   }
 }
 

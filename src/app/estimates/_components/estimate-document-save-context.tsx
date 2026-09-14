@@ -27,7 +27,7 @@ type EstimateDocumentSaveContextValue = {
     operationKey: string,
     operation: () => Promise<T>
   ) => Promise<T>;
-  waitForPendingSaves: () => Promise<boolean>;
+  waitForPendingSaves: (retry?: { operationKey: string; revision: number }) => Promise<boolean>;
   registerSaveRetry: (operationKey: string, retry: () => Promise<boolean>) => () => void;
   retryFailedSaves: () => Promise<void>;
   resetSaveState: () => void;
@@ -87,17 +87,21 @@ export function EstimateDocumentSaveProvider({
     [apply]
   );
 
-  const waitForPendingSaves = React.useCallback(async (): Promise<boolean> => {
-    while (pendingRef.current.size > 0) {
-      await Promise.allSettled(Array.from(pendingRef.current));
-    }
-    const current = stateRef.current;
-    return (
-      current.failedOperationKeys.length === 0 &&
-      current.pendingCount === 0 &&
-      current.savedRevision >= current.revision
-    );
-  }, []);
+  const waitForPendingSaves = React.useCallback(
+    async (retry?: { operationKey: string; revision: number }): Promise<boolean> => {
+      while (pendingRef.current.size > 0) {
+        await Promise.allSettled(Array.from(pendingRef.current));
+      }
+      const current = stateRef.current;
+      return (
+        current.failedOperationKeys.every((key) => key === retry?.operationKey) &&
+        current.pendingCount === 0 &&
+        (current.savedRevision >= current.revision ||
+          (retry !== undefined && current.revision === retry.revision))
+      );
+    },
+    []
+  );
 
   const registerSaveRetry = retryRegistryRef.current.register;
 

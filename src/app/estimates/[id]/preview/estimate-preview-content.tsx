@@ -26,11 +26,7 @@ import {
   type EstimateDocumentStyle,
 } from "@/lib/estimate-document-style";
 import {
-  buildEstimatePageIdentity,
   estimateDocumentIdentity,
-  paginateEstimatePaymentSchedule,
-  estimateScopeRowHeight,
-  estimateScopePageBudget,
   type EstimateDocumentIdentity,
 } from "@/app/estimates/_components/estimate-document-pagination";
 
@@ -187,9 +183,7 @@ function ScopeLineItems({
           <article
             key={row.id}
             data-testid="estimate-line-item-output"
-            className={`estimate-scope-item${
-              body.trim().length > 700 ? " estimate-scope-item--flow" : ""
-            }`}
+            className="estimate-scope-item"
           >
             {showLineAmounts ? (
               <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_9.25rem] sm:gap-8">
@@ -317,172 +311,6 @@ function PaymentMilestoneRow({
   );
 }
 
-function EstimatePageFooter({
-  estimateNumber,
-  pageNumber,
-  pageCount,
-}: {
-  estimateNumber: string;
-  pageNumber: number;
-  pageCount: number;
-}) {
-  if (pageNumber <= 1) return null;
-  const identity = buildEstimatePageIdentity(estimateNumber, pageNumber, pageCount);
-  return (
-    <footer className="estimate-page-footer" aria-label={identity}>
-      <span>{estimateNumber}</span>
-      <span className="tabular-nums">
-        Page {pageNumber} of {pageCount}
-      </span>
-    </footer>
-  );
-}
-
-type ScopeSection = ReturnType<typeof groupEstimateItemsByCategoryId>[number];
-type PaginatedScopeSection = ScopeSection & { isContinuation?: boolean };
-type FinalPacketPage = {
-  kind: "complete" | "payment" | "acceptance";
-  milestones: PaymentScheduleItem[];
-  continuation: boolean;
-};
-
-function scopePageRowCount(page: PaginatedScopeSection[]): number {
-  return page.reduce((count, section) => count + section.rows.length, 0);
-}
-
-function balanceTrailingScopePage(pages: PaginatedScopeSection[][]): void {
-  if (pages.length < 2) return;
-
-  const previousPage = pages[pages.length - 2];
-  const lastPage = pages[pages.length - 1];
-
-  while (scopePageRowCount(lastPage) < 4 && scopePageRowCount(previousPage) > 5) {
-    let donorIndex = previousPage.length - 1;
-    while (donorIndex >= 0 && previousPage[donorIndex].rows.length === 0) donorIndex -= 1;
-    if (donorIndex < 0) return;
-
-    const donor = previousPage[donorIndex];
-    const movedRow = donor.rows.at(-1);
-    if (!movedRow) return;
-
-    donor.rows = donor.rows.slice(0, -1);
-    const donorRemainsOnPreviousPage = donor.rows.length > 0;
-    const receiver = lastPage[0];
-
-    if (receiver?.categoryId === donor.categoryId) {
-      receiver.rows = [movedRow, ...receiver.rows];
-      receiver.isContinuation = donorRemainsOnPreviousPage ? true : donor.isContinuation;
-    } else {
-      lastPage.unshift({
-        ...donor,
-        rows: [movedRow],
-        isContinuation: donorRemainsOnPreviousPage ? true : donor.isContinuation,
-      });
-    }
-
-    if (!donorRemainsOnPreviousPage) previousPage.splice(donorIndex, 1);
-  }
-}
-
-function paginateScopeSections(
-  sections: ScopeSection[],
-  preserveFinalSummarySpace: boolean,
-  showLineAmounts: boolean
-): PaginatedScopeSection[][] {
-  if (sections.length === 0) return [[]];
-
-  const pages: PaginatedScopeSection[][] = [];
-  let currentPage: PaginatedScopeSection[] = [];
-  let remaining = estimateScopePageBudget(true, preserveFinalSummarySpace);
-
-  const nextPage = () => {
-    if (currentPage.length > 0) pages.push(currentPage);
-    currentPage = [];
-    remaining = estimateScopePageBudget(false, preserveFinalSummarySpace);
-  };
-
-  for (const section of sections) {
-    let rowIndex = 0;
-    let isContinuation = false;
-
-    if (section.rows.length === 0) {
-      if (remaining < 50) nextPage();
-      currentPage.push({ ...section, isContinuation });
-      remaining -= 50;
-      continue;
-    }
-
-    while (rowIndex < section.rows.length) {
-      const headerWeight = 50;
-      if (remaining < headerWeight + 32 && currentPage.length > 0) {
-        nextPage();
-      }
-
-      const pageRows: EstimateItemRow[] = [];
-      let used = headerWeight;
-
-      while (rowIndex < section.rows.length) {
-        const row = section.rows[rowIndex];
-        const { title, body } = estimateLineItemText(row);
-        const rowWeight = estimateScopeRowHeight(title, body, showLineAmounts);
-        const wouldOverflow = used + rowWeight > remaining;
-
-        if (wouldOverflow && pageRows.length > 0) break;
-        if (wouldOverflow && currentPage.length > 0) {
-          nextPage();
-          used = headerWeight;
-          continue;
-        }
-
-        pageRows.push(row);
-        used += rowWeight;
-        rowIndex += 1;
-      }
-
-      currentPage.push({ ...section, rows: pageRows, isContinuation });
-      remaining -= Math.max(used, headerWeight + 32);
-      isContinuation = true;
-
-      if (rowIndex < section.rows.length) nextPage();
-    }
-  }
-
-  if (currentPage.length > 0) pages.push(currentPage);
-  if (!preserveFinalSummarySpace) balanceTrailingScopePage(pages);
-  return pages.length ? pages : [[]];
-}
-
-function estimateTextLineCount(text: string | null | undefined, charactersPerLine = 82): number {
-  const normalized = text?.trim();
-  if (!normalized) return 0;
-
-  return normalized
-    .split(/\r?\n/)
-    .reduce((lines, row) => lines + Math.max(1, Math.ceil(row.length / charactersPerLine)), 0);
-}
-
-function shouldSplitFinalPacket({
-  paymentSchedule,
-  documentNotes,
-}: {
-  paymentSchedule: PaymentScheduleItem[];
-  documentNotes: EstimateMetaRecord["documentNotes"];
-}): boolean {
-  const paymentWeight = paymentSchedule.reduce(
-    (weight, item) => weight + 3 + estimateTextLineCount(item.description),
-    paymentSchedule.length > 0 ? 5 : 0
-  );
-  const notesWeight = documentNotes.reduce(
-    (weight, note) =>
-      weight + 2 + estimateTextLineCount(note.title, 60) + estimateTextLineCount(note.body),
-    documentNotes.length > 0 ? 4 : 0
-  );
-
-  const signatureWeight = 10;
-
-  return paymentWeight + notesWeight + signatureWeight > 38;
-}
-
 export function EstimatePreviewContent({
   company,
   estimate,
@@ -510,30 +338,12 @@ export function EstimatePreviewContent({
   const costSections = groupEstimateItemsByCategoryId(items, categories, catalogNameByCode).filter(
     (section) => section.rows.length > 0
   );
-  const scopePages = paginateScopeSections(costSections, Boolean(summary), showLineAmounts);
   const clientName = cleanText(meta?.client.name);
   const clientAddress = cleanText(meta?.client.address);
   const projectName = cleanText(meta?.project.name);
   const projectAddress = cleanText(meta?.project.siteAddress);
   const jobAddress = clientAddress ?? projectAddress;
-  const finalPageNumber = scopePages.length + 1;
   const documentNotes = meta?.documentNotes ?? [];
-  const splitFinalPacket = shouldSplitFinalPacket({
-    paymentSchedule,
-    documentNotes,
-  });
-  const paymentSchedulePages = paginateEstimatePaymentSchedule(paymentSchedule);
-  const finalPacketPages: FinalPacketPage[] = splitFinalPacket
-    ? [
-        ...paymentSchedulePages.map((milestones, index) => ({
-          kind: "payment" as const,
-          milestones,
-          continuation: index > 0,
-        })),
-        { kind: "acceptance", milestones: [], continuation: paymentSchedulePages.length > 0 },
-      ]
-    : [{ kind: "complete", milestones: paymentSchedule, continuation: false }];
-  const totalPageCount = scopePages.length + finalPacketPages.length;
 
   const renderPaymentScheduleSection = (
     milestones: PaymentScheduleItem[],
@@ -605,7 +415,7 @@ export function EstimatePreviewContent({
   const notesAndAcceptance = (
     <>
       {documentNotes.length ? (
-        <EstimateNotesPreview notes={documentNotes} className={splitFinalPacket ? "" : "mt-4"} />
+        <EstimateNotesPreview notes={documentNotes} className="estimate-document-notes mt-4" />
       ) : null}
 
       <section
@@ -651,139 +461,72 @@ export function EstimatePreviewContent({
       data-hh-theme="document-light"
       className="estimate-preview-paper-stack text-zinc-900 print:block"
     >
-      {scopePages.map((pageSections, pageIndex) => {
-        const isFirstPage = pageIndex === 0;
-        const isLastScopePage = pageIndex === scopePages.length - 1;
-
-        return (
-          <section
-            key={`scope-page-${pageIndex}`}
-            data-testid="estimate-preview-page"
-            className={`estimate-a4-page estimate-scope-page${
-              pageIndex > 0 ? " estimate-a4-page--continuation" : ""
-            }`}
-            aria-label={`Estimate preview page ${pageIndex + 1}`}
-          >
-            <div className="estimate-page-label" data-html2canvas-ignore="true">
-              Page {pageIndex + 1} of {totalPageCount}
-            </div>
-
-            {isFirstPage ? (
-              <>
-                <MinimalProposalHeader
-                  company={company}
-                  estimateNumber={estimate.number}
-                  estimateDate={estimateDateStr}
-                  validUntil={meta?.validUntil}
-                  statusLabel={statusLabel}
-                  projectName={projectName}
-                  clientName={clientName}
-                  location={jobAddress}
-                  documentIdentity={documentIdentity}
-                />
-              </>
-            ) : null}
-
-            <section className="print:break-inside-auto">
-              <div className="estimate-scope-intro mb-4 flex items-end justify-between gap-6">
-                <div>
-                  <p className="text-[11px] font-medium tracking-[0.08em] text-zinc-500">
-                    Scope of Work{isFirstPage ? "" : " / Continued"}
-                  </p>
-                  {isFirstPage ? (
-                    <p className="mt-1 max-w-xl text-[13px] leading-relaxed text-zinc-600">
-                      A clear outline of the included work, organized by{" "}
-                      {documentIdentity.paymentContext} section.
+      <style dangerouslySetInnerHTML={{ __html: `@media print {
+        @page {
+          size: Letter;
+          margin: 10mm 12mm 15mm;
+          @bottom-left { content: ${JSON.stringify(estimate.number).replace(/</g, "\\3c ")}; font-size: 9.5px; color: #71717a; }
+          @bottom-right { content: "Page " counter(page) " of " counter(pages); font-size: 9.5px; color: #71717a; }
+        }
+      }` }} />
+      <section
+        data-testid="estimate-preview-page"
+        className="estimate-flow-document estimate-a4-page"
+        aria-label="Estimate document"
+      >
+        <MinimalProposalHeader
+          company={company}
+          estimateNumber={estimate.number}
+          estimateDate={estimateDateStr}
+          validUntil={meta?.validUntil}
+          statusLabel={statusLabel}
+          projectName={projectName}
+          clientName={clientName}
+          location={jobAddress}
+          documentIdentity={documentIdentity}
+        />
+        <section>
+          <div className="estimate-scope-intro mb-4">
+            <p className="text-[11px] font-medium tracking-[0.08em] text-zinc-500">Scope of Work</p>
+            <p className="mt-1 max-w-xl text-[13px] leading-relaxed text-zinc-600">
+              A clear outline of the included work, organized by {documentIdentity.paymentContext}{" "}
+              section.
+            </p>
+          </div>
+          {costSections.length === 0 ? (
+            <p className="text-sm text-zinc-500 py-2">No line items.</p>
+          ) : (
+            costSections.map(({ categoryId, title, rows, sectionTotal }) => (
+              <section key={categoryId} className="estimate-scope-section mb-5 last:mb-0">
+                <div className="estimate-section-heading mb-2 flex items-baseline justify-between gap-4">
+                  <h3 className="text-[17px] font-semibold leading-tight tracking-[-0.025em] text-zinc-950">
+                    {title}
+                  </h3>
+                  {showLineAmounts ? (
+                    <p className="shrink-0 text-[12px] tabular-nums text-zinc-500">
+                      <span className="font-semibold text-zinc-900">${fmt(sectionTotal)}</span>
                     </p>
                   ) : null}
                 </div>
-              </div>
-              {costSections.length === 0 ? (
-                <p className="text-sm text-zinc-500 py-2">No line items.</p>
-              ) : (
-                <>
-                  {pageSections.map(({ categoryId, title, rows, sectionTotal, isContinuation }) => (
-                    <div
-                      key={`${categoryId}-${isContinuation ? "continued" : "start"}-${rows
-                        .map((row) => row.id)
-                        .join("-")}`}
-                      className="estimate-scope-section mb-5 last:mb-0"
-                    >
-                      <div className="mb-2 flex items-baseline justify-between gap-4">
-                        <h3 className="text-[17px] font-semibold leading-tight tracking-[-0.025em] text-zinc-950">
-                          {title}
-                          {isContinuation ? (
-                            <span className="ml-1 text-xs font-medium text-zinc-500">
-                              {" continued"}
-                            </span>
-                          ) : null}
-                        </h3>
-                        {showLineAmounts ? (
-                          <p className="shrink-0 text-[12px] tabular-nums text-zinc-500">
-                            <span className="font-semibold text-zinc-900">
-                              ${fmt(sectionTotal)}
-                            </span>
-                          </p>
-                        ) : null}
-                      </div>
-                      <ScopeLineItems rows={rows} fmt={fmt} showLineAmounts={showLineAmounts} />
-                    </div>
-                  ))}
-                </>
-              )}
-            </section>
-
-            {summary && isLastScopePage ? (
-              <EstimatePreviewSummaryPanel
-                subtotal={summary.subtotal}
-                tax={summary.tax}
-                discount={summary.discount}
-                grandTotal={summary.grandTotal}
-                isProposalStyle={isProposalStyle}
-                fmt={fmt}
-              />
-            ) : null}
-            <EstimatePageFooter
-              estimateNumber={estimate.number}
-              pageNumber={pageIndex + 1}
-              pageCount={totalPageCount}
-            />
-          </section>
-        );
-      })}
-
-      {finalPacketPages.map((packet, index) => {
-        const pageNumber = finalPageNumber + index;
-        const isContinuation = index > 0;
-        return (
-          <section
-            key={`${packet.kind}-${pageNumber}`}
-            data-testid="estimate-preview-page"
-            className={`estimate-a4-page estimate-final-packet estimate-a4-page--continuation${
-              isContinuation ? " estimate-final-packet-continuation" : ""
-            }`}
-            data-final-packet-part={
-              packet.kind === "payment" && packet.continuation
-                ? "payment-continuation"
-                : packet.kind
-            }
-            aria-label={`Estimate preview page ${pageNumber}`}
-          >
-            <div className="estimate-page-label" data-html2canvas-ignore="true">
-              Page {pageNumber} of {totalPageCount}
-            </div>
-            {packet.kind === "complete" || packet.kind === "payment"
-              ? renderPaymentScheduleSection(packet.milestones, packet.continuation)
-              : null}
-            {packet.kind === "complete" || packet.kind === "acceptance" ? notesAndAcceptance : null}
-            <EstimatePageFooter
-              estimateNumber={estimate.number}
-              pageNumber={pageNumber}
-              pageCount={totalPageCount}
-            />
-          </section>
-        );
-      })}
+                <ScopeLineItems rows={rows} fmt={fmt} showLineAmounts={showLineAmounts} />
+              </section>
+            ))
+          )}
+        </section>
+        {summary ? (
+          <EstimatePreviewSummaryPanel
+            subtotal={summary.subtotal}
+            tax={summary.tax}
+            discount={summary.discount}
+            grandTotal={summary.grandTotal}
+            isProposalStyle={isProposalStyle}
+            fmt={fmt}
+          />
+        ) : null}
+        {renderPaymentScheduleSection(paymentSchedule, false)}
+        {notesAndAcceptance}
+        <footer className="estimate-flow-footer">{estimate.number}</footer>
+      </section>
     </article>
   );
 }

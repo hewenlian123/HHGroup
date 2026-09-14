@@ -29,6 +29,7 @@ import {
   updateLineItemInlineAction,
   toggleLineItemHideAmountOnPdfAction,
   deleteLineItemInlineAction,
+  deleteEstimateSectionAction,
   duplicateLineItemInlineAction,
   addPaymentMilestoneInlineAction,
   updatePaymentMilestoneInlineAction,
@@ -156,10 +157,10 @@ export function EstimateEditor({
   status,
   meta,
   items,
-  estimateCategories,
+  estimateCategories: serverCategories,
   categoryNames,
   costCodes,
-  summary,
+  summary: serverSummary,
   paymentSchedule = [],
   paymentTemplates = [],
   invoiceProjectLink,
@@ -173,6 +174,10 @@ export function EstimateEditor({
   onPricingInspectorDetailsClick,
   onPricingInspectorPricingClick,
 }: EstimateEditorProps) {
+  const [summary, setSummary] = React.useState(serverSummary);
+  React.useEffect(() => setSummary(serverSummary), [serverSummary]);
+  const [estimateCategories, setEstimateCategories] = React.useState(serverCategories);
+  React.useEffect(() => setEstimateCategories(serverCategories), [serverCategories]);
   const isLocked = !["Draft", "Sent"].includes(status);
   const isReadOnly = isLocked || !editing;
   const today = new Date().toISOString().slice(0, 10);
@@ -181,7 +186,8 @@ export function EstimateEditor({
   const workflowSearchParams = useSearchParams();
   const returnContext = readEstimateBuilderReturnContext(workflowSearchParams);
   const returnMilestoneId = workflowSearchParams.get("returnMilestone")?.trim() || null;
-  const { markUnsaved, trackMutation } = useEstimateDocumentSave();
+  const { markUnsaved, trackMutation, waitForPendingSaves } = useEstimateDocumentSave();
+  const failedDeletionRevision = React.useRef<Record<string, number>>({});
 
   React.useEffect(() => {
     if (!editing) return;
@@ -1095,6 +1101,55 @@ export function EstimateEditor({
                           onToggleCollapse={() => toggleSectionCollapsed(categoryId)}
                           onDisplayNameChange={() => undefined}
                           dragHandle={dragHandle}
+                          onDeleteSection={
+                            isReadOnly
+                              ? undefined
+                              : async () => {
+                                  const operationKey = `section:delete:${categoryId}`;
+                                  const failedRevision = failedDeletionRevision.current[categoryId];
+                                  if (
+                                    !(await waitForPendingSaves(
+                                      failedRevision === undefined
+                                        ? undefined
+                                        : {
+                                            operationKey,
+                                            revision: failedRevision,
+                                          }
+                                    ))
+                                  )
+                                    throw new Error(
+                                      "Save pending changes before deleting this section."
+                                    );
+                                  const revision = markUnsaved();
+                                  const result = await trackMutation(
+                                    `section:delete:${categoryId}`,
+                                    () => deleteEstimateSectionAction(estimateId, categoryId)
+                                  );
+                                  if (!result.ok) {
+                                    failedDeletionRevision.current[categoryId] = revision;
+                                    throw new Error(result.error ?? "Could not delete section.");
+                                  }
+                                  delete failedDeletionRevision.current[categoryId];
+                                  if (summary)
+                                    setSummary({
+                                      ...summary,
+                                      subtotal: summary.subtotal - sectionTotal,
+                                      grandTotal: summary.grandTotal - sectionTotal,
+                                    });
+                                  setLocalItems((previous) =>
+                                    previous.filter((item) => item.costCode !== categoryId)
+                                  );
+                                  setEstimateCategories((previous) =>
+                                    previous.filter((category) => category.costCode !== categoryId)
+                                  );
+                                  setLocalCategoryNames((previous) => {
+                                    const next = { ...previous };
+                                    delete next[categoryId];
+                                    return next;
+                                  });
+                                  syncRouterNonBlocking(router);
+                                }
+                          }
                           onAddLine={
                             isReadOnly
                               ? undefined

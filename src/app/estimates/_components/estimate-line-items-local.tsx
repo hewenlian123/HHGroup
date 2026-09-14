@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { ConfirmDialog } from "@/components/base/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import {
   DndContext,
@@ -17,7 +18,7 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { ChevronDown, ChevronRight, Layers, Plus } from "lucide-react";
+import { ChevronDown, ChevronRight, Layers, Plus, Trash2 } from "lucide-react";
 import type { CostCode } from "@/lib/data";
 import { cn } from "@/lib/utils";
 import { formatEstimateCurrency } from "./estimate-currency";
@@ -76,6 +77,7 @@ type ScopeSectionHeaderProps = {
   onDisplayNameChange: (name: string) => void;
   dragHandle?: React.ReactNode;
   titleSlot?: React.ReactNode;
+  onDeleteSection?: () => void | Promise<void>;
   onAddLine?: () => void;
   addLineAriaLabel?: string;
   disabled?: boolean;
@@ -120,9 +122,23 @@ export function ScopeSectionHeader({
   dragHandle,
   titleSlot,
   onAddLine,
+  onDeleteSection,
   addLineAriaLabel,
   disabled = false,
 }: ScopeSectionHeaderProps): React.ReactElement {
+  const [confirmOpen, setConfirmOpen] = React.useState(false);
+  const [deleting, setDeleting] = React.useState(false);
+  const [deleteError, setDeleteError] = React.useState<string | null>(null);
+  const deleteSection = async () => {
+    if (deleting || !onDeleteSection) return;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await onDeleteSection();
+    } finally {
+      setDeleting(false);
+    }
+  };
   return (
     <div
       className={cn(
@@ -159,6 +175,38 @@ export function ScopeSectionHeader({
       <div className={EB.scopeSectionHeaderMeta}>
         <span className={EB.scopeSectionItemCount}>{formatSectionItemCount(itemCount)}</span>
         <span className={EB.scopeBlockTotal}>{formatEstimateCurrency(sectionSubtotal)}</span>
+        {onDeleteSection ? (
+          <>
+            <button
+              type="button"
+              className={EB.scopeSectionAddLine}
+              aria-label="Delete section"
+              disabled={disabled || deleting}
+              onClick={() => {
+                if (itemCount > 0) setConfirmOpen(true);
+                else
+                  void deleteSection().catch((error: unknown) =>
+                    setDeleteError(
+                      error instanceof Error ? error.message : "Could not delete section."
+                    )
+                  );
+              }}
+            >
+              <Trash2 className="h-3.5 w-3.5" aria-hidden />
+            </button>
+            <ConfirmDialog
+              open={confirmOpen}
+              onOpenChange={setConfirmOpen}
+              title="Delete section?"
+              description="Delete this section and all items inside?"
+              confirmLabel="Confirm"
+              destructive
+              loading={deleting}
+              onConfirm={deleteSection}
+            />
+            {deleteError ? <span role="alert">{deleteError}</span> : null}
+          </>
+        ) : null}
         {onAddLine ? (
           <button
             type="button"
@@ -753,6 +801,26 @@ export function EstimateLineItemsLocal({
                               onToggleCollapse={() => toggleSectionCollapsed(code)}
                               onDisplayNameChange={(name) => setCategoryName(code, name)}
                               dragHandle={dragHandle}
+                              onDeleteSection={
+                                disabled
+                                  ? undefined
+                                  : () => {
+                                      onLineItemsChange(
+                                        lineItems.filter((item) => item.costCode !== code)
+                                      );
+                                      const nextNames = { ...categoryNames };
+                                      delete nextNames[code];
+                                      onCategoryNamesChange(nextNames);
+                                      onSectionOrderChange(
+                                        orderedSectionCodes.filter((id) => id !== code)
+                                      );
+                                      setCollapsedSections((previous) => {
+                                        const next = { ...previous };
+                                        delete next[code];
+                                        return next;
+                                      });
+                                    }
+                              }
                               onAddLine={
                                 disabled
                                   ? undefined

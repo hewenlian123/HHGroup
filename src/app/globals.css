@@ -1999,3 +1999,46 @@ body:has([data-estimate-pdf-capture="true"]) .estimate-page-label {
     page-break-inside: avoid;
   }
 }
+
+/* Estimate uses native fragmentation: one flow, with physical pages owned by print. */
+.estimate-a4-page.estimate-flow-document {
+  height: auto;
+  min-height: 0;
+}
+.estimate-flow-document .estimate-final-packet-section {
+  margin-top: 24px;
+}
+.estimate-flow-document [data-testid="estimate-preview-summary"] {
+  margin-top: 24px;
+}
+.estimate-flow-document .estimate-document-notes {
+  break-inside: auto;
+  page-break-inside: auto;
+}
+.estimate-flow-document .estimate-section-heading,
+.estimate-flow-document .estimate-scope-intro,
+.estimate-flow-document .estimate-document-notes > p,
+.estimate-flow-document .estimate-document-notes h2 {
+  break-after: avoid;
+  page-break-after: avoid;
+}
+.estimate-flow-footer {
+  margin-top: 24px;
+  border-top: 1px solid rgb(39 39 42 / 14%);
+  padding-top: 2mm;
+  color: #71717a;
+  font-size: 9.5px;
+}
+@media print {
+  .estimate-a4-page.estimate-flow-document,
+  body:has([data-estimate-pdf-capture="true"]) .estimate-a4-page.estimate-flow-document {
+    width: auto !important;
+    height: auto;
+    min-height: 0;
+    padding: 0 !important;
+    break-before: auto;
+    break-after: auto;
+    page-break-after: auto;
+  }
+  .estimate-flow-footer { display: none; }
+}

@@ -4,6 +4,7 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Sql } from "postgres";
 import { getSupabaseClient } from "@/lib/supabase";
 import { lineTotal } from "@/lib/estimate-domain";
 export {
@@ -2137,6 +2138,37 @@ export async function moveEstimateItemsToCostCode(
     newCostCode,
     displayNameHint
   );
+}
+
+/** Caller must authorize owner/admin before supplying its server-side SQL connection. */
+export async function deleteEstimateSectionWithSql(
+  sql: Sql,
+  estimateId: string,
+  costCode: string
+): Promise<void> {
+  await sql.begin(async (transaction) => {
+    await transaction.unsafe("set local lock_timeout = '5s'");
+    await transaction.unsafe("set local statement_timeout = '15s'");
+    const [estimate] = await transaction.unsafe(
+      "select status from public.estimates where id = $1 for update",
+      [estimateId]
+    );
+    if (!estimate || !["Draft", "Sent"].includes(estimate.status)) {
+      throw new Error("This estimate cannot be edited.");
+    }
+    await transaction.unsafe(
+      "delete from public.estimate_items where estimate_id = $1 and cost_code = $2",
+      [estimateId, costCode]
+    );
+    await transaction.unsafe(
+      "delete from public.estimate_categories where estimate_id = $1 and cost_code = $2",
+      [estimateId, costCode]
+    );
+    await transaction.unsafe(
+      "update public.estimates set updated_at = (current_timestamp at time zone 'UTC')::date where id = $1",
+      [estimateId]
+    );
+  });
 }
 
 export async function deleteLineItemWithClient(
