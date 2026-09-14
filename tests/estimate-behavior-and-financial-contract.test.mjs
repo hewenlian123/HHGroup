@@ -54,7 +54,9 @@ test("Preview, Print, and PDF share the protected customer document content", ()
   const printDocument = source("src/app/estimates/_components/estimate-print-document.tsx");
 
   assert.match(previewPage, /<EstimatePreviewContent/);
+  assert.match(previewPage, /fetchDocumentCompanyProfile\(readClient \?\? undefined\)/);
   assert.match(printDocument, /<EstimatePreviewContent \{\.\.\.props\} \/>/);
+  assert.match(printPage, /fetchDocumentCompanyProfile\(readClient \?\? undefined\)/);
   assert.match(printPage, /data-read-only="true"/);
   assert.match(printPage, /estimate-print-pdf-capture/);
 });

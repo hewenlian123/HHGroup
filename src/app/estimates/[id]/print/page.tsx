@@ -40,7 +40,7 @@ export default async function EstimatePrintPage({
     getEstimateCategories(id, readClient),
     getPaymentSchedule(id, readClient),
     getCostCodes(),
-    fetchDocumentCompanyProfile(),
+    fetchDocumentCompanyProfile(readClient ?? undefined),
     readClient ? getEstimateRevisionContext(id, readClient).catch(() => null) : null,
   ])
     .then((data) => ({ data }))

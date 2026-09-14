@@ -77,7 +77,8 @@ export async function fetchDocumentCompanyProfile(
       return companyProfileToDocumentDto({ ...row, logo_url: url });
     }
     return companyProfileToDocumentDto(row);
-  } catch {
+  } catch (error) {
+    if (explicitClient) throw error;
     return companyProfileToDocumentDto(null);
   }
 }

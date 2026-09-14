@@ -1,6 +1,12 @@
-import { describe, expect, it } from "vitest";
-import { companyProfileToDocumentDto } from "@/lib/document-company-profile";
+import { describe, expect, it, vi } from "vitest";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  companyProfileToDocumentDto,
+  fetchDocumentCompanyProfile,
+} from "@/lib/document-company-profile";
 import type { CompanyProfile } from "@/lib/company-profile";
+
+vi.mock("next/cache", () => ({ unstable_noStore: () => undefined }));
 
 function baseProfile(over: Partial<CompanyProfile> = {}): CompanyProfile {
   return {
@@ -106,5 +112,19 @@ describe("companyProfileToDocumentDto", () => {
       })
     );
     expect(dto.addressLines).toEqual(["PO Box 1", "90210"]);
+  });
+
+  it("does not replace an explicit server-client read failure with fallback branding", async () => {
+    const query = {
+      order: () => query,
+      limit: async () => ({ data: null, error: { message: "company profile unavailable" } }),
+    };
+    const client = {
+      from: () => ({ select: () => query }),
+    } as unknown as SupabaseClient;
+
+    await expect(fetchDocumentCompanyProfile(client)).rejects.toThrow(
+      "company profile unavailable"
+    );
   });
 });
