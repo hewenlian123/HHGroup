@@ -79,12 +79,21 @@ export function UploadReceiptClient() {
   const [projects, setProjects] = React.useState<Option[]>([]);
   const [workerId, setWorkerId] = React.useState("");
   const [projectId, setProjectId] = React.useState("");
+  const inheritedProjectApplied = React.useRef(false);
+  React.useEffect(() => {
+    if (inheritedProjectApplied.current || projects.length === 0) return;
+    const inherited = searchParams.get("projectId") ?? searchParams.get("project_id");
+    if (inherited && projects.some(project => project.id === inherited)) setProjectId(inherited);
+    inheritedProjectApplied.current = true;
+  }, [projects, searchParams]);
+
   const [expenseType, setExpenseType] = React.useState(EXPENSE_OPTIONS[0].value);
   const [vendor, setVendor] = React.useState("");
   const [amount, setAmount] = React.useState("");
   const [notes, setNotes] = React.useState("");
   const [receiptDate, setReceiptDate] = React.useState("");
   const [file, setFile] = React.useState<File | null>(null);
+  const uploadedReceipt = React.useRef<{ file: File; url: string } | null>(null);
   const [previewUrl, setPreviewUrl] = React.useState<string | null>(null);
   const { openPreview, closePreview } = useAttachmentPreview();
   const [uploading, setUploading] = React.useState(false);
@@ -247,12 +256,16 @@ export function UploadReceiptClient() {
 
     setUploading(true);
     try {
-      const fd = new FormData();
-      fd.set("file", file);
-      const up = await fetch("/api/upload-receipt/upload", { method: "POST", body: fd });
-      const upData = await up.json();
-      if (!up.ok || !upData.receipt_url) {
-        throw new Error(upData.message ?? "上传失败 / Upload failed");
+      // Reuse the receipt identity when submission succeeds but its response is lost.
+      if (uploadedReceipt.current?.file !== file) {
+        const fd = new FormData();
+        fd.set("file", file);
+        const up = await fetch("/api/upload-receipt/upload", { method: "POST", body: fd });
+        const upData = await up.json();
+        if (!up.ok || !upData.receipt_url) {
+          throw new Error(upData.message ?? "上传失败 / Upload failed");
+        }
+        uploadedReceipt.current = { file, url: upData.receipt_url };
       }
       setUploading(false);
       setSubmitting(true);
@@ -266,7 +279,7 @@ export function UploadReceiptClient() {
           expenseType,
           vendor: vendor.trim() || null,
           amount: num,
-          receiptUrl: upData.receipt_url,
+          receiptUrl: uploadedReceipt.current.url,
           description: null,
           notes: notes.trim() || null,
           receiptDate: receiptDate || null,

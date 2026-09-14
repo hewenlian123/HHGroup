@@ -139,10 +139,10 @@ export const HH_PROJECT_OS_NAV_SECTIONS: readonly HhProjectOsNavSection[] = [
         aliases: ["/bills", "/financial/bills", "/financial/commissions"],
       },
       {
-        href: "/financial/expenses/overview",
+        href: "/financial/inbox",
         label: "Expenses",
         icon: "expenses",
-        aliases: ["/financial/expenses", "/financial/inbox"],
+        aliases: ["/financial/expenses", "/financial/expenses/overview", "/labor/reimbursements"],
       },
       {
         href: "/financial/accounts/overview",

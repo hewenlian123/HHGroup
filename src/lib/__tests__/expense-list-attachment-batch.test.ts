@@ -1,6 +1,7 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { describe, expect, it } from "vitest";
 import { getExpenses } from "@/lib/expenses-db";
+import { getSubcontractDeductionsByExpenseIds } from "@/lib/subcontract-deductions-db";
 
 type QueryError = { message?: string } | null;
 type QueryResult = { data: Array<Record<string, unknown>> | null; error: QueryError };
@@ -283,5 +284,67 @@ describe("getExpenses attachment list hydration", () => {
     const expenses = await getExpenses(undefined, supabase, { includeLinkedBankTx: false });
 
     expect(expenses.map((expense) => expense.attachments)).toEqual([[], []]);
+  });
+});
+
+describe("subcontract deduction list hydration", () => {
+  it("bounds UUID query URLs, preserves every deduction and rejects failed later batches", async () => {
+    const ids = Array.from(
+      { length: 501 },
+      (_, i) => `17000000-0000-4000-8000-${String(i).padStart(12, "0")}`
+    );
+    for (const failure of [
+      null,
+      "Permission denied",
+      "relation subcontract_deductions does not exist",
+    ]) {
+      const urls: string[] = [];
+      const supabase = createClient("http://127.0.0.1:54321", "local-test-key", {
+        auth: { persistSession: false, autoRefreshToken: false },
+        global: {
+          fetch: async (input) => {
+            const url = String(input);
+            urls.push(url);
+            if (failure && urls.length === 2) {
+              return new Response(JSON.stringify({ message: failure }), { status: 403 });
+            }
+            const batch = new URL(url).searchParams.get("expense_id")!.slice(4, -1).split(",");
+            return new Response(
+              JSON.stringify(
+                batch.map((expense_id) => ({
+                  id: `deduction-${expense_id}`,
+                  expense_id,
+                  subcontractor_id: "subcontractor",
+                  amount: "12.34",
+                  project_id: "project",
+                  subcontract_id: "subcontract",
+                  note: "retained",
+                  created_at: "2026-09-14",
+                  updated_at: "2026-09-14",
+                }))
+              ),
+              { status: 200 }
+            );
+          },
+        },
+      });
+      const result = getSubcontractDeductionsByExpenseIds([...ids, ids[0]!, " "], supabase);
+      if (failure) {
+        await expect(result).rejects.toThrow(failure);
+      } else {
+        const rows = await result;
+        expect([...rows.keys()]).toEqual(ids);
+        expect(
+          [...rows.values()].every(
+            (row) =>
+              row.amount === 12.34 &&
+              row.project_id === "project" &&
+              row.subcontract_id === "subcontract"
+          )
+        ).toBe(true);
+        expect(urls.length).toBeGreaterThan(1);
+      }
+      expect(urls.every((url) => url.length < 8000)).toBe(true);
+    }
   });
 });

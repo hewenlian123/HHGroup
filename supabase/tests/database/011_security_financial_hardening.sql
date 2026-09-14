@@ -1,4 +1,35 @@
 begin;
+-- Transaction-scoped fixtures: real intake/approval RPCs, never direct obligation/payment INSERTs.
+insert into auth.users(id,email,raw_app_meta_data,is_anonymous)
+values('f1700000-0000-4000-8000-000000000001','canonical-fixture@example.invalid','{"role":"owner"}',false);
+insert into public.organization_memberships(organization_id,user_id,role,status)
+values(private.company_organization_id(),'f1700000-0000-4000-8000-000000000001','owner','active');
+create temp table canonical_fixture(fixture_id uuid primary key,obligation_id uuid,expense_id uuid,line_id uuid,payment_id uuid);
+grant select on canonical_fixture to authenticated,service_role;
+create function pg_temp.canonical_receipt(p_id uuid,p_worker uuid,p_amount numeric,p_project uuid default null)
+returns void language plpgsql as $$
+declare v_claims text:=current_setting('request.jwt.claims',true); v_result jsonb;
+begin
+  perform set_config('request.jwt.claims','{"sub":"f1700000-0000-4000-8000-000000000001","role":"authenticated","app_metadata":{"role":"owner"}}',true);
+  insert into storage.objects(bucket_id,name) values('worker-receipts','uploads/'||p_id||'.jpg');
+  perform public.intake_worker_receipt_atomic(p_id,jsonb_build_object('worker_id',p_worker,
+    'worker_name',(select name from public.workers where id=p_worker),'amount',p_amount,'project_id',p_project,
+    'receipt_date','2026-08-29','receipt_url','uploads/'||p_id||'.jpg'));
+  v_result:=public.approve_worker_receipt_atomic(p_id,'f1700000-0000-4000-8000-000000000001',p_worker,p_amount,p_project);
+  insert into canonical_fixture(fixture_id,obligation_id,expense_id,line_id)
+  select p_id,(v_result->>'reimbursement_id')::uuid,e.id,l.id
+  from public.expenses e join public.expense_lines l on l.expense_id=e.id where e.source_worker_receipt_id=p_id;
+  if not found then raise exception 'Canonical fixture missing provisional Expense.'; end if;
+  perform set_config('request.jwt.claims',coalesce(v_claims,''),true);
+end $$;
+create function pg_temp.obligation(p_id uuid) returns uuid language sql as $$
+select obligation_id from canonical_fixture where fixture_id=p_id
+$$;
+create function pg_temp.fixture_payment(p_id uuid) returns uuid language sql as $$
+select payment_id from canonical_fixture where fixture_id=p_id
+$$;
+select set_config('request.jwt.claims','{"role":"service_role"}',true);
+
 
 select plan(63);
 
@@ -123,13 +154,14 @@ select ok(
 select ok(
   (
     select bool_and(
-      pg_catalog.has_table_privilege(role_name, pg_catalog.format('public.%I', table_name), privilege_name)
+      (pg_catalog.has_table_privilege(role_name, pg_catalog.format('public.%I', table_name), privilege_name)
+       = (table_name='ap_bills' or privilege_name='SELECT'))
     )
     from unnest(array['authenticated', 'service_role']) role_name
     cross join unnest(array['worker_payments', 'ap_bills']) table_name
     cross join unnest(array['SELECT', 'INSERT', 'UPDATE']) privilege_name
   ),
-  'authenticated and service roles retain non-destructive financial table access'
+  'Worker payment direct writes denied; AP access and Worker reads retain scoped grants'
 );
 
 select ok(
@@ -353,42 +385,13 @@ insert into public.workers (id, name)
 values ('33333333-3333-3333-3333-333333333301', 'Reversal Worker');
 insert into public.projects (id, name)
 values ('33333333-3333-3333-3333-333333333302', 'Reversal Project');
-insert into public.worker_payments (
-  id, worker_id, total_amount, payment_method, payment_date, labor_entry_ids, settlement_completed_at
-)
-values (
-  '33333333-3333-3333-3333-333333333310',
-  '33333333-3333-3333-3333-333333333301',
-  115,
-  'ACH',
-  '2026-09-02',
-  array['33333333-3333-3333-3333-333333333311']::uuid[],
-  now()
-);
-insert into public.labor_entries (
-  id, worker_id, project_id, work_date, labor_cost_snapshot, status, worker_payment_id
-)
-values (
-  '33333333-3333-3333-3333-333333333311',
-  '33333333-3333-3333-3333-333333333301',
-  '33333333-3333-3333-3333-333333333302',
-  '2026-09-02',
-  100,
-  'Paid',
-  '33333333-3333-3333-3333-333333333310'
-);
-insert into public.worker_reimbursements (
-  id, worker_id, amount, status, reimbursement_date, paid_at, payment_id
-)
-values (
-  '33333333-3333-3333-3333-333333333312',
-  '33333333-3333-3333-3333-333333333301',
-  25,
-  'paid',
-  '2026-09-02',
-  now(),
-  '33333333-3333-3333-3333-333333333310'
-);
+insert into public.labor_entries(id,worker_id,project_id,work_date,labor_cost_snapshot,status)
+values('33333333-3333-3333-3333-333333333311','33333333-3333-3333-3333-333333333301','33333333-3333-3333-3333-333333333302','2026-09-02',100,'Approved');
+select pg_temp.canonical_receipt('33333333-3333-3333-3333-333333333312','33333333-3333-3333-3333-333333333301',25,'33333333-3333-3333-3333-333333333302');
+update canonical_fixture set payment_id=(public.record_worker_payroll_settlement('canonical-reversal-one',
+ '33333333-3333-3333-3333-333333333301',null,125,'ACH','2026-09-02',null,
+ array['33333333-3333-3333-3333-333333333311']::uuid[],array[pg_temp.obligation('33333333-3333-3333-3333-333333333312')],array[]::uuid[],0)->>'payment_id')::uuid
+where fixture_id='33333333-3333-3333-3333-333333333312';
 insert into public.worker_advances (id, worker_id, amount, advance_date, status)
 values (
   '33333333-3333-3333-3333-333333333313',
@@ -404,7 +407,7 @@ set local role authenticated;
 set local "request.jwt.claims" = '{"sub":"33333333-3333-3333-3333-333333333301","role":"authenticated","app_metadata":{"role":"owner"}}';
 insert into worker_reversal_results (result)
 select public.reverse_worker_payment_atomic(
-  '33333333-3333-3333-3333-333333333310',
+  pg_temp.fixture_payment('33333333-3333-3333-3333-333333333312'),
   'worker-payment-reversal:33333333-3333-3333-3333-333333333310'
 );
 reset role;
@@ -413,59 +416,30 @@ set local role service_role;
 set local "request.jwt.claims" = '{"role":"service_role"}';
 insert into worker_reversal_results (result)
 select public.reverse_worker_payment_atomic(
-  '33333333-3333-3333-3333-333333333310',
+  pg_temp.fixture_payment('33333333-3333-3333-3333-333333333312'),
   'worker-payment-reversal:33333333-3333-3333-3333-333333333310'
 );
 reset role;
 set local "request.jwt.claims" = '';
 
-select is((select count(*) from public.worker_payments where id = '33333333-3333-3333-3333-333333333310'), 0::bigint, 'worker payment reversal removes the payment once');
-select is((select count(*) from public.worker_payment_reversals where payment_id = '33333333-3333-3333-3333-333333333310'), 1::bigint, 'worker payment reversal writes one durable replay ledger row');
+select is((select count(*) from public.worker_payments where id = pg_temp.fixture_payment('33333333-3333-3333-3333-333333333312')), 0::bigint, 'worker payment reversal removes the payment once');
+select is((select count(*) from public.worker_payment_reversals where payment_id = pg_temp.fixture_payment('33333333-3333-3333-3333-333333333312')), 1::bigint, 'worker payment reversal writes one durable replay ledger row');
 select is((select worker_payment_id from public.labor_entries where id = '33333333-3333-3333-3333-333333333311'), null::uuid, 'worker payment reversal unlinks labor');
 select is((select status from public.labor_entries where id = '33333333-3333-3333-3333-333333333311'), 'Approved', 'worker payment reversal restores paid labor status');
-select is((select status from public.worker_reimbursements where id = '33333333-3333-3333-3333-333333333312'), 'pending', 'worker payment reversal reopens reimbursement');
-select is((select payment_id from public.worker_reimbursements where id = '33333333-3333-3333-3333-333333333312'), null::uuid, 'worker payment reversal unlinks reimbursement');
+select is((select status from public.worker_reimbursements where id = pg_temp.obligation('33333333-3333-3333-3333-333333333312')), 'pending', 'worker payment reversal reopens reimbursement');
+select is((select payment_id from public.worker_reimbursements where id = pg_temp.obligation('33333333-3333-3333-3333-333333333312')), null::uuid, 'worker payment reversal unlinks reimbursement');
 select is((select status from public.worker_advances where id = '33333333-3333-3333-3333-333333333313'), 'deducted', 'worker payment reversal preserves existing advance behavior');
 select is((select (result->>'reused')::boolean from worker_reversal_results order by ctid limit 1), false, 'first worker reversal reports a new completion');
 select is((select (result->>'reused')::boolean from worker_reversal_results order by ctid desc limit 1), true, 'duplicate worker reversal reports an authoritative replay');
 
-insert into public.worker_payments (
-  id, worker_id, total_amount, payment_method, payment_date, labor_entry_ids, settlement_completed_at
-)
-values (
-  '33333333-3333-3333-3333-333333333314',
-  '33333333-3333-3333-3333-333333333301',
-  125,
-  'ACH',
-  '2026-09-02',
-  array['33333333-3333-3333-3333-333333333315']::uuid[],
-  now()
-);
-insert into public.labor_entries (
-  id, worker_id, project_id, work_date, labor_cost_snapshot, status, worker_payment_id
-)
-values (
-  '33333333-3333-3333-3333-333333333315',
-  '33333333-3333-3333-3333-333333333301',
-  '33333333-3333-3333-3333-333333333302',
-  '2026-09-02',
-  100,
-  'Paid',
-  '33333333-3333-3333-3333-333333333314'
-);
-insert into public.worker_reimbursements (
-  id, worker_id, amount, status, reimbursement_date, paid_at, payment_id
-)
-values (
-  '33333333-3333-3333-3333-333333333316',
-  '33333333-3333-3333-3333-333333333301',
-  25,
-  'paid',
-  '2026-09-02',
-  now(),
-  '33333333-3333-3333-3333-333333333314'
-);
-
+select set_config('request.jwt.claims','{"role":"service_role"}',true);
+insert into public.labor_entries(id,worker_id,project_id,work_date,labor_cost_snapshot,status)
+values('33333333-3333-3333-3333-333333333315','33333333-3333-3333-3333-333333333301','33333333-3333-3333-3333-333333333302','2026-09-02',100,'Approved');
+select pg_temp.canonical_receipt('33333333-3333-3333-3333-333333333316','33333333-3333-3333-3333-333333333301',25,'33333333-3333-3333-3333-333333333302');
+update canonical_fixture set payment_id=(public.record_worker_payroll_settlement('canonical-reversal-two',
+ '33333333-3333-3333-3333-333333333301',null,125,'ACH','2026-09-02',null,
+ array['33333333-3333-3333-3333-333333333315']::uuid[],array[pg_temp.obligation('33333333-3333-3333-3333-333333333316')],array[]::uuid[],0)->>'payment_id')::uuid
+where fixture_id='33333333-3333-3333-3333-333333333316';
 create function pg_temp.fail_worker_payment_reversal()
 returns trigger
 language plpgsql
@@ -477,13 +451,13 @@ $$;
 create trigger worker_payment_reversal_injected_failure
 before update on public.worker_reimbursements
 for each row
-when (old.payment_id = '33333333-3333-3333-3333-333333333314'::uuid)
+when (old.payment_id = pg_temp.fixture_payment('33333333-3333-3333-3333-333333333316')::uuid)
 execute function pg_temp.fail_worker_payment_reversal();
 
 set local role authenticated;
 set local "request.jwt.claims" = '{"sub":"33333333-3333-3333-3333-333333333301","role":"authenticated","app_metadata":{"role":"owner"}}';
 select throws_ok(
-  $$ select public.reverse_worker_payment_atomic('33333333-3333-3333-3333-333333333314', 'worker-payment-reversal:33333333-3333-3333-3333-333333333314') $$,
+  $$ select public.reverse_worker_payment_atomic(pg_temp.fixture_payment('33333333-3333-3333-3333-333333333316'), 'worker-payment-reversal:33333333-3333-3333-3333-333333333314') $$,
   'P0001',
   'injected reimbursement reversal failure',
   'worker reversal dependency-write failure aborts the transaction'
@@ -491,11 +465,11 @@ select throws_ok(
 reset role;
 set local "request.jwt.claims" = '';
 drop trigger worker_payment_reversal_injected_failure on public.worker_reimbursements;
-select is((select count(*) from public.worker_payments where id = '33333333-3333-3333-3333-333333333314'), 1::bigint, 'failed worker reversal preserves the payment');
-select is((select worker_payment_id from public.labor_entries where id = '33333333-3333-3333-3333-333333333315'), '33333333-3333-3333-3333-333333333314'::uuid, 'failed worker reversal preserves the labor link');
-select is((select status from public.labor_entries where id = '33333333-3333-3333-3333-333333333315'), 'Paid', 'failed worker reversal preserves labor status');
-select is((select payment_id from public.worker_reimbursements where id = '33333333-3333-3333-3333-333333333316'), '33333333-3333-3333-3333-333333333314'::uuid, 'failed worker reversal preserves reimbursement link');
-select is((select count(*) from public.worker_payment_reversals where payment_id = '33333333-3333-3333-3333-333333333314'), 0::bigint, 'failed worker reversal rolls back its replay ledger row');
+select is((select count(*) from public.worker_payments where id = pg_temp.fixture_payment('33333333-3333-3333-3333-333333333316')), 1::bigint, 'failed worker reversal preserves the payment');
+select is((select worker_payment_id from public.labor_entries where id = '33333333-3333-3333-3333-333333333315'), pg_temp.fixture_payment('33333333-3333-3333-3333-333333333316')::uuid, 'failed worker reversal preserves the labor link');
+select is((select status from public.labor_entries where id = '33333333-3333-3333-3333-333333333315'), 'Approved', 'failed worker reversal preserves original labor status');
+select is((select payment_id from public.worker_reimbursements where id = pg_temp.obligation('33333333-3333-3333-3333-333333333316')), pg_temp.fixture_payment('33333333-3333-3333-3333-333333333316')::uuid, 'failed worker reversal preserves reimbursement link');
+select is((select count(*) from public.worker_payment_reversals where payment_id = pg_temp.fixture_payment('33333333-3333-3333-3333-333333333316')), 0::bigint, 'failed worker reversal rolls back its replay ledger row');
 
 insert into public.ap_bills (id, vendor_name, amount, paid_amount, balance_amount, status)
 values ('33333333-3333-3333-3333-333333333320', 'Atomic Draft Vendor', 100, 0, 100, 'Draft');

@@ -49,3 +49,24 @@ for (const fault of [
     expect(calls).toBeLessThanOrEqual(2);
   });
 }
+
+it("uses the declared stable identity for operation state rows", async () => {
+  const client = createClient("http://127.0.0.1:54321", "synthetic", {
+    auth: { persistSession: false },
+    global: {
+      fetch: async (input) => {
+        expect(new URL(String(input)).searchParams.get("order")).toBe("expense_id.asc");
+        return new Response(JSON.stringify([{ expense_id: "expense-1" }]), {
+          headers: { "Content-Type": "application/json", "Content-Range": "0-0/1" },
+        });
+      },
+    },
+  });
+  await expect(
+    readCompleteRows(
+      () => client.from("expense_operations").select("*", { count: "exact" }),
+      "Review",
+      "expense_id"
+    )
+  ).resolves.toEqual({ data: [{ expense_id: "expense-1" }], error: null });
+});

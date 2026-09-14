@@ -61,9 +61,11 @@ select ok(
       'public.update_invoice_atomic(uuid,jsonb,jsonb)'::regprocedure,
       'public.void_payment_received_atomic(uuid)'::regprocedure
     ]::oid[])
-      and procedure.prosecdef
+      and (procedure.prosecdef is distinct from (procedure.proname in ('record_worker_payroll_settlement','record_worker_reimbursement_payment_atomic'))
+        or procedure.proowner <> 'postgres'::regrole
+        or procedure.proconfig is distinct from array['search_path=""']::text[])
   ),
-  'All nine protected financial functions remain security invoker'
+  'Protected functions match exact invoker/definer contract, postgres ownership and empty search_path'
 );
 
 select is(

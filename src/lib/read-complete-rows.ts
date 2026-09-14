@@ -11,7 +11,8 @@ type ReadQuery<T> = PromiseLike<{
 
 export async function readCompleteRows<T>(
   query: () => ReadQuery<T>,
-  source = "ledger"
+  source = "ledger",
+  identityColumn = "id"
 ): Promise<{ data: T[]; error: null }> {
   // ponytail: 10,000 rows per source; a snapshot aggregate RPC is required beyond this bounded read.
   const pageSize = 500;
@@ -22,7 +23,7 @@ export async function readCompleteRows<T>(
   const signal = AbortSignal.timeout(30000);
   for (let offset = 0; offset < ceiling; offset += pageSize) {
     const page = await query()
-      .order("id", { ascending: true })
+      .order(identityColumn, { ascending: true })
       .range(offset, offset + pageSize - 1)
       .abortSignal(signal);
     if (page.error) throw new Error(`${source} unavailable: ${page.error.message}`);
@@ -41,7 +42,7 @@ export async function readCompleteRows<T>(
     if (page.data.length !== Math.min(pageSize, expected - offset))
       throw new Error("Complete ledger read unavailable: truncated or changing page");
     for (const row of page.data) {
-      const id = (row as { id?: unknown }).id;
+      const id = (row as Record<string, unknown>)[identityColumn];
       if (typeof id !== "string" || !id || ids.has(id))
         throw new Error("Complete ledger read unavailable: missing or duplicate row identity");
       ids.add(id);

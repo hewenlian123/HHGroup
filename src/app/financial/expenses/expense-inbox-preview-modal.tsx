@@ -1,5 +1,6 @@
 "use client";
 
+import { ExpenseOperationReview } from "@/components/financial/expense-operation-review";
 import { expenseRequiresReceiptReview } from "@/lib/expense-workflow-status";
 
 import "./expenses-ui-theme.css";
@@ -569,6 +570,17 @@ export function ExpenseInboxPreviewModal({
     Record<string, boolean>
   >({});
 
+  const [attachmentExpenseId, setAttachmentExpenseId] = React.useState(expense?.id);
+  // Reset before commit: receipt effects must never combine a new ID with prior evidence.
+  if (attachmentExpenseId !== expense?.id) {
+    setAttachmentExpenseId(expense?.id);
+    setAttachments(expense ? getExpenseDisplayAttachments(expense) : []);
+    setSecureReceiptItems([]);
+    setThumbById({});
+    setPreviewThumbSignedByDedupeKey({});
+    setPreviewThumbErrorByKey({});
+  }
+
   const expensePreviewRef = React.useRef(expense);
   const attachmentsPreviewRef = React.useRef(attachments);
 
@@ -966,17 +978,25 @@ export function ExpenseInboxPreviewModal({
     };
   }, [attachments, expense, open, receiptItems]);
 
+  const secureReceiptsMatchCurrent =
+    secureReceiptItems.length === receiptItems.length &&
+    receiptItems.every(
+      (item, index) =>
+        expenseAttachmentStorageDedupeKey(item.url) ===
+        expenseAttachmentStorageDedupeKey(secureReceiptItems[index]!.url)
+    );
   const receiptItemsRef = React.useRef(
-    secureReceiptItems.length > 0 ? secureReceiptItems : receiptItems
+    secureReceiptsMatchCurrent ? secureReceiptItems : receiptItems
   );
   React.useEffect(() => {
-    receiptItemsRef.current = secureReceiptItems.length > 0 ? secureReceiptItems : receiptItems;
-  }, [receiptItems, secureReceiptItems]);
+    receiptItemsRef.current = secureReceiptsMatchCurrent ? secureReceiptItems : receiptItems;
+  }, [receiptItems, secureReceiptItems, secureReceiptsMatchCurrent]);
 
   const refreshSecureReceiptItems = React.useCallback(async () => {
     const currentExpense = expensePreviewRef.current;
     if (!currentExpense) return [];
     const manifest = await fetchExpenseReceiptManifest(currentExpense.id);
+    if (expensePreviewRef.current?.id !== currentExpense.id) return [];
     const secure = manifest.items.map(receiptApiItemToExpenseReceiptItem);
     receiptItemsRef.current = secure;
     setSecureReceiptItems(secure);
@@ -1409,7 +1429,7 @@ export function ExpenseInboxPreviewModal({
         });
         return;
       }
-      if (!inboxUploadPreview) return;
+      if (!inlineReviewWorkspace && !inboxUploadPreview) return;
       if (previewNav?.canNext) {
         focusNextReviewRef.current = true;
         previewNav.onNext();
@@ -2395,7 +2415,7 @@ export function ExpenseInboxPreviewModal({
                       INPUT_CLASS,
                       "financial-nums text-base font-semibold tabular-nums"
                     )}
-                    disabled={saving}
+                    disabled={saving || Boolean(expense.workerId)}
                     aria-invalid={Boolean(reviewErrors.amount) || undefined}
                     aria-describedby={reviewErrors.amount ? "edit-expense-amount-error" : undefined}
                   />
@@ -2415,7 +2435,7 @@ export function ExpenseInboxPreviewModal({
                       setReviewFeedback(null);
                     }}
                     className={INPUT_CLASS}
-                    disabled={saving}
+                    disabled={saving || Boolean(expense.workerId)}
                   />
                 </div>
                 <div data-expense-review-field="classification" className="space-y-1.5">
@@ -2543,7 +2563,7 @@ export function ExpenseInboxPreviewModal({
                       setReviewFeedback(null);
                     }}
                     className={INPUT_CLASS}
-                    disabled={saving}
+                    disabled={saving || Boolean(expense.workerId)}
                   />
                 </div>
                 {showCorePaymentAccount ? (
@@ -2791,8 +2811,8 @@ export function ExpenseInboxPreviewModal({
             </ProgressiveDisclosure>
           </div>
         )}
+        <ExpenseOperationReview expenseId={expense.id} disabled={saving || markBusy || reviewDraftDirty} />
       </div>
-
       {inlineReviewWorkspace ? (
         <div
           data-expense-inline-review-actions
@@ -2843,6 +2863,10 @@ export function ExpenseInboxPreviewModal({
             {reviewStatusMessage}
           </div>
           <div className="flex flex-wrap items-center justify-end gap-2">
+            <Button type="button" variant="ghost" disabled={saving || markBusy || reviewDraftDirty} onClick={() => {
+              const compose = panelRef.current?.querySelector<HTMLDetailsElement>("[data-expense-operation-compose]");
+              if (compose) { compose.open = true; compose.querySelector<HTMLTextAreaElement>("textarea")?.focus(); }
+            }}>Request Info</Button>
             <Button
               type="button"
               variant="outline"
@@ -2869,9 +2893,9 @@ export function ExpenseInboxPreviewModal({
                 aria-keyshortcuts="Meta+Enter Control+Enter"
               >
                 <SubmitSpinner loading={saving || markBusy} className="mr-2" />
-                {inboxUploadPreview && previewNav?.canNext
+                {(inlineReviewWorkspace || inboxUploadPreview) && previewNav?.canNext
                   ? "Approve & Next"
-                  : inboxUploadPreview
+                  : (inlineReviewWorkspace || inboxUploadPreview)
                     ? "Approve"
                     : "Mark Done"}
               </Button>
@@ -2964,9 +2988,9 @@ export function ExpenseInboxPreviewModal({
                 onClick={() => void handleMarkReviewed()}
               >
                 <SubmitSpinner loading={markBusy} className="mr-2" />
-                {inboxUploadPreview && previewNav?.canNext
+                {(inlineReviewWorkspace || inboxUploadPreview) && previewNav?.canNext
                   ? "Approve & Next"
-                  : inboxUploadPreview
+                  : (inlineReviewWorkspace || inboxUploadPreview)
                     ? "Approve"
                     : "Mark Done"}
               </Button>

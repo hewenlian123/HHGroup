@@ -26,7 +26,7 @@ function fallbackResult(reason?: string): ReceiptOcrResult {
   return {
     vendor_name: "Unknown",
     total_amount: 0,
-    purchase_date: today(),
+    purchase_date: "",
     items: [],
     ocr_status: "fallback",
     ocr_reason: reason,

@@ -2061,7 +2061,7 @@ body:has([data-hh-theme="neo-dark"] .expense-new-dialog[data-state="open"])
   .expense-receipt-review-stage {
     display: none;
   }
-  .expense-review-inline-evidence {
+  .expense-review-workspace .expense-review-inline-evidence {
     display: block;
   }
   .expense-detail-panel {
@@ -3154,5 +3154,45 @@ body:has(.expenses-page-shell) [data-workspace-navigation] {
 @media (min-width: 768px) {
   body:has(.expenses-page-shell) [data-workspace-navigation] {
     padding-inline: 24px;
+  }
+}
+
+/* Tablet review uses the current page-shell wrapper and scrolls each pane internally. */
+@media (min-width: 768px) and (max-width: 1199px) {
+  .expenses-ui[data-expenses-list-page="inbox"][data-expense-workspace-detail-open="true"],
+  .expenses-ui[data-expenses-list-page="inbox"][data-expense-workspace-detail-open="true"]
+    > [aria-busy],
+  .expenses-ui[data-expenses-list-page="inbox"][data-expense-workspace-detail-open="true"]
+    [data-finance-review-shell] {
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .expenses-ui[data-expenses-list-page="inbox"][data-expense-workspace-detail-open="true"]
+    [data-finance-review-shell]
+    > :not([data-review-region="workspace"]) {
+    flex-shrink: 0;
+  }
+  .expenses-ui[data-expenses-list-page="inbox"][data-expense-workspace-detail-open="true"]
+    .finance-review-workspace {
+    flex: 1;
+    min-height: 0;
+  }
+  .expenses-ui[data-expenses-list-page="inbox"][data-expense-workspace-detail-open="true"]
+    :is([data-receipt-inbox-workspace], [data-expense-detail-panel]) {
+    height: 100%;
+    min-height: 0;
+    max-height: 100%;
+  }
+  .expenses-ui[data-expenses-list-page="inbox"][data-expense-workspace-detail-open="true"]
+    [data-inbox-pagination] {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .expenses-ui[data-expenses-list-page="inbox"][data-expense-workspace-detail-open="true"]
+    [data-expenses-pagination-controls]
+    > div {
+    flex-wrap: nowrap;
   }
 }

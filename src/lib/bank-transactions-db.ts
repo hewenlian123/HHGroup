@@ -177,23 +177,11 @@ export async function linkBankTransactionToExpense(
   expenseId: string
 ): Promise<boolean> {
   const c = client();
-  const { data: tx } = await c
-    .from("bank_transactions")
-    .select("id, linked_expense_id")
-    .eq("id", bankTxId)
-    .maybeSingle();
-  if (!tx || tx.linked_expense_id) return false;
-  const now = new Date().toISOString().slice(0, 10);
-  const { error } = await c
-    .from("bank_transactions")
-    .update({
-      linked_expense_id: expenseId,
-      status: "reconciled",
-      reconciled_at: now,
-      reconciled_by: "owner",
-    })
-    .eq("id", bankTxId);
-  if (error) return false;
+  const { error } = await c.rpc("match_bank_expense_operation", {
+    p_bank_id: bankTxId,
+    p_expense_id: expenseId,
+  });
+  if (error) throw new Error(error.message ?? "Bank match could not be confirmed.");
   return true;
 }
 

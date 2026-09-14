@@ -793,7 +793,7 @@ export type ExpenseListBulkActionsApi = {
   projects: { id: string; name: string | null }[];
   categories: string[];
   paymentAccounts: PaymentAccountRow[];
-  runMarkDone: (ids: string[]) => Promise<void>;
+  runMarkDone: (ids: string[]) => Promise<boolean | void>;
   runSetProject: (ids: string[], projectId: string | null) => Promise<void>;
   runSetCategory: (ids: string[], category: string) => Promise<void>;
   runSetPayment: (ids: string[], paymentAccountId: string | null) => Promise<void>;

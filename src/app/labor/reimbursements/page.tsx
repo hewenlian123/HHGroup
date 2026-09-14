@@ -1,4 +1,6 @@
 "use client";
+import { ExpenseOperationsWorkspaceNav } from "@/components/financial/expense-operations-workspace-nav";
+import { ReimbursementBalances } from "@/app/financial/workers/reimbursement-balances";
 import { LaborReadState } from "@/components/labor/labor-read-state";
 
 import "../../financial/expenses/expenses-ui-theme.css";
@@ -756,6 +758,8 @@ function WorkerReimbursementsPageContent() {
       <LaborReadState title="Worker reimbursements" busy={loading} retry={() => void load()} />
     );
 
+  if (searchParams.get("view") === "balances") return <ReimbursementBalances />;
+
   return (
     <div
       data-reimbursements-workspace
@@ -780,6 +784,7 @@ function WorkerReimbursementsPageContent() {
           </span>
         </div>
       </div>
+      <ExpenseOperationsWorkspaceNav showHeader={false} />
       <div className="hidden md:block">
         <PageHeader
           className="gap-2 border-b border-[color:var(--hh-border)] pb-4 lg:items-end lg:gap-x-5 [&_h1]:!text-hh-page-title [&_h1]:!tracking-normal [&_p]:!mt-1 [&_p]:!max-w-xl [&_p]:!text-hh-body"
@@ -1518,6 +1523,9 @@ function WorkerReimbursementsPageContent() {
         Legacy statuses are shown as recorded. Payment requires a matching approved receipt;
         verified balances are available in the ledger.
       </p>
+      <Button asChild variant="outline">
+        <Link href="/labor/reimbursements?view=balances">Worker balances and ledger</Link>
+      </Button>
 
       {/* Create Worker Payment (batch) modal */}
       <Dialog

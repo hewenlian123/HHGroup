@@ -51,9 +51,9 @@ export function FinanceReviewPageShell({
           </div>
           <div className="finance-review-header-actions">{actions}</div>
         </header>
-        <div data-review-region="sources">
+        {pathname === "/financial/inbox/worker" && <div data-review-region="sources">
           <ReceiptInboxSourceNav />
-        </div>
+        </div>}
         <div className="finance-review-status" data-review-region="status">
           {status}
         </div>

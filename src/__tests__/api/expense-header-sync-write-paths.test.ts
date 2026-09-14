@@ -6,12 +6,14 @@ const mocks = vi.hoisted(() => ({
   getServerSupabaseInternalNoStore: vi.fn(),
   requireAuthenticatedUser: vi.fn(),
   requireSupabaseOwnerOrAdminWithClient: vi.fn(),
+  requireSupabaseOwnerOrAdminRequestClient: vi.fn(),
   syncExpenseHeaderAmountFromLinesWithClient: vi.fn(),
 }));
 
 vi.mock("@/lib/auth-boundary", () => ({
   requireAuthenticatedUser: mocks.requireAuthenticatedUser,
   requireSupabaseOwnerOrAdminWithClient: mocks.requireSupabaseOwnerOrAdminWithClient,
+  requireSupabaseOwnerOrAdminRequestClient: mocks.requireSupabaseOwnerOrAdminRequestClient,
 }));
 
 vi.mock("@/lib/supabase-server", async (importOriginal) => {
@@ -46,18 +48,16 @@ function approvedInboxDraft(amount: number) {
 function createApproveInboxSupabase(events: string[]) {
   return {
     from(table: string) {
-      if (table !== "expenses") throw new Error(`Unexpected table ${table}`);
-      return {
-        update(payload: Record<string, unknown>) {
-          return {
-            async eq() {
-              events.push(`status:${String(payload.status)}`);
-              return { error: null };
-            },
-          };
-        },
-      };
+      if (table !== "expense_operations") throw new Error(`Unexpected table ${table}`);
+      return { select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { revision: 7 }, error: null }) }) }) };
     },
+    rpc: vi.fn(async (name: string, args: Record<string, unknown>) => {
+      expect(name).toBe("transition_expense_operation");
+      expect(args).toMatchObject({ p_expense_id: "expense-1", p_expected_revision: 7, p_action: "approve", p_payload: { cost_allocation: "project_cost" } });
+      expect(args.p_request_id).toEqual(expect.any(String));
+      events.push("atomic:approve");
+      return { error: null, data: { revision: 8 } };
+    }),
   };
 }
 
@@ -105,12 +105,16 @@ describe("expense header sync write paths", () => {
         context: { email: "owner@example.com", role: "owner", user: { id: "owner-1" } },
         client: createClient(),
       }));
+    mocks.requireSupabaseOwnerOrAdminRequestClient.mockReset().mockImplementation(async () => ({
+      ok: true, client: mocks.getServerSupabaseInternalNoStore(),
+      context: { user: { id: "owner-1" } },
+    }));
     mocks.syncExpenseHeaderAmountFromLinesWithClient.mockReset();
     mocks.requireAuthenticatedUser.mockResolvedValue({ ok: true, user: { id: "user-1" } });
   });
 
   it.each(["INBOX-UP-test", undefined])(
-    "syncs receipt header before approval with reference %s",
+    "validates and approves in one versioned transaction with reference %s",
     async (referenceNo) => {
       const events: string[] = [];
       const supabase = createApproveInboxSupabase(events);
@@ -138,11 +142,8 @@ describe("expense header sync write paths", () => {
       );
 
       expect(response.status).toBe(200);
-      expect(mocks.syncExpenseHeaderAmountFromLinesWithClient).toHaveBeenCalledWith(
-        supabase,
-        "expense-1"
-      );
-      expect(events).toEqual(["sync:52.34", "status:approved"]);
+      expect(mocks.syncExpenseHeaderAmountFromLinesWithClient).not.toHaveBeenCalled();
+      expect(events).toEqual(["atomic:approve"]);
     }
   );
 

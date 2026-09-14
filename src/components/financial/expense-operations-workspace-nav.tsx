@@ -5,25 +5,26 @@ import { usePathname, useSearchParams } from "next/navigation";
 
 import { cn } from "@/lib/utils";
 
-type ExpenseOperationsSurface = "overview" | "expenses" | "inbox" | "reimbursements";
+type ExpenseOperationsSurface = "intake" | "expenses" | "inbox" | "reimbursements";
 
 const SURFACES: Array<{
   id: ExpenseOperationsSurface;
   label: string;
   pathname: string;
 }> = [
-  { id: "overview", label: "Overview", pathname: "/financial/expenses/overview" },
-  { id: "expenses", label: "Expenses", pathname: "/financial/expenses" },
-  { id: "inbox", label: "Receipts", pathname: "/financial/inbox" },
+  { id: "inbox", label: "Review", pathname: "/financial/inbox" },
+  { id: "expenses", label: "Ledger", pathname: "/financial/expenses" },
+  { id: "intake", label: "Intake", pathname: "/financial/expenses/intake" },
   { id: "reimbursements", label: "Reimbursements", pathname: "/labor/reimbursements" },
 ];
 
 function surfaceForPathname(pathname: string): ExpenseOperationsSurface | null {
+  if (pathname.startsWith("/financial/expenses/intake") || pathname.startsWith("/financial/inbox/worker")) return "intake";
   return SURFACES.find((surface) => pathname.startsWith(surface.pathname))?.id ?? null;
 }
 
 function isExpenseRecordSurface(surface: ExpenseOperationsSurface | null): boolean {
-  return surface === "overview" || surface === "expenses" || surface === "inbox";
+  return surface === "intake" || surface === "expenses" || surface === "inbox";
 }
 
 export function ExpenseOperationsWorkspaceNav({
@@ -38,16 +39,13 @@ export function ExpenseOperationsWorkspaceNav({
   const activeSurface = surfaceForPathname(pathname);
   const workerInboxActive = pathname.startsWith("/financial/inbox/worker");
 
-  const surfaces =
-    activeSurface === "reimbursements"
-      ? SURFACES.filter((s) => s.id !== "overview")
-      : SURFACES.filter((s) => s.id !== "reimbursements");
+  const surfaces = SURFACES;
 
   const hrefFor = (target: (typeof SURFACES)[number]) => {
     const next = new URLSearchParams();
     const workerId = searchParams.get("workerId")?.trim();
     const targetUsesWorkerInbox =
-      target.id === "inbox" &&
+      target.id === "intake" &&
       (workerInboxActive || (activeSurface === "reimbursements" && Boolean(workerId)));
     const targetPathname = targetUsesWorkerInbox ? "/financial/inbox/worker" : target.pathname;
 

@@ -16,7 +16,6 @@ vi.mock("@/lib/receipt-queue", () => mocks);
 
 import { finalizeReceiptQueueExpense } from "@/lib/receipt-queue-expense";
 
-const client = {} as SupabaseClient;
 const row: ReceiptQueueRow = {
   id: "queue-1",
   status: "pending",
@@ -40,44 +39,31 @@ const row: ReceiptQueueRow = {
 };
 
 describe("receipt finalization availability", () => {
-  beforeEach(() => {
-    vi.resetAllMocks();
-    mocks.createQuickExpense.mockResolvedValue({ id: "expense-1" });
-    mocks.updateExpenseForReview.mockResolvedValue({ id: "expense-1" });
+  beforeEach(() => vi.resetAllMocks());
+  it.each(["confirm", "bulk"] as const)("retains failures and retries the same atomic identity for %s", async mode => {
+    const rpc = vi.fn().mockResolvedValueOnce({ error: { message: "Transfer failed" } })
+      .mockResolvedValue({ data: { expense_id: "expense-1" }, error: null });
+    const c = { rpc } as unknown as SupabaseClient;
+    await expect(finalizeReceiptQueueExpense(c, row, mode)).rejects.toThrow("Transfer failed");
+    expect(mocks.notifyReceiptQueueChanged).not.toHaveBeenCalled();
+    await finalizeReceiptQueueExpense(c, row, mode);
+    expect(rpc).toHaveBeenCalledTimes(2);
+    expect(rpc).toHaveBeenLastCalledWith("finalize_receipt_queue_operation", { p_receipt_id: row.id, p_expense_id: null });
+    expect(mocks.createQuickExpense).not.toHaveBeenCalled();
+    expect(mocks.deleteReceiptQueueRow).not.toHaveBeenCalled();
+    expect(mocks.notifyReceiptQueueChanged).toHaveBeenCalledTimes(1);
   });
-
-  it.each(["confirm", "bulk"] as const)(
-    "retains the queue when the worker link fails during %s and retries the same expense intent",
-    async (mode) => {
-      mocks.updateExpenseForReview.mockResolvedValueOnce(null);
-
-      await expect(finalizeReceiptQueueExpense(client, row, mode)).rejects.toThrow();
-      expect(mocks.deleteReceiptQueueRow).not.toHaveBeenCalled();
-      expect(mocks.notifyReceiptQueueChanged).not.toHaveBeenCalled();
-
-      await finalizeReceiptQueueExpense(client, row, mode);
-
-      expect(mocks.createQuickExpense).toHaveBeenCalledTimes(2);
-      for (const [payload] of mocks.createQuickExpense.mock.calls) {
-        expect(payload).toMatchObject({
-          idempotencyKey: "receipt-queue:queue-1",
-          initialStatus: "needs_review",
-          date: "2026-09-05",
-          vendorName: "Supplier",
-          totalAmount: 25.5,
-          sourceType: "reimbursement",
-          category: "Materials",
-          projectId: "project-1",
-          paymentAccountId: "account-1",
-        });
-      }
-      expect(mocks.updateExpenseForReview).toHaveBeenLastCalledWith("expense-1", {
-        workerId: "worker-1",
-      });
-      expect(mocks.deleteReceiptQueueRow).toHaveBeenCalledExactlyOnceWith(client, "queue-1");
-      expect(mocks.notifyReceiptQueueChanged).toHaveBeenCalledTimes(1);
-    }
-  );
+  it("concurrent callers receive the same failure instead of false success", async () => {
+    const rpc = vi.fn().mockResolvedValue({ error: { message: "Blocked canonical Worker source" } });
+    const c = { rpc } as unknown as SupabaseClient;
+    const first = finalizeReceiptQueueExpense(c, row, "confirm");
+    const second = finalizeReceiptQueueExpense(c, row, "bulk");
+    expect(first).toBe(second);
+    const results = await Promise.allSettled([first, second]);
+    expect(results.map(r => r.status)).toEqual(["rejected", "rejected"]);
+    expect(rpc).toHaveBeenCalledTimes(1);
+    expect(mocks.notifyReceiptQueueChanged).not.toHaveBeenCalled();
+  });
 });
 
 function attachmentClient() {
@@ -136,40 +122,17 @@ function attachmentClient() {
 }
 
 describe("receipt metadata retry integrity", () => {
-  it.each(["worker link", "expense reload"])(
-    "keeps exactly one attachment after %s fails following metadata commit",
-    async (failure) => {
-      const fixture = attachmentClient();
-      mocks.createQuickExpense.mockResolvedValue({ id: "expense-1" });
-      mocks.updateExpenseForReview.mockResolvedValue({ id: "expense-1" });
-      mocks.addExpenseAttachment.mockImplementation((expenseId, attachment) =>
-        addExpenseAttachmentWithClient(fixture.client, expenseId, attachment)
-      );
-      mocks.deleteReceiptQueueRow.mockReset();
-      if (failure === "worker link") mocks.updateExpenseForReview.mockResolvedValueOnce(null);
-      else fixture.failReadAfterCommit();
-      const uploadedRow = {
-        ...row,
-        id: "71717171-7171-4171-8171-717171717111",
-        storage_path: "receipt-queue/source.jpg",
-      };
-      await expect(
-        finalizeReceiptQueueExpense(fixture.client, uploadedRow, "confirm")
-      ).rejects.toThrow();
-      expect(fixture.attachments.size).toBe(1);
-      expect(mocks.deleteReceiptQueueRow).not.toHaveBeenCalled();
-      await finalizeReceiptQueueExpense(fixture.client, uploadedRow, "confirm");
-      expect(fixture.attachments.size).toBe(1);
-      expect([...fixture.attachments.values()][0]).toMatchObject({
-        entity_id: "expense-1",
-        file_path: uploadedRow.storage_path,
-      });
-      expect(mocks.deleteReceiptQueueRow).toHaveBeenCalledExactlyOnceWith(
-        fixture.client,
-        uploadedRow.id
-      );
-    }
-  );
+  it("retains exactly one attachment after expense reload fails following metadata commit", async () => {
+    const fixture = attachmentClient();
+    const attachment = { id: "71717171-7171-4171-8171-717171717111", fileName: "receipt.jpg",
+      mimeType: "image/jpeg", size: 100, url: "receipt-queue/source.jpg", createdAt: "2026-09-05" };
+    fixture.failReadAfterCommit();
+    await expect(addExpenseAttachmentWithClient(fixture.client, "expense-1", attachment)).rejects.toThrow();
+    expect(fixture.attachments.size).toBe(1);
+    await addExpenseAttachmentWithClient(fixture.client, "expense-1", attachment);
+    expect(fixture.attachments.size).toBe(1);
+    expect([...fixture.attachments.values()][0]).toMatchObject({ entity_id: "expense-1", file_path: attachment.url });
+  });
 
   it("rejects a reused attachment identity for a different expense or file", async () => {
     const fixture = attachmentClient();

@@ -387,6 +387,7 @@ export default function BankReconcileClient() {
       const { data: expRows, error: expErr } = await supabase
         .from("expenses")
         .select("id,expense_date,vendor_name,total")
+        .eq("total", target)
         .gte("expense_date", rangeStart)
         .lte("expense_date", rangeEnd)
         .order("expense_date", { ascending: false })
@@ -1155,6 +1156,9 @@ export default function BankReconcileClient() {
             ) : (
               <>
                 <h2 className="text-base font-semibold text-foreground mb-2">Reconcile</h2>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Unlink preserves source and audit history. Reassigning an unlinked bank transaction to a different Expense is not supported in this phase.
+                </p>
                 <p className="text-sm text-muted-foreground mb-4">
                   {selected.description} —{" "}
                   <span className={amountClass(selected.amount >= 0 ? "income" : "expense")}>

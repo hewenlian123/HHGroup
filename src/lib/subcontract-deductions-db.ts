@@ -132,14 +132,16 @@ export async function getSubcontractDeductionsByExpenseIds(
   const byExpense = new Map<string, SubcontractDeductionRow>();
   if (ids.length === 0) return byExpense;
   const c = client(explicitClient);
-  const { data, error } = await c.from(TABLE).select("*").in("expense_id", ids);
-  if (error) {
-    if (isMissingTable(error)) return byExpense;
-    throw new Error(error.message ?? "Failed to load subcontract deductions.");
-  }
-  for (const row of (data ?? []) as Record<string, unknown>[]) {
-    const mapped = mapDeductionRow(row);
-    if (mapped.expense_id) byExpense.set(mapped.expense_id, mapped);
+  for (let i = 0; i < ids.length; i += 100) {
+    const { data, error } = await c
+      .from(TABLE)
+      .select("*")
+      .in("expense_id", ids.slice(i, i + 100));
+    if (error) throw new Error(error.message ?? "Failed to load subcontract deductions.");
+    for (const row of (data ?? []) as Record<string, unknown>[]) {
+      const mapped = mapDeductionRow(row);
+      if (mapped.expense_id) byExpense.set(mapped.expense_id, mapped);
+    }
   }
   return byExpense;
 }
