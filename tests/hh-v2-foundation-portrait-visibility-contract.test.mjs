@@ -45,8 +45,8 @@ test("Estimate portrait builder swaps the mobile child for the desktop-grid chil
   const editor = source("src/app/estimates/_components/estimate-editor.tsx");
   const portrait = builderPortraitBlock(css);
 
-  assert.match(editor, /className="mb-4 space-y-3 lg:hidden"/);
-  assert.match(editor, /className="hidden lg:block"/);
+  assert.match(editor, /className="eb-scope-builder-region min-w-0"/);
+  assert.match(editor, /className="estimate-stitch-rows"/);
   assert.match(
     portrait,
     /\.estimate-builder-new \.eb-scope-builder-region > \.lg\\:hidden\s*\{\s*display:\s*none;\s*\}/

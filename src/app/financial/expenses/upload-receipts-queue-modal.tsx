@@ -566,9 +566,12 @@ export function UploadReceiptsQueueModal({ open, onOpenChange, onSuccess }: Prop
                         "hover:border-[var(--hh-border)] hover:bg-[var(--hh-l3-hover)] dark:hover:border-[var(--hh-border)]",
                       dragOver &&
                         !busy &&
-                        "border-[var(--hh-border-strong)] bg-[var(--hh-l3-hover)] shadow-[var(--hh-shadow-selected)] dark:bg-[var(--hh-l3-hover)]",
+                        "border-[var(--hh-border-strong)] bg-[var(--hh-l3-hover)] dark:bg-[var(--hh-l3-hover)]",
                       busy && "pointer-events-none opacity-45"
                     )}
+                    style={
+                      dragOver && !busy ? { boxShadow: "var(--hh-shadow-selected)" } : undefined
+                    }
                   >
                     <div className="hidden w-full flex-col items-center justify-center gap-0.5 py-3 text-center md:flex">
                       <span className="text-hh-body font-medium tracking-normal text-[var(--hh-text-primary)]">

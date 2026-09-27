@@ -45,7 +45,7 @@ test("Figma v2 global search, create action, and mobile nav use semantic light r
   const bottomNav = source("src/components/layout/bottom-nav.tsx");
 
   assert.match(topbar, /\/\* \+ New[^]*?<DropdownMenuTrigger asChild>\s*<Button\s+size="sm"/);
-  assert.match(topbar, /!text-\[var\(--hh-action-primary-foreground\)\]/);
+  assert.match(topbar, /!text-\[var\(--shell-action-text\)\]/);
   assert.match(topbar, /bg-\[var\(--hh-surface-subtle\)\]/);
   assert.doesNotMatch(topbar, /data-operational-theme-toggle|<Moon|<Sun/);
   assert.match(

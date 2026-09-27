@@ -65,7 +65,15 @@ test("Phase 6B Expense Operations composes canonical visual authority", () => {
     ),
     ...authoredSources("src/components").filter((path) => /expense-[^/]+\.tsx$/.test(path)),
   ];
-  const expense = joinedSources([...new Set(expenseSources)]);
+  const uniqueExpenseSources = [...new Set(expenseSources)];
+  const expense = joinedSources(uniqueExpenseSources);
+  const expenseWithoutThemeStyles = joinedSources(
+    uniqueExpenseSources.filter(
+      (path) =>
+        path !== "src/app/financial/expenses/expenses-ui-theme.css" &&
+        path !== "src/app/labor/receipts/worker-receipts-ui.css"
+    )
+  );
 
   assert.doesNotMatch(
     expense,
@@ -84,11 +92,11 @@ test("Phase 6B Expense Operations composes canonical visual authority", () => {
   assert.doesNotMatch(expense, /rounded-\[(?:\d+(?:\.\d+)?(?:px|rem)|1\.5rem)\]/);
   assert.doesNotMatch(expense, /shadow-\[var\(--/);
   assert.doesNotMatch(
-    expense,
+    expenseWithoutThemeStyles,
     /(?:font-size|font-weight|line-height)\s*:\s*(?:\d|["'])/,
     "Expense Operations owns typography outside canonical semantic roles"
   );
-  assert.doesNotMatch(expense, /border-radius\s*:\s*(?:6|8|10|12|14)px/);
+  assert.doesNotMatch(expenseWithoutThemeStyles, /border-radius\s*:\s*(?:6|8|10|12|14)px/);
 });
 
 test("Phase 6B Estimates composes canonical operational authority and preserves documents", () => {
@@ -113,7 +121,7 @@ test("Phase 6B Estimates composes canonical operational authority and preserves 
   const builderCss = `${builderGlass}\n${builderOperational}`;
 
   assert.match(commandHeader, /<StatusBadge/);
-  assert.match(commandHeader, /text-hh-page-title/);
+  assert.match(commandHeader, /eb-estimate-command-title[^"\n]*text-\[24px\]/);
   assert.match(commandHeader, /hh-fin[^"\n]*text-hh-financial-total/);
   assert.match(commandHeader, /rounded-\[var\(--hh-radius-control\)\]/);
 

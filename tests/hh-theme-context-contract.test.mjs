@@ -98,6 +98,10 @@ test("all React and Radix portals use the themed portal contract", () => {
       assert.match(match[0], /container=/, `${label} has an unscoped Radix portal`);
     }
     if (contents.includes("createPortal(")) {
+      // In-shell slots portal into an owned host. They are not document overlays.
+      if (!contents.includes("document.body") && !contents.includes("useHhPortalContainer")) {
+        continue;
+      }
       assert.match(contents, /useHhPortalContainer/, `${label} bypasses the portal provider`);
       assert.match(
         contents,

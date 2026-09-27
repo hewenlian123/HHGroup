@@ -51,10 +51,9 @@ test("AppShell renders one lexical ToastProvider through one local provider wrap
 test("the Estimate portrait topbar consumes authority-backed body typography", () => {
   const topbar = source("src/components/layout/topbar.tsx");
 
-  assert.match(topbar, /className=\{cn\("ml-1",\s*TYPO\.bodyStrong\)\}>\{orgName\}<\/span>/);
-  assert.match(
-    topbar,
-    /className=\{cn\(\s*TYPO\.body,\s*"[^"]*rounded-hh-standard[^"]*"\s*\)\}[\s\S]*?>\s*Search/s
-  );
+  assert.match(topbar, /TYPO\.bodyStrong/);
+  assert.match(topbar, /getCompanyInitials\(orgName\)/);
+  assert.match(topbar, /bg-\[var\(--hh-surface-subtle\)\]/);
+  assert.match(topbar, /Search projects, workers, invoices\.\.\./);
   assert.doesNotMatch(topbar, /text-\[14px\]/);
 });

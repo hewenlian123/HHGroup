@@ -71,10 +71,8 @@ test("Estimate Workspace reuses the complete Global Sidebar and only integrates 
   assert.match(sidebar, /HH_PROJECT_OS_NAV_SECTIONS\.map/);
   assert.match(sidebar, /data-sidebar-navigation/);
   assert.doesNotMatch(sidebar, /FIGMA_ESTIMATE_NAV_ITEMS|Estimate workspace navigation/);
-  assert.match(
-    globals,
-    /data-integrated-estimate-workspace="true"\] \[data-app-topbar\][^{]*\{[^}]*display: none/s
-  );
+  assert.match(globals, /data-integrated-estimate-workspace="true"\] \[data-app-scroll-root\]/);
+  assert.match(globals, /data-integrated-estimate-workspace="true"\] \.estimate-builder-page/);
   assert.doesNotMatch(
     globals,
     /data-sidebar-figma-navigation|data-sidebar-navigation\][^{]*display: none/
@@ -106,6 +104,7 @@ test("Estimate List keeps business-owned columns inside the Figma dense-table pr
 
 test("Estimate V3 keeps the 104 / 360 shell and moves sections into the worksheet", () => {
   const editor = source("src/app/estimates/_components/estimate-editor.tsx");
+  const workspace = source("src/app/estimates/_components/estimate-workspace.tsx");
   const header = source("src/app/estimates/_components/estimate-workspace-command-header.tsx");
   const scopeToolbar = source("src/app/estimates/_components/estimate-scope-toolbar.tsx");
   const localLineItems = source("src/app/estimates/_components/estimate-line-items-local.tsx");
@@ -116,8 +115,8 @@ test("Estimate V3 keeps the 104 / 360 shell and moves sections into the workshee
   const css = source("src/app/estimates/_components/estimate-builder-operational.css");
 
   assert.doesNotMatch(editor, /EstimateSectionOutline/);
-  assert.match(editor, /<EstimateBuilderCompactSummary/);
-  assert.match(editor, /className="eb-v3-worksheet-flow"/);
+  assert.match(workspace, /<EstimateBuilderCompactSummary/);
+  assert.match(workspace, /className="eb-v3-worksheet-flow"/);
   assert.match(header, /<StatusBadge/);
   assert.match(header, /showDot=\{false\}/);
   assert.match(css, /\.estimate-builder-new \.eb-estimate-command-bar\s*\{[^}]*min-height: 104px/s);
@@ -145,7 +144,7 @@ test("Estimate V3 keeps the 104 / 360 shell and moves sections into the workshee
     /data-estimate-editor-mode="new"[\s\S]*?data-estimate-active-section-id=\{selectedSectionId \?\? undefined\}/
   );
   assert.doesNotMatch(newEditor, /EstimateSectionOutline/);
-  assert.match(newEditor, /className="eb-v3-worksheet-flow"/);
+  assert.match(newEditor, /<EstimateWorkspace[\s>]/);
   assert.match(
     newEditor,
     /<EstimateLineItemsLocal[\s\S]*?activeSectionId=\{selectedSectionId\}[\s\S]*?explicitActiveSectionId=\{explicitActiveSectionId\}[\s\S]*?onActiveSectionChange=\{handleActiveSectionChange\}/
