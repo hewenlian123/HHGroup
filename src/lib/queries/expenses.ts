@@ -1,14 +1,20 @@
-import {
-  getExpenses,
-  getExpenseCategories,
-  getSubcontractDeductionOptions,
-  getWorkers,
-  type Expense,
-  type SubcontractDeductionOption,
-} from "@/lib/data";
-import { defaultExpenseListSort, type ExpenseListSort } from "@/lib/expenses-db";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Expense } from "@/lib/expenses-db";
+import type { SubcontractDeductionOption } from "@/lib/subcontract-deductions-db";
+import { defaultExpenseListSort, type ExpenseListSort } from "@/lib/expense-domain";
+import type { PaymentAccountRow } from "@/lib/payment-accounts-db";
 
 export type { ExpenseListSort };
+
+export type ExpensesInitialData = {
+  sort: ExpenseListSort;
+  expenses: Expense[];
+  categories: string[];
+  workers: { id: string; name: string }[];
+  subcontractDeductionOptions: SubcontractDeductionOption[];
+  projects: { id: string; name: string | null; status?: string | null }[];
+  paymentAccounts: PaymentAccountRow[];
+};
 
 /** Shared stale window for expenses list + prefetch — reduces hover→nav duplicate refetches. */
 export const expenseListQueryStaleMs = 120_000;
@@ -24,9 +30,11 @@ export function buildExpensesQueryKey(sort: ExpenseListSort) {
 }
 
 export async function fetchExpenses(
-  sort: ExpenseListSort = defaultExpenseListSort
+  sort: ExpenseListSort = defaultExpenseListSort,
+  client?: SupabaseClient
 ): Promise<Expense[]> {
-  return getExpenses(sort, { includeLinkedBankTx: false });
+  const { getExpenses } = await import("@/lib/data");
+  return getExpenses(sort, { includeLinkedBankTx: false }, client);
 }
 
 export const expenseCategoriesQueryKey = ["expense_categories"] as const;
@@ -35,17 +43,24 @@ export const workersQueryKey = ["workers"] as const;
 
 export const subcontractDeductionOptionsQueryKey = ["subcontract_deduction_options"] as const;
 
-export async function fetchExpenseCategories(): Promise<string[]> {
-  return getExpenseCategories();
+export async function fetchExpenseCategories(client?: SupabaseClient): Promise<string[]> {
+  const { getExpenseCategories } = await import("@/lib/data");
+  return getExpenseCategories(false, client);
 }
 
-export async function fetchWorkers(): Promise<{ id: string; name: string }[]> {
-  const rows = await getWorkers();
+export async function fetchWorkers(
+  client?: SupabaseClient
+): Promise<{ id: string; name: string }[]> {
+  const { getWorkers } = await import("@/lib/data");
+  const rows = await getWorkers(client);
   return rows as { id: string; name: string }[];
 }
 
-export async function fetchSubcontractDeductionOptions(): Promise<SubcontractDeductionOption[]> {
-  return getSubcontractDeductionOptions();
+export async function fetchSubcontractDeductionOptions(
+  client?: SupabaseClient
+): Promise<SubcontractDeductionOption[]> {
+  const { getSubcontractDeductionOptions } = await import("@/lib/data");
+  return getSubcontractDeductionOptions(client);
 }
 
 export { defaultExpenseListSort };

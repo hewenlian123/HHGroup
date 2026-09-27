@@ -1,8 +1,9 @@
 /**
  * Transaction Inbox workflow: UI maps DB statuses to Needs Review / Done only.
- * Saving derives `reviewed` vs `needs_review` from project + category (no manual status dropdown).
+ * Creation derives completeness; editing preserves lifecycle until an explicit approval action.
  */
 
+import { isInboxUploadExpenseReference } from "@/lib/inbox-upload-constants";
 import type { Expense } from "@/lib/data";
 import { getExpenseReceiptItems } from "@/lib/expense-receipt-items";
 
@@ -303,7 +304,10 @@ const INBOX_POOL_INCOMPLETE_STATUSES = new Set(["needs_review", "pending", "unre
  * Done-like rows (`reviewed`, `done`, `paid`, …) never appear in Inbox, even with missing receipt / project / category / payment.
  * `duplicateHint` is ignored for pool membership (duplicate UI may still flag rows that appear elsewhere).
  */
-export function expenseMatchesInboxPool(expense: Expense, _duplicateHint?: boolean): boolean {
+export function expenseMatchesInboxPool(
+  expense: Pick<Expense, "status">,
+  _duplicateHint?: boolean
+): boolean {
   void _duplicateHint;
   const s = String(expense.status ?? "")
     .trim()
@@ -331,4 +335,29 @@ export function expenseMatchesExpensesArchivePool(expense: Expense): boolean {
   if (!expenseHasRequiredProjectForWorkflow(expense)) return false;
   if (!expenseHasCategoryForWorkflow(expense)) return false;
   return true;
+}
+
+/** Saving fields is not approval, regardless of which editor opened the record. */
+export function expenseStatusAfterSave(
+  currentStatus: Expense["status"] | string | null | undefined
+): NonNullable<Expense["status"]> {
+  if (expenseNeedsReviewFromDb(currentStatus)) {
+    return currentStatus === "pending" || currentStatus === "draft"
+      ? currentStatus
+      : "needs_review";
+  }
+  return preserveConfirmedExpenseStatusOnCompleteSave(currentStatus, "reviewed");
+}
+
+/** Receipt review is a business workflow; the legacy reference remains compatible. */
+export function expenseRequiresReceiptReview(
+  expense: Pick<Expense, "sourceType" | "referenceNo" | "receiptUrl"> &
+    Partial<Pick<Expense, "attachments">>
+): boolean {
+  return (
+    expense.sourceType === "receipt_upload" ||
+    isInboxUploadExpenseReference(expense.referenceNo) ||
+    Boolean(expense.receiptUrl?.trim()) ||
+    Boolean(expense.attachments?.length)
+  );
 }

@@ -1,6 +1,11 @@
 "use client";
 
+import { useFinanceQueryState } from "@/hooks/use-finance-query-state";
+import { useSearchParams } from "next/navigation";
+import { financePathWithReturn } from "@/lib/finance-navigation";
+
 import * as React from "react";
+import { ErrorRetry, LoadingState } from "@/components/ui/system-state";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
@@ -17,10 +22,19 @@ import {
 } from "@/components/ui/table";
 import { SplitLinesEditor, type SplitLineRow } from "@/components/split-lines-editor";
 import { CreatableSelect } from "@/components/ui/creatable-select";
-import { Upload, CheckSquare } from "lucide-react";
-import { MatchStatusBadge, bankTransactionMatchKind } from "@/components/base";
+import { Upload, CheckSquare, Square } from "lucide-react";
+import {
+  MatchStatusBadge,
+  NeoMobileCard,
+  NeoToolbar,
+  bankTransactionMatchKind,
+} from "@/components/base";
+import {
+  MobileListHeader,
+  mobileListPagePaddingClass,
+} from "@/components/mobile/mobile-list-chrome";
 import { cn } from "@/lib/utils";
-import { createBrowserClient } from "@/lib/supabase";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { formatCurrency } from "@/lib/formatters";
 import { amountClass } from "@/lib/typography";
 import { formatLedgerDate, LEDGER_DATE_CLASS } from "@/lib/ledger-date";
@@ -171,6 +185,8 @@ function parseCsv(text: string): Array<{ date: string; description: string; amou
 
 export default function BankReconcileClient() {
   const [loading, setLoading] = React.useState(true);
+  const [readError, setReadError] = React.useState<string | null>(null);
+  const readSequence = React.useRef(0);
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -180,9 +196,17 @@ export default function BankReconcileClient() {
   const [vendorsList, setVendorsList] = React.useState<string[]>([]);
   const [paymentMethodsList, setPaymentMethodsList] = React.useState<string[]>(["ACH"]);
 
-  const [search, setSearch] = React.useState("");
-  const [tab, setTab] = React.useState<TabFilter>("unmatched");
-  const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
+  const searchParams = useSearchParams();
+  const context = `/financial/bank?${searchParams.toString()}`;
+  const [search, setSearch] = useFinanceQueryState("q", "");
+  const [tab, setTab] = useFinanceQueryState<TabFilter>("tab", "unmatched");
+  const [selectedIds, setSelectedIds] = React.useState<Set<string>>(
+    () => new Set((searchParams.get("selected") ?? "").split(",").filter(Boolean))
+  );
+  const [, setSelectedQuery] = useFinanceQueryState("selected", "");
+  React.useEffect(() => {
+    setSelectedQuery([...selectedIds].join(","));
+  }, [selectedIds, setSelectedQuery]);
   const [importMessage, setImportMessage] = React.useState<string | null>(null);
   const [toastMessage, setToastMessage] = React.useState<string | null>(null);
 
@@ -201,12 +225,25 @@ export default function BankReconcileClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   const configured = Boolean(url && anon);
-  const supabase = React.useMemo(
-    () => (configured ? createBrowserClient(url as string, anon as string) : null),
-    [configured, url, anon]
-  );
+  const [supabase, setSupabase] = React.useState<SupabaseClient | null>(null);
+  React.useEffect(() => {
+    if (!configured || !url || !anon) return;
+    let active = true;
+    void import("@/lib/supabase")
+      .then(({ createBrowserClient }) => {
+        if (active) setSupabase(createBrowserClient(url, anon));
+      })
+      .catch(() => {
+        if (active) setReadError("Bank session unavailable.");
+      });
+    return () => {
+      active = false;
+    };
+  }, [configured, url, anon]);
 
   const refresh = React.useCallback(async () => {
+    const sequence = ++readSequence.current;
+    setReadError(null);
     setLoading(true);
     setError(null);
 
@@ -224,25 +261,32 @@ export default function BankReconcileClient() {
       };
       if (!response.ok) throw new Error(body.message ?? "Failed to load bank transactions.");
 
-      setTransactions(body.transactions ?? []);
+      if (!Array.isArray(body.transactions) || !Array.isArray(body.projects))
+        throw new Error("Bank transactions unavailable.");
+      if (sequence !== readSequence.current) return;
+      setTransactions(body.transactions);
       setProjects(body.projects ?? []);
       setCategories(body.categories?.length ? body.categories : ["Other"]);
       setVendorsList(body.vendors ?? []);
       setPaymentMethodsList(body.paymentMethods?.length ? body.paymentMethods : ["ACH"]);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load bank transactions.");
+      if (sequence !== readSequence.current) return;
+      setReadError(e instanceof Error ? e.message : "Failed to load bank transactions.");
       setTransactions([]);
       setProjects([]);
       setCategories(["Other"]);
       setVendorsList([]);
       setPaymentMethodsList(["ACH"]);
     } finally {
-      setLoading(false);
+      if (sequence === readSequence.current) setLoading(false);
     }
   }, []);
 
   React.useEffect(() => {
     void refresh();
+    return () => {
+      readSequence.current += 1;
+    };
   }, [refresh]);
 
   useOnAppSync(
@@ -343,6 +387,7 @@ export default function BankReconcileClient() {
       const { data: expRows, error: expErr } = await supabase
         .from("expenses")
         .select("id,expense_date,vendor_name,total")
+        .eq("total", target)
         .gte("expense_date", rangeStart)
         .lte("expense_date", rangeEnd)
         .order("expense_date", { ascending: false })
@@ -363,9 +408,10 @@ export default function BankReconcileClient() {
       const ids = close.map((e) => e.id);
       const { data: lineRows } = await supabase
         .from("expense_lines")
-        .select("expense_id,project_id,category,memo,projects(name)")
+        .select("id,expense_id,project_id,category,description,projects(name)")
         .in("expense_id", ids)
-        .order("created_at", { ascending: true })
+        .order("expense_id", { ascending: true })
+        .order("id", { ascending: true })
         .limit(500);
 
       const firstByExpense = new Map<
@@ -373,9 +419,10 @@ export default function BankReconcileClient() {
         { project?: string; category?: string; memo?: string }
       >();
       for (const r of (lineRows ?? []) as Array<{
+        id: string;
         expense_id: string;
         category: string;
-        memo: string | null;
+        description: string | null;
         projects?: { name: string } | { name: string }[] | null;
       }>) {
         if (firstByExpense.has(r.expense_id)) continue;
@@ -384,7 +431,7 @@ export default function BankReconcileClient() {
         firstByExpense.set(r.expense_id, {
           project: projName,
           category: r.category,
-          memo: r.memo ?? undefined,
+          memo: r.description ?? undefined,
         });
       }
 
@@ -452,18 +499,32 @@ export default function BankReconcileClient() {
 
   const addPaymentMethod = async (name: string): Promise<string> => {
     const v = name.trim();
-    if (!v || !supabase) return "";
-    const { error: insErr } = await supabase
-      .from("payment_methods")
-      .insert({ name: v, status: "active" });
-    if (!insErr) {
+    if (!v) return "";
+    try {
+      const response = await fetch("/api/settings/expense-options", {
+        method: "POST",
+        cache: "no-store",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ type: "payment_method", name: v }),
+      });
+      const payload = (await response.json().catch(() => null)) as {
+        ok?: boolean;
+        message?: string;
+        row?: { name?: string | null };
+      } | null;
+      if (!response.ok || !payload?.ok) {
+        throw new Error(payload?.message || "Failed to save payment method.");
+      }
+      const savedName = payload.row?.name?.trim() || v;
       setPaymentMethodsList((prev) =>
-        prev.includes(v) ? prev : [...prev, v].sort((a, b) => a.localeCompare(b))
+        prev.includes(savedName) ? prev : [...prev, savedName].sort((a, b) => a.localeCompare(b))
       );
-      return v;
+      return savedName;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to save payment method.";
+      setToastMessage(message);
+      return "";
     }
-    setToastMessage(insErr.message);
-    return "";
   };
 
   const isExpenseCategoryDisabled = (name: string) => (name ? false : false);
@@ -674,89 +735,127 @@ export default function BankReconcileClient() {
   const isReconciled = selectedTxFromList?.status === "reconciled";
   const isLinkedToExpense = !!selectedTxFromList?.linkedExpenseId;
 
+  if (loading || readError)
+    return (
+      <div className="page-container py-6" data-testid="bank-reconciliation-workspace">
+        <PageHeader title="Transactions" subtitle="Bank activity and reconciliation." />
+        {loading ? (
+          <LoadingState text="Loading bank transactions…" />
+        ) : (
+          <ErrorRetry
+            title="Transactions unavailable"
+            description={readError ?? undefined}
+            onRetry={() => void refresh()}
+          />
+        )}
+      </div>
+    );
+
   return (
-    <div className="page-container page-stack py-6 text-[var(--hh-text-secondary)]">
-      <PageHeader title="Bank Reconcile" subtitle="Import CSV and reconcile each transaction." />
+    <div
+      data-testid="bank-reconciliation-workspace"
+      className={cn(
+        "page-container page-shell-wide page-stack min-w-0 max-w-full py-4 text-[var(--hh-text-secondary)] md:py-6",
+        mobileListPagePaddingClass
+      )}
+    >
+      <MobileListHeader title="Bank Reconcile" tone="page" fab={null} />
+      <div className="hidden md:block">
+        <PageHeader
+          title="Bank Reconcile"
+          subtitle="Import bank activity, review matches, and reconcile each transaction."
+        />
+      </div>
 
       {error ? (
-        <Card className="p-5">
+        <Card
+          role="alert"
+          className="border-[var(--hh-danger-border)] bg-[var(--hh-danger-soft-fill)] p-4 shadow-none"
+        >
           <p className="text-sm text-[var(--hh-danger)]">{error}</p>
         </Card>
       ) : null}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid min-w-0 grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
         <Card
           ref={bankListRef}
           tabIndex={0}
-          className="hh-focus-ring overflow-hidden p-4"
+          className="hh-focus-ring min-w-0 overflow-hidden p-3 shadow-none md:p-4"
           onKeyDown={handleBankListKeyDown}
         >
-          <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between mb-4">
-            <div className="flex items-center gap-2 w-full sm:w-auto">
-              <input
-                type="file"
-                accept=".csv"
-                className="hidden"
-                id="bank-csv-upload"
-                onChange={handleFileChange}
-              />
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => document.getElementById("bank-csv-upload")?.click()}
-                disabled={busy || !configured}
-              >
-                <Upload className="h-4 w-4 mr-2" />
-                Upload CSV
-              </Button>
-            </div>
-            <Input
-              aria-label="Search bank transactions"
-              placeholder="Search description..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="max-w-xs"
-            />
-          </div>
-          {importMessage ? (
-            <p className="mb-2 text-sm text-text-primary dark:text-foreground">{importMessage}</p>
-          ) : null}
-          {toastMessage ? (
-            <p className="mb-2 text-sm text-text-primary dark:text-foreground">{toastMessage}</p>
-          ) : null}
-
-          <div className="flex gap-2 mb-3">
-            {(["unmatched", "reconciled", "all"] as const).map((t) => (
-              <button
-                key={t}
-                type="button"
-                onClick={() => setTab(t)}
-                className={cn(
-                  "min-h-11 rounded-hh-standard px-3 py-1.5 text-sm font-medium capitalize transition-colors md:min-h-8",
-                  tab === t
-                    ? "bg-[var(--hh-l3-selected)] text-[var(--hh-text-primary)]"
-                    : "bg-[var(--hh-l3-selected)] text-[var(--hh-text-secondary)] hover:bg-[var(--hh-l2-operational-surface)] hover:text-[var(--hh-text-primary)]"
-                )}
-              >
-                {t}
-              </button>
-            ))}
-            {unmatchedInFiltered.length > 0 ? (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="ml-auto"
-                onClick={selectAllUnmatched}
-                disabled={busy}
-              >
-                <CheckSquare className="h-4 w-4 mr-2" />
-                Select all Unmatched
-              </Button>
+          <section aria-label="Bank transaction filters">
+            <NeoToolbar className="mb-3 p-2 md:flex-row md:items-center md:justify-between">
+              <div className="flex w-full items-center gap-2 md:w-auto">
+                <input
+                  type="file"
+                  accept=".csv"
+                  className="hidden"
+                  id="bank-csv-upload"
+                  onChange={handleFileChange}
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0"
+                  onClick={() => document.getElementById("bank-csv-upload")?.click()}
+                  disabled={busy || !configured}
+                >
+                  <Upload className="mr-2 h-4 w-4" aria-hidden />
+                  Upload CSV
+                </Button>
+                <Input
+                  aria-label="Search bank transactions"
+                  placeholder="Search description…"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="min-w-0 flex-1 md:w-64 md:flex-none"
+                />
+              </div>
+            </NeoToolbar>
+            {importMessage ? (
+              <p className="mb-2 text-sm text-[var(--hh-text-primary)]">{importMessage}</p>
             ) : null}
-          </div>
+            {toastMessage ? (
+              <p className="mb-2 text-sm text-[var(--hh-text-primary)]">{toastMessage}</p>
+            ) : null}
 
-          <div className="overflow-x-auto rounded-hh-standard border border-[var(--hh-border)]">
+            <div className="mb-3 flex flex-wrap gap-2">
+              {(["unmatched", "reconciled", "all"] as const).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  aria-pressed={tab === t}
+                  onClick={() => setTab(t)}
+                  className={cn(
+                    "hh-focus-ring hh-touch-min min-w-11 rounded-hh-standard border px-3 py-1.5 text-sm font-medium capitalize transition-colors",
+                    tab === t
+                      ? "border-[var(--hh-border-strong)] bg-[var(--hh-l3-selected)] text-[var(--hh-text-primary)]"
+                      : "border-transparent bg-[var(--hh-l3-selected)] text-[var(--hh-text-secondary)] hover:border-[var(--hh-border)] hover:bg-[var(--hh-l2-operational-surface)] hover:text-[var(--hh-text-primary)]"
+                  )}
+                >
+                  {t}
+                </button>
+              ))}
+              {unmatchedInFiltered.length > 0 ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="w-full sm:ml-auto sm:w-auto"
+                  onClick={selectAllUnmatched}
+                  disabled={busy}
+                >
+                  <CheckSquare className="h-4 w-4 mr-2" />
+                  Select all Unmatched
+                </Button>
+              ) : null}
+            </div>
+          </section>
+
+          <div
+            data-testid="bank-transactions-dense-table"
+            className="hidden overflow-hidden rounded-hh-standard border border-[var(--hh-border)] lg:block"
+          >
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
@@ -781,13 +880,15 @@ export default function BankReconcileClient() {
                 {loading ? (
                   <TableRow>
                     <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                      Loading...
+                      <span role="status" aria-live="polite">
+                        Loading bank transactions…
+                      </span>
                     </TableCell>
                   </TableRow>
                 ) : filtered.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                      No data yet.
+                      No bank transactions match these filters.
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -808,6 +909,7 @@ export default function BankReconcileClient() {
                           onClick={(e) => e.stopPropagation()}
                         >
                           <input
+                            aria-label={`Select transaction ${tx.description}`}
                             type="checkbox"
                             checked={selectedIds.has(tx.id)}
                             onChange={() => toggleSelectedId(tx.id)}
@@ -836,9 +938,90 @@ export default function BankReconcileClient() {
               </TableBody>
             </Table>
           </div>
+
+          <div data-testid="bank-transactions-stacked-list" className="space-y-2 lg:hidden">
+            {loading ? (
+              <div
+                role="status"
+                aria-live="polite"
+                className="py-10 text-center text-sm text-[var(--hh-text-secondary)]"
+              >
+                Loading bank transactions…
+              </div>
+            ) : filtered.length === 0 ? (
+              <div className="py-10 text-center text-sm text-[var(--hh-text-secondary)]">
+                No bank transactions match these filters.
+              </div>
+            ) : (
+              filtered.map((tx) => {
+                const matchSt = bankTransactionMatchKind(tx.status);
+                const isSelected = selectedIds.has(tx.id);
+                return (
+                  <NeoMobileCard
+                    key={tx.id}
+                    className={cn(
+                      "hh-row-interactive p-3",
+                      isSelected && "border-[var(--hh-border-strong)] bg-[var(--hh-l3-selected)]"
+                    )}
+                    onClick={() => setSelectedIds(new Set([tx.id]))}
+                  >
+                    <div className="flex min-w-0 items-start gap-2">
+                      <button
+                        type="button"
+                        aria-label={`Select transaction ${tx.description}`}
+                        aria-pressed={isSelected}
+                        className="hh-focus-ring flex h-11 w-11 shrink-0 items-center justify-center rounded-hh-compact text-[var(--hh-text-secondary)]"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          toggleSelectedId(tx.id);
+                        }}
+                      >
+                        {isSelected ? (
+                          <CheckSquare className="h-5 w-5" aria-hidden />
+                        ) : (
+                          <Square className="h-5 w-5" aria-hidden />
+                        )}
+                      </button>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex min-w-0 items-start justify-between gap-3">
+                          <p className="min-w-0 truncate text-hh-body-strong text-[var(--hh-text-primary)]">
+                            {tx.description}
+                          </p>
+                          <MatchStatusBadge kind={matchSt.kind} />
+                        </div>
+                        <dl className="mt-3 grid grid-cols-2 gap-3 text-hh-metadata text-[var(--hh-text-secondary)]">
+                          <div>
+                            <dt className="text-hh-label text-[var(--hh-text-tertiary)]">Date</dt>
+                            <dd className={cn("mt-1", LEDGER_DATE_CLASS)}>
+                              {formatLedgerDate(tx.date)}
+                            </dd>
+                          </div>
+                          <div className="text-right">
+                            <dt className="text-hh-label text-[var(--hh-text-tertiary)]">Amount</dt>
+                            <dd
+                              className={cn(
+                                "mt-1 whitespace-nowrap",
+                                amountClass(tx.amount >= 0 ? "income" : "expense")
+                              )}
+                            >
+                              {formatCurrency(tx.amount)}
+                            </dd>
+                          </div>
+                        </dl>
+                      </div>
+                    </div>
+                  </NeoMobileCard>
+                );
+              })
+            )}
+          </div>
         </Card>
 
-        <Card className="overflow-hidden p-6" onKeyDown={handlePanelKeyDown} tabIndex={0}>
+        <Card
+          className="hh-focus-ring min-w-0 overflow-hidden p-4 shadow-none md:p-6"
+          onKeyDown={handlePanelKeyDown}
+          tabIndex={0}
+        >
           {selectedList.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
               <p className="text-sm">Select a bank transaction to reconcile.</p>
@@ -948,7 +1131,12 @@ export default function BankReconcileClient() {
                 <div className="flex flex-col gap-2">
                   {selectedTxFromList?.linkedExpenseId ? (
                     <Button asChild variant="outline">
-                      <Link href={`/financial/expenses/${selectedTxFromList.linkedExpenseId}`}>
+                      <Link
+                        href={financePathWithReturn(
+                          `/financial/expenses/${selectedTxFromList.linkedExpenseId}`,
+                          context
+                        )}
+                      >
                         Open Expense
                       </Link>
                     </Button>
@@ -968,6 +1156,10 @@ export default function BankReconcileClient() {
             ) : (
               <>
                 <h2 className="text-base font-semibold text-foreground mb-2">Reconcile</h2>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Unlink preserves source and audit history. Reassigning an unlinked bank
+                  transaction to a different Expense is not supported in this phase.
+                </p>
                 <p className="text-sm text-muted-foreground mb-4">
                   {selected.description} —{" "}
                   <span className={amountClass(selected.amount >= 0 ? "income" : "expense")}>
@@ -1031,7 +1223,14 @@ export default function BankReconcileClient() {
                                   size="sm"
                                   className="btn-outline-ghost h-8"
                                 >
-                                  <Link href={`/financial/expenses/${s.expense.id}`}>View</Link>
+                                  <Link
+                                    href={financePathWithReturn(
+                                      `/financial/expenses/${s.expense.id}`,
+                                      context
+                                    )}
+                                  >
+                                    View
+                                  </Link>
                                 </Button>
                                 <Button
                                   variant="outline"

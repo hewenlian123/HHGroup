@@ -71,7 +71,7 @@ export function SettingsSubNav() {
               variant="ghost"
               size="sm"
               className={cn(
-                "h-8 rounded-md",
+                "min-h-11 rounded-hh-compact lg:min-h-8 lg:h-8",
                 active
                   ? "bg-[var(--hh-l3-selected)] text-[var(--hh-text-primary)] hover:bg-[var(--hh-l3-selected)]"
                   : "text-[var(--hh-text-secondary)] hover:text-[var(--hh-text-primary)]"

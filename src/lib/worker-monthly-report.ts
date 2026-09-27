@@ -16,7 +16,7 @@ import {
   companyProfileToDocumentDto,
   type DocumentCompanyProfileDTO,
 } from "@/lib/document-company-profile";
-import { getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
+import { FinancialDataUnavailableError } from "@/lib/financial-availability";
 import { daysWorkedFromLaborInput } from "@/lib/worker-rate-history-db";
 
 export type WorkerMonthlyReportRowType =
@@ -118,20 +118,6 @@ function generatedAtLabel(): string {
   });
 }
 
-function stubPayrollStatement(monthYm: string): WorkerMonthlyReportPayrollStatement {
-  const company = companyProfileToDocumentDto(null);
-  return {
-    companyName: company.companyName,
-    company,
-    monthYm,
-    monthLabel: monthHeading(monthYm),
-    generatedAtDisplay: generatedAtLabel(),
-    totalDays: 0,
-    dailyRate: 0,
-    dailyRateFromWorker: false,
-  };
-}
-
 type WorkerRowRates = {
   id: string;
   name: string | null;
@@ -171,19 +157,6 @@ function laborInvoiceProjectLabel(splits: unknown, nameByProject: Map<string, st
 function isRetryableSelectError(err: { message?: string } | null): boolean {
   const m = (err?.message ?? "").toLowerCase();
   return /could not find the .* column|column .* does not exist|schema cache|pgrst204/i.test(m);
-}
-
-function emptySummary(): WorkerMonthlyReportSummary {
-  return {
-    earned: 0,
-    reimbursements: 0,
-    totalOwed: 0,
-    cashPaid: 0,
-    advanceDeductions: 0,
-    settled: 0,
-    paid: 0,
-    balance: 0,
-  };
 }
 
 function money(value: unknown): number {
@@ -285,7 +258,6 @@ async function loadLaborEntriesForMonth(
     "id, work_date, hours, morning, afternoon, days_worked, labor_cost_snapshot, amount_snapshot, cost_amount",
     "id, work_date, hours, morning, afternoon, cost_amount",
     "id, work_date, cost_amount",
-    "id, work_date, total",
   ] as const;
 
   let lastError: { message?: string } | null = null;
@@ -342,7 +314,8 @@ async function loadProjectNames(
   const map = new Map<string, string>();
   if (uniq.length === 0) return map;
   const { data, error } = await admin.from("projects").select("id, name").in("id", uniq);
-  if (error || !data) return map;
+  if (error) throw new FinancialDataUnavailableError("worker report projects", error);
+  if (!data) throw new FinancialDataUnavailableError("worker report projects", null);
   for (const r of data as { id: string; name: string | null }[]) {
     if (r?.id) map.set(String(r.id), String(r.name ?? "").trim());
   }
@@ -351,20 +324,10 @@ async function loadProjectNames(
 
 export async function getWorkerMonthlyReport(
   workerId: string,
-  monthYm: string
+  monthYm: string,
+  explicitClient: SupabaseClient
 ): Promise<WorkerMonthlyReportResult> {
-  const admin = getServerSupabaseInternalNoStore();
-  if (!admin) {
-    return {
-      workerName: "",
-      monthLabel: monthHeading(monthYm),
-      rows: [],
-      summary: emptySummary(),
-      payrollStatement: stubPayrollStatement(monthYm),
-      supabaseConfigured: false,
-      loadError: "Supabase is not configured.",
-    };
-  }
+  const admin = explicitClient;
 
   let range: { start: string; nextStart: string; tStart: string; tNext: string };
   try {
@@ -376,15 +339,7 @@ export async function getWorkerMonthlyReport(
 
   const wid = workerId.trim();
   if (!wid) {
-    return {
-      workerName: "",
-      monthLabel: monthHeading(monthYm),
-      rows: [],
-      summary: emptySummary(),
-      payrollStatement: stubPayrollStatement(monthYm),
-      supabaseConfigured: true,
-      loadError: "Missing worker id.",
-    };
+    throw new Error("Missing worker id.");
   }
 
   const workerRes = await loadWorkerForReport(admin, wid);
@@ -453,6 +408,9 @@ export async function getWorkerMonthlyReport(
     advRes.error?.message ??
     payErr ??
     null;
+  if (firstErr) {
+    throw new FinancialDataUnavailableError("worker monthly report", { message: firstErr });
+  }
 
   const workerName = String(workerRes.data?.name ?? "").trim();
 
@@ -688,6 +646,6 @@ export async function getWorkerMonthlyReport(
       dailyRateFromWorker,
     },
     supabaseConfigured: true,
-    loadError: firstErr,
+    loadError: null,
   };
 }

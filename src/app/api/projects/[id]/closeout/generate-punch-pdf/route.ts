@@ -1,30 +1,39 @@
+import { withSessionCookies } from "@/lib/supabase-response";
 import { NextResponse } from "next/server";
-import { getCloseoutPunch, getProjectById, insertDocument } from "@/lib/data";
+import { getCloseoutPunch, getProjectById } from "@/lib/data";
 import {
   addDocumentCompanyPdfFooter,
   addDocumentCompanyPdfHeader,
 } from "@/lib/document-company-pdf";
 import { fetchDocumentCompanyProfile } from "@/lib/document-company-profile";
-import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
-import { getServerSupabaseAdmin } from "@/lib/supabase-server";
-
-const BUCKET = "attachments";
+import { requireOrganizationRequestClient } from "@/lib/auth-boundary";
+import { uploadDocumentFile } from "@/lib/document-storage";
 
 export async function POST(_req: Request, ctx: { params: Promise<{ id: string }> }) {
-  const guard = await requireSupabaseOwnerOrAdmin(_req);
+  const guard = await requireOrganizationRequestClient(_req, {
+    projectId: (await ctx.params).id,
+    write: true,
+    noStore: true,
+  });
   if (!guard.ok) return guard.response;
 
   const { id: projectId } = await ctx.params;
   if (!projectId)
-    return NextResponse.json({ ok: false, message: "Missing project id" }, { status: 400 });
+    return withSessionCookies(
+      NextResponse.json({ ok: false, message: "Missing project id" }, { status: 400 }),
+      guard.sessionResponse
+    );
   try {
     const [punch, project, company] = await Promise.all([
-      getCloseoutPunch(projectId),
-      getProjectById(projectId),
+      getCloseoutPunch(projectId, guard.client),
+      getProjectById(projectId, guard.client),
       fetchDocumentCompanyProfile(),
     ]);
     if (!project)
-      return NextResponse.json({ ok: false, message: "Project not found" }, { status: 404 });
+      return withSessionCookies(
+        NextResponse.json({ ok: false, message: "Project not found" }, { status: 404 }),
+        guard.sessionResponse
+      );
     const { jsPDF } = await import("jspdf");
     const doc = new jsPDF();
     let y = await addDocumentCompanyPdfHeader(doc, company, {
@@ -77,30 +86,27 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
     y += 8;
     addDocumentCompanyPdfFooter(doc, company, { y });
     const buf = doc.output("arraybuffer") as ArrayBuffer;
-    const ts = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
-    const fileName = `final-punch-${ts}.pdf`;
-    const filePath = `projects/${projectId}/closeout/${fileName}`;
-    const supabase = getServerSupabaseAdmin();
-    if (!supabase)
-      return NextResponse.json({ ok: false, message: "Supabase not configured" }, { status: 500 });
-    const { error: uploadError } = await supabase.storage
-      .from(BUCKET)
-      .upload(filePath, buf, { contentType: "application/pdf", upsert: true });
-    if (uploadError)
-      return NextResponse.json({ ok: false, message: uploadError.message }, { status: 500 });
-    await insertDocument({
-      file_name: `Final Punch List - ${project.name}.pdf`,
-      file_path: filePath,
-      file_type: "Other",
-      mime_type: "application/pdf",
-      size_bytes: buf.byteLength,
-      project_id: projectId,
-      related_module: "closeout",
-      related_id: "punch",
-    });
-    return NextResponse.json({ ok: true });
+    await uploadDocumentFile(
+      guard.client,
+      {
+        file_name: `Final Punch List - ${project.name}.pdf`,
+        file_type: "Other",
+        mime_type: "application/pdf",
+        size_bytes: buf.byteLength,
+        project_id: projectId,
+        related_module: "closeout",
+        related_id: projectId,
+      },
+      buf
+    );
+    const response = withSessionCookies(NextResponse.json({ ok: true }), guard.sessionResponse);
+
+    return response;
   } catch (e) {
     const message = e instanceof Error ? e.message : "PDF generation failed";
-    return NextResponse.json({ ok: false, message }, { status: 500 });
+    return withSessionCookies(
+      NextResponse.json({ ok: false, message }, { status: 500 }),
+      guard.sessionResponse
+    );
   }
 }

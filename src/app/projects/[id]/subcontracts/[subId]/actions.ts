@@ -6,11 +6,25 @@ import {
   insertPaymentScheduleItem,
 } from "@/lib/subcontract-payment-schedule-db";
 import { updateSubcontractStatus as updateSubcontractStatusDefault } from "@/lib/data";
-import {
-  requireSupabaseOwnerOrAdminServerAction,
-  requireSupabaseOwnerOrAdminServerActionWithClient,
-} from "@/lib/auth-boundary";
-import { getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
+import { requireOrganizationServerActionClient } from "@/lib/auth-boundary";
+
+async function subcontractClient(projectId: string, subcontractId: string) {
+  const guard = await requireOrganizationServerActionClient({
+    projectId,
+    write: true,
+    requireOwnerAdmin: true,
+    noStore: true,
+  });
+  if (!guard.ok) throw new Error(guard.error);
+  const subcontract = await guard.client
+    .from("subcontracts")
+    .select("id,subcontractor_id")
+    .eq("id", subcontractId)
+    .eq("project_id", projectId)
+    .maybeSingle();
+  if (subcontract.error || !subcontract.data) throw new Error("Subcontract not found.");
+  return { client: guard.client, subcontract: subcontract.data };
+}
 
 export async function updateSubcontractStatusAction(
   projectId: string,
@@ -18,9 +32,8 @@ export async function updateSubcontractStatusAction(
   status: "Draft" | "Active" | "Completed" | "Cancelled"
 ): Promise<{ ok: boolean; error?: string }> {
   try {
-    const guard = await requireSupabaseOwnerOrAdminServerAction();
-    if (!guard.ok) return { ok: false, error: "Authentication required." };
-    await updateSubcontractStatusDefault(subcontractId, status);
+    const { client } = await subcontractClient(projectId, subcontractId);
+    await updateSubcontractStatusDefault(subcontractId, status, client);
     revalidatePath(`/projects/${projectId}/subcontracts`);
     revalidatePath(`/projects/${projectId}/subcontracts/${subcontractId}`);
     return { ok: true };
@@ -43,12 +56,12 @@ export async function addPaymentScheduleItemAction(input: {
   error?: string;
 }> {
   try {
-    const guard = await requireSupabaseOwnerOrAdminServerActionWithClient(
-      getServerSupabaseInternalNoStore
+    const { client: supabase, subcontract } = await subcontractClient(
+      input.projectId,
+      input.subcontractId
     );
-    if (!guard.ok) return { ok: false, error: guard.error };
-    const supabase = guard.client;
-    if (!supabase) throw new Error("Supabase is not configured.");
+    if (subcontract.subcontractor_id !== input.subcontractorId)
+      throw new Error("Subcontractor mismatch.");
     const item = await insertPaymentScheduleItem(
       {
         projectId: input.projectId,
@@ -75,12 +88,14 @@ export async function createApBillFromScheduleAction(input: {
   scheduleId: string;
 }): Promise<{ ok: boolean; billId?: string; created?: boolean; error?: string }> {
   try {
-    const guard = await requireSupabaseOwnerOrAdminServerActionWithClient(
-      getServerSupabaseInternalNoStore
-    );
-    if (!guard.ok) return { ok: false, error: guard.error };
-    const supabase = guard.client;
-    if (!supabase) throw new Error("Supabase is not configured.");
+    const { client: supabase } = await subcontractClient(input.projectId, input.subcontractId);
+    const schedule = await supabase
+      .from("subcontract_payment_schedule")
+      .select("id")
+      .eq("id", input.scheduleId)
+      .eq("subcontract_id", input.subcontractId)
+      .maybeSingle();
+    if (schedule.error || !schedule.data) throw new Error("Payment schedule item not found.");
     const result = await createApBillFromScheduleItem(input.scheduleId, supabase);
     revalidatePath(`/projects/${input.projectId}/subcontracts`);
     revalidatePath(`/projects/${input.projectId}/subcontracts/${input.subcontractId}`);

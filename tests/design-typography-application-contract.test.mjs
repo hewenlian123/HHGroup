@@ -11,60 +11,95 @@ const source = (path) => readFileSync(resolve(ROOT, path), "utf8");
 
 const typographyMatrix = {
   "page-title": {
-    mobile: ["22px", "26.4px"],
-    desktop: ["22px", "26.4px"],
+    mobile: ["24px", "30px"],
+    desktop: ["24px", "30px"],
     weight: "600",
-    tracking: -0.02,
+    trackingPx: 0,
   },
   "section-title": {
-    mobile: ["15px", "19.5px"],
-    desktop: ["15px", "19.5px"],
+    mobile: ["16px", "22px"],
+    desktop: ["16px", "22px"],
     weight: "600",
-    tracking: -0.01,
+    trackingPx: 0,
   },
   "panel-title": {
-    mobile: ["13px", "19.5px"],
-    desktop: ["13px", "19.5px"],
+    mobile: ["14px", "20px"],
+    desktop: ["14px", "20px"],
     weight: "500",
-    tracking: -0.01,
+    trackingPx: 0,
   },
-  body: { mobile: ["14px", "21px"], desktop: ["14px", "21px"], weight: "400", tracking: 0 },
+  body: {
+    mobile: ["14px", "20px"],
+    desktop: ["14px", "20px"],
+    weight: "400",
+    trackingPx: 0,
+  },
   "body-strong": {
-    mobile: ["13px", "19.5px"],
-    desktop: ["13px", "19.5px"],
+    mobile: ["14px", "20px"],
+    desktop: ["14px", "20px"],
     weight: "500",
-    tracking: -0.01,
+    trackingPx: 0,
   },
-  label: { mobile: ["10px", "15px"], desktop: ["10px", "15px"], weight: "500", tracking: 0.06 },
-  metadata: { mobile: ["11px", "16.5px"], desktop: ["11px", "16.5px"], weight: "400", tracking: 0 },
+  label: {
+    mobile: ["12px", "16px"],
+    desktop: ["12px", "16px"],
+    weight: "500",
+    trackingPx: 0.1,
+  },
+  metadata: {
+    mobile: ["11px", "14px"],
+    desktop: ["11px", "14px"],
+    weight: "500",
+    trackingPx: 0.2,
+  },
   "table-header": {
-    mobile: ["10px", "15px"],
-    desktop: ["10px", "15px"],
-    weight: "600",
-    tracking: 0.06,
+    mobile: ["11px", "14px"],
+    desktop: ["11px", "14px"],
+    weight: "500",
+    trackingPx: 0.2,
   },
   "table-cell": {
-    mobile: ["13px", "19.5px"],
-    desktop: ["13px", "19.5px"],
+    mobile: ["13px", "18px"],
+    desktop: ["13px", "18px"],
     weight: "400",
-    tracking: 0,
+    trackingPx: 0,
   },
-  financial: { mobile: ["14px", "21px"], desktop: ["14px", "21px"], weight: "500", tracking: 0 },
+  financial: {
+    mobile: ["14px", "20px"],
+    desktop: ["14px", "20px"],
+    weight: "500",
+    trackingPx: 0,
+  },
   "financial-total": {
-    mobile: ["24px", "36px"],
-    desktop: ["24px", "36px"],
+    mobile: ["20px", "24px"],
+    desktop: ["20px", "24px"],
     weight: "600",
-    tracking: -0.02,
+    trackingPx: 0,
   },
   control: {
-    mobile: ["13px", "19.5px"],
-    desktop: ["13px", "19.5px"],
+    mobile: ["12px", "16px"],
+    desktop: ["12px", "16px"],
     weight: "500",
-    tracking: -0.01,
+    trackingPx: 0.1,
   },
-  helper: { mobile: ["11px", "16.5px"], desktop: ["11px", "16.5px"], weight: "400", tracking: 0 },
-  error: { mobile: ["11px", "16.5px"], desktop: ["11px", "16.5px"], weight: "500", tracking: 0 },
-  status: { mobile: ["11px", "16.5px"], desktop: ["11px", "16.5px"], weight: "500", tracking: 0 },
+  helper: {
+    mobile: ["11px", "14px"],
+    desktop: ["11px", "14px"],
+    weight: "400",
+    trackingPx: 0,
+  },
+  error: {
+    mobile: ["11px", "14px"],
+    desktop: ["11px", "14px"],
+    weight: "500",
+    trackingPx: 0,
+  },
+  status: {
+    mobile: ["11px", "14px"],
+    desktop: ["11px", "14px"],
+    weight: "500",
+    trackingPx: 0.2,
+  },
 };
 
 function compileTypographyCss() {
@@ -105,7 +140,7 @@ function compileTypographyCss() {
   }
 }
 
-test("compiled shared typography produces the exact responsive matrix and FIN contract", async (t) => {
+test("compiled shared typography produces the Certified V2 Geist matrix and FIN contract", async (t) => {
   const compiledCss = compileTypographyCss();
   const tokenCss = source("src/styles/design-tokens.generated.css");
   const rootLayout = source("src/app/layout.tsx");
@@ -169,8 +204,8 @@ test("compiled shared typography produces the exact responsive matrix and FIN co
       bodyFontFamily: body.fontFamily,
     };
   });
-  assert.match(ownership.semanticToken, /^-apple-system/);
-  assert.match(ownership.bodyFontFamily, /^-apple-system/);
+  assert.match(ownership.semanticToken, /^"?Geist Contract"?/);
+  assert.match(ownership.bodyFontFamily, /^"?Geist Contract"?/);
   assert.doesNotMatch(ownership.bodyFontFamily, /Times/i);
   t.diagnostic(`computed root semantic token: ${ownership.semanticToken}`);
   t.diagnostic(`computed operational body font-family: ${ownership.bodyFontFamily}`);
@@ -196,14 +231,14 @@ test("compiled shared typography produces the exact responsive matrix and FIN co
       const expected = typographyMatrix[role][responsiveMode];
       assert.deepEqual([styles.fontSize, styles.lineHeight], expected, `${viewport.name} ${role}`);
       assert.equal(styles.fontWeight, typographyMatrix[role].weight, `${viewport.name} ${role}`);
-      const expectedTracking = typographyMatrix[role].tracking * Number.parseFloat(styles.fontSize);
+      const expectedTracking = typographyMatrix[role].trackingPx;
       const actualTracking =
         styles.letterSpacing === "normal" ? 0 : Number.parseFloat(styles.letterSpacing);
       assert.ok(
         Math.abs(actualTracking - expectedTracking) < 0.01,
         `${viewport.name} ${role} letter spacing mismatch`
       );
-      assert.match(styles.fontFamily, /^-apple-system/);
+      assert.match(styles.fontFamily, /^"?Geist Contract"?/);
       assert.doesNotMatch(styles.fontFamily, /Times/i);
     }
 
@@ -213,7 +248,7 @@ test("compiled shared typography produces the exact responsive matrix and FIN co
     });
     assert.deepEqual(
       textEntry,
-      viewport.width < 768 ? ["16px", "24px", "500"] : ["14px", "20px", "500"]
+      viewport.width < 768 ? ["16px", "24px", "400"] : ["14px", "20px", "400"]
     );
   }
 
@@ -225,7 +260,7 @@ test("compiled shared typography produces the exact responsive matrix and FIN co
       fontFeatureSettings: computed.fontFeatureSettings,
     };
   });
-  assert.match(fin.fontFamily, /^-apple-system/);
+  assert.match(fin.fontFamily, /^"?Geist Contract"?/);
   assert.match(fin.fontVariantNumeric, /tabular-nums/);
   assert.match(fin.fontVariantNumeric, /lining-nums/);
   assert.match(fin.fontFeatureSettings, /"tnum"(?: 1)?/);

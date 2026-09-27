@@ -1,3 +1,4 @@
+import { readCompleteRows } from "@/lib/read-complete-rows";
 /**
  * Commissions (`commissions`) and payment rows (`commission_payments`).
  * paid_amount is always SUM(commission_payments.amount); never stored on the commission row.
@@ -5,6 +6,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseClient, humanizeSupabaseRequestError } from "@/lib/supabase";
+import { financialDataUnavailable } from "@/lib/financial-availability";
 
 export type CommissionRole = "Designer" | "Sales" | "Referral" | "Agent" | "Other";
 export type CalculationMode = "Auto" | "Manual";
@@ -136,11 +138,13 @@ export async function getCommissionCostByProjectBatch(
   if (ids.length === 0) return byProject;
 
   const c = client(explicitClient);
-  const { data: canonicalRows, error } = await c
-    .from(TABLE_COMMISSIONS)
-    .select("id, project_id, commission_amount")
-    .in("project_id", ids);
-  if (error) throw new Error(humanizeSupabaseRequestError(error));
+  const { data: canonicalRows, error } = await readCompleteRows(() =>
+    c
+      .from(TABLE_COMMISSIONS)
+      .select("id, project_id, commission_amount", { count: "exact" })
+      .in("project_id", ids)
+  );
+  if (error) financialDataUnavailable(LEGACY_COMMISSIONS, error);
 
   const canonicalIds = new Set<string>();
   for (const row of (canonicalRows ?? []) as CommissionCostRow[]) {
@@ -151,10 +155,12 @@ export async function getCommissionCostByProjectBatch(
     byProject.set(projectId, (byProject.get(projectId) ?? 0) + commissionCostFromRow(row));
   }
 
-  const { data: legacyRows, error: legacyError } = await c
-    .from(LEGACY_COMMISSIONS)
-    .select("id, project_id, commission_amount, status")
-    .in("project_id", ids);
+  const { data: legacyRows, error: legacyError } = await readCompleteRows(() =>
+    c
+      .from(LEGACY_COMMISSIONS)
+      .select("id, project_id, commission_amount, status", { count: "exact" })
+      .in("project_id", ids)
+  );
   if (legacyError) throw new Error(humanizeSupabaseRequestError(legacyError));
   for (const row of (legacyRows ?? []) as CommissionCostRow[]) {
     const id = String(row.id ?? "").trim();
@@ -230,13 +236,16 @@ async function fetchLegacyCommissions(
     .order("created_at", { ascending: false });
   if (projectId) q = q.eq("project_id", projectId);
   const { data, error } = await q;
-  if (error) return [];
+  if (error) throw new Error(humanizeSupabaseRequestError(error));
   return (data ?? []).map((r) => toCommission(r as Record<string, unknown>));
 }
 
 /** Canonical rows from `commissions`; legacy-only rows from `project_commissions` (same id not duplicated). */
-async function loadCommissionsMerged(projectId?: string): Promise<{ merged: ProjectCommission[] }> {
-  const c = client();
+async function loadCommissionsMerged(
+  projectId?: string,
+  explicitClient?: SupabaseClient
+): Promise<{ merged: ProjectCommission[] }> {
+  const c = client(explicitClient);
   let q = c
     .from(TABLE_COMMISSIONS)
     .select(COMMISSION_COLS)
@@ -274,39 +283,31 @@ export async function getSumPaidForCommission(
     .from(LEGACY_PAYMENTS)
     .select("amount")
     .eq("commission_id", commissionId);
-  if (legErr) return 0;
+  if (legErr) financialDataUnavailable(LEGACY_PAYMENTS, legErr);
   return (leg ?? []).reduce((s, p) => s + (Number((p as { amount: number }).amount) || 0), 0);
 }
 
-export async function getCommissionsByProject(projectId: string): Promise<ProjectCommission[]> {
-  const { merged } = await loadCommissionsMerged(projectId);
+export async function getCommissionsByProject(
+  projectId: string,
+  explicitClient?: SupabaseClient
+): Promise<ProjectCommission[]> {
+  const { merged } = await loadCommissionsMerged(projectId, explicitClient);
   return merged;
 }
 
 export async function attachPaidTotalsToCommissions(
-  commissions: ProjectCommission[]
+  commissions: ProjectCommission[],
+  explicitClient?: SupabaseClient
 ): Promise<CommissionWithPaid[]> {
   if (commissions.length === 0) return [];
-  const c = client();
+  const c = client(explicitClient);
   const ids = commissions.map((x) => x.id);
   const { data: payments, error: paymentsError } = await c
     .from(TABLE_PAYMENTS)
     .select("commission_id, amount")
     .in("commission_id", ids);
   if (paymentsError) {
-    console.error(
-      "[commission-db] commission_payments query failed; showing commissions with paid_amount=0",
-      humanizeSupabaseRequestError(paymentsError)
-    );
-    return commissions.map((com) => {
-      const paidRaw = 0;
-      return {
-        ...com,
-        paid_amount: paidRaw,
-        outstanding_amount: Math.max(0, com.commission_amount - paidRaw),
-        payment_status: deriveCommissionPaymentStatus(paidRaw, com.commission_amount),
-      };
-    });
+    financialDataUnavailable(TABLE_PAYMENTS, paymentsError);
   }
   const paidByCommission = new Map<string, number>();
   const hasNewPaymentRow = new Set<string>();
@@ -318,10 +319,11 @@ export async function attachPaidTotalsToCommissions(
     paidByCommission.set(id, (paidByCommission.get(id) ?? 0) + amt);
   }
 
-  const { data: legacyPay } = await c
+  const { data: legacyPay, error: legacyPayError } = await c
     .from(LEGACY_PAYMENTS)
     .select("commission_id, amount")
     .in("commission_id", ids);
+  if (legacyPayError) financialDataUnavailable(LEGACY_PAYMENTS, legacyPayError);
   for (const p of legacyPay ?? []) {
     const id = (p as { commission_id: string }).commission_id;
     if (id == null) continue;
@@ -342,10 +344,11 @@ export async function attachPaidTotalsToCommissions(
 }
 
 export async function getCommissionsWithPaidByProject(
-  projectId: string
+  projectId: string,
+  explicitClient?: SupabaseClient
 ): Promise<CommissionWithPaid[]> {
-  const { merged } = await loadCommissionsMerged(projectId);
-  return attachPaidTotalsToCommissions(merged);
+  const { merged } = await loadCommissionsMerged(projectId, explicitClient);
+  return attachPaidTotalsToCommissions(merged, explicitClient);
 }
 
 export async function createCommission(
@@ -436,7 +439,7 @@ export async function updateCommission(
     .eq("id", id)
     .select(COMMISSION_COLS)
     .single();
-  if (error) return null;
+  if (error) financialDataUnavailable("commission update", error);
   return toCommission(row as Record<string, unknown>);
 }
 
@@ -457,7 +460,8 @@ export async function getCommissionById(
     .select(LEGACY_COMMISSION_COLS)
     .eq("id", id)
     .maybeSingle();
-  if (legErr || !leg) return null;
+  if (legErr) financialDataUnavailable("legacy commission", legErr);
+  if (!leg) return null;
   return toCommission(leg as Record<string, unknown>);
 }
 
@@ -468,9 +472,10 @@ export async function deleteCommission(id: string, explicitClient?: SupabaseClie
 }
 
 export async function getPaymentRecordsByCommissionId(
-  commissionId: string
+  commissionId: string,
+  explicitClient?: SupabaseClient
 ): Promise<CommissionPayment[]> {
-  const c = client();
+  const c = client(explicitClient);
   const { data: rows, error } = await c
     .from(TABLE_PAYMENTS)
     .select(PAYMENT_SELECT)
@@ -484,7 +489,7 @@ export async function getPaymentRecordsByCommissionId(
     .select("*")
     .eq("commission_id", commissionId)
     .order("payment_date", { ascending: false });
-  if (legErr) return [];
+  if (legErr) financialDataUnavailable("legacy commission payments", legErr);
   return (leg ?? []).map((r) => toPaymentRowFromLegacyRecord(r as Record<string, unknown>));
 }
 
@@ -498,14 +503,15 @@ export async function getPaymentRecordById(
     .select(PAYMENT_SELECT)
     .eq("id", id)
     .maybeSingle();
-  if (error) return null;
+  if (error) financialDataUnavailable("commission payment", error);
   if (row) return toPaymentRow(row as Record<string, unknown>);
   const { data: leg, error: legErr } = await c
     .from(LEGACY_PAYMENTS)
     .select("*")
     .eq("id", id)
     .maybeSingle();
-  if (legErr || !leg) return null;
+  if (legErr) financialDataUnavailable("legacy commission payment", legErr);
+  if (!leg) return null;
   return toPaymentRowFromLegacyRecord(leg as Record<string, unknown>);
 }
 
@@ -538,7 +544,7 @@ export async function updatePaymentRecord(
     .eq("id", id)
     .select(PAYMENT_SELECT)
     .single();
-  if (error) return null;
+  if (error) financialDataUnavailable("commission payment update", error);
   return toPaymentRow(row as Record<string, unknown>);
 }
 
@@ -583,19 +589,21 @@ export async function createPaymentRecord(
   return toPaymentRow(row as Record<string, unknown>);
 }
 
-export async function getAllCommissionsWithPayments(): Promise<CommissionWithPaid[]> {
-  const { merged } = await loadCommissionsMerged();
-  return attachPaidTotalsToCommissions(merged);
+export async function getAllCommissionsWithPayments(
+  explicitClient?: SupabaseClient
+): Promise<CommissionWithPaid[]> {
+  const { merged } = await loadCommissionsMerged(undefined, explicitClient);
+  return attachPaidTotalsToCommissions(merged, explicitClient);
 }
 
-export async function getCommissionSummary(): Promise<{
+export async function getCommissionSummary(explicitClient?: SupabaseClient): Promise<{
   totalCommission: number;
   paidCommission: number;
   outstandingCommission: number;
   thisMonthPaid: number;
 }> {
-  const c = client();
-  const { merged } = await loadCommissionsMerged();
+  const c = client(explicitClient);
+  const { merged } = await loadCommissionsMerged(undefined, c);
   const totalCommission = merged.reduce((s, r) => s + r.commission_amount, 0);
   const ids = merged.map((m) => m.id);
   if (ids.length === 0) {
@@ -619,10 +627,11 @@ export async function getCommissionSummary(): Promise<{
     if (cid) hasNewPaymentRow.add(cid);
   }
 
-  const { data: legPayRows } = await c
+  const { data: legPayRows, error: legacyPayError } = await c
     .from(LEGACY_PAYMENTS)
     .select("amount, payment_date, commission_id")
     .in("commission_id", ids);
+  if (legacyPayError) financialDataUnavailable(LEGACY_PAYMENTS, legacyPayError);
 
   const startOfMonth = new Date();
   startOfMonth.setDate(1);

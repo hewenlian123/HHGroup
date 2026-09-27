@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
-import { guardDangerousMaintenanceRequest } from "@/lib/production-safety";
+import { guardNonProductionOnlyRequest } from "@/lib/production-safety";
 import {
   SUPABASE_MISSING_SERVER_ADMIN_ENV_MESSAGE,
   getServerSupabaseAdmin,
@@ -41,11 +41,11 @@ const TEST_IDS = [
  * Returns { ok, tests: [{ name, ok, steps? }] }.
  */
 export async function POST(req: Request) {
+  const blocked = guardNonProductionOnlyRequest(req);
+  if (blocked) return blocked;
+
   const strictGuard = await requireSupabaseOwnerOrAdmin(req);
   if (!strictGuard.ok) return strictGuard.response;
-
-  const blocked = guardDangerousMaintenanceRequest(req);
-  if (blocked) return blocked;
 
   const host = req.headers.get("host") ?? "localhost:3000";
   const protocol = req.headers.get("x-forwarded-proto") === "https" ? "https" : "http";
@@ -184,7 +184,11 @@ export async function POST(req: Request) {
         });
         steps.push("receipt created");
         log("reimbursement_workflow", "receipt upload");
-        const { reimbursementCreated } = await approveWorkerReceiptWithClient(server, receipt.id);
+        const { reimbursementCreated } = await approveWorkerReceiptWithClient(
+          server,
+          receipt.id,
+          strictGuard.context.user.id
+        );
         if (!reimbursementCreated) {
           tests.push({
             name: "reimbursement_workflow",
@@ -309,6 +313,7 @@ export async function POST(req: Request) {
         log("worker_invoice_workflow", "worker invoice");
         const profitBefore = await getCanonicalProjectProfit(projectId, server);
         const expense = await createExpense({
+          idempotencyKey: `financial-workflow:worker-invoice:${inv.id}`,
           date: new Date().toISOString().slice(0, 10),
           vendorName: "Test Worker Invoice",
           paymentMethod: "Check",
@@ -368,6 +373,9 @@ export async function POST(req: Request) {
       } else {
         const profitBefore = await getCanonicalProjectProfit(projectId, server);
         const expense = await createExpense({
+          idempotencyKey: `financial-workflow:expense:${projectId}:${new Date()
+            .toISOString()
+            .slice(0, 10)}`,
           date: new Date().toISOString().slice(0, 10),
           vendorName: "Expense Workflow Test",
           paymentMethod: "Check",
@@ -424,6 +432,7 @@ export async function POST(req: Request) {
         steps.push("invoice marked sent");
         log("invoice_payment_workflow", "mark sent");
         const payment = await createPaymentReceived({
+          idempotency_key: `workflow-payment-${nonce}`,
           invoice_id: invoice.id,
           project_id: projectId,
           customer_name: "Workflow Test Client",

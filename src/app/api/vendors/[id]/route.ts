@@ -28,7 +28,15 @@ const VENDOR_FIELD_ORDER = [
   "status",
 ] as const;
 
-const FALLBACK_VENDOR_COLUMNS = new Set(["id", "created_at", "name", "phone", "email", "address"]);
+const FALLBACK_VENDOR_COLUMNS = new Set([
+  "id",
+  "created_at",
+  "name",
+  "phone",
+  "email",
+  "address",
+  "status",
+]);
 
 type VendorStatus = "active" | "inactive";
 

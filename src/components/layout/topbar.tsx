@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, Moon, PanelLeft, Plus, Search, Sun } from "lucide-react";
+import { Bell, PanelLeft, Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -24,7 +24,6 @@ import { NeoKeyboardHint } from "@/components/command/neo-command-palette";
 import { UPLOAD_RECEIPT_ACTION } from "@/lib/navigation/actions";
 import { TYPO } from "@/lib/typography";
 import { cn } from "@/lib/utils";
-import type { OperationalThemeMode } from "@/lib/operational-theme";
 
 /** Map path segments to breadcrumb display labels (for last segment, or section names). */
 const SEGMENT_LABELS: Record<string, string> = {
@@ -40,9 +39,9 @@ const SEGMENT_LABELS: Record<string, string> = {
   "inspection-log": "Inspection Log",
   materials: "Material Selections",
   catalog: "Material Selections",
-  financial: "Financial",
-  finance: "Financial",
-  people: "Directory",
+  financial: "Finance",
+  finance: "Finance",
+  people: "Contacts",
   invoices: "Invoices",
   invoice: "Invoice",
   payments: "Payments",
@@ -102,6 +101,24 @@ const SEGMENT_LABELS: Record<string, string> = {
 };
 
 const LOGICAL_BREADCRUMB_RULES = [
+  { prefix: "/reports/workforce", labels: ["Labor", "Workforce"] },
+  { prefix: "/workers/summary", labels: ["Labor", "Workforce", "Overview"] },
+  { prefix: "/workers", labels: ["Labor", "Workers"] },
+  { prefix: "/customers", labels: ["Contacts", "Customers"] },
+  { prefix: "/subcontractors", labels: ["Contacts", "Subcontractors"] },
+  { prefix: "/labor/subcontractors", labels: ["Contacts", "Subcontractors"] },
+  { prefix: "/vendors", labels: ["Contacts", "Vendors"] },
+  { prefix: "/people/vendors", labels: ["Contacts", "Vendors"] },
+  { prefix: "/tasks", labels: ["Projects", "Tasks"] },
+  { prefix: "/schedule", labels: ["Projects", "Schedule"] },
+  { prefix: "/punch-list", labels: ["Projects", "Punch List"] },
+  { prefix: "/site-photos", labels: ["Projects", "Photos"] },
+  { prefix: "/inspection-log", labels: ["Projects", "Inspections"] },
+  { prefix: "/documents", labels: ["Projects", "Documents"] },
+  { prefix: "/change-orders", labels: ["Projects", "Change Orders"] },
+  { prefix: "/estimate-templates", labels: ["Estimates", "Templates"] },
+  { prefix: "/financial/reimbursements", labels: ["Labor", "Reimbursements"] },
+  { prefix: "/finance/labor-cost", labels: ["Labor", "Labor Cost"] },
   {
     prefix: "/reports",
     labels: ["Reports"],
@@ -110,33 +127,33 @@ const LOGICAL_BREADCRUMB_RULES = [
     prefix: "/settings/project-financial-review",
     labels: ["Reports", "Project Financial Review"],
   },
-  { prefix: "/financial/vendors", labels: ["Directory", "Vendors"] },
+  { prefix: "/financial/vendors", labels: ["Contacts", "Vendors"] },
   {
     prefix: "/financial/inbox/worker",
-    labels: ["Financial", "AP", "Receipt Inbox", "Worker Submitted"],
+    labels: ["Inbox", "Worker Submitted"],
   },
-  { prefix: UPLOAD_RECEIPT_ACTION.href, labels: ["Financial", "AP", "Receipt Inbox"] },
-  { prefix: "/financial/receipt-queue", labels: ["Financial", "AP", "Receipt Queue"] },
-  { prefix: "/financial/expenses", labels: ["Financial", "AP", "Expenses"] },
-  { prefix: "/financial/commissions", labels: ["Financial", "AP", "Commissions"] },
-  { prefix: "/financial/bills", labels: ["Financial", "AP", "Bills"] },
-  { prefix: "/financial/accounts", labels: ["Financial", "Cash", "Accounts"] },
-  { prefix: "/financial/bank", labels: ["Financial", "Cash", "Bank Transactions"] },
-  { prefix: "/dashboard/cashflow", labels: ["Financial", "Cash", "Cash Flow"] },
-  { prefix: "/financial/ar", labels: ["Financial", "AR"] },
-  { prefix: "/financial/invoices", labels: ["Financial", "AR", "Invoices"] },
-  { prefix: "/financial/payments", labels: ["Financial", "AR", "Payments Received"] },
-  { prefix: "/financial/payments-received", labels: ["Financial", "AR", "Payments Received"] },
-  { prefix: "/financial/deposits", labels: ["Financial", "AR", "Deposits"] },
-  { prefix: "/bills", labels: ["Financial", "AP", "Bills"] },
-  { prefix: "/labor/payroll-summary", labels: ["Reports", "Workforce", "Payroll"] },
-  { prefix: "/labor/payroll", labels: ["Reports", "Workforce", "Payroll"] },
-  { prefix: "/labor/payments", labels: ["Reports", "Workforce", "Payments"] },
-  { prefix: "/labor/advances", labels: ["Reports", "Workforce", "Advances"] },
-  { prefix: "/labor/reimbursements", labels: ["Financial", "AP", "Reimbursements"] },
-  { prefix: "/labor/worker-balances", labels: ["Reports", "Workforce", "Balances"] },
-  { prefix: "/labor/worker-invoices", labels: ["Reports", "Workforce", "Statements"] },
-  { prefix: "/labor/receipts", labels: ["Financial", "AP", "Receipt Inbox"] },
+  { prefix: UPLOAD_RECEIPT_ACTION.href, labels: ["Inbox"] },
+  { prefix: "/financial/receipt-queue", labels: ["Inbox", "Receipt Queue"] },
+  { prefix: "/financial/expenses", labels: ["Finance", "Expenses"] },
+  { prefix: "/financial/commissions", labels: ["Finance", "Payables", "Commissions"] },
+  { prefix: "/financial/bills", labels: ["Finance", "Payables", "Bills"] },
+  { prefix: "/financial/accounts", labels: ["Finance", "Accounts"] },
+  { prefix: "/financial/bank", labels: ["Finance", "Accounts", "Bank Transactions"] },
+  { prefix: "/dashboard/cashflow", labels: ["Finance", "Accounts", "Cash Flow"] },
+  { prefix: "/financial/ar", labels: ["Finance", "AR"] },
+  { prefix: "/financial/invoices", labels: ["Finance", "Billing", "Invoices"] },
+  { prefix: "/financial/payments", labels: ["Finance", "Billing", "Payments Received"] },
+  { prefix: "/financial/payments-received", labels: ["Finance", "Billing", "Payments Received"] },
+  { prefix: "/financial/deposits", labels: ["Finance", "Accounts", "Deposits"] },
+  { prefix: "/bills", labels: ["Finance", "Payables", "Bills"] },
+  { prefix: "/labor/payroll-summary", labels: ["Labor", "Workforce", "Payroll"] },
+  { prefix: "/labor/payroll", labels: ["Labor", "Workforce", "Payroll"] },
+  { prefix: "/labor/payments", labels: ["Labor", "Workforce", "Payments"] },
+  { prefix: "/labor/advances", labels: ["Labor", "Workforce", "Advances"] },
+  { prefix: "/labor/reimbursements", labels: ["Labor", "Reimbursements"] },
+  { prefix: "/labor/worker-balances", labels: ["Labor", "Workforce", "Balances"] },
+  { prefix: "/labor/worker-invoices", labels: ["Labor", "Workforce", "Statements"] },
+  { prefix: "/labor/receipts", labels: ["Inbox"] },
   { prefix: "/materials", labels: ["Projects", "Material Selections"] },
   { prefix: "/system/backups", labels: ["Settings", "Admin Center", "Backups"] },
   { prefix: "/settings/system-health", labels: ["Settings", "Admin Center", "System Health"] },
@@ -192,18 +209,13 @@ export function Topbar({
   onOpenSidebar,
   onToggleSidebar,
   onOpenCommandPalette,
-  operationalThemeMode,
-  showOperationalThemeToggle,
-  onToggleOperationalTheme,
 }: {
   onOpenSidebar?: () => void;
   onToggleSidebar?: () => void;
   onOpenCommandPalette?: () => void;
-  operationalThemeMode: OperationalThemeMode;
-  showOperationalThemeToggle: boolean;
-  onToggleOperationalTheme: () => void;
 }) {
   const pathname = usePathname();
+  const isEstimateIndex = pathname === "/estimates";
   const brandingSupabase = React.useMemo(() => {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -236,7 +248,7 @@ export function Topbar({
     <header
       data-app-topbar
       className={cn(
-        "neo-command-bar sticky top-0 z-40 flex h-hh-topbar-mobile min-h-hh-topbar-mobile shrink-0 items-center px-3 sm:h-hh-topbar-desktop sm:min-h-hh-topbar-desktop sm:rounded-hh-panel sm:px-4",
+        "sticky top-0 z-40 flex h-14 min-h-14 shrink-0 items-center border-b border-[var(--hh-border-default)] bg-[var(--hh-surface-workspace)] px-3 text-[var(--hh-text-secondary)] shadow-none sm:px-4",
         "flex-row gap-3 sm:gap-4"
       )}
     >
@@ -245,7 +257,7 @@ export function Topbar({
         <Button
           variant="outline"
           size="icon"
-          className="btn-outline-ghost h-11 w-11 min-h-[44px] min-w-[44px] shrink-0 sm:hidden"
+          className="h-11 w-11 min-h-[44px] min-w-[44px] shrink-0 border-[var(--hh-border-default)] bg-[var(--hh-surface-workspace)] text-[var(--hh-text-secondary)] shadow-none hover:bg-[var(--hh-surface-hover)] hover:text-[var(--hh-text-primary)] sm:hidden"
           aria-label="Open menu"
           onClick={onOpenSidebar}
         >
@@ -255,7 +267,7 @@ export function Topbar({
         <Button
           variant="outline"
           size="icon"
-          className="btn-outline-ghost hidden h-9 w-9 min-h-[44px] min-w-[44px] shrink-0 sm:flex"
+          className="hidden h-11 w-11 min-h-[44px] min-w-[44px] shrink-0 border-[var(--hh-border-default)] bg-[var(--hh-surface-workspace)] text-[var(--hh-text-secondary)] shadow-none hover:bg-[var(--hh-surface-hover)] hover:text-[var(--hh-text-primary)] sm:flex lg:h-9 lg:w-9 lg:min-h-9 lg:min-w-9"
           aria-label="Toggle sidebar"
           onClick={onToggleSidebar}
         >
@@ -278,26 +290,26 @@ export function Topbar({
           type="button"
           variant="outline"
           size="icon"
-          className="btn-outline-ghost flex h-11 w-11 min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-md shadow-none sm:hidden"
+          className="flex h-11 w-11 min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-hh-standard border-[var(--hh-border-default)] bg-[var(--hh-surface-workspace)] text-[var(--hh-text-secondary)] shadow-none hover:bg-[var(--hh-surface-hover)] hover:text-[var(--hh-text-primary)] sm:hidden"
           aria-label="Open command palette"
           onClick={onOpenCommandPalette}
         >
-          <Search className="h-4 w-4 text-[var(--hh-text-secondary)]" strokeWidth={1.75} />
+          <Search className="h-4 w-4" strokeWidth={1.75} />
         </Button>
         <button
           type="button"
-          className="hh-focus-ring group relative hidden h-8 min-w-0 items-center rounded-hh-standard outline-none sm:flex sm:w-[210px] md:w-[260px]"
+          className="hh-focus-ring group relative hidden h-11 min-w-0 items-center rounded-hh-standard outline-none sm:flex sm:w-[210px] md:w-[260px] lg:h-9"
           aria-label="Open command palette"
           onClick={onOpenCommandPalette}
         >
           <Search
-            className="absolute left-2.5 top-1/2 h-[15px] w-[15px] -translate-y-1/2 shrink-0 text-[var(--hh-text-tertiary)] transition-colors duration-150 group-hover:text-[var(--hh-text-primary)]"
+            className="absolute left-2.5 top-1/2 h-[15px] w-[15px] -translate-y-1/2 shrink-0 text-[var(--hh-text-muted)] transition-colors duration-150 group-hover:text-[var(--hh-text-secondary)]"
             strokeWidth={1.75}
             aria-hidden
           />
           <span
             className={cn(
-              "neo-topbar-command-input flex h-8 w-full min-w-0 items-center justify-between rounded-hh-standard border-[0.5px] pl-8 pr-1.5 text-[var(--hh-text-tertiary)]",
+              "flex h-11 w-full min-w-0 items-center justify-between rounded-hh-standard border border-[var(--hh-border-default)] bg-[var(--hh-surface-subtle)] pl-8 pr-1.5 text-[var(--hh-text-muted)] shadow-none group-hover:border-[var(--hh-border-input)] group-hover:bg-[var(--hh-surface-workspace)] lg:h-9",
               TYPO.tableCell,
               "transition-[background,border-color,box-shadow] duration-150"
             )}
@@ -309,96 +321,92 @@ export function Topbar({
       </div>
 
       <div className="flex shrink-0 items-center gap-1">
-        {/* + New — the global HH Neo OS primary action. */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              size="sm"
-              className={cn(
-                "h-9 min-h-[44px] rounded-hh-standard px-3.5 py-2.5 !text-[var(--hh-action-primary-foreground)] shadow-operational sm:min-h-0",
-                TYPO.button
-              )}
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              New
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel className={TYPO.tableHeader}>Projects</DropdownMenuLabel>
-            <DropdownMenuItem asChild>
-              <Link href="/projects/new">New Project</Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link href="/estimates/new">New Estimate</Link>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuLabel className={TYPO.tableHeader}>Work</DropdownMenuLabel>
-            <DropdownMenuItem asChild>
-              <Link href="/tasks/new">New Task</Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link href="/punch-list/new">New Punch Issue</Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link href="/site-photos/upload">Upload Site Photo</Link>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuLabel className={TYPO.tableHeader}>Finance</DropdownMenuLabel>
-            <DropdownMenuItem asChild>
-              <Link href="/financial/invoices/new">New Invoice</Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link href="/financial/expenses/new">New Expense</Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link href={UPLOAD_RECEIPT_ACTION.href}>{UPLOAD_RECEIPT_ACTION.label}</Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link href="/bills/new">New Bill</Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link href="/financial/payments">Record Payment</Link>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuLabel className={TYPO.tableHeader}>Labor</DropdownMenuLabel>
-            <DropdownMenuItem asChild>
-              <Link href="/labor/daily">Add Daily Entry</Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link href="/labor/payments">Worker Payment</Link>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        {showOperationalThemeToggle ? (
+        {/* + New — the global HH primary action. */}
+        {isEstimateIndex ? (
           <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            data-operational-theme-toggle
-            className="btn-outline-ghost flex h-11 w-11 min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-hh-standard shadow-none sm:h-[30px] sm:w-[30px] sm:min-h-0 sm:min-w-0"
-            aria-label={
-              operationalThemeMode === "dark" ? "Switch to light mode" : "Switch to dark mode"
-            }
-            title={operationalThemeMode === "dark" ? "Neo Light" : "Neo Dark"}
-            onClick={onToggleOperationalTheme}
-          >
-            {operationalThemeMode === "dark" ? (
-              <Sun className="h-4 w-4 text-[var(--hh-text-secondary)]" aria-hidden />
-            ) : (
-              <Moon className="h-4 w-4 text-[var(--hh-text-secondary)]" aria-hidden />
+            asChild
+            size="sm"
+            className={cn(
+              "h-11 min-h-[44px] rounded-hh-standard border-transparent !bg-[var(--shell-action)] px-3.5 py-2.5 !text-[var(--shell-action-text)] shadow-none hover:!bg-[var(--shell-action-hover)] lg:h-9 lg:min-h-0",
+              TYPO.button
             )}
+          >
+            <Link href="/estimates/new" aria-label="New Estimate">
+              <Plus className="mr-2 h-4 w-4" />
+              <span className="hidden sm:inline">New Estimate</span>
+              <span className="sm:hidden">New</span>
+            </Link>
           </Button>
-        ) : null}
+        ) : (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                size="sm"
+                className={cn(
+                  "h-11 min-h-[44px] rounded-hh-standard border-transparent !bg-[var(--shell-action)] px-3.5 py-2.5 !text-[var(--shell-action-text)] shadow-none hover:!bg-[var(--shell-action-hover)] lg:h-9 lg:min-h-0",
+                  TYPO.button
+                )}
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                New
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="app-shell-overlay w-56">
+              <DropdownMenuLabel className={TYPO.tableHeader}>Projects</DropdownMenuLabel>
+              <DropdownMenuItem asChild>
+                <Link href="/projects/new">New Project</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/estimates/new">New Estimate</Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className={TYPO.tableHeader}>Work</DropdownMenuLabel>
+              <DropdownMenuItem asChild>
+                <Link href="/tasks/new">New Task</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/punch-list/new">New Punch Issue</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/site-photos/upload">Upload Site Photo</Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className={TYPO.tableHeader}>Finance</DropdownMenuLabel>
+              <DropdownMenuItem asChild>
+                <Link href="/financial/invoices/new">New Invoice</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/financial/expenses/new">New Expense</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href={UPLOAD_RECEIPT_ACTION.href}>{UPLOAD_RECEIPT_ACTION.label}</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/bills/new">New Bill</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/financial/payments">Record Payment</Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className={TYPO.tableHeader}>Labor</DropdownMenuLabel>
+              <DropdownMenuItem asChild>
+                <Link href="/labor/daily">Add Daily Entry</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/labor/payments">Worker Payment</Link>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
 
         <div className="relative inline-flex shrink-0">
           <Button
             variant="outline"
             size="icon"
-            className="btn-outline-ghost flex h-11 w-11 min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-md shadow-none sm:h-[30px] sm:w-[30px] sm:min-h-0 sm:min-w-0"
+            className="flex h-11 w-11 min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-hh-standard border-[var(--hh-border-default)] bg-[var(--hh-surface-workspace)] text-[var(--hh-text-secondary)] shadow-none hover:bg-[var(--hh-surface-hover)] hover:text-[var(--hh-text-primary)] lg:h-9 lg:w-9 lg:min-h-9 lg:min-w-9"
             aria-label="Notifications"
           >
-            <Bell className="h-4 w-4 text-[var(--hh-text-secondary)]" />
+            <Bell className="h-4 w-4" />
           </Button>
           {systemHealth.status === "warning" ? (
             <span
@@ -413,7 +421,8 @@ export function Topbar({
           <DropdownMenuTrigger asChild>
             <Button
               variant="outline"
-              className="btn-outline-ghost relative h-9 w-9 min-h-[44px] min-w-[44px] shrink-0 rounded-full p-0 sm:min-h-0 sm:min-w-0"
+              className="relative h-11 w-11 min-h-[44px] min-w-[44px] shrink-0 rounded-full border-[var(--hh-border-default)] bg-[var(--hh-surface-workspace)] p-0 shadow-none hover:bg-[var(--hh-surface-hover)] lg:h-9 lg:w-9 lg:min-h-9 lg:min-w-9"
+              aria-label="Open account menu"
             >
               <Avatar className="h-8 w-8">
                 {logoUrl ? (
@@ -421,7 +430,7 @@ export function Topbar({
                 ) : null}
                 <AvatarFallback
                   className={cn(
-                    "border border-[var(--hh-border)] bg-[var(--hh-l3-selected)] text-[var(--hh-text-primary)]",
+                    "border border-[var(--hh-border-default)] bg-[var(--hh-surface-selected)] text-[var(--hh-accent-hover)]",
                     TYPO.bodyStrong
                   )}
                 >
@@ -430,7 +439,7 @@ export function Topbar({
               </Avatar>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
+          <DropdownMenuContent align="end" className="app-shell-overlay w-48">
             <DropdownMenuItem asChild>
               <Link href="/settings/account">Profile</Link>
             </DropdownMenuItem>

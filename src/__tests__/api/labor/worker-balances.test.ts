@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 type MockSupabaseClient = { from: ReturnType<typeof createChained> } | null;
 let mockSupabaseGetter: () => MockSupabaseClient = () => null;
+let mockRequestClientGetter: () => MockSupabaseClient = () => null;
 
 function request() {
   return new Request("http://localhost/api/labor/worker-balances");
@@ -47,6 +48,12 @@ vi.mock("@/lib/auth-boundary", () => ({
     context: { email: "owner@example.com", role: "owner", user: { id: "owner-1" } },
     client: createClient(),
   }),
+  requireSupabaseOwnerOrAdminRequestClient: async () => ({
+    ok: true as const,
+    context: { email: "owner@example.com", role: "owner", user: { id: "owner-1" } },
+    client: mockRequestClientGetter(),
+    sessionResponse: new Response(),
+  }),
 }));
 
 describe("GET /api/labor/worker-balances", () => {
@@ -55,6 +62,7 @@ describe("GET /api/labor/worker-balances", () => {
     vi.stubEnv("HH_REQUIRE_LOGIN", "0");
     vi.stubEnv("HH_ALLOW_LOCAL_NO_LOGIN", "1");
     mockSupabaseGetter = () => null;
+    mockRequestClientGetter = () => mockSupabaseGetter();
   });
 
   afterEach(() => {
@@ -68,6 +76,30 @@ describe("GET /api/labor/worker-balances", () => {
     expect(res.status).toBe(503);
     const json = await res.json();
     expect(json.message).toContain("Supabase");
+  });
+
+  it("queries with the authenticated request client instead of a service-role client", async () => {
+    const workers = [{ id: "w1", name: "Worker One" }];
+    const requestClient = {
+      from: (table: string) => {
+        if (table === "labor_workers" || table === "workers")
+          return createChained(workers) as never;
+        return createChained([]) as never;
+      },
+    } as never;
+    mockSupabaseGetter = () => null;
+    mockRequestClientGetter = () => requestClient;
+
+    const { GET } = await import("@/app/api/labor/worker-balances/route");
+    const res = await GET(request());
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Server-Timing")).toMatch(
+      /hh_auth;dur=\d+\.\d, hh_server_data;dur=\d+\.\d, hh_handler_total;dur=\d+\.\d/
+    );
+    await expect(res.json()).resolves.toMatchObject({
+      balances: [{ workerId: "w1", workerName: "Worker One", balance: 0 }],
+    });
   });
 
   it("returns 200 and balances array when Supabase returns data", async () => {

@@ -6,11 +6,16 @@ import {
   E2E_PRESERVED_PROJECT_ID,
   E2E_PRESERVED_PROJECT_LABEL,
 } from "./e2e-cleanup-db";
+import { loginAsE2EOwner } from "./e2e-auth-owner";
 import { assertE2ESupabaseUrlSafeForMutations } from "./e2e-supabase-url-guard";
 
 const E2E_CUSTOMER_LABEL = "[E2E] Test Customer";
 const createdInvoiceNos = new Set<string>();
 const createdClientNames = new Set<string>();
+
+test.beforeEach(async ({ page }) => {
+  await loginAsE2EOwner(page, "/financial/invoices");
+});
 
 function db(): SupabaseClient | null {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
@@ -88,7 +93,7 @@ async function createDraftInvoice(page: Page, invoiceNo: string): Promise<string
 
   await selectSeedProjectAndCustomer(page);
   await page.getByTestId("invoice-new-number-input").fill(invoiceNo);
-  await page.getByTestId("invoice-new-due-date-input").fill("2026-06-30");
+  await page.getByTestId("invoice-new-due-date-input").fill("2099-06-30");
   await page.getByTestId("invoice-new-line-1-item-input").fill(`PW Payment item ${invoiceNo}`);
   await page.getByTestId("invoice-new-line-1-qty-input").fill("1");
   await page.getByTestId("invoice-new-line-1-rate-input").fill("225");

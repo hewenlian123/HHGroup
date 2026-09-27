@@ -1,6 +1,7 @@
+import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
 import { NextResponse } from "next/server";
-import { guardDangerousMaintenanceRequest } from "@/lib/production-safety";
-import { getServerSupabase } from "@/lib/supabase-server";
+import { guardNonProductionOnlyRequest } from "@/lib/production-safety";
+import { getServerSupabaseAdmin } from "@/lib/supabase-server";
 import {
   insertWorkerReceiptWithClient,
   approveWorkerReceiptWithClient,
@@ -27,8 +28,11 @@ type StepResult = { step: string; ok: boolean; detail?: string; error?: string }
  * 7. Log [workflow test] workflow passed
  */
 export async function POST(req: Request) {
-  const blocked = guardDangerousMaintenanceRequest(req);
+  const blocked = guardNonProductionOnlyRequest(req);
   if (blocked) return blocked;
+
+  const guard = await requireSupabaseOwnerOrAdmin(req);
+  if (!guard.ok) return guard.response;
 
   const steps: StepResult[] = [];
   const host = req.headers.get("host") ?? "localhost:3000";
@@ -36,7 +40,7 @@ export async function POST(req: Request) {
   const baseUrl = `${protocol}://${host}`;
 
   try {
-    const server = getServerSupabase();
+    const server = getServerSupabaseAdmin();
     if (!server) {
       return NextResponse.json(
         {
@@ -90,7 +94,11 @@ export async function POST(req: Request) {
     steps.push({ step: "1_receipt_created", ok: true, detail: `id=${receipt.id}` });
 
     // ——— Step 2: Approve → reimbursement created ———
-    const { reimbursementCreated } = await approveWorkerReceiptWithClient(server, receipt.id);
+    const { reimbursementCreated } = await approveWorkerReceiptWithClient(
+      server,
+      receipt.id,
+      guard.context.user.id
+    );
     if (!reimbursementCreated) {
       steps.push({
         step: "2_reimbursement_created",

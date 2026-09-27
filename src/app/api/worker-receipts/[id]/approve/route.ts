@@ -17,7 +17,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   try {
     const { id } = await params;
-    const { receipt, reimbursementCreated } = await approveWorkerReceiptWithClient(server, id);
+    const { receipt, reimbursementCreated } = await approveWorkerReceiptWithClient(
+      server,
+      id,
+      guard.context.user.id
+    );
     return NextResponse.json({ receipt, reimbursementCreated });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Failed to approve";

@@ -155,6 +155,8 @@ export function EditPaymentReceivedModal({
   onSuccess,
 }: EditPaymentReceivedModalProps) {
   const { toast } = useToast();
+  const onOpenChangeRef = React.useRef(onOpenChange);
+  onOpenChangeRef.current = onOpenChange;
   const { openPreview } = useAttachmentPreview();
   const cameraInputRef = React.useRef<HTMLInputElement | null>(null);
   const uploadInputRef = React.useRef<HTMLInputElement | null>(null);
@@ -273,7 +275,7 @@ export function EditPaymentReceivedModal({
             description: err instanceof Error ? err.message : undefined,
             variant: "error",
           });
-          onOpenChange(false);
+          onOpenChangeRef.current(false);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -283,7 +285,7 @@ export function EditPaymentReceivedModal({
     return () => {
       cancelled = true;
     };
-  }, [cleanupDrafts, onOpenChange, open, paymentId, toast]);
+  }, [cleanupDrafts, open, paymentId, toast]);
 
   const updateDraft = React.useCallback(
     (draftId: string, patch: Partial<PaymentAttachmentDraft>) => {
@@ -498,7 +500,10 @@ export function EditPaymentReceivedModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[92vh] max-w-lg overflow-y-auto rounded-hh-compact border-border/60">
+      <DialogContent
+        data-revenue-ar-v2
+        className="max-h-[92vh] max-w-lg overflow-y-auto rounded-hh-compact border-border/60"
+      >
         <DialogHeader className="border-b border-border/60 pb-3">
           <DialogTitle className="text-base font-medium">Edit Payment</DialogTitle>
         </DialogHeader>

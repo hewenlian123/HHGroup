@@ -3,7 +3,8 @@
 import { syncRouterNonBlocking } from "@/components/perf/sync-router-non-blocking";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import * as React from "react";
-import { useRouter } from "next/navigation";
+import { financeReturnPath, financePathWithReturn } from "@/lib/finance-navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { useAttachmentPreview } from "@/contexts/attachment-preview-context";
@@ -20,8 +21,6 @@ import {
   getVendors,
   getPaymentAccounts,
   getSubcontractDeductionOptions,
-  updateExpenseReceiptUrl,
-  updateExpenseForReview,
   type PaymentAccountRow,
   type SubcontractDeductionOption,
 } from "@/lib/data";
@@ -45,11 +44,15 @@ import {
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/formatters";
 import { hawaiiTodayYmd } from "@/lib/hawaii-calendar-date";
+import {
+  idempotentSubmissionForPayload,
+  type IdempotentSubmission,
+} from "@/lib/financial-idempotency";
 
 type ProjectOption = { id: string; name: string | null };
 
 const FIELD_LABEL = "text-xs uppercase tracking-normal text-muted-foreground";
-const CONTROL_CLASS = "h-10 rounded-sm border-border/60 text-sm";
+const CONTROL_CLASS = "h-10 rounded-sm border-[var(--hh-border)] text-sm";
 const SELECT_TRIGGER = cn(CONTROL_CLASS, "[&>span]:line-clamp-1");
 
 type LineForm = {
@@ -104,11 +107,23 @@ function parseCurrency(input: string): number {
 }
 
 export default function NewExpensePage() {
+  return (
+    <React.Suspense fallback={null}>
+      <NewExpensePageContent />
+    </React.Suspense>
+  );
+}
+
+function NewExpensePageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const returnHref = financeReturnPath(searchParams.get("returnTo"), "/financial/inbox");
   const { toast } = useToast();
 
   const [loading, setLoading] = React.useState(true);
   const [saving, setSaving] = React.useState(false);
+  const uploadedReceiptRef = React.useRef<{ file: File; path: string } | null>(null);
+  const atomicSubmissionRef = React.useRef<IdempotentSubmission | null>(null);
   const [error, setError] = React.useState<string | null>(null);
 
   const [projects, setProjects] = React.useState<ProjectOption[]>([]);
@@ -302,9 +317,28 @@ export default function NewExpensePage() {
 
     setSaving(true);
     try {
+      if (receiptFile && uploadedReceiptRef.current?.file !== receiptFile) {
+        const uploadData = new FormData();
+        uploadData.set("file", receiptFile);
+        const uploadResponse = await fetch("/api/quick-expense/upload-attachment", {
+          method: "POST",
+          body: uploadData,
+          credentials: "same-origin",
+        });
+        const uploadBody = (await uploadResponse.json().catch(() => ({}))) as {
+          ok?: boolean;
+          path?: string;
+        };
+        if (!uploadResponse.ok || !uploadBody.ok || !uploadBody.path) {
+          throw new Error("Receipt upload failed.");
+        }
+        uploadedReceiptRef.current = { file: receiptFile, path: uploadBody.path };
+      }
       const selectedAccount = accounts.find((account) => account.id === accountId);
-      const created = await createExpense({
+      const createPayload = {
         date,
+        sourceType: receiptFile ? ("receipt_upload" as const) : ("company" as const),
+        receiptUrl: receiptFile ? uploadedReceiptRef.current?.path : null,
         vendorName: vendorName.trim(),
         referenceNo: referenceNo.trim() || undefined,
         notes: notes.trim() || undefined,
@@ -325,39 +359,28 @@ export default function NewExpensePage() {
               note: deductionNote.trim() || null,
             }
           : null,
+        initialStatus: deriveExpenseWorkflowStatus(
+          effectiveLines[0]?.projectId ?? null,
+          effectiveLines[0]?.category ?? "",
+          effectiveLines[0]?.costAllocation ?? EXPENSE_COST_ALLOCATION_OVERHEAD
+        ),
+      };
+      atomicSubmissionRef.current = idempotentSubmissionForPayload(
+        atomicSubmissionRef.current,
+        createPayload
+      );
+      const created = await createExpense({
+        ...createPayload,
+        idempotencyKey: atomicSubmissionRef.current.key,
       });
-      if (receiptFile) {
-        const uploadData = new FormData();
-        uploadData.set("file", receiptFile);
-        const uploadResponse = await fetch("/api/quick-expense/upload-attachment", {
-          method: "POST",
-          body: uploadData,
-          credentials: "same-origin",
-        });
-        const uploadBody = (await uploadResponse.json().catch(() => ({}))) as {
-          ok?: boolean;
-          path?: string;
-        };
-        if (!uploadResponse.ok || !uploadBody.ok || !uploadBody.path) {
-          throw new Error("Receipt upload failed.");
-        }
-        await updateExpenseReceiptUrl(created.id, uploadBody.path);
-      }
       const pa = paymentAccountId.trim();
       if (pa) {
         persistLastExpensePaymentAccountId(pa);
         rememberExpenseVendorPaymentAccount(vendorName.trim(), pa);
       }
-      const head = effectiveLines[0];
-      await updateExpenseForReview(created.id, {
-        status: deriveExpenseWorkflowStatus(
-          head?.projectId ?? null,
-          head?.category ?? "",
-          head?.costAllocation ?? EXPENSE_COST_ALLOCATION_OVERHEAD
-        ),
-      });
+      atomicSubmissionRef.current = null;
       toast({ title: "Created", description: "Expense created.", variant: "success" });
-      router.push("/financial/expenses");
+      router.push(financePathWithReturn(`/financial/expenses/${created.id}`, returnHref));
       syncRouterNonBlocking(router);
     } catch (e2: unknown) {
       const msg = e2 instanceof Error ? e2.message : "Failed to create expense.";
@@ -369,7 +392,10 @@ export default function NewExpensePage() {
   };
 
   return (
-    <div className="page-container page-stack flex justify-center py-6 md:py-8">
+    <div
+      data-hh-appearance="radix-expenses"
+      className="page-container page-stack flex justify-center py-6 md:py-8"
+    >
       <div className="w-full max-w-3xl space-y-7">
         <PageHeader
           title="New expense"
@@ -379,7 +405,7 @@ export default function NewExpensePage() {
         {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
         <form onSubmit={onSubmit} className="space-y-6">
-          <section className="space-y-3 border-b border-border/60 pb-6">
+          <section className="space-y-3 border-b border-[var(--hh-border)] pb-6">
             <h2 className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
               Core
             </h2>
@@ -605,7 +631,7 @@ export default function NewExpensePage() {
           </div>
 
           {showAdvanced ? (
-            <section className="space-y-4 border-b border-border/60 pb-6">
+            <section className="space-y-4 border-b border-[var(--hh-border)] pb-6">
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <label className={FIELD_LABEL}>Payment source</label>
@@ -666,7 +692,7 @@ export default function NewExpensePage() {
             />
             <label
               htmlFor="receipt-upload"
-              className="flex cursor-pointer flex-col items-center justify-center border border-dashed border-border/60 px-4 py-6 text-center text-sm text-muted-foreground"
+              className="flex cursor-pointer flex-col items-center justify-center border border-dashed border-[var(--hh-border)] px-4 py-6 text-center text-sm text-muted-foreground"
               onDragOver={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -700,7 +726,7 @@ export default function NewExpensePage() {
                       fileType: receiptPreviewFileType,
                     })
                   }
-                  className="cursor-pointer overflow-hidden rounded-sm border border-border/60 p-0.5 transition-transform duration-200 ease-out hover:scale-105"
+                  className="cursor-pointer overflow-hidden rounded-sm border border-[var(--hh-border)] p-0.5"
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={receiptPreviewUrl} alt="" className="h-16 w-16 object-cover" />
@@ -746,7 +772,7 @@ export default function NewExpensePage() {
                       fileType: "pdf",
                     })
                   }
-                  className="flex h-16 w-16 cursor-pointer items-center justify-center rounded-sm border border-border/60 text-hh-status font-medium text-muted-foreground transition-transform duration-200 ease-out hover:scale-105"
+                  className="flex h-16 w-16 cursor-pointer items-center justify-center rounded-sm border border-[var(--hh-border)] text-hh-status font-medium text-muted-foreground"
                 >
                   PDF
                 </button>
@@ -774,7 +800,7 @@ export default function NewExpensePage() {
           </section>
 
           {showSplitLines ? (
-            <section className="space-y-3 border-b border-border/60 pb-6">
+            <section className="space-y-3 border-b border-[var(--hh-border)] pb-6">
               <div className="flex items-center justify-between">
                 <h2 className="text-sm font-medium text-foreground">Split lines</h2>
                 <Button
@@ -923,7 +949,7 @@ export default function NewExpensePage() {
                 ))}
               </div>
 
-              <div className="mt-2 flex items-center justify-between border-t border-border/60 pt-3 text-sm">
+              <div className="mt-2 flex items-center justify-between border-t border-[var(--hh-border)] pt-3 text-sm">
                 <span className="text-muted-foreground">Total</span>
                 <span className="tabular-nums font-medium">{formatCurrency(total)}</span>
               </div>
@@ -936,7 +962,7 @@ export default function NewExpensePage() {
               variant="outline"
               size="sm"
               className="btn-outline-ghost h-8"
-              onClick={() => router.push("/financial/expenses")}
+              onClick={() => router.push(returnHref)}
             >
               Cancel
             </Button>

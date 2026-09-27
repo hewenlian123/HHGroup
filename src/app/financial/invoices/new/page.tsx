@@ -1,7 +1,9 @@
 import NewInvoiceClient from "./new-invoice-client";
 import { getEstimateInvoicePrefill } from "./estimate-prefill";
 import { getProjectByIdWithClient } from "@/lib/projects-db";
-import { getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
+import { requireSupabaseOwnerOrAdminServerActionClient } from "@/lib/auth-boundary";
+import { ServerDataLoadFallback } from "@/components/server-data-load-fallback";
+import { notFound } from "next/navigation";
 import type { ProjectInvoicePrefill } from "./new-invoice-client";
 import { safeEstimateReturnPath } from "@/app/estimates/_components/estimate-workflow-continuity";
 
@@ -29,22 +31,27 @@ export default async function NewInvoicePage({
   let projectPrefill: ProjectInvoicePrefill | null = null;
 
   if (!estimatePrefill && projectId) {
-    const supabase = getServerSupabaseInternalNoStore();
-    if (supabase) {
-      try {
-        const project = await getProjectByIdWithClient(supabase, projectId);
-        if (project) {
-          projectPrefill = {
-            projectId: project.id,
-            projectName: project.name,
-            customerId: project.customerId ?? null,
-            customerName: project.client ?? null,
-          };
-        }
-      } catch {
-        projectPrefill = null;
-      }
+    let project;
+    try {
+      const guard = await requireSupabaseOwnerOrAdminServerActionClient({ noStore: true });
+      if (!guard.ok) throw new Error(guard.error);
+      project = await getProjectByIdWithClient(guard.client, projectId);
+    } catch {
+      return (
+        <ServerDataLoadFallback
+          message="Project invoice context is unavailable. Please retry."
+          backHref={`/projects/${encodeURIComponent(projectId)}?tab=financial`}
+          backLabel="Back to project"
+        />
+      );
     }
+    if (!project) notFound();
+    projectPrefill = {
+      projectId: project.id,
+      projectName: project.name,
+      customerId: project.customerId ?? null,
+      customerName: project.client ?? null,
+    };
   }
 
   return (

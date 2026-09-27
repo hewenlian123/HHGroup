@@ -1,6 +1,9 @@
-import { redirect } from "next/navigation";
-
-/** Redirect /vendors to financial vendors page. */
-export default function VendorsRedirectPage() {
-  redirect("/financial/vendors");
+import { Suspense } from "react";
+import { ContactsDirectory } from "@/components/contacts/contacts-directory";
+export default function VendorsPage() {
+  return (
+    <Suspense fallback={null}>
+      <ContactsDirectory vendorOnly />
+    </Suspense>
+  );
 }

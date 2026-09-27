@@ -110,7 +110,7 @@ export function ProjectBudgetInput({
           {estimate || estimateFallback}
         </p>
       </div>
-      <div className="group flex h-11 items-center overflow-hidden rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] shadow-none transition-all duration-150 ease-out focus-within:border-[var(--hh-action-primary)] focus-within:ring-2 focus-within:ring-[var(--hh-focus-ring)]">
+      <div className="group flex h-11 items-center overflow-hidden rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] shadow-none transition-[background-color,border-color,box-shadow] duration-150 ease-out focus-within:border-[var(--hh-action-primary)] focus-within:ring-2 focus-within:ring-[var(--hh-focus-ring)]">
         <div className="flex h-full items-center gap-2 border-r border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 text-hh-metadata font-semibold tracking-normal text-[var(--hh-text-secondary)]">
           <span>USD</span>
           <span className="financial-nums text-hh-body tracking-normal text-[var(--hh-text-primary)]">
@@ -200,7 +200,7 @@ export function ProjectAddressField({
         aria-label={value ? `Project address: ${value}` : "Add project address"}
         onClick={openAddressEditor}
         className={cn(
-          "flex min-h-10 w-full items-center rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 py-2 text-left text-hh-body text-[var(--hh-text-primary)] shadow-none transition-all duration-150 ease-out",
+          "flex min-h-10 w-full items-center rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 py-2 text-left text-hh-body text-[var(--hh-text-primary)] shadow-none transition-[background-color,border-color,box-shadow] duration-150 ease-out",
           "cursor-pointer hover:bg-[var(--hh-l2-operational-surface)] focus-visible:border-[var(--hh-action-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)]",
           "disabled:cursor-not-allowed disabled:opacity-50 max-md:min-h-11",
           error &&

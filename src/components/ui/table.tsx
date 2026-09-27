@@ -4,13 +4,16 @@ import { cn } from "@/lib/utils";
 import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
 import { OS, TYPO } from "@/lib/typography";
 
-const tableShellClass = cn(OS.tableShell, "rounded-hh-panel");
+const tableShellClass = cn(
+  OS.tableShell,
+  "rounded-hh-panel bg-[var(--hh-l1-workspace)] shadow-none"
+);
 
 /** Legacy raw table cell borders — light row dividers only (prefer `Table` primitives). */
 export const tableCellBorderClass = "border-b border-[var(--hh-border)] last:border-b-0";
 
 export const tableRawThClass = cn(
-  "bg-[var(--hh-l2-operational-surface)] px-hh-table-cell-inline py-hh-table-cell-block text-left align-middle",
+  "h-hh-row-standard bg-[var(--hh-l2-operational-surface)] px-hh-table-cell-inline py-hh-table-cell-block text-left align-middle",
   TYPO.tableHeader,
   "border-b border-[var(--hh-border)]"
 );
@@ -46,10 +49,7 @@ const TableHeader = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <thead
     ref={ref}
-    className={cn(
-      "[&_tr]:border-0 [&_tr]:hover:!bg-transparent dark:[&_tr]:hover:!bg-transparent",
-      className
-    )}
+    className={cn("[&_tr]:border-0 [&_tr]:hover:!bg-transparent", className)}
     {...props}
   />
 ));
@@ -91,8 +91,8 @@ const TableRow = React.forwardRef<HTMLTableRowElement, React.HTMLAttributes<HTML
       ref={ref}
       className={cn(
         listTableRowStaticClassName,
-        "border-l-2 border-l-transparent transition-colors",
-        "data-[state=selected]:border-l-[var(--hh-border-strong)] data-[state=selected]:bg-[var(--hh-l3-selected)]",
+        "h-hh-row-standard border-l-2 border-l-transparent bg-[var(--hh-l1-workspace)] transition-colors",
+        "data-[state=selected]:border-l-[var(--hh-action-primary)] data-[state=selected]:bg-[var(--hh-l3-selected)]",
         "[&>td:first-child]:font-medium",
         className
       )}
@@ -110,7 +110,7 @@ const TableHead = React.forwardRef<
     ref={ref}
     scope={scope ?? "col"}
     className={cn(
-      "bg-[var(--hh-l2-operational-surface)] px-hh-table-cell-inline py-hh-table-cell-block text-left align-middle",
+      "h-hh-row-standard bg-[var(--hh-l2-operational-surface)] px-hh-table-cell-inline py-hh-table-cell-block text-left align-middle",
       TYPO.tableHeader,
       "border-b border-[var(--hh-border)]",
       "[&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
@@ -128,7 +128,7 @@ const TableCell = React.forwardRef<
   <td
     ref={ref}
     className={cn(
-      "hh-touch-table-cell px-hh-table-cell-inline py-hh-table-cell-block align-middle",
+      "hh-touch-table-cell h-hh-row-standard px-hh-table-cell-inline py-hh-table-cell-block align-middle",
       TYPO.tableCell,
       "[&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
       className

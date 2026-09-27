@@ -11,11 +11,7 @@ const source = (path) => readFileSync(resolve(ROOT, path), "utf8");
 const ambiguousShadow = /shadow-\[var\(--hh-shadow-(operational|floating|task)\)\]/;
 
 const roleSources = {
-  operational: [
-    "src/components/base/neo-primitives.tsx",
-    "src/components/ui/searchable-select.tsx",
-    "src/lib/typography.ts",
-  ],
+  operational: ["src/components/ui/searchable-select.tsx", "src/lib/typography.ts"],
   floating: [
     "src/components/ui/creatable-select.tsx",
     "src/components/ui/date-picker.tsx",
@@ -88,11 +84,18 @@ test("shared primitives use explicit semantic box-shadow utilities", () => {
       assert.match(source(path), new RegExp(`(?:^|\\s)shadow-${role}(?:\\s|$|[\"'])`));
     }
   }
+
+  assert.match(
+    source("src/components/base/neo-primitives.tsx"),
+    /shadow-none/,
+    "Certified V2 compatibility panels remain flat"
+  );
 });
 
-test("compiled semantic utilities produce non-none computed shadows in both themes", async (t) => {
+test("compiled semantic utilities produce V2 light depth across responsive widths", async (t) => {
   const compiledCss = compileSemanticShadowUtilities();
   const tokenCss = source("src/styles/design-tokens.generated.css");
+  const v2TokenCss = source("src/styles/hh-design-system-v2.css");
 
   for (const role of Object.keys(roleSources)) {
     const rule = compiledCss.match(new RegExp(`\\.shadow-${role}\\s*\\{([^}]*)\\}`))?.[1];
@@ -106,7 +109,7 @@ test("compiled semantic utilities produce non-none computed shadows in both them
   const page = await browser.newPage();
 
   await page.setContent(`
-    <style>${tokenCss}\n${compiledCss}</style>
+    <style>${tokenCss}\n${v2TokenCss}\n${compiledCss}</style>
     ${Object.keys(roleSources)
       .map(
         (role) => `
@@ -116,39 +119,32 @@ test("compiled semantic utilities produce non-none computed shadows in both them
       )
       .join("\n")}
   `);
+  await page.evaluate(() => {
+    document.documentElement.dataset.hhTheme = "operational-light";
+  });
 
   for (const viewport of [
     { name: "desktop", width: 1440, height: 900 },
     { name: "mobile", width: 390, height: 844 },
   ]) {
     await page.setViewportSize(viewport);
-    for (const theme of ["light", "dark"]) {
-      await page.evaluate((nextTheme) => {
-        document.documentElement.classList.toggle("dark", nextTheme === "dark");
-      }, theme);
+    for (const role of Object.keys(roleSources)) {
+      const styles = await page.evaluate((shadowRole) => {
+        const actual = getComputedStyle(
+          document.querySelector(`[data-shadow="${shadowRole}"]`)
+        ).boxShadow;
+        const reference = getComputedStyle(
+          document.querySelector(`[data-reference="${shadowRole}"]`)
+        ).boxShadow;
+        return { actual, reference };
+      }, role);
 
-      for (const role of Object.keys(roleSources)) {
-        const styles = await page.evaluate((shadowRole) => {
-          const actual = getComputedStyle(
-            document.querySelector(`[data-shadow="${shadowRole}"]`)
-          ).boxShadow;
-          const reference = getComputedStyle(
-            document.querySelector(`[data-reference="${shadowRole}"]`)
-          ).boxShadow;
-          return { actual, reference };
-        }, role);
-
-        assert.notEqual(styles.actual, "none", `${viewport.name} ${theme} ${role} is none`);
-        assert.notEqual(
-          styles.reference,
-          "none",
-          `${viewport.name} ${theme} ${role} token is none`
-        );
-        assert.ok(
-          styles.actual.includes(styles.reference),
-          `${viewport.name} ${theme} ${role} does not apply its semantic token`
-        );
-      }
+      assert.notEqual(styles.actual, "none", `${viewport.name} ${role} is none`);
+      assert.notEqual(styles.reference, "none", `${viewport.name} ${role} token is none`);
+      assert.ok(
+        styles.actual.includes(styles.reference),
+        `${viewport.name} ${role} does not apply its semantic token`
+      );
     }
   }
 });

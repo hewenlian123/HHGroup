@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
 
-/** Approve endpoint deprecated: workflow uses only pending → paid. Use Mark as Paid instead. */
+/** Approve endpoint deprecated: approval belongs to Worker Inbox; payment is a separate action. */
 export async function POST() {
   return NextResponse.json(
-    { message: "Reimbursement workflow simplified. Use Mark as Paid for pending items." },
+    {
+      message:
+        "Review and approve the Worker Receipt in Worker Inbox, then Continue to Payment in Labor Reimbursements.",
+    },
     { status: 410 }
   );
 }

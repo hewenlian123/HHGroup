@@ -1,19 +1,14 @@
+import { expenseRequiresReceiptReview } from "@/lib/expense-workflow-status";
+import { getExpenseTotal } from "@/lib/expense-domain";
 import { NextResponse } from "next/server";
-import { requireSupabaseOwnerOrAdminWithClient } from "@/lib/auth-boundary";
-import {
-  ensureWorkerReimbursementForApprovedExpense,
-  getExpenseById,
-  syncExpenseHeaderAmountFromLinesWithClient,
-} from "@/lib/expenses-db";
+import { requireSupabaseOwnerOrAdminRequestClient } from "@/lib/auth-boundary";
+import { getExpenseById } from "@/lib/expenses-db";
 import {
   expenseNeedsReviewFromDb,
+  expenseSourceTypeIsWorkerReimbursement,
   validateApproveInboxUploadDraft,
 } from "@/lib/expense-workflow-status";
-import { isInboxUploadExpenseReference } from "@/lib/inbox-upload-constants";
-import {
-  SUPABASE_MISSING_SERVER_ENV_MESSAGE,
-  getServerSupabaseInternalNoStore,
-} from "@/lib/supabase-server";
+import { SUPABASE_MISSING_SERVER_ENV_MESSAGE } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -42,10 +37,7 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ): Promise<NextResponse> {
-  const guard = await requireSupabaseOwnerOrAdminWithClient(
-    request,
-    getServerSupabaseInternalNoStore
-  );
+  const guard = await requireSupabaseOwnerOrAdminRequestClient(request, { noStore: true });
   if (!guard.ok) return guard.response;
 
   const { id } = await params;
@@ -58,7 +50,7 @@ export async function POST(
   const current = await getExpenseById(expenseId, supabase);
   if (!current) return apiError(404, "Inbox draft was not found.");
 
-  if (!isInboxUploadExpenseReference(current.referenceNo)) {
+  if (!expenseRequiresReceiptReview(current)) {
     return apiError(409, "Only Inbox receipt drafts can be approved here.");
   }
 
@@ -66,34 +58,40 @@ export async function POST(
     return apiError(409, "This Inbox draft is already approved or done.");
   }
 
+  if (expenseSourceTypeIsWorkerReimbursement(current.sourceType)) {
+    return apiError(
+      409,
+      "BLOCKED: Expense reimbursement bridge is retired. Use canonical Receipt approval."
+    );
+  }
+
+  const total = getExpenseTotal(current);
+  if (!Number.isFinite(total) || total <= 0)
+    return apiError(409, "Amount must be greater than 0 before approval.");
+
   const gate = validateApproveInboxUploadDraft(current);
   if (gate) return apiError(409, gateMessage(gate));
 
-  try {
-    await syncExpenseHeaderAmountFromLinesWithClient(supabase, expenseId);
-  } catch (syncError) {
-    return apiError(
-      500,
-      "Could not sync Inbox draft amount before approval.",
-      syncError instanceof Error ? syncError.message : String(syncError)
-    );
-  }
-
-  const { error } = await supabase
-    .from("expenses")
-    .update({ status: "approved" })
-    .eq("id", expenseId);
-  if (error) return apiError(500, "Could not approve Inbox draft.", error.message);
-
-  try {
-    await ensureWorkerReimbursementForApprovedExpense(expenseId, supabase);
-  } catch (bridgeError) {
-    return apiError(
-      500,
-      "Inbox draft approved, but worker reimbursement could not be created.",
-      bridgeError instanceof Error ? bridgeError.message : String(bridgeError)
-    );
-  }
+  const state = await supabase
+    .from("expense_operations")
+    .select("revision")
+    .eq("expense_id", expenseId)
+    .maybeSingle();
+  if (state.error) return apiError(503, "Review state is unavailable.", state.error.message);
+  const { error } = await supabase.rpc("transition_expense_operation", {
+    p_expense_id: expenseId,
+    p_expected_revision: state.data?.revision ?? 0,
+    p_request_id: crypto.randomUUID(),
+    p_action: "approve",
+    p_payload: {
+      cost_allocation:
+        current.lines.some((line) => line.projectId) || current.headerProjectId
+          ? "project_cost"
+          : "overhead",
+    },
+  });
+  if (error)
+    return apiError(error.code === "40001" || error.code === "23514" ? 409 : 500, error.message);
 
   const updated = await getExpenseById(expenseId, supabase);
   if (!updated) return apiError(500, "Inbox draft approved, but the expense could not reload.");

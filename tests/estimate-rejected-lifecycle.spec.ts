@@ -1,7 +1,8 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./estimate-playwright-test";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 import { loginAsE2EOwner } from "./e2e-auth-owner";
+import { deleteLocalEstimateFixtureGraphs } from "./e2e-estimate-fixture-teardown";
 import { assertE2ESupabaseUrlSafeForMutations } from "./e2e-supabase-url-guard";
 
 function localAdmin(): SupabaseClient {
@@ -12,13 +13,6 @@ function localAdmin(): SupabaseClient {
   return createClient(url, key, {
     auth: { autoRefreshToken: false, detectSessionInUrl: false, persistSession: false },
   });
-}
-
-function isKnownLocalRscNavigationFallback(text: string): boolean {
-  return (
-    text.includes("Failed to fetch RSC payload for http://localhost:") &&
-    text.includes("Falling back to browser navigation")
-  );
 }
 
 test("Estimate transitions Draft to Sent to Rejected and becomes protected", async ({ page }) => {
@@ -32,9 +26,7 @@ test("Estimate transitions Draft to Sent to Rejected and becomes protected", asy
 
   page.on("pageerror", (error) => runtimeErrors.push(error.message));
   page.on("console", (message) => {
-    if (message.type() === "error" && !isKnownLocalRscNavigationFallback(message.text())) {
-      runtimeErrors.push(message.text());
-    }
+    if (message.type() === "error") runtimeErrors.push(message.text());
   });
   page.on("response", (response) => {
     if (response.status() >= 500) failedResponses.push(`${response.status()} ${response.url()}`);
@@ -109,7 +101,7 @@ test("Estimate transitions Draft to Sent to Rejected and becomes protected", asy
     if (estimateId) {
       await db.from("estimate_items").delete().eq("estimate_id", estimateId);
       await db.from("estimate_meta").delete().eq("estimate_id", estimateId);
-      await db.from("estimates").delete().eq("id", estimateId);
+      await deleteLocalEstimateFixtureGraphs([estimateId]);
     }
   }
 });

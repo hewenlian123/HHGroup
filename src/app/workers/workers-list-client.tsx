@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { syncRouterNonBlocking } from "@/components/perf/sync-router-non-blocking";
+import { refreshRscNonBlocking } from "@/components/perf/sync-router-non-blocking";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { runOptimisticPersist } from "@/lib/optimistic-save";
 import { Button } from "@/components/ui/button";
@@ -95,7 +95,7 @@ const workerCenterPrimaryAction =
   "rounded-hh-standard border border-transparent bg-[var(--hh-action-primary)] text-[var(--hh-action-primary-foreground)] shadow-none hover:opacity-90 focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)]";
 
 const workerCenterFieldClass =
-  "hh-focus-ring h-10 rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-hh-body text-[var(--hh-text-primary)] shadow-none placeholder:text-[var(--hh-text-tertiary)] max-md:min-h-[44px]";
+  "hh-focus-ring h-10 rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-hh-body text-[var(--hh-text-primary)] shadow-none placeholder:text-[var(--hh-text-tertiary)] max-lg:min-h-[44px]";
 
 const workerCenterKpiIconClass =
   "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[var(--hh-border)] bg-[var(--hh-l3-selected)] text-[var(--hh-text-primary)] shadow-operational";
@@ -304,11 +304,15 @@ export function WorkersListClient({
     weekDaysByWorkerId: new Map(),
     lastPaymentByWorkerId: lastPaymentMapFromPayments(initialLastPayments),
   });
+  const [metricsAvailable, setMetricsAvailable] = React.useState(false);
   const [metricsMessage, setMetricsMessage] = React.useState<string | null>(null);
   const itemsRef = React.useRef(items);
   itemsRef.current = items;
 
+  const metricsGeneration = React.useRef(0);
   const loadWorkerCenterMetrics = React.useCallback(async () => {
+    const generation = ++metricsGeneration.current;
+    setMetricsAvailable(false);
     setMetricsMessage(null);
     const { from, to } = currentWeekRange();
     const next: WorkerCenterMetrics = {
@@ -331,6 +335,7 @@ export function WorkersListClient({
       const body = (await balancesRes.value.json().catch(() => ({}))) as {
         balances?: WorkerBalanceSnapshot[];
       };
+      if (!Array.isArray(body.balances)) warnings.push("worker balances");
       for (const row of body.balances ?? []) {
         next.balancesByWorkerId.set(normalizeWorkerId(String(row.workerId ?? "")), {
           workerId: String(row.workerId ?? ""),
@@ -349,6 +354,7 @@ export function WorkersListClient({
       const body = (await paymentsRes.value.json().catch(() => ({}))) as {
         payments?: WorkerPaymentSnapshot[];
       };
+      if (!Array.isArray(body.payments)) warnings.push("last payments");
       next.lastPaymentByWorkerId = lastPaymentMapFromPayments(body.payments ?? []);
     } else {
       warnings.push("last payments");
@@ -358,6 +364,7 @@ export function WorkersListClient({
       const body = (await entriesRes.value.json().catch(() => ({}))) as {
         entries?: Array<{ worker_id?: string | null; workerId?: string | null }>;
       };
+      if (!Array.isArray(body.entries)) warnings.push("this week labor");
       for (const entry of body.entries ?? []) {
         const workerId = String(entry.worker_id ?? entry.workerId ?? "").trim();
         if (!workerId) continue;
@@ -368,13 +375,9 @@ export function WorkersListClient({
       warnings.push("this week labor");
     }
 
-    setMetrics((prev) => ({
-      ...next,
-      lastPaymentByWorkerId:
-        next.lastPaymentByWorkerId.size > 0
-          ? next.lastPaymentByWorkerId
-          : prev.lastPaymentByWorkerId,
-    }));
+    if (generation !== metricsGeneration.current) return;
+    setMetrics(next);
+    setMetricsAvailable(warnings.length === 0);
     setMetricsMessage(
       warnings.length ? `Some Worker Center metrics could not load: ${warnings.join(", ")}.` : null
     );
@@ -451,10 +454,13 @@ export function WorkersListClient({
   }, [rows]);
 
   useOnAppSync(
-    React.useCallback(() => {
-      syncRouterNonBlocking(router);
-      void loadWorkerCenterMetrics();
-    }, [router, loadWorkerCenterMetrics]),
+    React.useCallback(
+      (detail) => {
+        if (!detail.refreshScheduled) refreshRscNonBlocking(router);
+        void loadWorkerCenterMetrics();
+      },
+      [router, loadWorkerCenterMetrics]
+    ),
     [router, loadWorkerCenterMetrics]
   );
 
@@ -563,7 +569,7 @@ export function WorkersListClient({
         label: "Add Reimbursement",
         onClick: () =>
           router.push(
-            `/labor/reimbursements?workerId=${encodeURIComponent(row.id)}&new=1&returnTo=${encodeWorkerReturnPath(row.id, "receipts")}`
+            `/labor/reimbursements?workerId=${encodeURIComponent(row.id)}&new=1&returnTo=${encodeWorkerReturnPath(row.id, "reimbursements")}`
           ),
         disabled: busy,
       },
@@ -581,7 +587,7 @@ export function WorkersListClient({
           router.push(
             `/labor/workers/${encodeURIComponent(row.id)}/balance?returnTo=${encodeWorkerReturnPath(row.id, "payments")}`
           ),
-        disabled: busy || row.netToPay <= 0.005,
+        disabled: busy || !metricsAvailable || row.netToPay <= 0.005,
       },
       {
         label: "View Detail",
@@ -596,7 +602,7 @@ export function WorkersListClient({
         disabled: busy,
       },
     ],
-    [busy, router, onDelete]
+    [busy, router, onDelete, metricsAvailable]
   );
 
   if (items.length === 0) {
@@ -725,7 +731,7 @@ export function WorkersListClient({
               Workers ready to pay
             </KpiLabel>
           }
-          value={centerSummary.readyToPay}
+          value={metricsAvailable ? centerSummary.readyToPay : "Unavailable"}
           meta="Workers with a positive net balance"
           tone="warning"
           className="min-h-[94px] rounded-hh-standard"
@@ -743,7 +749,7 @@ export function WorkersListClient({
                 centerSummary.totalNetToPay > 0.005 ? "text-[var(--hh-danger)]" : undefined
               }
             >
-              {formatCurrency(centerSummary.totalNetToPay)}
+              {metricsAvailable ? formatCurrency(centerSummary.totalNetToPay) : "Unavailable"}
             </NeoAmount>
           }
           meta="Labor + reimbursements - advances - payments"
@@ -756,7 +762,11 @@ export function WorkersListClient({
               Unpaid labor
             </KpiLabel>
           }
-          value={<NeoAmount>{formatCurrency(centerSummary.unpaidLabor)}</NeoAmount>}
+          value={
+            <NeoAmount>
+              {metricsAvailable ? formatCurrency(centerSummary.unpaidLabor) : "Unavailable"}
+            </NeoAmount>
+          }
           meta="Open labor snapshot total"
           className="min-h-[94px] rounded-hh-standard"
         />
@@ -768,11 +778,15 @@ export function WorkersListClient({
           }
           value={
             <span className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-              <NeoAmount>{formatCurrency(centerSummary.reimbursements)}</NeoAmount>
+              <NeoAmount>
+                {metricsAvailable ? formatCurrency(centerSummary.reimbursements) : "Unavailable"}
+              </NeoAmount>
               <span className="text-hh-table-cell font-medium text-[var(--hh-text-tertiary)]">
                 /
               </span>
-              <NeoAmount>{formatCurrency(centerSummary.advances)}</NeoAmount>
+              <NeoAmount>
+                {metricsAvailable ? formatCurrency(centerSummary.advances) : "Unavailable"}
+              </NeoAmount>
             </span>
           }
           meta="Open reimbursement and advance totals"
@@ -835,13 +849,13 @@ export function WorkersListClient({
                       r.netToPay > 0.005 && "text-[var(--hh-danger)]"
                     )}
                   >
-                    {formatCurrency(r.netToPay)}
+                    {metricsAvailable ? formatCurrency(r.netToPay) : "Unavailable"}
                   </NeoAmount>
                 </div>
               </div>
               <dl className="grid grid-cols-2 gap-2 text-hh-metadata">
                 <div className="rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l3-selected)] px-3 py-2">
-                  <dt className="text-hh-table-header font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]">
+                  <dt className="text-hh-table-header font-semibold uppercase tracking-normal text-[var(--hh-text-secondary)]">
                     Daily rate
                   </dt>
                   <dd className="mt-1 font-semibold tabular-nums text-[var(--hh-text-primary)]">
@@ -849,27 +863,27 @@ export function WorkersListClient({
                   </dd>
                 </div>
                 <div className="rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l3-selected)] px-3 py-2">
-                  <dt className="text-hh-table-header font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]">
+                  <dt className="text-hh-table-header font-semibold uppercase tracking-normal text-[var(--hh-text-secondary)]">
                     Unpaid labor
                   </dt>
                   <dd className="mt-1 font-semibold tabular-nums text-[var(--hh-text-primary)]">
-                    {formatCurrency(r.unpaidLabor)}
+                    {metricsAvailable ? formatCurrency(r.unpaidLabor) : "Unavailable"}
                   </dd>
                 </div>
                 <div className="rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l3-selected)] px-3 py-2">
-                  <dt className="text-hh-table-header font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]">
+                  <dt className="text-hh-table-header font-semibold uppercase tracking-normal text-[var(--hh-text-secondary)]">
                     Reimb.
                   </dt>
                   <dd className="mt-1 font-semibold tabular-nums text-[var(--hh-text-primary)]">
-                    {formatCurrency(r.reimbursements)}
+                    {metricsAvailable ? formatCurrency(r.reimbursements) : "Unavailable"}
                   </dd>
                 </div>
                 <div className="rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l3-selected)] px-3 py-2">
-                  <dt className="text-hh-table-header font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]">
+                  <dt className="text-hh-table-header font-semibold uppercase tracking-normal text-[var(--hh-text-secondary)]">
                     Advances
                   </dt>
                   <dd className="mt-1 font-semibold tabular-nums text-[var(--hh-text-primary)]">
-                    {formatCurrency(r.advances)}
+                    {metricsAvailable ? formatCurrency(r.advances) : "Unavailable"}
                   </dd>
                 </div>
               </dl>
@@ -878,20 +892,28 @@ export function WorkersListClient({
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="min-w-0">
-                  <PayStatusPill status={r.payStatus} />
+                  {metricsAvailable ? (
+                    <PayStatusPill status={r.payStatus} />
+                  ) : (
+                    <span>Unavailable</span>
+                  )}
                   <div className="mt-1">
                     <p className="text-hh-table-header font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                       Last payment
                     </p>
-                    <LastPaymentCell payment={r.lastPayment} className="text-hh-metadata" />
+                    {metricsAvailable ? (
+                      <LastPaymentCell payment={r.lastPayment} className="text-hh-metadata" />
+                    ) : (
+                      <span>Unavailable</span>
+                    )}
                   </div>
                 </div>
-                <div className="flex min-w-0 flex-1 items-center justify-end gap-1 overflow-x-auto">
+                <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-1">
                   <Button
                     asChild
                     variant="outline"
                     size="sm"
-                    className="h-8 shrink-0 rounded-hh-compact"
+                    className="min-h-[44px] shrink-0 rounded-hh-compact"
                   >
                     <Link href={`/labor?workerId=${encodeURIComponent(r.id)}&addDaily=1`}>
                       <CalendarPlus className="mr-1 h-3.5 w-3.5" aria-hidden />
@@ -902,7 +924,7 @@ export function WorkersListClient({
                     asChild
                     variant="outline"
                     size="sm"
-                    className="h-8 shrink-0 rounded-hh-compact"
+                    className="min-h-[44px] shrink-0 rounded-hh-compact"
                   >
                     <Link href={`/upload-receipt?workerId=${encodeURIComponent(r.id)}`}>
                       <Upload className="mr-1 h-3.5 w-3.5" aria-hidden />
@@ -1021,7 +1043,9 @@ export function WorkersListClient({
                     listTableAmountCellClassName
                   )}
                 >
-                  <NeoAmount>{formatCurrency(r.unpaidLabor)}</NeoAmount>
+                  <NeoAmount>
+                    {metricsAvailable ? formatCurrency(r.unpaidLabor) : "Unavailable"}
+                  </NeoAmount>
                 </td>
                 <td
                   className={cn(
@@ -1030,7 +1054,9 @@ export function WorkersListClient({
                     listTableAmountCellClassName
                   )}
                 >
-                  <NeoAmount>{formatCurrency(r.reimbursements)}</NeoAmount>
+                  <NeoAmount>
+                    {metricsAvailable ? formatCurrency(r.reimbursements) : "Unavailable"}
+                  </NeoAmount>
                 </td>
                 <td
                   className={cn(
@@ -1039,7 +1065,9 @@ export function WorkersListClient({
                     listTableAmountCellClassName
                   )}
                 >
-                  <NeoAmount>{formatCurrency(r.advances)}</NeoAmount>
+                  <NeoAmount>
+                    {metricsAvailable ? formatCurrency(r.advances) : "Unavailable"}
+                  </NeoAmount>
                 </td>
                 <td
                   className={cn(
@@ -1051,14 +1079,22 @@ export function WorkersListClient({
                     tone={r.netToPay > 0.005 ? "danger" : "neutral"}
                     className={cn("text-hh-body", r.netToPay > 0.005 && "text-[var(--hh-danger)]")}
                   >
-                    {formatCurrency(r.netToPay)}
+                    {metricsAvailable ? formatCurrency(r.netToPay) : "Unavailable"}
                   </NeoAmount>
                 </td>
                 <td className={cn(workerCenterTableCellClass, "text-[var(--hh-text-secondary)]")}>
-                  <LastPaymentCell payment={r.lastPayment} />
+                  {metricsAvailable ? (
+                    <LastPaymentCell payment={r.lastPayment} />
+                  ) : (
+                    <span>Unavailable</span>
+                  )}
                 </td>
                 <td className={workerCenterTableCellClass}>
-                  <PayStatusPill status={r.payStatus} />
+                  {metricsAvailable ? (
+                    <PayStatusPill status={r.payStatus} />
+                  ) : (
+                    <span>Unavailable</span>
+                  )}
                 </td>
                 <td
                   className={cn(workerCenterTableCellClass, "px-2 text-right")}

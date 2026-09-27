@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { createHash } from "node:crypto";
 import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
 import { validateSameOriginMutation } from "@/lib/auth-request-security";
 import { getServerSupabaseAdmin } from "@/lib/supabase-server";
@@ -55,14 +56,28 @@ export async function POST(req: Request) {
       return apiError(400, "Only JPEG, PNG, WebP, HEIC, HEIF, and PDF receipts are allowed.");
     }
 
-    const path = `quick-expense/${Date.now()}-${crypto.randomUUID()}.${safeExtension(file)}`;
+    const receiptReference = String(formData.get("receipt_reference") || "");
+    if (receiptReference && !/^INBOX-UP-[a-f0-9]{64}$/i.test(receiptReference))
+      return apiError(400, "Invalid receipt upload identity.");
+    const path = receiptReference
+      ? `quick-expense/inbox-${receiptReference.slice("INBOX-UP-".length).toLowerCase()}.${safeExtension(file)}`
+      : `quick-expense/${Date.now()}-${crypto.randomUUID()}.${safeExtension(file)}`;
 
     const { error } = await supabase.storage.from(BUCKET).upload(path, file, {
       contentType: file.type,
       upsert: false,
     });
     if (error) {
-      return apiError(500, "Receipt upload failed.");
+      if (!receiptReference) return apiError(500, "Receipt upload failed.");
+      // A retry (including an unknown upload acknowledgement) may already own this object.
+      // Verify immutable bytes; never overwrite or delete a possibly associated receipt.
+      const existing = await supabase.storage.from(BUCKET).download(path);
+      if (existing.error || !existing.data)
+        return apiError(500, "Receipt upload unavailable. Retry the same file.");
+      const digest = (bytes: ArrayBuffer) =>
+        createHash("sha256").update(Buffer.from(bytes)).digest("hex");
+      if (digest(await existing.data.arrayBuffer()) !== digest(await file.arrayBuffer()))
+        return apiError(409, "Receipt content conflicts with the existing upload.");
     }
 
     const { data: signed } = await supabase.storage.from(BUCKET).createSignedUrl(path, 60 * 60 * 6);

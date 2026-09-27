@@ -111,7 +111,7 @@ test("keeps worker mutations behind the verified server-side client", () => {
   );
   assert.match(
     workerRoute,
-    /export\s+async\s+function\s+DELETE[\s\S]*?requireSupabaseOwnerOrAdmin\(req\)[\s\S]*?const\s+admin\s*=\s+getServerSupabaseAdmin\(\)[\s\S]*?deleteWorker\(id,\s*admin\)/
+    /export\s+async\s+function\s+DELETE[\s\S]*?requireSupabaseOwnerOrAdminRequestClient\(req,[\s\S]*?deleteWorker\(id,\s*guard\.client\)/
   );
   assert.match(
     laborDb,
@@ -162,17 +162,24 @@ test("does not server-render labor worker data through a service-role client for
 
   for (const relativePath of protectedReaders) {
     const reader = source(resolve(ROOT, relativePath));
-    assert.match(
-      reader,
-      /requireSupabaseOwnerOrAdminServerAction/,
-      `${relativePath} must establish the strict owner/admin boundary before reading labor data`
-    );
+    if (relativePath === "src/app/projects/[id]/page.tsx") {
+      assert.match(reader, /requireOrganizationServerActionClient/);
+      assert.match(reader, /hasCompanyAdministratorMembership/);
+      assert.match(reader, /if \(!canViewFinancials\) break/);
+      assert.doesNotMatch(reader, /getServerSupabaseAdmin/);
+    } else {
+      assert.match(
+        reader,
+        /requireSupabaseOwnerOrAdminServerAction/,
+        `${relativePath} must establish the strict owner/admin boundary before reading labor data`
+      );
+    }
   }
 
   const schemaRepairRoute = source(resolve(ROOT, "src/app/api/ensure-schema/route.ts"));
   assert.match(
     schemaRepairRoute,
-    /requireSupabaseOwnerOrAdmin\(request\)[\s\S]*?guardDangerousMaintenanceRequest\(request\)/
+    /guardNonProductionOnlyRequest\(request\)[\s\S]*?requireSupabaseOwnerOrAdmin\(request\)[\s\S]*?await import\("@\/lib\/ensure-schema-auto-repair"\)/
   );
 
   const financialWorkflowRoute = source(
@@ -180,7 +187,7 @@ test("does not server-render labor worker data through a service-role client for
   );
   assert.match(
     financialWorkflowRoute,
-    /requireSupabaseOwnerOrAdmin\(req\)[\s\S]*?getServerSupabaseAdmin\(\)/
+    /guardNonProductionOnlyRequest\(req\)[\s\S]*?requireSupabaseOwnerOrAdmin\(req\)[\s\S]*?getServerSupabaseAdmin\(\)/
   );
 
   for (const relativePath of [

@@ -9,7 +9,7 @@
  */
 
 import { NextResponse } from "next/server";
-import { guardDangerousMaintenanceRequest } from "@/lib/production-safety";
+import { guardNonProductionOnlyRequest } from "@/lib/production-safety";
 import { exec } from "child_process";
 import path from "path";
 
@@ -63,7 +63,7 @@ function normaliseTests(result: ScriptResult): UiTestRow[] {
 }
 
 export async function POST(req: Request): Promise<NextResponse> {
-  const blocked = guardDangerousMaintenanceRequest(req);
+  const blocked = guardNonProductionOnlyRequest(req);
   if (blocked) return blocked;
 
   const host = req.headers.get("host") ?? "localhost:3000";

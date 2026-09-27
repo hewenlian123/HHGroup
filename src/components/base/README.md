@@ -1,12 +1,14 @@
-# Phase 2 – Base component system
+# HH base component guidance
 
-Minimal Linear-style UI components. Use these across the app as the standard building blocks. Design tokens from Phase 1 (`globals.css`) are used throughout.
+Use the existing HH components inside the canonical AppShell. The current visual authority is the [Figma mapping](../../../docs/FIGMA_CODE_MAPPING_V2.md) → [frozen HH baseline](../../../docs/architecture/HH_GROUP_GLOBAL_UI_UX_BASELINE.md) → [v2 tokens](../../styles/hh-design-system-v2.css) and their canonical components. Production code owns business behavior. This guide and `/design-system` demonstrate that authority; neither defines a separate palette or framework.
 
-**Rules:** No card-based components, no shadow-heavy design, no large rounded corners.
+**KEEP:** Geist, semantic surface layers, approved borders and financial alignment, the Estimate workspace, and existing compatibility adapters. Use Panel/Card and elevation only where the existing HH composition calls for them; do not apply a global no-card or no-border rule.
+
+**Compatibility:** `NeoPanel` delegates to `Panel`; legacy PageHeader, FilterBar and DataTable adapters delegate to canonical components; generated tokens retain v2 aliases. Keep these APIs rather than deleting them or creating another design system.
 
 ---
 
-## Created components
+## Canonical components and supported adapters
 
 ### 1. DataTable
 
@@ -28,7 +30,7 @@ Minimal Linear-style UI components. Use these across the app as the standard bui
 **File:** `src/components/base/page-layout.tsx`
 
 - **PageHeader** – Title, optional description, optional right-side slot
-- **ActionBar** – Left/right slots for filters and primary actions (uses `border-border/60`)
+- **ActionBar** – Left/right slots for filters and primary actions (delegates to `Toolbar` with `variant="actions"`)
 - **Divider** – Horizontal rule (`ui-divider`)
 - **MainContent** – Wrapper for page body
 - **PageLayout** – Composes header, optional action bar, divider, main content
@@ -50,21 +52,22 @@ Minimal Linear-style UI components. Use these across the app as the standard bui
 
 **File:** `src/components/base/status-badge.tsx`
 
-- Dot + text only (no pill/chip background)
-- Variants: `default`, `success`, `warning`, `muted`
+- Semantic pill delegating to `ui/Badge`, with optional dot (`showDot`, default `true`)
+- Variants: `default`, `success`, `warning`, `danger`, `muted`, `info`
+- Canonical Badge states: `neutral`, `success`, `warning`, `information`, `danger`; existing `default`, `secondary`, `destructive`, `outline` variants remain supported.
 
-**Usage:** Use for status labels (e.g. Draft, Sent, Approved). Prefer over colored pill tags.
+**Usage:** Use for status labels with the existing domain mapping; do not change business status labels or meanings for visual consistency.
 
 ---
 
 ### 4. Button
 
-**File:** `src/components/ui/button.tsx` (variants extended)
+**File:** `src/components/ui/button.tsx`
 
-- Variants: **primary**, **secondary**, **ghost**, **danger** (plus `default`/`destructive` for backward compatibility)
-- Sizes: `default`, `sm`, `lg`, `icon` (unchanged)
+- Variants: `default`/`primary`, `secondary`/`outline`, `quiet`/`ghost`, `destructive`
+- Sizes: `default`, `sm`, `lg`, `icon`, `touch`
 
-**Usage:** Prefer `variant="primary"` and `variant="danger"` for the design system; existing `default` and `destructive` still work.
+**Usage:** Use `primary` (or `default`) for the main action, `secondary`/`outline` for supporting actions, `quiet`/`ghost` for subtle controls, and `destructive` for destructive actions. `danger` is not a Button variant. Prefer these supported variants over legacy `btn-outline-*` styling companions.
 
 ---
 
@@ -73,10 +76,10 @@ Minimal Linear-style UI components. Use these across the app as the standard bui
 **File:** `src/components/base/drawer.tsx`
 
 - Right-side panel (uses Radix Sheet)
-- Minimal style: light border, no heavy shadow (`shadow-0`)
+- Shared HH task surface, border, radius and `shadow-task` elevation
 - Optional title and description
 
-**Usage:** Use for edit/create side panels instead of full-page or heavy modals. Replaces ad-hoc Sheet usage where a minimal right panel is needed.
+**Usage:** Reuse for existing edit/create side-panel workflows. Preserve route and workflow choices; this component does not authorize converting full-page or Estimate workspaces.
 
 ---
 
@@ -96,9 +99,9 @@ Minimal Linear-style UI components. Use these across the app as the standard bui
 
 **File:** `src/components/base/section-header.tsx`
 
-- Small uppercase muted label (`table-head-label` style)
-- Divider underneath
-- Optional right-side action
+- `title` uses the shared section-title typography, optional `subtitle`, and no automatic divider
+- `label` uses shared section-label typography with a divider
+- Optional right-side `action`
 
 **Usage:** Use for section titles within a page (e.g. “Payment schedule”, “Line items”).
 
@@ -121,6 +124,7 @@ Minimal Linear-style UI components. Use these across the app as the standard bui
 
 ## How to use across the app
 
-- **New pages / features:** Use `PageLayout`, `PageHeader`, `ActionBar`, `Divider`, `MainContent` for the shell; `DataTable` for lists; `Button` with `primary`/`secondary`/`ghost`/`danger`; `StatusBadge` for statuses; `Drawer` for slide-over forms; `ConfirmDialog` for confirmations; `SectionHeader` for in-page sections.
-- **Existing pages:** Do **not** refactor all at once. When touching a page, migrate that page to these components and Phase 1 tokens.
-- **Imports:** Prefer `import { DataTable, PageLayout, ... } from "@/components/base"` for the new components; keep using `@/components/ui/button` for Button (or re-export from base if you add a barrel that re-exports Button from ui).
+- **Page content:** Use `PageLayout`, `PageHeader`, `ActionBar`, `Divider`, and `MainContent` inside the existing global shell; `DataTable` for lists; supported Button variants for actions; `StatusBadge`, `Drawer`, `ConfirmDialog`, and `SectionHeader` where the existing workflow calls for them. PageLayout does not create another Global Shell or Sidebar.
+- **Existing pages:** Preserve mature compositions and compatibility adapters. Apply only authorized, scoped repairs using current v2 tokens; do not mass-migrate pages or replace financial formatters.
+- **Imports:** Use the existing `@/components/base` exports and `@/components/ui/button`; do not add another barrel or component authority.
+- **State and motion:** `SystemState` owns bounded loading/empty/error compositions. Popover, Dropdown/Menu (including submenus), and Select consume `motionPopoverLayer`; reduced motion uses the existing opacity-only Sheet fade. `SubmitSpinner` stops rotating under reduced motion while caller-owned pending text and busy semantics remain present.

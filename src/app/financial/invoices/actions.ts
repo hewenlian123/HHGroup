@@ -94,18 +94,22 @@ export async function updateInvoiceAction(
     const clientResult = await getInvoiceActionClient();
     if (!clientResult.ok) return clientResult;
 
-    const existing = await getInvoiceById(invoiceId);
-    const updated = await updateInvoiceData(invoiceId, {
-      projectId,
-      ...(payload.customerId !== undefined ? { customerId: payload.customerId } : {}),
-      invoiceNo: payload.invoiceNo,
-      clientName,
-      issueDate: payload.issueDate,
-      dueDate: payload.dueDate,
-      taxPct: Math.max(0, Number(payload.taxPct ?? 0) || 0),
-      notes: payload.notes ?? "",
-      lineItems,
-    });
+    const existing = await getInvoiceById(invoiceId, clientResult.client);
+    const updated = await updateInvoiceData(
+      invoiceId,
+      {
+        projectId,
+        ...(payload.customerId !== undefined ? { customerId: payload.customerId } : {}),
+        invoiceNo: payload.invoiceNo,
+        clientName,
+        issueDate: payload.issueDate,
+        dueDate: payload.dueDate,
+        taxPct: Math.max(0, Number(payload.taxPct ?? 0) || 0),
+        notes: payload.notes ?? "",
+        lineItems,
+      },
+      clientResult.client
+    );
     if (!updated) return { ok: false, error: "Only draft invoices can be edited." };
     revalidateInvoicePaths(invoiceId, projectId);
     if (existing?.projectId) revalidatePath(`/projects/${existing.projectId}`);
@@ -215,21 +219,24 @@ export async function duplicateInvoiceAction(
     const clientResult = await getInvoiceActionClient();
     if (!clientResult.ok) return clientResult;
 
-    const invoice = await getInvoiceById(invoiceId);
+    const invoice = await getInvoiceById(invoiceId, clientResult.client);
     if (!invoice || invoice.status === "Void") {
       return { ok: false, error: "Void invoices cannot be duplicated." };
     }
     const today = new Date().toISOString().slice(0, 10);
-    const duplicated = await createInvoiceData({
-      projectId: invoice.projectId,
-      customerId: invoice.customerId ?? null,
-      clientName: invoice.clientName,
-      issueDate: today,
-      dueDate: today,
-      lineItems: invoice.lineItems,
-      taxPct: invoice.taxPct,
-      notes: invoice.notes,
-    });
+    const duplicated = await createInvoiceData(
+      {
+        projectId: invoice.projectId,
+        customerId: invoice.customerId ?? null,
+        clientName: invoice.clientName,
+        issueDate: today,
+        dueDate: today,
+        lineItems: invoice.lineItems,
+        taxPct: invoice.taxPct,
+        notes: invoice.notes,
+      },
+      clientResult.client
+    );
     revalidateInvoicePaths(duplicated.id, duplicated.projectId);
     return { ok: true, invoiceId: duplicated.id };
   } catch (e) {

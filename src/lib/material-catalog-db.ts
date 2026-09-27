@@ -3,6 +3,7 @@
  */
 
 import { getSupabaseClient } from "@/lib/supabase";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type MaterialCatalogRow = {
   id: string;
@@ -24,8 +25,8 @@ export type MaterialCatalogDraft = {
   description?: string | null;
 };
 
-function client() {
-  const c = getSupabaseClient();
+function client(explicitClient?: SupabaseClient) {
+  const c = explicitClient ?? getSupabaseClient();
   if (!c) throw new Error("Supabase is not configured.");
   return c;
 }
@@ -46,20 +47,24 @@ function toRow(r: Record<string, unknown>): MaterialCatalogRow {
 }
 
 /** Get all materials in the catalog. */
-export async function getMaterialCatalog(): Promise<MaterialCatalogRow[]> {
-  const c = client();
-  const { data, error } = await c
-    .from("material_catalog")
-    .select(COLS)
-    .order("category")
-    .order("material_name");
+export async function getMaterialCatalog(
+  explicitClient?: SupabaseClient,
+  organizationId?: string
+): Promise<MaterialCatalogRow[]> {
+  const c = client(explicitClient);
+  let query = c.from("material_catalog").select(COLS).order("category").order("material_name");
+  if (organizationId) query = query.eq("organization_id", organizationId);
+  const { data, error } = await query;
   if (error) throw new Error(error.message ?? "Failed to load materials.");
   return (data ?? []).map((r) => toRow(r as Record<string, unknown>));
 }
 
 /** Create a material in the catalog. */
-export async function createMaterial(draft: MaterialCatalogDraft): Promise<MaterialCatalogRow> {
-  const c = client();
+export async function createMaterial(
+  draft: MaterialCatalogDraft,
+  explicitClient?: SupabaseClient
+): Promise<MaterialCatalogRow> {
+  const c = client(explicitClient);
   const { data: row, error } = await c
     .from("material_catalog")
     .insert({
@@ -84,9 +89,10 @@ export async function updateMaterial(
       MaterialCatalogRow,
       "category" | "material_name" | "supplier" | "cost" | "photo_url" | "description"
     >
-  >
+  >,
+  explicitClient?: SupabaseClient
 ): Promise<MaterialCatalogRow | null> {
-  const c = client();
+  const c = client(explicitClient);
   const updates: Record<string, unknown> = {};
   if (patch.category !== undefined) updates.category = patch.category.trim();
   if (patch.material_name !== undefined) updates.material_name = patch.material_name.trim();
@@ -101,6 +107,7 @@ export async function updateMaterial(
     .eq("id", id)
     .select(COLS)
     .single();
-  if (error || !row) return null;
+  if (error || !row)
+    throw new Error(error?.message ?? "Material was not updated or access was denied.");
   return toRow(row as Record<string, unknown>);
 }

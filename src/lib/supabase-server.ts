@@ -1,3 +1,4 @@
+import { workerFinanceFetch } from "@/lib/worker-finance-write-pause";
 /**
  * Server-side Supabase helpers.
  *
@@ -9,6 +10,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { createClient, type SupabaseClient, type User } from "@supabase/supabase-js";
 import type { NextRequest, NextResponse } from "next/server";
+import { parseRequestAuthorization } from "@/lib/request-authorization";
 
 function envUrl(): string | null {
   return process.env.NEXT_PUBLIC_SUPABASE_URL ?? null;
@@ -25,7 +27,7 @@ function envServerSecret(): string | null {
 }
 
 const noStoreFetch: typeof fetch = (input, init) =>
-  fetch(input, {
+  workerFinanceFetch(input, {
     ...init,
     cache: "no-store",
   });
@@ -33,7 +35,7 @@ const noStoreFetch: typeof fetch = (input, init) =>
 function serverClientOptions(noStore = false) {
   return {
     auth: { persistSession: false, autoRefreshToken: false },
-    ...(noStore ? { global: { fetch: noStoreFetch } } : {}),
+    global: { fetch: noStore ? noStoreFetch : workerFinanceFetch },
   };
 }
 
@@ -58,6 +60,7 @@ export function createTransientSupabaseClient(): SupabaseClient | null {
   const anon = envAnon();
   if (!url || !anon) return null;
   return createClient(url, anon, {
+    global: { fetch: workerFinanceFetch },
     auth: {
       autoRefreshToken: false,
       detectSessionInUrl: false,
@@ -155,7 +158,7 @@ export async function createServerSupabaseClient(
   const cookieStore = cookies();
 
   return createServerClient(url, anon, {
-    ...(options.noStore ? { global: { fetch: noStoreFetch } } : {}),
+    global: { fetch: options.noStore ? noStoreFetch : workerFinanceFetch },
     cookies: {
       getAll() {
         return cookieStore.getAll();
@@ -203,15 +206,24 @@ function requestCookies(request: Request | NextRequest): RouteCookie[] {
 export function createRouteSupabaseClient(
   request: Request | NextRequest,
   response: NextResponse,
-  options: { persistent?: boolean; noStore?: boolean } = {}
+  options: { persistent?: boolean; noStore?: boolean; forwardAuthorization?: boolean } = {}
 ): SupabaseClient | null {
   const url = envUrl();
   const anon = envAnon();
   if (!url || !anon) return null;
   const persistent = options.persistent === true;
+  const requestAuthorization = options.forwardAuthorization
+    ? parseRequestAuthorization(request.headers.get("authorization"))
+    : null;
+  const forwardedAuthorization =
+    requestAuthorization?.kind === "bearer" ? requestAuthorization.authorization : null;
+  const globalOptions = {
+    fetch: options.noStore ? noStoreFetch : workerFinanceFetch,
+    ...(forwardedAuthorization ? { headers: { Authorization: forwardedAuthorization } } : {}),
+  };
 
   return createServerClient(url, anon, {
-    ...(options.noStore ? { global: { fetch: noStoreFetch } } : {}),
+    ...(Object.keys(globalOptions).length > 0 ? { global: globalOptions } : {}),
     cookies: {
       getAll() {
         return requestCookies(request);
@@ -240,6 +252,7 @@ function createRequestReadOnlySupabaseClient(
   if (!url || !anon) return null;
 
   return createServerClient(url, anon, {
+    global: { fetch: workerFinanceFetch },
     cookies: {
       getAll() {
         return requestCookies(request);
@@ -261,17 +274,18 @@ export async function getSupabaseUserFromRequest(req: Request): Promise<User | n
   const anon = envAnon();
   if (!url || !anon) return null;
 
-  const authHeader = req.headers.get("authorization") ?? req.headers.get("Authorization");
-  const bearer = authHeader?.startsWith("Bearer ") ? authHeader.slice(7).trim() : null;
-  if (bearer) {
+  const authorization = parseRequestAuthorization(req.headers.get("authorization"));
+  if (authorization.kind !== "absent") {
+    if (authorization.kind !== "bearer") return null;
     const sb = createClient(url, anon, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
     const {
       data: { user },
       error,
-    } = await sb.auth.getUser(bearer);
+    } = await sb.auth.getUser(authorization.token);
     if (!error && user) return user;
+    return null;
   }
 
   const cookieClient = createRequestReadOnlySupabaseClient(req);

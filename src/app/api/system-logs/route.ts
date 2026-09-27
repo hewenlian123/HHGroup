@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAuthenticatedUser } from "@/lib/auth-boundary";
+import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
 import { getSystemLogs } from "@/lib/system-log-store";
 import { sanitizeSystemLogEntry } from "@/lib/system-response-safety";
 
@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
  * Query: limit (default 100).
  */
 export async function GET(req: Request) {
-  const guard = await requireAuthenticatedUser(req);
+  const guard = await requireSupabaseOwnerOrAdmin(req);
   if (!guard.ok) return guard.response;
 
   const { searchParams } = new URL(req.url);

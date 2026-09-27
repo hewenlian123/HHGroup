@@ -1,16 +1,20 @@
 "use client";
 
+import { financeReturnPath, financeReturnLabel } from "@/lib/finance-navigation";
+
 import {
   dispatchClientDataSync,
+  type AppSyncDetail,
   HH_APP_SYNC_EVENT,
   HH_PROJECT_EDIT_OPTIMISTIC_REASON,
   syncClientsThenRefreshInBackground,
 } from "@/lib/sync-router-client";
-import { syncRouterNonBlocking } from "@/components/perf/sync-router-non-blocking";
+import { refreshRscNonBlocking } from "@/components/perf/sync-router-non-blocking";
 import * as React from "react";
 import { flushSync } from "react-dom";
+import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, MoreHorizontal } from "lucide-react";
 import { AmountCell, ConfirmDialog, PageLayout, Divider, SectionHeader } from "@/components/base";
 import { cn } from "@/lib/utils";
@@ -27,6 +31,7 @@ import {
 import { useToast } from "@/components/toast/toast-provider";
 import type { Project, ProjectFinancialSummary } from "@/lib/data";
 import type { EstimateListItem } from "@/lib/estimates-db";
+import { FinanceUnavailable } from "@/components/financial/finance-unavailable";
 import type { CanonicalProjectProfit } from "@/lib/profit-engine";
 import type {
   ProjectFinancialSnapshot,
@@ -35,19 +40,34 @@ import type {
 } from "@/lib/financial/project-financial-snapshot";
 import { getProjectFinancialSnapshotProfitReadinessWarning } from "@/lib/financial/project-financial-display";
 import type { ProjectCostDashboardPayload } from "@/lib/project-cost-dashboard";
-import { ProjectDocumentsTab } from "./project-documents-tab";
 import { ProjectCostLinesTable } from "./project-cost-lines-table";
 import { ProjectTasksTab } from "./project-tasks-tab";
 import { ProjectCloseoutTab } from "./project-closeout-tab";
 import { ProjectMaterialsTab } from "./project-materials-tab";
 import { ProjectCommissionTab } from "./project-commission-tab";
-import { ProjectPunchListTab } from "./project-punch-list-tab";
+import { ProjectWorkspaceContext } from "@/components/projects/project-workspace-context";
+import {
+  PROJECT_WORKSPACE_TABS,
+  normalizeWorkspaceTab,
+  type TabKey,
+  type WorkspaceTabKey,
+} from "@/lib/navigation/project-workspace";
+
+const ScheduleWorkspace = dynamic(() => import("@/app/schedule/page"));
+const PunchWorkspace = dynamic(() => import("@/app/punch-list/page"));
+const PhotosWorkspace = dynamic(() => import("@/app/site-photos/page"));
+const InspectionsWorkspace = dynamic(() => import("@/app/inspection-log/page"));
 import { ProjectFinancialSnapshotComparisonPanel } from "./project-financial-snapshot-comparison-panel";
 import { RecentExpenseLines } from "./recent-expense-lines";
 import { InvoiceStatusBadge } from "@/components/invoice-status-badge";
 import { archiveProjectAction, deleteProjectAction, updateProjectAction } from "../actions";
 import { EditProjectModal, type ProjectEditSavePatch } from "./edit-project-modal";
 import { useBreadcrumbEntityLabel } from "@/contexts/breadcrumb-override-context";
+
+const ProjectDocumentsTab = dynamic(
+  () => import("./project-documents-tab").then((module) => module.ProjectDocumentsTab),
+  { ssr: false, loading: () => null }
+);
 
 function normalizeDetailStatus(
   status: string
@@ -83,6 +103,7 @@ const TAB_PANEL =
   "mt-4 rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-4 text-hh-body leading-normal text-[var(--hh-text-primary)] shadow-operational sm:p-5";
 
 function fmtMoney(n: number, opts?: { maximumFractionDigits?: number }) {
+  if (!Number.isFinite(n)) return "—";
   const fd = opts?.maximumFractionDigits ?? 0;
   return `$${Number(n).toLocaleString("en-US", { maximumFractionDigits: fd })}`;
 }
@@ -139,10 +160,19 @@ type SnapshotCostSummary = {
   openAR: number;
 };
 
-function useProjectFinancialSnapshotSummary(projectId: string): SnapshotLoadState {
-  const [state, setState] = React.useState<SnapshotLoadState>({ status: "loading" });
+function useProjectFinancialSnapshotSummary(
+  projectId: string,
+  enabled: boolean
+): SnapshotLoadState {
+  const [state, setState] = React.useState<SnapshotLoadState>(
+    enabled ? { status: "loading" } : { status: "error" }
+  );
 
   React.useEffect(() => {
+    if (!enabled) {
+      setState({ status: "error" });
+      return;
+    }
     const controller = new AbortController();
 
     async function loadSnapshot() {
@@ -166,7 +196,7 @@ function useProjectFinancialSnapshotSummary(projectId: string): SnapshotLoadStat
     void loadSnapshot();
 
     return () => controller.abort();
-  }, [projectId]);
+  }, [projectId, enabled]);
 
   return state;
 }
@@ -365,55 +395,6 @@ function DetailRow({
   );
 }
 
-type TabKey =
-  | "overview"
-  | "financial"
-  | "work"
-  | "documents"
-  | "cost"
-  | "tasks"
-  | "people"
-  | "schedule"
-  | "photos"
-  | "inspections"
-  | "docs"
-  | "budget"
-  | "expenses"
-  | "labor"
-  | "subcontracts"
-  | "bills"
-  | "activity"
-  | "change-orders"
-  | "materials"
-  | "closeout"
-  | "commission"
-  | "punch-list";
-
-type WorkspaceTabKey =
-  | "overview"
-  | "financial"
-  | "schedule"
-  | "tasks"
-  | "people"
-  | "documents"
-  | "photos"
-  | "materials"
-  | "inspections"
-  | "closeout";
-
-const PROJECT_WORKSPACE_TABS: Array<{ key: WorkspaceTabKey; label: string }> = [
-  { key: "overview", label: "Overview" },
-  { key: "financial", label: "Financial" },
-  { key: "schedule", label: "Schedule" },
-  { key: "tasks", label: "Tasks" },
-  { key: "people", label: "People" },
-  { key: "documents", label: "Documents" },
-  { key: "photos", label: "Photos" },
-  { key: "materials", label: "Materials" },
-  { key: "inspections", label: "Inspections" },
-  { key: "closeout", label: "Closeout" },
-];
-
 function uniqueText(values: Array<string | null | undefined>, limit = 5) {
   const seen = new Set<string>();
   const result: string[] = [];
@@ -429,65 +410,28 @@ function uniqueText(values: Array<string | null | undefined>, limit = 5) {
   return result;
 }
 
-function normalizeWorkspaceTab(tab: TabKey): WorkspaceTabKey {
-  if (
-    tab === "cost" ||
-    tab === "budget" ||
-    tab === "expenses" ||
-    tab === "labor" ||
-    tab === "subcontracts" ||
-    tab === "bills" ||
-    tab === "change-orders" ||
-    tab === "commission" ||
-    tab === "financial"
-  ) {
-    return "financial";
-  }
-  if (tab === "tasks" || tab === "activity" || tab === "punch-list" || tab === "work") {
-    return "tasks";
-  }
-  if (tab === "schedule") {
-    return "schedule";
-  }
-  if (tab === "people") {
-    return "people";
-  }
-  if (tab === "photos") {
-    return "photos";
-  }
-  if (tab === "inspections") {
-    return "inspections";
-  }
-  if (tab === "materials") {
-    return "materials";
-  }
-  if (tab === "closeout") {
-    return "closeout";
-  }
-  if (tab === "docs" || tab === "documents") {
-    return "documents";
-  }
-  return "overview";
-}
-
 export interface ProjectDetailTabsClientProps {
   projectId: string;
   project: Project;
   financialSummary: (ProjectFinancialSummary & { marginPct?: number }) | null;
-  projectCost: ProjectCostDashboardPayload;
+  projectCost: Omit<ProjectCostDashboardPayload, "allExpenseLineRows"> | null;
+  financialDataWarning?: string | null;
+  canViewFinancials?: boolean;
+  canManageProject?: boolean;
   showFinancialSnapshotComparison?: boolean;
   billingSummary: {
     invoicedTotal: number;
     paidTotal: number;
     arBalance: number;
     lastPaymentDate: string | null;
-  };
-  canonicalProfit: CanonicalProjectProfit;
+  } | null;
+  canonicalProfit: CanonicalProjectProfit | null;
   initialTab: TabKey;
+  loadedWorkspaceTab: WorkspaceTabKey;
   tasks: import("@/lib/data").ProjectTaskWithWorker[];
   workers: import("@/lib/labor-db").Worker[];
   recentExpenseLines: import("./recent-expense-lines").RecentExpenseLineRow[];
-  /** All expense lines for this project (Expenses tab); overview uses first 10 of recentExpenseLines. */
+  /** Legacy-only view; never used by a reachable workspace tab. */
   expenseLineRows: import("./recent-expense-lines").RecentExpenseLineRow[];
   scheduleItems: import("@/lib/data").ProjectScheduleItem[];
   projectInvoices: import("@/lib/data").InvoiceWithDerived[];
@@ -512,11 +456,15 @@ export function ProjectDetailTabsClient({
   projectId,
   project,
   financialSummary,
+  financialDataWarning = null,
+  canViewFinancials = true,
+  canManageProject = true,
   projectCost,
   showFinancialSnapshotComparison = false,
   billingSummary,
   canonicalProfit,
   initialTab,
+  loadedWorkspaceTab,
   tasks,
   workers,
   recentExpenseLines,
@@ -540,6 +488,8 @@ export function ProjectDetailTabsClient({
   closeoutCompletion,
 }: ProjectDetailTabsClientProps) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const [, startTabTransition] = React.useTransition();
   const [tab, setTab] = React.useState<WorkspaceTabKey>(() => normalizeWorkspaceTab(initialTab));
@@ -550,6 +500,7 @@ export function ProjectDetailTabsClient({
   const [deleteConfirmOpen, setDeleteConfirmOpen] = React.useState(false);
   const [deleteBusy, setDeleteBusy] = React.useState(false);
   const [displayProject, setDisplayProject] = React.useState<Project>(() => project);
+  const editButtonRef = React.useRef<HTMLButtonElement>(null);
   useBreadcrumbEntityLabel(displayProject.name);
   const displayProjectRef = React.useRef(displayProject);
   displayProjectRef.current = displayProject;
@@ -559,22 +510,42 @@ export function ProjectDetailTabsClient({
   }, [project]);
 
   React.useEffect(() => {
+    setTab(normalizeWorkspaceTab(initialTab));
+  }, [initialTab]);
+
+  React.useEffect(() => {
+    if (!canManageProject || searchParams.get("edit") !== "1") return;
+    setEditModalOpen(true);
+    const nextSearchParams = new URLSearchParams(searchParams.toString());
+    nextSearchParams.delete("edit");
+    const query = nextSearchParams.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  }, [canManageProject, pathname, router, searchParams]);
+
+  React.useEffect(() => {
     if (tab !== "financial") {
       setCostBucketFilter(null);
     }
   }, [tab]);
 
-  const snapshotState = useProjectFinancialSnapshotSummary(projectId);
+  const financialDataAvailable =
+    canViewFinancials &&
+    !financialDataWarning &&
+    projectCost != null &&
+    billingSummary != null &&
+    canonicalProfit != null;
+  const snapshotState = useProjectFinancialSnapshotSummary(projectId, canViewFinancials);
 
   React.useEffect(() => {
     let t: ReturnType<typeof setTimeout> | null = null;
     const handler = (ev: Event) => {
-      const detail = (ev as CustomEvent<{ reason?: string }>).detail;
+      const detail = (ev as CustomEvent<AppSyncDetail>).detail;
       if (detail?.reason === HH_PROJECT_EDIT_OPTIMISTIC_REASON) return;
+      if (detail?.refreshScheduled) return;
       if (t != null) clearTimeout(t);
       t = setTimeout(() => {
         t = null;
-        syncRouterNonBlocking(router);
+        refreshRscNonBlocking(router);
       }, 80);
     };
     window.addEventListener(HH_APP_SYNC_EVENT, handler);
@@ -585,7 +556,7 @@ export function ProjectDetailTabsClient({
   }, [router]);
 
   const handleProjectSave = React.useCallback(
-    (patch: ProjectEditSavePatch) => {
+    async (patch: ProjectEditSavePatch) => {
       const snapshot = displayProjectRef.current;
       flushSync(() => {
         setDisplayProject((p) => ({
@@ -596,10 +567,9 @@ export function ProjectDetailTabsClient({
           budget: patch.budget,
           contractAmount: patch.budget,
         }));
-        setEditModalOpen(false);
       });
       dispatchClientDataSync({ reason: HH_PROJECT_EDIT_OPTIMISTIC_REASON });
-      void (async () => {
+      try {
         const result = await updateProjectAction(projectId, {
           name: patch.name,
           client: patch.client,
@@ -607,16 +577,14 @@ export function ProjectDetailTabsClient({
           budget: patch.budget,
         });
         if (result?.error) {
-          flushSync(() => setDisplayProject(snapshot));
-          toast({
-            title: "Couldn't save project",
-            description: result.error,
-            variant: "error",
-          });
-          return;
+          throw new Error(result.error);
         }
+        setEditModalOpen(false);
         toast({ title: "Project updated" });
-      })();
+      } catch (cause) {
+        flushSync(() => setDisplayProject(snapshot));
+        throw cause instanceof Error ? cause : new Error("Couldn't save project. Try again.");
+      }
     },
     [projectId, toast]
   );
@@ -681,36 +649,16 @@ export function ProjectDetailTabsClient({
     }
   }, [deleteBusy, projectId, router, toast]);
 
-  const legacySpentVal = financialSummary?.spent ?? projectCost.spentTotal;
-  const legacyProfitVal = financialSummary?.profit ?? projectCost.profit;
-  const legacyMarginPct = financialSummary?.marginPct ?? projectCost.margin * 100;
   const snapshotComparison = snapshotState.status === "ready" ? snapshotState.comparison : null;
-  const budgetVal =
-    snapshotComparison?.newSnapshot.contractValue ??
-    displayProject.contractAmount ??
-    displayProject.budget ??
-    financialSummary?.budget ??
-    0;
+  const budgetVal = snapshotComparison?.newSnapshot.contractValue ?? Number.NaN;
+  const editableBudgetVal =
+    displayProject.contractAmount ?? displayProject.budget ?? financialSummary?.budget ?? 0;
   const snapshotWarnings =
     snapshotComparison?.warnings ?? snapshotComparison?.newSnapshot.warnings ?? [];
   const snapshotDiagnostics =
     snapshotComparison?.diagnostics ?? snapshotComparison?.newSnapshot.diagnostics ?? null;
   const snapshotNotes = uniqueSnapshotNotes(snapshotWarnings);
   const pendingCostReviewNote = pendingDiagnosticsLine(snapshotDiagnostics);
-  const fallbackCostSummary: SnapshotCostSummary = React.useMemo(
-    () => ({
-      actualCost: projectCost.breakdown.totalCost,
-      expenseCost: projectCost.breakdown.materials + projectCost.breakdown.other,
-      laborCost: projectCost.breakdown.labor,
-      reimbursementCost: 0,
-      subcontractCost: projectCost.breakdown.bills,
-      commissionCost: projectCost.breakdown.commission,
-      billedAmount: billingSummary.invoicedTotal,
-      paidAmount: billingSummary.paidTotal,
-      openAR: billingSummary.arBalance,
-    }),
-    [billingSummary.arBalance, billingSummary.invoicedTotal, billingSummary.paidTotal, projectCost]
-  );
   const snapshotCostSummary: SnapshotCostSummary = snapshotComparison
     ? {
         actualCost: snapshotComparison.newSnapshot.actualCost,
@@ -723,7 +671,17 @@ export function ProjectDetailTabsClient({
         paidAmount: snapshotComparison.newSnapshot.paidAmount,
         openAR: snapshotComparison.newSnapshot.openAR,
       }
-    : fallbackCostSummary;
+    : {
+        actualCost: Number.NaN,
+        expenseCost: Number.NaN,
+        laborCost: Number.NaN,
+        reimbursementCost: Number.NaN,
+        subcontractCost: Number.NaN,
+        commissionCost: Number.NaN,
+        billedAmount: Number.NaN,
+        paidAmount: Number.NaN,
+        openAR: Number.NaN,
+      };
   const commissionSummary = React.useMemo(
     () =>
       commissions.reduce(
@@ -745,24 +703,19 @@ export function ProjectDetailTabsClient({
       )
     : null;
   const showSnapshotProfit = snapshotComparison != null && profitReadinessWarning == null;
-  const headerActualCost = snapshotComparison ? snapshotCostSummary.actualCost : legacySpentVal;
-  const headerProfitValue = showSnapshotProfit
-    ? snapshotComparison.newSnapshot.grossProfit
-    : snapshotState.status === "error"
-      ? legacyProfitVal
-      : null;
+  const headerActualCost = snapshotCostSummary.actualCost;
+  const headerProfitValue = showSnapshotProfit ? snapshotComparison.newSnapshot.grossProfit : null;
   const headerMarginValue = showSnapshotProfit
     ? snapshotComparison.newSnapshot.grossMargin * 100
-    : snapshotState.status === "error"
-      ? legacyMarginPct
-      : null;
+    : null;
   const headerFinancialWarning =
-    snapshotState.status === "error"
-      ? "Using legacy financial summary."
+    financialDataWarning ??
+    (snapshotState.status === "error"
+      ? "Project financial data is unavailable."
       : profitReadinessWarning != null
         ? profitReadinessWarning
-        : null;
-  const topCollectedValue = financialSummary?.collected ?? billingSummary.paidTotal;
+        : null);
+  const topCollectedValue = financialSummary?.collected ?? billingSummary?.paidTotal ?? Number.NaN;
   const topNeedCollectValue = snapshotCostSummary.openAR;
   const topProfitTone =
     headerProfitValue == null ? "attention" : headerProfitValue >= 0 ? "positive" : "negative";
@@ -848,16 +801,31 @@ export function ProjectDetailTabsClient({
   const expensesProjectHref = `/financial/expenses?project_id=${encodeURIComponent(projectId)}`;
   const inboxProjectHref = `/financial/inbox?project_id=${encodeURIComponent(projectId)}`;
 
+  const selectWorkspaceTab = React.useCallback(
+    (nextTab: WorkspaceTabKey) => {
+      if (nextTab === tab) return;
+      startTabTransition(() => {
+        setTab(nextTab);
+        const nextSearchParams = new URLSearchParams(searchParams.toString());
+        nextSearchParams.set("tab", nextTab);
+        router.replace(`${pathname}?${nextSearchParams.toString()}`, { scroll: false });
+      });
+    },
+    [pathname, router, searchParams, startTabTransition, tab]
+  );
+
   const goToCostTab = React.useCallback(() => {
-    startTabTransition(() => setTab("financial"));
-  }, [startTabTransition]);
+    selectWorkspaceTab("financial");
+  }, [selectWorkspaceTab]);
+
+  const tabIsLoading = loadedWorkspaceTab !== tab;
 
   const filteredCostRows = React.useMemo(() => {
-    const rows = projectCost.doneCostRows;
+    const rows = projectCost?.doneCostRows ?? [];
     if (costBucketFilter === null) return rows;
     if (costBucketFilter === "expenses") return rows;
     return [];
-  }, [projectCost.doneCostRows, costBucketFilter]);
+  }, [projectCost?.doneCostRows, costBucketFilter]);
 
   const costTableHint = React.useMemo(() => {
     const parts: string[] = [];
@@ -892,7 +860,7 @@ export function ProjectDetailTabsClient({
   const costTableEmptyMessage =
     costBucketFilter === "commission"
       ? "Commission records are shown in the Commission commitments section."
-      : projectCost.doneCostRows.length === 0
+      : (projectCost?.doneCostRows.length ?? 0) === 0
         ? "No project costs yet"
         : "No expense lines match this filter.";
 
@@ -911,13 +879,15 @@ export function ProjectDetailTabsClient({
       header={
         <div className="space-y-4">
           <Link
-            href="/projects"
-            className="inline-flex min-h-[36px] items-center gap-1.5 rounded-hh-standard px-1 text-hh-metadata font-medium text-[var(--hh-text-secondary)] hover:text-[var(--hh-text-primary)]"
+            href={financeReturnPath(searchParams.get("returnTo"), "/projects")}
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-hh-standard px-1 text-hh-metadata font-medium text-[var(--hh-text-secondary)] hover:text-[var(--hh-text-primary)] lg:min-h-9"
           >
             <ArrowLeft className="h-4 w-4" />
-            Projects
+            {searchParams.get("returnTo")
+              ? financeReturnLabel(financeReturnPath(searchParams.get("returnTo"), "/projects"))
+              : "Projects"}
           </Link>
-          <div className={cn(OS.card, "p-5 sm:p-6")}>
+          <div data-project-context={projectId} className={cn(OS.card, "p-5 sm:p-6")}>
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="min-w-0 space-y-2">
                 <div className="flex flex-wrap items-center gap-3">
@@ -934,9 +904,11 @@ export function ProjectDetailTabsClient({
               </div>
               <div className="flex flex-wrap items-center justify-end gap-2 max-md:w-full max-md:[&>*]:flex-1">
                 <Button
+                  ref={editButtonRef}
                   type="button"
                   size="sm"
-                  className="h-9 rounded-hh-standard bg-[var(--hh-action-primary)] text-hh-table-cell text-[var(--hh-action-primary-foreground)] hover:bg-[var(--hh-action-primary)]"
+                  className="min-h-11 rounded-hh-standard bg-[var(--hh-action-primary)] text-hh-table-cell text-[var(--hh-action-primary-foreground)] hover:bg-[var(--hh-action-primary)]"
+                  disabled={!canManageProject}
                   onClick={() => setEditModalOpen(true)}
                 >
                   Edit
@@ -946,7 +918,8 @@ export function ProjectDetailTabsClient({
                     <Button
                       variant="outline"
                       size="sm"
-                      className="h-9 rounded-hh-standard text-hh-table-cell"
+                      className="min-h-11 rounded-hh-standard text-hh-table-cell"
+                      disabled={!canManageProject}
                       aria-label="Project actions"
                       data-testid="project-detail-actions"
                     >
@@ -980,26 +953,34 @@ export function ProjectDetailTabsClient({
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
                 <DashboardMetric
                   label="Contract Value"
-                  value={fmtMoney(budgetVal)}
+                  value={canViewFinancials ? fmtMoney(budgetVal) : "Unavailable"}
                   testId="project-header-contract-value"
                 />
                 <DashboardMetric
                   label="Collected"
-                  value={fmtMoney(topCollectedValue)}
+                  value={canViewFinancials ? fmtMoney(topCollectedValue) : "Unavailable"}
                   testId="project-header-collected"
                 />
                 <DashboardMetric
                   label="Need Collect"
                   value={fmtMoney(topNeedCollectValue)}
                   testId="project-header-need-collect"
-                  tone={topNeedCollectValue > 0 ? "attention" : "positive"}
+                  tone={
+                    Number.isFinite(topNeedCollectValue) && topNeedCollectValue > 0
+                      ? "attention"
+                      : "positive"
+                  }
                 />
                 <button
                   type="button"
                   onClick={goToCostTab}
                   className="min-w-0 border-t border-[var(--hh-border)] pt-3 text-left outline-none transition-colors hover:bg-[var(--hh-l2-operational-surface)] focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)] sm:border-l sm:border-t-0 sm:pl-4 sm:pt-0"
                 >
-                  <p className={cn(TYPO.kpiLabel, "text-hh-status")}>Actual Cost</p>
+                  <p
+                    className={cn(TYPO.kpiLabel, "text-hh-status text-[var(--hh-text-secondary)]")}
+                  >
+                    Actual Cost
+                  </p>
                   <p
                     data-testid="project-header-actual-cost"
                     className={cn(
@@ -1016,7 +997,9 @@ export function ProjectDetailTabsClient({
                     headerProfitValue == null
                       ? snapshotState.status === "loading"
                         ? "Loading..."
-                        : "Needs review"
+                        : snapshotState.status === "error"
+                          ? "Unavailable"
+                          : "Needs review"
                       : `${headerProfitValue >= 0 ? "" : "-"}${fmtMoney(
                           Math.abs(headerProfitValue)
                         )}`
@@ -1043,19 +1026,26 @@ export function ProjectDetailTabsClient({
         </div>
       }
     >
-      <EditProjectModal
-        open={editModalOpen}
-        onOpenChange={setEditModalOpen}
-        project={{
-          id: projectId,
-          name: displayProject.name,
-          client: displayProject.client ?? "",
-          address: displayProject.address ?? "",
-          budget: budgetVal,
-          customerId: displayProject.customerId ?? null,
-        }}
-        onSave={handleProjectSave}
-      />
+      {canManageProject && (
+        <EditProjectModal
+          open={editModalOpen}
+          onOpenChange={(open) => {
+            setEditModalOpen(open);
+            if (!open) {
+              window.requestAnimationFrame(() => editButtonRef.current?.focus());
+            }
+          }}
+          project={{
+            id: projectId,
+            name: displayProject.name,
+            client: displayProject.client ?? "",
+            address: displayProject.address ?? "",
+            budget: editableBudgetVal,
+            customerId: displayProject.customerId ?? null,
+          }}
+          onSave={handleProjectSave}
+        />
+      )}
       <ConfirmDialog
         open={archiveConfirmOpen}
         onOpenChange={(open) => {
@@ -1088,1271 +1078,1204 @@ export function ProjectDetailTabsClient({
           <Tabs
             value={tab}
             onValueChange={(v) => {
-              startTabTransition(() => setTab(v as WorkspaceTabKey));
+              selectWorkspaceTab(v as WorkspaceTabKey);
             }}
             className="w-full"
           >
-            <div className="max-w-full overflow-hidden border-b border-[var(--hh-border)] pb-0">
+            <nav
+              aria-label="Project workspace"
+              className="flex flex-wrap items-end border-b border-[var(--hh-border)]"
+            >
               <TabsList
                 aria-label="Project workspace sections"
-                className="h-11 min-h-[44px] w-full touch-pan-x justify-start gap-0 overflow-x-auto overscroll-x-contain whitespace-nowrap rounded-none border-0 bg-transparent p-0 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                className="h-auto min-h-11 flex-1 flex-wrap justify-start gap-0 border-0"
               >
-                {PROJECT_WORKSPACE_TABS.map((t) => (
+                {PROJECT_WORKSPACE_TABS.filter(
+                  (t) => t.key !== "people" && t.key !== "closeout"
+                ).map((t) => (
                   <TabsTrigger
                     key={t.key}
                     value={t.key}
-                    className="min-h-[44px] shrink-0 rounded-none border-b-2 border-transparent bg-transparent px-3 py-2.5 text-hh-table-cell font-medium text-[var(--hh-text-secondary)] shadow-none data-[state=active]:border-[var(--hh-action-primary)] data-[state=active]:bg-transparent data-[state=active]:text-[var(--hh-text-primary)] data-[state=active]:shadow-none sm:px-4 sm:text-hh-body"
+                    className={cn(
+                      "min-h-11 px-2 text-hh-metadata sm:px-3 sm:text-hh-body",
+                      !t.mobile && "hidden lg:inline-flex"
+                    )}
                   >
                     {t.label}
                   </TabsTrigger>
                 ))}
               </TabsList>
-            </div>
-
-            <TabsContent value="overview" className="mt-4 space-y-4">
-              <div className="grid gap-4 xl:grid-cols-2">
-                <ExecutiveCard
-                  title="Financial Summary"
-                  action={
-                    <button
-                      type="button"
-                      onClick={() => setTab("financial")}
-                      className="min-h-8 text-hh-metadata font-medium text-[var(--hh-action-primary)] underline-offset-4 hover:underline"
-                    >
-                      Financial
-                    </button>
-                  }
-                >
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <DetailRow label="Contract value" value={fmtMoney(budgetVal)} />
-                    <DetailRow
-                      label="Collected"
-                      value={fmtMoney(topCollectedValue)}
-                      tone="positive"
-                    />
-                    <DetailRow
-                      label="Need collect"
-                      value={fmtMoney(topNeedCollectValue)}
-                      tone={topNeedCollectValue > 0 ? "attention" : "positive"}
-                    />
-                    <DetailRow
-                      label="Billed"
-                      value={fmtExactMoney(snapshotCostSummary.billedAmount)}
-                    />
-                    <DetailRow label="Paid" value={fmtExactMoney(snapshotCostSummary.paidAmount)} />
-                    <DetailRow
-                      label="Last payment"
-                      value={billingSummary.lastPaymentDate?.slice(0, 10) ?? "—"}
-                    />
-                  </div>
-                </ExecutiveCard>
-
-                <ExecutiveCard
-                  title="Cost Breakdown"
-                  action={
-                    <button
-                      type="button"
-                      onClick={goToCostTab}
-                      className="min-h-8 text-hh-metadata font-medium text-[var(--hh-action-primary)] underline-offset-4 hover:underline"
-                    >
-                      Cost detail
-                    </button>
-                  }
-                >
-                  <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
-                    {(
-                      [
-                        { label: "Actual cost", value: snapshotCostSummary.actualCost },
-                        { label: "Expenses", value: snapshotCostSummary.expenseCost },
-                        { label: "Labor", value: snapshotCostSummary.laborCost },
-                        { label: "Reimbursements", value: snapshotCostSummary.reimbursementCost },
-                        { label: "Subcontracts", value: snapshotCostSummary.subcontractCost },
-                        { label: "Commission", value: snapshotCostSummary.commissionCost },
-                      ] as const
-                    ).map((cell) => (
-                      <div
-                        key={cell.label}
-                        className="rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 py-3"
-                      >
-                        <p className={cn(TYPO.kpiLabel, "text-hh-status")}>{cell.label}</p>
-                        <AmountCell className="mt-1 block text-hh-body">
-                          {fmtMoney(cell.value)}
-                        </AmountCell>
-                      </div>
-                    ))}
-                  </div>
-                </ExecutiveCard>
-
-                <ExecutiveCard title="Project Health">
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <DetailRow
-                      label="Status"
-                      value={<ProjectDetailStatusPill status={displayProject.status} />}
-                    />
-                    <DetailRow
-                      label="Open tasks"
-                      value={openTaskCount}
-                      tone={openTaskCount > 0 ? "attention" : "positive"}
-                    />
-                    <DetailRow label="Schedule items" value={scheduleItems.length} />
-                    <DetailRow
-                      label="Open punch items"
-                      value={openPunchCount}
-                      tone={openPunchCount > 0 ? "attention" : "positive"}
-                    />
-                    <DetailRow
-                      label="Needs review"
-                      value={
-                        <Link
-                          href={inboxProjectHref}
-                          className="underline-offset-2 hover:underline"
-                        >
-                          {projectCost.alerts.needsReviewCount}
-                        </Link>
-                      }
-                      tone={projectCost.alerts.needsReviewCount > 0 ? "attention" : "positive"}
-                    />
-                    <DetailRow
-                      label="Missing receipts"
-                      value={
-                        <Link
-                          href={expensesProjectHref}
-                          className="underline-offset-2 hover:underline"
-                        >
-                          {projectCost.alerts.missingReceiptCount}
-                        </Link>
-                      }
-                      tone={projectCost.alerts.missingReceiptCount > 0 ? "attention" : "positive"}
-                    />
-                  </div>
-                  <div className="mt-3 border-t border-[var(--hh-border)] pt-3 text-hh-table-cell text-[var(--hh-text-secondary)]">
-                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                      <span className="text-[var(--hh-text-tertiary)]">Client</span>
-                      {displayProject.customerId ? (
-                        <Link
-                          href={`/customers/${displayProject.customerId}`}
-                          className="font-medium text-[var(--hh-text-primary)] underline-offset-2 hover:underline"
-                        >
-                          {displayProject.client ??
-                            (displayProject as { client_name?: string }).client_name ??
-                            "Customer"}
-                        </Link>
-                      ) : (
-                        <span className="font-medium text-[var(--hh-text-primary)]">
-                          {displayProject.client ??
-                            (displayProject as { client_name?: string }).client_name ??
-                            "—"}
-                        </span>
-                      )}
-                    </div>
-                    {displayProject.address ? (
-                      <p className="mt-1 truncate">{displayProject.address}</p>
-                    ) : null}
-                  </div>
-                </ExecutiveCard>
-
-                <ExecutiveCard title="Recent Activity">
-                  {latestActivity.length > 0 ? (
-                    <ul className="divide-y divide-[var(--hh-border)]">
-                      {latestActivity.map((log) => (
-                        <li key={log.id} className="flex gap-3 py-2.5 text-hh-table-cell">
-                          <span className="w-[6.5rem] shrink-0 hh-fin tabular-nums text-[var(--hh-text-tertiary)]">
-                            {log.created_at?.slice(0, 10) ?? "—"}
-                          </span>
-                          <span className="min-w-0 text-[var(--hh-text-primary)]">
-                            {log.description ?? log.type}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : recentCostActivity.length > 0 ? (
-                    <ul className="divide-y divide-[var(--hh-border)]">
-                      {recentCostActivity.map((row) => (
-                        <li
-                          key={row.id}
-                          className="flex items-center gap-3 py-2.5 text-hh-table-cell"
-                        >
-                          <span className="w-[6.5rem] shrink-0 hh-fin tabular-nums text-[var(--hh-text-tertiary)]">
-                            {row.date ?? "—"}
-                          </span>
-                          <span className="min-w-0 flex-1 truncate text-[var(--hh-text-primary)]">
-                            {row.vendorName || row.memo || "Cost recorded"}
-                          </span>
-                          <span className="shrink-0 hh-fin tabular-nums text-[var(--hh-text-secondary)]">
-                            {fmtMoney(row.amount)}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="py-6 text-hh-body text-[var(--hh-text-secondary)]">
-                      No recent activity for this project.
-                    </p>
-                  )}
-                </ExecutiveCard>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="tasks" className="mt-4 space-y-4">
-              <ExecutiveCard title="Tasks">
-                <ProjectTasksTab
-                  projectId={projectId}
-                  tasks={tasks}
-                  workers={workers}
-                  onTaskCreated={() =>
-                    syncClientsThenRefreshInBackground(router, "project-task-created")
-                  }
-                  onTaskUpdated={() =>
-                    syncClientsThenRefreshInBackground(router, "project-task-updated")
-                  }
-                />
-              </ExecutiveCard>
-
-              <ExecutiveCard
-                title="Schedule"
-                action={
-                  <Link
-                    href="/schedule"
-                    className="min-h-8 text-hh-metadata font-medium text-[var(--hh-action-primary)] underline-offset-4 hover:underline"
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className="min-h-11 px-2"
+                    aria-label="More project sections"
                   >
-                    Company schedule
-                  </Link>
-                }
-              >
-                {scheduleItems.length === 0 ? (
-                  <p className="py-6 text-hh-body text-[var(--hh-text-secondary)]">
-                    No schedule milestones for this project.
-                  </p>
-                ) : (
-                  <div className="airtable-table-wrap airtable-table-wrap--ruled">
-                    <div className="airtable-table-scroll">
-                      <table className="w-full text-hh-body">
-                        <thead>
-                          <tr>
-                            <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
-                              Title
-                            </th>
-                            <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
-                              Start
-                            </th>
-                            <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
-                              End
-                            </th>
-                            <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
-                              Status
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {scheduleItems.map((s) => (
-                            <tr key={s.id} className={listTableRowStaticClassName}>
-                              <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell font-medium">
-                                {s.title}
-                              </td>
-                              <td className="h-11 min-h-[44px] px-3 py-0 align-middle hh-fin text-hh-table-cell tabular-nums">
-                                {s.start_date ?? "—"}
-                              </td>
-                              <td className="h-11 min-h-[44px] px-3 py-0 align-middle hh-fin text-hh-table-cell tabular-nums">
-                                {s.end_date ?? "—"}
-                              </td>
-                              <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell capitalize">
-                                {(s.status ?? "scheduled").replace(/_/g, " ")}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
-              </ExecutiveCard>
-
-              <ExecutiveCard title="Activity">
-                {activityLogs.length === 0 ? (
-                  <p className="py-6 text-hh-body text-[var(--hh-text-secondary)]">
-                    No activity for this project.
-                  </p>
-                ) : (
-                  <ul className="divide-y divide-[var(--hh-border)]">
-                    {activityLogs.map((log) => (
-                      <li key={log.id} className="flex gap-3 py-2.5 text-hh-table-cell">
-                        <span className="w-[9rem] shrink-0 hh-fin tabular-nums text-[var(--hh-text-secondary)]">
-                          {log.created_at?.slice(0, 19).replace("T", " ") ?? "—"}
-                        </span>
-                        <span className="min-w-0 text-[var(--hh-text-primary)]">
-                          {log.description ?? log.type}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </ExecutiveCard>
-
-              <ExecutiveCard title="Punch List">
-                <ProjectPunchListTab projectId={projectId} punchItems={punchItems} />
-              </ExecutiveCard>
-            </TabsContent>
-
-            <TabsContent value="schedule" className={TAB_PANEL}>
-              <SectionHeader
-                label="Schedule"
-                className="text-hh-status tracking-normal text-[var(--hh-text-tertiary)] font-medium"
-              />
-              <Divider />
-              {scheduleItems.length === 0 ? (
-                <p className="py-6 text-hh-body text-[var(--hh-text-secondary)]">
-                  No schedule milestones for this project.
-                </p>
-              ) : (
-                <>
-                  <div className="airtable-table-wrap airtable-table-wrap--ruled mt-2">
-                    <div className="airtable-table-scroll">
-                      <table className="w-full text-hh-body">
-                        <thead>
-                          <tr>
-                            <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
-                              Title
-                            </th>
-                            <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
-                              Start
-                            </th>
-                            <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
-                              End
-                            </th>
-                            <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
-                              Status
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {scheduleItems.map((s) => (
-                            <tr key={s.id} className={listTableRowStaticClassName}>
-                              <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell font-medium">
-                                {s.title}
-                              </td>
-                              <td className="h-11 min-h-[44px] px-3 py-0 align-middle hh-fin text-hh-table-cell tabular-nums">
-                                {s.start_date ?? "—"}
-                              </td>
-                              <td className="h-11 min-h-[44px] px-3 py-0 align-middle hh-fin text-hh-table-cell tabular-nums">
-                                {s.end_date ?? "—"}
-                              </td>
-                              <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell capitalize">
-                                {(s.status ?? "scheduled").replace(/_/g, " ")}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                  <div className="mt-3">
-                    <Link
-                      href="/schedule"
-                      className="text-hh-metadata font-medium text-[var(--hh-text-secondary)] hover:text-[var(--hh-text-primary)]"
+                    More <MoreHorizontal className="ml-1 h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {PROJECT_WORKSPACE_TABS.filter((t) => !t.mobile).map((t) => (
+                    <DropdownMenuItem
+                      key={t.key}
+                      onSelect={() => selectWorkspaceTab(t.key)}
+                      className={cn(
+                        "min-h-11",
+                        t.key !== "people" && t.key !== "closeout" && "lg:hidden"
+                      )}
+                      aria-current={tab === t.key ? "page" : undefined}
                     >
-                      Open company schedule →
-                    </Link>
-                  </div>
-                </>
-              )}
-            </TabsContent>
+                      {t.label}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </nav>
 
-            <TabsContent value="financial" className="mt-4 space-y-4">
-              <ExecutiveCard title="Revenue">
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                  <SnapshotTextMetricCard
-                    label="Contract value"
-                    value={fmtMoney(budgetVal)}
-                    testId="project-financial-revenue-contract"
-                  />
-                  <SnapshotTextMetricCard
-                    label="Billed"
-                    value={fmtExactMoney(snapshotCostSummary.billedAmount)}
-                    testId="snapshot-ar-billed"
-                  />
-                  <SnapshotTextMetricCard
-                    label="Collected"
-                    value={fmtExactMoney(snapshotCostSummary.paidAmount)}
-                    testId="snapshot-ar-paid"
-                  />
-                  <SnapshotTextMetricCard
-                    label="Need Collect"
-                    value={fmtExactMoney(snapshotCostSummary.openAR)}
-                    testId="snapshot-ar-open"
-                  />
-                </div>
-                {relatedEstimates.length > 0 ? (
-                  <div className="mt-4 border-t border-[var(--hh-border)] pt-3">
-                    <p className={cn(TYPO.kpiLabel, "mb-1 text-hh-status")}>Related estimates</p>
-                    <div className="divide-y divide-[var(--hh-border)]">
-                      {relatedEstimates.slice(0, 5).map((estimate) => (
-                        <Link
-                          key={estimate.id}
-                          href={`/estimates/${estimate.id}`}
-                          className="flex min-h-10 items-center justify-between gap-3 py-2 text-hh-body underline-offset-2 hover:underline"
+            {tabIsLoading ? (
+              <TabsContent value={tab} className={TAB_PANEL}>
+                <p className="py-6 text-hh-body text-[var(--hh-text-secondary)]" role="status">
+                  Loading{" "}
+                  {PROJECT_WORKSPACE_TABS.find((item) => item.key === tab)?.label ?? "project"}
+                  data…
+                </p>
+              </TabsContent>
+            ) : !financialDataAvailable &&
+              ["financial", "people", "change-orders", "closeout"].includes(tab) ? (
+              <TabsContent value={tab} className={TAB_PANEL}>
+                <FinanceUnavailable />
+              </TabsContent>
+            ) : (
+              <>
+                <TabsContent value="overview" className="mt-4 space-y-4">
+                  <div className="grid gap-4 xl:grid-cols-2">
+                    <ExecutiveCard
+                      title="Financial Summary"
+                      action={
+                        <button
+                          type="button"
+                          onClick={() => selectWorkspaceTab("financial")}
+                          className="min-h-8 text-hh-metadata font-medium text-[var(--hh-action-primary)] underline-offset-4 hover:underline"
                         >
-                          <span className="min-w-0 truncate font-medium text-[var(--hh-text-primary)]">
-                            {estimate.number}
-                          </span>
-                          <span className="shrink-0 text-hh-metadata text-[var(--hh-text-secondary)]">
-                            {estimate.status}
-                          </span>
-                        </Link>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
-              </ExecutiveCard>
+                          Financial
+                        </button>
+                      }
+                    >
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <DetailRow
+                          label="Contract value"
+                          value={canViewFinancials ? fmtMoney(budgetVal) : "Unavailable"}
+                        />
+                        <DetailRow
+                          label="Collected"
+                          value={canViewFinancials ? fmtMoney(topCollectedValue) : "Unavailable"}
+                          tone="positive"
+                        />
+                        <DetailRow
+                          label="Need collect"
+                          value={fmtMoney(topNeedCollectValue)}
+                          tone={
+                            Number.isFinite(topNeedCollectValue) && topNeedCollectValue > 0
+                              ? "attention"
+                              : "positive"
+                          }
+                        />
+                        <DetailRow
+                          label="Billed"
+                          value={fmtExactMoney(snapshotCostSummary.billedAmount)}
+                        />
+                        <DetailRow
+                          label="Paid"
+                          value={fmtExactMoney(snapshotCostSummary.paidAmount)}
+                        />
+                        <DetailRow
+                          label="Last payment"
+                          value={billingSummary?.lastPaymentDate?.slice(0, 10) ?? "—"}
+                        />
+                      </div>
+                    </ExecutiveCard>
 
-              <ExecutiveCard title="Cost">
-                <SectionHeader
-                  label="Cost breakdown"
-                  className="text-hh-status font-medium tracking-normal text-[var(--hh-text-tertiary)]"
-                />
-                <Divider />
-                <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-                  {(
-                    [
-                      {
-                        key: "total" as const,
-                        label: "Actual cost",
-                        value: snapshotCostSummary.actualCost,
-                        testId: "snapshot-cost-actual",
-                      },
-                      {
-                        key: "expenses" as const,
-                        label: "Expenses",
-                        value: snapshotCostSummary.expenseCost,
-                        testId: "snapshot-cost-expense",
-                      },
-                      {
-                        key: "labor" as const,
-                        label: "Labor",
-                        value: snapshotCostSummary.laborCost,
-                        testId: "snapshot-cost-labor",
-                      },
-                      {
-                        key: "reimbursements" as const,
-                        label: "Reimbursements",
-                        value: snapshotCostSummary.reimbursementCost,
-                        testId: "snapshot-cost-reimbursement",
-                      },
-                      {
-                        key: "bills" as const,
-                        label: "Bills / Subcontracts",
-                        value: snapshotCostSummary.subcontractCost,
-                        testId: "snapshot-cost-subcontracts",
-                      },
-                      {
-                        key: "commission" as const,
-                        label: "Commission / Selling Cost",
-                        value: snapshotCostSummary.commissionCost,
-                        testId: "snapshot-cost-commission",
-                      },
-                    ] as const
-                  ).map((cell) => {
-                    const active =
-                      cell.key === "total"
-                        ? costBucketFilter === null
-                        : costBucketFilter === cell.key;
-                    return (
-                      <SnapshotMetricCard
-                        key={cell.key}
-                        label={cell.label}
-                        value={cell.value}
-                        testId={cell.testId}
-                        active={active}
-                        onClick={() => pickBreakdown(cell.key)}
-                      />
-                    );
-                  })}
-                </div>
-                <div
-                  data-testid="snapshot-cost-status"
-                  className="mt-2 space-y-1 text-hh-metadata text-[var(--hh-text-secondary)]"
-                >
-                  {snapshotState.status === "error" ? (
-                    <p className="rounded-hh-standard border border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] px-3 py-2 text-[var(--hh-action-primary)]">
-                      Using legacy cost data. Snapshot unavailable.
-                    </p>
-                  ) : null}
-                  {snapshotState.status === "loading" ? (
-                    <p>Loading project financial snapshot…</p>
-                  ) : null}
-                  <p>
-                    Actual cost = snapshot expense + labor + reimbursements + subcontracts + accrued
-                    commission. Confirmed profit uses snapshot cost when the contract value is
-                    ready; pending review costs and generic AP stay separate.
-                  </p>
-                  {snapshotNotes.length > 0 ? (
-                    <ul className="flex flex-wrap gap-2">
-                      {snapshotNotes.slice(0, 4).map((note) => (
-                        <li
-                          key={note}
-                          className="rounded-full border border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] px-2 py-1 text-hh-status font-medium text-[var(--hh-action-primary)]"
+                    <ExecutiveCard
+                      title="Cost Breakdown"
+                      action={
+                        <button
+                          type="button"
+                          onClick={goToCostTab}
+                          className="min-h-8 text-hh-metadata font-medium text-[var(--hh-action-primary)] underline-offset-4 hover:underline"
                         >
-                          {note}
-                        </li>
-                      ))}
-                    </ul>
-                  ) : null}
-                  {pendingCostReviewNote ? (
-                    <p className="rounded-hh-standard border border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] px-3 py-2 text-[var(--hh-action-primary)]">
-                      <span className="font-medium">Pending review costs are not included.</span>{" "}
-                      {pendingCostReviewNote}
-                    </p>
-                  ) : null}
-                </div>
-              </ExecutiveCard>
+                          Cost detail
+                        </button>
+                      }
+                    >
+                      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+                        {(
+                          [
+                            { label: "Actual cost", value: snapshotCostSummary.actualCost },
+                            { label: "Expenses", value: snapshotCostSummary.expenseCost },
+                            { label: "Labor", value: snapshotCostSummary.laborCost },
+                            {
+                              label: "Reimbursements",
+                              value: snapshotCostSummary.reimbursementCost,
+                            },
+                            { label: "Subcontracts", value: snapshotCostSummary.subcontractCost },
+                            { label: "Commission", value: snapshotCostSummary.commissionCost },
+                          ] as const
+                        ).map((cell) => (
+                          <div
+                            key={cell.label}
+                            className="rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 py-3"
+                          >
+                            <p className={cn(TYPO.kpiLabel, "text-hh-status")}>{cell.label}</p>
+                            <AmountCell className="mt-1 block text-hh-body">
+                              {fmtMoney(cell.value)}
+                            </AmountCell>
+                          </div>
+                        ))}
+                      </div>
+                    </ExecutiveCard>
 
-              <ExecutiveCard title="Profit">
-                {snapshotComparison ? (
-                  <>
-                    {showSnapshotProfit ? (
-                      <>
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                          <SnapshotTextMetricCard
-                            label="Confirmed Gross Profit"
-                            value={fmtExactMoney(snapshotComparison.newSnapshot.grossProfit)}
-                            testId="snapshot-profit-gross"
-                          />
-                          <SnapshotTextMetricCard
-                            label="Confirmed Margin"
-                            value={fmtPercentRatio(snapshotComparison.newSnapshot.grossMargin)}
-                            testId="snapshot-profit-margin"
-                          />
-                          <SnapshotMetricCard
-                            label="Confirmed Actual Cost"
-                            value={snapshotCostSummary.actualCost}
-                            testId="snapshot-profit-actual-cost"
-                          />
+                    <ExecutiveCard title="Project Health">
+                      <div className="mb-3 flex flex-wrap gap-2">
+                        <Button
+                          variant="outline"
+                          className="min-h-11"
+                          onClick={() => selectWorkspaceTab("tasks")}
+                        >
+                          Open tasks · {openTaskCount}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="min-h-11"
+                          onClick={() => selectWorkspaceTab("punch-list")}
+                        >
+                          Open punch · {openPunchCount}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="min-h-11"
+                          onClick={() => selectWorkspaceTab("schedule")}
+                        >
+                          View schedule
+                        </Button>
+                      </div>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <DetailRow
+                          label="Status"
+                          value={<ProjectDetailStatusPill status={displayProject.status} />}
+                        />
+                        <DetailRow
+                          label="Open tasks"
+                          value={openTaskCount}
+                          tone={openTaskCount > 0 ? "attention" : "positive"}
+                        />
+                        <DetailRow label="Schedule items" value={scheduleItems.length} />
+                        <DetailRow
+                          label="Open punch items"
+                          value={openPunchCount}
+                          tone={openPunchCount > 0 ? "attention" : "positive"}
+                        />
+                        <DetailRow
+                          label="Needs review"
+                          value={
+                            <Link
+                              href={inboxProjectHref}
+                              prefetch={false}
+                              className="underline-offset-2 hover:underline"
+                            >
+                              {projectCost?.alerts.needsReviewCount ?? "Unavailable"}
+                            </Link>
+                          }
+                          tone={
+                            (projectCost?.alerts.needsReviewCount ?? 0) > 0
+                              ? "attention"
+                              : "positive"
+                          }
+                        />
+                        <DetailRow
+                          label="Missing receipts"
+                          value={
+                            <Link
+                              href={expensesProjectHref}
+                              prefetch={false}
+                              className="underline-offset-2 hover:underline"
+                            >
+                              {projectCost?.alerts.missingReceiptCount ?? "Unavailable"}
+                            </Link>
+                          }
+                          tone={
+                            (projectCost?.alerts.missingReceiptCount ?? 0) > 0
+                              ? "attention"
+                              : "positive"
+                          }
+                        />
+                      </div>
+                      <div className="mt-3 border-t border-[var(--hh-border)] pt-3 text-hh-table-cell text-[var(--hh-text-secondary)]">
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                          <span className="text-[var(--hh-text-tertiary)]">Client</span>
+                          {displayProject.customerId ? (
+                            <Link
+                              href={`/customers/${displayProject.customerId}`}
+                              prefetch={false}
+                              className="font-medium text-[var(--hh-text-primary)] underline-offset-2 hover:underline"
+                            >
+                              {displayProject.client ??
+                                (displayProject as { client_name?: string }).client_name ??
+                                "Customer"}
+                            </Link>
+                          ) : (
+                            <span className="font-medium text-[var(--hh-text-primary)]">
+                              {displayProject.client ??
+                                (displayProject as { client_name?: string }).client_name ??
+                                "—"}
+                            </span>
+                          )}
                         </div>
-                        <p className="mt-2 rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 py-2 text-hh-metadata text-[var(--hh-text-secondary)]">
-                          Profit is based on confirmed costs and accrued commission. Pending review
-                          costs, unpaid reimbursements, and generic AP are shown separately and are
-                          not included yet.
+                        {displayProject.address ? (
+                          <p className="mt-1 truncate">{displayProject.address}</p>
+                        ) : null}
+                      </div>
+                    </ExecutiveCard>
+
+                    <ExecutiveCard title="Recent Activity">
+                      {latestActivity.length > 0 ? (
+                        <ul className="divide-y divide-[var(--hh-border)]">
+                          {latestActivity.map((log) => (
+                            <li key={log.id} className="flex gap-3 py-2.5 text-hh-table-cell">
+                              <span className="w-[6.5rem] shrink-0 hh-fin tabular-nums text-[var(--hh-text-tertiary)]">
+                                {log.created_at?.slice(0, 10) ?? "—"}
+                              </span>
+                              <span className="min-w-0 text-[var(--hh-text-primary)]">
+                                {log.description ?? log.type}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : recentCostActivity.length > 0 ? (
+                        <ul className="divide-y divide-[var(--hh-border)]">
+                          {recentCostActivity.map((row) => (
+                            <li
+                              key={row.id}
+                              className="flex items-center gap-3 py-2.5 text-hh-table-cell"
+                            >
+                              <span className="w-[6.5rem] shrink-0 hh-fin tabular-nums text-[var(--hh-text-tertiary)]">
+                                {row.date ?? "—"}
+                              </span>
+                              <span className="min-w-0 flex-1 truncate text-[var(--hh-text-primary)]">
+                                {row.vendorName || row.memo || "Cost recorded"}
+                              </span>
+                              <span className="shrink-0 hh-fin tabular-nums text-[var(--hh-text-secondary)]">
+                                {fmtMoney(row.amount)}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="py-6 text-hh-body text-[var(--hh-text-secondary)]">
+                          No recent activity for this project.
                         </p>
+                      )}
+                    </ExecutiveCard>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="tasks" className="mt-4 space-y-4">
+                  <ExecutiveCard title="Tasks">
+                    <ProjectTasksTab
+                      projectId={projectId}
+                      tasks={tasks}
+                      workers={workers}
+                      onTaskCreated={() =>
+                        syncClientsThenRefreshInBackground(router, "project-task-created")
+                      }
+                      onTaskUpdated={() =>
+                        syncClientsThenRefreshInBackground(router, "project-task-updated")
+                      }
+                    />
+                  </ExecutiveCard>
+
+                  <ExecutiveCard title="Activity">
+                    {activityLogs.length === 0 ? (
+                      <p className="py-6 text-hh-body text-[var(--hh-text-secondary)]">
+                        No activity for this project.
+                      </p>
+                    ) : (
+                      <ul className="divide-y divide-[var(--hh-border)]">
+                        {activityLogs.map((log) => (
+                          <li key={log.id} className="flex gap-3 py-2.5 text-hh-table-cell">
+                            <span className="w-[9rem] shrink-0 hh-fin tabular-nums text-[var(--hh-text-secondary)]">
+                              {log.created_at?.slice(0, 19).replace("T", " ") ?? "—"}
+                            </span>
+                            <span className="min-w-0 text-[var(--hh-text-primary)]">
+                              {log.description ?? log.type}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </ExecutiveCard>
+                </TabsContent>
+
+                <TabsContent value="schedule" className="mt-4">
+                  <ProjectWorkspaceContext.Provider key={projectId} value={projectId}>
+                    <ScheduleWorkspace />
+                  </ProjectWorkspaceContext.Provider>
+                </TabsContent>
+
+                <TabsContent value="financial" className="mt-4 space-y-4">
+                  <ExecutiveCard title="Revenue">
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                      <SnapshotTextMetricCard
+                        label="Contract value"
+                        value={fmtMoney(budgetVal)}
+                        testId="project-financial-revenue-contract"
+                      />
+                      <SnapshotTextMetricCard
+                        label="Billed"
+                        value={fmtExactMoney(snapshotCostSummary.billedAmount)}
+                        testId="snapshot-ar-billed"
+                      />
+                      <SnapshotTextMetricCard
+                        label="Collected"
+                        value={fmtExactMoney(snapshotCostSummary.paidAmount)}
+                        testId="snapshot-ar-paid"
+                      />
+                      <SnapshotTextMetricCard
+                        label="Need Collect"
+                        value={fmtExactMoney(snapshotCostSummary.openAR)}
+                        testId="snapshot-ar-open"
+                      />
+                    </div>
+                    {relatedEstimates.length > 0 ? (
+                      <div className="mt-4 border-t border-[var(--hh-border)] pt-3">
+                        <p className={cn(TYPO.kpiLabel, "mb-1 text-hh-status")}>
+                          Related estimates
+                        </p>
+                        <div className="divide-y divide-[var(--hh-border)]">
+                          {relatedEstimates.slice(0, 5).map((estimate) => (
+                            <Link
+                              key={estimate.id}
+                              href={`/estimates/${estimate.id}`}
+                              className="flex min-h-10 items-center justify-between gap-3 py-2 text-hh-body underline-offset-2 hover:underline"
+                            >
+                              <span className="min-w-0 truncate font-medium text-[var(--hh-text-primary)]">
+                                {estimate.number}
+                              </span>
+                              <span className="shrink-0 text-hh-metadata text-[var(--hh-text-secondary)]">
+                                {estimate.status}
+                              </span>
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+                  </ExecutiveCard>
+
+                  <ExecutiveCard title="Cost">
+                    <SectionHeader
+                      label="Cost breakdown"
+                      className="text-hh-status font-medium tracking-normal text-[var(--hh-text-tertiary)]"
+                    />
+                    <Divider />
+                    <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+                      {(
+                        [
+                          {
+                            key: "total" as const,
+                            label: "Actual cost",
+                            value: snapshotCostSummary.actualCost,
+                            testId: "snapshot-cost-actual",
+                          },
+                          {
+                            key: "expenses" as const,
+                            label: "Expenses",
+                            value: snapshotCostSummary.expenseCost,
+                            testId: "snapshot-cost-expense",
+                          },
+                          {
+                            key: "labor" as const,
+                            label: "Labor",
+                            value: snapshotCostSummary.laborCost,
+                            testId: "snapshot-cost-labor",
+                          },
+                          {
+                            key: "reimbursements" as const,
+                            label: "Reimbursements",
+                            value: snapshotCostSummary.reimbursementCost,
+                            testId: "snapshot-cost-reimbursement",
+                          },
+                          {
+                            key: "bills" as const,
+                            label: "Bills / Subcontracts",
+                            value: snapshotCostSummary.subcontractCost,
+                            testId: "snapshot-cost-subcontracts",
+                          },
+                          {
+                            key: "commission" as const,
+                            label: "Commission / Selling Cost",
+                            value: snapshotCostSummary.commissionCost,
+                            testId: "snapshot-cost-commission",
+                          },
+                        ] as const
+                      ).map((cell) => {
+                        const active =
+                          cell.key === "total"
+                            ? costBucketFilter === null
+                            : costBucketFilter === cell.key;
+                        return (
+                          <SnapshotMetricCard
+                            key={cell.key}
+                            label={cell.label}
+                            value={cell.value}
+                            testId={cell.testId}
+                            active={active}
+                            onClick={() => pickBreakdown(cell.key)}
+                          />
+                        );
+                      })}
+                    </div>
+                    <div
+                      data-testid="snapshot-cost-status"
+                      className="mt-2 space-y-1 text-hh-metadata text-[var(--hh-text-secondary)]"
+                    >
+                      {snapshotState.status === "error" ? (
+                        <p className="rounded-hh-standard border border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] px-3 py-2 text-[var(--hh-action-primary)]">
+                          Project financial data is unavailable.
+                        </p>
+                      ) : null}
+                      {snapshotState.status === "loading" ? (
+                        <p>Loading project financial snapshot…</p>
+                      ) : null}
+                      <p>
+                        Actual cost = snapshot expense + labor + reimbursements + subcontracts +
+                        accrued commission. Confirmed profit uses snapshot cost when the contract
+                        value is ready; pending review costs and generic AP stay separate.
+                      </p>
+                      {snapshotNotes.length > 0 ? (
+                        <ul className="flex flex-wrap gap-2">
+                          {snapshotNotes.slice(0, 4).map((note) => (
+                            <li
+                              key={note}
+                              className="rounded-full border border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] px-2 py-1 text-hh-status font-medium text-[var(--hh-action-primary)]"
+                            >
+                              {note}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : null}
+                      {pendingCostReviewNote ? (
+                        <p className="rounded-hh-standard border border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] px-3 py-2 text-[var(--hh-action-primary)]">
+                          <span className="font-medium">
+                            Pending review costs are not included.
+                          </span>{" "}
+                          {pendingCostReviewNote}
+                        </p>
+                      ) : null}
+                    </div>
+                  </ExecutiveCard>
+
+                  <ExecutiveCard title="Profit">
+                    {snapshotComparison ? (
+                      <>
+                        {showSnapshotProfit ? (
+                          <>
+                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                              <SnapshotTextMetricCard
+                                label="Confirmed Gross Profit"
+                                value={fmtExactMoney(snapshotComparison.newSnapshot.grossProfit)}
+                                testId="snapshot-profit-gross"
+                              />
+                              <SnapshotTextMetricCard
+                                label="Confirmed Margin"
+                                value={fmtPercentRatio(snapshotComparison.newSnapshot.grossMargin)}
+                                testId="snapshot-profit-margin"
+                              />
+                              <SnapshotMetricCard
+                                label="Confirmed Actual Cost"
+                                value={snapshotCostSummary.actualCost}
+                                testId="snapshot-profit-actual-cost"
+                              />
+                            </div>
+                            <p className="mt-2 rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 py-2 text-hh-metadata text-[var(--hh-text-secondary)]">
+                              Profit is based on confirmed costs and accrued commission. Pending
+                              review costs, unpaid reimbursements, and generic AP are shown
+                              separately and are not included yet.
+                            </p>
+                          </>
+                        ) : (
+                          <p className="rounded-hh-standard border border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] px-3 py-2 text-hh-metadata font-medium text-[var(--hh-action-primary)]">
+                            {profitReadinessWarning}
+                          </p>
+                        )}
                       </>
                     ) : (
-                      <p className="rounded-hh-standard border border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] px-3 py-2 text-hh-metadata font-medium text-[var(--hh-action-primary)]">
-                        {profitReadinessWarning}
+                      <p
+                        role="status"
+                        className="rounded-hh-standard border border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] px-3 py-2 text-hh-metadata font-medium text-[var(--hh-action-primary)]"
+                      >
+                        {snapshotState.status === "loading"
+                          ? "Loading project financial snapshot…"
+                          : "Project financial data is unavailable."}
                       </p>
                     )}
-                  </>
-                ) : (
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                    <SnapshotTextMetricCard
-                      label="Legacy profit"
-                      value={fmtExactMoney(legacyProfitVal)}
-                      testId="snapshot-profit-gross"
-                    />
-                    <SnapshotTextMetricCard
-                      label="Legacy margin"
-                      value={`${legacyMarginPct.toFixed(1)}%`}
-                      testId="snapshot-profit-margin"
-                    />
-                    <SnapshotMetricCard
-                      label="Actual Cost"
-                      value={snapshotCostSummary.actualCost}
-                      testId="snapshot-profit-actual-cost"
-                    />
-                  </div>
-                )}
-              </ExecutiveCard>
+                  </ExecutiveCard>
 
-              <ExecutiveCard title="Commission Commitments">
-                <SectionHeader
-                  label="Commission commitments"
-                  className="text-hh-status font-medium tracking-normal text-[var(--hh-text-tertiary)]"
-                />
-                <Divider />
-                <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
-                  <SnapshotMetricCard
-                    label="Commission total"
-                    value={commissionSummary.total}
-                    testId="project-cost-commission-total"
-                  />
-                  <SnapshotMetricCard
-                    label="Commission paid"
-                    value={commissionSummary.paid}
-                    testId="project-cost-commission-paid"
-                  />
-                  <SnapshotMetricCard
-                    label="Commission outstanding"
-                    value={commissionSummary.outstanding}
-                    testId="project-cost-commission-outstanding"
-                  />
-                </div>
-                <p className="mt-2 rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 py-2 text-hh-metadata text-[var(--hh-text-secondary)]">
-                  Commission / Selling Cost is accrued from commission records and included in
-                  actual cost and profit. Paid and outstanding amounts are payment tracking only.
-                </p>
-                {commissions.length > 0 ? (
-                  <div className="mt-3 overflow-x-auto">
-                    <table className="w-full min-w-[520px] border-collapse text-hh-table-cell">
-                      <thead>
-                        <tr className="border-b border-[var(--hh-border)] text-[var(--hh-text-tertiary)]">
-                          <th className="py-2 pr-3 text-left text-hh-status font-medium uppercase tracking-normal">
-                            Person
-                          </th>
-                          <th className="py-2 pr-3 text-left text-hh-status font-medium uppercase tracking-normal">
-                            Role
-                          </th>
-                          <th className="py-2 pr-3 text-right text-hh-status font-medium uppercase tracking-normal">
-                            Commission
-                          </th>
-                          <th className="py-2 pr-3 text-right text-hh-status font-medium uppercase tracking-normal">
-                            Paid
-                          </th>
-                          <th className="py-2 text-left text-hh-status font-medium uppercase tracking-normal">
-                            Status
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {commissions.slice(0, 5).map((row) => (
-                          <tr
-                            key={row.id}
-                            className="border-b border-[var(--hh-border)] last:border-b-0"
-                            data-testid={`project-cost-commission-row-${row.id}`}
+                  <ExecutiveCard title="Commission Commitments">
+                    <SectionHeader
+                      label="Commission commitments"
+                      className="text-hh-status font-medium tracking-normal text-[var(--hh-text-tertiary)]"
+                    />
+                    <Divider />
+                    <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                      <SnapshotMetricCard
+                        label="Commission total"
+                        value={commissionSummary.total}
+                        testId="project-cost-commission-total"
+                      />
+                      <SnapshotMetricCard
+                        label="Commission paid"
+                        value={commissionSummary.paid}
+                        testId="project-cost-commission-paid"
+                      />
+                      <SnapshotMetricCard
+                        label="Commission outstanding"
+                        value={commissionSummary.outstanding}
+                        testId="project-cost-commission-outstanding"
+                      />
+                    </div>
+                    <p className="mt-2 rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 py-2 text-hh-metadata text-[var(--hh-text-secondary)]">
+                      Commission / Selling Cost is accrued from commission records and included in
+                      actual cost and profit. Paid and outstanding amounts are payment tracking
+                      only.
+                    </p>
+                    {commissions.length > 0 ? (
+                      <div className="mt-3 overflow-x-auto">
+                        <table className="w-full min-w-[520px] border-collapse text-hh-table-cell">
+                          <thead>
+                            <tr className="border-b border-[var(--hh-border)] text-[var(--hh-text-tertiary)]">
+                              <th className="py-2 pr-3 text-left text-hh-status font-medium uppercase tracking-normal">
+                                Person
+                              </th>
+                              <th className="py-2 pr-3 text-left text-hh-status font-medium uppercase tracking-normal">
+                                Role
+                              </th>
+                              <th className="py-2 pr-3 text-right text-hh-status font-medium uppercase tracking-normal">
+                                Commission
+                              </th>
+                              <th className="py-2 pr-3 text-right text-hh-status font-medium uppercase tracking-normal">
+                                Paid
+                              </th>
+                              <th className="py-2 text-left text-hh-status font-medium uppercase tracking-normal">
+                                Status
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {commissions.slice(0, 5).map((row) => (
+                              <tr
+                                key={row.id}
+                                className="border-b border-[var(--hh-border)] last:border-b-0"
+                                data-testid={`project-cost-commission-row-${row.id}`}
+                              >
+                                <td className="py-2.5 pr-3 font-medium text-[var(--hh-text-primary)]">
+                                  {row.person_name || "—"}
+                                </td>
+                                <td className="py-2.5 pr-3 text-[var(--hh-text-secondary)]">
+                                  {row.role || "—"}
+                                </td>
+                                <td className="py-2.5 pr-3 text-right tabular-nums text-[var(--hh-text-primary)]">
+                                  {fmtExactMoney(row.commission_amount)}
+                                </td>
+                                <td className="py-2.5 pr-3 text-right tabular-nums text-[var(--hh-text-secondary)]">
+                                  {fmtExactMoney(row.paid_amount)}
+                                </td>
+                                <td className="py-2.5 text-[var(--hh-text-secondary)]">
+                                  {row.payment_status === "paid"
+                                    ? "Paid"
+                                    : row.payment_status === "partial"
+                                      ? "Partial"
+                                      : "Outstanding"}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                        {commissions.length > 5 ? (
+                          <Link
+                            href="/financial/commissions"
+                            className="mt-2 inline-flex min-h-8 items-center text-hh-metadata font-medium text-[var(--hh-action-primary)] underline-offset-4 hover:underline"
                           >
-                            <td className="py-2.5 pr-3 font-medium text-[var(--hh-text-primary)]">
-                              {row.person_name || "—"}
-                            </td>
-                            <td className="py-2.5 pr-3 text-[var(--hh-text-secondary)]">
-                              {row.role || "—"}
-                            </td>
-                            <td className="py-2.5 pr-3 text-right tabular-nums text-[var(--hh-text-primary)]">
-                              {fmtExactMoney(row.commission_amount)}
-                            </td>
-                            <td className="py-2.5 pr-3 text-right tabular-nums text-[var(--hh-text-secondary)]">
-                              {fmtExactMoney(row.paid_amount)}
-                            </td>
-                            <td className="py-2.5 text-[var(--hh-text-secondary)]">
-                              {row.payment_status === "paid"
-                                ? "Paid"
-                                : row.payment_status === "partial"
-                                  ? "Partial"
-                                  : "Outstanding"}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                    {commissions.length > 5 ? (
-                      <Link
-                        href="/financial/commissions"
-                        className="mt-2 inline-flex min-h-8 items-center text-hh-metadata font-medium text-[var(--hh-action-primary)] underline-offset-4 hover:underline"
-                      >
-                        View all commissions
-                      </Link>
-                    ) : null}
-                  </div>
-                ) : (
-                  <p className="mt-3 rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 py-3 text-hh-table-cell text-[var(--hh-text-secondary)]">
-                    No commissions are linked to this project yet.
-                  </p>
-                )}
-              </ExecutiveCard>
+                            View all commissions
+                          </Link>
+                        ) : null}
+                      </div>
+                    ) : (
+                      <p className="mt-3 rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 py-3 text-hh-table-cell text-[var(--hh-text-secondary)]">
+                        No commissions are linked to this project yet.
+                      </p>
+                    )}
+                  </ExecutiveCard>
 
-              <ExecutiveCard title="Cost Detail">
-                <SectionHeader
-                  label="Cost detail"
-                  className="text-hh-status font-medium tracking-normal text-[var(--hh-text-tertiary)]"
-                />
-                <Divider />
-                <div className="mt-3">
-                  <ProjectCostLinesTable
-                    rows={filteredCostRows}
-                    projectId={projectId}
-                    hint={costTableHint}
-                    emptyMessage={costTableEmptyMessage}
-                  />
-                </div>
-              </ExecutiveCard>
-
-              {showFinancialSnapshotComparison ? (
-                <ProjectFinancialSnapshotComparisonPanel projectId={projectId} />
-              ) : null}
-
-              <ExecutiveCard title="Invoices">
-                <SectionHeader
-                  label="Invoicing"
-                  action={
-                    <Button asChild size="sm" className="h-8 min-h-8 rounded-hh-standard px-3">
-                      <Link
-                        data-testid="project-create-invoice-link"
-                        href={`/financial/invoices/new?projectId=${encodeURIComponent(projectId)}`}
-                      >
-                        Create Invoice
-                      </Link>
-                    </Button>
-                  }
-                  className="text-hh-status font-medium tracking-normal text-[var(--hh-text-tertiary)]"
-                />
-                <Divider />
-                <p className="mt-1 text-hh-body text-[var(--hh-text-secondary)]">
-                  Billed {fmtExactMoney(snapshotCostSummary.billedAmount)} · Paid{" "}
-                  {fmtExactMoney(snapshotCostSummary.paidAmount)} · Open AR{" "}
-                  {fmtExactMoney(snapshotCostSummary.openAR)}
-                </p>
-                {projectInvoices.length === 0 ? (
-                  <p className="py-6 text-hh-body text-[var(--hh-text-secondary)]">
-                    No invoices for this project.
-                  </p>
-                ) : (
-                  <div className="airtable-table-wrap airtable-table-wrap--ruled mt-3 overflow-hidden rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)]">
-                    <div className="airtable-table-scroll">
-                      <table className="w-full text-hh-body">
-                        <thead>
-                          <tr>
-                            <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
-                              Invoice
-                            </th>
-                            <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
-                              Issue date
-                            </th>
-                            <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
-                              Status
-                            </th>
-                            <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
-                              Total
-                            </th>
-                            <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
-                              Balance
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {projectInvoices.map((inv) => (
-                            <tr key={inv.id} className={listTableRowStaticClassName}>
-                              <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell">
-                                <Link
-                                  href={`/financial/invoices/${inv.id}`}
-                                  className="font-medium text-[var(--hh-text-primary)] hover:underline"
-                                >
-                                  {inv.invoiceNo}
-                                </Link>
-                              </td>
-                              <td className="h-11 min-h-[44px] px-3 py-0 align-middle hh-fin text-hh-table-cell tabular-nums">
-                                {inv.issueDate?.slice(0, 10) ?? "—"}
-                              </td>
-                              <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell">
-                                <InvoiceStatusBadge status={inv.computedStatus} />
-                              </td>
-                              <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums">
-                                ${inv.total.toLocaleString()}
-                              </td>
-                              <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums">
-                                ${inv.balanceDue.toLocaleString()}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                  <ExecutiveCard title="Cost Detail">
+                    <SectionHeader
+                      label="Cost detail"
+                      className="text-hh-status font-medium tracking-normal text-[var(--hh-text-tertiary)]"
+                    />
+                    <Divider />
+                    <div className="mt-3">
+                      <ProjectCostLinesTable
+                        rows={filteredCostRows}
+                        projectId={projectId}
+                        hint={costTableHint}
+                        emptyMessage={costTableEmptyMessage}
+                      />
                     </div>
-                  </div>
-                )}
-                <div className="mt-3">
-                  <Link
-                    href="/financial/invoices"
-                    className="text-hh-metadata font-medium text-[var(--hh-action-primary)] hover:underline"
-                  >
-                    View all invoices →
-                  </Link>
-                </div>
-              </ExecutiveCard>
+                  </ExecutiveCard>
 
-              <ExecutiveCard title="Bills (AP)">
-                <SectionHeader
-                  label="Bills (AP)"
-                  className="text-hh-status font-medium tracking-normal text-[var(--hh-text-tertiary)]"
-                />
-                <Divider />
-                {bills.length === 0 ? (
-                  <p className="py-6 text-hh-body text-[var(--hh-text-secondary)]">
-                    No bills for this project.
-                  </p>
-                ) : (
-                  <div className="airtable-table-wrap airtable-table-wrap--ruled mt-3 overflow-hidden rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)]">
-                    <div className="airtable-table-scroll">
-                      <table className="w-full text-hh-body">
-                        <thead>
-                          <tr>
-                            <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
-                              Vendor
-                            </th>
-                            <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
-                              Bill no
-                            </th>
-                            <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
-                              Amount
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {bills.map((b) => (
-                            <tr key={b.id} className={listTableRowStaticClassName}>
-                              <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell font-medium">
-                                {b.vendor_name ?? "—"}
-                              </td>
-                              <td className="h-11 min-h-[44px] px-3 py-0 align-middle hh-fin text-hh-table-cell tabular-nums">
-                                {b.bill_no ?? "—"}
-                              </td>
-                              <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums">
-                                ${Number(b.amount ?? 0).toLocaleString()}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                  {showFinancialSnapshotComparison ? (
+                    <ProjectFinancialSnapshotComparisonPanel projectId={projectId} />
+                  ) : null}
+
+                  <ExecutiveCard title="Invoices">
+                    <SectionHeader
+                      label="Invoicing"
+                      action={
+                        <Button asChild size="sm" className="h-8 min-h-8 rounded-hh-standard px-3">
+                          <Link
+                            data-testid="project-create-invoice-link"
+                            href={`/financial/invoices/new?projectId=${encodeURIComponent(projectId)}`}
+                          >
+                            Create Invoice
+                          </Link>
+                        </Button>
+                      }
+                      className="text-hh-status font-medium tracking-normal text-[var(--hh-text-tertiary)]"
+                    />
+                    <Divider />
+                    <p className="mt-1 text-hh-body text-[var(--hh-text-secondary)]">
+                      Billed {fmtExactMoney(snapshotCostSummary.billedAmount)} · Paid{" "}
+                      {fmtExactMoney(snapshotCostSummary.paidAmount)} · Open AR{" "}
+                      {fmtExactMoney(snapshotCostSummary.openAR)}
+                    </p>
+                    {projectInvoices.length === 0 ? (
+                      <p className="py-6 text-hh-body text-[var(--hh-text-secondary)]">
+                        No invoices for this project.
+                      </p>
+                    ) : (
+                      <div className="airtable-table-wrap airtable-table-wrap--ruled mt-3 overflow-hidden rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)]">
+                        <div className="airtable-table-scroll">
+                          <table className="w-full text-hh-body">
+                            <thead>
+                              <tr>
+                                <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
+                                  Invoice
+                                </th>
+                                <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
+                                  Issue date
+                                </th>
+                                <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
+                                  Status
+                                </th>
+                                <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
+                                  Total
+                                </th>
+                                <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
+                                  Balance
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {projectInvoices.map((inv) => (
+                                <tr key={inv.id} className={listTableRowStaticClassName}>
+                                  <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell">
+                                    <Link
+                                      href={`/financial/invoices/${inv.id}`}
+                                      className="font-medium text-[var(--hh-text-primary)] hover:underline"
+                                    >
+                                      {inv.invoiceNo}
+                                    </Link>
+                                  </td>
+                                  <td className="h-11 min-h-[44px] px-3 py-0 align-middle hh-fin text-hh-table-cell tabular-nums">
+                                    {inv.issueDate?.slice(0, 10) ?? "—"}
+                                  </td>
+                                  <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell">
+                                    <InvoiceStatusBadge status={inv.computedStatus} />
+                                  </td>
+                                  <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums">
+                                    ${inv.total.toLocaleString()}
+                                  </td>
+                                  <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums">
+                                    ${inv.balanceDue.toLocaleString()}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+                    <div className="mt-3">
+                      <Link
+                        href="/financial/invoices"
+                        className="inline-flex min-h-11 items-center text-hh-metadata font-medium text-[var(--hh-action-primary)] hover:underline lg:min-h-0"
+                      >
+                        View all invoices →
+                      </Link>
                     </div>
-                  </div>
-                )}
-              </ExecutiveCard>
-            </TabsContent>
+                  </ExecutiveCard>
 
-            <TabsContent value="people" className="mt-4 space-y-4">
-              <ExecutiveCard title="People">
-                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                  {peopleSections.map((section) => (
-                    <div
-                      key={section.label}
-                      className="rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-3"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-secondary)]">
-                            {section.label}
-                          </p>
-                          <p className="mt-1 hh-fin text-hh-section-title font-semibold tabular-nums text-[var(--hh-text-primary)]">
-                            {section.count}
+                  <ExecutiveCard title="Bills (AP)">
+                    <SectionHeader
+                      label="Bills (AP)"
+                      className="text-hh-status font-medium tracking-normal text-[var(--hh-text-tertiary)]"
+                    />
+                    <Divider />
+                    {bills.length === 0 ? (
+                      <p className="py-6 text-hh-body text-[var(--hh-text-secondary)]">
+                        No bills for this project.
+                      </p>
+                    ) : (
+                      <div className="airtable-table-wrap airtable-table-wrap--ruled mt-3 overflow-hidden rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)]">
+                        <div className="airtable-table-scroll">
+                          <table className="w-full text-hh-body">
+                            <thead>
+                              <tr>
+                                <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
+                                  Vendor
+                                </th>
+                                <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
+                                  Bill no
+                                </th>
+                                <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
+                                  Amount
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {bills.map((b) => (
+                                <tr key={b.id} className={listTableRowStaticClassName}>
+                                  <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell font-medium">
+                                    {b.vendor_name ?? "—"}
+                                  </td>
+                                  <td className="h-11 min-h-[44px] px-3 py-0 align-middle hh-fin text-hh-table-cell tabular-nums">
+                                    {b.bill_no ?? "—"}
+                                  </td>
+                                  <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums">
+                                    ${Number(b.amount ?? 0).toLocaleString()}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+                  </ExecutiveCard>
+                </TabsContent>
+
+                <TabsContent value="people" className="mt-4 space-y-4">
+                  <ExecutiveCard title="People">
+                    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                      {peopleSections.map((section) => (
+                        <div
+                          key={section.label}
+                          className="rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-3"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-secondary)]">
+                                {section.label}
+                              </p>
+                              <p className="mt-1 hh-fin text-hh-section-title font-semibold tabular-nums text-[var(--hh-text-primary)]">
+                                {section.count}
+                              </p>
+                            </div>
+                            <Link
+                              href={section.href}
+                              className="shrink-0 text-hh-metadata font-medium text-[var(--hh-action-primary)] underline-offset-4 hover:underline"
+                            >
+                              Open
+                            </Link>
+                          </div>
+                          <p className="mt-3 line-clamp-2 text-hh-table-cell text-[var(--hh-text-secondary)]">
+                            {section.items.length > 0 ? section.items.join(", ") : "None linked"}
                           </p>
                         </div>
-                        <Link
-                          href={section.href}
-                          className="shrink-0 text-hh-metadata font-medium text-[var(--hh-action-primary)] underline-offset-4 hover:underline"
-                        >
-                          Open
-                        </Link>
-                      </div>
-                      <p className="mt-3 line-clamp-2 text-hh-table-cell text-[var(--hh-text-secondary)]">
-                        {section.items.length > 0 ? section.items.join(", ") : "None linked"}
-                      </p>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              </ExecutiveCard>
-            </TabsContent>
+                  </ExecutiveCard>
+                </TabsContent>
 
-            <TabsContent value="documents" className="mt-4 space-y-4">
-              <ExecutiveCard title="Docs">
-                <ProjectDocumentsTab projectId={projectId} documents={documents} />
-              </ExecutiveCard>
-            </TabsContent>
+                <TabsContent value="documents" className="mt-4 space-y-4">
+                  <ExecutiveCard title="Docs">
+                    <ProjectDocumentsTab projectId={projectId} documents={documents} />
+                  </ExecutiveCard>
+                </TabsContent>
 
-            <TabsContent value="photos" className={TAB_PANEL}>
-              <SectionHeader
-                label="Photos"
-                className="text-hh-status tracking-normal text-[var(--hh-text-secondary)] font-medium"
-                action={
-                  <Link
-                    href={`/site-photos?project_id=${encodeURIComponent(projectId)}`}
-                    className="text-hh-metadata font-medium text-[var(--hh-action-primary)] underline-offset-4 hover:underline"
-                  >
-                    Open site photos
-                  </Link>
-                }
-              />
-              <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                <Link
-                  href={`/site-photos?project_id=${encodeURIComponent(projectId)}`}
-                  className="rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-3 text-hh-body font-medium text-[var(--hh-text-primary)] transition-colors hover:border-[var(--hh-action-primary)]"
-                >
-                  Site Photos
-                  <span className="mt-1 block text-hh-metadata font-normal text-[var(--hh-text-secondary)]">
-                    Project photo stream
-                  </span>
-                </Link>
-                <Link
-                  href="/site-photos/upload"
-                  className="rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-3 text-hh-body font-medium text-[var(--hh-text-primary)] transition-colors hover:border-[var(--hh-action-primary)]"
-                >
-                  Upload Photos
-                  <span className="mt-1 block text-hh-metadata font-normal text-[var(--hh-text-secondary)]">
-                    Field photo intake
-                  </span>
-                </Link>
-              </div>
-            </TabsContent>
+                <TabsContent value="photos" className="mt-4">
+                  <ProjectWorkspaceContext.Provider key={projectId} value={projectId}>
+                    <PhotosWorkspace />
+                  </ProjectWorkspaceContext.Provider>
+                </TabsContent>
 
-            <TabsContent value="inspections" className={TAB_PANEL}>
-              <SectionHeader
-                label="Inspections"
-                className="text-hh-status tracking-normal text-[var(--hh-text-secondary)] font-medium"
-                action={
-                  <Link
-                    href="/inspection-log"
-                    className="text-hh-metadata font-medium text-[var(--hh-action-primary)] underline-offset-4 hover:underline"
-                  >
-                    Open inspection log
-                  </Link>
-                }
-              />
-              <div className="mt-3 rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-3">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <p className="text-hh-body font-medium text-[var(--hh-text-primary)]">
-                      Inspection Log
-                    </p>
-                    <p className="mt-1 text-hh-metadata text-[var(--hh-text-secondary)]">
-                      Field inspections and punch follow-up
-                    </p>
-                  </div>
-                  <Link
-                    href="/inspection-log"
-                    className="min-h-9 rounded-hh-standard border border-[var(--hh-border)] px-3 py-2 text-hh-metadata font-medium text-[var(--hh-text-primary)] transition-colors hover:border-[var(--hh-action-primary)]"
-                  >
-                    Open
-                  </Link>
-                </div>
-              </div>
-            </TabsContent>
+                <TabsContent value="inspections" className="mt-4">
+                  <ProjectWorkspaceContext.Provider key={projectId} value={projectId}>
+                    <InspectionsWorkspace />
+                  </ProjectWorkspaceContext.Provider>
+                </TabsContent>
 
-            <TabsContent value="expenses" className={TAB_PANEL}>
-              <SectionHeader
-                label="Expenses"
-                className="text-hh-status tracking-normal text-[var(--hh-text-secondary)] font-medium"
-              />
-              <Divider />
-              <div className="mt-2">
-                <RecentExpenseLines rows={expenseLineRows} />
-              </div>
-              <div className="mt-3">
-                <Link
-                  href={`/financial/expenses?project_id=${encodeURIComponent(projectId)}`}
-                  className="text-hh-metadata font-medium text-[var(--hh-text-secondary)] hover:text-[var(--hh-text-primary)]"
-                >
-                  View all expenses →
-                </Link>
-              </div>
-            </TabsContent>
-            <TabsContent value="budget" className={TAB_PANEL}>
-              <SectionHeader
-                label="Budget"
-                className="text-hh-status tracking-normal text-[var(--hh-text-secondary)] font-medium"
-              />
-              <Divider />
-              {budgetItems.length === 0 ? (
-                <p className="py-6 text-hh-body text-[var(--hh-text-secondary)]">
-                  No budget items for this project.
-                </p>
-              ) : (
-                <div className="airtable-table-wrap airtable-table-wrap--ruled mt-2">
-                  <div className="airtable-table-scroll">
-                    <table className="w-full text-hh-body">
-                      <thead>
-                        <tr>
-                          <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
-                            Cost code
-                          </th>
-                          <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
-                            Total
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {budgetItems.map((b) => (
-                          <tr key={b.id} className={listTableRowStaticClassName}>
-                            <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell font-medium">
-                              {b.costCode ?? "—"}
-                            </td>
-                            <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums">
-                              ${Number(b.total || 0).toLocaleString()}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-            </TabsContent>
-            <TabsContent value="activity" className={TAB_PANEL}>
-              <SectionHeader
-                label="Activity"
-                className="text-hh-status tracking-normal text-[var(--hh-text-secondary)] font-medium"
-              />
-              <Divider />
-              {activityLogs.length === 0 ? (
-                <p className="py-6 text-hh-body text-[var(--hh-text-secondary)]">
-                  No activity for this project.
-                </p>
-              ) : (
-                <ul className="space-y-2 py-2">
-                  {activityLogs.map((log) => (
-                    <li
-                      key={log.id}
-                      className="text-hh-body border-b border-[var(--hh-border)] pb-2"
-                    >
-                      <span className="text-[var(--hh-text-secondary)]">
-                        {log.created_at?.slice(0, 19).replace("T", " ")}
-                      </span>
-                      {" — "}
-                      {log.description ?? log.type}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </TabsContent>
-            <TabsContent value="change-orders" className={TAB_PANEL}>
-              <SectionHeader
-                label="Change Orders"
-                className="text-hh-status tracking-normal text-[var(--hh-text-secondary)] font-medium"
-              />
-              <Divider />
-              {changeOrders.length === 0 ? (
-                <p className="py-6 text-hh-body text-[var(--hh-text-secondary)]">
-                  No change orders for this project.
-                </p>
-              ) : (
-                <div className="airtable-table-wrap airtable-table-wrap--ruled mt-2">
-                  <div className="airtable-table-scroll">
-                    <table className="w-full text-hh-body">
-                      <thead>
-                        <tr>
-                          <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
-                            Number
-                          </th>
-                          <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
-                            Status
-                          </th>
-                          <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
-                            Amount
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {changeOrders.map((co) => (
-                          <tr key={co.id} className={listTableRowStaticClassName}>
-                            <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell font-medium">
-                              <div className="flex min-w-0 flex-col py-1.5">
-                                <Link
-                                  href={`/projects/${projectId}/change-orders/${co.id}`}
-                                  className="underline-offset-2 hover:underline"
-                                >
-                                  {co.number ?? "—"}
-                                </Link>
-                                {co.title ? (
-                                  <span className="mt-0.5 max-w-[18rem] truncate text-hh-metadata font-normal text-[var(--hh-text-secondary)]">
-                                    {co.title}
-                                  </span>
-                                ) : null}
-                              </div>
-                            </td>
-                            <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell">
-                              {co.status ?? "—"}
-                            </td>
-                            <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums">
-                              ${Number(co.total ?? co.amount ?? 0).toLocaleString()}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-            </TabsContent>
-            <TabsContent value="materials" className={TAB_PANEL}>
-              <ProjectMaterialsTab
-                projectId={projectId}
-                projectName={displayProject.name}
-                clientName={
-                  displayProject.client ??
-                  (displayProject as { client_name?: string }).client_name ??
-                  undefined
-                }
-                selections={materialSelections}
-                catalog={materialCatalog}
-                onRefresh={() =>
-                  syncClientsThenRefreshInBackground(router, "project-materials-mutated")
-                }
-              />
-            </TabsContent>
-            <TabsContent value="closeout" className={TAB_PANEL}>
-              <ProjectCloseoutTab
-                projectId={projectId}
-                projectName={displayProject.name}
-                billingSummary={billingSummary}
-                contractValue={canonicalProfit.revenue}
-                punch={closeoutPunch}
-                warranty={closeoutWarranty}
-                completion={closeoutCompletion}
-                onRefresh={() =>
-                  syncClientsThenRefreshInBackground(router, "project-closeout-mutated")
-                }
-              />
-            </TabsContent>
-            <TabsContent value="commission" className={cn(TAB_PANEL, "p-0 overflow-hidden sm:p-0")}>
-              <div className="rounded-hh-standard bg-[var(--hh-l2-operational-surface)] p-4 sm:p-5">
-                <ProjectCommissionTab
-                  projectId={projectId}
-                  commissions={commissions}
-                  onRefresh={() =>
-                    syncClientsThenRefreshInBackground(router, "project-commission-mutated")
-                  }
-                />
-              </div>
-            </TabsContent>
-            <TabsContent value="punch-list" className={TAB_PANEL}>
-              <ProjectPunchListTab projectId={projectId} punchItems={punchItems} />
-            </TabsContent>
-            <TabsContent value="subcontracts" className={TAB_PANEL}>
-              <SectionHeader
-                label="Subcontracts"
-                className="text-hh-status tracking-normal text-[var(--hh-text-secondary)] font-medium"
-              />
-              <Divider />
-              {subcontracts.length === 0 ? (
-                <p className="py-6 text-hh-body text-[var(--hh-text-secondary)]">
-                  No subcontracts for this project.
-                </p>
-              ) : (
-                <div className="airtable-table-wrap airtable-table-wrap--ruled mt-2">
-                  <div className="airtable-table-scroll">
-                    <table className="w-full text-hh-body">
-                      <thead>
-                        <tr>
-                          <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
-                            Subcontractor
-                          </th>
-                          <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
-                            Contract amount
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {subcontracts.map((s) => (
-                          <tr key={s.id} className={listTableRowStaticClassName}>
-                            <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell font-medium">
-                              {s.subcontractor_name ?? "—"}
-                            </td>
-                            <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums">
-                              ${Number(s.contract_amount ?? 0).toLocaleString()}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-            </TabsContent>
-            <TabsContent value="bills" className={TAB_PANEL}>
-              <SectionHeader
-                label="Bills (AP)"
-                className="text-hh-status tracking-normal text-[var(--hh-text-secondary)] font-medium"
-              />
-              <Divider />
-              {bills.length === 0 ? (
-                <p className="py-6 text-hh-body text-[var(--hh-text-secondary)]">
-                  No bills for this project.
-                </p>
-              ) : (
-                <div className="airtable-table-wrap airtable-table-wrap--ruled mt-2">
-                  <div className="airtable-table-scroll">
-                    <table className="w-full text-hh-body">
-                      <thead>
-                        <tr>
-                          <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
-                            Vendor
-                          </th>
-                          <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
-                            Bill no
-                          </th>
-                          <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
-                            Amount
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {bills.map((b) => (
-                          <tr key={b.id} className={listTableRowStaticClassName}>
-                            <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell font-medium">
-                              {b.vendor_name ?? "—"}
-                            </td>
-                            <td className="h-11 min-h-[44px] px-3 py-0 align-middle hh-fin text-hh-table-cell tabular-nums">
-                              {b.bill_no ?? "—"}
-                            </td>
-                            <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums">
-                              ${Number(b.amount ?? 0).toLocaleString()}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-            </TabsContent>
-            <TabsContent value="labor" className={TAB_PANEL}>
-              <SectionHeader
-                label="Labor"
-                className="text-hh-status tracking-normal text-[var(--hh-text-secondary)] font-medium"
-              />
-              <Divider />
-              {laborEntries.length === 0 ? (
-                <p className="py-6 text-hh-body text-[var(--hh-text-secondary)]">
-                  No labor entries for this project.
-                </p>
-              ) : (
-                <>
-                  <div className="airtable-table-wrap airtable-table-wrap--ruled mt-2">
-                    <div className="airtable-table-scroll">
-                      <table className="w-full text-hh-body">
-                        <thead>
-                          <tr>
-                            <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
-                              Worker
-                            </th>
-                            <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
-                              Date
-                            </th>
-                            <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
-                              Cost
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {laborEntries.slice(0, 20).map((e) => (
-                            <tr key={e.id} className={listTableRowStaticClassName}>
-                              <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell font-medium">
-                                {e.worker_name ?? "—"}
-                              </td>
-                              <td className="h-11 min-h-[44px] px-3 py-0 align-middle hh-fin text-hh-table-cell tabular-nums">
-                                {e.work_date?.slice(0, 10)}
-                              </td>
-                              <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums">
-                                ${Number(e.cost_amount ?? 0).toLocaleString()}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                <TabsContent value="expenses" className={TAB_PANEL}>
+                  <SectionHeader
+                    label="Expenses"
+                    className="text-hh-status tracking-normal text-[var(--hh-text-secondary)] font-medium"
+                  />
+                  <Divider />
+                  <div className="mt-2">
+                    <RecentExpenseLines rows={expenseLineRows} />
                   </div>
                   <div className="mt-3">
                     <Link
-                      href={`/projects/${projectId}/labor`}
+                      href={`/financial/expenses?project_id=${encodeURIComponent(projectId)}`}
                       className="text-hh-metadata font-medium text-[var(--hh-text-secondary)] hover:text-[var(--hh-text-primary)]"
                     >
-                      View full labor log →
+                      View all expenses →
                     </Link>
                   </div>
-                </>
-              )}
-            </TabsContent>
+                </TabsContent>
+                <TabsContent value="budget" className={TAB_PANEL}>
+                  <SectionHeader
+                    label="Budget"
+                    className="text-hh-status tracking-normal text-[var(--hh-text-secondary)] font-medium"
+                  />
+                  <Divider />
+                  {budgetItems.length === 0 ? (
+                    <p className="py-6 text-hh-body text-[var(--hh-text-secondary)]">
+                      No budget items for this project.
+                    </p>
+                  ) : (
+                    <div className="airtable-table-wrap airtable-table-wrap--ruled mt-2">
+                      <div className="airtable-table-scroll">
+                        <table className="w-full text-hh-body">
+                          <thead>
+                            <tr>
+                              <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
+                                Cost code
+                              </th>
+                              <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
+                                Total
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {budgetItems.map((b) => (
+                              <tr key={b.id} className={listTableRowStaticClassName}>
+                                <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell font-medium">
+                                  {b.costCode ?? "—"}
+                                </td>
+                                <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums">
+                                  ${Number(b.total || 0).toLocaleString()}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </TabsContent>
+                <TabsContent value="activity" className={TAB_PANEL}>
+                  <SectionHeader
+                    label="Activity"
+                    className="text-hh-status tracking-normal text-[var(--hh-text-secondary)] font-medium"
+                  />
+                  <Divider />
+                  {activityLogs.length === 0 ? (
+                    <p className="py-6 text-hh-body text-[var(--hh-text-secondary)]">
+                      No activity for this project.
+                    </p>
+                  ) : (
+                    <ul className="space-y-2 py-2">
+                      {activityLogs.map((log) => (
+                        <li
+                          key={log.id}
+                          className="text-hh-body border-b border-[var(--hh-border)] pb-2"
+                        >
+                          <span className="text-[var(--hh-text-secondary)]">
+                            {log.created_at?.slice(0, 19).replace("T", " ")}
+                          </span>
+                          {" — "}
+                          {log.description ?? log.type}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </TabsContent>
+                <TabsContent value="change-orders" className={TAB_PANEL}>
+                  <SectionHeader
+                    label="Change Orders"
+                    action={
+                      <Button asChild variant="outline" className="min-h-11">
+                        <Link href={`/projects/${projectId}/change-orders/new`}>
+                          New change order
+                        </Link>
+                      </Button>
+                    }
+                    className="text-hh-status tracking-normal text-[var(--hh-text-secondary)] font-medium"
+                  />
+                  <Divider />
+                  {changeOrders.length === 0 ? (
+                    <p className="py-6 text-hh-body text-[var(--hh-text-secondary)]">
+                      No change orders for this project.
+                    </p>
+                  ) : (
+                    <div className="airtable-table-wrap airtable-table-wrap--ruled mt-2">
+                      <div className="airtable-table-scroll">
+                        <table className="w-full text-hh-body">
+                          <thead>
+                            <tr>
+                              <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
+                                Number
+                              </th>
+                              <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
+                                Status
+                              </th>
+                              <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
+                                Amount
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {changeOrders.map((co) => (
+                              <tr key={co.id} className={listTableRowStaticClassName}>
+                                <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell font-medium">
+                                  <div className="flex min-w-0 flex-col py-1.5">
+                                    <Link
+                                      href={`/projects/${projectId}/change-orders/${co.id}`}
+                                      className="underline-offset-2 hover:underline"
+                                    >
+                                      {co.number ?? "—"}
+                                    </Link>
+                                    {co.title ? (
+                                      <span className="mt-0.5 max-w-[18rem] truncate text-hh-metadata font-normal text-[var(--hh-text-secondary)]">
+                                        {co.title}
+                                      </span>
+                                    ) : null}
+                                  </div>
+                                </td>
+                                <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell">
+                                  {co.status ?? "—"}
+                                </td>
+                                <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums">
+                                  ${Number(co.total ?? co.amount ?? 0).toLocaleString()}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </TabsContent>
+                <TabsContent value="materials" className={TAB_PANEL}>
+                  <ProjectMaterialsTab
+                    projectId={projectId}
+                    projectName={displayProject.name}
+                    clientName={
+                      displayProject.client ??
+                      (displayProject as { client_name?: string }).client_name ??
+                      undefined
+                    }
+                    selections={materialSelections}
+                    catalog={materialCatalog}
+                    onRefresh={() =>
+                      syncClientsThenRefreshInBackground(router, "project-materials-mutated")
+                    }
+                  />
+                </TabsContent>
+                <TabsContent value="closeout" className={TAB_PANEL}>
+                  {billingSummary && canonicalProfit ? (
+                    <ProjectCloseoutTab
+                      projectId={projectId}
+                      projectName={displayProject.name}
+                      billingSummary={billingSummary}
+                      contractValue={canonicalProfit.revenue}
+                      punch={closeoutPunch}
+                      warranty={closeoutWarranty}
+                      completion={closeoutCompletion}
+                      onRefresh={() =>
+                        syncClientsThenRefreshInBackground(router, "project-closeout-mutated")
+                      }
+                    />
+                  ) : (
+                    <FinanceUnavailable />
+                  )}
+                </TabsContent>
+                <TabsContent
+                  value="commission"
+                  className={cn(TAB_PANEL, "p-0 overflow-hidden sm:p-0")}
+                >
+                  <div className="rounded-hh-standard bg-[var(--hh-l2-operational-surface)] p-4 sm:p-5">
+                    <ProjectCommissionTab
+                      projectId={projectId}
+                      commissions={commissions}
+                      onRefresh={() =>
+                        syncClientsThenRefreshInBackground(router, "project-commission-mutated")
+                      }
+                    />
+                  </div>
+                </TabsContent>
+                <TabsContent value="punch-list" className="mt-4">
+                  <ProjectWorkspaceContext.Provider key={projectId} value={projectId}>
+                    <PunchWorkspace />
+                  </ProjectWorkspaceContext.Provider>
+                </TabsContent>
+                <TabsContent value="subcontracts" className={TAB_PANEL}>
+                  <SectionHeader
+                    label="Subcontracts"
+                    className="text-hh-status tracking-normal text-[var(--hh-text-secondary)] font-medium"
+                  />
+                  <Divider />
+                  {subcontracts.length === 0 ? (
+                    <p className="py-6 text-hh-body text-[var(--hh-text-secondary)]">
+                      No subcontracts for this project.
+                    </p>
+                  ) : (
+                    <div className="airtable-table-wrap airtable-table-wrap--ruled mt-2">
+                      <div className="airtable-table-scroll">
+                        <table className="w-full text-hh-body">
+                          <thead>
+                            <tr>
+                              <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
+                                Subcontractor
+                              </th>
+                              <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
+                                Contract amount
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {subcontracts.map((s) => (
+                              <tr key={s.id} className={listTableRowStaticClassName}>
+                                <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell font-medium">
+                                  {s.subcontractor_name ?? "—"}
+                                </td>
+                                <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums">
+                                  ${Number(s.contract_amount ?? 0).toLocaleString()}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </TabsContent>
+                <TabsContent value="bills" className={TAB_PANEL}>
+                  <SectionHeader
+                    label="Bills (AP)"
+                    className="text-hh-status tracking-normal text-[var(--hh-text-secondary)] font-medium"
+                  />
+                  <Divider />
+                  {bills.length === 0 ? (
+                    <p className="py-6 text-hh-body text-[var(--hh-text-secondary)]">
+                      No bills for this project.
+                    </p>
+                  ) : (
+                    <div className="airtable-table-wrap airtable-table-wrap--ruled mt-2">
+                      <div className="airtable-table-scroll">
+                        <table className="w-full text-hh-body">
+                          <thead>
+                            <tr>
+                              <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
+                                Vendor
+                              </th>
+                              <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
+                                Bill no
+                              </th>
+                              <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
+                                Amount
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {bills.map((b) => (
+                              <tr key={b.id} className={listTableRowStaticClassName}>
+                                <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell font-medium">
+                                  {b.vendor_name ?? "—"}
+                                </td>
+                                <td className="h-11 min-h-[44px] px-3 py-0 align-middle hh-fin text-hh-table-cell tabular-nums">
+                                  {b.bill_no ?? "—"}
+                                </td>
+                                <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums">
+                                  ${Number(b.amount ?? 0).toLocaleString()}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </TabsContent>
+                <TabsContent value="labor" className={TAB_PANEL}>
+                  <SectionHeader
+                    label="Labor"
+                    className="text-hh-status tracking-normal text-[var(--hh-text-secondary)] font-medium"
+                  />
+                  <Divider />
+                  {laborEntries.length === 0 ? (
+                    <p className="py-6 text-hh-body text-[var(--hh-text-secondary)]">
+                      No labor entries for this project.
+                    </p>
+                  ) : (
+                    <>
+                      <div className="airtable-table-wrap airtable-table-wrap--ruled mt-2">
+                        <div className="airtable-table-scroll">
+                          <table className="w-full text-hh-body">
+                            <thead>
+                              <tr>
+                                <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
+                                  Worker
+                                </th>
+                                <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
+                                  Date
+                                </th>
+                                <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
+                                  Cost
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {laborEntries.slice(0, 20).map((e) => (
+                                <tr key={e.id} className={listTableRowStaticClassName}>
+                                  <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell font-medium">
+                                    {e.worker_name ?? "—"}
+                                  </td>
+                                  <td className="h-11 min-h-[44px] px-3 py-0 align-middle hh-fin text-hh-table-cell tabular-nums">
+                                    {e.work_date?.slice(0, 10)}
+                                  </td>
+                                  <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums">
+                                    ${Number(e.cost_amount ?? 0).toLocaleString()}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                      <div className="mt-3">
+                        <Link
+                          href={`/projects/${projectId}/labor`}
+                          className="text-hh-metadata font-medium text-[var(--hh-text-secondary)] hover:text-[var(--hh-text-primary)]"
+                        >
+                          View full labor log →
+                        </Link>
+                      </div>
+                    </>
+                  )}
+                </TabsContent>
+              </>
+            )}
           </Tabs>
         </div>
       </div>

@@ -8,6 +8,7 @@ const source = (path: string) => readFileSync(join(process.cwd(), "src", "lib", 
 describe("canonical financial Production schema contract", () => {
   it("does not select retired fields in project financial reads", () => {
     const expenses = source("expenses-db.ts");
+    const schemaRepair = source("ensure-schema-auto-repair.ts");
     const snapshot = source("financial/project-financial-snapshot-db.ts");
     const workerBalances = source("worker-balances-list.ts");
     const changeOrderAmount = source("financial/change-order-amount.ts");
@@ -19,6 +20,12 @@ describe("canonical financial Production schema contract", () => {
     expect(expenses).toContain("memo: r.description ?? r.memo ?? undefined");
 
     expect(snapshot).not.toContain("category,memo");
+    expect(schemaRepair).toContain(
+      "ALTER TABLE public.expense_lines ADD COLUMN IF NOT EXISTS description text NULL"
+    );
+    expect(schemaRepair).not.toContain(
+      "ALTER TABLE public.expense_lines ADD COLUMN IF NOT EXISTS memo text NULL"
+    );
 
     expect(workerBalances).not.toContain("cost_amount, total");
     expect(workerBalances).not.toContain('"worker_id, total_amount, status"');

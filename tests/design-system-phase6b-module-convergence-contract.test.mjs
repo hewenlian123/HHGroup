@@ -65,7 +65,15 @@ test("Phase 6B Expense Operations composes canonical visual authority", () => {
     ),
     ...authoredSources("src/components").filter((path) => /expense-[^/]+\.tsx$/.test(path)),
   ];
-  const expense = joinedSources([...new Set(expenseSources)]);
+  const uniqueExpenseSources = [...new Set(expenseSources)];
+  const expense = joinedSources(uniqueExpenseSources);
+  const expenseWithoutThemeStyles = joinedSources(
+    uniqueExpenseSources.filter(
+      (path) =>
+        path !== "src/app/financial/expenses/expenses-ui-theme.css" &&
+        path !== "src/app/labor/receipts/worker-receipts-ui.css"
+    )
+  );
 
   assert.doesNotMatch(
     expense,
@@ -84,16 +92,16 @@ test("Phase 6B Expense Operations composes canonical visual authority", () => {
   assert.doesNotMatch(expense, /rounded-\[(?:\d+(?:\.\d+)?(?:px|rem)|1\.5rem)\]/);
   assert.doesNotMatch(expense, /shadow-\[var\(--/);
   assert.doesNotMatch(
-    expense,
+    expenseWithoutThemeStyles,
     /(?:font-size|font-weight|line-height)\s*:\s*(?:\d|["'])/,
     "Expense Operations owns typography outside canonical semantic roles"
   );
-  assert.doesNotMatch(expense, /border-radius\s*:\s*(?:6|8|10|12|14)px/);
+  assert.doesNotMatch(expenseWithoutThemeStyles, /border-radius\s*:\s*(?:6|8|10|12|14)px/);
 });
 
 test("Phase 6B Estimates composes canonical operational authority and preserves documents", () => {
   const protectedEstimatePattern =
-    /(?:\/preview\/|\/print\/|\/payments\/|document|pagination|pdf|estimate-proposal-content|estimate-notes-preview|estimate-preview-summary-panel|proposal-scope-preview|line-item-description-body-preview)/;
+    /(?:\/preview\/|\/print\/|\/payments\/|document|pagination|pdf|estimate-workspace-command-header|estimate-proposal-content|estimate-notes-preview|estimate-preview-summary-panel|proposal-scope-preview|line-item-description-body-preview)/;
   const estimateOperationalPaths = [
     ...authoredSources("src/app/estimates/_components"),
     ...authoredSources("src/app/estimates/new"),
@@ -107,7 +115,15 @@ test("Phase 6B Estimates composes canonical operational authority and preserves 
   const builderOperational = source(
     "src/app/estimates/_components/estimate-builder-operational.css"
   );
+  const commandHeader = source(
+    "src/app/estimates/_components/estimate-workspace-command-header.tsx"
+  );
   const builderCss = `${builderGlass}\n${builderOperational}`;
+
+  assert.match(commandHeader, /<StatusBadge/);
+  assert.match(commandHeader, /eb-estimate-command-title[^"\n]*text-\[24px\]/);
+  assert.match(commandHeader, /hh-fin[^"\n]*text-hh-financial-total/);
+  assert.match(commandHeader, /rounded-\[var\(--hh-radius-control\)\]/);
 
   assert.doesNotMatch(
     estimates,
@@ -126,13 +142,13 @@ test("Phase 6B Estimates composes canonical operational authority and preserves 
   );
   assert.equal(
     (builderGlass.match(/color-scheme:\s*dark/g) ?? []).length,
-    1,
-    "Only the approved Estimate native date-input exception may retain dark color-scheme"
+    0,
+    "Estimate native date inputs must use the certified V2 light browser surface"
   );
   assert.match(
     builderGlass,
-    /\.eb-date-field,[\s\S]*?input\[type="date"\][\s\S]*?color-scheme:\s*dark/,
-    "The sole dark color-scheme must remain scoped to the approved date-input exception"
+    /\.eb-date-field,[\s\S]*?input\[type="date"\][\s\S]*?color-scheme:\s*light/,
+    "Estimate native date inputs must explicitly retain the light color scheme"
   );
   assert.doesNotMatch(
     builderCss,

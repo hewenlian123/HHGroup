@@ -1,9 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireSupabaseOwnerOrAdminWithClient } from "@/lib/auth-boundary";
-import {
-  SUPABASE_MISSING_SERVER_ENV_MESSAGE,
-  getServerSupabaseInternal,
-} from "@/lib/supabase-server";
+import { requireSupabaseOwnerOrAdminRequestClient } from "@/lib/auth-boundary";
 import { getARSummary } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
@@ -37,13 +33,6 @@ function safeNumber(v: unknown): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-function isMissingTableError(error: unknown): boolean {
-  const e = error as { code?: string; message?: string } | null;
-  if (!e) return false;
-  if (e.code === "42P01" || e.code === "PGRST205") return true;
-  return /schema cache|could not find the table|relation .* does not exist/i.test(e.message ?? "");
-}
-
 function apiError(status: number, message: string): NextResponse {
   return NextResponse.json({ ok: false, message }, { status, headers: NO_CACHE_HEADERS });
 }
@@ -63,11 +52,10 @@ function mapBankTransaction(row: BankTransactionRow) {
 }
 
 export async function GET(request: Request) {
-  const guard = await requireSupabaseOwnerOrAdminWithClient(request, getServerSupabaseInternal);
+  const guard = await requireSupabaseOwnerOrAdminRequestClient(request, { noStore: true });
   if (!guard.ok) return guard.response;
 
   const supabase = guard.client;
-  if (!supabase) return apiError(503, SUPABASE_MISSING_SERVER_ENV_MESSAGE);
 
   const { searchParams } = new URL(request.url);
   const view = searchParams.get("view") ?? "reconcile";
@@ -90,7 +78,6 @@ export async function GET(request: Request) {
           .select("id,linked_expense_id")
           .in("linked_expense_id", slice);
         if (error) {
-          if (isMissingTableError(error)) continue;
           throw new Error(error.message);
         }
         for (const row of data ?? []) {
@@ -117,9 +104,11 @@ export async function GET(request: Request) {
           .order("txn_date", { ascending: false })
           .limit(8),
         supabase.from("expenses").select("total").limit(10000),
-        getARSummary().catch(() => ({ totalAR: 0, overdueAR: 0, paidThisMonth: 0 })),
+        getARSummary(supabase),
       ]);
 
+      if (bankRes.error || bankRecentRes.error || expRes.error)
+        throw new Error("Cash summary unavailable.");
       if (!bankRes.error) {
         const rows = (bankRes.data ?? []) as Array<{
           amount: number | string | null;
@@ -134,8 +123,6 @@ export async function GET(request: Request) {
           (sum, r) => (r.status === "unmatched" ? sum + safeNumber(r.amount) : sum),
           0
         );
-      } else if (!isMissingTableError(bankRes.error)) {
-        throw new Error(bankRes.error.message);
       }
 
       if (!expRes.error) {
@@ -143,8 +130,6 @@ export async function GET(request: Request) {
           (sum, r) => sum + safeNumber((r as { total?: number | string | null }).total),
           0
         );
-      } else if (!isMissingTableError(expRes.error)) {
-        throw new Error(expRes.error.message);
       }
 
       const recentUnreconciled = bankRecentRes.error
@@ -194,7 +179,6 @@ export async function GET(request: Request) {
               .limit(500)
           : typeOnly;
       if (res.error) {
-        if (isMissingTableError(res.error)) return ["Other"];
         throw new Error(res.error.message);
       }
       const names = (res.data ?? [])
@@ -204,7 +188,7 @@ export async function GET(request: Request) {
       return names.length ? names : ["Other"];
     };
 
-    const loadNameList = async (table: "vendors" | "payment_methods", fallback: string[]) => {
+    const loadNameList = async (table: "vendors", fallback: string[]) => {
       const initial = await supabase
         .from(table)
         .select("name,status")
@@ -215,7 +199,6 @@ export async function GET(request: Request) {
           ? await supabase.from(table).select("name").order("name", { ascending: true }).limit(500)
           : initial;
       if (res.error) {
-        if (isMissingTableError(res.error)) return fallback;
         throw new Error(res.error.message);
       }
       const names = (res.data ?? [])
@@ -223,6 +206,24 @@ export async function GET(request: Request) {
         .map((r) => (r as { name: string }).name)
         .filter(Boolean);
       return names.length ? names : fallback;
+    };
+
+    const loadPaymentMethods = async (): Promise<string[]> => {
+      const res = await supabase
+        .from("expense_options")
+        .select("name")
+        .eq("type", "payment_method")
+        .eq("active", true)
+        .order("sort_order", { ascending: true })
+        .order("name", { ascending: true })
+        .limit(500);
+      if (res.error) {
+        throw new Error(res.error.message);
+      }
+      const names = (res.data ?? [])
+        .map((row) => (row as { name?: string | null }).name?.trim() ?? "")
+        .filter(Boolean);
+      return names.length ? names : ["ACH"];
     };
 
     const [txRes, projRes, categories, vendors, paymentMethods] = await Promise.all([
@@ -240,12 +241,11 @@ export async function GET(request: Request) {
         .limit(500),
       loadCategories(),
       loadNameList("vendors", []),
-      loadNameList("payment_methods", ["ACH"]),
+      loadPaymentMethods(),
     ]);
 
-    if (txRes.error && !isMissingTableError(txRes.error)) throw new Error(txRes.error.message);
-    if (projRes.error && !isMissingTableError(projRes.error))
-      throw new Error(projRes.error.message);
+    if (txRes.error) throw new Error(txRes.error.message);
+    if (projRes.error) throw new Error(projRes.error.message);
 
     return NextResponse.json(
       {
@@ -265,11 +265,10 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const guard = await requireSupabaseOwnerOrAdminWithClient(request, getServerSupabaseInternal);
+  const guard = await requireSupabaseOwnerOrAdminRequestClient(request, { noStore: true });
   if (!guard.ok) return guard.response;
 
   const supabase = guard.client;
-  if (!supabase) return apiError(503, SUPABASE_MISSING_SERVER_ENV_MESSAGE);
 
   try {
     const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
@@ -314,7 +313,7 @@ export async function POST(request: Request) {
     if (action === "linkExpense") {
       const expenseId = typeof body.expenseId === "string" ? body.expenseId.trim() : "";
       if (!expenseId) return apiError(400, "Expense id is required.");
-      const { error } = await supabase
+      const { data: updated, error } = await supabase
         .from("bank_transactions")
         .update({
           status: "reconciled",
@@ -322,13 +321,16 @@ export async function POST(request: Request) {
           reconciled_at: new Date().toISOString(),
           linked_expense_id: expenseId,
         })
-        .eq("id", txId);
+        .eq("id", txId)
+        .select("id")
+        .maybeSingle();
       if (error) throw new Error(error.message);
+      if (!updated?.id) return apiError(404, "Transaction unavailable.");
       return NextResponse.json({ ok: true }, { headers: NO_CACHE_HEADERS });
     }
 
     if (action === "unlink") {
-      const { error } = await supabase
+      const { data: updated, error } = await supabase
         .from("bank_transactions")
         .update({
           status: "unmatched",
@@ -338,8 +340,11 @@ export async function POST(request: Request) {
           vendor_name: null,
           payment_method: null,
         })
-        .eq("id", txId);
+        .eq("id", txId)
+        .select("id")
+        .maybeSingle();
       if (error) throw new Error(error.message);
+      if (!updated?.id) return apiError(404, "Transaction unavailable.");
       return NextResponse.json({ ok: true }, { headers: NO_CACHE_HEADERS });
     }
 
@@ -364,20 +369,6 @@ export async function POST(request: Request) {
             ? body.paymentMethod.trim()
             : "ACH";
 
-        const { data: exp, error: expErr } = await supabase
-          .from("expenses")
-          .insert({
-            expense_date: row.txn_date,
-            vendor_name: vendorName,
-            payment_method: paymentMethod,
-            notes: row.description,
-            reference_no: null,
-          })
-          .select("id")
-          .single();
-        if (expErr) throw new Error(expErr.message);
-        const expenseId = (exp as { id: string }).id;
-
         const inputLines = Array.isArray(body.lines) ? (body.lines as SplitLineInput[]) : [];
         const lines =
           inputLines.length > 0
@@ -390,40 +381,46 @@ export async function POST(request: Request) {
                   amount: Math.abs(safeNumber(row.amount)),
                 },
               ];
-        const lineRows = lines.map((line) => ({
-          expense_id: expenseId,
-          project_id: line.projectId ?? null,
-          category: line.category || "Other",
-          memo: line.memo ?? null,
-          amount: Math.max(0, safeNumber(line.amount)),
-        }));
-        const { error: linesErr } = await supabase.from("expense_lines").insert(lineRows);
-        if (linesErr) throw new Error(linesErr.message);
-
-        const { error: updateErr } = await supabase
-          .from("bank_transactions")
-          .update({
-            status: "reconciled",
-            reconcile_type: "Expense",
-            reconciled_at: new Date().toISOString(),
-            linked_expense_id: expenseId,
-            vendor_name: vendorName,
-            payment_method: paymentMethod,
-          })
-          .eq("id", txId);
-        if (updateErr) throw new Error(updateErr.message);
+        const lineRows = lines.map((line) => {
+          const amount = typeof line.amount === "number" ? line.amount : Number(line.amount);
+          if (!Number.isFinite(amount) || amount < 0) {
+            throw new Error("Bank expense line amount must be a non-negative number.");
+          }
+          return {
+            projectId: line.projectId ?? null,
+            category: line.category || "Other",
+            memo: line.memo ?? null,
+            amount,
+          };
+        });
+        const { data, error } = await supabase.rpc("reconcile_bank_transaction_expense_atomic", {
+          p_idempotency_key: `bank-expense:${txId}`,
+          p_bank_transaction_id: txId,
+          p_vendor_name: vendorName,
+          p_payment_method: paymentMethod,
+          p_lines: lineRows,
+        });
+        if (error) throw new Error(error.message);
+        const result = (Array.isArray(data) ? data[0] : data) as {
+          expense_id?: string | null;
+        } | null;
+        const expenseId = result?.expense_id ?? null;
+        if (!expenseId) throw new Error("Atomic bank reconciliation returned no expense id.");
         return NextResponse.json({ ok: true, expenseId }, { headers: NO_CACHE_HEADERS });
       }
 
-      const { error: updateErr } = await supabase
+      const { data: updated, error: updateErr } = await supabase
         .from("bank_transactions")
         .update({
           status: "reconciled",
           reconcile_type: type,
           reconciled_at: new Date().toISOString(),
         })
-        .eq("id", txId);
+        .eq("id", txId)
+        .select("id")
+        .maybeSingle();
       if (updateErr) throw new Error(updateErr.message);
+      if (!updated?.id) return apiError(404, "Transaction unavailable.");
       return NextResponse.json({ ok: true }, { headers: NO_CACHE_HEADERS });
     }
 

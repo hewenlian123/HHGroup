@@ -13,7 +13,7 @@ export function SubmitSpinner({ className, loading, ...props }: Props) {
   if (loading === false) return null;
   return (
     <Loader2
-      className={cn("h-3.5 w-3.5 shrink-0 animate-spin", className)}
+      className={cn("h-3.5 w-3.5 shrink-0 animate-spin motion-reduce:animate-none", className)}
       aria-hidden={props["aria-hidden"] ?? true}
     />
   );

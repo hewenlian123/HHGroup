@@ -1,10 +1,15 @@
 import { test, expect } from "@playwright/test";
-import { mkdirSync, writeFileSync, rmSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { MAX_COMPANY_LOGO_BYTES } from "../src/lib/company-profile-form-validation";
 import { tryCreateDraftInvoiceNavigateToDetail } from "./e2e-helpers";
 import { assertE2EBaseUrlSafeForMutations } from "./e2e-supabase-url-guard";
+import {
+  cleanupDenseEstimateFixture,
+  DENSE_ESTIMATE_ID,
+  seedDenseEstimateFixture,
+} from "./estimate-dense-fixture";
 
 const BASE = process.env.E2E_BASE_URL ?? "http://localhost:3000";
 /** Set `E2E_BRANDING_FULL=1` to fail (not skip) when storage blocks logo upload. */
@@ -326,6 +331,110 @@ test.describe("Settings → Company Profile", () => {
         timeout: 20_000,
       });
       await expect(header.getByText("Invoice", { exact: true })).toBeVisible();
+    });
+
+    test("Estimate Preview, Print, and PDF use the latest Settings company profile", async ({
+      page,
+    }) => {
+      test.setTimeout(180_000);
+      await page.goto(`${BASE}/settings/company`);
+      await page.waitForLoadState("domcontentloaded");
+      if (await skipIfNoSupabase(page)) test.skip(true, "Supabase not configured.");
+      await waitForCompanyProfileReady(page);
+
+      const original = {
+        org_name: await page.getByTestId("company-input-org_name").inputValue(),
+        phone: await page.getByTestId("company-input-phone").inputValue(),
+        email: await page.getByTestId("company-input-email").inputValue(),
+        address1: await page.getByTestId("company-input-address1").inputValue(),
+        address2: await page.getByTestId("company-input-address2").inputValue(),
+        city: await page.getByTestId("company-input-city").inputValue(),
+        state: await page.getByTestId("company-input-state").inputValue(),
+        zip: await page.getByTestId("company-input-zip").inputValue(),
+      };
+      const firstName = `E2E-Estimate-Company-${Date.now()}`;
+      const latestName = `${firstName}-Updated`;
+
+      try {
+        await page.getByTestId("company-input-org_name").fill(firstName);
+        await page.getByTestId("company-input-phone").fill("808-555-0142");
+        await page.getByTestId("company-input-email").fill("estimate-pdf@example.invalid");
+        await page.getByTestId("company-input-address1").fill("142 Document Source Way");
+        await page.getByTestId("company-input-address2").fill("");
+        await page.getByTestId("company-input-city").fill("Honolulu");
+        await page.getByTestId("company-input-state").fill("HI");
+        await page.getByTestId("company-input-zip").fill("96813");
+        const firstSave = page.waitForResponse(
+          (response) =>
+            response.url().includes("/api/settings/company-profile") &&
+            response.request().method() === "POST"
+        );
+        await page.getByTestId("company-save-button").click();
+        expect((await firstSave).ok()).toBe(true);
+
+        await seedDenseEstimateFixture();
+        await page.goto(`${BASE}/estimates/${DENSE_ESTIMATE_ID}/preview`);
+        const preview = page.getByTestId("estimate-document");
+        await expect(preview.getByText(firstName, { exact: true })).toBeVisible();
+        await expect(preview.getByText("142 Document Source Way", { exact: true })).toBeVisible();
+        await expect(preview.getByText("808-555-0142", { exact: true })).toBeVisible();
+        await expect(
+          preview.getByText("estimate-pdf@example.invalid", { exact: true })
+        ).toBeVisible();
+
+        await page.goto(`${BASE}/settings/company`);
+        await waitForCompanyProfileReady(page);
+        await page.getByTestId("company-input-org_name").fill(latestName);
+        const latestSave = page.waitForResponse(
+          (response) =>
+            response.url().includes("/api/settings/company-profile") &&
+            response.request().method() === "POST"
+        );
+        await page.getByTestId("company-save-button").click();
+        expect((await latestSave).ok()).toBe(true);
+
+        await page.goto(`${BASE}/estimates/${DENSE_ESTIMATE_ID}/preview`);
+        await expect(
+          page.getByTestId("estimate-document").getByText(latestName, { exact: true })
+        ).toBeVisible();
+        await page.reload({ waitUntil: "domcontentloaded" });
+        await expect(
+          page.getByTestId("estimate-document").getByText(latestName, { exact: true })
+        ).toBeVisible();
+
+        await page.goto(`${BASE}/estimates/${DENSE_ESTIMATE_ID}/print?pdf=1`);
+        const print = page.getByTestId("estimate-document");
+        await expect(print.getByText(latestName, { exact: true })).toBeVisible();
+        await expect(print.getByText(firstName, { exact: true })).toHaveCount(0);
+        await expect(page.getByTestId("estimate-line-item-output")).toHaveCount(62);
+        await expect(page.locator(".estimate-payment-row")).toHaveCount(5);
+        await expect(print).toContainText("Notes & Clarifications");
+
+        await page.goto(`${BASE}/estimates/${DENSE_ESTIMATE_ID}/preview`);
+        await expect(
+          page.getByTestId("estimate-document").getByText(latestName, { exact: true })
+        ).toBeVisible();
+        const downloadPromise = page.waitForEvent("download");
+        await page.getByRole("link", { name: "Download PDF" }).click();
+        const download = await downloadPromise;
+        const downloadPath = await download.path();
+        expect(downloadPath).toBeTruthy();
+        expect(readFileSync(downloadPath!).subarray(0, 4).toString("utf8")).toBe("%PDF");
+      } finally {
+        await page.goto(`${BASE}/settings/company`);
+        await waitForCompanyProfileReady(page);
+        for (const [field, value] of Object.entries(original)) {
+          await page.getByTestId(`company-input-${field}`).fill(value);
+        }
+        const restore = page.waitForResponse(
+          (response) =>
+            response.url().includes("/api/settings/company-profile") &&
+            response.request().method() === "POST"
+        );
+        await page.getByTestId("company-save-button").click();
+        expect((await restore).ok()).toBe(true);
+        await cleanupDenseEstimateFixture();
+      }
     });
 
     test("logo upload rejects non-image file", async ({ page }) => {

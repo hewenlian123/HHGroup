@@ -1,5 +1,6 @@
+import { withSessionCookies } from "@/lib/supabase-response";
 import { NextResponse } from "next/server";
-import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
+import { requireOrganizationRequestClient } from "@/lib/auth-boundary";
 import { getProjectFinancialReview } from "@/lib/financial/project-financial-review-db";
 
 export const dynamic = "force-dynamic";
@@ -15,15 +16,24 @@ function jsonError(status: number, message: string): NextResponse {
 }
 
 export async function GET(request: Request) {
-  const guard = await requireSupabaseOwnerOrAdmin(request);
+  const guard = await requireOrganizationRequestClient(request, {
+    noStore: true,
+    requireOwnerAdmin: true,
+  });
   if (!guard.ok) return guard.response;
 
   try {
-    const payload = await getProjectFinancialReview();
-    return NextResponse.json({ ok: true, ...payload }, { headers: NO_CACHE_HEADERS });
+    const payload = await getProjectFinancialReview(
+      guard.client,
+      guard.context.memberships.map((m) => m.organization_id)
+    );
+    return withSessionCookies(
+      NextResponse.json({ ok: true, ...payload }, { headers: NO_CACHE_HEADERS }),
+      guard.sessionResponse
+    );
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Failed to load project financial review.";
-    return jsonError(500, message);
+    return withSessionCookies(jsonError(500, message), guard.sessionResponse);
   }
 }

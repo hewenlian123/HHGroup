@@ -1,7 +1,8 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./estimate-playwright-test";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 import { loginAsE2EOwner } from "./e2e-auth-owner";
+import { deleteLocalEstimateFixtureGraphs } from "./e2e-estimate-fixture-teardown";
 import { assertE2ESupabaseUrlSafeForMutations } from "./e2e-supabase-url-guard";
 
 function localAdmin(): SupabaseClient {
@@ -99,11 +100,17 @@ test("percentage payment templates Merge and Replace as authoritative fixed-doll
 
     await loginAsE2EOwner(page, `/estimates/${estimateId}`);
     await page.getByRole("button", { name: "Edit", exact: true }).click();
-    await expect(page.getByTestId("payment-template-controls")).toBeVisible({ timeout: 30_000 });
-    const templateSelect = page.getByLabel("Payment template");
+    await page
+      .getByRole("navigation", { name: "Pricing inspector sections" })
+      .getByRole("button", { name: "Payment", exact: true })
+      .click();
+    const paymentSheet = page.getByTestId("estimate-payment-schedule-sheet");
+    await expect(paymentSheet).toBeVisible({ timeout: 30_000 });
+    await expect(paymentSheet.getByTestId("payment-template-controls")).toBeVisible();
+    const templateSelect = paymentSheet.getByLabel("Payment template");
 
     await templateSelect.selectOption({ label: partialTemplateName });
-    await page.getByTestId("payment-template-merge").click();
+    await paymentSheet.getByTestId("payment-template-merge").click();
     await expect(page.getByText("Payment schedule merged")).toBeVisible({ timeout: 30_000 });
     await expect
       .poll(async () => {
@@ -121,7 +128,7 @@ test("percentage payment templates Merge and Replace as authoritative fixed-doll
       ]);
 
     await templateSelect.selectOption({ label: fullTemplateName });
-    await page.getByTestId("payment-template-merge").click();
+    await paymentSheet.getByTestId("payment-template-merge").click();
     await expect(page.getByText(/cannot exceed Estimate final total/i)).toBeVisible({
       timeout: 30_000,
     });
@@ -132,7 +139,7 @@ test("percentage payment templates Merge and Replace as authoritative fixed-doll
     expect(afterRejectedMerge.data).toHaveLength(3);
 
     page.once("dialog", (dialog) => void dialog.accept());
-    await page.getByTestId("payment-template-replace").click();
+    await paymentSheet.getByTestId("payment-template-replace").click();
     await expect(page.getByText("Payment schedule replaced")).toBeVisible({ timeout: 30_000 });
     await expect
       .poll(async () => {
@@ -145,10 +152,12 @@ test("percentage payment templates Merge and Replace as authoritative fixed-doll
       })
       .toEqual([473.56, 473.56]);
 
-    await page.getByTestId("payment-template-save-open").click();
-    await page.getByTestId("payment-template-name").fill(savedTemplateName);
-    await page.getByLabel("Payment template amount type").selectOption("percent");
-    await page.getByTestId("payment-template-save").click();
+    await paymentSheet.getByTestId("payment-template-save-open").click();
+    const saveTemplateDialog = page.getByTestId("payment-template-save-dialog");
+    await expect(saveTemplateDialog).toBeVisible();
+    await saveTemplateDialog.getByTestId("payment-template-name").fill(savedTemplateName);
+    await saveTemplateDialog.getByLabel("Payment template amount type").selectOption("percent");
+    await saveTemplateDialog.getByTestId("payment-template-save").click();
     await expect(page.getByText("Payment template saved")).toBeVisible({ timeout: 30_000 });
 
     await expect
@@ -172,7 +181,7 @@ test("percentage payment templates Merge and Replace as authoritative fixed-doll
         ["percent", 50],
       ]);
   } finally {
-    if (estimateId) await db.from("estimates").delete().eq("id", estimateId);
+    if (estimateId) await deleteLocalEstimateFixtureGraphs([estimateId]);
     if (templateIds.length > 0) {
       await db.from("payment_schedule_templates").delete().in("id", templateIds);
     }

@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useEstimateSheetFocus } from "./use-estimate-sheet-focus";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -118,6 +119,7 @@ export function EstimateNewCustomerSection({
   const [uncontrolledDetailsOpen, setUncontrolledDetailsOpen] = React.useState(false);
   const detailsOpen = controlledDetailsOpen ?? uncontrolledDetailsOpen;
   const snapshotRef = React.useRef<DetailsSnapshot | null>(null);
+  const sheetFocus = useEstimateSheetFocus();
 
   const setDetailsOpen = React.useCallback(
     (open: boolean): void => {
@@ -189,6 +191,14 @@ export function EstimateNewCustomerSection({
     }
     setDetailsOpen(open);
   };
+
+  const previousDetailsOpenRef = React.useRef(detailsOpen);
+  React.useEffect(() => {
+    if (detailsOpen && !previousDetailsOpenRef.current && !snapshotRef.current) {
+      snapshotRef.current = captureSnapshot();
+    }
+    previousDetailsOpenRef.current = detailsOpen;
+  }, [captureSnapshot, detailsOpen]);
 
   React.useEffect(() => {
     if (submitAttempted && (!clientName.trim() || !projectName.trim())) {
@@ -279,7 +289,11 @@ export function EstimateNewCustomerSection({
       ) : null}
 
       <Sheet open={detailsOpen} onOpenChange={handleDetailsOpenChange}>
-        <SheetContent side="right" className={ebSheetGlassWide("eb-estimate-details-sheet")}>
+        <SheetContent
+          side="right"
+          className={ebSheetGlassWide("eb-estimate-details-sheet")}
+          {...sheetFocus}
+        >
           <SheetHeader className={EB.sheetHeader}>
             <SheetTitle className={EB.sheetTitle}>
               <span aria-hidden>Estimate details</span>
@@ -313,7 +327,10 @@ export function EstimateNewCustomerSection({
                     label="Link customer"
                     value={selectedCustomer?.id ?? null}
                     onChange={onCustomerPickerChange}
-                    triggerClassName={cn(ebSheetInput("h-10 justify-between text-sm"), "w-full")}
+                    triggerClassName={cn(
+                      ebSheetInput("h-hh-control-standard justify-between text-sm"),
+                      "w-full"
+                    )}
                   />
                 </div>
 
@@ -518,7 +535,7 @@ export function EstimateNewCustomerSection({
                 variant="ghost"
                 size="sm"
                 className={EB.sheetSecondary}
-                onClick={() => setDetailsOpen(false)}
+                onClick={() => handleDetailsOpenChange(false)}
               >
                 Cancel
               </Button>

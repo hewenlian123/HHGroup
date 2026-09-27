@@ -1,9 +1,20 @@
-import { PageHeader } from "@/components/page-header";
+import { EmptyState, PageHeader, PageLayout } from "@/components/base";
 
 export default function PurchaseOrdersPage() {
   return (
-    <div className="page-container page-stack py-6">
-      <PageHeader title="Purchase Orders" description="This page is not yet implemented." />
-    </div>
+    <PageLayout
+      header={
+        <PageHeader
+          title="Purchase Orders"
+          description="Purchase order workflows are not available in HH Group yet."
+        />
+      }
+    >
+      <EmptyState
+        data-testid="purchase-orders-placeholder"
+        title="Purchase orders are not available yet"
+        description="Purchase order workflows are not available yet. No orders, approvals, or procurement actions can be created from this page."
+      />
+    </PageLayout>
   );
 }

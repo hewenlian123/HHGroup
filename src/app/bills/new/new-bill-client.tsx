@@ -1,7 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
+import { financePathWithReturn, financeReturnPath } from "@/lib/finance-navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   NeoFieldLabel,
@@ -13,7 +14,7 @@ import {
   neoFormFieldClassName,
 } from "@/components/base";
 import { Button } from "@/components/ui/button";
-import { AP_BILL_TYPES } from "@/lib/data";
+import { AP_BILL_TYPES } from "@/lib/ap-bill-domain";
 import { cn } from "@/lib/utils";
 import { BillCategoryCombobox } from "../bill-category-combobox";
 import {
@@ -65,6 +66,8 @@ export function NewBillClient({
   dataLoadWarning = null,
 }: Props) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const returnTo = financeReturnPath(searchParams.get("returnTo"), "/bills");
   const [billNo, setBillNo] = React.useState("");
   const [vendorName, setVendorName] = React.useState("");
   const [billType, setBillType] = React.useState<
@@ -174,7 +177,7 @@ export function NewBillClient({
       const body = (await response.json()) as { bill?: { id?: unknown } };
       const id = typeof body.bill?.id === "string" ? body.bill.id : null;
       if (!id) throw new Error("Failed to create bill.");
-      router.push(`/bills/${id}`);
+      router.push(financePathWithReturn(`/bills/${id}`, returnTo));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create bill.");
     } finally {
@@ -365,7 +368,7 @@ export function NewBillClient({
               className={billsSecondaryButtonClass}
               asChild
             >
-              <Link href="/bills">Cancel</Link>
+              <Link href={returnTo}>Cancel</Link>
             </Button>
           </div>
         </form>

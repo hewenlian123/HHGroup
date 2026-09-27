@@ -1,16 +1,12 @@
-import { TabsContent } from "@/components/ui/tabs";
 import WorkerAdvancesPage from "@/app/labor/advances/page";
-import PayrollSummaryPage from "@/app/labor/payroll/page";
 import WorkerPaymentsPage from "@/app/labor/payments/page";
 import WorkerReimbursementsPage from "@/app/labor/reimbursements/page";
 import WorkerBalancesPage from "@/app/labor/worker-balances/page";
-import {
-  WorkerInvoicesClient,
-  type WorkerInvoicesPageCopy,
-} from "@/app/labor/worker-invoices/worker-invoices-client";
+import type { WorkerInvoicesPageCopy } from "@/app/labor/worker-invoices/worker-invoices-client";
+import { WorkerInvoicesClientIsland } from "@/app/labor/worker-invoices/worker-invoices-client-island";
 import WorkerSummaryPage from "@/app/workers/summary/page";
 import { normalizeWorkforceReportsTab } from "./workforce-report-tabs";
-import { WorkforceReportsClient } from "./workforce-reports-client";
+import { PayrollWorkspaceClient } from "./workforce-reports-client";
 
 export const dynamic = "force-dynamic";
 
@@ -43,29 +39,20 @@ export default async function WorkforceReportsPage({
   searchParams?: Record<string, string | string[] | undefined>;
 }) {
   const activeTab = normalizeWorkforceReportsTab(searchParams?.tab);
-  const advances = await WorkerAdvancesPage();
-
-  return (
-    <WorkforceReportsClient activeTab={activeTab}>
-      <TabsContent value="overview">
-        <WorkerSummaryPage />
-      </TabsContent>
-      <TabsContent value="payroll">
-        <PayrollSummaryPage />
-      </TabsContent>
-      <TabsContent value="balances">
-        <WorkerBalancesPage />
-      </TabsContent>
-      <TabsContent value="payments">
-        <WorkerPaymentsPage />
-      </TabsContent>
-      <TabsContent value="advances">{advances}</TabsContent>
-      <TabsContent value="reimbursements">
-        <WorkerReimbursementsPage />
-      </TabsContent>
-      <TabsContent value="statements">
-        <WorkerInvoicesClient copy={WORKFORCE_STATEMENTS_COPY} />
-      </TabsContent>
-    </WorkforceReportsClient>
-  );
+  switch (activeTab) {
+    case "payroll":
+      return <PayrollWorkspaceClient />;
+    case "balances":
+      return <WorkerBalancesPage />;
+    case "payments":
+      return <WorkerPaymentsPage />;
+    case "advances":
+      return WorkerAdvancesPage();
+    case "reimbursements":
+      return <WorkerReimbursementsPage />;
+    case "statements":
+      return <WorkerInvoicesClientIsland copy={WORKFORCE_STATEMENTS_COPY} />;
+    default:
+      return <WorkerSummaryPage />;
+  }
 }

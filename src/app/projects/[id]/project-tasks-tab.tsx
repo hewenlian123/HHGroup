@@ -48,10 +48,17 @@ export function ProjectTasksTab({
 
   const handleToggleDone = async (task: ProjectTaskWithWorker) => {
     const nextStatus = task.status === "done" ? "todo" : "done";
+    setError(null);
     setTogglingId(task.id);
     try {
-      await updateProjectTaskAction(projectId, task.id, { status: nextStatus });
+      const result = await updateProjectTaskAction(projectId, task.id, { status: nextStatus });
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
       onTaskUpdated();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Unable to update task.");
     } finally {
       setTogglingId(null);
     }
@@ -88,6 +95,8 @@ export function ProjectTasksTab({
       }
       setModalOpen(false);
       onTaskCreated();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Unable to save task.");
     } finally {
       setSubmitting(false);
     }
@@ -99,12 +108,17 @@ export function ProjectTasksTab({
         <SectionHeader label="Tasks" />
         <Button
           size="sm"
-          className="rounded-hh-task bg-[var(--hh-action-primary)] text-[var(--hh-action-primary-foreground)] px-4 py-2 hover:bg-[var(--hh-l3-pressed)]"
+          className="min-h-11 rounded-hh-task bg-[var(--hh-action-primary)] text-[var(--hh-action-primary-foreground)] px-4 py-2 hover:bg-[var(--hh-l3-pressed)]"
           onClick={handleOpen}
         >
           + New Task
         </Button>
       </div>
+      {error && !modalOpen && (
+        <p role="alert" className={neoFormErrorClassName}>
+          {error}
+        </p>
+      )}
       <div className="airtable-table-wrap airtable-table-wrap--ruled">
         {tasks.length === 0 ? (
           <div className="py-8 text-center text-hh-body text-[var(--hh-text-secondary)]">
@@ -134,13 +148,16 @@ export function ProjectTasksTab({
                 {tasks.map((t) => (
                   <tr key={t.id} className={listTableRowStaticClassName}>
                     <td className="h-11 min-h-[44px] px-3 py-0 align-middle">
-                      <input
-                        type="checkbox"
-                        checked={t.status === "done"}
-                        disabled={togglingId === t.id}
-                        onChange={() => handleToggleDone(t)}
-                        className="h-4 w-4 rounded border-border"
-                      />
+                      <label className="inline-flex min-h-11 min-w-11 items-center justify-center">
+                        <input
+                          aria-label={`Mark ${t.title || "task"} ${t.status === "done" ? "incomplete" : "done"}`}
+                          type="checkbox"
+                          checked={t.status === "done"}
+                          disabled={togglingId === t.id}
+                          onChange={() => handleToggleDone(t)}
+                          className="h-4 w-4 rounded border-border"
+                        />
+                      </label>
                     </td>
                     <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell font-medium text-[var(--hh-text-primary)]">
                       {t.title || "—"}
@@ -183,13 +200,13 @@ export function ProjectTasksTab({
                 variant="outline"
                 size="sm"
                 onClick={() => setModalOpen(false)}
-                className="h-10 rounded-hh-standard"
+                className="min-h-11 rounded-hh-standard"
               >
                 Cancel
               </Button>
               <Button
                 size="sm"
-                className="h-10 rounded-hh-standard"
+                className="min-h-11 rounded-hh-standard"
                 onClick={handleSave}
                 disabled={submitting}
               >
@@ -257,7 +274,11 @@ export function ProjectTasksTab({
               </NeoSelect>
             </div>
           </NeoFormGrid>
-          {error && <p className={neoFormErrorClassName}>{error}</p>}
+          {error && (
+            <p role="alert" className={neoFormErrorClassName}>
+              {error}
+            </p>
+          )}
         </NeoModal>
       </Dialog>
     </div>

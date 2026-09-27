@@ -8,6 +8,7 @@ import {
   NeoFieldLabel,
   NeoInput,
   NeoModal,
+  NeoMobileCard,
   NeoPanel,
   NeoSelect,
   NeoStatus,
@@ -332,7 +333,7 @@ export default function SettingsExpensesPage() {
             variant="ghost"
             size="sm"
             className={cn(
-              "h-8 rounded-md",
+              "h-8 rounded-hh-compact",
               tab === t.id &&
                 "bg-[var(--hh-l3-selected)] text-[var(--hh-text-primary)] hover:bg-[var(--hh-l3-selected)]"
             )}
@@ -364,7 +365,7 @@ export default function SettingsExpensesPage() {
                   value={addName}
                   onChange={(e) => setAddName(e.target.value)}
                   placeholder="Name"
-                  className="h-9 rounded-sm"
+                  className="h-9 rounded-hh-compact"
                   data-testid="settings-expenses-add-name"
                   onKeyDown={(e) => {
                     if (e.key === "Enter") void onAdd();
@@ -389,7 +390,7 @@ export default function SettingsExpensesPage() {
               <Button
                 type="button"
                 size="sm"
-                className="h-9 rounded-sm"
+                className="h-9 rounded-hh-compact"
                 disabled={addBusy || !addName.trim()}
                 data-testid="settings-expenses-add-submit"
                 onClick={() => void onAdd()}
@@ -417,90 +418,157 @@ export default function SettingsExpensesPage() {
               description="Add an option to make it available in expense forms."
             />
           ) : (
-            <NeoTable tableClassName="min-w-[680px]">
-              <thead>
-                <tr>
-                  <th className={tableRawThClass}>Name</th>
-                  <th className={tableRawThClass}>Status</th>
-                  <th className={tableRawThClass}>Default</th>
-                  <th className={tableRawThClass}>System</th>
-                  <th className={tableRawThClass}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
+            <>
+              <div data-testid="settings-expenses-mobile-list" className="space-y-3 md:hidden">
                 {rows.map((r) => (
-                  <tr
-                    key={r.id}
-                    className="table-row-compact"
-                    data-testid={`settings-expenses-row-${r.id}`}
-                  >
-                    <td className="px-3 py-2 align-middle font-medium text-[var(--hh-text-primary)]">
-                      {r.name}
-                    </td>
-                    <td className="px-3 py-2 align-middle">
+                  <NeoMobileCard key={r.id} className="space-y-3 p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-hh-body-strong text-[var(--hh-text-primary)]">
+                          {r.name}
+                        </p>
+                        <p className="text-hh-metadata text-[var(--hh-text-secondary)]">
+                          {r.is_system
+                            ? "System option"
+                            : r.is_default
+                              ? "Default option"
+                              : "Custom option"}
+                        </p>
+                      </div>
                       <NeoStatus
                         label={r.active ? "Active" : "Archived"}
                         variant={r.active ? "success" : "warning"}
                       />
-                    </td>
-                    <td className="px-3 py-2 align-middle text-[var(--hh-text-secondary)]">
-                      {r.is_default ? "Yes" : "—"}
-                    </td>
-                    <td className="px-3 py-2 align-middle text-[var(--hh-text-secondary)]">
-                      {r.is_system ? "Yes" : "—"}
-                    </td>
-                    <td className="px-3 py-2 align-middle">
-                      <div className="flex flex-wrap gap-1">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="h-7 rounded-sm px-2 text-xs"
-                          data-testid={`settings-expenses-rename-${r.id}`}
-                          onClick={() => openRename(r)}
-                        >
-                          Rename
-                        </Button>
-                        {r.active ? (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="h-7 rounded-sm px-2 text-xs"
-                            data-testid={`settings-expenses-archive-${r.id}`}
-                            onClick={() => void toggleArchive(r, false)}
-                          >
-                            Archive
-                          </Button>
-                        ) : (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="h-7 rounded-sm px-2 text-xs"
-                            data-testid={`settings-expenses-restore-${r.id}`}
-                            onClick={() => void toggleArchive(r, true)}
-                          >
-                            Restore
-                          </Button>
-                        )}
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="h-7 rounded-sm px-2 text-xs"
-                          data-testid={`settings-expenses-default-${r.id}`}
-                          disabled={!r.active}
-                          onClick={() => void setDefault(r)}
-                        >
-                          Set default
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-hh-metadata text-[var(--hh-text-secondary)]">
+                      <span>Default: {r.is_default ? "Yes" : "No"}</span>
+                      <span className="text-right">{r.is_system ? "System" : "Custom"}</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="min-h-11 rounded-hh-standard"
+                        data-testid={`settings-expenses-rename-${r.id}`}
+                        onClick={() => openRename(r)}
+                      >
+                        Rename
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="min-h-11 rounded-hh-standard"
+                        data-testid={
+                          r.active
+                            ? `settings-expenses-archive-${r.id}`
+                            : `settings-expenses-restore-${r.id}`
+                        }
+                        onClick={() => void toggleArchive(r, !r.active)}
+                      >
+                        {r.active ? "Archive" : "Restore"}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="col-span-2 min-h-11 rounded-hh-standard"
+                        data-testid={`settings-expenses-default-${r.id}`}
+                        disabled={!r.active}
+                        onClick={() => void setDefault(r)}
+                      >
+                        Set default
+                      </Button>
+                    </div>
+                  </NeoMobileCard>
                 ))}
-              </tbody>
-            </NeoTable>
+              </div>
+              <NeoTable className="hidden md:block" tableClassName="min-w-[680px]">
+                <thead>
+                  <tr>
+                    <th className={tableRawThClass}>Name</th>
+                    <th className={tableRawThClass}>Status</th>
+                    <th className={tableRawThClass}>Default</th>
+                    <th className={tableRawThClass}>System</th>
+                    <th className={tableRawThClass}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((r) => (
+                    <tr
+                      key={r.id}
+                      className="table-row-compact"
+                      data-testid={`settings-expenses-row-${r.id}`}
+                    >
+                      <td className="px-3 py-2 align-middle font-medium text-[var(--hh-text-primary)]">
+                        {r.name}
+                      </td>
+                      <td className="px-3 py-2 align-middle">
+                        <NeoStatus
+                          label={r.active ? "Active" : "Archived"}
+                          variant={r.active ? "success" : "warning"}
+                        />
+                      </td>
+                      <td className="px-3 py-2 align-middle text-[var(--hh-text-secondary)]">
+                        {r.is_default ? "Yes" : "—"}
+                      </td>
+                      <td className="px-3 py-2 align-middle text-[var(--hh-text-secondary)]">
+                        {r.is_system ? "Yes" : "—"}
+                      </td>
+                      <td className="px-3 py-2 align-middle">
+                        <div className="flex flex-wrap gap-1">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="h-7 rounded-hh-compact px-2 text-xs"
+                            data-testid={`settings-expenses-rename-${r.id}`}
+                            onClick={() => openRename(r)}
+                          >
+                            Rename
+                          </Button>
+                          {r.active ? (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="h-7 rounded-hh-compact px-2 text-xs"
+                              data-testid={`settings-expenses-archive-${r.id}`}
+                              onClick={() => void toggleArchive(r, false)}
+                            >
+                              Archive
+                            </Button>
+                          ) : (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="h-7 rounded-hh-compact px-2 text-xs"
+                              data-testid={`settings-expenses-restore-${r.id}`}
+                              onClick={() => void toggleArchive(r, true)}
+                            >
+                              Restore
+                            </Button>
+                          )}
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="h-7 rounded-hh-compact px-2 text-xs"
+                            data-testid={`settings-expenses-default-${r.id}`}
+                            disabled={!r.active}
+                            onClick={() => void setDefault(r)}
+                          >
+                            Set default
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </NeoTable>
+            </>
           )}
 
           <p className="text-xs text-muted-foreground">
@@ -521,7 +589,7 @@ export default function SettingsExpensesPage() {
                 type="button"
                 variant="outline"
                 size="sm"
-                className="h-8 rounded-sm"
+                className="h-8 rounded-hh-compact"
                 onClick={() => setRenameOpen(false)}
               >
                 Cancel
@@ -529,7 +597,7 @@ export default function SettingsExpensesPage() {
               <Button
                 type="button"
                 size="sm"
-                className="h-8 rounded-sm"
+                className="h-8 rounded-hh-compact"
                 disabled={renameBusy}
                 data-testid="settings-expenses-rename-save"
                 onClick={() => void onRenameSave()}
@@ -542,7 +610,7 @@ export default function SettingsExpensesPage() {
           <NeoInput
             value={renameValue}
             onChange={(e) => setRenameValue(e.target.value)}
-            className="h-9 rounded-sm"
+            className="h-9 rounded-hh-compact"
             data-testid="settings-expenses-rename-input"
           />
         </NeoModal>

@@ -16,12 +16,14 @@ import {
   cleanupTestData,
   purgeE2EReceiptQueueRows,
 } from "./e2e-cleanup-db";
+import { provisionE2EAuthUsersForRun } from "./e2e-auth-owner";
 import { loadE2EProcessEnv } from "./e2e-load-env";
 import { runSchemaAutoRepair } from "../src/lib/ensure-schema-auto-repair";
 import { ensureE2EPreservedSeed } from "./e2e-ensure-seed";
 import { resetE2ESeedWorkerPayrollStateWithClient } from "./e2e-reset-worker-payroll";
 
-export default async function globalSetup(_config: FullConfig): Promise<void> {
+export default async function globalSetup(config: FullConfig): Promise<void> {
+  void config;
   if (process.env.E2E_SKIP_DB_SEED === "1") {
     console.log("[global-setup] E2E_SKIP_DB_SEED=1 — skipping DB seed.");
     return;
@@ -44,6 +46,8 @@ export default async function globalSetup(_config: FullConfig): Promise<void> {
   if (url.includes("supabase.co")) {
     throw new Error("E2E tests must not run against production Supabase!");
   }
+
+  await provisionE2EAuthUsersForRun();
 
   const repair = await runSchemaAutoRepair();
   if (repair.hasDatabaseUrl) {

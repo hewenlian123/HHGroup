@@ -31,3 +31,9 @@ export function parsePaymentPercentInput(raw: string): number | null {
   if (!Number.isFinite(n)) return null;
   return clampPaymentPercent(n);
 }
+
+/** Explicit amount for replacing the current milestone with the unscheduled balance. */
+export function paymentRemainingAmount(total: number, scheduled: number, editing = 0): number {
+  if (![total, scheduled, editing].every(Number.isFinite)) return 0;
+  return Math.max(0, roundEstimateCurrencyValue(total - scheduled + editing));
+}

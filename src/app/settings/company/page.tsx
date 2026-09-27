@@ -570,7 +570,7 @@ export default function SettingsCompanyPage() {
             asChild
             variant="outline"
             size="sm"
-            className="h-9 w-full justify-start rounded-sm"
+            className="min-h-11 w-full justify-start rounded-hh-standard"
           >
             <Link href="/settings/account">Account</Link>
           </Button>
@@ -578,7 +578,7 @@ export default function SettingsCompanyPage() {
             asChild
             variant="outline"
             size="sm"
-            className="h-9 w-full justify-start rounded-sm"
+            className="min-h-11 w-full justify-start rounded-hh-standard"
           >
             <Link href="/settings/users">Users</Link>
           </Button>
@@ -586,7 +586,7 @@ export default function SettingsCompanyPage() {
             asChild
             variant="outline"
             size="sm"
-            className="h-9 w-full justify-start rounded-sm"
+            className="min-h-11 w-full justify-start rounded-hh-standard"
           >
             <Link href="/settings/permissions">Roles</Link>
           </Button>
@@ -594,7 +594,7 @@ export default function SettingsCompanyPage() {
             asChild
             variant="outline"
             size="sm"
-            className="h-9 w-full justify-start rounded-sm"
+            className="min-h-11 w-full justify-start rounded-hh-standard"
           >
             <Link href="/settings/expenses">Expenses</Link>
           </Button>
@@ -602,7 +602,7 @@ export default function SettingsCompanyPage() {
             asChild
             variant="outline"
             size="sm"
-            className="h-9 w-full justify-start rounded-sm"
+            className="min-h-11 w-full justify-start rounded-hh-standard"
           >
             <Link href="/settings/lists">Lists</Link>
           </Button>
@@ -610,7 +610,7 @@ export default function SettingsCompanyPage() {
             asChild
             variant="outline"
             size="sm"
-            className="h-9 w-full justify-start rounded-sm"
+            className="min-h-11 w-full justify-start rounded-hh-standard"
           >
             <Link href="/settings/categories">Categories</Link>
           </Button>
@@ -618,14 +618,14 @@ export default function SettingsCompanyPage() {
             asChild
             variant="outline"
             size="sm"
-            className="h-9 w-full justify-start rounded-sm"
+            className="min-h-11 w-full justify-start rounded-hh-standard"
           >
             <Link href="/settings/subcontractors">Subcontractors</Link>
           </Button>
         </div>
         <Button
           type="button"
-          className="w-full rounded-sm"
+          className="min-h-11 w-full rounded-hh-standard"
           onClick={() => setSettingsSheetOpen(false)}
         >
           Done
@@ -659,7 +659,7 @@ export default function SettingsCompanyPage() {
             htmlFor="logo-upload"
             onDragOver={(e) => e.preventDefault()}
             onDrop={onDrop}
-            className="flex min-h-28 cursor-pointer items-center gap-3 rounded-lg border border-dashed border-[var(--hh-border-strong)] bg-[var(--hh-l2-operational-surface)] px-4 py-3 text-sm text-[var(--hh-text-secondary)] transition-colors hover:bg-[var(--hh-l3-hover)]"
+            className="flex min-h-28 cursor-pointer items-center gap-3 rounded-hh-standard border border-dashed border-[var(--hh-border-strong)] bg-[var(--hh-l2-operational-surface)] px-4 py-3 text-sm text-[var(--hh-text-secondary)] transition-colors hover:bg-[var(--hh-l3-hover)]"
           >
             {profile?.logo_url && !logoLoadError ? (
               // eslint-disable-next-line @next/next/no-img-element -- Supabase public URL; avoids next/image remote host config errors
@@ -668,11 +668,11 @@ export default function SettingsCompanyPage() {
                 alt="Company logo"
                 width={48}
                 height={48}
-                className="h-12 w-12 rounded-md bg-[var(--hh-l3-hover)] object-contain p-1"
+                className="h-12 w-12 rounded-hh-compact bg-[var(--hh-l3-hover)] object-contain p-1"
                 onError={() => setLogoLoadError(true)}
               />
             ) : (
-              <div className="flex h-12 w-12 items-center justify-center rounded-md border border-[var(--hh-border)] bg-[var(--hh-l3-hover)]">
+              <div className="flex h-12 w-12 items-center justify-center rounded-hh-compact border border-[var(--hh-border)] bg-[var(--hh-l3-hover)]">
                 <ImageIcon className="h-5 w-5" />
               </div>
             )}
@@ -706,7 +706,7 @@ export default function SettingsCompanyPage() {
             size="sm"
             onClick={onRemoveLogo}
             disabled={disabled || !profile?.logo_path}
-            className="gap-2 self-start rounded-sm"
+            className="gap-2 self-start rounded-hh-compact"
           >
             <Trash2 className="h-4 w-4" />
             Remove Logo
@@ -725,7 +725,7 @@ export default function SettingsCompanyPage() {
           />
           <div className="mt-4 grid gap-3 md:grid-cols-2" data-testid="company-profile-fields">
             <NeoInput
-              className="rounded-sm"
+              className="rounded-hh-compact"
               placeholder="Company Name"
               value={form.org_name}
               onChange={(e) => updateField("org_name", e.target.value)}
@@ -733,7 +733,7 @@ export default function SettingsCompanyPage() {
               aria-label="Company Name"
             />
             <NeoInput
-              className="rounded-sm"
+              className="rounded-hh-compact"
               placeholder="Legal Name"
               value={form.legal_name}
               onChange={(e) => updateField("legal_name", e.target.value)}
@@ -741,7 +741,7 @@ export default function SettingsCompanyPage() {
               aria-label="Legal Name"
             />
             <NeoInput
-              className="rounded-sm"
+              className="rounded-hh-compact"
               placeholder="Phone"
               value={form.phone}
               onChange={(e) => updateField("phone", e.target.value)}
@@ -749,7 +749,7 @@ export default function SettingsCompanyPage() {
               aria-label="Phone"
             />
             <NeoInput
-              className="rounded-sm"
+              className="rounded-hh-compact"
               placeholder="Email"
               value={form.email}
               onChange={(e) => updateField("email", e.target.value)}
@@ -757,7 +757,7 @@ export default function SettingsCompanyPage() {
               aria-label="Email"
             />
             <NeoInput
-              className="rounded-sm"
+              className="rounded-hh-compact"
               placeholder="Website"
               value={form.website}
               onChange={(e) => updateField("website", e.target.value)}
@@ -765,7 +765,7 @@ export default function SettingsCompanyPage() {
               aria-label="Website"
             />
             <NeoInput
-              className="rounded-sm"
+              className="rounded-hh-compact"
               placeholder="License Number"
               value={form.license_number}
               onChange={(e) => updateField("license_number", e.target.value)}
@@ -773,7 +773,7 @@ export default function SettingsCompanyPage() {
               aria-label="License Number"
             />
             <NeoInput
-              className="rounded-sm"
+              className="rounded-hh-compact"
               placeholder="Tax ID"
               value={form.tax_id}
               onChange={(e) => updateField("tax_id", e.target.value)}
@@ -781,7 +781,7 @@ export default function SettingsCompanyPage() {
               aria-label="Tax ID"
             />
             <NeoInput
-              className="rounded-sm"
+              className="rounded-hh-compact"
               placeholder="Default tax %"
               aria-label="Default tax percentage"
               inputMode="decimal"
@@ -789,7 +789,7 @@ export default function SettingsCompanyPage() {
               onChange={(e) => updateField("default_tax_pct", e.target.value)}
             />
             <NeoInput
-              className="rounded-sm"
+              className="rounded-hh-compact"
               placeholder="Address Line 1"
               value={form.address1}
               onChange={(e) => updateField("address1", e.target.value)}
@@ -797,7 +797,7 @@ export default function SettingsCompanyPage() {
               aria-label="Address Line 1"
             />
             <NeoInput
-              className="rounded-sm"
+              className="rounded-hh-compact"
               placeholder="Address Line 2"
               value={form.address2}
               onChange={(e) => updateField("address2", e.target.value)}
@@ -805,7 +805,7 @@ export default function SettingsCompanyPage() {
               aria-label="Address Line 2"
             />
             <NeoInput
-              className="rounded-sm"
+              className="rounded-hh-compact"
               placeholder="City"
               value={form.city}
               onChange={(e) => updateField("city", e.target.value)}
@@ -813,7 +813,7 @@ export default function SettingsCompanyPage() {
               aria-label="City"
             />
             <NeoInput
-              className="rounded-sm"
+              className="rounded-hh-compact"
               placeholder="State"
               value={form.state}
               onChange={(e) => updateField("state", e.target.value)}
@@ -821,7 +821,7 @@ export default function SettingsCompanyPage() {
               aria-label="State"
             />
             <NeoInput
-              className="rounded-sm"
+              className="rounded-hh-compact"
               placeholder="ZIP"
               value={form.zip}
               onChange={(e) => updateField("zip", e.target.value)}
@@ -829,7 +829,7 @@ export default function SettingsCompanyPage() {
               aria-label="ZIP"
             />
             <NeoInput
-              className="rounded-sm"
+              className="rounded-hh-compact"
               placeholder="Country"
               value={form.country}
               onChange={(e) => updateField("country", e.target.value)}
@@ -867,7 +867,7 @@ export default function SettingsCompanyPage() {
               size="sm"
               disabled={disabled}
               onClick={onSave}
-              className="gap-2 rounded-sm"
+              className="gap-2 rounded-hh-compact"
               data-testid="company-save-button"
             >
               <SubmitSpinner loading={saving} className="mr-2" />

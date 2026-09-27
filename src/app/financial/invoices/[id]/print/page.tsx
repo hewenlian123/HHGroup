@@ -1,9 +1,9 @@
+import { financePathWithReturn } from "@/lib/finance-navigation";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { unstable_noStore as noStore } from "next/cache";
 import { getInvoiceById, getProjectById } from "@/lib/data";
-import { requireSupabaseOwnerOrAdminServerAction } from "@/lib/auth-boundary";
-import { createServerSupabaseClient } from "@/lib/supabase-server";
+import { requireSupabaseOwnerOrAdminServerActionClient } from "@/lib/auth-boundary";
 import { fetchDocumentCompanyProfile } from "@/lib/document-company-profile";
 import { ServerDataLoadFallback } from "@/components/server-data-load-fallback";
 import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
@@ -15,13 +15,20 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 export const fetchCache = "force-no-store";
 
-export default async function InvoicePrintPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function InvoicePrintPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ returnTo?: string }>;
+}) {
   const { id } = await params;
+  const { returnTo } = await searchParams;
+  const detailHref = financePathWithReturn(`/financial/invoices/${id}`, returnTo);
   noStore();
-  const guard = await requireSupabaseOwnerOrAdminServerAction();
+  const guard = await requireSupabaseOwnerOrAdminServerActionClient({ noStore: true });
   if (!guard.ok) notFound();
-  const supabase = await createServerSupabaseClient();
-  if (!supabase) notFound();
+  const supabase = guard.client;
   let invoice: Awaited<ReturnType<typeof getInvoiceById>> | null = null;
   try {
     invoice = await getInvoiceById(id, supabase);
@@ -42,7 +49,7 @@ export default async function InvoicePrintPage({ params }: { params: Promise<{ i
   try {
     [project, company] = await Promise.all([
       getProjectById(invoice.projectId, supabase),
-      fetchDocumentCompanyProfile(),
+      fetchDocumentCompanyProfile(supabase),
     ]);
   } catch (e) {
     logServerPageDataError(`financial/invoices/${id}/print details`, e);
@@ -69,7 +76,7 @@ export default async function InvoicePrintPage({ params }: { params: Promise<{ i
         company={company}
       />
       <p className="mt-6 text-center text-xs text-zinc-500 print:hidden">
-        <Link href={`/financial/invoices/${id}`} className="text-blue-600 underline">
+        <Link href={detailHref} className="text-blue-600 underline">
           View in app
         </Link>
       </p>

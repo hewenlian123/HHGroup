@@ -67,6 +67,23 @@ const DialogContent = React.forwardRef<
         hhNeoFocusRevealMobileSheet
       )}
       {...props}
+      onInteractOutside={(event) => {
+        if (
+          event.target instanceof Element &&
+          event.target.closest("[data-attachment-preview-modal]")
+        ) {
+          event.preventDefault();
+          return;
+        }
+        props.onInteractOutside?.(event);
+      }}
+      onEscapeKeyDown={(event) => {
+        if (document.querySelector("[data-attachment-preview-modal]")) {
+          event.preventDefault();
+          return;
+        }
+        props.onEscapeKeyDown?.(event);
+      }}
     >
       {!hideCloseButton ? (
         <DialogPrimitive.Close

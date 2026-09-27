@@ -75,8 +75,11 @@ function mapBillRow(r: Record<string, unknown>): SubcontractBillRow {
 }
 
 /** Fetch all bills for a subcontract, order by bill_date desc. */
-export async function getBillsBySubcontract(subcontractId: string): Promise<SubcontractBillRow[]> {
-  const c = client();
+export async function getBillsBySubcontract(
+  subcontractId: string,
+  explicitClient?: SupabaseClient
+): Promise<SubcontractBillRow[]> {
+  const c = client(explicitClient);
   const first = await c
     .from("subcontract_bills")
     .select(COLS_FULL)
@@ -95,8 +98,11 @@ export async function getBillsBySubcontract(subcontractId: string): Promise<Subc
 }
 
 /** Create one subcontract bill via RPC (enforces total bills <= contract amount). */
-export async function insertSubcontractBill(draft: SubcontractBillDraft): Promise<void> {
-  const c = client();
+export async function insertSubcontractBill(
+  draft: SubcontractBillDraft,
+  explicitClient?: SupabaseClient
+): Promise<void> {
+  const c = client(explicitClient);
   const amount = Number(draft.amount) || 0;
   const billDate = draft.bill_date.slice(0, 10);
   const dueDate = draft.due_date ? draft.due_date.slice(0, 10) : null;
@@ -149,9 +155,10 @@ export async function insertSubcontractBill(draft: SubcontractBillDraft): Promis
 
 /** Approve a subcontract bill via RPC (sets status to Approved, adds amount to project.spent). */
 export async function approveSubcontractBill(
-  billId: string
+  billId: string,
+  explicitClient?: SupabaseClient
 ): Promise<ApproveSubcontractBillResult> {
-  const c = client();
+  const c = client(explicitClient);
   let error: { message?: string } | null = null;
   try {
     const result = await c.rpc("approve_subcontract_bill", { p_bill_id: billId });
@@ -172,8 +179,11 @@ export async function approveSubcontractBill(
   return { alreadyApproved: false };
 }
 
-export async function voidSubcontractBill(billId: string): Promise<void> {
-  const c = client();
+export async function voidSubcontractBill(
+  billId: string,
+  explicitClient?: SupabaseClient
+): Promise<void> {
+  const c = client(explicitClient);
   const { error } = await c.rpc("void_subcontract_bill", { p_bill_id: billId });
   if (error) {
     if (!isMissingFunction(error)) throw new Error(error.message ?? "Failed to void bill.");
@@ -187,9 +197,10 @@ export async function voidSubcontractBill(billId: string): Promise<void> {
 
 export async function updateSubcontractBill(
   billId: string,
-  patch: Partial<Pick<SubcontractBillDraft, "bill_date" | "due_date" | "amount" | "description">>
+  patch: Partial<Pick<SubcontractBillDraft, "bill_date" | "due_date" | "amount" | "description">>,
+  explicitClient?: SupabaseClient
 ): Promise<void> {
-  const c = client();
+  const c = client(explicitClient);
   const { data: row, error: rowErr } = await c
     .from("subcontract_bills")
     .select("id, subcontract_id, amount, status")
@@ -243,8 +254,11 @@ export async function updateSubcontractBill(
   if (fallbackError) throw new Error(fallbackError.message ?? "Failed to update bill.");
 }
 
-export async function deleteSubcontractBillDraft(billId: string): Promise<void> {
-  const c = client();
+export async function deleteSubcontractBillDraft(
+  billId: string,
+  explicitClient?: SupabaseClient
+): Promise<void> {
+  const c = client(explicitClient);
   const { data: row, error: rowErr } = await c
     .from("subcontract_bills")
     .select("status")
@@ -258,10 +272,10 @@ export async function deleteSubcontractBillDraft(billId: string): Promise<void> 
 }
 
 /** Fetch all bills for summary: subcontract_id, amount, status. */
-export async function getBillsSummaryAll(): Promise<
-  { subcontract_id: string; amount: number; status: string }[]
-> {
-  const c = client();
+export async function getBillsSummaryAll(
+  explicitClient?: SupabaseClient
+): Promise<{ subcontract_id: string; amount: number; status: string }[]> {
+  const c = client(explicitClient);
   const { data: rows, error } = await c
     .from("subcontract_bills")
     .select("subcontract_id, amount, status");
@@ -289,9 +303,10 @@ export async function getBillsAll(
 
 /** Sum of approved/paid bill amounts for a project. */
 export async function getApprovedSubcontractBillsTotalByProject(
-  projectId: string
+  projectId: string,
+  explicitClient?: SupabaseClient
 ): Promise<number> {
-  const c = client();
+  const c = client(explicitClient);
   const { data: rows, error } = await c
     .from("subcontract_bills")
     .select("amount, status")
@@ -303,10 +318,11 @@ export async function getApprovedSubcontractBillsTotalByProject(
 
 /** Fetch all bills for the given subcontract ids (e.g. for one subcontractor). */
 export async function getBillsBySubcontractIds(
-  subcontractIds: string[]
+  subcontractIds: string[],
+  explicitClient?: SupabaseClient
 ): Promise<SubcontractBillRow[]> {
   if (subcontractIds.length === 0) return [];
-  const c = client();
+  const c = client(explicitClient);
   const first = await c
     .from("subcontract_bills")
     .select(COLS_FULL)

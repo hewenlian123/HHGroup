@@ -30,15 +30,6 @@ function money(value: number): number {
   return Math.round(value * 100) / 100;
 }
 
-function fmtUsd(value: number): string {
-  return value.toLocaleString("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-}
-
 function fmtUsdCompact(value: number): string {
   return value.toLocaleString("en-US", {
     style: "currency",

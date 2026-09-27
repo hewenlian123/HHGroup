@@ -99,7 +99,7 @@ export default async function ChangeOrderDetailPage({
       <div className="mb-3">
         <Link
           href={`/projects/${projectId}?tab=change-orders`}
-          className="text-hh-metadata text-[var(--hh-text-secondary)] hover:text-[var(--hh-text-primary)]"
+          className="inline-flex min-h-[44px] items-center text-hh-metadata text-[var(--hh-text-secondary)] hover:text-[var(--hh-text-primary)]"
         >
           ← Change orders
         </Link>
@@ -114,7 +114,7 @@ export default async function ChangeOrderDetailPage({
                 : (co.description ?? undefined)
             }
           >
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <ChangeOrderStatusDropdown
                 changeOrderId={co.id}
                 projectId={projectId}
@@ -122,7 +122,11 @@ export default async function ChangeOrderDetailPage({
               />
               {!isLocked && (
                 <Link href={`/projects/${projectId}/change-orders/${coId}/edit`}>
-                  <Button variant="outline" size="sm" className="gap-1.5 text-hh-metadata">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="min-h-[44px] gap-1.5 text-hh-metadata xl:min-h-8"
+                  >
                     <Pencil className="h-3.5 w-3.5" />
                     Edit
                   </Button>

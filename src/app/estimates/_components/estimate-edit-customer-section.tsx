@@ -1,6 +1,8 @@
 "use client";
 
 import * as React from "react";
+import { useEstimateSheetFocus } from "./use-estimate-sheet-focus";
+import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -41,8 +43,6 @@ const metaInput = ebSheetInput("text-sm");
 export type EstimateEditCustomerMeta = {
   client: { name: string; phone: string; email: string; address: string };
   project: { name: string; siteAddress: string };
-  overheadPct?: number;
-  profitPct?: number;
   estimateDate?: string | null;
   validUntil?: string | null;
   salesPerson?: string | null;
@@ -157,6 +157,7 @@ export function EstimateEditCustomerSection({
   estimateSubtotal,
   saveEstimateMetaAction,
   onSaveDetails,
+  saving = false,
 }: {
   meta: EstimateEditCustomerMeta;
   estimateId: string;
@@ -171,6 +172,7 @@ export function EstimateEditCustomerSection({
   estimateSubtotal: number;
   saveEstimateMetaAction: (formData: FormData) => Promise<void>;
   onSaveDetails?: () => void;
+  saving?: boolean;
 }): React.ReactElement {
   const [uncontrolledDetailsOpen, setUncontrolledDetailsOpen] = React.useState(false);
   const detailsOpen = controlledDetailsOpen ?? uncontrolledDetailsOpen;
@@ -179,8 +181,6 @@ export function EstimateEditCustomerSection({
   const [validUntil, setValidUntil] = React.useState(meta.validUntil ?? "");
   const [taxDraft, setTaxDraft] = React.useState(tax);
   const [discountDraft, setDiscountDraft] = React.useState(discount);
-  const [overheadPctDraft, setOverheadPctDraft] = React.useState(meta.overheadPct ?? 0);
-  const [profitPctDraft, setProfitPctDraft] = React.useState(meta.profitPct ?? 0);
   const [selectedCustomerId, setSelectedCustomerId] = React.useState<string | null>(
     customerId ?? null
   );
@@ -201,14 +201,15 @@ export function EstimateEditCustomerSection({
     meta.documentStyle ?? "proposal"
   );
   const formRef = React.useRef<HTMLFormElement | null>(null);
+  const sheetFocus = useEstimateSheetFocus();
 
   React.useEffect(() => {
+    // Same-value RSC refreshes replace the `meta` object identity. Depend on the
+    // server-authoritative scalar values so they cannot overwrite an active draft.
     setEstimateDate(meta.estimateDate ?? today);
     setValidUntil(meta.validUntil ?? "");
     setTaxDraft(tax);
     setDiscountDraft(discount);
-    setOverheadPctDraft(meta.overheadPct ?? 0);
-    setProfitPctDraft(meta.profitPct ?? 0);
     setSelectedCustomerId(customerId ?? null);
     setClientNameDraft(meta.client.name);
     setClientPhoneDraft(meta.client.phone);
@@ -217,7 +218,21 @@ export function EstimateEditCustomerSection({
     setProjectNameDraft(meta.project.name);
     setProjectAddressDraft(meta.project.siteAddress);
     setDocumentStyleDraft(meta.documentStyle ?? "proposal");
-  }, [customerId, discount, meta, tax, today]);
+  }, [
+    customerId,
+    discount,
+    meta.client.address,
+    meta.client.email,
+    meta.client.name,
+    meta.client.phone,
+    meta.documentStyle,
+    meta.estimateDate,
+    meta.project.name,
+    meta.project.siteAddress,
+    meta.validUntil,
+    tax,
+    today,
+  ]);
 
   React.useEffect(() => {
     if (!detailsOpen || detailsSurface !== "information" || projectOptions.length > 0) return;
@@ -272,8 +287,6 @@ export function EstimateEditCustomerSection({
     setValidUntil(meta.validUntil ?? "");
     setTaxDraft(tax);
     setDiscountDraft(discount);
-    setOverheadPctDraft(meta.overheadPct ?? 0);
-    setProfitPctDraft(meta.profitPct ?? 0);
     setSelectedCustomerId(customerId ?? null);
     setClientNameDraft(meta.client.name);
     setClientPhoneDraft(meta.client.phone);
@@ -318,14 +331,15 @@ export function EstimateEditCustomerSection({
             side="right"
             className={estimateSurfaceSheetClassName(detailsSurface, "eb-estimate-details-sheet")}
             data-estimate-surface={detailsSurface}
+            {...sheetFocus}
           >
             <div className="flex max-h-[100dvh] min-h-0 flex-1 flex-col overflow-hidden">
               <SheetHeader className={EB.sheetHeader}>
                 <SheetTitle className={EB.sheetTitle}>
                   <span aria-hidden>
-                    {detailsSurface === "pricing" ? "Advanced Pricing" : "Estimate Information"}
+                    {detailsSurface === "pricing" ? "Estimate Terms" : "Estimate Information"}
                   </span>
-                  <span className="sr-only">Customer / project / pricing details</span>
+                  <span className="sr-only">Customer, project, and estimate details</span>
                 </SheetTitle>
                 <SheetDescription className="eb-estimate-details-subtitle">
                   {detailsSurface === "pricing"
@@ -387,7 +401,7 @@ export function EstimateEditCustomerSection({
                           setClientEmailDraft(customer.email ?? "");
                           setClientAddressDraft(customer.address ?? "");
                         }}
-                        triggerClassName={cn(metaInput, "h-10 justify-between")}
+                        triggerClassName={cn(metaInput, "h-hh-control-standard justify-between")}
                       />
                     </div>
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -524,7 +538,6 @@ export function EstimateEditCustomerSection({
                         </Label>
                         <input type="hidden" name="estimateDate" value={estimateDate} />
                         <FinanceDatePicker
-                          appearance="glass"
                           size="sm"
                           value={estimateDate}
                           onChange={setEstimateDate}
@@ -548,7 +561,7 @@ export function EstimateEditCustomerSection({
                     aria-label="Commercial terms"
                   >
                     <p id="estimate-terms-title" className={EB.sheetSectionLabel}>
-                      Terms &amp; pricing
+                      Quote terms
                     </p>
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                       <div className={cn(EB.sheetField, "min-w-0")}>
@@ -557,7 +570,6 @@ export function EstimateEditCustomerSection({
                         </Label>
                         <input type="hidden" name="validUntil" value={validUntil} />
                         <FinanceDatePicker
-                          appearance="glass"
                           size="sm"
                           value={validUntil}
                           onChange={setValidUntil}
@@ -632,42 +644,6 @@ export function EstimateEditCustomerSection({
                           className={ebSheetInput(cn("text-sm text-foreground", EB.inputNumeric))}
                         />
                       </div>
-                      <div className={cn(EB.sheetField, "min-w-0")}>
-                        <Label htmlFor="overheadPct" className={EB.sheetLabel}>
-                          Internal overhead reference %
-                        </Label>
-                        <Input
-                          id="overheadPct"
-                          name="overheadPct"
-                          type="number"
-                          step="0.01"
-                          min={0}
-                          value={overheadPctDraft}
-                          onChange={(event) => {
-                            const next = Number(event.target.value);
-                            setOverheadPctDraft(Number.isFinite(next) ? Math.max(0, next) : 0);
-                          }}
-                          className={ebSheetInput(cn("text-sm text-foreground", EB.inputNumeric))}
-                        />
-                      </div>
-                      <div className={cn(EB.sheetField, "min-w-0")}>
-                        <Label htmlFor="profitPct" className={EB.sheetLabel}>
-                          Internal profit reference %
-                        </Label>
-                        <Input
-                          id="profitPct"
-                          name="profitPct"
-                          type="number"
-                          step="0.01"
-                          min={0}
-                          value={profitPctDraft}
-                          onChange={(event) => {
-                            const next = Number(event.target.value);
-                            setProfitPctDraft(Number.isFinite(next) ? Math.max(0, next) : 0);
-                          }}
-                          className={ebSheetInput(cn("text-sm text-foreground", EB.inputNumeric))}
-                        />
-                      </div>
                     </div>
                     <div
                       className="rounded-md border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-3"
@@ -700,10 +676,6 @@ export function EstimateEditCustomerSection({
                         </p>
                       ) : null}
                     </div>
-                    <p className="eb-estimate-details-helper text-xs leading-snug">
-                      Internal overhead and profit references are stored for planning only. They do
-                      not change the customer subtotal, tax, discount, or total.
-                    </p>
                   </section>
                 </form>
               </div>
@@ -714,6 +686,8 @@ export function EstimateEditCustomerSection({
                     type="button"
                     size="sm"
                     className={EB.sheetPrimary}
+                    disabled={saving}
+                    aria-busy={saving}
                     onClick={() => {
                       if (onSaveDetails) {
                         onSaveDetails();
@@ -722,14 +696,15 @@ export function EstimateEditCustomerSection({
                       formRef.current?.requestSubmit();
                     }}
                   >
-                    Save
+                    <SubmitSpinner loading={saving} className="mr-2" />
+                    {saving ? "Saving…" : "Save"}
                   </Button>
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
                     className={EB.sheetSecondary}
-                    onClick={() => setDetailsOpen(false)}
+                    onClick={() => handleDetailsOpenChange(false)}
                   >
                     Cancel
                   </Button>

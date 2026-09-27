@@ -43,7 +43,7 @@ const AUTO_REPAIR_DDL: string[] = [
   `ALTER TABLE public.expense_lines ADD COLUMN IF NOT EXISTS total numeric`,
   `ALTER TABLE public.expense_lines ADD COLUMN IF NOT EXISTS category text DEFAULT 'Other'`,
   `ALTER TABLE public.expense_lines ADD COLUMN IF NOT EXISTS cost_code text NULL`,
-  `ALTER TABLE public.expense_lines ADD COLUMN IF NOT EXISTS memo text NULL`,
+  `ALTER TABLE public.expense_lines ADD COLUMN IF NOT EXISTS description text NULL`,
   `ALTER TABLE public.expense_lines ADD COLUMN IF NOT EXISTS project_id uuid NULL REFERENCES public.projects(id) ON DELETE SET NULL`,
   `CREATE INDEX IF NOT EXISTS idx_expense_lines_project_id ON public.expense_lines (project_id)
    WHERE project_id IS NOT NULL`,

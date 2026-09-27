@@ -1,12 +1,17 @@
+// MIXED CONTRACT: behavior, financial, accessibility, and responsive assertions remain active.
+// Presentation snapshot assertions are task-scoped current evidence and may be replaced by
+// an explicit user-requested redesign; they are not permanent UI authority.
+
 import { randomUUID } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "./estimate-playwright-test";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 import { createEstimateWithItemsWithClient } from "@/lib/estimates-db";
-import { loginAsE2EOwner } from "./e2e-auth-owner";
+import { gotoWithE2EAuth, loginAsE2EOwner } from "./e2e-auth-owner";
+import { deleteLocalEstimateFixtureGraphs } from "./e2e-estimate-fixture-teardown";
 import { expectBoundedLetterPages } from "./estimate-document-page-integrity";
 import { assertEstimateCertificationLocalOnly } from "./e2e-supabase-url-guard";
 
@@ -112,7 +117,7 @@ async function cleanupEstimateGraph(estimateId: string): Promise<void> {
   await admin.from("estimate_items").delete().eq("estimate_id", estimateId);
   await admin.from("estimate_categories").delete().eq("estimate_id", estimateId);
   await admin.from("estimate_meta").delete().eq("estimate_id", estimateId);
-  await admin.from("estimates").delete().eq("id", estimateId);
+  await deleteLocalEstimateFixtureGraphs([estimateId]);
 }
 
 async function seedHistoricalFixture(): Promise<string> {
@@ -153,7 +158,6 @@ async function seedHistoricalFixture(): Promise<string> {
         profit_pct: 0,
         estimate_date: today,
         valid_until: null,
-        notes: null,
         sales_person: null,
         document_notes: [],
       })
@@ -227,7 +231,6 @@ async function seedCurrentFixture(): Promise<string> {
     address: "100 Local Compatibility Way",
     estimateDate: new Date().toISOString().slice(0, 10),
     validUntil: "",
-    notes: "",
     documentNotes: [],
     salesPerson: "Local QA",
     documentStyle: "proposal",
@@ -268,8 +271,7 @@ async function financialSnapshot(estimateId: string) {
   };
 }
 
-async function expectCanonicalPreview(page: Page, estimateId: string): Promise<number> {
-  await page.goto(`/estimates/${estimateId}/preview`, { waitUntil: "domcontentloaded" });
+async function expectCanonicalPreview(page: Page): Promise<number> {
   const document = page.getByTestId("estimate-document");
   await expect(document).toBeVisible({ timeout: 60_000 });
   await expect(document).toHaveAttribute("data-estimate-document-style", "proposal");
@@ -288,6 +290,7 @@ async function expectCanonicalPreview(page: Page, estimateId: string): Promise<n
   const pages = document.getByTestId("estimate-preview-page");
   await expect.poll(() => pages.count()).toBeGreaterThan(1);
   await expectBoundedLetterPages(pages);
+  await page.waitForLoadState("networkidle");
   return pages.count();
 }
 
@@ -307,15 +310,16 @@ test("historical and current Estimate shapes share one bounded Preview, Print, a
 
   await page.setViewportSize({ width: 1440, height: 1000 });
   await loginAsE2EOwner(page, `/estimates/${historicalId}/preview`);
-  const historicalPageCount = await expectCanonicalPreview(page, historicalId);
-  const currentPageCount = await expectCanonicalPreview(page, currentId);
+  const historicalPageCount = await expectCanonicalPreview(page);
+  await gotoWithE2EAuth(page, `/estimates/${currentId}/preview`);
+  const currentPageCount = await expectCanonicalPreview(page);
   expect(historicalPageCount).toBe(currentPageCount);
 
   for (const fixture of [
     { id: historicalId, label: "historical" },
     { id: currentId, label: "current" },
   ]) {
-    await page.goto(`/estimates/${fixture.id}/print`, { waitUntil: "domcontentloaded" });
+    await gotoWithE2EAuth(page, `/estimates/${fixture.id}/print`);
     const printPages = page.getByTestId("estimate-preview-page");
     await expect(printPages).toHaveCount(historicalPageCount);
     await expectBoundedLetterPages(printPages);
@@ -328,6 +332,7 @@ test("historical and current Estimate shapes share one bounded Preview, Print, a
       historicalPageCount
     );
     await writeFile(join(EVIDENCE_DIR, `${fixture.label}.pdf`), pdf);
+    await page.waitForLoadState("networkidle");
   }
 
   const viewports = [
@@ -339,7 +344,7 @@ test("historical and current Estimate shapes share one bounded Preview, Print, a
   ];
   for (const viewport of viewports) {
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
-    await page.goto(`/estimates/${historicalId}/preview`, { waitUntil: "domcontentloaded" });
+    await gotoWithE2EAuth(page, `/estimates/${historicalId}/preview`);
     await expect(page.getByTestId("estimate-preview-page")).toHaveCount(historicalPageCount);
     const rootOverflow = await page.evaluate(
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth
@@ -349,6 +354,7 @@ test("historical and current Estimate shapes share one bounded Preview, Print, a
       path: join(EVIDENCE_DIR, `${viewport.name}.png`),
       fullPage: false,
     });
+    await page.waitForLoadState("networkidle");
   }
 
   expect(await financialSnapshot(historicalId)).toEqual(beforeHistorical);

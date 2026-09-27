@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import {
   getLaborPaymentStatus,
   isLaborUnpaidForWorkerPayroll,
@@ -58,87 +58,24 @@ describe("labor-balance-shared", () => {
     expect(laborSessionLabel({})).toBe(null);
   });
 
-  it("workerIdsForLaborBalanceFinancialQueries unions labor id with all workers rows of the same name", async () => {
-    const laborId = "b4c34fa6-bcd0-4795-9060-54d8b3b423f5";
-    const otherWorkersId = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
-
-    const mock = {
-      from(table: string) {
-        if (table === "labor_workers") {
-          return {
-            select: () => ({
-              eq: () => ({
-                maybeSingle: async () => ({ data: { name: "小林" }, error: null }),
-              }),
-            }),
-          };
-        }
-        if (table === "workers") {
-          return {
-            select: () => ({
-              eq: async () => ({
-                data: [
-                  { id: laborId, name: "小林" },
-                  { id: otherWorkersId, name: "小林" },
-                ],
-                error: null,
-              }),
-              ilike: async () => ({ data: [], error: null }),
-            }),
-          };
-        }
-        throw new Error(`unexpected table ${table}`);
-      },
-    } as unknown as SupabaseClient;
-
-    const ids = await workerIdsForLaborBalanceFinancialQueries(mock, laborId);
-    expect(ids.sort()).toEqual([laborId, otherWorkersId].sort());
-  });
-
-  it("workerIdsForLaborBalanceFinancialQueries falls back to substring ilike + normalized name when eq/ilike miss spacing variants", async () => {
-    const laborId = "11111111-1111-1111-1111-111111111111";
-    const reimbWorkerId = "22222222-2222-2222-2222-222222222222";
-
-    const mock = {
-      from(table: string) {
-        if (table === "labor_workers") {
-          return {
-            select: () => ({
-              eq: () => ({
-                maybeSingle: async () => ({ data: { name: "小林" }, error: null }),
-              }),
-            }),
-          };
-        }
-        if (table === "workers") {
-          return {
-            select: () => ({
-              eq: async (col: string) => {
-                if (col === "name") {
-                  return { data: [], error: null };
-                }
-                return { data: [], error: null };
-              },
-              ilike: async (_col: string, val: string) => {
-                if (String(val).includes("%")) {
-                  return {
-                    data: [
-                      { id: laborId, name: "小林" },
-                      { id: reimbWorkerId, name: "\u3000小林\u3000" },
-                    ],
-                    error: null,
-                  };
-                }
-                return { data: [], error: null };
-              },
-            }),
-          };
-        }
-        throw new Error(`unexpected table ${table}`);
-      },
-    } as unknown as SupabaseClient;
-
-    const ids = await workerIdsForLaborBalanceFinancialQueries(mock, laborId);
-    expect(ids.sort()).toEqual([laborId, reimbWorkerId].sort());
-  });
+  it.each(["Same Name", "  Same Name  "])(
+    "keeps stable identity for duplicate display name %s",
+    async (name) => {
+      const laborId = "b4c34fa6-bcd0-4795-9060-54d8b3b423f5";
+      const client = createClient("http://127.0.0.1:54321", "fixture", {
+        auth: { persistSession: false, autoRefreshToken: false },
+        global: {
+          fetch: async (input) => {
+            const url = new URL(String(input));
+            expect(url.searchParams.get("id")).toBe(`eq.${laborId}`);
+            expect(url.searchParams.has("name")).toBe(false);
+            return new Response(JSON.stringify({ id: laborId, name }), {
+              headers: { "Content-Type": "application/json" },
+            });
+          },
+        },
+      }) as SupabaseClient;
+      expect(await workerIdsForLaborBalanceFinancialQueries(client, laborId)).toEqual([laborId]);
+    }
+  );
 });

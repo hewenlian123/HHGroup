@@ -15,6 +15,7 @@ const globalFromSpy = vi.fn((table: string) => new FakeQuery(table));
 class FakeQuery {
   private filters: Array<(row: FakeRow) => boolean> = [];
   private maxRows: number | null = null;
+  private offset = 0;
   private selected = "";
 
   constructor(private readonly table: string) {}
@@ -45,6 +46,14 @@ class FakeQuery {
     return this;
   }
 
+  range(from: number, to: number) {
+    this.offset = from;
+    this.maxRows = to - from + 1;
+    return this;
+  }
+  abortSignal() {
+    return this;
+  }
   limit(count: number) {
     this.maxRows = count;
     return this;
@@ -63,10 +72,13 @@ class FakeQuery {
     onfulfilled?: ((value: FakeQueryResult) => TResult1 | PromiseLike<TResult1>) | null,
     onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null
   ) {
-    return Promise.resolve({ data: this.rows(), error: this.error() }).then(
-      onfulfilled,
-      onrejected
-    );
+    return Promise.resolve({
+      data: this.rows(),
+      error: this.error(),
+      count: (fakeData[this.table] ?? []).filter((row) =>
+        this.filters.every((filter) => filter(row))
+      ).length,
+    }).then(onfulfilled, onrejected);
   }
 
   private error(): FakeError | null {
@@ -81,9 +93,9 @@ class FakeQuery {
   }
 
   private rows() {
-    let rows = [...(fakeData[this.table] ?? [])];
+    let rows = (fakeData[this.table] ?? []).map((row, i) => ({ id: `${this.table}-${i}`, ...row }));
     for (const filter of this.filters) rows = rows.filter(filter);
-    if (this.maxRows != null) rows = rows.slice(0, this.maxRows);
+    if (this.maxRows != null) rows = rows.slice(this.offset, this.offset + this.maxRows);
     return rows;
   }
 }
@@ -267,7 +279,7 @@ describe("profit engine commission cost", () => {
     );
     expect(selectedColumns).toContainEqual({
       table: "project_change_orders",
-      columns: "project_id,total,total_amount",
+      columns: "id, project_id,total,total_amount",
     });
   });
 

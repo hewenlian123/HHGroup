@@ -1,7 +1,8 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "./estimate-playwright-test";
 import { createClient } from "@supabase/supabase-js";
 
-import { loginAsE2EOwner } from "./e2e-auth-owner";
+import { gotoWithE2EAuth, loginAsE2EOwner, reloadWithE2EAuth } from "./e2e-auth-owner";
+import { deleteLocalEstimateFixtureGraphs } from "./e2e-estimate-fixture-teardown";
 import { assertE2ESupabaseUrlSafeForMutations } from "./e2e-supabase-url-guard";
 
 const createdClientNames = new Set<string>();
@@ -64,11 +65,10 @@ async function cleanupEstimateTestData(
   if (ids.length === 0) return;
 
   await supabase.from("estimate_payment_schedule_items").delete().in("estimate_id", ids);
-  await supabase.from("estimate_snapshots").delete().in("estimate_id", ids);
   await supabase.from("estimate_items").delete().in("estimate_id", ids);
   await supabase.from("estimate_categories").delete().in("estimate_id", ids);
   await supabase.from("estimate_meta").delete().in("estimate_id", ids);
-  await supabase.from("estimates").delete().in("id", ids);
+  await deleteLocalEstimateFixtureGraphs(ids);
 }
 
 async function addCustomSection(page: Page, name: string): Promise<void> {
@@ -135,6 +135,23 @@ async function expectNoHorizontalOverflow(page: Page): Promise<void> {
     .toBeLessThanOrEqual(1);
 }
 
+async function expectPersistedPaymentSchedule(page: Page, paymentTitle: string): Promise<void> {
+  const pricingSummary = page.getByLabel("Estimate pricing summary");
+  await expect(pricingSummary).toContainText("1 milestone");
+  await expect(pricingSummary).toContainText("$1,500.00");
+
+  await page
+    .getByRole("navigation", { name: "Pricing inspector sections" })
+    .getByRole("button", { name: "Payment", exact: true })
+    .click();
+  const paymentSheet = page.getByTestId("estimate-payment-schedule-sheet");
+  await expect(paymentSheet).toBeVisible({ timeout: 10_000 });
+  await expect(paymentSheet.getByText(paymentTitle, { exact: true })).toBeVisible();
+  await expect(paymentSheet).toContainText("$1,500.00");
+  await page.keyboard.press("Escape");
+  await expect(paymentSheet).toBeHidden();
+}
+
 test.afterEach(async () => {
   await cleanupEstimateTestData(createdClientNames, createdProjectNames);
   createdClientNames.clear();
@@ -152,8 +169,7 @@ test("new estimate supports more than thirteen custom proposal sections", async 
   createdClientNames.add(clientName);
   createdProjectNames.add(projectName);
 
-  await page.goto("/estimates/new");
-  await page.waitForLoadState("domcontentloaded");
+  await gotoWithE2EAuth(page, "/estimates/new");
   await expect(page.getByRole("heading", { name: "New Estimate" })).toBeVisible({
     timeout: 30_000,
   });
@@ -205,7 +221,7 @@ test("new estimate supports more than thirteen custom proposal sections", async 
   await paymentDialog.getByRole("button", { name: "Save", exact: true }).click();
   await expect(paymentDialog).toBeHidden({ timeout: 10_000 });
   await expect(page.getByText(paymentTitle, { exact: true })).toBeVisible({ timeout: 10_000 });
-  await expect(page.getByLabel("Estimate overview")).toContainText("$1,500.00");
+  await expect(page.getByLabel("Estimate pricing summary")).toContainText("$1,500.00");
 
   await page.setViewportSize({ width: 390, height: 844 });
   await expectNoHorizontalOverflow(page);
@@ -213,18 +229,31 @@ test("new estimate supports more than thirteen custom proposal sections", async 
 
   const saveEstimate = page.getByRole("button", { name: "Save Estimate" });
   await expect(saveEstimate).toBeEnabled({ timeout: 15_000 });
+  const createdDetailRsc = page.waitForResponse(
+    (response) => {
+      const pathname = new URL(response.url()).pathname;
+      return (
+        /^\/estimates\/[^/]+$/.test(pathname) &&
+        pathname !== "/estimates/new" &&
+        response.request().headers()["rsc"] === "1"
+      );
+    },
+    { timeout: 30_000 }
+  );
   await saveEstimate.click();
+  const createdDetailResponse = await createdDetailRsc;
+  expect(createdDetailResponse.ok()).toBe(true);
+  expect(await createdDetailResponse.finished()).toBeNull();
   await expect(page).toHaveURL(/\/estimates\/(?!new(?:\/|$))[^/?#]+/, { timeout: 30_000 });
+  await page.waitForLoadState("networkidle");
   const detailUrl = page.url().replace(/\?.*$/, "");
 
   await expectSectionOrder(page, CUSTOM_SECTION_NAMES);
-  await expect(page.locator("body")).toContainText(paymentTitle);
-  await expect(page.locator("body")).toContainText("$1,500.00");
+  await expectPersistedPaymentSchedule(page, paymentTitle);
 
-  await page.reload({ waitUntil: "domcontentloaded" });
+  await reloadWithE2EAuth(page);
   await expectSectionOrder(page, CUSTOM_SECTION_NAMES);
-  await expect(page.locator("body")).toContainText(paymentTitle);
-  await expect(page.locator("body")).toContainText("$1,500.00");
+  await expectPersistedPaymentSchedule(page, paymentTitle);
 
   await page.getByRole("button", { name: "Edit", exact: true }).click();
   await page
@@ -239,21 +268,21 @@ test("new estimate supports more than thirteen custom proposal sections", async 
   await renameDialog.getByRole("button", { name: "Save", exact: true }).click();
   await expect(renameDialog).toBeHidden({ timeout: 10_000 });
 
-  await page.reload({ waitUntil: "domcontentloaded" });
+  await reloadWithE2EAuth(page);
   await expect(page.locator("body")).toContainText(renamedSection, { timeout: 30_000 });
-  await expect(page.locator("body")).toContainText(paymentTitle);
-  await expect(page.locator("body")).toContainText("$1,500.00");
+  await expectPersistedPaymentSchedule(page, paymentTitle);
 
-  await page.goto(`${detailUrl}/preview`, { waitUntil: "domcontentloaded" });
+  await gotoWithE2EAuth(page, `${detailUrl}/preview`);
   await expect(page.locator("main")).toContainText(renamedSection, { timeout: 30_000 });
   await expect(page.locator("main")).toContainText(CUSTOM_SECTION_NAMES[14]);
   await expect(page.locator("main")).toContainText(paymentTitle);
   await expect(page.locator("main")).toContainText("$1,500.00");
 
-  await page.goto(`${detailUrl}/print`, { waitUntil: "domcontentloaded" });
+  await gotoWithE2EAuth(page, `${detailUrl}/print`);
   const printDocument = page.getByRole("document", { name: "Estimate print view" });
   await expect(printDocument).toContainText(renamedSection, { timeout: 30_000 });
   await expect(printDocument).toContainText(CUSTOM_SECTION_NAMES[14]);
   await expect(printDocument).toContainText(paymentTitle);
   await expect(printDocument).toContainText("$1,500.00");
+  await page.waitForLoadState("networkidle");
 });

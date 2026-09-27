@@ -1,10 +1,11 @@
 "use client";
+import { LaborReadState } from "@/components/labor/labor-read-state";
 
 import * as React from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
-import { syncRouterNonBlocking } from "@/components/perf/sync-router-non-blocking";
+import { refreshRscNonBlocking } from "@/components/perf/sync-router-non-blocking";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,7 +30,14 @@ import {
   MobileSearchFiltersRow,
   mobileListPagePaddingClass,
 } from "@/components/mobile/mobile-list-chrome";
-import { NeoAmount, NeoMobileCard, NeoStatus, NeoTable, NeoToolbar } from "@/components/base";
+import {
+  ConfirmDialog,
+  NeoAmount,
+  NeoMobileCard,
+  NeoStatus,
+  NeoTable,
+  NeoToolbar,
+} from "@/components/base";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
@@ -133,11 +141,15 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
   );
   const [workerOptions, setWorkerOptions] = React.useState<WorkerOption[]>(workers);
   const [rows, setRows] = React.useState<AdvanceRow[]>([]);
+  const [readUnavailable, setReadUnavailable] = React.useState(false);
   const [loading, setLoading] = React.useState(true);
   const [message, setMessage] = React.useState<string | null>(null);
 
   const [query, setQuery] = React.useState("");
-  const [workerFilter, setWorkerFilter] = React.useState("");
+  const [workerFilter, setWorkerFilter] = React.useState(sourceWorkerId);
+  React.useEffect(() => {
+    setWorkerFilter(sourceWorkerId);
+  }, [sourceWorkerId]);
   const [projectFilter, setProjectFilter] = React.useState("");
   const [statusFilter, setStatusFilter] = React.useState<"" | AdvanceRow["status"]>("");
   const [dateFrom, setDateFrom] = React.useState("");
@@ -150,6 +162,7 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
   const consumedInitialCreateKeyRef = React.useRef<string | null>(null);
 
   const [busyId, setBusyId] = React.useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = React.useState<AdvanceRow | null>(null);
   const [filtersOpen, setFiltersOpen] = React.useState(false);
 
   React.useEffect(() => {
@@ -207,9 +220,12 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
     };
   }, []);
 
+  const readGeneration = React.useRef(0);
   const load = React.useCallback(async () => {
+    const generation = ++readGeneration.current;
     setLoading(true);
     setMessage(null);
+    setReadUnavailable(false);
     try {
       const url = new URL("/api/labor/advances", window.location.origin);
       url.searchParams.set("status", "active");
@@ -219,39 +235,46 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
         throw new Error(data.message ?? `Failed to load advances (${res.status})`);
       }
       const data = (await res.json().catch(() => ({}))) as { advances?: unknown };
-      const advances = (Array.isArray(data.advances) ? data.advances : []) as Array<
-        Record<string, unknown>
-      >;
+      if (!Array.isArray(data.advances)) throw new Error("Worker advances unavailable.");
+      const advances = data.advances as Array<Record<string, unknown>>;
+      if (generation !== readGeneration.current) return;
       setRows(
-        advances.map((r) => ({
-          id: r.id as string,
-          workerId: r.workerId as string,
-          workerName: (r.workerName as string) ?? "",
-          projectId: (r.projectId as string | null) ?? null,
-          projectName: (r.projectName as string | null) ?? null,
-          amount: Number(r.amount) || 0,
-          advanceDate: String(r.advanceDate ?? "").slice(0, 10),
-          status: (r.status as AdvanceRow["status"]) ?? "pending",
-          notes: (r.notes as string | null) ?? null,
-        }))
+        advances
+          .filter((r) => !sourceWorkerId || r.workerId === sourceWorkerId)
+          .map((r) => ({
+            id: r.id as string,
+            workerId: r.workerId as string,
+            workerName: (r.workerName as string) ?? "",
+            projectId: (r.projectId as string | null) ?? null,
+            projectName: (r.projectName as string | null) ?? null,
+            amount: Number(r.amount) || 0,
+            advanceDate: String(r.advanceDate ?? "").slice(0, 10),
+            status: (r.status as AdvanceRow["status"]) ?? "pending",
+            notes: (r.notes as string | null) ?? null,
+          }))
       );
     } catch (e) {
+      if (generation !== readGeneration.current) return;
+      setReadUnavailable(true);
       setMessage(e instanceof Error ? e.message : "Failed to load advances.");
       setRows([]);
     } finally {
-      setLoading(false);
+      if (generation === readGeneration.current) setLoading(false);
     }
-  }, []);
+  }, [sourceWorkerId]);
 
   React.useEffect(() => {
     void load();
   }, [load]);
 
   useOnAppSync(
-    React.useCallback(() => {
-      syncRouterNonBlocking(router);
-      void load();
-    }, [router, load]),
+    React.useCallback(
+      (detail) => {
+        if (!detail.refreshScheduled) refreshRscNonBlocking(router);
+        void load();
+      },
+      [router, load]
+    ),
     [router, load]
   );
 
@@ -412,20 +435,20 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
     }
   };
 
-  const handleDelete = async (row: AdvanceRow) => {
-    if (!window.confirm(`Delete advance for ${row.workerName}?`)) return;
-    setBusyId(row.id);
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setBusyId(deleteTarget.id);
     const prev = rows;
-    setRows((r) => r.filter((x) => x.id !== row.id));
+    setRows((r) => r.filter((x) => x.id !== deleteTarget.id));
     try {
-      const res = await fetch(`/api/labor/advances/${row.id}`, { method: "DELETE" });
+      const res = await fetch(`/api/labor/advances/${deleteTarget.id}`, { method: "DELETE" });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.message ?? "Failed to delete advance.");
       }
     } catch (e) {
-      setMessage(e instanceof Error ? e.message : "Failed to delete advance.");
       setRows(prev);
+      throw e instanceof Error ? e : new Error("Failed to delete advance.");
     } finally {
       setBusyId(null);
     }
@@ -575,6 +598,9 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
   const sourceWorkerName = sourceWorkerId
     ? workerOptions.find((worker) => worker.id === sourceWorkerId)?.name
     : null;
+
+  if ((loading && rows.length === 0) || readUnavailable)
+    return <LaborReadState title="Worker advances" busy={loading} retry={() => void load()} />;
 
   return (
     <div
@@ -954,7 +980,7 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
                         onOpenWorker={() => router.push(workerDetailHref(row.workerId))}
                         onEdit={() => openEdit(row)}
                         onMarkDeducted={() => handleMarkDeducted(row)}
-                        onDelete={() => handleDelete(row)}
+                        onDelete={() => setDeleteTarget(row)}
                         disabled={busyId === row.id}
                       />
                     </div>
@@ -1136,7 +1162,7 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
                         onOpenWorker={() => router.push(workerDetailHref(row.workerId))}
                         onEdit={() => openEdit(row)}
                         onMarkDeducted={() => handleMarkDeducted(row)}
-                        onDelete={() => handleDelete(row)}
+                        onDelete={() => setDeleteTarget(row)}
                         disabled={busyId === row.id}
                       />
                     </div>
@@ -1175,6 +1201,18 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
         }
         onClose={closeEditor}
         onSave={handleDialogSave}
+      />
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null);
+        }}
+        title="Delete advance?"
+        description={`Delete the advance for ${deleteTarget?.workerName ?? "this worker"}? This cannot be undone.`}
+        confirmLabel="Delete"
+        destructive
+        loading={!!busyId}
+        onConfirm={handleDelete}
       />
     </div>
   );

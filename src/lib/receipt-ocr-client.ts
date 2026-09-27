@@ -705,7 +705,7 @@ export async function runReceiptOcrForImageFile(
   let ocr: ReceiptOcrResult = {
     vendor_name: "Unknown",
     total_amount: 0,
-    purchase_date: new Date().toISOString().slice(0, 10),
+    purchase_date: "",
   };
   let source: OcrSource = "cloud";
   try {
@@ -718,6 +718,7 @@ export async function runReceiptOcrForImageFile(
   } catch {
     source = "manual";
   }
+  if (ocr.ocr_status === "fallback") ocr.purchase_date = "";
   const cloudFailed =
     ocr.ocr_status === "fallback" ||
     ((ocr.vendor_name || "Unknown") === "Unknown" && (Number(ocr.total_amount) || 0) <= 0);

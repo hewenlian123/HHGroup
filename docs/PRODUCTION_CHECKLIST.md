@@ -1,50 +1,33 @@
-# Production checklist (HH Unified Web)
+# Production checklist (HH Group)
 
-## 1. Environment variables (hosting, e.g. Vercel)
+## Existing production target
 
-| Variable                                  | Required                             | Purpose                                                                                                                   |
-| ----------------------------------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------- |
-| `NEXT_PUBLIC_SUPABASE_URL`                | **Yes**                              | Supabase project URL                                                                                                      |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY`           | **Yes**                              | Modern publishable key under the temporary compatibility name; client + cookie-based server reads                         |
-| `SUPABASE_SECRET_KEY`                     | **Yes** for privileged server routes | Preferred modern server-only key for Receipt, worker payment, delete, balance, and other `getServerSupabaseAdmin()` paths |
-| `SUPABASE_SERVICE_ROLE_KEY`               | Temporary fallback                   | Legacy rollback compatibility only; remove after the modern-key observation period                                        |
-| `SUPABASE_DATABASE_URL` or `DATABASE_URL` | Recommended                          | Faster worker balances aggregation (SQL); schema repair scripts                                                           |
+- Vercel project: `hh-group`, team `hhwilliamhe-4916s-projects`; Node 22.
+- Canonical application: https://hhprojectgroup.com.
+- Supabase project: `rzublljldebswurgdqxp`. Local development and mutation tests use a separate local Supabase instance.
+- Preserve the existing `vercel.json` function limits and runtime settings.
 
-Never commit secrets. Copy from Supabase Dashboard → Project Settings.
+## Environment
 
-## 2. Database
+Verify the production Supabase URL, publishable key, server-only `SUPABASE_SECRET_KEY` (legacy `SUPABASE_SERVICE_ROLE_KEY` only as configured fallback), database connection, application URL and authentication secrets without printing values. Production authentication must remain enabled; local automatic-login settings must not reach production. Never commit environment files or credentials.
 
-- Link project: `supabase link`
-- Apply migrations: `npm run db:migrate` (or `supabase db push`)
-- Ensure labor pay columns exist: `labor_entries.worker_payment_id`, `worker_payments`, triggers under `supabase/migrations/` (e.g. `202604201000_*`, `202603211200_*`, repair `202603181200_*`)
+## Local certification
 
-## 3. Build & tests (before deploy)
+Complete the release unit/source/database gates, strict schema preflight, migration order, typecheck, lint, formatting and production build. Run financial concurrency, retry and rollback tests and required browser workflows at 1440×900, 768×1024 and 390×844 against local Supabase. Verify exact test-owned DB, Storage and Auth records are removed, including derived records.
 
-```bash
-npm run clean && npm run build   # if build fails with missing chunk, clean first
-npm test run                     # Vitest
-```
+## Database and deployment
 
-Optional E2E (dev server on `localhost:3000`, real Supabase):
+1. Review the complete release diff and exact migration checksums. Inspect the current production ledger, schema, authorization, data invariants and existing-data compatibility.
+2. Apply only reviewed append-only migrations in order under the authorized release scope. Record the actual remote migration version alongside each source filename and checksum. Do not blindly push migrations, renumber applied source migrations or repair unrelated migration history.
+3. Verify data preservation, RLS, grants, private Storage and financial invariants after migration.
+4. Build and deploy to the existing Vercel production project with its production environment. Do not deploy a prebuilt bundle compiled with local Supabase values. Verify the deployment is ready and existing domains point to it.
 
-```bash
-npm run test:e2e:payment-full-flow   # pay → receipt → delete → rollback (mutations)
-```
+## Read-only production smoke
 
-Set `E2E_WORKER_NAME` to a worker that has unpaid labor if the default name is absent.
+Verify health, login and a legitimate existing session, application shell, Projects, Estimates, Finance, Invoices, Payables, Labor, Contacts and key read APIs at the three supported viewports. Inspect runtime errors, browser console/page errors and private attachment reads as applicable. **Do not create payments, payroll, settlements or other production test fixtures.**
 
-## 4. Deploy
+## Recovery
 
-- **Vercel:** import repo, set env vars above, deploy. Production URL → set `NEXT_PUBLIC_*` to the same Supabase project as staging unless intentionally separate.
-- This repo does not ship a `vercel.json`; defaults are fine for Next.js 14.
+Record the previous ready Vercel deployment before release. If the new application fails, restore the compatible prior application deployment or repair and redeploy according to the failure. Preserve database data and the strengthened security boundary; do not roll back security policies to broad anonymous access or remove new tables/columns to force an application rollback. Use a reviewed forward migration for database defects. Historical release runbooks describe their own releases and do not authorize migration-history rewrites.
 
-## 5. Post-deploy verification (core labor pay)
-
-1. **Worker Balances** → open a worker → **Pay Worker** → submit (payment method filled).
-2. **Receipt** → open payment receipt URL; labor lines present if applicable.
-3. **Delete payment** (payments history) → confirm labor returns to **unpaid** on balance without stale “paid” from `status` alone.
-4. **API smoke:** `GET /api/labor/worker-balances` returns JSON (no 500); requires service role + Supabase.
-
-If pay/delete returns a Supabase server-access configuration error, add the server-only
-Sensitive `SUPABASE_SECRET_KEY` and redeploy the exact reviewed SHA. Use
-`SUPABASE_SERVICE_ROLE_KEY` only as the temporary legacy rollback fallback.
+The dated production completion record contains this release’s actual evidence and final status.

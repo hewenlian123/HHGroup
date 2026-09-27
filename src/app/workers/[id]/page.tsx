@@ -1,13 +1,22 @@
 "use client";
+import { LaborReadState } from "@/components/labor/labor-read-state";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
+import { workerTabHref } from "@/lib/navigation/labor-workspace";
 
 import * as React from "react";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import Link from "next/link";
-import { useParams, useSearchParams } from "next/navigation";
+import { useParams, useSearchParams, usePathname, useRouter } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { getWorkerInvoices, type WorkerInvoice, type WorkerReimbursement } from "@/lib/data";
+import { getWorkerInvoices, type WorkerInvoice } from "@/lib/worker-invoices-db";
+import type { WorkerReimbursement } from "@/lib/worker-reimbursements-db";
 import type { Worker } from "@/lib/labor-db";
 import type { LaborEntryWithJoins } from "@/lib/daily-labor-db";
 import { formatLaborEntrySessionLabel } from "@/lib/daily-labor-db";
@@ -31,7 +40,7 @@ import { cn } from "@/lib/utils";
 import { useBreadcrumbEntityLabel } from "@/contexts/breadcrumb-override-context";
 import { formatDate } from "@/lib/formatters";
 import { workerRateLocalYmd } from "@/lib/worker-rate-date";
-import { encodeWorkerReturnPath, safeWorkerReturnPath } from "@/lib/worker-return-path";
+import { safeWorkerReturnPath } from "@/lib/worker-return-path";
 
 type WorkerRateHistoryView = {
   id: string;
@@ -130,7 +139,10 @@ type WorkerDetailTab =
   | "advances"
   | "payments"
   | "statements"
-  | "rates";
+  | "rates"
+  | "balance"
+  | "reimbursements"
+  | "history";
 
 function fmtUsd(n: number): string {
   return new Intl.NumberFormat("en-US", {
@@ -454,6 +466,10 @@ function QuickActionLink({
 export default function WorkerDashboardPage() {
   const params = useParams();
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  const readGeneration = React.useRef(0);
+  const [readBusy, setReadBusy] = React.useState(true);
   const id = params?.id as string | undefined;
 
   const [worker, setWorker] = React.useState<Worker | null | undefined>(undefined);
@@ -472,13 +488,6 @@ export default function WorkerDashboardPage() {
   const [rateApplyPreview, setRateApplyPreview] = React.useState<RateApplyPreview | null>(null);
   const [rateApplyBusy, setRateApplyBusy] = React.useState(false);
 
-  const [financialSummary, setFinancialSummary] = React.useState<{
-    totalLabor: number;
-    totalReimbursements: number;
-    totalWorkerInvoices: number;
-    totalPayments: number;
-    balance: number;
-  } | null>(null);
   const [balanceDetail, setBalanceDetail] = React.useState<WorkerBalanceDetail | null>(null);
   const [advances, setAdvances] = React.useState<WorkerAdvanceRow[]>([]);
   const [receipts, setReceipts] = React.useState<WorkerReceiptRow[]>([]);
@@ -496,114 +505,82 @@ export default function WorkerDashboardPage() {
 
   const refreshAll = React.useCallback(async () => {
     if (!id) return;
-    const workerResponse = await fetch(`/api/labor/workers/${id}`, { cache: "no-store" }).catch(
-      () => null
-    );
-    const workerJson = workerResponse?.ok
-      ? ((await workerResponse.json().catch(() => null)) as {
-          worker?: Worker & {
-            currentDailyRateEffectiveFrom?: string | null;
-            rateHistory?: WorkerRateHistoryView[];
-          };
-          usage?: { used: boolean; reason?: "entries" | "invoices" };
-          rateHistory?: WorkerRateHistoryView[];
-        } | null)
-      : null;
-    const w = workerJson?.worker ?? null;
-    setWorker(w);
-    const history = workerJson?.rateHistory ?? w?.rateHistory ?? [];
-    setRateHistory(history);
-    if (w) {
+    const generation = ++readGeneration.current;
+    setReadBusy(true);
+    setDetailMessage(null);
+    setBalanceDetail(null);
+    const read = async <T,>(path: string): Promise<T> => {
+      const response = await fetch(path, { cache: "no-store" });
+      if (!response.ok) throw new Error("Worker records unavailable.");
+      return response.json() as Promise<T>;
+    };
+    try {
+      const workerResponse = await fetch(`/api/labor/workers/${id}`, { cache: "no-store" });
+      if (generation !== readGeneration.current) return;
+      if (workerResponse.status === 404) {
+        setWorker(null);
+        return;
+      }
+      if (!workerResponse.ok) throw new Error("Worker profile unavailable.");
+      const workerJson = (await workerResponse.json()) as {
+        worker: Worker;
+        rateHistory?: WorkerRateHistoryView[];
+      };
+      const w = workerJson.worker;
+      if (!w?.id) throw new Error("Worker profile unavailable.");
+      if (generation !== readGeneration.current) return;
+      setWorker(w);
+      const [
+        entriesJson,
+        balanceJson,
+        advancesJson,
+        receiptsJson,
+        reimbursementsJson,
+        invoicesAll,
+      ] = await Promise.all([
+        read<{ entries: LaborEntryWithJoins[] }>(
+          `/api/labor/entries?view=joined&workerId=${encodeURIComponent(id)}`
+        ),
+        read<WorkerBalanceDetail>(`/api/labor/workers/${id}/balance`),
+        read<{ advances: WorkerAdvanceRow[] }>(
+          `/api/labor/advances?workerId=${encodeURIComponent(id)}&status=active`
+        ),
+        read<{ receipts: WorkerReceiptRow[] }>("/api/worker-receipts"),
+        read<{ reimbursements: WorkerReimbursement[] }>(
+          `/api/worker-reimbursements/ledger/${encodeURIComponent(id)}`
+        ),
+        getWorkerInvoices(),
+      ]);
+      if (generation !== readGeneration.current) return;
+      if (
+        !balanceJson.summary ||
+        !Array.isArray(entriesJson.entries) ||
+        !Array.isArray(balanceJson.payments) ||
+        !Array.isArray(advancesJson.advances) ||
+        !Array.isArray(receiptsJson.receipts) ||
+        !Array.isArray(reimbursementsJson.reimbursements)
+      )
+        throw new Error("Worker records unavailable.");
+      const ledger = entriesJson.entries;
+      const invoicesAllForWorker = invoicesAll.filter((invoice) => invoice.workerId === id);
+      setLaborLedgerEntries(ledger);
+      setBalanceDetail(balanceJson);
+      setAdvances(advancesJson.advances);
+      setReceipts(
+        receiptsJson.receipts.filter(
+          (r) =>
+            r.workerId === id ||
+            (!r.workerId && r.workerName.trim().toLowerCase() === w.name.trim().toLowerCase())
+        )
+      );
+      setReimbursementLedger(reimbursementsJson.reimbursements);
+      setWorkerInvoices(invoicesAllForWorker);
+      setRateHistory(workerJson.rateHistory ?? []);
       setRateDaily(String(Number(w.dailyRate ?? w.halfDayRate ?? 0) || ""));
       setRateEffectiveFrom(todayYmd());
       setRateNotes("");
       setRateReplaceFutureRates(true);
       setRateMessage(null);
-    }
-    if (w) {
-      setDetailMessage(null);
-      const ledgerResponse = await fetch(
-        `/api/labor/entries?view=joined&workerId=${encodeURIComponent(id)}`,
-        { cache: "no-store" }
-      ).catch(() => null);
-      const ledgerJson = ledgerResponse?.ok
-        ? ((await ledgerResponse.json().catch(() => null)) as {
-            entries?: LaborEntryWithJoins[];
-          } | null)
-        : null;
-      const ledger = ledgerJson?.entries ?? [];
-      setLaborLedgerEntries(ledger);
-
-      let balanceJson: WorkerBalanceDetail | null = null;
-      let invoicesAllForWorker: WorkerInvoice[] = [];
-      try {
-        const [balanceResponse, advancesResponse, receiptsResponse, ledgerResponse, invoicesAll] =
-          await Promise.all([
-            fetch(`/api/labor/workers/${id}/balance`, { cache: "no-store" }).catch(() => null),
-            fetch(`/api/labor/advances?workerId=${encodeURIComponent(id)}&status=active`, {
-              cache: "no-store",
-            }).catch(() => null),
-            fetch("/api/worker-receipts", { cache: "no-store" }).catch(() => null),
-            fetch(`/api/worker-reimbursements/ledger/${encodeURIComponent(id)}`, {
-              cache: "no-store",
-            }).catch(() => null),
-            getWorkerInvoices().catch(() => [] as WorkerInvoice[]),
-          ]);
-
-        balanceJson = balanceResponse?.ok
-          ? ((await balanceResponse.json().catch(() => null)) as WorkerBalanceDetail | null)
-          : null;
-        setBalanceDetail(balanceJson);
-
-        const advancesJson = advancesResponse?.ok
-          ? ((await advancesResponse.json().catch(() => null)) as {
-              advances?: WorkerAdvanceRow[];
-            } | null)
-          : null;
-        setAdvances(advancesJson?.advances ?? []);
-
-        const receiptsJson = receiptsResponse?.ok
-          ? ((await receiptsResponse.json().catch(() => null)) as {
-              receipts?: WorkerReceiptRow[];
-            } | null)
-          : null;
-        const workerName = w.name.trim().toLowerCase();
-        setReceipts(
-          (receiptsJson?.receipts ?? []).filter(
-            (r) =>
-              r.workerId === id || (!r.workerId && r.workerName.trim().toLowerCase() === workerName)
-          )
-        );
-
-        const ledgerJson = ledgerResponse?.ok
-          ? ((await ledgerResponse.json().catch(() => null)) as {
-              reimbursements?: WorkerReimbursement[];
-            } | null)
-          : null;
-        setReimbursementLedger(ledgerJson?.reimbursements ?? []);
-
-        invoicesAllForWorker = invoicesAll.filter((invoice) => invoice.workerId === id);
-        setWorkerInvoices(invoicesAllForWorker);
-      } catch (e) {
-        setBalanceDetail(null);
-        setAdvances([]);
-        setReceipts([]);
-        setReimbursementLedger([]);
-        setWorkerInvoices([]);
-        setDetailMessage(
-          e instanceof Error ? e.message : "Some worker detail data failed to load."
-        );
-      }
-
-      try {
-        const r = await fetch(`/api/labor/workers/${id}/financial-summary`);
-        const data = r.ok ? await r.json() : null;
-        if (data && typeof data.totalLabor === "number") setFinancialSummary(data);
-        else setFinancialSummary(null);
-      } catch {
-        setFinancialSummary(null);
-      }
-
       const start = new Date();
       start.setDate(1);
       const from = ymdLocal(start);
@@ -632,16 +609,18 @@ export default function WorkerDashboardPage() {
       } catch {
         setMonthly(null);
       }
-    } else {
-      setFinancialSummary(null);
+    } catch (error) {
+      if (generation !== readGeneration.current) return;
+      setDetailMessage(error instanceof Error ? error.message : "Worker records unavailable.");
+      setBalanceDetail(null);
       setMonthly(null);
       setLaborLedgerEntries(null);
-      setRateHistory([]);
-      setBalanceDetail(null);
       setAdvances([]);
       setReceipts([]);
       setReimbursementLedger([]);
       setWorkerInvoices([]);
+    } finally {
+      if (generation === readGeneration.current) setReadBusy(false);
     }
   }, [id]);
 
@@ -661,7 +640,18 @@ export default function WorkerDashboardPage() {
   const activeTab = React.useMemo<WorkerDetailTab>(() => {
     const raw = searchParams.get("tab") as WorkerDetailTab | null;
     return raw &&
-      ["overview", "work", "receipts", "advances", "payments", "statements", "rates"].includes(raw)
+      [
+        "overview",
+        "work",
+        "receipts",
+        "advances",
+        "payments",
+        "statements",
+        "rates",
+        "balance",
+        "reimbursements",
+        "history",
+      ].includes(raw)
       ? raw
       : "overview";
   }, [searchParams]);
@@ -700,13 +690,7 @@ export default function WorkerDashboardPage() {
       );
   }, [laborLedgerEntries, weekRange, worker?.dailyRate, worker?.halfDayRate]);
 
-  const balanceSummary = balanceDetail?.summary ?? {
-    laborOwed: financialSummary?.balance ?? 0,
-    reimbursements: 0,
-    payments: financialSummary?.totalPayments ?? 0,
-    advances: 0,
-    balance: financialSummary?.balance ?? 0,
-  };
+  const balanceSummary = balanceDetail?.summary;
 
   const lastPayment = React.useMemo(() => {
     const payments = balanceDetail?.payments ?? [];
@@ -896,7 +880,7 @@ export default function WorkerDashboardPage() {
     );
   }
 
-  if (worker === undefined) {
+  if (worker === undefined && !detailMessage) {
     return (
       <div className="mx-auto flex w-full max-w-[430px] sm:max-w-[460px] flex-col gap-6 px-4 py-6 md:max-w-5xl md:p-6">
         <p className="text-muted-foreground">Loading…</p>
@@ -921,6 +905,20 @@ export default function WorkerDashboardPage() {
       </div>
     );
   }
+
+  if (readBusy || detailMessage || !balanceSummary || !worker || worker.id !== id)
+    return (
+      <div className="page-container py-6">
+        <PageHeader
+          title={worker?.id === id ? worker.name : "Worker"}
+          description={worker?.id === id ? `Status: ${worker.status}` : "Worker workspace"}
+        />
+        <Button asChild variant="outline" className="min-h-11">
+          <Link href={returnToPath || "/workers"}>Back to Workers</Link>
+        </Button>
+        <LaborReadState title="Worker records" busy={readBusy} retry={() => void refreshAll()} />
+      </div>
+    );
 
   const effectiveSince =
     (worker as Worker & { currentDailyRateEffectiveFrom?: string | null })
@@ -958,7 +956,7 @@ export default function WorkerDashboardPage() {
     <div className="mx-auto flex w-full max-w-[430px] flex-col gap-4 overflow-x-hidden px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom,0px))] sm:max-w-[460px] md:max-w-6xl md:gap-5 md:p-6">
       <PageHeader
         title={worker.name}
-        description="Worker Center detail — work, receipts, advances, payments, statements, and rate history."
+        description={`Status: ${worker.status}${searchParams.get("projectId") || searchParams.get("project_id") ? ` · Project: ${(laborLedgerEntries ?? []).find((entry) => entry.project_id === (searchParams.get("projectId") ?? searchParams.get("project_id")))?.project_name ?? searchParams.get("projectId") ?? searchParams.get("project_id")}` : ""}`}
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <Link href={returnToPath || "/workers"}>
@@ -1010,58 +1008,148 @@ export default function WorkerDashboardPage() {
         />
       </div>
 
-      <div className="flex gap-2 overflow-x-auto pb-1">
+      <div className="flex flex-wrap gap-2 pb-1">
         <QuickActionLink
-          href={`/labor?workerId=${encodeURIComponent(id)}&addDaily=1`}
+          href={`/labor?workerId=${encodeURIComponent(id)}&addDaily=1&project_id=${encodeURIComponent(searchParams.get("projectId") ?? searchParams.get("project_id") ?? "")}&returnTo=${encodeURIComponent(workerTabHref(pathname, searchParams.toString(), "work"))}`}
           icon={CalendarPlus}
         >
           Add Time Entry
         </QuickActionLink>
         <QuickActionLink
-          href={`/upload-receipt?workerId=${encodeURIComponent(id)}&returnTo=${encodeWorkerReturnPath(id, "receipts")}`}
+          href={`/upload-receipt?workerId=${encodeURIComponent(id)}&returnTo=${encodeURIComponent(workerTabHref(pathname, searchParams.toString(), "receipts"))}`}
           icon={Upload}
         >
           Upload Worker Receipt
         </QuickActionLink>
         <QuickActionLink
-          href={`/labor/reimbursements?workerId=${encodeURIComponent(id)}&new=1&returnTo=${encodeWorkerReturnPath(id, "receipts")}`}
+          href={`/labor/reimbursements?workerId=${encodeURIComponent(id)}&new=1&returnTo=${encodeURIComponent(workerTabHref(pathname, searchParams.toString(), "reimbursements"))}`}
           icon={ReceiptText}
         >
           Add Reimbursement
         </QuickActionLink>
         <QuickActionLink
-          href={`/labor/advances?workerId=${encodeURIComponent(id)}&new=1&returnTo=${encodeWorkerReturnPath(id, "advances")}`}
+          href={`/labor/advances?workerId=${encodeURIComponent(id)}&new=1&returnTo=${encodeURIComponent(workerTabHref(pathname, searchParams.toString(), "advances"))}`}
           icon={HandCoins}
         >
           Add Advance
         </QuickActionLink>
         <QuickActionLink
-          href={`/labor/workers/${encodeURIComponent(id)}/balance?returnTo=${encodeWorkerReturnPath(id, "payments")}`}
+          href={`/labor/workers/${encodeURIComponent(id)}/balance?returnTo=${encodeURIComponent(workerTabHref(pathname, searchParams.toString(), "payments"))}`}
           icon={WalletCards}
           primary
         >
           Pay Worker
         </QuickActionLink>
         <QuickActionLink
-          href={`/workers/${encodeURIComponent(id)}/statement?returnTo=${encodeWorkerReturnPath(id, "statements")}`}
+          href={`/workers/${encodeURIComponent(id)}/statement?returnTo=${encodeURIComponent(workerTabHref(pathname, searchParams.toString(), "statements"))}`}
           icon={FileText}
         >
           Create Statement
         </QuickActionLink>
       </div>
 
-      <Tabs defaultValue={activeTab} className="min-w-0">
-        <div className="overflow-x-auto pb-1">
-          <TabsList className="min-w-max">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="work">Work</TabsTrigger>
-            <TabsTrigger value="receipts">Receipts & Reimbursements</TabsTrigger>
-            <TabsTrigger value="advances">Advances</TabsTrigger>
-            <TabsTrigger value="payments">Payments</TabsTrigger>
-            <TabsTrigger value="statements">Statements</TabsTrigger>
-            <TabsTrigger value="rates">Rate History</TabsTrigger>
+      <Tabs
+        value={activeTab}
+        onValueChange={(tab) =>
+          router.push(workerTabHref(pathname, searchParams.toString(), tab), { scroll: false })
+        }
+        className="min-w-0"
+      >
+        <div className="flex min-w-0 flex-wrap items-center gap-1" data-worker-tabs>
+          <TabsList className="h-auto flex-wrap gap-2 border-none">
+            {(
+              [
+                { value: "overview", label: "Overview" },
+                { value: "work", label: "Time" },
+                { value: "balance", label: "Balance" },
+                { value: "payments", label: "Payments" },
+                { value: "advances", label: "Advances" },
+                { value: "reimbursements", label: "Reimbursements" },
+                { value: "receipts", label: "Receipts" },
+                { value: "history", label: "History" },
+              ] as const
+            ).map((item) => (
+              <TabsTrigger
+                key={item.value}
+                value={item.value}
+                className={`min-h-11 ${["work", "payments", "reimbursements"].includes(item.value) ? "" : "hidden md:inline-flex"}`}
+              >
+                {item.label}
+              </TabsTrigger>
+            ))}
           </TabsList>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="min-h-11" aria-label="More worker sections">
+                More
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {(
+                [
+                  { value: "overview", label: "Overview" },
+                  { value: "balance", label: "Balance" },
+                  { value: "advances", label: "Advances" },
+                  { value: "receipts", label: "Receipts" },
+                  { value: "history", label: "History" },
+                  { value: "statements", label: "Statements" },
+                  { value: "rates", label: "Rate History" },
+                ] as const
+              ).map((item) => (
+                <DropdownMenuItem
+                  key={item.value}
+                  className="min-h-11"
+                  onSelect={() =>
+                    router.push(workerTabHref(pathname, searchParams.toString(), item.value), {
+                      scroll: false,
+                    })
+                  }
+                >
+                  {item.label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
+        <TabsContent value="balance">
+          <DetailSection
+            title="Balance"
+            description="Current worker balance across all projects, from the existing settlement ledger."
+          >
+            <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+              <SummaryTile label="Unpaid Labor" value={fmtUsd(balanceSummary.laborOwed)} />
+              <SummaryTile label="Reimbursements" value={fmtUsd(balanceSummary.reimbursements)} />
+              <SummaryTile label="Advances" value={fmtUsd(balanceSummary.advances)} />
+              <SummaryTile label="Net To Pay" value={fmtUsd(balanceSummary.balance)} />
+            </div>
+            <Button asChild className="mt-3 min-h-11">
+              <Link
+                href={`/labor/workers/${id}/balance?returnTo=${encodeURIComponent(workerTabHref(pathname, searchParams.toString(), "balance"))}`}
+              >
+                Review balance / Pay Worker
+              </Link>
+            </Button>
+          </DetailSection>
+        </TabsContent>
+        <TabsContent value="history">
+          <DetailSection
+            title="History"
+            description="Existing worker statements and effective pay rates."
+          >
+            <div className="flex flex-wrap gap-2">
+              <Button asChild variant="outline" className="min-h-11">
+                <Link href={workerTabHref(pathname, searchParams.toString(), "statements")}>
+                  Statements
+                </Link>
+              </Button>
+              <Button asChild variant="outline" className="min-h-11">
+                <Link href={workerTabHref(pathname, searchParams.toString(), "rates")}>
+                  Rate History
+                </Link>
+              </Button>
+            </div>
+          </DetailSection>
+        </TabsContent>
 
         <TabsContent value="overview" className="space-y-4">
           <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.42fr)]">
@@ -1230,7 +1318,9 @@ export default function WorkerDashboardPage() {
                     </p>
                   </div>
                   <Button asChild size="sm" className="h-9 rounded-hh-compact">
-                    <Link href={`/labor?workerId=${encodeURIComponent(id)}&addDaily=1`}>
+                    <Link
+                      href={`/labor?workerId=${encodeURIComponent(id)}&addDaily=1&project_id=${encodeURIComponent(searchParams.get("projectId") ?? searchParams.get("project_id") ?? "")}&returnTo=${encodeURIComponent(workerTabHref(pathname, searchParams.toString(), "work"))}`}
+                    >
                       Add Time Entry
                     </Link>
                   </Button>
@@ -1487,7 +1577,9 @@ export default function WorkerDashboardPage() {
               </div>
             )}
           </DetailSection>
+        </TabsContent>
 
+        <TabsContent value="reimbursements" className="space-y-4">
           <DetailSection
             title="Reimbursements"
             description="Full worker reimbursement ledger. Net-to-pay still uses open items only."
@@ -1704,10 +1796,18 @@ export default function WorkerDashboardPage() {
           >
             <div className="mb-4 flex flex-wrap gap-2">
               <Button asChild size="sm" className="h-9 rounded-hh-compact">
-                <Link href={`/workers/${id}/statement`}>Create Statement</Link>
+                <Link
+                  href={`/workers/${encodeURIComponent(id)}/statement?returnTo=${encodeURIComponent(workerTabHref(pathname, searchParams.toString(), "statements"))}`}
+                >
+                  Create Statement
+                </Link>
               </Button>
               <Button asChild size="sm" variant="outline" className="h-9 rounded-hh-compact">
-                <Link href={`/worker/${id}/monthly-report`}>Monthly Payroll Statement</Link>
+                <Link
+                  href={`/worker/${encodeURIComponent(id)}/monthly-report?returnTo=${encodeURIComponent(workerTabHref(pathname, searchParams.toString(), "statements"))}`}
+                >
+                  Monthly Payroll Statement
+                </Link>
               </Button>
             </div>
             {workerInvoices.length === 0 ? (
@@ -1954,38 +2054,71 @@ export default function WorkerDashboardPage() {
             {rateHistory.length === 0 ? (
               <EmptyPanel>No daily rate history yet.</EmptyPanel>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[460px] border-collapse text-sm table-row-compact">
-                  <thead>
-                    <tr className="border-b border-border/60">
-                      <th className="px-2 py-2 text-left text-xs font-medium uppercase tracking-normal text-muted-foreground">
-                        Rate
-                      </th>
-                      <th className="px-2 py-2 text-left text-xs font-medium uppercase tracking-normal text-muted-foreground">
-                        Effective
-                      </th>
-                      <th className="px-2 py-2 text-left text-xs font-medium uppercase tracking-normal text-muted-foreground">
-                        Note
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rateHistory.map((row) => (
-                      <tr key={row.id} className="border-b border-border/40">
-                        <td className="px-2 py-1.5 font-medium tabular-nums">
+              <>
+                <div className="space-y-2 md:hidden" data-testid="worker-rate-history-mobile">
+                  {rateHistory.map((row) => (
+                    <dl
+                      key={row.id}
+                      className="rounded-hh-compact border border-border/60 bg-background/80 px-3 py-2.5 text-sm"
+                    >
+                      <div className="flex items-baseline justify-between gap-3">
+                        <dt className="text-hh-table-header font-semibold uppercase tracking-normal text-muted-foreground">
+                          Daily rate
+                        </dt>
+                        <dd className="font-medium tabular-nums text-foreground">
                           {fmtUsd(row.dailyRate)} / day
-                        </td>
-                        <td className="px-2 py-1.5 tabular-nums text-muted-foreground">
-                          {fmtRateRange(row)}
-                        </td>
-                        <td className="px-2 py-1.5 text-muted-foreground">
+                        </dd>
+                      </div>
+                      <div className="mt-2 grid gap-1">
+                        <dt className="text-hh-table-header font-semibold uppercase tracking-normal text-muted-foreground">
+                          Effective
+                        </dt>
+                        <dd className="tabular-nums text-muted-foreground">{fmtRateRange(row)}</dd>
+                      </div>
+                      <div className="mt-2 grid gap-1">
+                        <dt className="text-hh-table-header font-semibold uppercase tracking-normal text-muted-foreground">
+                          Note
+                        </dt>
+                        <dd className="break-words text-muted-foreground">
                           {row.notes?.trim() ? row.notes : "—"}
-                        </td>
+                        </dd>
+                      </div>
+                    </dl>
+                  ))}
+                </div>
+                <div className="hidden overflow-x-auto md:block">
+                  <table className="w-full min-w-[460px] border-collapse text-sm table-row-compact">
+                    <thead>
+                      <tr className="border-b border-border/60">
+                        <th className="px-2 py-2 text-left text-xs font-medium uppercase tracking-normal text-muted-foreground">
+                          Rate
+                        </th>
+                        <th className="px-2 py-2 text-left text-xs font-medium uppercase tracking-normal text-muted-foreground">
+                          Effective
+                        </th>
+                        <th className="px-2 py-2 text-left text-xs font-medium uppercase tracking-normal text-muted-foreground">
+                          Note
+                        </th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {rateHistory.map((row) => (
+                        <tr key={row.id} className="border-b border-border/40">
+                          <td className="px-2 py-1.5 font-medium tabular-nums">
+                            {fmtUsd(row.dailyRate)} / day
+                          </td>
+                          <td className="px-2 py-1.5 tabular-nums text-muted-foreground">
+                            {fmtRateRange(row)}
+                          </td>
+                          <td className="px-2 py-1.5 text-muted-foreground">
+                            {row.notes?.trim() ? row.notes : "—"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             )}
           </DetailSection>
         </TabsContent>

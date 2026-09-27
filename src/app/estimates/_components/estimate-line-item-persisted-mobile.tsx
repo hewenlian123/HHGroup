@@ -4,16 +4,15 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import type { EstimateItemRow } from "@/lib/data";
 import {
-  combineLineItemDesc,
   editorLineTotalFromParts,
   rowToEditorLineItem,
-  splitLineItemDesc,
   type EditorLineItem,
 } from "./estimate-line-item-model";
 import { EstimateLineItemMobileCard } from "./estimate-line-item-mobile-card";
 import { formatEstimateCurrency, roundEstimateCurrencyValue } from "./estimate-currency";
 import { setLineItemStatusAction, toggleLineItemHideAmountOnPdfAction } from "../[id]/actions";
 import { useEstimateDocumentSave } from "./estimate-document-save-context";
+import { createEstimateSerialMutationQueue } from "./estimate-mutation-coordinator";
 import { useToast } from "@/components/toast/toast-provider";
 
 type LineItemMutationResult = { ok: boolean; itemId?: string; error?: string };
@@ -63,21 +62,34 @@ export function EstimateLineItemPersistedMobile({
   const router = useRouter();
   const { toast } = useToast();
   const { markUnsaved, trackMutation } = useEstimateDocumentSave();
-  const split = splitLineItemDesc(row.desc ?? "");
-  const [title, setTitle] = React.useState(split.title);
-  const [description, setDescription] = React.useState(split.description);
+  const [title, setTitle] = React.useState(row.itemName ?? "");
+  const [description, setDescription] = React.useState(row.desc ?? "");
   const [qty, setQty] = React.useState(row.qty);
   const [unit, setUnit] = React.useState(row.unit);
   const [unitPrice, setUnitPrice] = React.useState(roundEstimateCurrencyValue(row.unitCost));
+  const draftRef = React.useRef({
+    title: row.itemName ?? "",
+    description: row.desc ?? "",
+    qty: row.qty,
+    unit: row.unit,
+    unitPrice: roundEstimateCurrencyValue(row.unitCost),
+  });
+  const lineSaveQueueRef = React.useRef(createEstimateSerialMutationQueue());
 
   React.useEffect(() => {
-    const s = splitLineItemDesc(row.desc ?? "");
-    setTitle(s.title);
-    setDescription(s.description);
+    draftRef.current = {
+      title: row.itemName ?? "",
+      description: row.desc ?? "",
+      qty: row.qty,
+      unit: row.unit,
+      unitPrice: roundEstimateCurrencyValue(row.unitCost),
+    };
+    setTitle(row.itemName ?? "");
+    setDescription(row.desc ?? "");
     setQty(row.qty);
     setUnit(row.unit);
     setUnitPrice(roundEstimateCurrencyValue(row.unitCost));
-  }, [row.id, row.desc, row.qty, row.unit, row.unitCost]);
+  }, [row.id, row.itemName, row.desc, row.qty, row.unit, row.unitCost]);
 
   const item: EditorLineItem = React.useMemo(
     () => ({
@@ -96,24 +108,26 @@ export function EstimateLineItemPersistedMobile({
 
   const submitUpdate = (): void => {
     if (isReadOnly) return;
+    const draft = draftRef.current;
     const formData = new FormData();
     formData.set("estimateId", estimateId);
     formData.set("itemId", row.id);
-    formData.set("desc", combinedDesc);
-    formData.set("qty", String(qty));
-    formData.set("unit", unit);
-    formData.set("unitCost", String(unitPrice));
-    void trackMutation(`line:update:${row.id}`, () => updateLineItemAction(formData)).then(
-      (result) => {
-        if (!result.ok) {
-          toast({
-            title: "Save failed",
-            description: result.error ?? "Could not save this line item.",
-            variant: "error",
-          });
-        }
+    formData.set("itemName", draft.title);
+    formData.set("desc", draft.description);
+    formData.set("qty", String(draft.qty));
+    formData.set("unit", draft.unit);
+    formData.set("unitCost", String(draft.unitPrice));
+    void trackMutation(`line:update:${row.id}`, () =>
+      lineSaveQueueRef.current.enqueue(() => updateLineItemAction(formData))
+    ).then((result) => {
+      if (!result.ok) {
+        toast({
+          title: "Save failed",
+          description: result.error ?? "Could not save this line item.",
+          variant: "error",
+        });
       }
-    );
+    });
   };
 
   const runLineAction = async (
@@ -139,7 +153,6 @@ export function EstimateLineItemPersistedMobile({
     });
   };
 
-  const combinedDesc = combineLineItemDesc(title, description);
   const liveTotal = formatEstimateCurrency(editorLineTotalFromParts(qty, unitPrice));
 
   if (isReadOnly) {
@@ -161,6 +174,7 @@ export function EstimateLineItemPersistedMobile({
         isLastRow={isLastRow}
         onChange={(patch) => {
           markUnsaved();
+          draftRef.current = { ...draftRef.current, ...patch };
           if (patch.title !== undefined) setTitle(patch.title);
           if (patch.description !== undefined) setDescription(patch.description);
           if (patch.qty !== undefined) setQty(patch.qty);

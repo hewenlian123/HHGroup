@@ -502,7 +502,7 @@ export function receiptQueuePaymentAccountTrigger(queueRow: Locator): Locator {
  * Payment account control: Quick expense / edit / inbox use Radix
  * `<button id="quick-expense-payment-select|edit-expense-payment-select" role="combobox">`.
  */
-export function dialogPaymentAccountSelect(dialog: Locator, _page: Page): Locator {
+export function dialogPaymentAccountSelect(dialog: Locator): Locator {
   return dialog
     .locator("#quick-expense-payment-select")
     .or(dialog.locator("#edit-expense-payment-select"));

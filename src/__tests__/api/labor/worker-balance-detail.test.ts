@@ -11,6 +11,8 @@ function createBalanceMock(
     payments?: unknown[];
     advances?: unknown[];
     projects?: unknown[];
+    failedTable?: string;
+    missingTable?: string;
   } = {}
 ) {
   const worker = overrides.hasOwnProperty("worker")
@@ -22,16 +24,24 @@ function createBalanceMock(
   const advances = overrides.advances ?? [];
   const projects = overrides.projects ?? [{ id: "p1", name: "Project 1" }];
 
+  let activeTable = "";
+  const result = <T>(data: T) => ({
+    data:
+      activeTable === overrides.failedTable || activeTable === overrides.missingTable ? null : data,
+    error: activeTable === overrides.failedTable ? { message: "permission denied" } : null,
+  });
   const thenable = <T>(data: T) => ({
-    then: (resolve: (v: { data: T; error: null }) => void) => {
-      queueMicrotask(() => resolve({ data, error: null }));
-      return Promise.resolve({ data, error: null });
+    then: (resolve: (v: ReturnType<typeof result<T>>) => void) => {
+      const value = result(data);
+      queueMicrotask(() => resolve(value));
+      return Promise.resolve(value);
     },
   });
 
-  const resolved = <T>(data: T) => Promise.resolve({ data, error: null as null });
+  const resolved = <T>(data: T) => Promise.resolve(result(data));
 
   const from = (table: string) => {
+    activeTable = table;
     if (table === "labor_workers") {
       const row = worker === null ? null : { id: worker.id, name: worker.name };
       return {
@@ -64,7 +74,25 @@ function createBalanceMock(
       return { select: () => ({ eq: () => ({ order: () => thenable(reimb) }) }) };
     }
     if (table === "worker_payments") {
-      return { select: () => ({ eq: () => ({ order: () => thenable(payments) }) }) };
+      return {
+        select: (cols: string) => ({
+          eq: () => ({
+            order: () =>
+              thenable(
+                payments.map((row) =>
+                  Object.fromEntries(
+                    Object.entries(row as Record<string, unknown>).filter(([key]) =>
+                      cols
+                        .split(",")
+                        .map((c) => c.trim())
+                        .includes(key)
+                    )
+                  )
+                )
+              ),
+          }),
+        }),
+      };
     }
     if (table === "worker_advances") {
       return { select: () => ({ eq: () => ({ order: () => thenable(advances) }) }) };
@@ -280,4 +308,93 @@ describe("GET /api/labor/workers/[id]/balance", () => {
     });
     expect(json.laborEntries).toEqual([]);
   });
+});
+
+describe("worker detail failure semantics", () => {
+  it.each([
+    "labor_workers",
+    "workers",
+    "labor_entries",
+    "worker_payments",
+    "worker_reimbursements",
+    "worker_advances",
+    "projects",
+  ])("does not publish a summary after %s permission failure", async (failedTable) => {
+    mockSupabaseGetter = () => createBalanceMock("w1", { failedTable });
+    const { GET } = await import("@/app/api/labor/workers/[id]/balance/route");
+    const res = await GET(new Request("http://x"), { params: Promise.resolve({ id: "w1" }) });
+    expect(res.status).toBe(500);
+    expect(await res.json()).not.toHaveProperty("summary");
+  });
+  it.each([
+    "labor_entries",
+    "worker_payments",
+    "worker_reimbursements",
+    "worker_advances",
+    "projects",
+  ])("does not publish a summary when %s is unavailable", async (missingTable) => {
+    mockSupabaseGetter = () => createBalanceMock("w1", { missingTable });
+    const { GET } = await import("@/app/api/labor/workers/[id]/balance/route");
+    const res = await GET(new Request("http://x"), { params: Promise.resolve({ id: "w1" }) });
+    expect(res.status).toBe(500);
+    expect(await res.json()).not.toHaveProperty("summary");
+  });
+  it("keeps successful empty sources as valid zero", async () => {
+    mockSupabaseGetter = () => createBalanceMock("w1", { projects: [] });
+    const { GET } = await import("@/app/api/labor/workers/[id]/balance/route");
+    const res = await GET(new Request("http://x"), { params: Promise.resolve({ id: "w1" }) });
+    expect(res.status).toBe(200);
+    expect((await res.json()).summary).toEqual({
+      laborOwed: 0,
+      reimbursements: 0,
+      payments: 0,
+      advances: 0,
+      balance: 0,
+    });
+  });
+});
+
+it("displays the recorded payment date instead of the creation date", async () => {
+  mockSupabaseGetter = () =>
+    createBalanceMock("w1", {
+      payments: [
+        {
+          id: "p1",
+          worker_id: "w1",
+          total_amount: 50,
+          payment_date: "2026-01-02",
+          created_at: "2026-02-03T12:00:00Z",
+        },
+      ],
+    });
+  const { GET } = await import("@/app/api/labor/workers/[id]/balance/route");
+  const res = await GET(new Request("http://x"), { params: Promise.resolve({ id: "w1" }) });
+  expect((await res.json()).payments[0].date).toBe("2026-01-02");
+});
+
+describe("secondary worker financial-summary availability", () => {
+  it.each(["labor_entries", "worker_reimbursements", "worker_invoices", "worker_payments", null])(
+    "handles %s failure without a zero summary",
+    async (failedTable) => {
+      const { createClient } = await import("@supabase/supabase-js");
+      const client = createClient("http://127.0.0.1:54321", "unit-test", {
+        auth: { persistSession: false, autoRefreshToken: false },
+        global: {
+          fetch: async (input) => {
+            const failed = new URL(String(input)).pathname.endsWith("/" + failedTable);
+            return new Response(
+              JSON.stringify(failed ? { code: "42501", message: "permission denied" } : []),
+              { status: failed ? 403 : 200, headers: { "content-type": "application/json" } }
+            );
+          },
+        },
+      });
+      mockSupabaseGetter = () => client as unknown as ReturnType<typeof createBalanceMock>;
+      const { GET } = await import("@/app/api/labor/workers/[id]/financial-summary/route");
+      const res = await GET(new Request("http://x"), { params: Promise.resolve({ id: "w1" }) });
+      expect(res.status).toBe(failedTable ? 500 : 200);
+      if (failedTable) expect(await res.json()).not.toHaveProperty("balance");
+      else expect((await res.json()).balance).toBe(0);
+    }
+  );
 });

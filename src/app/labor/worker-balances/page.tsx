@@ -1,4 +1,5 @@
 "use client";
+import { LaborReadState } from "@/components/labor/labor-read-state";
 
 import * as React from "react";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
@@ -94,6 +95,7 @@ function BalanceStatusChip({ balance }: { balance: number }) {
 export default function WorkerBalancesPage() {
   const pathname = usePathname();
   const [rows, setRows] = React.useState<WorkerBalanceRow[]>([]);
+  const [readUnavailable, setReadUnavailable] = React.useState(false);
   const [initialLoading, setInitialLoading] = React.useState(true);
   const [refreshing, setRefreshing] = React.useState(false);
   const firstLoadRef = React.useRef(true);
@@ -116,17 +118,20 @@ export default function WorkerBalancesPage() {
     if (firstLoadRef.current) setInitialLoading(true);
     else setRefreshing(true);
     setMessage(null);
+    setReadUnavailable(false);
     try {
       const res = await fetch(`/api/labor/worker-balances?t=${Date.now()}`, {
         cache: "no-store",
         headers: { Pragma: "no-cache" },
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message ?? "Failed to load.");
+      if (!res.ok || !Array.isArray(data.balances))
+        throw new Error(data.message ?? "Failed to load.");
       if (gen !== fetchGenRef.current) return;
       setRows(data.balances ?? []);
     } catch (e) {
       if (gen === fetchGenRef.current) {
+        setReadUnavailable(true);
         setMessage(e instanceof Error ? e.message : "Failed to load.");
         setRows([]);
       }
@@ -204,6 +209,15 @@ export default function WorkerBalancesPage() {
       />
     </div>
   );
+
+  if (initialLoading || refreshing || readUnavailable)
+    return (
+      <LaborReadState
+        title="Worker balances"
+        busy={initialLoading || refreshing}
+        retry={() => void load()}
+      />
+    );
 
   return (
     <div
@@ -467,7 +481,11 @@ export default function WorkerBalancesPage() {
                 </div>
               ) : null}
               {filteredRows.map((r) => (
-                <NeoMobileCard key={r.workerId} className="space-y-3 p-3">
+                <NeoMobileCard
+                  key={r.workerId}
+                  data-testid={`worker-balance-card-${r.workerId}`}
+                  className="space-y-3 p-3"
+                >
                   <div className="flex items-start gap-3">
                     <span
                       className={cn(
@@ -514,7 +532,7 @@ export default function WorkerBalancesPage() {
                     </div>
                     <div className="min-w-0">
                       <dt className="text-hh-status font-medium uppercase tracking-normal text-muted-foreground">
-                        Reimb.
+                        Reimbursements
                       </dt>
                       <dd className="truncate">
                         <NeoAmount>{formatCurrency(r.reimbursements)}</NeoAmount>
@@ -585,7 +603,7 @@ export default function WorkerBalancesPage() {
                 Labor
               </th>
               <th className="whitespace-nowrap px-3 py-2 text-right text-hh-status font-medium uppercase tracking-normal text-[var(--hh-text-secondary)] tabular-nums">
-                Reimb.
+                Reimbursements
               </th>
               <th className="whitespace-nowrap px-3 py-2 text-right text-hh-status font-medium uppercase tracking-normal text-[var(--hh-text-secondary)] tabular-nums">
                 Payments
@@ -645,6 +663,7 @@ export default function WorkerBalancesPage() {
               filteredRows.map((r) => (
                 <tr
                   key={r.workerId}
+                  data-testid={`worker-balance-row-${r.workerId}`}
                   className={cn(
                     listTableRowStaticClassName,
                     "border-b border-zinc-100/70 dark:border-border/35",

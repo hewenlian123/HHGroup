@@ -1,4 +1,5 @@
-import { getExpenseTotal, type Expense } from "@/lib/data";
+import { getExpenseTotal } from "@/lib/expense-domain";
+import type { Expense } from "@/lib/expenses-db";
 
 export const EXPENSE_HEADER_LINE_TOTAL_MISMATCH_ISSUE =
   "expense_header_line_total_mismatch" as const;

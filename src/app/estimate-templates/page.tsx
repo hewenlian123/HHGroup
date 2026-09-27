@@ -19,9 +19,9 @@ export default async function EstimateTemplatesPage() {
           actions={
             <div className="flex items-center gap-2">
               <Button asChild variant="outline" size="sm">
-                <Link href="/financial">
+                <Link href="/estimates">
                   <ArrowLeft className="mr-2 h-4 w-4" />
-                  Financial
+                  Estimates
                 </Link>
               </Button>
             </div>

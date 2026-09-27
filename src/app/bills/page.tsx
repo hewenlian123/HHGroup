@@ -1,3 +1,5 @@
+import { financePathWithReturn, financeWorkspacePath } from "@/lib/finance-navigation";
+import { FinanceContextBack } from "@/components/financial/finance-context-back";
 import { PageLayout, PageHeader, NeoPanel } from "@/components/base";
 import { fetchBillsPageData } from "./bills-api";
 import { BillsListClient } from "./bills-list-client";
@@ -48,13 +50,18 @@ export default async function BillsPage({ searchParams }: Props) {
             description="Track vendor, labor, and other payables"
             actions={
               <Button asChild size="sm" className={billsPrimaryButtonClass}>
-                <Link href="/bills/new">+ New Bill</Link>
+                <Link
+                  href={financePathWithReturn("/bills/new", financeWorkspacePath("/bills", sp))}
+                >
+                  + New Bill
+                </Link>
               </Button>
             }
           />
         </div>
       }
     >
+      <FinanceContextBack />
       <div className={billsContentMaxClass}>
         {!available ? (
           <NeoPanel bodyClassName="px-4 py-5 md:px-6">

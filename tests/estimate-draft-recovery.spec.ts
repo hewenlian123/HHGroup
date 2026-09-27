@@ -1,6 +1,6 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./estimate-playwright-test";
 
-import { loginAsE2EOwner } from "./e2e-auth-owner";
+import { gotoWithE2EAuth, loginAsE2EOwner, reloadWithE2EAuth } from "./e2e-auth-owner";
 
 const RECOVERY_KEY = "hh_estimate_new_draft_v1";
 
@@ -18,7 +18,7 @@ test("new Estimate recovery is explicit, stale-safe, faithful, and clears after 
   await page.setViewportSize({ width: 1440, height: 1000 });
   await loginAsE2EOwner(page, "/estimates/new");
   await page.evaluate((key) => window.localStorage.removeItem(key), RECOVERY_KEY);
-  await page.reload({ waitUntil: "domcontentloaded" });
+  await reloadWithE2EAuth(page);
 
   try {
     await page.getByRole("button", { name: "Edit details" }).click();
@@ -75,7 +75,7 @@ test("new Estimate recovery is explicit, stale-safe, faithful, and clears after 
       .first()
       .textContent();
 
-    await page.reload({ waitUntil: "domcontentloaded" });
+    await reloadWithE2EAuth(page);
     const notice = page.getByTestId("estimate-recovery-notice");
     await expect(notice).toHaveAttribute("data-recovery-state", "recoverable");
     await expect(notice).toContainText(clientName);
@@ -88,7 +88,8 @@ test("new Estimate recovery is explicit, stale-safe, faithful, and clears after 
 
     const recoveredLineCard = page.getByRole("article").filter({ hasText: lineTitle });
     await expect(recoveredLineCard).toBeVisible();
-    await expect(recoveredLineCard).toContainText("2 × $500.00 · LS");
+    await expect(recoveredLineCard).toContainText("2 LS × $500.00");
+    await expect(recoveredLineCard).toContainText("$1,000.00");
     await expect(page.getByText("Recovery keeps Estimate notes and clarifications.")).toBeVisible();
     await expect(page.getByText("Recovery deposit", { exact: true })).toBeVisible();
     await expect(
@@ -124,8 +125,24 @@ test("new Estimate recovery is explicit, stale-safe, faithful, and clears after 
     await expect(notice).toBeHidden();
     await expect(page.getByTestId("estimate-new-header")).toContainText(clientName);
 
+    const createdDetailRsc = page.waitForResponse(
+      (response) => {
+        const request = response.request();
+        const headers = request.headers();
+        return (
+          /^\/estimates\/[^/]+$/.test(new URL(response.url()).pathname) &&
+          new URL(response.url()).pathname !== "/estimates/new" &&
+          headers["rsc"] === "1" &&
+          headers["next-action"] === undefined &&
+          headers["next-router-prefetch"] !== "1"
+        );
+      },
+      { timeout: 30_000 }
+    );
     await page.getByRole("button", { name: "Save Estimate" }).click();
+    expect((await createdDetailRsc).ok()).toBe(true);
     await expect(page).toHaveURL(/\/estimates\/(?!new(?:\/|$))[^/?#]+/, { timeout: 30_000 });
+    await page.waitForLoadState("networkidle");
     createdUrl = page.url().replace(/\?.*$/, "");
     expect(await page.evaluate((key) => window.localStorage.getItem(key), RECOVERY_KEY)).toBeNull();
 
@@ -137,29 +154,41 @@ test("new Estimate recovery is explicit, stale-safe, faithful, and clears after 
     await existingTitle.press("Tab");
     await expect(header.getByText("Saved", { exact: true })).toBeVisible({ timeout: 30_000 });
 
-    await page.reload({ waitUntil: "domcontentloaded" });
+    await reloadWithE2EAuth(page);
     await header.getByRole("button", { name: "Edit", exact: true }).click();
     await expect(page.getByLabel("Line item title").locator("visible=true").first()).toHaveValue(
       persistedTitle
     );
     await page.setViewportSize({ width: 390, height: 844 });
     const editActions = page.getByLabel("Estimate edit actions");
-    await expect(editActions.getByRole("button", { name: "Done", exact: true })).toBeVisible();
+    await expect(editActions.getByRole("button", { name: "Done", exact: true })).toHaveCount(0);
     await expect(editActions.getByRole("button", { name: "Cancel", exact: true })).toHaveCount(0);
-    await editActions.getByRole("button", { name: "Done", exact: true }).click();
+    await editActions.getByRole("button", { name: "Save", exact: true }).click();
     await expect(header.getByRole("button", { name: "Edit", exact: true })).toBeVisible();
   } finally {
     await page.evaluate((key) => window.localStorage.removeItem(key), RECOVERY_KEY).catch(() => {});
     if (createdUrl) {
       await page.setViewportSize({ width: 1440, height: 1000 });
-      await page.goto(createdUrl, { waitUntil: "domcontentloaded" }).catch(() => undefined);
+      await gotoWithE2EAuth(page, createdUrl);
       const deleteButton = page.getByRole("button", { name: "Delete estimate" });
       if (await deleteButton.isVisible().catch(() => false)) {
         await deleteButton.click();
+      } else {
+        await page.getByRole("button", { name: "Estimate actions" }).click();
+        await page.getByRole("menuitem", { name: "Delete estimate" }).click();
+      }
+      if (
+        await page
+          .getByRole("dialog", { name: "Delete estimate?" })
+          .isVisible()
+          .catch(() => false)
+      ) {
         await page
           .getByRole("dialog", { name: "Delete estimate?" })
           .getByRole("button", { name: "Delete", exact: true })
           .click();
+        await expect(page).toHaveURL(/\/estimates(?:\?|$)/, { timeout: 30_000 });
+        await page.waitForLoadState("networkidle");
       }
     }
   }

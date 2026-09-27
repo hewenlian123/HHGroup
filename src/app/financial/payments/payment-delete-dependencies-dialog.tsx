@@ -43,7 +43,7 @@ export function PaymentDeleteDependenciesDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl">
+      <DialogContent data-revenue-ar-v2 className="max-w-xl">
         <DialogHeader>
           <DialogTitle>Cannot delete payment yet</DialogTitle>
           <DialogDescription>

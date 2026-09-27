@@ -3,6 +3,7 @@ import path from "path";
 
 export default defineConfig({
   test: {
+    dir: "./src",
     environment: "node",
     include: ["**/__tests__/**/*.test.ts", "**/__tests__/**/*.test.tsx"],
     globals: true,

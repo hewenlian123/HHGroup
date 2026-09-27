@@ -58,6 +58,16 @@ export function splitLineItemDesc(raw: string): { title: string; body: string } 
   return { title: s.slice(0, i), body: s.slice(i + 1) };
 }
 
+/** Historical snapshots without itemName retain their original combined description format. */
+export function estimateLineItemText(item: { itemName?: string; desc: string }): {
+  title: string;
+  body: string;
+} {
+  return typeof item.itemName === "string"
+    ? { title: item.itemName, body: item.desc ?? "" }
+    : splitLineItemDesc(item.desc ?? "");
+}
+
 export function lineItemBodyLooksLikeHtml(body: string): boolean {
   const t = body.trim();
   if (!t) return false;

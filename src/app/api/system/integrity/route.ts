@@ -12,7 +12,7 @@
  */
 
 import { NextResponse } from "next/server";
-import { requireAuthenticatedUser } from "@/lib/auth-boundary";
+import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
 import { safeErrorMessage } from "@/lib/system-response-safety";
 import postgres from "postgres";
 
@@ -44,7 +44,7 @@ export type DataIntegrityResult = {
 };
 
 export async function GET(request: Request): Promise<NextResponse<DataIntegrityResult>> {
-  const guard = await requireAuthenticatedUser(request);
+  const guard = await requireSupabaseOwnerOrAdmin(request);
   if (!guard.ok) return guard.response as NextResponse<DataIntegrityResult>;
 
   const url = process.env.SUPABASE_DATABASE_URL ?? process.env.DATABASE_URL;

@@ -4,13 +4,14 @@
  * Put **local Supabase** credentials in `.env.test` so they win over `.env.local`
  * (where many teams keep production `NEXT_PUBLIC_SUPABASE_URL` for day-to-day dev).
  *
- * Precedence (last wins): `.env` → `.env.local` → `.env.e2e` (if present) → `.env.test` (if present)
+ * Precedence: dotenv files below (last wins), then the caller's explicit process environment.
  */
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { config as loadDotenv } from "dotenv";
 
 export function loadE2EProcessEnv(cwd: string = process.cwd()): void {
+  const explicit = { ...process.env };
   loadDotenv({ path: resolve(cwd, ".env") });
   loadDotenv({ path: resolve(cwd, ".env.local"), override: true });
   const e2ePath = resolve(cwd, ".env.e2e");
@@ -21,4 +22,5 @@ export function loadE2EProcessEnv(cwd: string = process.cwd()): void {
   if (existsSync(testPath)) {
     loadDotenv({ path: testPath, override: true });
   }
+  Object.assign(process.env, explicit);
 }

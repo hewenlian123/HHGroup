@@ -1,5 +1,7 @@
 import "server-only";
 
+import type { SupabaseClient } from "@supabase/supabase-js";
+
 import {
   calculateProjectFinancialSnapshot,
   createEmptyProjectFinancialSnapshotDiagnostics,
@@ -836,7 +838,10 @@ async function safeSelect<T>(
     }
     throw new Error(error.message ?? `Failed to load ${label}.`);
   }
-  return { data: (Array.isArray(data) ? data : []) as T[], warnings: [] };
+  if (!Array.isArray(data)) {
+    throw new Error(`Project financial data unavailable: ${label}.`);
+  }
+  return { data: data as T[], warnings: [] };
 }
 
 async function safeSelectFallback<T>(
@@ -846,7 +851,12 @@ async function safeSelectFallback<T>(
   let lastMissing: DbErrorLike | null = null;
   for (const attempt of attempts) {
     const { data, error } = await attempt();
-    if (!error) return { data: (Array.isArray(data) ? data : []) as T[], warnings: [] };
+    if (!error) {
+      if (!Array.isArray(data)) {
+        throw new Error(`Project financial data unavailable: ${label}.`);
+      }
+      return { data: data as T[], warnings: [] };
+    }
     if (!missingTableOrColumn(error)) {
       throw new Error(error.message ?? `Failed to load ${label}.`);
     }
@@ -1040,9 +1050,10 @@ function mergeById<T extends { id?: string | null }>(...lists: T[][]): T[] {
 }
 
 async function fetchProjectFinancialSnapshotRows(
-  projectId: string
+  projectId: string,
+  explicitClient?: SupabaseClient
 ): Promise<{ rows: ProjectFinancialSnapshotDbRows; warnings: ProjectFinancialWarning[] }> {
-  const supabase = getServerSupabaseInternalNoStore();
+  const supabase = explicitClient ?? getServerSupabaseInternalNoStore();
   if (!supabase) throw new Error(SUPABASE_MISSING_SERVER_ENV_MESSAGE);
 
   const [
@@ -1213,18 +1224,54 @@ async function fetchProjectFinancialSnapshotRows(
 }
 
 export async function getProjectFinancialSnapshot(
-  projectId: string
+  projectId: string,
+  explicitClient?: SupabaseClient
 ): Promise<ProjectFinancialSnapshot> {
-  const { rows, warnings } = await fetchProjectFinancialSnapshotRows(projectId);
+  const { rows, warnings } = await fetchProjectFinancialSnapshotRows(projectId, explicitClient);
+  assertProjectFinancialSnapshotSourcesAvailable(warnings);
   const snapshot = mapProjectFinancialRowsToSnapshot(rows);
   return { ...snapshot, warnings: [...snapshot.warnings, ...warnings] };
 }
 
+const REQUIRED_FINANCIAL_SOURCE_PREFIXES = [
+  "invoices",
+  "invoice_payments",
+  "expense_lines",
+  "expense_lines_by_project",
+  "expenses",
+  "labor_entries",
+  "worker_reimbursements",
+  "subcontract_bills",
+  "subcontract_payments",
+  "commissions",
+  "commission_payments",
+  "project_change_orders",
+  "project_change_order_items",
+] as const;
+
+export function assertProjectFinancialSnapshotSourcesAvailable(
+  warnings: ProjectFinancialWarning[]
+): void {
+  const blocking = warnings.find((item) =>
+    REQUIRED_FINANCIAL_SOURCE_PREFIXES.some(
+      (prefix) =>
+        item.code.startsWith(prefix) &&
+        (item.code.includes("unavailable") ||
+          item.code.includes("schema_detail") ||
+          item.code.includes("missing"))
+    )
+  );
+  if (blocking) {
+    throw new Error(`Project financial data unavailable: ${blocking.code}.`);
+  }
+}
+
 async function safeOldCanonicalProfit(
-  projectId: string
+  projectId: string,
+  explicitClient: SupabaseClient
 ): Promise<{ value: CanonicalProjectProfit | null; warning?: ProjectFinancialWarning }> {
   try {
-    return { value: await getCanonicalProjectProfit(projectId) };
+    return { value: await getCanonicalProjectProfit(projectId, explicitClient) };
   } catch (error) {
     return {
       value: null,
@@ -1236,7 +1283,10 @@ async function safeOldCanonicalProfit(
   }
 }
 
-async function safeOldProjectCostDashboard(projectId: string): Promise<{
+async function safeOldProjectCostDashboard(
+  projectId: string,
+  explicitClient: SupabaseClient
+): Promise<{
   value: Pick<
     ProjectCostDashboardPayload,
     "breakdown" | "spentTotal" | "profit" | "margin" | "revenue"
@@ -1244,7 +1294,7 @@ async function safeOldProjectCostDashboard(projectId: string): Promise<{
   warning?: ProjectFinancialWarning;
 }> {
   try {
-    const value = await getProjectCostDashboard(projectId);
+    const value = await getProjectCostDashboard(projectId, explicitClient);
     return {
       value: {
         breakdown: value.breakdown,
@@ -1266,12 +1316,13 @@ async function safeOldProjectCostDashboard(projectId: string): Promise<{
 }
 
 export async function getProjectFinancialSnapshotComparison(
-  projectId: string
+  projectId: string,
+  explicitClient: SupabaseClient
 ): Promise<ProjectFinancialSnapshotComparison> {
   const [newSnapshot, oldCanonical, oldDashboard] = await Promise.all([
-    getProjectFinancialSnapshot(projectId),
-    safeOldCanonicalProfit(projectId),
-    safeOldProjectCostDashboard(projectId),
+    getProjectFinancialSnapshot(projectId, explicitClient),
+    safeOldCanonicalProfit(projectId, explicitClient),
+    safeOldProjectCostDashboard(projectId, explicitClient),
   ]);
   const warnings = [oldCanonical.warning, oldDashboard.warning].filter(
     (item): item is ProjectFinancialWarning => Boolean(item)

@@ -1,10 +1,12 @@
 "use client";
 
 import * as React from "react";
-import { ChevronDown } from "lucide-react";
+import { estimateInspectorTotal } from "./estimate-line-item-model";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import type { EstimateSummaryResult } from "@/lib/data";
 import { formatEstimateCurrency } from "./estimate-currency";
 import { EB } from "./estimate-builder-ui";
+import { EstimateStitchInspectorContext } from "./estimate-stitch-inspector";
 import { cn } from "@/lib/utils";
 
 const fmt = formatEstimateCurrency;
@@ -16,16 +18,18 @@ export type EstimateBuilderPaymentSummary = {
 
 export type EstimateBuilderSummaryProps = {
   summary: EstimateSummaryResult | null;
-  showInternal?: boolean;
   /** Shown when milestones exist — compact executive line only. */
   paymentSummary?: EstimateBuilderPaymentSummary | null;
+  onOpenPaymentSchedule?: () => void;
+  onOpenDetails?: () => void;
+  onOpenPricing?: () => void;
+  paymentContent?: React.ReactNode;
   className?: string;
   floating?: boolean;
 };
 
 export function EstimateBuilderSummary({
   summary,
-  showInternal = false,
   paymentSummary = null,
   className,
   floating = true,
@@ -43,13 +47,7 @@ export function EstimateBuilderSummary({
     );
   }
 
-  const { subtotal, grandTotal, tax, discount, materialCost, laborCost, subcontractorCost } =
-    summary;
-  const internalLines = [
-    { label: "Material", value: materialCost },
-    { label: "Labor", value: laborCost },
-    { label: "Subcontractor", value: subcontractorCost },
-  ].filter(({ value }) => Math.abs(value) >= 0.005);
+  const { subtotal, grandTotal, tax, discount } = summary;
 
   return (
     <div className={shellClass} aria-label="Estimate overview">
@@ -68,21 +66,6 @@ export function EstimateBuilderSummary({
             </span>{" "}
             scheduled
           </p>
-        </div>
-      ) : null}
-
-      {showInternal ? (
-        <div className="mb-3 space-y-1 border-b border-border pb-2.5">
-          <p className={EB.summaryInternalLabel}>Internal</p>
-          {internalLines.length > 0 ? (
-            internalLines.map(({ label, value }) => (
-              <InternalLine key={label} label={label} value={value} />
-            ))
-          ) : (
-            <p className="py-0.5 text-hh-metadata leading-snug text-muted-foreground">
-              No internal costs
-            </p>
-          )}
         </div>
       ) : null}
 
@@ -111,65 +94,90 @@ export function EstimateBuilderSummary({
 
 export function EstimateBuilderCompactSummary({
   summary,
-  showInternal = false,
   paymentSummary = null,
+  onOpenDetails,
+  onOpenPricing,
   className,
 }: EstimateBuilderSummaryProps): React.ReactElement {
-  const detailAvailable =
-    Boolean(showInternal) || Boolean(paymentSummary && paymentSummary.milestoneCount > 0);
-
+  const inspector = React.useContext(EstimateStitchInspectorContext);
+  const previewTotal = estimateInspectorTotal(summary?.grandTotal, inspector?.pricing ?? null);
   return (
     <section
       className={cn("eb-pricing-summary-strip", className)}
       aria-label="Estimate pricing summary"
+      data-estimate-inspector="pricing"
     >
-      <div className="eb-pricing-summary-main">
-        <CompactAmount label="Subtotal" value={summary?.subtotal ?? null} />
-        <CompactAmount label="Tax" value={summary?.tax ?? null} />
-        <CompactAmount
-          label="Discount"
-          value={summary ? (summary.discount > 0 ? -summary.discount : 0) : null}
-        />
-        <CompactAmount label="Total" value={summary?.grandTotal ?? null} total />
-      </div>
-
-      {detailAvailable ? (
-        <details className="eb-pricing-summary-details">
+      <div className="estimate-workspace-summary">
+        <div className="estimate-workspace-financials">
+          <div className="estimate-workspace-total-label">
+            <h2>Estimate Summary</h2>
+            <span>USD ($)</span>
+          </div>
+          <p className="estimate-workspace-total-label">
+            Grand Total{inspector?.pricing?.adjustment ? " (preview)" : ""}
+          </p>
+          <strong className="estimate-workspace-grand-total">
+            {previewTotal == null ? "—" : fmt(previewTotal)}
+          </strong>
+          <div className="estimate-workspace-costs">
+            <CompactAmount
+              label="Subtotal"
+              value={summary ? summary.subtotal + (inspector?.pricing?.adjustment ?? 0) : null}
+            />
+            <CompactAmount label="Discount" value={summary ? -summary.discount : null} />
+            <CompactAmount label="Tax" value={summary?.tax ?? null} />
+          </div>
+          {onOpenPricing ? (
+            <button
+              type="button"
+              className="estimate-workspace-text-action"
+              onClick={onOpenPricing}
+            >
+              Edit tax &amp; discount
+            </button>
+          ) : null}
+        </div>
+        <div className="estimate-workspace-costs" aria-label="Payment allocation summary">
+          <CompactAmount label="Scheduled" value={paymentSummary?.scheduledTotal ?? 0} />
+          <CompactAmount
+            label="Remaining"
+            value={
+              previewTotal == null ? null : previewTotal - (paymentSummary?.scheduledTotal ?? 0)
+            }
+          />
+        </div>
+        <div className="estimate-workspace-disclosure">
+          <strong>Payment Schedule</strong>
+          <p className="text-xs text-muted-foreground">
+            {paymentSummary?.milestoneCount ?? 0} milestones ·{" "}
+            {previewTotal && previewTotal > 0
+              ? (((paymentSummary?.scheduledTotal ?? 0) / previewTotal) * 100).toFixed(1)
+              : "0"}
+            % allocated
+          </p>
+        </div>
+        <details className="estimate-workspace-disclosure">
           <summary>
-            Pricing details
-            <ChevronDown className="h-3.5 w-3.5" aria-hidden />
+            <strong>Client Presentation Rules</strong>
+            <ChevronRight size={16} aria-hidden />
           </summary>
-          <div className="eb-pricing-summary-detail-grid">
-            {showInternal ? (
-              <div>
-                <p className={EB.summaryInternalLabel}>Internal costs</p>
-                {summary ? (
-                  <div className="mt-1 grid gap-0.5 sm:grid-cols-3 sm:gap-4">
-                    <InternalLine label="Material" value={summary.materialCost} />
-                    <InternalLine label="Labor" value={summary.laborCost} />
-                    <InternalLine label="Subcontractor" value={summary.subcontractorCost} />
-                  </div>
-                ) : (
-                  <p className="mt-1 text-hh-metadata text-muted-foreground">No internal costs</p>
-                )}
-              </div>
-            ) : null}
-            {paymentSummary && paymentSummary.milestoneCount > 0 ? (
-              <div className="eb-pricing-summary-payment">
-                <p className={EB.summaryInternalLabel}>Payments</p>
-                <p className="mt-1 text-hh-metadata text-muted-foreground">
-                  {paymentSummary.milestoneCount} milestone
-                  {paymentSummary.milestoneCount === 1 ? "" : "s"} ·{" "}
-                  <span className="font-medium tabular-nums text-foreground">
-                    {fmt(paymentSummary.scheduledTotal)}
-                  </span>{" "}
-                  scheduled
-                </p>
-              </div>
+          <div className="estimate-workspace-presentation">
+            <p>
+              Document style and customer/project details control your client-facing estimate.
+              Individual amounts can be hidden from each item&apos;s menu.
+            </p>
+            {onOpenDetails ? (
+              <button
+                type="button"
+                className="estimate-workspace-text-action"
+                onClick={onOpenDetails}
+              >
+                Edit document details
+              </button>
             ) : null}
           </div>
         </details>
-      ) : null}
+      </div>
     </section>
   );
 }
@@ -181,18 +189,23 @@ export function EstimateBuilderMobileSummary({
   summary: EstimateSummaryResult | null;
   className?: string;
 }): React.ReactElement {
+  const inspector = React.useContext(EstimateStitchInspectorContext);
+  const previewTotal = estimateInspectorTotal(summary?.grandTotal, inspector?.pricing ?? null);
   return (
     <details className={cn("eb-mobile-summary", className)}>
       <summary aria-label="Toggle price breakdown">
         <span className="eb-mobile-summary-label">Total</span>
         <span className={cn("eb-mobile-summary-total", EB.goldTotal)}>
-          {summary ? fmt(summary.grandTotal) : "—"}
+          {previewTotal == null ? "—" : fmt(previewTotal)}
         </span>
         <ChevronDown className="eb-mobile-summary-chevron h-4 w-4" aria-hidden />
       </summary>
       {summary ? (
         <div className="eb-mobile-summary-breakdown">
-          <SummaryLine label="Subtotal" value={summary.subtotal} />
+          <SummaryLine
+            label="Subtotal"
+            value={summary.subtotal + (inspector?.pricing?.adjustment ?? 0)}
+          />
           {summary.discount > 0 ? <SummaryLine label="Discount" value={-summary.discount} /> : null}
           {summary.tax > 0 ? <SummaryLine label="Tax" value={summary.tax} /> : null}
         </div>
@@ -221,7 +234,7 @@ function CompactAmount({
   total?: boolean;
 }): React.ReactElement {
   return (
-    <div className={cn("eb-pricing-summary-cell", total && "is-total")}>
+    <div className={cn("estimate-workspace-cost-row", total && "is-total")}>
       <span>{label}</span>
       <strong>{value === null ? "—" : fmt(value)}</strong>
     </div>
@@ -247,17 +260,6 @@ function SummaryLine({
           muted && EB.summaryLineValueMuted
         )}
       >
-        {fmt(value)}
-      </span>
-    </div>
-  );
-}
-
-function InternalLine({ label, value }: { label: string; value: number }): React.ReactElement {
-  return (
-    <div className="flex items-baseline justify-between gap-3 py-0.5">
-      <span className={EB.summaryLineLabel}>{label}</span>
-      <span className={cn(EB.summaryLineValue, "min-w-0 max-w-[58%] break-words text-right")}>
         {fmt(value)}
       </span>
     </div>

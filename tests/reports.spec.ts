@@ -93,14 +93,16 @@ test.describe("Reports module", () => {
 
     for (const label of [
       "Invoiced Revenue",
-      "Cash Collected",
+      "Collected Cash",
       "Expenses",
       "Labor Cost",
-      "Subcontractor Cost",
-      "Bills / AP",
-      "Gross Profit",
-      "Net Profit",
-      "Profit Margin",
+      "Approved Subcontract Cost",
+      "Outstanding AP · current",
+      "Outstanding AR · current",
+      "Inbox Missing Receipts",
+      "Project Base Contract · lifetime",
+      "Reviewed Project Cost · lifetime",
+      "Reviewed Project Profit · lifetime",
     ]) {
       await expect(page.getByText(label, { exact: true }).first()).toBeVisible();
     }
@@ -129,9 +131,7 @@ test.describe("Reports module", () => {
     await expect(page.getByTestId("project-profitability-content")).toBeVisible({
       timeout: 30_000,
     });
-    await expect(
-      page.getByText("Invoice / Contract Amount", { exact: true }).first()
-    ).toBeVisible();
+    await expect(page.getByText("Revised Contract Amount", { exact: true }).first()).toBeVisible();
     await expect(page.getByText("Open AR", { exact: true }).first()).toBeVisible();
     await expect(page.getByText("Open AP", { exact: true }).first()).toBeVisible();
   });

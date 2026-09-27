@@ -258,7 +258,7 @@ WHERE p.id = '11111111-1111-1111-1111-111111111111'::uuid
    OR p.name LIKE '[[]E2E]%';
 
 DELETE FROM public.customers cu
-WHERE cu.id = '33333333-3333-3333-3333-333333333333'::uuid
+WHERE cu.id = '33333333-3333-4333-8333-333333333333'::uuid
    OR cu.name ILIKE ANY (ARRAY['%PW%','%Playwright%','%Workflow Test%','%Body balance%','%E2E%','%Seed%'])
    OR cu.name LIKE '[[]E2E]%';
 

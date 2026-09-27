@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
-import { createRouteSupabaseClient } from "@/lib/supabase-server";
+import { requireSupabaseOwnerOrAdminRequestClient } from "@/lib/auth-boundary";
 import {
   getInvoices,
   getInvoicesWithDerived,
@@ -39,16 +38,9 @@ function toStoredOrOverdueStatus(
  * Returns invoice list for health check and API consumers.
  */
 export async function GET(req: Request) {
-  const guard = await requireSupabaseOwnerOrAdmin(req);
+  const guard = await requireSupabaseOwnerOrAdminRequestClient(req, { noStore: true });
   if (!guard.ok) return guard.response;
-  const sessionResponse = NextResponse.next();
-  const supabase = createRouteSupabaseClient(req, sessionResponse, { noStore: true });
-  if (!supabase) {
-    return NextResponse.json(
-      { ok: false, message: "Supabase is not configured." },
-      { status: 503 }
-    );
-  }
+  const { client: supabase } = guard;
 
   try {
     const url = new URL(req.url);

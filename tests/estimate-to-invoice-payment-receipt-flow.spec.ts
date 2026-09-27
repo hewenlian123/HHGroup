@@ -1,7 +1,8 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "./estimate-playwright-test";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-import { loginAsE2EOwner } from "./e2e-auth-owner";
+import { gotoWithE2EAuth, loginAsE2EOwner } from "./e2e-auth-owner";
+import { deleteLocalEstimateFixtureGraphs } from "./e2e-estimate-fixture-teardown";
 import {
   assertE2EBaseUrlSafeForMutations,
   assertE2ESupabaseUrlSafeForMutations,
@@ -36,9 +37,30 @@ function idFromUrl(url: string, segment: "estimates" | "invoices"): string {
   return match[1];
 }
 
+type SupabaseCleanupResult<T> = {
+  data: T | null;
+  error: { message: string } | null;
+};
+
+async function runSupabaseCleanupOperation<T>(
+  operation: string,
+  request: PromiseLike<SupabaseCleanupResult<T>>
+): Promise<T | null> {
+  const { data, error } = await request;
+  if (error) {
+    throw new Error(`Estimate receipt-flow cleanup failed to ${operation}: ${error.message}`);
+  }
+  return data;
+}
+
 async function cleanupCreatedRows(): Promise<void> {
   const supabase = db();
-  if (!supabase) return;
+  if (!supabase) {
+    if (createdCustomerNames.size > 0 || createdProjectNames.size > 0) {
+      throw new Error("Estimate receipt-flow cleanup requires the local Supabase environment.");
+    }
+    return;
+  }
 
   const customerNames = Array.from(createdCustomerNames);
   const projectNames = Array.from(createdProjectNames);
@@ -48,77 +70,113 @@ async function cleanupCreatedRows(): Promise<void> {
   const customerIds = new Set<string>();
 
   if (customerNames.length > 0) {
-    const { data: invoices } = await supabase
-      .from("invoices")
-      .select("id")
-      .in("client_name", customerNames);
+    const invoices = await runSupabaseCleanupOperation(
+      "discover invoices by customer",
+      supabase.from("invoices").select("id").in("client_name", customerNames)
+    );
     for (const row of invoices ?? []) invoiceIds.add(String(row.id));
 
-    const { data: estimates } = await supabase
-      .from("estimates")
-      .select("id")
-      .in("client", customerNames);
+    const estimates = await runSupabaseCleanupOperation(
+      "discover estimates by customer",
+      supabase.from("estimates").select("id").in("client", customerNames)
+    );
     for (const row of estimates ?? []) estimateIds.add(String(row.id));
 
-    const { data: customers } = await supabase
-      .from("customers")
-      .select("id")
-      .in("name", customerNames);
+    const customers = await runSupabaseCleanupOperation(
+      "discover customers",
+      supabase.from("customers").select("id").in("name", customerNames)
+    );
     for (const row of customers ?? []) customerIds.add(String(row.id));
   }
 
   if (projectNames.length > 0) {
-    const { data: estimates } = await supabase
-      .from("estimates")
-      .select("id")
-      .in("project", projectNames);
+    const estimates = await runSupabaseCleanupOperation(
+      "discover estimates by project",
+      supabase.from("estimates").select("id").in("project", projectNames)
+    );
     for (const row of estimates ?? []) estimateIds.add(String(row.id));
 
-    const { data: projects } = await supabase
-      .from("projects")
-      .select("id")
-      .in("name", projectNames);
+    const projects = await runSupabaseCleanupOperation(
+      "discover projects",
+      supabase.from("projects").select("id").in("name", projectNames)
+    );
     for (const row of projects ?? []) projectIds.add(String(row.id));
   }
 
   const estimateIdList = Array.from(estimateIds);
   if (estimateIdList.length > 0) {
-    await supabase
-      .from("estimate_payment_schedule_items")
-      .delete()
-      .in("estimate_id", estimateIdList);
+    await runSupabaseCleanupOperation(
+      "delete estimate payment schedule items",
+      supabase.from("estimate_payment_schedule_items").delete().in("estimate_id", estimateIdList)
+    );
   }
 
   const invoiceIdList = Array.from(invoiceIds);
   if (invoiceIdList.length > 0) {
-    const { data: payments } = await supabase
-      .from("payments_received")
-      .select("id")
-      .in("invoice_id", invoiceIdList);
+    const payments = await runSupabaseCleanupOperation(
+      "discover received payments",
+      supabase.from("payments_received").select("id").in("invoice_id", invoiceIdList)
+    );
     const paymentIds = (payments ?? []).map((row: { id: string }) => row.id).filter(Boolean);
     if (paymentIds.length > 0) {
-      await supabase.from("payment_received_attachments").delete().in("payment_id", paymentIds);
+      await runSupabaseCleanupOperation(
+        "delete received-payment attachments",
+        supabase.from("payment_received_attachments").delete().in("payment_id", paymentIds)
+      );
     }
-    await supabase.from("deposits").delete().in("invoice_id", invoiceIdList);
-    await supabase.from("payments_received").delete().in("invoice_id", invoiceIdList);
-    await supabase.from("invoice_payments").delete().in("invoice_id", invoiceIdList);
-    await supabase.from("invoice_items").delete().in("invoice_id", invoiceIdList);
-    await supabase.from("invoices").delete().in("id", invoiceIdList);
+    await runSupabaseCleanupOperation(
+      "delete deposits",
+      supabase.from("deposits").delete().in("invoice_id", invoiceIdList)
+    );
+    await runSupabaseCleanupOperation(
+      "delete received payments",
+      supabase.from("payments_received").delete().in("invoice_id", invoiceIdList)
+    );
+    await runSupabaseCleanupOperation(
+      "delete invoice payments",
+      supabase.from("invoice_payments").delete().in("invoice_id", invoiceIdList)
+    );
+    await runSupabaseCleanupOperation(
+      "delete invoice items",
+      supabase.from("invoice_items").delete().in("invoice_id", invoiceIdList)
+    );
+    await runSupabaseCleanupOperation(
+      "delete invoices",
+      supabase.from("invoices").delete().in("id", invoiceIdList)
+    );
   }
 
   if (estimateIdList.length > 0) {
-    await supabase.from("estimate_snapshots").delete().in("estimate_id", estimateIdList);
-    await supabase.from("estimate_items").delete().in("estimate_id", estimateIdList);
-    await supabase.from("estimate_categories").delete().in("estimate_id", estimateIdList);
-    await supabase.from("estimate_meta").delete().in("estimate_id", estimateIdList);
-    await supabase.from("estimates").delete().in("id", estimateIdList);
+    await runSupabaseCleanupOperation(
+      "delete estimate items",
+      supabase.from("estimate_items").delete().in("estimate_id", estimateIdList)
+    );
+    await runSupabaseCleanupOperation(
+      "delete estimate categories",
+      supabase.from("estimate_categories").delete().in("estimate_id", estimateIdList)
+    );
+    await runSupabaseCleanupOperation(
+      "delete estimate metadata",
+      supabase.from("estimate_meta").delete().in("estimate_id", estimateIdList)
+    );
+    await deleteLocalEstimateFixtureGraphs(estimateIdList);
   }
 
   const projectIdList = Array.from(projectIds);
-  if (projectIdList.length > 0) await supabase.from("projects").delete().in("id", projectIdList);
+  if (projectIdList.length > 0) {
+    await runSupabaseCleanupOperation(
+      "delete projects",
+      supabase.from("projects").delete().in("id", projectIdList)
+    );
+  }
 
   const customerIdList = Array.from(customerIds);
-  if (customerIdList.length > 0) await supabase.from("customers").delete().in("id", customerIdList);
+  if (customerIdList.length > 0) {
+    await runSupabaseCleanupOperation(
+      "delete customers",
+      supabase.from("customers").delete().in("id", customerIdList)
+    );
+  }
 
   await expectCreatedRowsGone(supabase, { customerNames, projectNames });
 }
@@ -128,32 +186,32 @@ async function expectCreatedRowsGone(
   params: { customerNames: string[]; projectNames: string[] }
 ): Promise<void> {
   if (params.customerNames.length > 0) {
-    const { data: invoices } = await supabase
-      .from("invoices")
-      .select("id")
-      .in("client_name", params.customerNames);
-    const { data: estimates } = await supabase
-      .from("estimates")
-      .select("id")
-      .in("client", params.customerNames);
-    const { data: customers } = await supabase
-      .from("customers")
-      .select("id")
-      .in("name", params.customerNames);
+    const invoices = await runSupabaseCleanupOperation(
+      "verify invoices are gone",
+      supabase.from("invoices").select("id").in("client_name", params.customerNames)
+    );
+    const estimates = await runSupabaseCleanupOperation(
+      "verify customer estimates are gone",
+      supabase.from("estimates").select("id").in("client", params.customerNames)
+    );
+    const customers = await runSupabaseCleanupOperation(
+      "verify customers are gone",
+      supabase.from("customers").select("id").in("name", params.customerNames)
+    );
     expect(invoices ?? []).toHaveLength(0);
     expect(estimates ?? []).toHaveLength(0);
     expect(customers ?? []).toHaveLength(0);
   }
 
   if (params.projectNames.length > 0) {
-    const { data: estimates } = await supabase
-      .from("estimates")
-      .select("id")
-      .in("project", params.projectNames);
-    const { data: projects } = await supabase
-      .from("projects")
-      .select("id")
-      .in("name", params.projectNames);
+    const estimates = await runSupabaseCleanupOperation(
+      "verify project estimates are gone",
+      supabase.from("estimates").select("id").in("project", params.projectNames)
+    );
+    const projects = await runSupabaseCleanupOperation(
+      "verify projects are gone",
+      supabase.from("projects").select("id").in("name", params.projectNames)
+    );
     expect(estimates ?? []).toHaveLength(0);
     expect(projects ?? []).toHaveLength(0);
   }
@@ -223,9 +281,14 @@ async function addScopeAndDeposit(page: Page): Promise<void> {
 
   await page.getByLabel("Line item 1 title").locator("visible=true").fill("Receipt flow test work");
   await page
-    .getByLabel("Line item 1 description")
+    .getByRole("button", { name: "Line item 1 description" })
+    .locator("visible=true")
+    .click();
+  await page
+    .getByRole("textbox", { name: "Line item 1 description" })
     .locator("visible=true")
     .fill("Receipt flow test work");
+  await page.getByTestId("estimate-description-done").click();
   await page.getByLabel("Line item 1 quantity").locator("visible=true").fill("2");
   await page.getByLabel("Line item 1 unit price").locator("visible=true").fill("1250");
   await expect(page.locator(":visible", { hasText: "$2,500.00" }).first()).toBeVisible({
@@ -249,7 +312,7 @@ async function addScopeAndDeposit(page: Page): Promise<void> {
 }
 
 async function markInvoiceSent(page: Page, invoiceId: string): Promise<void> {
-  await page.goto(`/financial/invoices/${invoiceId}`, { waitUntil: "domcontentloaded" });
+  await gotoWithE2EAuth(page, `/financial/invoices/${invoiceId}`);
   await expect(page.getByTestId("invoice-detail-status")).toContainText("Draft", {
     timeout: 30_000,
   });
@@ -270,9 +333,7 @@ async function expectReceiptPreview(
     memo: string;
   }
 ): Promise<void> {
-  await page.goto(`/financial/payments?receipt=${params.paymentId}`, {
-    waitUntil: "domcontentloaded",
-  });
+  await gotoWithE2EAuth(page, `/financial/payments?receipt=${params.paymentId}`);
   const receiptDialog = page.getByRole("dialog", { name: "Payment receipt" });
   await expect(receiptDialog).toBeVisible({ timeout: 30_000 });
   await expect(receiptDialog).toContainText(params.customerName);
@@ -290,10 +351,31 @@ async function expectReceiptPreview(
   await expect(sendReceiptDialog.getByRole("button", { name: /Download PDF/i })).toBeVisible();
 }
 
-test.afterEach(async () => {
-  await cleanupCreatedRows();
-  createdCustomerNames.clear();
-  createdProjectNames.clear();
+test.afterEach(async ({ page }) => {
+  const teardownErrors: unknown[] = [];
+  const hasCreatedRows = createdCustomerNames.size > 0 || createdProjectNames.size > 0;
+
+  if (hasCreatedRows) {
+    try {
+      await gotoWithE2EAuth(page, "/estimates");
+    } catch (error) {
+      teardownErrors.push(error);
+    }
+  }
+
+  try {
+    await cleanupCreatedRows();
+  } catch (error) {
+    teardownErrors.push(error);
+  } finally {
+    createdCustomerNames.clear();
+    createdProjectNames.clear();
+  }
+
+  if (teardownErrors.length === 1) throw teardownErrors[0];
+  if (teardownErrors.length > 1) {
+    throw new AggregateError(teardownErrors, "Estimate receipt-flow teardown failed.");
+  }
 });
 
 test("estimate deposit invoice can be paid and shown on a receipt", async ({ page, baseURL }) => {
@@ -318,7 +400,7 @@ test("estimate deposit invoice can be paid and shown on a receipt", async ({ pag
     projectName,
   });
 
-  await page.goto("/estimates/new", { waitUntil: "domcontentloaded" });
+  await gotoWithE2EAuth(page, "/estimates/new");
   await expect(page.getByRole("heading", { name: "New Estimate" })).toBeVisible({
     timeout: 30_000,
   });
@@ -330,14 +412,28 @@ test("estimate deposit invoice can be paid and shown on a receipt", async ({ pag
   const estimateUrl = page.url().replace(/\?.*$/, "");
   const estimateId = idFromUrl(estimateUrl, "estimates");
 
-  await page.goto(`/estimates/${estimateId}/preview`, { waitUntil: "domcontentloaded" });
+  await gotoWithE2EAuth(page, `/estimates/${estimateId}/preview`);
   const previewMain = page.locator("main");
   await expect(previewMain).toContainText("$2,500.00");
   await expect(previewMain).toContainText("Deposit");
   await expect(previewMain).toContainText("Due: Jun 1, 2026");
 
-  await page.goto(estimateUrl, { waitUntil: "domcontentloaded" });
-  await page.getByRole("link", { name: /^Create Draft Invoice$/i }).click();
+  await gotoWithE2EAuth(page, estimateUrl);
+  const estimateHeader = page.getByTestId("estimate-detail-header");
+  await expect(estimateHeader).toContainText("Draft");
+  await estimateHeader.getByRole("button", { name: "Mark as Sent", exact: true }).click();
+  await expect(estimateHeader).toContainText("Sent");
+  await estimateHeader.getByRole("button", { name: "Mark accepted", exact: true }).click();
+  await expect(estimateHeader).toContainText("Approved");
+
+  await estimateHeader.getByRole("button", { name: "Estimate actions", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Payment Schedule", exact: true }).click();
+  const paymentSheet = page.getByTestId("estimate-payment-schedule-sheet");
+  await expect(paymentSheet).toBeVisible();
+  const depositMilestone = paymentSheet
+    .locator("[data-estimate-payment-milestone-id]")
+    .filter({ hasText: "Deposit" });
+  await depositMilestone.getByRole("link", { name: "Create Draft Invoice" }).click();
   await expect(page).toHaveURL(/\/financial\/invoices\/new\?/, { timeout: 30_000 });
   await expect(page.getByTestId("invoice-new-project-select")).toHaveValue(projectId);
   await expect(page.getByTestId("invoice-new-client-input")).toHaveValue(customerName);
@@ -420,10 +516,30 @@ test("estimate deposit invoice can be paid and shown on a receipt", async ({ pag
   await expect(paymentDialog.getByPlaceholder("0")).toHaveValue(String(DEPOSIT_AMOUNT));
   await paymentDialog.locator("select").nth(1).selectOption("Check");
   await paymentDialog.getByPlaceholder("Optional").fill(paymentMemo);
-  await paymentDialog.getByRole("button", { name: "Receive Payment" }).click();
-  await expect(paymentDialog).toBeHidden({ timeout: 30_000 });
 
-  await page.goto(`/financial/invoices/${invoiceId}`, { waitUntil: "domcontentloaded" });
+  const paymentActionFinished = page.waitForEvent("requestfinished", {
+    predicate: (request) => {
+      const url = new URL(request.url());
+      return (
+        request.method() === "POST" &&
+        url.pathname === "/financial/payments" &&
+        Boolean(request.headers()["next-action"])
+      );
+    },
+  });
+  await paymentDialog.getByRole("button", { name: "Receive Payment" }).click();
+  const paymentActionRequest = await paymentActionFinished;
+  const paymentActionResponse = await paymentActionRequest.response();
+  expect(paymentActionResponse?.status()).toBeGreaterThanOrEqual(200);
+  expect(paymentActionResponse?.status()).toBeLessThan(300);
+  await expect(paymentDialog).toBeHidden({ timeout: 30_000 });
+  await expect(page).toHaveURL(/\/financial\/payments$/, { timeout: 30_000 });
+  const paymentRecorded = page.locator("section").filter({ hasText: "Payment recorded" });
+  await expect(paymentRecorded).toBeVisible({ timeout: 30_000 });
+  const viewPaidInvoice = paymentRecorded.getByRole("link", { name: "View Invoice" });
+  await expect(viewPaidInvoice).toHaveAttribute("href", `/financial/invoices/${invoiceId}`);
+  await viewPaidInvoice.click();
+  await expect(page).toHaveURL(`/financial/invoices/${invoiceId}`, { timeout: 30_000 });
   await expect(page.getByTestId("invoice-detail-status")).toContainText("Paid", {
     timeout: 30_000,
   });
@@ -485,8 +601,17 @@ test("estimate deposit invoice can be paid and shown on a receipt", async ({ pag
     memo: paymentMemo,
   });
 
-  await page.goto(estimateUrl, { waitUntil: "domcontentloaded" });
-  await expect(page.getByRole("link", { name: /^View Invoice$/i })).toBeVisible({
+  await gotoWithE2EAuth(page, estimateUrl);
+  await estimateHeader.getByRole("button", { name: "Estimate actions", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Payment Schedule", exact: true }).click();
+  const linkedPaymentSheet = page.getByTestId("estimate-payment-schedule-sheet");
+  await expect(linkedPaymentSheet).toBeVisible();
+  const linkedDepositMilestone = linkedPaymentSheet
+    .locator("[data-estimate-payment-milestone-id]")
+    .filter({ hasText: "Deposit" });
+  const linkedInvoice = linkedDepositMilestone.getByRole("link", { name: /^View Invoice$/i });
+  await expect(linkedInvoice).toBeVisible({
     timeout: 30_000,
   });
+  await expect(linkedInvoice).toHaveAttribute("href", new RegExp(invoiceId));
 });

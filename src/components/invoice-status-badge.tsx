@@ -1,15 +1,15 @@
 "use client";
 
-import { cn } from "@/lib/utils";
+import { NeoStatus, type StatusBadgeVariant } from "@/components/base";
 import type { InvoiceComputedStatus } from "@/lib/invoices-db";
 
-const invoiceStatusPill: Record<InvoiceComputedStatus, string> = {
-  Paid: "hh-pill-success",
-  Partial: "hh-pill-warning",
-  Unpaid: "hh-pill-neutral",
-  Overdue: "hh-pill-danger",
-  Draft: "hh-pill-neutral",
-  Void: "hh-pill-danger",
+const invoiceStatusVariant: Record<InvoiceComputedStatus, StatusBadgeVariant> = {
+  Paid: "success",
+  Partial: "warning",
+  Unpaid: "default",
+  Overdue: "danger",
+  Draft: "muted",
+  Void: "danger",
 };
 
 export function InvoiceStatusBadge({
@@ -19,9 +19,5 @@ export function InvoiceStatusBadge({
   status: InvoiceComputedStatus;
   className?: string;
 }) {
-  const label = status === "Void" ? "VOID" : status;
-  const pill = invoiceStatusPill[status] ?? "hh-pill-neutral";
-  return (
-    <span className={cn("inline-flex items-center tabular-nums", pill, className)}>{label}</span>
-  );
+  return <NeoStatus label={status} variant={invoiceStatusVariant[status]} className={className} />;
 }

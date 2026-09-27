@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 
+import { loginAsE2EOwner } from "./e2e-auth-owner";
 import { E2E_PRESERVED_PROJECT_LABEL } from "./e2e-cleanup-db";
 import { assertE2ESupabaseUrlSafeForMutations } from "./e2e-supabase-url-guard";
 
@@ -196,10 +197,29 @@ async function expectNoHorizontalOverflow(page: Page): Promise<void> {
   expect(overflows).toBe(false);
 }
 
+async function expectBoundedInvoiceToolbarMotion(page: Page): Promise<void> {
+  const editDraft = page.getByRole("button", { name: "Edit Draft", exact: true });
+  await expect(editDraft).toBeVisible();
+  const motion = await editDraft.evaluate((element) => {
+    const styles = window.getComputedStyle(element);
+    return {
+      classNames: Array.from(element.classList),
+      transitionProperty: styles.transitionProperty,
+    };
+  });
+
+  expect(motion.classNames).not.toContain("transition-all");
+  expect(motion.transitionProperty.split(",").map((value) => value.trim())).not.toContain("all");
+}
+
 test.afterEach(async () => {
   await cleanupInvoices();
   createdClientNames.clear();
   createdInvoiceNos.clear();
+});
+
+test.beforeEach(async ({ page }) => {
+  await loginAsE2EOwner(page, "/financial/invoices");
 });
 
 test("create invoice, preview, save, reopen, draft continue, final save, and edit preview", async ({
@@ -295,6 +315,7 @@ test("create invoice, preview, save, reopen, draft continue, final save, and edi
   await page.getByRole("button", { name: "Save draft", exact: true }).click();
   await expect(page.getByTestId("invoice-detail")).toBeVisible({ timeout: 30_000 });
   await expect(page.getByTestId("invoice-detail-status")).toContainText("Draft");
+  await expectBoundedInvoiceToolbarMotion(page);
   await expect(page.getByTestId("invoice-detail-line-1-description")).toContainText(draftItem);
   await expect(page.getByTestId("invoice-detail-line-1-description")).toContainText(
     draftDescription

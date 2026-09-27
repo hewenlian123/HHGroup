@@ -13,6 +13,7 @@ import { ArrowLeft, Plus } from "lucide-react";
 import { formatCurrency } from "@/lib/formatters";
 import { amountClass } from "@/lib/typography";
 import { cn } from "@/lib/utils";
+import { ConfirmDialog } from "@/components/base";
 
 type LaborInvoiceStatus = "draft" | "reviewed" | "confirmed" | "void";
 
@@ -84,6 +85,7 @@ export default function LaborInvoiceDetailClient() {
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [message, setMessage] = React.useState<string | null>(null);
+  const [voidConfirmOpen, setVoidConfirmOpen] = React.useState(false);
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -301,7 +303,6 @@ export default function LaborInvoiceDetailClient() {
   };
 
   const handleVoid = () => {
-    if (!window.confirm("Void this invoice?")) return;
     updateInvoice({ status: "void" });
     setMessage("Invoice voided.");
   };
@@ -372,7 +373,7 @@ export default function LaborInvoiceDetailClient() {
             variant="outline"
             size="sm"
             className="rounded-hh-compact"
-            onClick={handleVoid}
+            onClick={() => setVoidConfirmOpen(true)}
             disabled={invoice.status === "void"}
           >
             Void
@@ -586,6 +587,15 @@ export default function LaborInvoiceDetailClient() {
           ) : null}
         </div>
       </section>
+      <ConfirmDialog
+        open={voidConfirmOpen}
+        onOpenChange={setVoidConfirmOpen}
+        title="Void labor invoice?"
+        description="Void this labor invoice? Its financial history will remain visible."
+        confirmLabel="Void"
+        destructive
+        onConfirm={handleVoid}
+      />
     </div>
   );
 }

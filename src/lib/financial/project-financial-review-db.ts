@@ -1,4 +1,5 @@
 import "server-only";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 import {
   getProjectContractReviewIssues,
@@ -7,10 +8,6 @@ import {
   type ProjectFinancialReviewIssueCode,
 } from "@/lib/financial/project-financial-review";
 import { getProjectFinancialSnapshot } from "@/lib/financial/project-financial-snapshot-db";
-import {
-  getServerSupabaseInternalNoStore,
-  SUPABASE_MISSING_SERVER_ENV_MESSAGE,
-} from "@/lib/supabase-server";
 
 type ProjectFinancialReviewProjectRow = {
   id: string;
@@ -57,7 +54,8 @@ function countIssue(rows: ProjectFinancialReviewRow[], code: ProjectFinancialRev
 }
 
 async function buildProjectFinancialReviewRow(
-  row: ProjectFinancialReviewProjectRow
+  row: ProjectFinancialReviewProjectRow,
+  supabase: SupabaseClient
 ): Promise<ProjectFinancialReviewRow> {
   const budget = toNullableMoney(row.budget);
   const contractAmount = toNullableMoney(row.contract_amount);
@@ -65,7 +63,7 @@ async function buildProjectFinancialReviewRow(
     budget,
     contractAmount,
   });
-  const snapshot = await getProjectFinancialSnapshot(row.id).catch(() => null);
+  const snapshot = await getProjectFinancialSnapshot(row.id, supabase).catch(() => null);
 
   return {
     id: row.id,
@@ -85,18 +83,21 @@ async function buildProjectFinancialReviewRow(
   };
 }
 
-export async function getProjectFinancialReview(): Promise<ProjectFinancialReviewPayload> {
-  const supabase = getServerSupabaseInternalNoStore();
-  if (!supabase) throw new Error(SUPABASE_MISSING_SERVER_ENV_MESSAGE);
-
+export async function getProjectFinancialReview(
+  supabase: SupabaseClient,
+  organizationIds: string[]
+): Promise<ProjectFinancialReviewPayload> {
   const { data, error } = await supabase
     .from("projects")
     .select("id,name,status,budget,contract_amount,updated_at")
+    .in("organization_id", organizationIds)
     .order("updated_at", { ascending: false });
   if (error) throw new Error(error.message ?? "Failed to load project financial review.");
 
   const projects = await Promise.all(
-    ((data ?? []) as ProjectFinancialReviewProjectRow[]).map(buildProjectFinancialReviewRow)
+    ((data ?? []) as ProjectFinancialReviewProjectRow[]).map((row) =>
+      buildProjectFinancialReviewRow(row, supabase)
+    )
   );
   const flaggedProjects = projects.filter((project) => project.issues.length > 0);
 

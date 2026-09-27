@@ -1,14 +1,5 @@
 import { UPLOAD_RECEIPT_ACTION } from "@/lib/navigation/actions";
 
-export type HhProjectOsSectionKey =
-  | "DASHBOARD"
-  | "PROJECTS"
-  | "FINANCIAL"
-  | "PEOPLE"
-  | "REPORTS"
-  | "DOCUMENTS"
-  | "SETTINGS";
-
 export type HhProjectOsIconKey =
   | "accounts"
   | "activity"
@@ -54,171 +45,142 @@ export type HhProjectOsIconKey =
   | "workerSummary"
   | "workers";
 
-export type HhProjectOsBadge = "systemHealth";
-
 export type HhProjectOsNavItem = {
-  type?: "item";
   href: string;
   label: string;
   icon: HhProjectOsIconKey;
   exact?: boolean;
   aliases?: readonly string[];
-  excludePaths?: readonly string[];
-  badge?: HhProjectOsBadge;
+  badge?: "systemHealth";
+  group?: string;
 };
 
-export type HhProjectOsNavSubheader = {
-  type: "subheader";
-  label: string;
+export type HhProjectOsNavSection = HhProjectOsNavItem & {
+  key: string;
+  entries: readonly HhProjectOsNavItem[];
 };
 
-export type HhProjectOsNavPlaceholder = {
-  type: "placeholder";
-  label: string;
-  icon: HhProjectOsIconKey;
-  note?: string;
-};
-
-export type HhProjectOsNavEntry =
-  | HhProjectOsNavItem
-  | HhProjectOsNavSubheader
-  | HhProjectOsNavPlaceholder;
-
-export type HhProjectOsNavSection = {
-  key: HhProjectOsSectionKey;
-  label: string;
-  entries: readonly HhProjectOsNavEntry[];
-};
-
-export const HH_PROJECT_OS_SECTION_KEYS = [
-  "DASHBOARD",
-  "PROJECTS",
-  "FINANCIAL",
-  "PEOPLE",
-  "REPORTS",
-  "DOCUMENTS",
-  "SETTINGS",
-] as const satisfies readonly HhProjectOsSectionKey[];
-
-export const HH_PROJECT_OS_DEFAULT_OPEN_SECTIONS: Record<HhProjectOsSectionKey, boolean> = {
-  DASHBOARD: true,
-  PROJECTS: true,
-  FINANCIAL: true,
-  PEOPLE: true,
-  REPORTS: true,
-  DOCUMENTS: true,
-  SETTINGS: true,
-};
-
-export const HH_PROJECT_OS_NAV_SECTIONS = [
+export const HH_PROJECT_OS_NAV_SECTIONS: readonly HhProjectOsNavSection[] = [
   {
     key: "DASHBOARD",
-    label: "DASHBOARD",
-    entries: [{ href: "/dashboard", label: "Dashboard", icon: "dashboard", exact: true }],
+    label: "Dashboard",
+    href: "/dashboard",
+    icon: "dashboard",
+    exact: true,
+    entries: [],
   },
   {
     key: "PROJECTS",
-    label: "PROJECTS",
+    label: "Projects",
+    href: "/projects",
+    icon: "projects",
+    aliases: [
+      "/change-orders",
+      "/tasks",
+      "/punch-list",
+      "/schedule",
+      "/materials",
+      "/documents",
+      "/site-photos",
+      "/inspection-log",
+    ],
     entries: [
-      { href: "/projects", label: "Projects", icon: "projects" },
-      { href: "/estimates", label: "Estimates", icon: "estimates" },
-      { href: "/change-orders", label: "Change Orders", icon: "changeOrders" },
-      { href: "/labor", label: "Time Entries", icon: "workers", exact: true },
+      { href: "/projects", label: "Overview", icon: "projects", exact: true },
+      { href: "/schedule", label: "Schedule", icon: "schedule" },
       { href: "/tasks", label: "Tasks", icon: "tasks" },
       { href: "/punch-list", label: "Punch List", icon: "punchList" },
-      { href: "/schedule", label: "Schedule", icon: "schedule" },
-      {
-        href: "/materials",
-        label: "Material Selections",
-        icon: "materials",
-        aliases: ["/materials/catalog"],
-      },
+      { href: "/site-photos", label: "Photos", icon: "photos" },
+      { href: "/inspection-log", label: "Inspections", icon: "inspection" },
+      { href: "/materials", label: "Material Selections", icon: "materials" },
+      { href: "/change-orders", label: "Change Orders", icon: "changeOrders" },
+      { href: "/documents", label: "Documents", icon: "documents" },
+    ],
+  },
+  {
+    key: "ESTIMATES",
+    label: "Estimates",
+    href: "/estimates",
+    icon: "estimates",
+    aliases: ["/estimate-templates"],
+    entries: [
+      { href: "/estimates", label: "Estimates", icon: "estimates" },
+      { href: "/estimate-templates", label: "Templates", icon: "estimates" },
     ],
   },
   {
     key: "FINANCIAL",
-    label: "FINANCIAL",
+    label: "Finance",
+    href: "/financial",
+    icon: "financial",
+    aliases: ["/finance", "/bills", "/dashboard/cashflow"],
     entries: [
       {
         href: "/financial",
         label: "Overview",
         icon: "financial",
         exact: true,
-        aliases: ["/financial/dashboard", "/finance"],
+        aliases: ["/finance", "/financial/dashboard", "/financial/owner"],
       },
-      { href: "/financial/owner", label: "Owner Dashboard", icon: "activity" },
       {
         href: "/financial/ar",
-        label: "AR",
+        label: "Billing",
         icon: "ar",
-        aliases: ["/financial/estimates"],
-      },
-      { href: "/financial/invoices", label: "Invoices", icon: "invoice" },
-      { href: "/estimate-templates", label: "Estimate Templates", icon: "estimates" },
-      {
-        href: "/financial/payments",
-        label: "Payments Received",
-        icon: "payments",
-        aliases: ["/financial/payments-received"],
-      },
-      { href: "/financial/deposits", label: "Deposits", icon: "deposits" },
-      { type: "subheader", label: "AP" },
-      { href: "/bills", label: "Bills", icon: "bills", aliases: ["/financial/bills"] },
-      {
-        href: "/financial/expenses",
-        label: "Expense Operations",
-        icon: "expenses",
         aliases: [
-          UPLOAD_RECEIPT_ACTION.href,
-          "/financial/receipt-queue",
-          "/labor/reimbursements",
-          "/financial/reimbursements",
-          "/labor/receipts",
+          "/financial/invoices",
+          "/financial/payments",
+          "/financial/payments-received",
+          "/financial/estimates",
         ],
       },
-      { href: "/financial/commissions", label: "Commission Payments", icon: "commission" },
-      { type: "subheader", label: "Cash" },
-      { href: "/financial/accounts", label: "Accounts", icon: "accounts" },
-      { href: "/financial/bank", label: "Bank Transactions", icon: "bank" },
-      { href: "/dashboard/cashflow", label: "Cash Flow", icon: "cashflow" },
+      {
+        href: "/financial/payables",
+        label: "Payables",
+        icon: "bills",
+        aliases: ["/bills", "/financial/bills", "/financial/commissions"],
+      },
+      {
+        href: "/financial/inbox",
+        label: "Expenses",
+        icon: "expenses",
+        aliases: ["/financial/expenses", "/financial/expenses/overview", "/labor/reimbursements"],
+      },
+      {
+        href: "/financial/accounts/overview",
+        label: "Accounts",
+        icon: "accounts",
+        aliases: [
+          "/financial/accounts",
+          "/financial/deposits",
+          "/financial/bank",
+          "/dashboard/cashflow",
+        ],
+      },
     ],
   },
   {
-    key: "PEOPLE",
-    label: "DIRECTORY",
+    key: "LABOR",
+    label: "Labor",
+    href: "/labor",
+    icon: "workers",
+    aliases: ["/workers", "/reports/workforce", "/financial/reimbursements", "/finance/labor-cost"],
     entries: [
-      { href: "/customers", label: "Customers", icon: "customers" },
       {
-        href: "/workers",
-        label: "Workers",
+        href: "/labor",
+        label: "Time Entries",
         icon: "workers",
-        aliases: ["/labor/workers"],
-      },
-      {
-        href: "/financial/vendors",
-        label: "Vendors",
-        icon: "vendors",
-        aliases: ["/vendors", "/people/vendors"],
-      },
-      {
-        href: "/subcontractors",
-        label: "Subcontractors",
-        icon: "subcontractors",
-        aliases: ["/labor/subcontractors"],
-      },
-    ],
-  },
-  {
-    key: "REPORTS",
-    label: "REPORTS",
-    entries: [
-      {
-        href: "/reports",
-        label: "Reports",
-        icon: "metrics",
         exact: true,
-        aliases: ["/settings/project-financial-review"],
+        aliases: [
+          "/labor/entries",
+          "/labor/daily",
+          "/labor/daily-entry",
+          "/labor/review",
+          "/labor/timesheets",
+          "/labor/monthly",
+        ],
       },
+      { href: "/finance/labor-cost", label: "Labor Cost", icon: "workers", group: "Costs" },
+      { href: "/labor/cost-allocation", label: "Cost Allocation", icon: "workers", group: "Costs" },
+      { href: "/workers", label: "Workers", icon: "workers", aliases: ["/labor/workers"] },
       {
         href: "/reports/workforce",
         label: "Workforce",
@@ -232,20 +194,80 @@ export const HH_PROJECT_OS_NAV_SECTIONS = [
           "/labor/advances",
         ],
       },
+      {
+        href: "/labor/reimbursements",
+        label: "Reimbursements",
+        icon: "reimbursements",
+        aliases: ["/financial/reimbursements"],
+      },
+      { href: "/labor/worker-invoices", label: "Worker Invoices", icon: "workerInvoices" },
     ],
   },
   {
-    key: "DOCUMENTS",
-    label: "DOCUMENTS",
+    key: "CONTACTS",
+    label: "Contacts",
+    href: "/customers",
+    icon: "customers",
+    aliases: [
+      "/subcontractors",
+      "/labor/subcontractors",
+      "/financial/vendors",
+      "/vendors",
+      "/people/vendors",
+    ],
     entries: [
-      { href: "/documents", label: "Documents", icon: "documents" },
-      { href: "/site-photos", label: "Site Photos", icon: "photos" },
-      { href: "/inspection-log", label: "Inspection Log", icon: "inspection" },
+      { href: "/customers", label: "Customers", icon: "customers" },
+      {
+        href: "/subcontractors",
+        label: "Subcontractors",
+        icon: "subcontractors",
+        aliases: ["/labor/subcontractors"],
+      },
+      {
+        href: "/financial/vendors",
+        label: "Vendors",
+        icon: "vendors",
+        aliases: ["/vendors", "/people/vendors"],
+      },
+    ],
+  },
+  {
+    key: "INBOX",
+    label: "Inbox",
+    href: UPLOAD_RECEIPT_ACTION.href,
+    icon: "receipts",
+    aliases: ["/financial/receipt-queue", "/labor/receipts"],
+    entries: [],
+  },
+  {
+    key: "REPORTS",
+    label: "Reports",
+    href: "/reports",
+    icon: "metrics",
+    aliases: ["/settings/project-financial-review"],
+    entries: [
+      { href: "/reports", label: "Overview", icon: "metrics" },
+      {
+        href: "/settings/project-financial-review",
+        label: "Project Financial Review",
+        icon: "financial",
+      },
     ],
   },
   {
     key: "SETTINGS",
-    label: "SETTINGS",
+    label: "Settings",
+    href: "/settings/company",
+    icon: "settings",
+    badge: "systemHealth",
+    aliases: [
+      "/settings",
+      "/system-health",
+      "/system-metrics",
+      "/system-logs",
+      "/system/backups",
+      "/backups",
+    ],
     entries: [
       {
         href: "/settings/company",
@@ -268,195 +290,100 @@ export const HH_PROJECT_OS_NAV_SECTIONS = [
           "/settings/subcontractors",
         ],
       },
-      { type: "subheader", label: "Admin Center" },
       {
         href: "/system-health",
         label: "System Health",
         icon: "activity",
+        group: "Admin Center",
         badge: "systemHealth",
         aliases: ["/settings/system-health"],
       },
-      { href: "/system-metrics", label: "System Metrics", icon: "metrics" },
-      { href: "/system-logs", label: "System Logs", icon: "logs" },
-      { href: "/system/backups", label: "Backups", icon: "backups", aliases: ["/backups"] },
+      { href: "/system-metrics", label: "System Metrics", icon: "metrics", group: "Admin Center" },
+      { href: "/system-logs", label: "System Logs", icon: "logs", group: "Admin Center" },
+      {
+        href: "/system/backups",
+        label: "Backups",
+        icon: "backups",
+        group: "Admin Center",
+        aliases: ["/backups"],
+      },
     ],
   },
-] as const satisfies readonly HhProjectOsNavSection[];
+];
 
-export const HH_PROJECT_OS_MOBILE_NAV_ITEMS = [
-  { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
-  { href: "/projects", label: "Projects", icon: "projects" },
-  {
-    href: "/financial",
-    label: "Financial",
-    icon: "financial",
-    exact: true,
-    aliases: [
-      "/finance",
-      "/bills",
-      "/financial/ar",
-      "/financial/bills",
-      "/financial/invoices",
-      "/estimate-templates",
-      "/financial/payments",
-      "/financial/payments-received",
-      "/financial/deposits",
-      "/financial/expenses",
-      UPLOAD_RECEIPT_ACTION.href,
-      "/financial/receipt-queue",
-      "/financial/accounts",
-      "/financial/bank",
-      "/financial/commissions",
-      "/financial/reimbursements",
-      "/dashboard/cashflow",
-      "/labor/reimbursements",
-      "/labor/receipts",
-    ],
-  },
-  {
-    href: "/reports",
-    label: "Reports",
-    icon: "metrics",
-    aliases: ["/settings/project-financial-review"],
-  },
-  {
-    href: "/workers",
-    label: "Directory",
-    icon: "workers",
-    aliases: [
-      "/customers",
-      "/financial/vendors",
-      "/vendors",
-      "/people/vendors",
-      "/subcontractors",
-      "/labor/subcontractors",
-      "/labor/workers",
-    ],
-  },
-  {
-    href: "/documents",
-    label: "Documents",
-    icon: "documents",
-    aliases: ["/projects/documents", "/site-photos", "/inspection-log"],
-  },
-] as const satisfies readonly HhProjectOsNavItem[];
-
-type HhProjectOsMobileNavHref = (typeof HH_PROJECT_OS_MOBILE_NAV_ITEMS)[number]["href"];
-
-type HhProjectOsMobileRouteOwner = {
-  href: HhProjectOsMobileNavHref;
-  paths: readonly ({ href: string; exact?: boolean } | string)[];
-};
-
-const HH_PROJECT_OS_MOBILE_ROUTE_OWNERS = [
-  {
-    href: "/workers",
-    paths: [
-      "/customers",
-      "/workers",
-      "/financial/vendors",
-      "/vendors",
-      "/people/vendors",
-      "/subcontractors",
-      "/labor/subcontractors",
-      "/labor/workers",
-    ],
-  },
-  {
-    href: "/documents",
-    paths: ["/documents", "/projects/documents", "/site-photos", "/inspection-log"],
-  },
-  {
-    href: "/financial",
-    paths: [
-      "/financial",
-      "/finance",
-      "/bills",
-      "/financial/ar",
-      "/financial/bills",
-      "/financial/invoices",
-      "/estimate-templates",
-      "/financial/payments",
-      "/financial/payments-received",
-      "/financial/deposits",
-      "/financial/expenses",
-      UPLOAD_RECEIPT_ACTION.href,
-      "/financial/receipt-queue",
-      "/financial/accounts",
-      "/financial/bank",
-      "/financial/commissions",
-      "/financial/reimbursements",
-      "/dashboard/cashflow",
-      "/labor/reimbursements",
-      "/labor/receipts",
-    ],
-  },
-  {
-    href: "/reports",
-    paths: [
-      "/reports",
-      "/settings/project-financial-review",
-      "/workers/summary",
-      "/labor/payroll",
-      "/labor/payroll-summary",
-      "/labor/payments",
-      "/labor/advances",
-      "/labor/worker-balances",
-      "/labor/worker-invoices",
-    ],
-  },
-  {
-    href: "/projects",
-    paths: [
-      "/projects",
-      "/estimates",
-      "/change-orders",
-      "/tasks",
-      "/punch-list",
-      "/schedule",
-      "/materials",
-      { href: "/labor", exact: true },
-      "/labor/entries",
-      "/labor/daily",
-      "/labor/daily-entry",
-      "/labor/review",
-      "/labor/timesheets",
-      "/labor/monthly",
-      "/labor/cost-allocation",
-    ],
-  },
-  { href: "/dashboard", paths: [{ href: "/dashboard", exact: true }] },
-] as const satisfies readonly HhProjectOsMobileRouteOwner[];
+// The complete workspace menu remains available in the mobile drawer.
+export const HH_PROJECT_OS_MOBILE_NAV_ITEMS = HH_PROJECT_OS_NAV_SECTIONS.filter((item) =>
+  ["DASHBOARD", "PROJECTS", "FINANCIAL", "LABOR", "INBOX"].includes(item.key)
+);
 
 function normalizeHhProjectOsPath(pathname: string | null | undefined): string {
-  const path = (pathname ?? "").split("?")[0].split("#")[0].replace(/\/+$/, "");
-  return path || "/";
+  return (pathname ?? "").split("?")[0].split("#")[0].replace(/\/+$/, "") || "/";
 }
 
-function hhProjectOsPathMatches(pathname: string, target: string, exact?: boolean): boolean {
+function matchedPathLength(pathname: string, item: HhProjectOsNavItem): number {
   const path = normalizeHhProjectOsPath(pathname);
-  const cleanedTarget = normalizeHhProjectOsPath(target);
-  if (exact) return path === cleanedTarget;
-  return path === cleanedTarget || path.startsWith(`${cleanedTarget}/`);
+  return Math.max(
+    0,
+    ...[item.href, ...(item.aliases ?? [])].map((href) => {
+      const target = normalizeHhProjectOsPath(href);
+      return path === target || (!item.exact && path.startsWith(`${target}/`)) ? target.length : 0;
+    })
+  );
 }
 
-export function getHhProjectOsMobileActiveHref(
+export function getHhProjectOsWorkspace(
   pathname: string | null | undefined
-): HhProjectOsMobileNavHref | null {
+): HhProjectOsNavSection | null {
   const path = normalizeHhProjectOsPath(pathname);
-
-  for (const owner of HH_PROJECT_OS_MOBILE_ROUTE_OWNERS) {
-    for (const entry of owner.paths) {
-      const href = typeof entry === "string" ? entry : entry.href;
-      const exact = typeof entry === "string" ? false : entry.exact;
-      if (hhProjectOsPathMatches(path, href, exact)) return owner.href;
-    }
+  // Finance receipt review shares the Finance shell; standalone intake keeps its own workspace.
+  if (path === "/financial/inbox" || path.startsWith("/financial/inbox/")) {
+    return HH_PROJECT_OS_NAV_SECTIONS.find((item) => item.key === "FINANCIAL") ?? null;
   }
+  return HH_PROJECT_OS_NAV_SECTIONS.reduce<HhProjectOsNavSection | null>(
+    (active, item) =>
+      matchedPathLength(path, item) > (active ? matchedPathLength(path, active) : 0)
+        ? item
+        : active,
+    null
+  );
+}
 
-  return null;
+export function getHhProjectOsMobileActiveHref(pathname: string | null | undefined): string | null {
+  return getHhProjectOsWorkspace(pathname)?.href ?? null;
+}
+
+export function getHhProjectOsWorkspaceActiveHref(
+  pathname: string,
+  workspace: HhProjectOsNavSection
+): string | null {
+  return (
+    workspace.entries.reduce<HhProjectOsNavItem | null>(
+      (active, item) =>
+        matchedPathLength(pathname, item) > (active ? matchedPathLength(pathname, active) : 0)
+          ? item
+          : active,
+      null
+    )?.href ?? null
+  );
 }
 
 export const HH_PROJECT_OS_COMMAND_ITEMS = [
+  {
+    id: "go-estimates",
+    label: "Go to Estimates",
+    description: "Open estimates and templates",
+    href: "/estimates",
+    keywords: ["estimates", "quotes", "proposals"],
+    icon: "estimates",
+  },
+  {
+    id: "go-labor",
+    label: "Go to Labor",
+    description: "Open time entries, workers, and workforce payments",
+    href: "/labor",
+    keywords: ["labor", "workers", "workforce", "payroll"],
+    icon: "workers",
+  },
   {
     id: "go-dashboard",
     label: "Go to Dashboard",
@@ -468,7 +395,7 @@ export const HH_PROJECT_OS_COMMAND_ITEMS = [
   {
     id: "go-projects",
     label: "Go to Projects",
-    description: "Project pipeline, estimates, change orders, and operations",
+    description: "Projects, change orders, documents, and field operations",
     href: "/projects",
     keywords: ["jobs", "work", "construction", "operations"],
     icon: "projects",
@@ -515,8 +442,8 @@ export const HH_PROJECT_OS_COMMAND_ITEMS = [
   },
   {
     id: "go-financial",
-    label: "Go to Financial",
-    description: "Financial overview, AR, AP, and cash",
+    label: "Go to Finance",
+    description: "Financial overview, billing, payables, expenses, and accounts",
     href: "/financial",
     keywords: ["finance", "financial", "ar", "ap", "cash"],
     icon: "financial",
@@ -563,7 +490,7 @@ export const HH_PROJECT_OS_COMMAND_ITEMS = [
   },
   {
     id: "go-workforce-reports",
-    label: "Go to Workforce Reports",
+    label: "Go to Workforce",
     description: "Open workforce payroll, balances, payments, advances, and statements",
     href: "/reports/workforce",
     keywords: ["reports", "workforce", "payroll", "workers", "balances", "payments"],
@@ -571,9 +498,9 @@ export const HH_PROJECT_OS_COMMAND_ITEMS = [
   },
   {
     id: "go-people",
-    label: "Go to Directory",
-    description: "Customers, workers, vendors, and subcontractors",
-    href: "/workers",
+    label: "Go to Contacts",
+    description: "Customers, vendors, and subcontractors",
+    href: "/customers",
     keywords: ["directory", "people", "customers", "workers", "vendors", "subcontractors"],
     icon: "workers",
   },
@@ -826,13 +753,3 @@ export const HH_PROJECT_OS_COMMAND_ITEMS = [
     icon: "settings",
   },
 ] as const;
-
-export function isHhProjectOsNavItem(entry: HhProjectOsNavEntry): entry is HhProjectOsNavItem {
-  return entry.type == null || entry.type === "item";
-}
-
-export function isHhProjectOsNavPlaceholder(
-  entry: HhProjectOsNavEntry
-): entry is HhProjectOsNavPlaceholder {
-  return entry.type === "placeholder";
-}

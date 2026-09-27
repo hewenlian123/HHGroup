@@ -1,4 +1,9 @@
-export type WorkerReturnTab = "receipts" | "advances" | "payments" | "statements";
+export type WorkerReturnTab =
+  | "receipts"
+  | "reimbursements"
+  | "advances"
+  | "payments"
+  | "statements";
 export type WorkforceReturnTab =
   | "overview"
   | "payroll"

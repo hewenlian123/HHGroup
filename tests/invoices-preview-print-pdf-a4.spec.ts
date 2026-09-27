@@ -2,11 +2,16 @@ import { expect, test, type Page } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import { readFile } from "node:fs/promises";
 
+import { loginAsE2EOwner } from "./e2e-auth-owner";
 import { E2E_PRESERVED_PROJECT_LABEL } from "./e2e-cleanup-db";
 import { assertE2ESupabaseUrlSafeForMutations } from "./e2e-supabase-url-guard";
 
 const createdClientNames = new Set<string>();
 const createdInvoiceNos = new Set<string>();
+
+test.beforeEach(async ({ page }) => {
+  await loginAsE2EOwner(page, "/financial/invoices");
+});
 
 function invoiceIdFromUrl(url: string): string {
   const match = url.match(/\/financial\/invoices\/([^/?#]+)/);

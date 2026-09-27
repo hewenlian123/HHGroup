@@ -8,8 +8,10 @@ import {
   buildEstimatePreviewHref,
   chooseEstimateReturnSectionId,
   readEstimateBuilderReturnContext,
+  reduceEstimateActiveSection,
   safeEstimateReturnPath,
 } from "@/app/estimates/_components/estimate-workflow-continuity";
+import * as estimateWorkflowContinuity from "@/app/estimates/_components/estimate-workflow-continuity";
 
 describe("Estimate Builder and Preview continuity", () => {
   it("carries the originating section and scroll position into persisted Preview", () => {
@@ -44,6 +46,44 @@ describe("Estimate Builder and Preview continuity", () => {
   it("prefers an explicitly selected Section over scroll inference", () => {
     expect(chooseEstimateReturnSectionId("closeout", "framing")).toBe("closeout");
     expect(chooseEstimateReturnSectionId("  ", "framing")).toBe("framing");
+  });
+
+  it("releases explicit Section authority after its observer settles so later manual scroll wins", () => {
+    const selected = reduceEstimateActiveSection(
+      { id: "framing", explicit: false },
+      "closeout",
+      "explicit"
+    );
+    expect(selected).toEqual({ id: "closeout", explicit: true });
+
+    const staleInference = reduceEstimateActiveSection(selected, "framing", "inferred");
+    expect(staleInference).toBe(selected);
+
+    const settled = reduceEstimateActiveSection(selected, "closeout", "inferred");
+    expect(settled).toEqual({ id: "closeout", explicit: false });
+
+    expect(reduceEstimateActiveSection(settled, "framing", "inferred")).toEqual({
+      id: "framing",
+      explicit: false,
+    });
+  });
+
+  it("keeps a previously visible Section when an observer callback only reports the old Section leaving", () => {
+    const selectActiveSection = (estimateWorkflowContinuity as Record<string, unknown>)
+      .selectEstimateActiveSectionFromObserverEntries;
+
+    expect(selectActiveSection).toEqual(expect.any(Function));
+    if (typeof selectActiveSection !== "function") return;
+
+    expect(
+      selectActiveSection(
+        [
+          { id: "stress-08", isIntersecting: true, top: 104 },
+          { id: "stress-01", isIntersecting: true, top: 136 },
+        ],
+        [{ id: "stress-08", isIntersecting: false, top: -20 }]
+      )
+    ).toBe("stress-01");
   });
 });
 

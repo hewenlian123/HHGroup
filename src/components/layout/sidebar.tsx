@@ -18,7 +18,6 @@ import {
   Building2,
   ChevronLeft,
   ChevronRight,
-  ChevronDown,
   CircleDollarSign,
   CheckSquare,
   ListChecks,
@@ -45,24 +44,23 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { createBrowserClient } from "@/lib/supabase";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { prefetchFinancialRoute } from "@/lib/financial-nav-prefetch";
-import { OWNER_NAV_PREFETCH_ROUTES, prefetchRoutes, runWhenIdle } from "@/lib/route-prefetch";
+import {
+  OWNER_NAV_PREFETCH_ROUTES,
+  prefetchRoutes,
+  runWhenIdle,
+  shouldBulkPrefetchOwnerNav,
+} from "@/lib/route-prefetch";
 import { companyProfileQueryKey, fetchCompanyProfileForNav } from "@/lib/queries/companyProfile";
 import { getCompanyInitials } from "@/lib/company-profile";
 import { useSystemHealth } from "@/contexts/system-health-context";
 import { useAuth } from "@/components/auth/auth-provider";
 import { authIdentityRoleLabel } from "@/components/auth/auth-ui";
 import {
-  HH_PROJECT_OS_DEFAULT_OPEN_SECTIONS,
   HH_PROJECT_OS_NAV_SECTIONS,
-  HH_PROJECT_OS_SECTION_KEYS,
-  isHhProjectOsNavItem,
-  isHhProjectOsNavPlaceholder,
+  getHhProjectOsMobileActiveHref,
   type HhProjectOsIconKey,
   type HhProjectOsNavItem,
-  type HhProjectOsNavPlaceholder,
 } from "@/lib/navigation/ia";
-
-const STORAGE_KEY = "hh.sidebarSections";
 
 const NAV_ICON_MAP: Record<HhProjectOsIconKey, LucideIcon> = {
   accounts: Wallet,
@@ -131,7 +129,7 @@ export function Sidebar({
 }) {
   const pathname = usePathname();
   const { initialized: authInitialized, role: authRole, user: authUser } = useAuth();
-  const deferBulkPrefetch = pathname === "/estimate-templates" || pathname.startsWith("/estimates");
+  const bulkPrefetchEnabled = shouldBulkPrefetchOwnerNav(pathname);
   const router = useRouter();
   const queryClient = useQueryClient();
   const prefetchedNavRoutesRef = React.useRef<Set<string>>(new Set());
@@ -158,7 +156,6 @@ export function Sidebar({
     },
     [prefetchFinancialNav, router]
   );
-  const [openSections, setOpenSections] = React.useState<Record<string, boolean>>(() => ({}));
   const { data: companyProfile } = useQuery({
     queryKey: companyProfileQueryKey,
     queryFn: () => fetchCompanyProfileForNav(prefetchSupabase!),
@@ -174,128 +171,46 @@ export function Sidebar({
     : "Checking session";
   const accountInitial = authUser?.email?.trim().charAt(0).toUpperCase() || "?";
 
-  const sectionsInitDone = React.useRef(false);
-
   React.useEffect(() => {
-    if (deferBulkPrefetch) return;
-    return runWhenIdle(() => {
+    if (!bulkPrefetchEnabled) return;
+    let cancelPrefetch: (() => void) | undefined;
+    const cancelIdle = runWhenIdle(() => {
       for (const href of OWNER_NAV_PREFETCH_ROUTES) {
         prefetchedNavRoutesRef.current.add(href);
       }
-      prefetchRoutes(router, OWNER_NAV_PREFETCH_ROUTES);
+      cancelPrefetch = prefetchRoutes(router, OWNER_NAV_PREFETCH_ROUTES);
     }, 2500);
-  }, [deferBulkPrefetch, router]);
+    return () => {
+      cancelIdle();
+      cancelPrefetch?.();
+    };
+  }, [bulkPrefetchEnabled, router]);
 
-  const itemMatchesPath = React.useCallback(
-    (item: HhProjectOsNavItem) => {
-      const matchesHref = (href: string) =>
-        item.exact ? pathname === href : pathname === href || pathname.startsWith(href + "/");
-      if (
-        (item.excludePaths ?? []).some(
-          (href) => pathname === href || pathname.startsWith(href + "/")
-        )
-      ) {
-        return false;
-      }
-      return matchesHref(item.href) || (item.aliases ?? []).some((href) => matchesHref(href));
-    },
-    [pathname]
-  );
-
-  const activeSectionKey = React.useMemo(() => {
-    for (const section of HH_PROJECT_OS_NAV_SECTIONS) {
-      if (section.entries.some((entry) => isHhProjectOsNavItem(entry) && itemMatchesPath(entry))) {
-        return section.key;
-      }
-    }
-    return null;
-  }, [itemMatchesPath]);
-
-  React.useEffect(() => {
-    if (sectionsInitDone.current) return;
-    sectionsInitDone.current = true;
-    const isMobileOrTablet = typeof window !== "undefined" && window.innerWidth < 1024;
-    if (isMobileOrTablet) {
-      const allClosed = HH_PROJECT_OS_SECTION_KEYS.reduce(
-        (acc, k) => ({ ...acc, [k]: false }),
-        {} as Record<string, boolean>
-      );
-      setOpenSections(allClosed);
-      return;
-    }
-    try {
-      const raw = typeof window !== "undefined" ? window.localStorage.getItem(STORAGE_KEY) : null;
-      if (raw) {
-        const parsed = JSON.parse(raw) as Record<string, boolean>;
-        if (parsed && typeof parsed === "object") {
-          setOpenSections({ ...HH_PROJECT_OS_DEFAULT_OPEN_SECTIONS, ...parsed });
-          return;
-        }
-      }
-    } catch {
-      // ignore
-    }
-    setOpenSections(HH_PROJECT_OS_DEFAULT_OPEN_SECTIONS);
-  }, []);
-
-  React.useEffect(() => {
-    if (!activeSectionKey || collapsed) return;
-    setOpenSections((prev) => {
-      if (prev[activeSectionKey]) return prev;
-      const next = { ...prev, [activeSectionKey]: true };
-      try {
-        if (typeof window !== "undefined") {
-          window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-        }
-      } catch {
-        // ignore
-      }
-      return next;
-    });
-  }, [activeSectionKey, collapsed]);
-
-  const setSectionOpen = React.useCallback((key: string, open: boolean) => {
-    setOpenSections((prev) => {
-      const next = { ...prev, [key]: open };
-      try {
-        if (typeof window !== "undefined") {
-          window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-        }
-      } catch {
-        // ignore
-      }
-      return next;
-    });
-  }, []);
+  const activeHref = getHhProjectOsMobileActiveHref(pathname);
 
   const { systemHealth } = useSystemHealth();
   /** Nav row: inactive label always readable; hover adjusts background only. */
   const navRowClass = (active: boolean) =>
     cn(
-      "group relative flex touch-manipulation items-center rounded-md transition-[background-color] duration-200 ease-out",
+      "group relative flex touch-manipulation items-center rounded-hh-standard transition-[background-color,color] duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)]",
       TYPO.tableCell,
       collapsed
-        ? "min-h-[44px] justify-center px-2 py-1.5 lg:min-h-0"
-        : "max-lg:min-h-[44px] min-h-0 gap-2.5 px-2 py-1.5 lg:min-h-0",
+        ? "min-h-[44px] justify-center px-2 lg:h-9 lg:min-h-9"
+        : "min-h-[44px] gap-2.5 px-2.5 lg:h-9 lg:min-h-9",
       active
-        ? cn(
-            "bg-[var(--hh-l3-selected)] font-medium text-[var(--hh-text-primary)] hover:bg-[var(--hh-l3-hover)]",
-            "dark:bg-[var(--hh-action-primary)] dark:text-[var(--hh-action-primary-foreground)] dark:hover:bg-[var(--hh-gold-hover)]"
-          )
-        : "font-normal text-[var(--hh-text-secondary)] hover:bg-[var(--hh-l2-operational-surface)] active:bg-[var(--hh-l3-hover)]"
+        ? "bg-[var(--hh-surface-selected)] font-medium text-[var(--hh-accent-hover)] before:absolute before:inset-y-1.5 before:left-0 before:w-[3px] before:rounded-r-full before:bg-[var(--hh-accent-primary)] hover:bg-[var(--hh-accent-soft)]"
+        : "font-normal text-[var(--hh-text-secondary)] hover:bg-[var(--hh-surface-hover)] active:bg-[var(--hh-accent-soft)]"
     );
 
   const navIconClass = (active: boolean, extra?: string) =>
     cn(
       "h-[15px] w-[15px] shrink-0",
-      active
-        ? "text-[var(--hh-text-primary)] dark:text-[var(--hh-action-primary-foreground)]"
-        : "text-[var(--hh-text-secondary)]",
+      active ? "text-[var(--hh-accent-primary)]" : "text-[var(--hh-text-muted)]",
       extra
     );
 
   const renderNavItem = (item: HhProjectOsNavItem, options?: { iconOnly?: boolean }) => {
-    const active = itemMatchesPath(item);
+    const active = activeHref === item.href;
     const isSystemHealthWarning =
       item.badge === "systemHealth" && systemHealth.status === "warning";
     const Icon = isSystemHealthWarning ? AlertTriangle : NAV_ICON_MAP[item.icon];
@@ -321,174 +236,83 @@ export function Sidebar({
     );
   };
 
-  const renderNavPlaceholder = (
-    item: HhProjectOsNavPlaceholder,
-    options?: { iconOnly?: boolean }
-  ) => {
-    const Icon = NAV_ICON_MAP[item.icon];
-    const iconOnly = options?.iconOnly ?? false;
-    const label = item.note ? `${item.label}: ${item.note}` : item.label;
-
-    return (
-      <div
-        key={`placeholder-${item.label}`}
-        aria-disabled="true"
-        title={label}
-        className={cn(
-          "group relative flex items-center rounded-md text-[var(--hh-text-tertiary)]",
-          TYPO.tableCell,
-          "cursor-default select-none",
-          collapsed
-            ? "min-h-[44px] justify-center px-2 py-1.5 lg:min-h-0"
-            : "max-lg:min-h-[44px] min-h-0 gap-2.5 px-2 py-1.5 lg:min-h-0"
-        )}
-      >
-        <Icon
-          className="h-[15px] w-[15px] shrink-0 text-[var(--hh-text-tertiary)]"
-          strokeWidth={1.75}
-        />
-        {!iconOnly && (
-          <span className="flex min-w-0 flex-1 items-baseline justify-between gap-2">
-            <span className="truncate">{item.label}</span>
-            {item.note ? (
-              <span
-                className={cn(
-                  "shrink-0 rounded-hh-compact border border-[var(--hh-border)] px-1.5 py-0.5",
-                  TYPO.tableHeader
-                )}
-              >
-                Future
-              </span>
-            ) : null}
-          </span>
-        )}
-      </div>
-    );
-  };
-
   return (
     <aside
       data-app-sidebar
+      data-collapsed={collapsed ? "true" : "false"}
       className={cn(
-        "neo-sidebar relative flex h-full shrink-0 flex-col overflow-hidden",
+        "relative flex h-full shrink-0 flex-col overflow-hidden border-r border-[var(--hh-border-subtle)] bg-[var(--hh-surface-workspace)] text-[var(--hh-text-primary)] shadow-none",
         collapsed ? "w-hh-sidebar-collapsed" : "w-hh-sidebar-expanded",
         className
       )}
     >
       <div
+        data-sidebar-brand
         className={cn(
-          "relative z-[1] flex h-12 items-center gap-2 border-b border-[var(--hh-border)] bg-[var(--hh-l1-workspace)]",
+          "relative z-[1] flex h-14 min-h-14 items-center gap-2 border-b border-[var(--hh-border-subtle)] bg-[var(--hh-surface-workspace)]",
           collapsed ? "px-3" : "px-3"
         )}
       >
-        <Avatar className="h-7 w-7 rounded-md ring-1 ring-inset ring-[var(--hh-border)]">
-          {logoUrl ? <AvatarImage src={logoUrl} alt={orgName} className="object-contain" /> : null}
-          <AvatarFallback
-            className={cn(
-              "rounded-md bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)]",
-              TYPO.tableHeader
-            )}
-          >
-            {getCompanyInitials(orgName)}
-          </AvatarFallback>
-        </Avatar>
-        {!collapsed && (
-          <div className="min-w-0">
-            <p className={cn("truncate", TYPO.tableHeader)}>HH Unified</p>
-            <p className={cn("truncate", TYPO.primaryName)}>{orgName}</p>
-          </div>
-        )}
+        <div data-sidebar-standard-brand className="contents">
+          <Avatar className="h-8 w-8 rounded-md ring-1 ring-inset ring-[var(--hh-border-default)]">
+            {logoUrl ? (
+              <AvatarImage src={logoUrl} alt={orgName} className="object-contain" />
+            ) : null}
+            <AvatarFallback
+              className={cn(
+                "rounded-md bg-[var(--hh-surface-subtle)] text-[var(--hh-text-primary)]",
+                TYPO.tableHeader
+              )}
+            >
+              {getCompanyInitials(orgName)}
+            </AvatarFallback>
+          </Avatar>
+          {!collapsed && (
+            <div className="min-w-0">
+              <p className={cn("truncate", TYPO.tableHeader)}>HH Unified</p>
+              <p className={cn("truncate", TYPO.primaryName)}>{orgName}</p>
+            </div>
+          )}
+        </div>
       </div>
 
       <nav
+        data-sidebar-navigation
+        aria-label="Workspaces"
         className={cn(
           "relative z-[1] flex-1 overflow-y-auto",
           // Hide scrollbar chrome (keep scroll) for a cleaner SaaS feel
           "[-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
-          collapsed ? "px-2 py-3" : "px-2 py-3"
+          "px-2 py-3"
         )}
       >
-        <div className={cn("flex flex-col", collapsed && "gap-1")}>
-          {HH_PROJECT_OS_NAV_SECTIONS.map((section, sectionIndex) => {
-            const isOpen = openSections[section.key] ?? false;
-            if (collapsed) {
-              return (
-                <div
-                  key={section.key}
-                  className={cn("flex flex-col gap-1", sectionIndex > 0 && "mt-6")}
-                >
-                  {section.entries.map((entry) => {
-                    if (isHhProjectOsNavItem(entry)) {
-                      return renderNavItem(entry, { iconOnly: true });
-                    }
-                    if (isHhProjectOsNavPlaceholder(entry)) {
-                      return renderNavPlaceholder(entry, { iconOnly: true });
-                    }
-                    return null;
-                  })}
-                </div>
-              );
-            }
-            return (
-              <div key={section.key} className={cn("flex flex-col", sectionIndex > 0 && "mt-6")}>
-                <button
-                  type="button"
-                  onClick={() => setSectionOpen(section.key, !isOpen)}
-                  className={cn(
-                    "flex min-h-[44px] w-full items-center gap-2 rounded-md px-2 py-2 text-left text-[var(--hh-text-secondary)] transition-[background-color] duration-150 ease-out hover:bg-[var(--hh-l2-operational-surface)] active:bg-[var(--hh-l3-hover)] lg:min-h-0",
-                    TYPO.tableHeader
-                  )}
-                  aria-expanded={isOpen}
-                >
-                  {isOpen ? (
-                    <ChevronDown
-                      className="h-3.5 w-3.5 shrink-0 opacity-70"
-                      aria-hidden
-                      strokeWidth={1.75}
-                    />
-                  ) : (
-                    <ChevronRight
-                      className="h-3.5 w-3.5 shrink-0 opacity-70"
-                      aria-hidden
-                      strokeWidth={1.75}
-                    />
-                  )}
-                  <span className="truncate">{section.label}</span>
-                </button>
-                {isOpen ? (
-                  <div>
-                    <div className="flex flex-col gap-1">
-                      {section.entries.map((entry, entryIndex) => {
-                        if (isHhProjectOsNavItem(entry)) return renderNavItem(entry);
-                        if (isHhProjectOsNavPlaceholder(entry)) {
-                          return renderNavPlaceholder(entry);
-                        }
-                        return (
-                          <div
-                            key={`${section.key}-${entry.label}`}
-                            className={cn("px-2 pb-1", TYPO.tableHeader, entryIndex > 0 && "pt-3")}
-                          >
-                            {entry.label}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-            );
-          })}
+        <div className="flex min-h-full flex-col gap-1">
+          {HH_PROJECT_OS_NAV_SECTIONS.map((section) => (
+            <div
+              key={section.key}
+              className={
+                section.key === "SETTINGS"
+                  ? "mt-auto border-t border-[var(--hh-border-subtle)] pt-3"
+                  : undefined
+              }
+            >
+              {renderNavItem(section, { iconOnly: collapsed })}
+            </div>
+          ))}
         </div>
       </nav>
 
       {/* User footer */}
       {!collapsed && (
-        <div className="relative z-[1] border-t border-[var(--hh-border)] px-3 py-3">
-          <div className="flex items-center gap-2.5 rounded-md border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-2.5 py-2">
-            <Avatar className="h-8 w-8 shrink-0 rounded-md ring-1 ring-inset ring-[var(--hh-border)]">
+        <div
+          data-sidebar-account
+          className="relative z-[1] border-t border-[var(--hh-border-subtle)] px-3 py-3"
+        >
+          <div className="flex min-h-11 items-center gap-2.5 rounded-hh-standard bg-[var(--hh-surface-section)] px-2.5 py-2">
+            <Avatar className="h-8 w-8 shrink-0 rounded-md ring-1 ring-inset ring-[var(--hh-border-default)]">
               <AvatarFallback
                 className={cn(
-                  "rounded-md bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-secondary)]",
+                  "rounded-md bg-[var(--hh-surface-workspace)] text-[var(--hh-text-secondary)]",
                   TYPO.tableHeader
                 )}
               >
@@ -504,14 +328,17 @@ export function Sidebar({
       )}
 
       {/* Collapse button at bottom */}
-      <div className="relative z-[1] border-t border-[var(--hh-border)] p-2">
+      <div
+        data-sidebar-collapse
+        className="relative z-[1] border-t border-[var(--hh-border-subtle)] p-2"
+      >
         <button
           type="button"
           onClick={onToggleCollapsed}
           className={cn(
-            "flex w-full items-center rounded-md text-[var(--hh-text-secondary)] transition-[background-color] duration-150 ease-out hover:bg-[var(--hh-l2-operational-surface)]",
+            "flex min-h-[44px] w-full items-center rounded-hh-standard text-[var(--hh-text-muted)] transition-[background-color,color] duration-150 ease-out hover:bg-[var(--hh-surface-hover)] hover:text-[var(--hh-text-secondary)] lg:h-9 lg:min-h-9",
             TYPO.button,
-            collapsed ? "min-h-[44px] justify-center px-2 py-2 sm:min-h-8" : "gap-2 px-2 py-1.5"
+            collapsed ? "justify-center px-2" : "gap-2 px-2.5"
           )}
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           title={collapsed ? "Expand sidebar" : "Collapse sidebar"}

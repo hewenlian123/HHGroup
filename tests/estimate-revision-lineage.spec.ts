@@ -1,7 +1,8 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./estimate-playwright-test";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-import { loginAsE2EOwner } from "./e2e-auth-owner";
+import { gotoWithE2EAuth, loginAsE2EOwner } from "./e2e-auth-owner";
+import { deleteLocalEstimateFixtureGraphs } from "./e2e-estimate-fixture-teardown";
 import { assertE2ESupabaseUrlSafeForMutations } from "./e2e-supabase-url-guard";
 
 function localAdmin(): SupabaseClient {
@@ -185,7 +186,7 @@ test("Create Revision preserves immutable lineage on desktop and mobile", async 
     if (protectRevision.error) throw new Error(protectRevision.error.message);
 
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto(`/estimates/${revisionOneId}`, { waitUntil: "domcontentloaded" });
+    await gotoWithE2EAuth(page, `/estimates/${revisionOneId}`);
     await expect(page.getByTestId("estimate-detail-header")).toContainText(estimateNumber);
     await expect(page.getByTestId("estimate-detail-header")).toContainText("Rev 1");
     await page.getByLabel("More estimate actions", { exact: true }).click();
@@ -221,14 +222,7 @@ test("Create Revision preserves immutable lineage on desktop and mobile", async 
       await db.from("estimate_items").delete().in("estimate_id", estimateIds);
       await db.from("estimate_categories").delete().in("estimate_id", estimateIds);
       await db.from("estimate_meta").delete().in("estimate_id", estimateIds);
-      const remaining = await db
-        .from("estimates")
-        .select("id, revision_number")
-        .in("id", estimateIds)
-        .order("revision_number", { ascending: false });
-      for (const row of remaining.data ?? []) {
-        await db.from("estimates").delete().eq("id", row.id);
-      }
+      await deleteLocalEstimateFixtureGraphs(estimateIds);
     }
     if (customerId) await db.from("customers").delete().eq("id", customerId);
   }

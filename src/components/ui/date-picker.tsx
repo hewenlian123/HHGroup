@@ -45,7 +45,7 @@ export type FinanceDatePickerProps = {
   showFooter?: boolean;
   /** If false, Clear is disabled (use for required dates). */
   allowClear?: boolean;
-  /** Dark glass styling for estimate builder (popover + trigger). */
+  /** @deprecated Retained for call-site compatibility; runtime is always V2 Light. */
   appearance?: "default" | "glass";
 };
 
@@ -62,9 +62,7 @@ export function FinanceDatePicker({
   size = "sm",
   showFooter = true,
   allowClear = false,
-  appearance = "default",
 }: FinanceDatePickerProps) {
-  const isGlass = appearance === "glass";
   const [open, setOpen] = React.useState(false);
   const triggerRef = React.useRef<HTMLButtonElement>(null);
   const selected = React.useMemo(() => ymdToLocalDate(value), [value]);
@@ -96,9 +94,7 @@ export function FinanceDatePicker({
           className={cn(
             "hh-focus-ring hh-fin hh-touch-min inline-flex w-full items-center justify-between gap-hh-2 rounded-hh-standard border px-hh-3 text-left transition-[background-color,border-color,box-shadow,color] duration-150 ease-out motion-reduce:transition-none",
             TYPO.button,
-            isGlass
-              ? "eb-date-field border-white/[0.06] bg-white/[0.02] text-zinc-100 hover:border-white/[0.09] hover:bg-white/[0.035] focus-visible:border-white/[0.14] focus-visible:shadow-[0_0_0_2px_rgba(255,255,255,0.05)]"
-              : "border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] hover:border-[var(--hh-border-strong)] hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)]",
+            "border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] hover:border-[var(--hh-border-strong)] hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)]",
             size === "md" ? "h-hh-control-touch min-h-hh-touch" : "h-hh-control-standard",
             disabled && "pointer-events-none opacity-60",
             className
@@ -106,28 +102,23 @@ export function FinanceDatePicker({
           aria-label={ariaLabel}
         >
           <span className="truncate tabular-nums">{label}</span>
-          <CalendarDays
-            className={cn("h-4 w-4 shrink-0", isGlass ? "text-zinc-400/80" : "text-zinc-400/70")}
-            aria-hidden
-          />
+          <CalendarDays className="h-4 w-4 shrink-0 text-[var(--hh-text-tertiary)]" aria-hidden />
         </button>
       </PopoverTrigger>
       <PopoverContent
         align="start"
         sideOffset={8}
         collisionPadding={8}
-        themeScope={isGlass ? "dark" : "inherit"}
+        themeScope="inherit"
         data-finance-date-picker-content="true"
-        data-finance-date-picker-appearance={appearance}
+        data-finance-date-picker-appearance="default"
         data-expense-component-surface={
           contentClassName?.includes("expenses-ui-dialog") ? "date-picker" : undefined
         }
         className={cn(
           "z-[130] max-h-[var(--radix-popover-content-available-height)] w-[332px] max-w-[calc(100vw-16px)] overflow-y-auto p-3 sm:w-[280px]",
           styles.content,
-          isGlass
-            ? "rounded-hh-standard border border-white/10 bg-[rgba(18,22,34,0.96)] text-zinc-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_18px_44px_rgba(0,0,0,0.38)] backdrop-blur-[28px] backdrop-saturate-[175%]"
-            : "rounded-hh-standard border border-[var(--hh-border-floating)] bg-[var(--hh-l4-floating-surface)] text-[var(--hh-text-primary)] shadow-floating",
+          "rounded-hh-standard border border-[var(--hh-border-floating)] bg-[var(--hh-l4-floating-surface)] text-[var(--hh-text-primary)] shadow-floating",
           contentClassName
         )}
         onEscapeKeyDown={(event) => event.stopPropagation()}
@@ -165,28 +156,20 @@ export function FinanceDatePicker({
               rdp.caption_label,
               "flex items-center justify-center",
               TYPO.panelTitle,
-              isGlass ? "text-zinc-50" : "text-[var(--hh-text-primary)]"
+              "text-[var(--hh-text-primary)]"
             ),
             nav: cn(rdp.nav, "gap-1 items-center"),
             button_previous: cn(
               rdp.button_previous,
               "hh-focus-ring flex h-10 w-10 items-center justify-center rounded-hh-compact border-0 bg-transparent transition-colors duration-150 ease-out motion-reduce:transition-none sm:h-8 sm:w-8",
-              isGlass
-                ? "text-zinc-400 hover:bg-white/[0.08] focus-visible:ring-white/20"
-                : "text-[var(--hh-text-secondary)] hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)]"
+              "text-[var(--hh-text-secondary)] hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)]"
             ),
             button_next: cn(
               rdp.button_next,
               "hh-focus-ring flex h-10 w-10 items-center justify-center rounded-hh-compact border-0 bg-transparent transition-colors duration-150 ease-out motion-reduce:transition-none sm:h-8 sm:w-8",
-              isGlass
-                ? "text-zinc-400 hover:bg-white/[0.08] focus-visible:ring-white/20"
-                : "text-[var(--hh-text-secondary)] hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)]"
+              "text-[var(--hh-text-secondary)] hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)]"
             ),
-            weekdays: cn(
-              rdp.weekdays,
-              TYPO.tableHeader,
-              isGlass ? "text-zinc-500" : "text-[var(--hh-text-tertiary)]"
-            ),
+            weekdays: cn(rdp.weekdays, TYPO.tableHeader, "text-[var(--hh-text-tertiary)]"),
             weekday: cn(rdp.weekday, "w-10 py-1 text-center sm:w-8"),
             week: cn(rdp.week, "gap-1"),
             day: cn(
@@ -199,46 +182,25 @@ export function FinanceDatePicker({
               (rdp as unknown as Record<string, string>).day_button ?? "",
               "hh-focus-ring hh-fin flex h-10 w-10 items-center justify-center rounded-hh-compact border border-transparent shadow-none transition-[background-color,border-color,color,box-shadow,opacity] duration-150 ease-out active:duration-100 motion-reduce:transition-none sm:h-8 sm:w-8",
               TYPO.metadata,
-              isGlass
-                ? "text-zinc-300 hover:bg-white/[0.08] active:bg-white/[0.12] focus-visible:ring-white/30 focus-visible:ring-offset-[#121622]"
-                : "text-[var(--hh-text-primary)] hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)]"
+              "text-[var(--hh-text-primary)] hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)]"
             ),
             today: cn(
               rdp.today,
-              isGlass
-                ? "font-semibold [&:not([data-selected=true])_button]:border-white/20"
-                : "font-semibold [&:not([data-selected=true])_button]:border-[var(--hh-border-strong)]"
+              "font-semibold [&:not([data-selected=true])_button]:border-[var(--hh-border-strong)]"
             ),
             selected: cn(
               rdp.selected,
-              isGlass
-                ? "bg-transparent shadow-none [&_button]:border-transparent [&_button]:bg-zinc-100 [&_button]:text-zinc-950 [&_button:hover]:bg-white"
-                : "bg-transparent shadow-none [&_button]:border-[var(--hh-border-strong)] [&_button]:bg-[var(--hh-l3-selected)] [&_button]:text-[var(--hh-text-primary)] [&_button:hover]:bg-[var(--hh-l3-selected)]"
+              "bg-transparent shadow-none [&_button]:border-[var(--hh-border-strong)] [&_button]:bg-[var(--hh-l3-selected)] [&_button]:text-[var(--hh-text-primary)] [&_button:hover]:bg-[var(--hh-l3-selected)]"
             ),
-            outside: cn(
-              rdp.outside,
-              isGlass ? "text-zinc-600 opacity-55" : "text-[var(--hh-text-tertiary)] opacity-50"
-            ),
+            outside: cn(rdp.outside, "text-[var(--hh-text-tertiary)] opacity-50"),
             disabled: cn(rdp.disabled, "pointer-events-none cursor-not-allowed opacity-30"),
           }}
           components={{
             Chevron: (props) =>
               props.orientation === "left" ? (
-                <ChevronLeft
-                  className={cn(
-                    "h-4 w-4",
-                    isGlass ? "text-zinc-400" : "text-[var(--hh-text-secondary)]"
-                  )}
-                  aria-hidden
-                />
+                <ChevronLeft className="h-4 w-4 text-[var(--hh-text-secondary)]" aria-hidden />
               ) : (
-                <ChevronRight
-                  className={cn(
-                    "h-4 w-4",
-                    isGlass ? "text-zinc-400" : "text-[var(--hh-text-secondary)]"
-                  )}
-                  aria-hidden
-                />
+                <ChevronRight className="h-4 w-4 text-[var(--hh-text-secondary)]" aria-hidden />
               ),
           }}
           footer={
@@ -249,9 +211,7 @@ export function FinanceDatePicker({
                   className={cn(
                     "hh-focus-ring hh-touch-min inline-flex min-h-hh-control-comfortable items-center rounded-hh-compact px-hh-2 transition-colors duration-150 ease-out disabled:pointer-events-none disabled:opacity-35 motion-reduce:transition-none lg:min-h-hh-control-compact",
                     TYPO.button,
-                    isGlass
-                      ? "text-zinc-400 hover:bg-white/[0.08] hover:text-zinc-100 focus-visible:ring-white/20"
-                      : "text-[var(--hh-text-secondary)] hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)] hover:text-[var(--hh-text-primary)]"
+                    "text-[var(--hh-text-secondary)] hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)] hover:text-[var(--hh-text-primary)]"
                   )}
                   disabled={!allowClear || !selected}
                   onClick={() => {
@@ -266,9 +226,7 @@ export function FinanceDatePicker({
                   className={cn(
                     "hh-focus-ring hh-touch-min inline-flex min-h-hh-control-comfortable items-center rounded-hh-compact px-hh-2 transition-colors duration-150 ease-out motion-reduce:transition-none lg:min-h-hh-control-compact",
                     TYPO.button,
-                    isGlass
-                      ? "text-zinc-400 hover:bg-white/[0.08] hover:text-zinc-100 focus-visible:ring-white/20"
-                      : "text-[var(--hh-text-secondary)] hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)] hover:text-[var(--hh-text-primary)]"
+                    "text-[var(--hh-text-secondary)] hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)] hover:text-[var(--hh-text-primary)]"
                   )}
                   onClick={() => {
                     const todayYmd = hawaiiTodayYmd();

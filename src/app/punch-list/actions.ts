@@ -2,6 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { createPunchListItem, updatePunchListItem } from "@/lib/data";
+import { requireSupabaseOwnerOrAdminServerActionClient } from "@/lib/auth-boundary";
+
+async function authenticatedClient() {
+  const guard = await requireSupabaseOwnerOrAdminServerActionClient({ noStore: true });
+  if (!guard.ok) throw new Error(guard.error);
+  return guard.client;
+}
 
 export async function createPunchListItemAction(draft: {
   project_id: string;
@@ -16,18 +23,21 @@ export async function createPunchListItemAction(draft: {
   notes?: string | null;
 }): Promise<{ error?: string }> {
   try {
-    await createPunchListItem({
-      project_id: draft.project_id,
-      issue: draft.issue.trim() || "Issue",
-      location: draft.location?.trim() || null,
-      description: draft.description?.trim() || null,
-      assigned_worker_id: draft.assigned_worker_id ?? null,
-      priority: draft.priority ?? "Medium",
-      status: draft.status ?? "open",
-      photo_url: draft.photo_url?.trim() || null,
-      photo_id: draft.photo_id ?? null,
-      notes: draft.notes?.trim() || null,
-    });
+    await createPunchListItem(
+      {
+        project_id: draft.project_id,
+        issue: draft.issue.trim() || "Issue",
+        location: draft.location?.trim() || null,
+        description: draft.description?.trim() || null,
+        assigned_worker_id: draft.assigned_worker_id ?? null,
+        priority: draft.priority ?? "Medium",
+        status: draft.status ?? "open",
+        photo_url: draft.photo_url?.trim() || null,
+        photo_id: draft.photo_id ?? null,
+        notes: draft.notes?.trim() || null,
+      },
+      await authenticatedClient()
+    );
     revalidatePath("/punch-list");
     return {};
   } catch (e) {
@@ -50,7 +60,7 @@ export async function updatePunchListItemAction(
   }
 ): Promise<{ error?: string }> {
   try {
-    await updatePunchListItem(id, patch);
+    await updatePunchListItem(id, patch, await authenticatedClient());
     revalidatePath("/punch-list");
     return {};
   } catch (e) {

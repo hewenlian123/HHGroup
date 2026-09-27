@@ -1,5 +1,8 @@
+import { withSessionCookies } from "@/lib/supabase-response";
+import { authorizedAppRole } from "@/lib/auth-role";
+import { hasCompanyAdministratorMembership } from "@/lib/organization-membership";
 import { NextResponse } from "next/server";
-import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
+import { requireOrganizationRequestClient } from "@/lib/auth-boundary";
 import {
   getProjectBillingSummary,
   getProjectTransactions,
@@ -25,7 +28,6 @@ import {
   getPunchListByProject,
 } from "@/lib/data";
 import { getApBillsByProject } from "@/lib/ap-bills-db";
-import { createRouteSupabaseClient, getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
 import { getCanonicalProjectProfit } from "@/lib/profit-engine";
 
 type TabKey =
@@ -51,148 +53,224 @@ function jsonError(message: string, status = 400) {
 }
 
 export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
-  const guard = await requireSupabaseOwnerOrAdmin(_req);
+  const guard = await requireOrganizationRequestClient(_req, {
+    projectId: (await ctx.params).id,
+    noStore: true,
+  });
   if (!guard.ok) return guard.response;
+  const supabase = guard.client;
 
   const { id } = await ctx.params;
   const url = new URL(_req.url);
   const key = (url.searchParams.get("key") ?? "overview").toLowerCase() as TabKey;
 
-  if (!id?.trim()) return jsonError("Missing project id", 400);
+  if (!id?.trim())
+    return withSessionCookies(jsonError("Missing project id", 400), guard.sessionResponse);
+  const operationalKeys = [
+    "tasks",
+    "schedule",
+    "documents",
+    "activity",
+    "materials",
+    "closeout",
+    "punch-list",
+  ];
+  if (
+    !operationalKeys.includes(key) &&
+    (guard.context.organizationRole === "assistant" ||
+      !authorizedAppRole(guard.context.user) ||
+      !(await hasCompanyAdministratorMembership(guard.client, guard.context.user).catch(
+        () => false
+      )))
+  )
+    return withSessionCookies(jsonError("Financial access required.", 403), guard.sessionResponse);
 
   try {
     if (key === "financial") {
-      const supabase = getServerSupabaseInternalNoStore();
-      if (!supabase) return jsonError("Supabase is not configured.", 503);
       const [canonical, billingSummary] = await Promise.all([
         getCanonicalProjectProfit(id, supabase),
-        getProjectBillingSummary(id),
+        getProjectBillingSummary(id, supabase),
       ]);
-      return NextResponse.json({ ok: true as const, key, canonical, billingSummary });
+      return withSessionCookies(
+        NextResponse.json({ ok: true as const, key, canonical, billingSummary }),
+        guard.sessionResponse
+      );
     }
 
     if (key === "overview") {
       const [transactions, expenseLines] = await Promise.all([
         Promise.resolve(getProjectTransactions(id)),
-        getProjectExpenseLines(id),
+        getProjectExpenseLines(id, supabase),
       ]);
-      return NextResponse.json({
-        ok: true as const,
-        key,
-        transactions,
-        expenseLines,
-      });
+      return withSessionCookies(
+        NextResponse.json({
+          ok: true as const,
+          key,
+          transactions,
+          expenseLines,
+        }),
+        guard.sessionResponse
+      );
     }
 
     if (key === "tasks") {
-      const [tasks, workers] = await Promise.all([getProjectTasks(id), getWorkers()]);
-      return NextResponse.json({ ok: true as const, key, tasks, workers });
+      const [tasks, workers] = await Promise.all([
+        getProjectTasks(id, supabase),
+        getWorkers(supabase),
+      ]);
+      return withSessionCookies(
+        NextResponse.json({ ok: true as const, key, tasks, workers }),
+        guard.sessionResponse
+      );
     }
 
     if (key === "schedule") {
-      const schedule = await getProjectSchedule(id);
-      return NextResponse.json({ ok: true as const, key, schedule });
+      const schedule = await getProjectSchedule(id, supabase);
+      return withSessionCookies(
+        NextResponse.json({ ok: true as const, key, schedule }),
+        guard.sessionResponse
+      );
     }
 
     if (key === "budget") {
-      const supabase = getServerSupabaseInternalNoStore();
-      if (!supabase) return jsonError("Supabase is not configured.", 503);
       const [canonical, billingSummary, sourceFromEstimate] = await Promise.all([
         getCanonicalProjectProfit(id, supabase),
-        getProjectBillingSummary(id),
-        getSourceForProject(id),
+        getProjectBillingSummary(id, supabase),
+        getSourceForProject(id, supabase),
       ]);
-      return NextResponse.json({
-        ok: true as const,
-        key,
-        canonical,
-        billingSummary,
-        sourceFromEstimate,
-      });
+      return withSessionCookies(
+        NextResponse.json({
+          ok: true as const,
+          key,
+          canonical,
+          billingSummary,
+          sourceFromEstimate,
+        }),
+        guard.sessionResponse
+      );
     }
 
     if (key === "expenses") {
-      const expenseLines = await getProjectExpenseLines(id);
-      return NextResponse.json({ ok: true as const, key, expenseLines });
+      const expenseLines = await getProjectExpenseLines(id, supabase);
+      return withSessionCookies(
+        NextResponse.json({ ok: true as const, key, expenseLines }),
+        guard.sessionResponse
+      );
     }
 
     if (key === "documents") {
-      const documents = await getDocumentsByProject(id);
-      return NextResponse.json({ ok: true as const, key, documents });
+      const documents = await getDocumentsByProject(id, supabase);
+      return withSessionCookies(
+        NextResponse.json({ ok: true as const, key, documents }),
+        guard.sessionResponse
+      );
     }
 
     if (key === "activity") {
       const [transactions, activityLogs] = await Promise.all([
-        Promise.resolve(getProjectTransactions(id)),
-        getActivityLogsByProject(id, 100),
+        Promise.resolve(
+          guard.context.organizationRole === "assistant" ? [] : getProjectTransactions(id)
+        ),
+        getActivityLogsByProject(id, 100, supabase),
       ]);
-      return NextResponse.json({ ok: true as const, key, transactions, activityLogs });
+      return withSessionCookies(
+        NextResponse.json({ ok: true as const, key, transactions, activityLogs }),
+        guard.sessionResponse
+      );
     }
 
     if (key === "change-orders") {
-      const sessionResponse = NextResponse.next();
-      const supabase = createRouteSupabaseClient(_req, sessionResponse, { noStore: true });
-      if (!supabase) return jsonError("Authenticated project session is not configured.", 503);
       const changeOrders = await getChangeOrdersByProject(id, supabase);
-      const response = NextResponse.json({ ok: true as const, key, changeOrders });
-      for (const cookie of sessionResponse.cookies.getAll()) response.cookies.set(cookie);
+      const response = withSessionCookies(
+        NextResponse.json({ ok: true as const, key, changeOrders }),
+        guard.sessionResponse
+      );
+
       return response;
     }
 
     if (key === "labor") {
       const [laborBreakdownRows, laborEntries] = await Promise.all([
-        getProjectLaborBreakdown(id),
-        getLaborEntriesWithJoins({ project_id: id }).catch(() => []),
+        getProjectLaborBreakdown(id, supabase),
+        getLaborEntriesWithJoins({ project_id: id }, supabase),
       ]);
-      return NextResponse.json({ ok: true as const, key, laborBreakdownRows, laborEntries });
+      return withSessionCookies(
+        NextResponse.json({ ok: true as const, key, laborBreakdownRows, laborEntries }),
+        guard.sessionResponse
+      );
     }
 
     if (key === "subcontracts") {
-      const subcontracts = await getSubcontractsByProject(id);
+      const subcontracts = await getSubcontractsByProject(id, supabase);
       const subcontractIds = subcontracts.map((s) => s.id);
       const [bills, payments] = await Promise.all([
-        getBillsBySubcontractIds(subcontractIds),
-        getPaymentsBySubcontractIds(subcontractIds),
+        getBillsBySubcontractIds(subcontractIds, supabase),
+        getPaymentsBySubcontractIds(subcontractIds, supabase),
       ]);
-      return NextResponse.json({ ok: true as const, key, subcontracts, bills, payments });
+      return withSessionCookies(
+        NextResponse.json({ ok: true as const, key, subcontracts, bills, payments }),
+        guard.sessionResponse
+      );
     }
 
     if (key === "bills") {
-      const supabase = getServerSupabaseInternalNoStore();
-      const projectBills = supabase ? await getApBillsByProject(id, supabase).catch(() => []) : [];
-      return NextResponse.json({ ok: true as const, key, projectBills });
+      const projectBills = await getApBillsByProject(id, supabase);
+      return withSessionCookies(
+        NextResponse.json({ ok: true as const, key, projectBills }),
+        guard.sessionResponse
+      );
     }
 
     if (key === "materials") {
       const [selections, catalog] = await Promise.all([
-        getSelectionsByProject(id),
-        getMaterialCatalog(),
+        getSelectionsByProject(id, supabase),
+        getMaterialCatalog(supabase, guard.context.organizationId ?? undefined),
       ]);
-      return NextResponse.json({ ok: true as const, key, selections, catalog });
+      return withSessionCookies(
+        NextResponse.json({ ok: true as const, key, selections, catalog }),
+        guard.sessionResponse
+      );
     }
 
     if (key === "closeout") {
       const [punch, warranty, completion] = await Promise.all([
-        getCloseoutPunch(id).catch(() => null),
-        getCloseoutWarranty(id).catch(() => null),
-        getCloseoutCompletion(id).catch(() => null),
+        getCloseoutPunch(id, supabase),
+        getCloseoutWarranty(id, supabase),
+        getCloseoutCompletion(id, supabase),
       ]);
-      return NextResponse.json({ ok: true as const, key, punch, warranty, completion });
+      return withSessionCookies(
+        NextResponse.json({ ok: true as const, key, punch, warranty, completion }),
+        guard.sessionResponse
+      );
     }
 
     if (key === "commission") {
-      const commissions = await getCommissionsByProject(id);
-      return NextResponse.json({ ok: true as const, key, commissions });
+      const commissions = await getCommissionsByProject(id, supabase);
+      const response = withSessionCookies(
+        NextResponse.json({ ok: true as const, key, commissions }),
+        guard.sessionResponse
+      );
+
+      return response;
     }
 
     if (key === "punch-list") {
-      const [punchItems, workers] = await Promise.all([getPunchListByProject(id), getWorkers()]);
-      return NextResponse.json({ ok: true as const, key, punchItems, workers });
+      const [punchItems, workers] = await Promise.all([
+        getPunchListByProject(id, supabase),
+        getWorkers(supabase),
+      ]);
+      return withSessionCookies(
+        NextResponse.json({ ok: true as const, key, punchItems, workers }),
+        guard.sessionResponse
+      );
     }
 
-    return jsonError("Unknown tab key", 400);
+    return withSessionCookies(jsonError("Unknown tab key", 400), guard.sessionResponse);
   } catch (e) {
     const message = e instanceof Error ? e.message : "Failed to load tab data.";
-    return NextResponse.json({ ok: false as const, message }, { status: 500 });
+    return withSessionCookies(
+      NextResponse.json({ ok: false as const, message }, { status: 500 }),
+      guard.sessionResponse
+    );
   }
 }

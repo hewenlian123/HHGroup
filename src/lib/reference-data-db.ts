@@ -1,14 +1,15 @@
 /**
  * Reference data: expense categories, vendors, payment methods — Supabase only.
- * Tables: categories (type='expense'), vendors, payment_methods.
- * Expense categories + payment methods prefer `expense_options` when migrated.
+ * Tables: categories (type='expense'), vendors, expense_options.
+ * `expense_options` is the sole payment-method authority.
  */
 
 import * as expenseOpts from "@/lib/expense-options-db";
 import { getSupabaseClient } from "@/lib/supabase";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
-function client() {
-  const c = getSupabaseClient();
+function client(explicitClient?: SupabaseClient) {
+  const c = explicitClient ?? getSupabaseClient();
   if (!c) throw new Error("Supabase is not configured.");
   return c;
 }
@@ -50,29 +51,6 @@ type ExpenseOptionApiResponse = {
   message?: string;
 };
 
-async function ensureExpenseCategoriesExist(): Promise<void> {
-  if (await expenseOpts.expenseOptionsTableAvailable()) {
-    const rows = await expenseOpts.listExpenseOptionsByType("category");
-    if (rows.length > 0) return;
-    for (const name of DEFAULT_CATEGORIES) {
-      await expenseOpts.insertExpenseOption({ type: "category", name });
-    }
-    return;
-  }
-  if (!(await expenseOpts.publicSchemaItemAvailable("categories"))) return;
-  const c = client();
-  const { data: existing, error } = await c
-    .from("categories")
-    .select("name")
-    .eq("type", "expense")
-    .limit(1);
-  if (error && isMissingTable(error)) return;
-  if (existing && existing.length > 0) return;
-  for (const name of DEFAULT_CATEGORIES) {
-    await c.from("categories").insert({ name, type: "expense", status: "active" });
-  }
-}
-
 async function readJson<T>(response: Response): Promise<T | null> {
   try {
     return (await response.json()) as T;
@@ -96,10 +74,12 @@ async function addExpenseCategoryViaApi(name: string): Promise<string> {
   return created;
 }
 
-export async function getExpenseCategories(includeDisabled = false): Promise<string[]> {
-  await ensureExpenseCategoriesExist();
-  if (await expenseOpts.expenseOptionsTableAvailable()) {
-    const rows = await expenseOpts.listExpenseOptionsByType("category");
+export async function getExpenseCategories(
+  includeDisabled = false,
+  explicitClient?: SupabaseClient
+): Promise<string[]> {
+  if (await expenseOpts.expenseOptionsTableAvailable(explicitClient)) {
+    const rows = await expenseOpts.listExpenseOptionsByType("category", explicitClient);
     const list = includeDisabled ? rows : rows.filter((r) => r.active);
     return list
       .sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name))
@@ -108,7 +88,7 @@ export async function getExpenseCategories(includeDisabled = false): Promise<str
   if (!(await expenseOpts.publicSchemaItemAvailable("categories"))) {
     return [...DEFAULT_CATEGORIES];
   }
-  const c = client();
+  const c = client(explicitClient);
   const { data: rows, error } = await c
     .from("categories")
     .select("name, status")
@@ -425,82 +405,36 @@ export async function isVendorDisabled(name: string): Promise<boolean> {
 }
 
 async function ensurePaymentMethodsExist(): Promise<void> {
-  if (await expenseOpts.expenseOptionsTableAvailable()) {
-    const rows = await expenseOpts.listExpenseOptionsByType("payment_method");
-    if (rows.length > 0) return;
-    for (const name of DEFAULT_PAYMENT_METHODS) {
-      await expenseOpts.insertExpenseOption({ type: "payment_method", name });
-    }
-    return;
-  }
-  if (!(await expenseOpts.publicSchemaItemAvailable("payment_methods"))) return;
-  const c = client();
-  const { data: existing, error } = await c.from("payment_methods").select("id").limit(1);
-  if (error && isMissingTable(error)) return;
-  if (existing && existing.length > 0) return;
+  if (!(await expenseOpts.expenseOptionsTableAvailable())) return;
+  const rows = await expenseOpts.listExpenseOptionsByType("payment_method");
+  if (rows.length > 0) return;
   for (const name of DEFAULT_PAYMENT_METHODS) {
-    await c.from("payment_methods").insert({ name, status: "active" });
+    await expenseOpts.insertExpenseOption({ type: "payment_method", name });
   }
 }
 
 export async function getPaymentMethods(includeDisabled = false): Promise<string[]> {
   await ensurePaymentMethodsExist();
-  if (await expenseOpts.expenseOptionsTableAvailable()) {
-    const rows = await expenseOpts.listExpenseOptionsByType("payment_method");
-    const list = includeDisabled ? rows : rows.filter((r) => r.active);
-    return list
-      .sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name))
-      .map((r) => r.name);
-  }
-  if (!(await expenseOpts.publicSchemaItemAvailable("payment_methods"))) {
-    return [...DEFAULT_PAYMENT_METHODS];
-  }
-  const c = client();
-  const { data: rows, error } = await c
-    .from("payment_methods")
-    .select("name, status")
-    .order("name");
-  if (error) {
-    if (isMissingTable(error)) return [...DEFAULT_PAYMENT_METHODS];
-    throw new Error(error.message ?? "Failed to load payment_methods.");
-  }
-  const list = (rows ?? []) as { name: string; status: string }[];
-  if (includeDisabled) return list.map((r) => r.name);
-  return list.filter((r) => r.status === "active").map((r) => r.name);
+  if (!(await expenseOpts.expenseOptionsTableAvailable())) return [...DEFAULT_PAYMENT_METHODS];
+  const rows = await expenseOpts.listExpenseOptionsByType("payment_method");
+  const list = includeDisabled ? rows : rows.filter((r) => r.active);
+  return list
+    .sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name))
+    .map((r) => r.name);
 }
 
 export async function addPaymentMethod(name: string): Promise<string> {
   const trimmed = name.trim();
   if (!trimmed) return "";
-  if (await expenseOpts.expenseOptionsTableAvailable()) {
-    const rows = await expenseOpts.listExpenseOptionsByType("payment_method");
-    const hit = rows.find((r) => r.name.toLowerCase() === trimmed.toLowerCase());
-    if (hit) {
-      if (!hit.active) await expenseOpts.setExpenseOptionActive(hit.id, true);
-      return hit.name;
-    }
-    const row = await expenseOpts.insertExpenseOption({ type: "payment_method", name: trimmed });
-    return row?.name ?? "";
+  if (!(await expenseOpts.expenseOptionsTableAvailable())) return "";
+  const rows = await expenseOpts.listExpenseOptionsByType("payment_method");
+  const hit = rows.find((r) => r.name.toLowerCase() === trimmed.toLowerCase());
+  if (hit) {
+    if (!hit.active) await expenseOpts.setExpenseOptionActive(hit.id, true);
+    return hit.name;
   }
-  const c = client();
-  const { data: existing } = await c
-    .from("payment_methods")
-    .select("name")
-    .ilike("name", trimmed)
-    .maybeSingle();
-  if (existing) return (existing as { name: string }).name;
-  const { data: inactive } = await c
-    .from("payment_methods")
-    .select("id")
-    .ilike("name", trimmed)
-    .eq("status", "inactive")
-    .maybeSingle();
-  if (inactive) {
-    await c.from("payment_methods").update({ status: "active" }).ilike("name", trimmed);
-    return trimmed;
-  }
-  await c.from("payment_methods").insert({ name: trimmed, status: "active" });
-  return trimmed;
+  const row = await expenseOpts.insertExpenseOption({ type: "payment_method", name: trimmed });
+  return row?.name ?? "";
 }
 
 export async function getPaymentMethodUsageCount(name: string): Promise<number> {
@@ -517,85 +451,41 @@ export async function renamePaymentMethod(oldName: string, newName: string): Pro
   const oldTrim = oldName.trim();
   const newTrim = newName.trim();
   if (!newTrim || oldTrim.toLowerCase() === newTrim.toLowerCase()) return false;
-  if (await expenseOpts.expenseOptionsTableAvailable()) {
-    const rows = await expenseOpts.listExpenseOptionsByType("payment_method");
-    const hit = rows.find((r) => r.name.toLowerCase() === oldTrim.toLowerCase());
-    if (!hit) return false;
-    return expenseOpts.renameExpenseOptionById(hit.id, newTrim, "payment_method", oldTrim);
-  }
-  const c = client();
-  const { data: row } = await c
-    .from("payment_methods")
-    .select("id")
-    .ilike("name", oldTrim)
-    .maybeSingle();
-  if (!row) return false;
-  await c
-    .from("payment_methods")
-    .update({ name: newTrim })
-    .eq("id", (row as { id: string }).id);
-  const { error } = await c
-    .from("expenses")
-    .update({ payment_method: newTrim })
-    .ilike("payment_method", oldTrim);
-  if (error && isMissingColumn(error)) return true;
-  return true;
+  if (!(await expenseOpts.expenseOptionsTableAvailable())) return false;
+  const rows = await expenseOpts.listExpenseOptionsByType("payment_method");
+  const hit = rows.find((r) => r.name.toLowerCase() === oldTrim.toLowerCase());
+  if (!hit) return false;
+  return expenseOpts.renameExpenseOptionById(hit.id, newTrim, "payment_method", oldTrim);
 }
 
 export async function disablePaymentMethod(name: string): Promise<boolean> {
-  if (await expenseOpts.expenseOptionsTableAvailable()) {
-    const rows = await expenseOpts.listExpenseOptionsByType("payment_method");
-    const hit = rows.find((r) => r.name.toLowerCase() === name.trim().toLowerCase());
-    if (!hit) return false;
-    return (await expenseOpts.setExpenseOptionActive(hit.id, false)).ok;
-  }
-  const c = client();
-  const { error } = await c
-    .from("payment_methods")
-    .update({ status: "inactive" })
-    .ilike("name", name.trim());
-  return !error;
+  if (!(await expenseOpts.expenseOptionsTableAvailable())) return false;
+  const rows = await expenseOpts.listExpenseOptionsByType("payment_method");
+  const hit = rows.find((r) => r.name.toLowerCase() === name.trim().toLowerCase());
+  if (!hit) return false;
+  return (await expenseOpts.setExpenseOptionActive(hit.id, false)).ok;
 }
 
 export async function enablePaymentMethod(name: string): Promise<boolean> {
-  if (await expenseOpts.expenseOptionsTableAvailable()) {
-    const rows = await expenseOpts.listExpenseOptionsByType("payment_method");
-    const hit = rows.find((r) => r.name.toLowerCase() === name.trim().toLowerCase());
-    if (!hit) return false;
-    return (await expenseOpts.setExpenseOptionActive(hit.id, true)).ok;
-  }
-  const c = client();
-  const { error } = await c
-    .from("payment_methods")
-    .update({ status: "active" })
-    .ilike("name", name.trim());
-  return !error;
+  if (!(await expenseOpts.expenseOptionsTableAvailable())) return false;
+  const rows = await expenseOpts.listExpenseOptionsByType("payment_method");
+  const hit = rows.find((r) => r.name.toLowerCase() === name.trim().toLowerCase());
+  if (!hit) return false;
+  return (await expenseOpts.setExpenseOptionActive(hit.id, true)).ok;
 }
 
 export async function deletePaymentMethod(name: string): Promise<boolean> {
   if ((await getPaymentMethodUsageCount(name.trim())) > 0) return false;
-  if (await expenseOpts.expenseOptionsTableAvailable()) {
-    const rows = await expenseOpts.listExpenseOptionsByType("payment_method");
-    const hit = rows.find((r) => r.name.toLowerCase() === name.trim().toLowerCase());
-    if (!hit) return false;
-    return (await expenseOpts.setExpenseOptionActive(hit.id, false)).ok;
-  }
-  const c = client();
-  await c.from("payment_methods").delete().ilike("name", name.trim());
-  return true;
+  if (!(await expenseOpts.expenseOptionsTableAvailable())) return false;
+  const rows = await expenseOpts.listExpenseOptionsByType("payment_method");
+  const hit = rows.find((r) => r.name.toLowerCase() === name.trim().toLowerCase());
+  if (!hit) return false;
+  return (await expenseOpts.setExpenseOptionActive(hit.id, false)).ok;
 }
 
 export async function isPaymentMethodDisabled(name: string): Promise<boolean> {
-  if (await expenseOpts.expenseOptionsTableAvailable()) {
-    const rows = await expenseOpts.listExpenseOptionsByType("payment_method");
-    const hit = rows.find((r) => r.name.toLowerCase() === name.trim().toLowerCase());
-    return hit ? !hit.active : false;
-  }
-  const c = client();
-  const { data: row } = await c
-    .from("payment_methods")
-    .select("status")
-    .ilike("name", name.trim())
-    .maybeSingle();
-  return (row as { status: string } | null)?.status === "inactive";
+  if (!(await expenseOpts.expenseOptionsTableAvailable())) return false;
+  const rows = await expenseOpts.listExpenseOptionsByType("payment_method");
+  const hit = rows.find((r) => r.name.toLowerCase() === name.trim().toLowerCase());
+  return hit ? !hit.active : false;
 }

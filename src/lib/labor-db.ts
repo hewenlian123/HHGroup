@@ -7,6 +7,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseClient } from "@/lib/supabase";
+import { financialDataUnavailable } from "@/lib/financial-availability";
 import {
   buildLaborEntryRateSnapshotWithClient,
   changeWorkerDailyRateWithClient,
@@ -188,7 +189,7 @@ type LaborPaymentRow = {
   payment_date: string;
   amount: number;
   method: string | null;
-  memo: string | null;
+  note: string | null;
   applied_start_date: string | null;
   applied_end_date: string | null;
   created_at: string;
@@ -286,7 +287,7 @@ function toLaborPayment(r: LaborPaymentRow): LaborPayment {
     paymentDate: r.payment_date?.slice(0, 10) ?? "",
     amount: Number(r.amount) || 0,
     method: r.method ?? "",
-    memo: r.memo ?? undefined,
+    memo: r.note ?? undefined,
     attachments: [],
     appliedRange:
       r.applied_start_date && r.applied_end_date
@@ -315,8 +316,8 @@ export async function getWorkers(explicitClient?: SupabaseClient): Promise<Worke
   return (rows ?? []).map((r) => toWorker(r as WorkerRow));
 }
 
-export async function getLaborWorkers(): Promise<Worker[]> {
-  const all = await getWorkers();
+export async function getLaborWorkers(explicitClient?: SupabaseClient): Promise<Worker[]> {
+  const all = await getWorkers(explicitClient);
   return all.filter((w) => w.status === "active");
 }
 
@@ -469,7 +470,8 @@ export async function updateWorker(
 
 export async function deleteWorker(id: string, explicitClient?: SupabaseClient): Promise<void> {
   const c = client(explicitClient);
-  await c.from("workers").delete().eq("id", id);
+  const { error } = await c.from("workers").delete().eq("id", id);
+  if (error) throw new Error(error.message ?? "Failed to delete worker.");
 }
 
 export async function getLaborAllocatedByProject(
@@ -498,9 +500,10 @@ export async function getLaborAllocatedByProject(
 /** Sum of labor cost (Approved/Locked only) for work_date in [startDate, endDate] (inclusive). For dashboard "Labor Cost This Week". */
 export async function getLaborCostForDateRange(
   startDate: string,
-  endDate: string
+  endDate: string,
+  explicitClient?: SupabaseClient
 ): Promise<number> {
-  const c = client();
+  const c = client(explicitClient);
   const start = startDate.slice(0, 10);
   const end = endDate.slice(0, 10);
   const { data: rows, error } = await c
@@ -510,8 +513,7 @@ export async function getLaborCostForDateRange(
     .gte("work_date", start)
     .lte("work_date", end);
   if (error) {
-    if (isMissingTable(error) || isMissingColumn(error)) return 0;
-    throw new Error(error.message ?? "Failed to load labor cost.");
+    financialDataUnavailable("labor cost", error);
   }
   return (rows ?? []).reduce(
     (sum, r) => sum + (Number((r as { cost_amount?: number }).cost_amount) || 0),
@@ -1105,7 +1107,8 @@ export async function getLaborPayments(
   if (filters?.workerId) q = q.eq("worker_id", filters.workerId) as typeof q;
   if (filters?.startDate) q = q.gte("payment_date", filters.startDate.slice(0, 10)) as typeof q;
   if (filters?.endDate) q = q.lte("payment_date", filters.endDate.slice(0, 10)) as typeof q;
-  const { data: rows } = await q;
+  const { data: rows, error } = await q;
+  if (error) financialDataUnavailable("labor payments", error);
   return (rows ?? []).map((r) => toLaborPayment(r as LaborPaymentRow));
 }
 
@@ -1129,7 +1132,7 @@ export async function createLaborPayment(payload: {
       payment_date: payload.paymentDate.slice(0, 10),
       amount: Math.max(0, payload.amount),
       method: payload.method ?? null,
-      memo: payload.memo ?? null,
+      note: payload.memo ?? null,
       applied_start_date: payload.appliedRange?.startDate?.slice(0, 10) ?? null,
       applied_end_date: payload.appliedRange?.endDate?.slice(0, 10) ?? null,
     })

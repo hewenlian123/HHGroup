@@ -5,10 +5,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseClient } from "@/lib/supabase";
-import * as workerReimbursementsDb from "./worker-reimbursements-db";
 import type { WorkerReimbursement } from "./worker-reimbursements-db";
-import * as laborDb from "./labor-db";
-import * as projectsDb from "./projects-db";
 
 export const EXPENSE_TYPES = [
   "Building Materials",
@@ -34,7 +31,9 @@ export type WorkerReceipt = {
   receiptUrl: string | null;
   notes: string | null;
   receiptDate: string | null;
-  status: WorkerReceiptStatus;
+  status: string | null;
+  workflowClass: "canonical" | "LEGACY_UNVERIFIED";
+  canonicalIngestedAt: string | null;
   rejectionReason: string | null;
   reimbursementId: string | null;
   createdAt: string;
@@ -45,11 +44,15 @@ export type WorkerReceiptWithNames = WorkerReceipt & {
 };
 
 const COLS =
-  "id, worker_id, worker_name, project_id, expense_type, vendor, amount, description, receipt_url, notes, receipt_date, status, rejection_reason, reimbursement_id, created_at";
+  "id, worker_id, worker_name, project_id, expense_type, vendor, amount, description, receipt_url, notes, receipt_date, status, rejection_reason, reimbursement_id, canonical_ingested_at, created_at";
 
-function isMissingColumn(err: { message?: string } | null | undefined): boolean {
-  const m = err?.message ?? "";
-  return /could not find the .* column|column .* does not exist|schema cache/i.test(m);
+const LEGACY_READ_COLS = COLS.replace(", canonical_ingested_at", "");
+
+function isMissingIntakeMarker(error: { code?: string; message?: string }): boolean {
+  return (
+    (error.code === "42703" || error.code === "PGRST204") &&
+    /\bcanonical_ingested_at\b/.test(error.message ?? "")
+  );
 }
 
 function client(explicitClient?: SupabaseClient) {
@@ -59,9 +62,7 @@ function client(explicitClient?: SupabaseClient) {
 }
 
 function fromRow(r: Record<string, unknown>): WorkerReceipt {
-  const status = String(r.status ?? "Pending");
-  const normalized: WorkerReceiptStatus =
-    status === "Approved" || status === "Rejected" || status === "Paid" ? status : "Pending";
+  const status = r.status == null ? null : String(r.status);
   return {
     id: String(r.id ?? ""),
     workerId: r.worker_id != null ? String(r.worker_id) : null,
@@ -74,7 +75,9 @@ function fromRow(r: Record<string, unknown>): WorkerReceipt {
     receiptUrl: r.receipt_url != null ? String(r.receipt_url) : null,
     notes: r.notes != null ? String(r.notes) : null,
     receiptDate: r.receipt_date != null ? String(r.receipt_date).slice(0, 10) : null,
-    status: normalized,
+    status,
+    workflowClass: r.canonical_ingested_at ? "canonical" : "LEGACY_UNVERIFIED",
+    canonicalIngestedAt: r.canonical_ingested_at == null ? null : String(r.canonical_ingested_at),
     rejectionReason: r.rejection_reason != null ? String(r.rejection_reason) : null,
     reimbursementId: r.reimbursement_id != null ? String(r.reimbursement_id) : null,
     createdAt: String(r.created_at ?? "").slice(0, 19),
@@ -82,10 +85,18 @@ function fromRow(r: Record<string, unknown>): WorkerReceipt {
 }
 
 export async function getWorkerReceipts(explicitClient?: SupabaseClient): Promise<WorkerReceipt[]> {
-  const { data, error } = await client(explicitClient)
+  let { data, error } = await client(explicitClient)
     .from("worker_receipts")
     .select(COLS)
     .order("created_at", { ascending: false });
+  if (error && isMissingIntakeMarker(error)) {
+    const legacy = await client(explicitClient)
+      .from("worker_receipts")
+      .select(LEGACY_READ_COLS)
+      .order("created_at", { ascending: false });
+    data = legacy.data as typeof data;
+    error = legacy.error;
+  }
   if (error) {
     if (/schema cache|does not exist|could not find the table/i.test(error.message ?? ""))
       throw new Error("worker_receipts table not found. Run migrations.");
@@ -98,11 +109,20 @@ export async function getWorkerReceiptById(
   id: string,
   explicitClient?: SupabaseClient
 ): Promise<WorkerReceipt | null> {
-  const { data, error } = await client(explicitClient)
+  let { data, error } = await client(explicitClient)
     .from("worker_receipts")
     .select(COLS)
     .eq("id", id)
     .maybeSingle();
+  if (error && isMissingIntakeMarker(error)) {
+    const legacy = await client(explicitClient)
+      .from("worker_receipts")
+      .select(LEGACY_READ_COLS)
+      .eq("id", id)
+      .maybeSingle();
+    data = legacy.data as typeof data;
+    error = legacy.error;
+  }
   if (error) throw new Error(error.message ?? "Failed to load receipt.");
   if (!data) return null;
   return fromRow(data as Record<string, unknown>);
@@ -133,7 +153,6 @@ function buildInsertPayload(draft: WorkerReceiptDraft): Record<string, unknown> 
     receipt_url: draft.receiptUrl?.trim() || null,
     notes: draft.notes?.trim() || null,
     receipt_date: draft.receiptDate ?? null,
-    status: draft.status ?? "Pending",
   };
   if (draft.workerId != null && draft.workerId !== "") payload.worker_id = draft.workerId;
   return payload;
@@ -144,26 +163,21 @@ export async function insertWorkerReceiptWithClient(
   c: SupabaseClient,
   draft: WorkerReceiptDraft
 ): Promise<WorkerReceipt> {
-  const insertPayload = buildInsertPayload(draft);
-  const { data, error } = await c
-    .from("worker_receipts")
-    .insert(insertPayload)
-    .select(COLS)
-    .single();
+  const payload = buildInsertPayload(draft);
+  const receiptId = draft.receiptUrl?.match(/^uploads\/([0-9a-f-]{36})\./i)?.[1];
+  if (!receiptId) throw new Error("Canonical receipt upload identity is required.");
+  const { data, error } = await c.rpc("intake_worker_receipt_atomic", {
+    p_receipt_id: receiptId,
+    p_payload: payload,
+  });
   if (error) throw new Error(error.message ?? "Failed to create receipt upload.");
-  const receipt = fromRow(data as Record<string, unknown>);
-  return receipt;
+  if (!data?.id || !data?.canonical_ingested_at)
+    throw new Error("Invalid canonical intake result.");
+  return fromRow(data as Record<string, unknown>);
 }
 
 export async function insertWorkerReceipt(draft: WorkerReceiptDraft): Promise<WorkerReceipt> {
-  const insertPayload = buildInsertPayload(draft);
-  const { data, error } = await client()
-    .from("worker_receipts")
-    .insert(insertPayload)
-    .select(COLS)
-    .single();
-  if (error) throw new Error(error.message ?? "Failed to create receipt upload.");
-  return fromRow(data as Record<string, unknown>);
+  return insertWorkerReceiptWithClient(client(), draft);
 }
 
 export async function updateWorkerReceiptStatus(
@@ -175,6 +189,9 @@ export async function updateWorkerReceiptStatus(
   },
   explicitClient?: SupabaseClient
 ): Promise<WorkerReceipt> {
+  const current = await getWorkerReceiptById(id, explicitClient);
+  if (current?.workflowClass !== "canonical")
+    throw new Error("LEGACY_UNVERIFIED: Receipt mutation is blocked.");
   const payload: Record<string, unknown> = { status: patch.status };
   if (patch.rejectionReason !== undefined)
     payload.rejection_reason = patch.rejectionReason?.trim() || null;
@@ -190,8 +207,7 @@ export async function updateWorkerReceiptStatus(
 }
 
 export async function deleteWorkerReceipt(id: string): Promise<void> {
-  const { error } = await client().from("worker_receipts").delete().eq("id", id);
-  if (error) throw new Error(error.message ?? "Failed to delete receipt.");
+  return deleteWorkerReceiptWithClient(client(), id);
 }
 
 /**
@@ -199,283 +215,73 @@ export async function deleteWorkerReceipt(id: string): Promise<void> {
  * Verifies that exactly one row was deleted.
  */
 export async function deleteWorkerReceiptWithClient(c: SupabaseClient, id: string): Promise<void> {
+  const current = await getWorkerReceiptById(id, c);
+  if (current?.workflowClass !== "canonical")
+    throw new Error("LEGACY_UNVERIFIED: Receipt deletion is blocked.");
   const { data, error } = await c.from("worker_receipts").delete().eq("id", id).select("id");
   if (error) throw new Error(error.message ?? "Failed to delete receipt.");
   if (!data?.length) throw new Error("Receipt not found or already deleted.");
 }
 
-/**
- * Resolve worker_id from receipt: use receipt.workerId if set, else find worker by worker_name.
- */
-async function resolveWorkerId(receipt: WorkerReceipt): Promise<string> {
-  if (receipt.workerId && receipt.workerId.trim() !== "") return receipt.workerId;
-  const workers = await laborDb.getWorkers();
-  const name = (receipt.workerName ?? "").trim();
-  if (!name) throw new Error("Receipt has no worker; set worker or worker name.");
-  const match = workers.find((w) => w.name.trim().toLowerCase() === name.toLowerCase());
-  if (!match) throw new Error(`Worker not found by name: ${name}`);
-  return match.id;
-}
-
-/**
- * Resolve project_id for reimbursement: use only if the project exists (avoids FK violation).
- */
-async function resolveProjectId(projectId: string | null): Promise<string | null> {
-  if (!projectId || projectId.trim() === "") return null;
-  const project = await projectsDb.getProjectById(projectId.trim());
-  return project ? project.id : null;
-}
-
 export type ApproveReceiptResult = {
   receipt: WorkerReceipt;
-  /** Set when a new reimbursement was created (not when receipt was already linked). */
   reimbursementCreated: WorkerReimbursement | null;
 };
 
-/**
- * Approve: set status Approved, create worker_reimbursement (Pending), link reimbursement_id.
- * Prevents duplicate reimbursements for the same receipt (skips create if already linked).
- */
+/** No browser-side approval writes; the authenticated server route owns actor identity. */
 export async function approveWorkerReceipt(receiptId: string): Promise<ApproveReceiptResult> {
-  const receipt = await getWorkerReceiptById(receiptId);
-  if (!receipt) throw new Error("Receipt not found.");
-
-  if (receipt.reimbursementId) {
-    const updated = await updateWorkerReceiptStatus(receiptId, { status: "Approved" });
-    return { receipt: updated, reimbursementCreated: null };
-  }
-
-  const workerId = await resolveWorkerId(receipt);
-  const description =
-    [receipt.vendor, receipt.expenseType].filter(Boolean).join(" · ") ||
-    receipt.description ||
-    null;
-  const projectId = await resolveProjectId(receipt.projectId);
-
-  const reimbursement = await workerReimbursementsDb.insertWorkerReimbursement({
-    workerId,
-    projectId,
-    amount: receipt.amount,
-    description,
-    receiptUrl: receipt.receiptUrl,
-    status: "pending",
-  });
-
-  const updated = await updateWorkerReceiptStatus(receiptId, {
-    status: "Approved",
-    reimbursementId: reimbursement.id,
-  });
-  return { receipt: updated, reimbursementCreated: reimbursement };
+  void receiptId;
+  throw new Error("Use the authenticated Worker Receipt approval route.");
 }
 
-/**
- * Approve using an explicit Supabase client (server-side API routes).
- *
- * Required flow:
- * 1) Mark receipt status = Approved
- * 2) Create worker_reimbursements row (status=pending)
- * 3) Update receipt.reimbursement_id to link the reimbursement
- *
- * If reimbursement creation fails, revert receipt back to Pending.
- */
+/** The database owns approval, obligation creation, linkage and retry identity. */
 export async function approveWorkerReceiptWithClient(
   c: SupabaseClient,
-  receiptId: string
+  receiptId: string,
+  actorUserId?: string
 ): Promise<ApproveReceiptResult> {
-  const { data: receiptRow, error: fetchErr } = await c
+  if (!actorUserId) throw new Error("Verified approval actor is required.");
+  const { data: snapshot, error: readError } = await c
     .from("worker_receipts")
-    .select(COLS)
+    .select("worker_id,amount,project_id,canonical_ingested_at")
     .eq("id", receiptId)
-    .maybeSingle();
-  if (fetchErr) throw new Error(fetchErr.message ?? "Failed to load receipt.");
-  if (!receiptRow) throw new Error("Receipt not found.");
-  const receipt = fromRow(receiptRow as Record<string, unknown>);
-
-  // If already linked, just ensure status is Approved.
-  if (receipt.reimbursementId) {
-    const { data: updatedRow, error: updErr } = await c
-      .from("worker_receipts")
-      .update({ status: "Approved" })
-      .eq("id", receiptId)
-      .select(COLS)
-      .single();
-    if (updErr) throw new Error(updErr.message ?? "Failed to update receipt.");
-    return { receipt: fromRow(updatedRow as Record<string, unknown>), reimbursementCreated: null };
-  }
-
-  // 1) Update receipt status first
-  const { data: approvedRow, error: approveErr } = await c
-    .from("worker_receipts")
-    .update({ status: "Approved" })
-    .eq("id", receiptId)
-    .select(COLS)
     .single();
-  if (approveErr) throw new Error(approveErr.message ?? "Failed to approve receipt.");
-  const approvedReceipt = fromRow(approvedRow as Record<string, unknown>);
-
-  try {
-    // Resolve worker_id (prefer worker_id, fallback to worker_name)
-    let workerId = approvedReceipt.workerId?.trim() || "";
-    if (!workerId) {
-      const name = (approvedReceipt.workerName ?? "").trim().toLowerCase();
-      if (!name) throw new Error("Receipt has no worker; set worker or worker name.");
-      const { data: workerRows, error: wErr } = await c.from("workers").select("id,name");
-      if (wErr) throw new Error(wErr.message ?? "Failed to load workers.");
-      const match = ((workerRows ?? []) as { id: string; name: string | null }[]).find(
-        (w) => (w.name ?? "").trim().toLowerCase() === name
-      );
-      if (!match) throw new Error(`Worker not found by name: ${approvedReceipt.workerName}`);
-      workerId = match.id;
-    }
-
-    // Resolve project_id (only if it exists)
-    let projectId: string | null = approvedReceipt.projectId;
-    if (projectId) {
-      const { data: proj, error: pErr } = await c
-        .from("projects")
-        .select("id")
-        .eq("id", projectId)
-        .maybeSingle();
-      if (pErr) throw new Error(pErr.message ?? "Failed to validate project.");
-      if (!proj) projectId = null;
-    }
-
-    // 2) Create reimbursement row (status=pending) with full fields
-    const description =
-      [approvedReceipt.vendor, approvedReceipt.expenseType].filter(Boolean).join(" · ") ||
-      approvedReceipt.description ||
-      null;
-    const reimbDay = new Date().toISOString().slice(0, 10);
-    const fullInsert = {
-      worker_id: workerId,
-      project_id: projectId,
-      vendor: approvedReceipt.vendor ?? null,
-      amount: approvedReceipt.amount ?? 0,
-      description,
-      receipt_url: approvedReceipt.receiptUrl ?? null,
-      status: "pending",
-      reimbursement_date: reimbDay,
-    };
-    const legacyInsert = {
-      worker_id: workerId,
-      project_id: projectId,
-      amount: approvedReceipt.amount ?? 0,
-      description:
-        description ||
-        [approvedReceipt.vendor, approvedReceipt.expenseType].filter(Boolean).join(" · ") ||
-        null,
-      receipt_url: approvedReceipt.receiptUrl ?? null,
-      status: "pending",
-    };
-    const notesText =
-      description ||
-      [approvedReceipt.vendor, approvedReceipt.expenseType].filter(Boolean).join(" · ") ||
-      "Receipt reimbursement";
-    const minimalInsert = {
-      worker_id: workerId,
-      project_id: projectId,
-      amount: approvedReceipt.amount ?? 0,
-      notes: notesText,
-      reimbursement_date: reimbDay,
-      receipt_url: approvedReceipt.receiptUrl ?? null,
-    };
-
-    let reimbRow: Record<string, unknown> | null = null;
-    let rErr: { message?: string } | null = null;
-
-    const tryInsert = async (payload: Record<string, unknown>, selectCols: string) => {
-      const res = await c.from("worker_reimbursements").insert(payload).select(selectCols).single();
-      reimbRow = (res.data as Record<string, unknown> | null) ?? null;
-      rErr = res.error as { message?: string } | null;
-    };
-
-    await tryInsert(
-      fullInsert,
-      "id, worker_id, project_id, vendor, amount, description, receipt_url, status, reimbursement_date, created_at"
-    );
-    if (rErr && isMissingColumn(rErr)) {
-      const { reimbursement_date, ...fullNoDate } = fullInsert;
-      void reimbursement_date;
-      await tryInsert(
-        fullNoDate,
-        "id, worker_id, project_id, vendor, amount, description, receipt_url, status, created_at"
-      );
-    }
-    if (rErr && isMissingColumn(rErr)) {
-      await tryInsert(
-        legacyInsert,
-        "id, worker_id, project_id, amount, description, receipt_url, status, created_at"
-      );
-    }
-    if (rErr && isMissingColumn(rErr)) {
-      await tryInsert(
-        minimalInsert,
-        "id, worker_id, project_id, amount, notes, reimbursement_date, created_at"
-      );
-    }
-    if (rErr && isMissingColumn(rErr)) {
-      const { reimbursement_date, ...minimalNoDate } = minimalInsert;
-      void reimbursement_date;
-      await tryInsert(minimalNoDate, "id, worker_id, project_id, amount, notes, created_at");
-    }
-    if (rErr && isMissingColumn(rErr)) {
-      await tryInsert(
-        {
-          worker_id: workerId,
-          project_id: projectId,
-          amount: approvedReceipt.amount ?? 0,
-          notes: notesText,
+  if (readError || !snapshot) throw new Error(readError?.message || "Receipt not found.");
+  if (!snapshot.canonical_ingested_at)
+    throw new Error("LEGACY_UNVERIFIED: Receipt approval is blocked.");
+  const { data, error } = await c.rpc("approve_worker_receipt_atomic", {
+    p_receipt_id: receiptId,
+    p_actor_user_id: actorUserId,
+    p_expected_worker_id: snapshot.worker_id,
+    p_expected_amount: snapshot.amount,
+    p_expected_project_id: snapshot.project_id,
+  });
+  if (error) throw new Error(error.message);
+  if (!data?.receipt?.id || !data?.obligation?.id)
+    throw new Error("Invalid atomic approval result.");
+  const o = data.obligation;
+  return {
+    receipt: fromRow(data.receipt),
+    reimbursementCreated: data.reused
+      ? null
+      : {
+          id: o.id,
+          workerId: o.worker_id,
+          workerName: null,
+          projectId: o.project_id,
+          projectName: null,
+          vendor: o.vendor,
+          amount: Number(o.amount),
+          description: o.description,
+          receiptUrl: o.receipt_url,
+          status: "pending",
+          workflowClass: "canonical",
+          reimbursementDate: o.reimbursement_date,
+          createdAt: o.created_at,
+          paidAt: o.paid_at,
+          paymentId: o.payment_id,
         },
-        "id, worker_id, project_id, amount, notes, created_at"
-      );
-    }
-    if (rErr != null)
-      throw new Error((rErr as { message?: string }).message ?? "Failed to create reimbursement.");
-    if (!reimbRow) throw new Error("Failed to create reimbursement.");
-
-    const row = reimbRow as Record<string, unknown>;
-
-    const reimbursementCreated: WorkerReimbursement = {
-      id: String(row.id),
-      workerId: String(row.worker_id),
-      workerName: null,
-      projectId: row.project_id != null ? String(row.project_id) : null,
-      projectName: null,
-      vendor: row.vendor != null ? String(row.vendor) : null,
-      amount: Number(row.amount) || 0,
-      description:
-        row.description != null
-          ? String(row.description)
-          : row.notes != null
-            ? String(row.notes)
-            : null,
-      receiptUrl: row.receipt_url != null ? String(row.receipt_url) : null,
-      status: "pending",
-      reimbursementDate: (() => {
-        const rd = row.reimbursement_date;
-        if (typeof rd === "string" && /^\d{4}-\d{2}-\d{2}/.test(rd)) return rd.slice(0, 10);
-        return reimbDay;
-      })(),
-      createdAt: String(row.created_at ?? ""),
-      paidAt: null,
-      paymentId: null,
-    };
-
-    // 3) Link receipt to reimbursement
-    const { data: linkedRow, error: linkErr } = await c
-      .from("worker_receipts")
-      .update({ reimbursement_id: reimbursementCreated.id })
-      .eq("id", receiptId)
-      .select(COLS)
-      .single();
-    if (linkErr) throw new Error(linkErr.message ?? "Failed to link reimbursement to receipt.");
-
-    return { receipt: fromRow(linkedRow as Record<string, unknown>), reimbursementCreated };
-  } catch (e) {
-    // Revert status back to Pending if reimbursement creation/linking fails
-    await c.from("worker_receipts").update({ status: "Pending" }).eq("id", receiptId);
-    throw e;
-  }
+  };
 }
 
 /**
@@ -498,22 +304,24 @@ export async function rejectWorkerReceipt(
   );
 }
 
-/**
- * Reset to Pending: set status Pending and clear reimbursement_id.
- * Use so you can click Approve again to test reimbursement creation.
- */
+/** Reset unlinked receipts only; linked reimbursements require their settlement workflow. */
 export async function resetWorkerReceiptToPending(
   receiptId: string,
   explicitClient?: SupabaseClient
 ): Promise<WorkerReceipt> {
-  const receipt = await getWorkerReceiptById(receiptId, explicitClient);
-  if (!receipt) throw new Error("Receipt not found.");
-  return updateWorkerReceiptStatus(
-    receiptId,
-    {
-      status: "Pending",
-      reimbursementId: null,
-    },
-    explicitClient
-  );
+  const { data, error } = await client(explicitClient)
+    .from("worker_receipts")
+    .update({ status: "Pending", rejection_reason: null })
+    .eq("id", receiptId)
+    .is("reimbursement_id", null)
+    .not("canonical_ingested_at", "is", null)
+    .in("status", ["Pending", "Rejected"])
+    .select(COLS)
+    .maybeSingle();
+  if (error) throw new Error(error.message ?? "Failed to reset receipt.");
+  if (!data)
+    throw new Error(
+      "Receipt cannot be reset: approved, paid, or linked receipts must use their reimbursement workflow."
+    );
+  return fromRow(data as Record<string, unknown>);
 }

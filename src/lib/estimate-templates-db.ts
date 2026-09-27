@@ -1,3 +1,4 @@
+import { estimateLineItemText } from "@/lib/sanitize-line-item-html";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   groupEstimateItemsByCategoryId,
@@ -8,12 +9,11 @@ import {
 } from "@/lib/estimates-db";
 import {
   normalizeEstimateTemplateData,
-  splitEstimateTemplateItemDescription,
   type EstimateTemplateData,
   type EstimateTemplateLineItem,
   type EstimateTemplateRecord,
 } from "@/lib/estimate-templates";
-import { normalizeEstimateNoteBlocks } from "@/lib/estimate-notes";
+import { preserveRetiredEstimateNotes, normalizeEstimateNoteBlocks } from "@/lib/estimate-notes";
 import { getServerSupabaseAdmin } from "@/lib/supabase-server";
 
 type EstimateTemplateRow = {
@@ -22,7 +22,7 @@ type EstimateTemplateRow = {
   description: string | null;
   category: string | null;
   default_tax_rate: number | string | null;
-  default_terms: string | null;
+
   template_data: unknown;
   is_archived: boolean | null;
   created_at: string | null;
@@ -34,7 +34,7 @@ type EstimateTemplateWriteInput = {
   description?: string | null;
   category?: string | null;
   defaultTaxRate?: number | null;
-  defaultTerms?: string | null;
+
   templateData: EstimateTemplateData;
 };
 
@@ -55,11 +55,6 @@ function cleanText(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
 }
 
-function cleanNullableText(value: unknown): string | null {
-  const text = cleanText(value);
-  return text ? text : null;
-}
-
 function cleanTaxRate(value: unknown): number | null {
   if (value == null || value === "") return null;
   const n = Number(value);
@@ -74,7 +69,7 @@ function rowToTemplate(row: EstimateTemplateRow): EstimateTemplateRecord {
     description: cleanText(row.description),
     category: cleanText(row.category) || "General",
     defaultTaxRate: cleanTaxRate(row.default_tax_rate),
-    defaultTerms: cleanNullableText(row.default_terms),
+
     templateData: normalizeEstimateTemplateData(row.template_data),
     isArchived: Boolean(row.is_archived),
     createdAt: row.created_at ?? "",
@@ -90,7 +85,7 @@ function writePayload(input: EstimateTemplateWriteInput): Record<string, unknown
     description: cleanText(input.description),
     category: cleanText(input.category) || "General",
     default_tax_rate: cleanTaxRate(input.defaultTaxRate),
-    default_terms: cleanNullableText(input.defaultTerms),
+
     template_data: normalizeEstimateTemplateData(input.templateData),
     updated_at: new Date().toISOString(),
   };
@@ -104,7 +99,7 @@ export async function listEstimateTemplates(
   let query = c
     .from("estimate_templates")
     .select(
-      "id, name, description, category, default_tax_rate, default_terms, template_data, is_archived, created_at, updated_at"
+      "id, name, description, category, default_tax_rate, template_data, is_archived, created_at, updated_at"
     )
     .order("is_archived", { ascending: true })
     .order("updated_at", { ascending: false });
@@ -129,7 +124,7 @@ export async function getEstimateTemplateById(
   const { data, error } = await c
     .from("estimate_templates")
     .select(
-      "id, name, description, category, default_tax_rate, default_terms, template_data, is_archived, created_at, updated_at"
+      "id, name, description, category, default_tax_rate, template_data, is_archived, created_at, updated_at"
     )
     .eq("id", id)
     .maybeSingle();
@@ -153,7 +148,7 @@ export async function createEstimateTemplate(
       is_archived: false,
     })
     .select(
-      "id, name, description, category, default_tax_rate, default_terms, template_data, is_archived, created_at, updated_at"
+      "id, name, description, category, default_tax_rate, template_data, is_archived, created_at, updated_at"
     )
     .single();
   if (error || !data) throw new Error(error?.message ?? "Could not create template.");
@@ -168,12 +163,26 @@ export async function updateEstimateTemplate(
   const id = cleanText(templateId);
   if (!id) throw new Error("Template id is required.");
   const c = client(explicitClient);
+  const { data: existing, error: readError } = await c
+    .from("estimate_templates")
+    .select("template_data")
+    .eq("id", id)
+    .single();
+  if (readError || !existing) throw new Error(readError?.message ?? "Could not read template.");
+  const payload = writePayload(input);
+  payload.template_data = {
+    ...normalizeEstimateTemplateData(input.templateData),
+    notes: preserveRetiredEstimateNotes(
+      existing.template_data?.notes,
+      normalizeEstimateNoteBlocks(input.templateData.notes)
+    ),
+  };
   const { data, error } = await c
     .from("estimate_templates")
-    .update(writePayload(input))
+    .update(payload)
     .eq("id", id)
     .select(
-      "id, name, description, category, default_tax_rate, default_terms, template_data, is_archived, created_at, updated_at"
+      "id, name, description, category, default_tax_rate, template_data, is_archived, created_at, updated_at"
     )
     .single();
   if (error || !data) throw new Error(error?.message ?? "Could not update template.");
@@ -219,7 +228,7 @@ export async function duplicateEstimateTemplate(
       description: source.description,
       category: source.category,
       defaultTaxRate: source.defaultTaxRate,
-      defaultTerms: source.defaultTerms,
+
       templateData: source.templateData,
     },
     c
@@ -227,10 +236,10 @@ export async function duplicateEstimateTemplate(
 }
 
 export function estimateItemToTemplateLineItem(row: EstimateItemRow): EstimateTemplateLineItem {
-  const { title, description } = splitEstimateTemplateItemDescription(row.desc ?? "");
+  const text = estimateLineItemText(row);
   return {
-    title: title || "Line item",
-    description,
+    title: text.title || "Line item",
+    description: text.body,
     qty: row.qty,
     unit: row.unit || "EA",
     unitPrice: row.unitCost,

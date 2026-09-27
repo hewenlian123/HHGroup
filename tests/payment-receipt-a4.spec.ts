@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { mkdirSync, readFileSync } from "node:fs";
 
 import type { PaymentReceiptPreviewDto } from "@/lib/payment-receipt-preview-dto";
+import { loginAsE2EOwner } from "./e2e-auth-owner";
 
 const PAYMENT_ID = "pay-a4-fixture-001";
 const OUT = {
@@ -68,9 +69,7 @@ async function openReceipt(page: Page) {
     });
   });
 
-  await page.goto(`/financial/payments?receipt=${PAYMENT_ID}`, {
-    waitUntil: "domcontentloaded",
-  });
+  await loginAsE2EOwner(page, `/financial/payments?receipt=${PAYMENT_ID}`);
   const dialog = page.getByRole("dialog", { name: "Payment receipt" });
   await expect(dialog).toBeVisible({ timeout: 30_000 });
   await expect(dialog).toContainText(RECEIPT.customerName);

@@ -197,7 +197,7 @@ test.describe("Expenses upgrades (queue, quick, edit, list, payment)", () => {
     await waitForQuickExpenseProjectLabel(dialog, E2E_PRESERVED_PROJECT_LABEL);
 
     await dialog.getByRole("button", { name: /More Details/i }).click();
-    await pickOrCreatePaymentInSelect(page, dialogPaymentAccountSelect(dialog, page));
+    await pickOrCreatePaymentInSelect(page, dialogPaymentAccountSelect(dialog));
 
     await dialog.getByRole("button", { name: "Save", exact: true }).click();
     if (
@@ -263,7 +263,7 @@ test.describe("Expenses upgrades (queue, quick, edit, list, payment)", () => {
 
     const acct = `E2E-Pay-${Date.now()}`;
     await dialog.getByRole("button", { name: /More Details/i }).click();
-    const paySelect = dialogPaymentAccountSelect(dialog, page);
+    const paySelect = dialogPaymentAccountSelect(dialog);
     await paymentAccountSelectChooseAddNew(page, paySelect);
 
     const sub = page.getByRole("dialog", { name: /New payment account/i });
@@ -347,7 +347,7 @@ test.describe("Expenses upgrades (queue, quick, edit, list, payment)", () => {
     await typeReplacing(editDlg.getByTestId("edit-expense-vendor-input"), `${vendorBase}-X`);
     await typeReplacing(editDlg.locator('input[type="number"]'), "44.55");
 
-    const editPay = dialogPaymentAccountSelect(editDlg, page);
+    const editPay = dialogPaymentAccountSelect(editDlg);
     await pickOrCreatePaymentInSelect(page, editPay, ["Chase", "Amex", "Cash"]);
 
     await editDlg.getByRole("button", { name: "Save", exact: true }).click();

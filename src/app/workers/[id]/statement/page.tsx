@@ -70,15 +70,14 @@ function SummaryCard({
   label: string;
   value: string;
   meta?: string;
-  tone?: "neutral" | "gold" | "success" | "danger";
+  tone?: "neutral" | "success" | "danger";
 }) {
   return (
     <div
       className={cn(
         "min-h-[86px] rounded-2xl border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-4 py-3 text-[var(--hh-text-primary)] shadow-operational",
-        tone === "gold" && "border-[rgb(184_147_90_/_0.34)] bg-[rgb(184_147_90_/_0.12)]",
-        tone === "success" && "border-emerald-400/20 bg-emerald-400/[0.055]",
-        tone === "danger" && "border-rose-400/20 bg-rose-400/[0.055]"
+        tone === "success" && "border-[var(--hh-success-border)] bg-[var(--hh-success-soft-fill)]",
+        tone === "danger" && "border-[var(--hh-danger-border)] bg-[var(--hh-danger-soft-fill)]"
       )}
     >
       <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--hh-text-tertiary)]">
@@ -87,9 +86,8 @@ function SummaryCard({
       <p
         className={cn(
           "mt-2 text-[20px] font-semibold leading-none tabular-nums text-[var(--hh-text-primary)]",
-          tone === "gold" && "text-[#d2b77f]",
-          tone === "success" && "text-emerald-300",
-          tone === "danger" && "text-rose-300"
+          tone === "success" && "text-[var(--hh-success)]",
+          tone === "danger" && "text-[var(--hh-danger)]"
         )}
       >
         {value}
@@ -211,7 +209,7 @@ export default async function WorkerStatementPage({ params, searchParams }: Prop
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-11 min-h-[44px] rounded-lg border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-4 text-[13px] font-semibold text-[var(--hh-text-primary)] shadow-none hover:bg-[var(--hh-l2-operational-surface)] md:h-10 md:min-h-10"
+                  className="h-11 min-h-[44px] rounded-hh-compact border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-4 text-[13px] font-semibold text-[var(--hh-text-primary)] shadow-none hover:bg-[var(--hh-l2-operational-surface)] lg:h-10 lg:min-h-10"
                 >
                   Back to Worker
                 </Button>
@@ -220,7 +218,7 @@ export default async function WorkerStatementPage({ params, searchParams }: Prop
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-11 min-h-[44px] rounded-lg border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-4 text-[13px] font-semibold text-[var(--hh-text-primary)] shadow-none hover:bg-[var(--hh-l2-operational-surface)] md:h-10 md:min-h-10"
+                  className="h-11 min-h-[44px] rounded-hh-compact border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-4 text-[13px] font-semibold text-[var(--hh-text-primary)] shadow-none hover:bg-[var(--hh-l2-operational-surface)] lg:h-10 lg:min-h-10"
                 >
                   All workers
                 </Button>
@@ -249,8 +247,8 @@ export default async function WorkerStatementPage({ params, searchParams }: Prop
             className={cn(
               "rounded-xl border px-3 py-2 text-right",
               balanceTone === "success"
-                ? "border-emerald-400/20 bg-emerald-400/[0.055]"
-                : "border-rose-400/20 bg-rose-400/[0.055]"
+                ? "border-[var(--hh-success-border)] bg-[var(--hh-success-soft-fill)]"
+                : "border-[var(--hh-danger-border)] bg-[var(--hh-danger-soft-fill)]"
             )}
           >
             <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--hh-text-tertiary)]">
@@ -259,7 +257,7 @@ export default async function WorkerStatementPage({ params, searchParams }: Prop
             <p
               className={cn(
                 "mt-1 text-2xl font-semibold tabular-nums",
-                balanceTone === "success" ? "text-emerald-300" : "text-rose-300"
+                balanceTone === "success" ? "text-[var(--hh-success)]" : "text-[var(--hh-danger)]"
               )}
             >
               {formatMoney(balance)}

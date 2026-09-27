@@ -52,8 +52,7 @@ const SHARED_AUTHORITY_PATHS = [
 ];
 
 const SHARED_OPERATIONAL_PATHS = SHARED_AUTHORITY_PATHS.filter(
-  (path) =>
-    path !== "src/components/ui/date-picker.tsx" && path !== "src/components/layout/app-shell.tsx"
+  (path) => path !== "src/components/layout/app-shell.tsx"
 );
 
 const OPERATIONAL_APP_PATHS = authoredSources("src/app").filter(
@@ -234,5 +233,9 @@ test("Phase 6D preserves exact protected exception ownership", () => {
   );
   assert.match(source("src/components/receipt-viewer/receipt-viewer-dialog.tsx"), /receipt-viewer/);
   assert.match(source("src/components/attachment-preview-modal.tsx"), /attachment-preview/);
-  assert.match(source("src/components/ui/date-picker.tsx"), /isGlass/);
+  assert.match(
+    source("src/components/ui/date-picker.tsx"),
+    /data-finance-date-picker-appearance="default"/
+  );
+  assert.doesNotMatch(source("src/components/ui/date-picker.tsx"), /backdrop-blur|isGlass/);
 });

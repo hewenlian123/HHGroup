@@ -1,6 +1,8 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
+import { useProjectWorkspaceScope } from "@/components/projects/project-workspace-context";
 import { PageLayout, PageHeader, Drawer } from "@/components/base";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -60,7 +62,7 @@ function normStatus(s: string): string {
   return s === "in_progress" ? "assigned" : s === "resolved" ? "completed" : s;
 }
 
-/** Priority badge: Low gray, Medium orange, High/Urgent red. */
+/** Priority badge: Low neutral, Medium orange, High/Urgent red. */
 const PriorityBadge = React.memo(function PriorityBadge({ priority }: { priority: string }) {
   const p = (priority || "Medium").toLowerCase();
   const style =
@@ -76,7 +78,7 @@ const PriorityBadge = React.memo(function PriorityBadge({ priority }: { priority
   );
 });
 
-/** Status badge: Open gray, In Progress blue, Completed green. */
+/** Status badge: Open neutral, In Progress blue, Completed green. */
 const StatusBadge = React.memo(function StatusBadge({ status }: { status: string }) {
   const n = normStatus(status);
   const label = STATUS_LABEL[n] ?? status;
@@ -144,7 +146,7 @@ const KanbanCard = React.memo(function KanbanCard({
       draggable
       onDragStart={onDragStart}
       onClick={() => onOpenDrawer(item)}
-      className="p-[10px] border border-[var(--hh-border)] rounded-lg bg-[var(--hh-l2-operational-surface)] cursor-grab active:cursor-grabbing hover:border-[var(--hh-border-strong)] hover:bg-[var(--hh-l2-operational-surface)] transition-colors text-left"
+      className="cursor-grab rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-[10px] text-left transition-colors hover:border-[var(--hh-border-strong)] hover:bg-[var(--hh-l3-hover)] active:cursor-grabbing"
     >
       <div className="font-medium text-sm text-[var(--hh-text-primary)]">{item.issue || "—"}</div>
       <div className="text-xs text-[var(--hh-text-secondary)] mt-0.5">
@@ -159,12 +161,22 @@ const KanbanCard = React.memo(function KanbanCard({
 });
 
 export default function PunchListPage() {
+  return (
+    <React.Suspense fallback={<p role="status">Loading workspace…</p>}>
+      <PunchListPageContent />
+    </React.Suspense>
+  );
+}
+
+function PunchListPageContent() {
+  const { projectId: scopedProjectId, embedded } = useProjectWorkspaceScope();
   const [items, setItems] = React.useState<PunchRow[]>([]);
   const [summary, setSummary] = React.useState({ open: 0, assigned: 0, completed: 0 });
   const [projects, setProjects] = React.useState<{ id: string; name: string }[]>([]);
   const [workers, setWorkers] = React.useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = React.useState(true);
-  const [projectFilter, setProjectFilter] = React.useState<string>("");
+  const [selectedProjectFilter, setProjectFilter] = React.useState("");
+  const projectFilter = scopedProjectId || selectedProjectFilter;
   const [statusFilter, setStatusFilter] = React.useState<StatusFilter>("");
   const [priorityFilter, setPriorityFilter] = React.useState<string>("");
   const [searchQuery, setSearchQuery] = React.useState("");
@@ -193,6 +205,7 @@ export default function PunchListPage() {
   });
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const drawerFileRef = React.useRef<HTMLInputElement>(null);
+  const modalTriggerRef = React.useRef<HTMLElement | null>(null);
 
   const load = React.useCallback(async () => {
     setLoading(true);
@@ -203,7 +216,21 @@ export default function PunchListPage() {
       const data = await res.json();
       if (!data.ok) throw new Error(data.message || "Failed to load");
       setItems(data.items ?? []);
-      setSummary(data.summary ?? { open: 0, assigned: 0, completed: 0 });
+      setSummary(
+        projectFilter
+          ? {
+              open: (data.items ?? []).filter(
+                (item: PunchRow) => normStatus(item.status) === "open"
+              ).length,
+              assigned: (data.items ?? []).filter(
+                (item: PunchRow) => normStatus(item.status) === "assigned"
+              ).length,
+              completed: (data.items ?? []).filter(
+                (item: PunchRow) => normStatus(item.status) === "completed"
+              ).length,
+            }
+          : (data.summary ?? { open: 0, assigned: 0, completed: 0 })
+      );
       setProjects(data.projects ?? []);
       setWorkers(data.workers ?? []);
     } catch (e) {
@@ -263,6 +290,8 @@ export default function PunchListPage() {
   }, [filteredItems]);
 
   const openModal = React.useCallback(() => {
+    modalTriggerRef.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setForm({
       project_id: projectFilter || projects[0]?.id || "",
       issue: "",
@@ -276,6 +305,13 @@ export default function PunchListPage() {
     setModalOpen(true);
   }, [projectFilter, projects]);
 
+  const handleModalOpenChange = React.useCallback((open: boolean) => {
+    setModalOpen(open);
+    if (!open) {
+      requestAnimationFrame(() => modalTriggerRef.current?.focus());
+    }
+  }, []);
+
   const openDrawer = React.useCallback((item: PunchRow) => {
     setSelectedItem(item);
     setDrawerForm({
@@ -288,38 +324,51 @@ export default function PunchListPage() {
     setDrawerOpen(true);
   }, []);
 
-  const handleFileChange = React.useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true);
-    setError(null);
-    try {
-      const formData = new FormData();
-      formData.set("file", file);
-      const res = await fetch("/api/operations/punch-list/upload", {
-        method: "POST",
-        body: formData,
-      });
-      const data = await res.json();
-      if (!data.ok) throw new Error(data.message || "Upload failed");
-      setForm((p) => ({ ...p, photo_url: data.path }));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Upload failed.");
-    } finally {
-      setUploading(false);
-      e.target.value = "";
-    }
-  }, []);
-
-  const handleDrawerFileChange = React.useCallback(
+  const handleFileChange = React.useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (!file) return;
+      if (!form.project_id) {
+        setError("Select a project before uploading.");
+        return;
+      }
       setUploading(true);
       setError(null);
       try {
         const formData = new FormData();
         formData.set("file", file);
+        formData.set("project_id", form.project_id);
+        const res = await fetch("/api/operations/punch-list/upload", {
+          method: "POST",
+          body: formData,
+        });
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.message || "Upload failed");
+        setForm((p) => ({ ...p, photo_url: data.path }));
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Upload failed.");
+      } finally {
+        setUploading(false);
+        e.target.value = "";
+      }
+    },
+    [form.project_id]
+  );
+
+  const handleDrawerFileChange = React.useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      if (!selectedItem?.project_id) {
+        setError("Project is unavailable.");
+        return;
+      }
+      setUploading(true);
+      setError(null);
+      try {
+        const formData = new FormData();
+        formData.set("file", file);
+        formData.set("project_id", selectedItem.project_id);
         const res = await fetch("/api/operations/punch-list/upload", {
           method: "POST",
           body: formData,
@@ -334,7 +383,7 @@ export default function PunchListPage() {
         e.target.value = "";
       }
     },
-    []
+    [selectedItem?.project_id]
   );
 
   const handleSaveNew = React.useCallback(async () => {
@@ -432,17 +481,32 @@ export default function PunchListPage() {
       divider={false}
       className={cn(
         "md:max-w-5xl text-[var(--hh-text-secondary)]",
-        mobileListPagePaddingClass,
+        embedded ? "!max-w-none !p-0" : mobileListPagePaddingClass,
         "max-md:!gap-3"
       )}
       header={
         <>
+          {scopedProjectId && !embedded ? (
+            <Button asChild variant="ghost" className="min-h-11 self-start">
+              <Link href={`/projects/${encodeURIComponent(scopedProjectId)}?tab=punch-list`}>
+                Back to project
+              </Link>
+            </Button>
+          ) : null}
+          {embedded ? (
+            <Link
+              href="/punch-list"
+              className="inline-flex min-h-11 items-center self-start text-hh-metadata underline"
+            >
+              All projects · punch list
+            </Link>
+          ) : null}
           <div className="hidden md:block">
             <PageHeader
               title="Punch List"
               description="Track and resolve construction issues."
               actions={
-                <Button size="sm" className="h-9 rounded-sm" onClick={openModal}>
+                <Button size="sm" className="rounded-hh-compact" onClick={openModal}>
                   + Add Issue
                 </Button>
               }
@@ -451,7 +515,13 @@ export default function PunchListPage() {
           <div className="md:hidden">
             <MobileListHeader
               title="Punch List"
-              fab={<MobileFabButton ariaLabel="Add issue" onClick={openModal} />}
+              fab={
+                <MobileFabButton
+                  ariaLabel="Add issue"
+                  onClick={openModal}
+                  className="motion-reduce:transition-none"
+                />
+              }
             />
           </div>
         </>
@@ -483,7 +553,7 @@ export default function PunchListPage() {
           activeFilterCount={activeDrawerFilterCount}
           searchSlot={
             <div className="relative w-full">
-              <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--hh-text-secondary)]" />
               <Input
                 aria-label="Search punch list"
                 value={searchQuery}
@@ -498,12 +568,12 @@ export default function PunchListPage() {
           <div className="space-y-3">
             <div>
               <p className={cn("mb-1", TYPO.label)}>View</p>
-              <div className="flex gap-1 rounded-md border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-0.5">
+              <div className="flex gap-1 rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-0.5">
                 <button
                   type="button"
                   onClick={() => setViewMode("list")}
                   className={cn(
-                    "flex-1 rounded-hh-compact px-2 py-1.5 text-hh-control",
+                    "hh-focus-ring hh-touch-min flex-1 rounded-hh-compact px-2 py-1.5 text-hh-control",
                     viewMode === "list"
                       ? "bg-[var(--hh-l3-selected)] text-[var(--hh-text-primary)]"
                       : "text-[var(--hh-text-secondary)]"
@@ -515,7 +585,7 @@ export default function PunchListPage() {
                   type="button"
                   onClick={() => setViewMode("kanban")}
                   className={cn(
-                    "flex-1 rounded-hh-compact px-2 py-1.5 text-hh-control",
+                    "hh-focus-ring hh-touch-min flex-1 rounded-hh-compact px-2 py-1.5 text-hh-control",
                     viewMode === "kanban"
                       ? "bg-[var(--hh-l3-selected)] text-[var(--hh-text-primary)]"
                       : "text-[var(--hh-text-secondary)]"
@@ -530,8 +600,9 @@ export default function PunchListPage() {
               <select
                 aria-label="Filter punch list by project"
                 value={projectFilter}
+                disabled={Boolean(scopedProjectId)}
                 onChange={(e) => setProjectFilter(e.target.value)}
-                className="hh-focus-ring hh-type-text-entry h-hh-control-comfortable w-full rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-2.5 text-[var(--hh-text-primary)]"
+                className="hh-focus-ring hh-touch-min hh-type-text-entry h-hh-control-comfortable w-full rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-2.5 text-[var(--hh-text-primary)]"
               >
                 <option value="">All projects</option>
                 {projects.map((p) => (
@@ -547,7 +618,7 @@ export default function PunchListPage() {
                 aria-label="Filter punch list by status"
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-                className="hh-focus-ring hh-type-text-entry h-hh-control-comfortable w-full rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-2.5 text-[var(--hh-text-primary)]"
+                className="hh-focus-ring hh-touch-min hh-type-text-entry h-hh-control-comfortable w-full rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-2.5 text-[var(--hh-text-primary)]"
               >
                 <option value="">All</option>
                 <option value="open">Open</option>
@@ -561,7 +632,7 @@ export default function PunchListPage() {
                 aria-label="Filter punch list by priority"
                 value={priorityFilter}
                 onChange={(e) => setPriorityFilter(e.target.value)}
-                className="hh-focus-ring hh-type-text-entry h-hh-control-comfortable w-full rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-2.5 text-[var(--hh-text-primary)]"
+                className="hh-focus-ring hh-touch-min hh-type-text-entry h-hh-control-comfortable w-full rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-2.5 text-[var(--hh-text-primary)]"
               >
                 <option value="">All</option>
                 {PRIORITIES.map((pr) => (
@@ -582,12 +653,12 @@ export default function PunchListPage() {
         </MobileFilterSheet>
 
         {/* View switch: List | Kanban */}
-        <div className="hidden w-fit items-center gap-0 rounded-md border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-0.5 md:flex">
+        <div className="hidden w-fit items-center gap-0 rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-0.5 md:flex">
           <button
             type="button"
             onClick={() => setViewMode("list")}
             className={cn(
-              "rounded-hh-compact px-3 py-1.5 text-hh-control transition-colors",
+              "hh-focus-ring hh-touch-min rounded-hh-compact px-3 py-1.5 text-hh-control transition-colors",
               viewMode === "list"
                 ? "bg-[var(--hh-l3-selected)] text-[var(--hh-text-primary)]"
                 : "text-[var(--hh-text-secondary)] hover:bg-[var(--hh-l2-operational-surface)] hover:text-[var(--hh-text-primary)]"
@@ -599,7 +670,7 @@ export default function PunchListPage() {
             type="button"
             onClick={() => setViewMode("kanban")}
             className={cn(
-              "rounded-hh-compact px-3 py-1.5 text-hh-control transition-colors",
+              "hh-focus-ring hh-touch-min rounded-hh-compact px-3 py-1.5 text-hh-control transition-colors",
               viewMode === "kanban"
                 ? "bg-[var(--hh-l3-selected)] text-[var(--hh-text-primary)]"
                 : "text-[var(--hh-text-secondary)] hover:bg-[var(--hh-l2-operational-surface)] hover:text-[var(--hh-text-primary)]"
@@ -616,8 +687,9 @@ export default function PunchListPage() {
             <select
               aria-label="Filter punch list by project"
               value={projectFilter}
+              disabled={Boolean(scopedProjectId)}
               onChange={(e) => setProjectFilter(e.target.value)}
-              className="hh-focus-ring hh-type-text-entry h-hh-control-standard w-full min-w-0 rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-2.5 text-[var(--hh-text-primary)] sm:w-auto sm:min-w-[160px]"
+              className="hh-focus-ring hh-touch-min hh-type-text-entry h-hh-control-standard w-full min-w-0 rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-2.5 text-[var(--hh-text-primary)] sm:w-auto sm:min-w-[160px]"
             >
               <option value="">All projects</option>
               {projects.map((p) => (
@@ -633,7 +705,7 @@ export default function PunchListPage() {
               aria-label="Filter punch list by status"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-              className="hh-focus-ring hh-type-text-entry h-hh-control-standard w-full min-w-0 rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-2.5 text-[var(--hh-text-primary)] sm:w-auto sm:min-w-[120px]"
+              className="hh-focus-ring hh-touch-min hh-type-text-entry h-hh-control-standard w-full min-w-0 rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-2.5 text-[var(--hh-text-primary)] sm:w-auto sm:min-w-[120px]"
             >
               <option value="">All</option>
               <option value="open">Open</option>
@@ -647,7 +719,7 @@ export default function PunchListPage() {
               aria-label="Filter punch list by priority"
               value={priorityFilter}
               onChange={(e) => setPriorityFilter(e.target.value)}
-              className="hh-focus-ring hh-type-text-entry h-hh-control-standard w-full min-w-0 rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-2.5 text-[var(--hh-text-primary)] sm:w-auto sm:min-w-[100px]"
+              className="hh-focus-ring hh-touch-min hh-type-text-entry h-hh-control-standard w-full min-w-0 rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-2.5 text-[var(--hh-text-primary)] sm:w-auto sm:min-w-[100px]"
             >
               <option value="">All</option>
               {PRIORITIES.map((pr) => (
@@ -660,13 +732,13 @@ export default function PunchListPage() {
           <div className="w-full min-w-0 flex-1 sm:min-w-[140px]">
             <label className={cn("mb-1 block", TYPO.label)}>Search</label>
             <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--hh-text-secondary)]" />
               <Input
                 aria-label="Search punch list"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Issue, project, location…"
-                className="hh-type-text-entry h-hh-control-standard rounded-hh-standard border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] pl-8 text-[var(--hh-text-primary)]"
+                className="hh-focus-ring hh-touch-min hh-type-text-entry h-hh-control-standard rounded-hh-standard border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] pl-8 text-[var(--hh-text-primary)]"
               />
             </div>
           </div>
@@ -676,12 +748,16 @@ export default function PunchListPage() {
         {viewMode === "list" && (
           <div className="overflow-hidden rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] shadow-operational max-md:rounded-none max-md:border-0">
             {loading ? (
-              <div className="py-8 text-center text-sm text-muted-foreground">Loading…</div>
+              <div className="py-8 text-center text-sm text-[var(--hh-text-secondary)]">
+                Loading…
+              </div>
             ) : error && items.length === 0 ? (
-              <div className="py-8 text-center text-sm text-destructive">{error}</div>
+              <div className="py-8 text-center text-sm text-[var(--hh-danger)]">{error}</div>
             ) : filteredItems.length === 0 ? (
               <div className="py-8 text-center">
-                <p className="text-sm text-muted-foreground">No issues match the filters.</p>
+                <p className="text-sm text-[var(--hh-text-secondary)]">
+                  No issues match the filters.
+                </p>
                 <Button onClick={openModal} className="mt-3" size="sm">
                   Add Issue
                 </Button>
@@ -700,12 +776,16 @@ export default function PunchListPage() {
         {viewMode === "kanban" && (
           <div className="overflow-hidden rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] shadow-operational max-md:rounded-none max-md:border-0">
             {loading ? (
-              <div className="py-8 text-center text-sm text-muted-foreground">Loading…</div>
+              <div className="py-8 text-center text-sm text-[var(--hh-text-secondary)]">
+                Loading…
+              </div>
             ) : error && items.length === 0 ? (
-              <div className="py-8 text-center text-sm text-destructive">{error}</div>
+              <div className="py-8 text-center text-sm text-[var(--hh-danger)]">{error}</div>
             ) : filteredItems.length === 0 ? (
               <div className="py-8 text-center">
-                <p className="text-sm text-muted-foreground">No issues match the filters.</p>
+                <p className="text-sm text-[var(--hh-text-secondary)]">
+                  No issues match the filters.
+                </p>
                 <Button onClick={openModal} className="mt-3" size="sm">
                   Add Issue
                 </Button>
@@ -725,7 +805,7 @@ export default function PunchListPage() {
                     return (
                       <div
                         key={columnId}
-                        className="flex flex-col rounded-lg border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] min-h-[280px] w-[280px] min-w-[280px] sm:min-w-0 sm:w-auto"
+                        className="flex min-h-[280px] w-[280px] min-w-[280px] flex-col rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] sm:min-w-0 sm:w-auto"
                         onDragOver={(e) => {
                           e.preventDefault();
                           e.currentTarget.classList.add("ring-1", "ring-[var(--hh-focus-ring)]");
@@ -764,8 +844,11 @@ export default function PunchListPage() {
           <div className="space-y-4">
             {selectedItem.site_photo_url && (
               <div>
-                <label className="text-xs font-medium text-muted-foreground">Related photo</label>
-                <div className="mt-1.5 rounded-sm border border-border/60 overflow-hidden bg-muted/20 flex items-center justify-center min-h-[160px]">
+                <label className="text-xs font-medium text-[var(--hh-text-secondary)]">
+                  Related photo
+                </label>
+                <div className="mt-1.5 flex min-h-[160px] items-center justify-center overflow-hidden rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)]">
+                  {/* eslint-disable-next-line @next/next/no-img-element -- Dynamic local media preserves intrinsic sizing in the issue viewer. */}
                   <img
                     src={sitePhotoImageUrl(selectedItem.site_photo_url)!}
                     alt=""
@@ -775,25 +858,31 @@ export default function PunchListPage() {
               </div>
             )}
             <div>
-              <label className="text-xs font-medium text-muted-foreground">Project</label>
+              <label className="text-xs font-medium text-[var(--hh-text-secondary)]">Project</label>
               <p className="mt-0.5 text-sm">{selectedItem.project_name ?? "—"}</p>
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground">Location</label>
+              <label className="text-xs font-medium text-[var(--hh-text-secondary)]">
+                Location
+              </label>
               <p className="mt-0.5 text-sm">{selectedItem.location ?? "—"}</p>
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground">Priority</label>
+              <label className="text-xs font-medium text-[var(--hh-text-secondary)]">
+                Priority
+              </label>
               <p className="mt-0.5 text-sm">{selectedItem.priority ?? "Medium"}</p>
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground">Assigned Worker</label>
+              <label className="text-xs font-medium text-[var(--hh-text-secondary)]">
+                Assigned Worker
+              </label>
               <select
                 value={drawerForm.assigned_worker_id}
                 onChange={(e) =>
                   setDrawerForm((p) => ({ ...p, assigned_worker_id: e.target.value }))
                 }
-                className="mt-1 h-9 w-full rounded-sm border border-border/60 bg-background px-2.5 text-sm"
+                className="hh-focus-ring hh-touch-min mt-1 h-hh-control-standard w-full rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-2.5 text-sm text-[var(--hh-text-primary)]"
               >
                 <option value="">—</option>
                 {workers.map((w) => (
@@ -804,17 +893,19 @@ export default function PunchListPage() {
               </select>
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground">Description</label>
+              <label className="text-xs font-medium text-[var(--hh-text-secondary)]">
+                Description
+              </label>
               <textarea
                 value={drawerForm.description}
                 onChange={(e) => setDrawerForm((p) => ({ ...p, description: e.target.value }))}
                 placeholder="Details"
                 rows={3}
-                className="mt-1 w-full rounded-sm border border-border/60 px-2.5 py-2 text-sm"
+                className="hh-focus-ring hh-touch-min mt-1 min-h-[88px] w-full rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-2.5 py-2 text-sm text-[var(--hh-text-primary)]"
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground">Photo</label>
+              <label className="text-xs font-medium text-[var(--hh-text-secondary)]">Photo</label>
               <input
                 ref={drawerFileRef}
                 type="file"
@@ -828,7 +919,7 @@ export default function PunchListPage() {
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="rounded-sm"
+                  className="rounded-hh-compact"
                   disabled={uploading}
                   onClick={() => drawerFileRef.current?.click()}
                 >
@@ -839,14 +930,15 @@ export default function PunchListPage() {
                     href={photoUrl(drawerForm.photo_url) ?? "#"}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-xs text-muted-foreground hover:underline"
+                    className="text-xs text-[var(--hh-text-secondary)] hover:underline"
                   >
                     View
                   </a>
                 )}
               </div>
               {drawerForm.photo_url && (
-                <div className="mt-2 rounded-sm border border-border/60 overflow-hidden max-w-[200px]">
+                <div className="mt-2 max-w-[200px] overflow-hidden rounded-hh-standard border border-[var(--hh-border)]">
+                  {/* eslint-disable-next-line @next/next/no-img-element -- Dynamic local media preserves intrinsic sizing in the issue editor. */}
                   <img
                     src={photoUrl(drawerForm.photo_url)!}
                     alt=""
@@ -856,30 +948,30 @@ export default function PunchListPage() {
               )}
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground">Status</label>
+              <label className="text-xs font-medium text-[var(--hh-text-secondary)]">Status</label>
               <select
                 value={drawerForm.status}
                 onChange={(e) => setDrawerForm((p) => ({ ...p, status: e.target.value }))}
-                className="mt-1 h-9 w-full rounded-sm border border-border/60 bg-background px-2.5 text-sm"
+                className="hh-focus-ring hh-touch-min mt-1 h-hh-control-standard w-full rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-2.5 text-sm text-[var(--hh-text-primary)]"
               >
                 <option value="open">Open</option>
                 <option value="assigned">Assigned</option>
                 <option value="completed">Completed</option>
               </select>
             </div>
-            {error && <p className="text-sm text-destructive">{error}</p>}
+            {error && <p className="text-sm text-[var(--hh-danger)]">{error}</p>}
             <div className="flex gap-2 pt-2">
               <Button
                 size="sm"
                 variant="outline"
-                className="rounded-sm"
+                className="rounded-hh-compact"
                 onClick={() => setDrawerOpen(false)}
               >
                 Cancel
               </Button>
               <Button
                 size="sm"
-                className="rounded-sm"
+                className="rounded-hh-compact"
                 onClick={handleSaveDrawer}
                 disabled={submitting}
               >
@@ -891,19 +983,21 @@ export default function PunchListPage() {
       </Drawer>
 
       {/* Add Issue modal */}
-      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="max-w-lg rounded-sm border-border/60 p-6">
+      <Dialog open={modalOpen} onOpenChange={handleModalOpenChange}>
+        <DialogContent className="max-w-lg rounded-hh-task border-[var(--hh-border-floating)] bg-[var(--hh-l2-operational-surface)] p-6">
           <DialogHeader>
             <DialogTitle className="text-base font-semibold">Add Issue</DialogTitle>
             <DialogDescription>Create a new punch list issue.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div>
-              <label className="text-xs font-medium text-muted-foreground">Project</label>
+              <label className="text-xs font-medium text-[var(--hh-text-secondary)]">Project</label>
               <select
                 value={form.project_id}
+                aria-label="Project"
+                disabled={Boolean(scopedProjectId)}
                 onChange={(e) => setForm((p) => ({ ...p, project_id: e.target.value }))}
-                className="mt-1.5 h-9 w-full rounded-sm border border-border/60 bg-background px-2.5 text-sm"
+                className="hh-focus-ring hh-touch-min mt-1.5 h-hh-control-standard w-full rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-2.5 text-sm text-[var(--hh-text-primary)]"
               >
                 <option value="">Select project</option>
                 {projects.map((p) => (
@@ -914,39 +1008,47 @@ export default function PunchListPage() {
               </select>
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground">Issue Title</label>
+              <label className="text-xs font-medium text-[var(--hh-text-secondary)]">
+                Issue Title
+              </label>
               <Input
                 value={form.issue}
                 onChange={(e) => setForm((p) => ({ ...p, issue: e.target.value }))}
                 placeholder="Short title"
-                className="mt-1.5 h-9 rounded-sm border-border/60"
+                className="hh-focus-ring hh-touch-min mt-1.5 h-hh-control-standard rounded-hh-standard border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)]"
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground">Location</label>
+              <label className="text-xs font-medium text-[var(--hh-text-secondary)]">
+                Location
+              </label>
               <Input
                 value={form.location}
                 onChange={(e) => setForm((p) => ({ ...p, location: e.target.value }))}
                 placeholder="e.g. Room 101"
-                className="mt-1.5 h-9 rounded-sm border-border/60"
+                className="hh-focus-ring hh-touch-min mt-1.5 h-hh-control-standard rounded-hh-standard border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)]"
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground">Description</label>
+              <label className="text-xs font-medium text-[var(--hh-text-secondary)]">
+                Description
+              </label>
               <textarea
                 value={form.description}
                 onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
                 placeholder="Optional details"
                 rows={2}
-                className="mt-1.5 w-full rounded-sm border border-border/60 px-2.5 py-2 text-sm"
+                className="hh-focus-ring hh-touch-min mt-1.5 min-h-[88px] w-full rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-2.5 py-2 text-sm text-[var(--hh-text-primary)]"
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground">Assigned Worker</label>
+              <label className="text-xs font-medium text-[var(--hh-text-secondary)]">
+                Assigned Worker
+              </label>
               <select
                 value={form.assigned_worker_id}
                 onChange={(e) => setForm((p) => ({ ...p, assigned_worker_id: e.target.value }))}
-                className="mt-1.5 h-9 w-full rounded-sm border border-border/60 bg-background px-2.5 text-sm"
+                className="hh-focus-ring hh-touch-min mt-1.5 h-hh-control-standard w-full rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-2.5 text-sm text-[var(--hh-text-primary)]"
               >
                 <option value="">—</option>
                 {workers.map((w) => (
@@ -957,11 +1059,13 @@ export default function PunchListPage() {
               </select>
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground">Priority</label>
+              <label className="text-xs font-medium text-[var(--hh-text-secondary)]">
+                Priority
+              </label>
               <select
                 value={form.priority}
                 onChange={(e) => setForm((p) => ({ ...p, priority: e.target.value }))}
-                className="mt-1.5 h-9 w-full rounded-sm border border-border/60 bg-background px-2.5 text-sm"
+                className="hh-focus-ring hh-touch-min mt-1.5 h-hh-control-standard w-full rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-2.5 text-sm text-[var(--hh-text-primary)]"
               >
                 {PRIORITIES.map((pr) => (
                   <option key={pr} value={pr}>
@@ -971,7 +1075,7 @@ export default function PunchListPage() {
               </select>
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground">Photo</label>
+              <label className="text-xs font-medium text-[var(--hh-text-secondary)]">Photo</label>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -985,27 +1089,34 @@ export default function PunchListPage() {
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="rounded-sm"
+                  className="rounded-hh-compact"
                   disabled={uploading}
                   onClick={() => fileInputRef.current?.click()}
                 >
                   {uploading ? "Uploading…" : "Upload photo"}
                 </Button>
-                {form.photo_url && <span className="text-xs text-muted-foreground">Uploaded</span>}
+                {form.photo_url && (
+                  <span className="text-xs text-[var(--hh-text-secondary)]">Uploaded</span>
+                )}
               </div>
             </div>
-            {error && <p className="text-sm text-destructive">{error}</p>}
+            {error && <p className="text-sm text-[var(--hh-danger)]">{error}</p>}
           </div>
-          <DialogFooter className="border-t border-border/60 pt-4">
+          <DialogFooter className="border-t border-[var(--hh-border)] pt-4">
             <Button
               variant="outline"
               size="sm"
-              className="rounded-sm"
+              className="rounded-hh-compact"
               onClick={() => setModalOpen(false)}
             >
               Cancel
             </Button>
-            <Button size="sm" className="rounded-sm" onClick={handleSaveNew} disabled={submitting}>
+            <Button
+              size="sm"
+              className="rounded-hh-compact"
+              onClick={handleSaveNew}
+              disabled={submitting}
+            >
               Save
             </Button>
           </DialogFooter>

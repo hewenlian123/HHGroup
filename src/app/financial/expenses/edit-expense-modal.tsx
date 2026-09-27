@@ -52,13 +52,12 @@ import type { PaymentAccountRow } from "@/lib/data";
 import type { SubcontractDeductionOption } from "@/lib/data";
 import { persistLastExpensePaymentAccountId } from "@/lib/expense-payment-preferences";
 import {
-  deriveExpenseWorkflowStatus,
   expenseCostAllocationFromProjectId,
   expenseCostAllocationRequiresProject,
   expenseNeedsReviewFromDb,
   expenseSourceTypeIsWorkerReimbursement,
   expenseStatusUiLabel,
-  preserveConfirmedExpenseStatusOnCompleteSave,
+  expenseStatusAfterSave,
   EXPENSE_COST_ALLOCATION_OVERHEAD,
   EXPENSE_COST_ALLOCATION_PROJECT_COST,
   EXPENSE_PROJECT_SELECT_NONE,
@@ -100,8 +99,8 @@ type ProjectOption = { id: string; name: string | null };
 type WorkerOption = { id: string; name: string };
 
 const FIELD_LABEL = "text-xs uppercase tracking-normal text-muted-foreground";
-const INPUT_ROW = "h-10 rounded-sm border-border/60 text-sm";
-const SELECT_TRIGGER = "h-10 rounded-sm border-border/60 text-sm [&>span]:line-clamp-1";
+const INPUT_ROW = "h-10 rounded-sm border-[var(--hh-border)] text-sm";
+const SELECT_TRIGGER = "h-10 rounded-sm border-[var(--hh-border)] text-sm [&>span]:line-clamp-1";
 
 export type ExpenseReviewSavePatch = {
   expenseId: string;
@@ -361,8 +360,8 @@ export function EditExpenseModal({
 
   const handleSave = () => {
     if (!expense || saving) return;
-    const numAmount = parseFloat(amount);
-    if (Number.isNaN(numAmount) || numAmount < 0) {
+    const numAmount = Number(amount);
+    if (!amount.trim() || !Number.isFinite(numAmount) || numAmount < 0) {
       toast({ title: "Invalid amount", variant: "error" });
       return;
     }
@@ -427,10 +426,7 @@ export function EditExpenseModal({
           (await defaultPaymentMethodName()) ||
           (expense.paymentMethod ?? "").trim() ||
           "Cash";
-        const workflowStatus = preserveConfirmedExpenseStatusOnCompleteSave(
-          expense.status,
-          deriveExpenseWorkflowStatus(projectId, category || "Other", costAllocation)
-        );
+        const workflowStatus = expenseStatusAfterSave(expense.status);
         onSave({
           expenseId: expense.id,
           date: expenseDate.slice(0, 10),
@@ -477,9 +473,9 @@ export function EditExpenseModal({
           onInteractOutside={(e) => {
             if (eventTargetsAttachmentPreviewModal(e)) e.preventDefault();
           }}
-          className="expenses-ui-dialog flex max-h-[min(92vh,820px)] w-full max-w-[560px] flex-col gap-0 overflow-hidden border-border/60 p-0 max-md:h-[100dvh] max-md:max-h-[100dvh] max-md:max-w-none max-md:rounded-none"
+          className="expenses-ui-dialog flex max-h-[min(92vh,820px)] w-full max-w-[560px] flex-col gap-0 overflow-hidden border-[var(--hh-border)] p-0 max-md:h-[100dvh] max-md:max-h-[100dvh] max-md:max-w-none max-md:rounded-none"
         >
-          <DialogHeader className="shrink-0 border-b border-border/60 px-4 py-3">
+          <DialogHeader className="shrink-0 border-b border-[var(--hh-border)] px-4 py-3">
             <DialogTitle className="text-sm font-semibold text-foreground">
               Edit expense
             </DialogTitle>
@@ -688,10 +684,10 @@ export function EditExpenseModal({
                     <label className={FIELD_LABEL}>Status</label>
                     <Badge
                       variant="outline"
-                      className="flex h-10 w-full items-center justify-start gap-2 rounded-sm border-border/60 px-3 py-0 text-sm font-normal"
+                      className="flex h-10 w-full items-center justify-start gap-2 rounded-sm border-[var(--hh-border)] px-3 py-0 text-sm font-normal"
                     >
                       {(() => {
-                        const w = deriveExpenseWorkflowStatus(projectId, category, costAllocation);
+                        const w = expenseStatusAfterSave(expense.status);
                         return (
                           <>
                             <span
@@ -743,7 +739,7 @@ export function EditExpenseModal({
                   </div>
                 </div>
 
-                <div className="border-t border-border/60 pt-3">
+                <div className="border-t border-[var(--hh-border)] pt-3">
                   <span className={cn(FIELD_LABEL, "mb-2 block")}>Attachments</span>
                   <ExpenseEditAttachmentsSection
                     expense={expense}
@@ -758,7 +754,7 @@ export function EditExpenseModal({
                   />
                 </div>
               </div>
-              <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border/60 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3">
+              <div className="flex shrink-0 items-center justify-between gap-3 border-t border-[var(--hh-border)] px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3">
                 <Button
                   variant="outline"
                   size="sm"
@@ -770,7 +766,7 @@ export function EditExpenseModal({
                 </Button>
                 <Button
                   size="sm"
-                  className="h-10 rounded-sm bg-black px-5 text-white hover:bg-neutral-900 dark:bg-foreground dark:text-background dark:hover:bg-foreground/90"
+                  className="h-10 rounded-sm bg-[var(--hh-action-primary)] px-5 text-[var(--hh-action-primary-foreground)] hover:bg-[var(--hh-action-primary-hover)]"
                   onClick={handleSave}
                   disabled={saving}
                   aria-busy={saving}

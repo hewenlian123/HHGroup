@@ -1,4 +1,5 @@
 import "server-only";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { getServerSupabaseAdmin } from "@/lib/supabase-server";
 import {
@@ -58,19 +59,19 @@ function displayMimeType(fileName: string, supplied?: string | null): string {
   return "image/jpeg";
 }
 
-async function loadStoredReceiptReferences(expenseId: string): Promise<StoredReceiptReference[]> {
-  const admin = getServerSupabaseAdmin();
-  if (!admin) throw new ExpenseReceiptManifestError("not_configured");
-
+async function loadStoredReceiptReferences(
+  expenseId: string,
+  client: SupabaseClient
+): Promise<StoredReceiptReference[]> {
   const [expenseResult, attachmentResult, dedicatedResult] = await Promise.all([
-    admin.from("expenses").select("id, receipt_url").eq("id", expenseId).maybeSingle(),
-    admin
+    client.from("expenses").select("id, receipt_url").eq("id", expenseId).maybeSingle(),
+    client
       .from("attachments")
       .select("id, file_name, file_path, mime_type")
       .eq("entity_type", "expense")
       .eq("entity_id", expenseId)
       .order("created_at", { ascending: true }),
-    admin
+    client
       .from("expense_attachments")
       .select("id, file_url, file_type")
       .eq("expense_id", expenseId)
@@ -128,16 +129,19 @@ async function loadStoredReceiptReferences(expenseId: string): Promise<StoredRec
   return references;
 }
 
-export async function resolveStoredReceiptReference(input: {
-  expenseId: string;
-  receiptId: string;
-}): Promise<
+export async function resolveStoredReceiptReference(
+  input: {
+    expenseId: string;
+    receiptId: string;
+  },
+  client: SupabaseClient
+): Promise<
   StoredReceiptReference & {
     location: NormalizedReceiptLocation;
     referenceVersion: string;
   }
 > {
-  const references = await loadStoredReceiptReferences(input.expenseId);
+  const references = await loadStoredReceiptReferences(input.expenseId, client);
   const selected = references.find(
     (reference) => receiptReferenceId(reference.sourceKind, reference.sourceId) === input.receiptId
   );
@@ -152,12 +156,15 @@ export async function resolveStoredReceiptReference(input: {
 }
 
 export async function loadExpenseReceiptManifest(
-  expenseId: string
+  expenseId: string,
+  client: SupabaseClient
 ): Promise<ExpenseReceiptManifest> {
+  // Private receipt buckets intentionally use the existing server-only signer.
+  // Business references below are authorized by the caller session before any URL is signed.
   const admin = getServerSupabaseAdmin();
   if (!admin) throw new ExpenseReceiptManifestError("not_configured");
 
-  const references = await loadStoredReceiptReferences(expenseId);
+  const references = await loadStoredReceiptReferences(expenseId, client);
   const seenLocations = new Set<string>();
   const items: ExpenseReceiptManifestItem[] = [];
 

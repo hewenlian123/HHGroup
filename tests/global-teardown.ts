@@ -8,7 +8,8 @@ import { cleanupTestData } from "./e2e-cleanup-db";
 import { deleteE2EAuthUsers } from "./e2e-auth-owner";
 import { loadE2EProcessEnv } from "./e2e-load-env";
 
-export default async function globalTeardown(_config: FullConfig): Promise<void> {
+export default async function globalTeardown(config: FullConfig): Promise<void> {
+  void config;
   if (process.env.E2E_SKIP_DB_CLEANUP === "1") {
     console.log("[global-teardown] E2E_SKIP_DB_CLEANUP=1 — skipping DB cleanup.");
     return;

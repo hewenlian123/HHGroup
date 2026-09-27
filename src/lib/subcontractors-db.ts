@@ -1,3 +1,4 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 /**
  * Subcontractors — Supabase only. No mock data.
  * Table: subcontractors.
@@ -32,8 +33,8 @@ export type SubcontractorDraft = {
 /** Subcontractor with insurance alert flag (expires within 30 days or already expired). */
 export type SubcontractorWithInsuranceAlert = SubcontractorRow & { insurance_alert: boolean };
 
-function client() {
-  const c = getSupabaseClient();
+function client(explicitClient?: SupabaseClient) {
+  const c = explicitClient ?? getSupabaseClient();
   if (!c) throw new Error("Supabase is not configured.");
   return c;
 }
@@ -50,8 +51,10 @@ const COLS_FULL =
 const COLS_BASE = "id, name, phone, email, address, active, created_at";
 
 /** Fetch all subcontractors, ordered by display name. */
-export async function getSubcontractors(): Promise<SubcontractorRow[]> {
-  const c = client();
+export async function getSubcontractors(
+  explicitClient?: SupabaseClient
+): Promise<SubcontractorRow[]> {
+  const c = client(explicitClient);
   const first = await c.from("subcontractors").select(COLS_FULL).order("name");
   if (!first.error) return (first.data ?? []).map((r: Record<string, unknown>) => mapRow(r));
   if (!isMissingColumn(first.error))
@@ -87,8 +90,11 @@ function mapRow(r: Record<string, unknown>): SubcontractorRow {
 }
 
 /** Fetch one subcontractor by id. Returns null if not found. */
-export async function getSubcontractorById(id: string): Promise<SubcontractorRow | null> {
-  const c = client();
+export async function getSubcontractorById(
+  id: string,
+  explicitClient?: SupabaseClient
+): Promise<SubcontractorRow | null> {
+  const c = client(explicitClient);
   const first = await c.from("subcontractors").select(COLS_FULL).eq("id", id).maybeSingle();
   if (!first.error) return first.data ? mapRow(first.data as Record<string, unknown>) : null;
   if (!isMissingColumn(first.error))
@@ -194,10 +200,10 @@ export async function deleteSubcontractor(id: string): Promise<void> {
 const INSURANCE_ALERT_DAYS = 30;
 
 /** Fetch all subcontractors with insurance_alert true when expiration is within 30 days or past. */
-export async function getSubcontractorsWithInsuranceAlerts(): Promise<
-  SubcontractorWithInsuranceAlert[]
-> {
-  const list = await getSubcontractors();
+export async function getSubcontractorsWithInsuranceAlerts(
+  explicitClient?: SupabaseClient
+): Promise<SubcontractorWithInsuranceAlert[]> {
+  const list = await getSubcontractors(explicitClient);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const cutoff = new Date(today);

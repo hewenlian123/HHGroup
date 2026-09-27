@@ -18,7 +18,12 @@ export const Panel = React.forwardRef<HTMLElement, PanelProps>(
     return (
       <section
         ref={ref}
-        className={cn(OS.card, TYPO.body, "min-w-0 overflow-hidden", className)}
+        className={cn(
+          OS.card,
+          TYPO.body,
+          "min-w-0 overflow-hidden rounded-hh-panel bg-[var(--hh-l1-workspace)] shadow-none",
+          className
+        )}
         {...props}
       >
         {hasHeader ? (

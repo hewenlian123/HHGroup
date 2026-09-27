@@ -130,13 +130,7 @@ export async function createEstimateRevisionAction(
   }
 }
 
-type DeleteEstimateStepName =
-  | "paymentScheduleItems"
-  | "snapshots"
-  | "items"
-  | "categories"
-  | "meta"
-  | "estimate";
+type DeleteEstimateStepName = "paymentScheduleItems" | "items" | "categories" | "meta" | "estimate";
 
 type DeleteEstimateStepDiagnostic = {
   name: DeleteEstimateStepName;
@@ -342,7 +336,8 @@ export async function deleteEstimateAction(
     select: "id" | "estimate_id";
   }> = [
     { name: "paymentScheduleItems", table: "estimate_payment_schedule_items", select: "id" },
-    { name: "snapshots", table: "estimate_snapshots", select: "id" },
+    // Snapshot history is append-only and was already proven empty by the
+    // dependency preflight above. Never issue a DELETE against that table.
     { name: "items", table: "estimate_items", select: "id" },
     { name: "categories", table: "estimate_categories", select: "estimate_id" },
     { name: "meta", table: "estimate_meta", select: "estimate_id" },

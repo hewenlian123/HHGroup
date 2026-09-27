@@ -84,8 +84,9 @@ test("route roots expose explicit contexts and a neutral sibling portal host", (
     assert.ok(shell.includes(routePattern), `missing explicit route pattern ${routePattern}`);
   }
   assert.match(shell, /<HhRouteThemeRoot context=\{routeContext\} theme=\{routeTheme\}>/);
-  assert.match(shell, /viewerRoute\s*\?\s*"neo-dark"/);
-  assert.match(shell, /operationalThemeName\(operationalThemeMode\)/);
+  assert.match(shell, /viewerRoute\s*\?\s*"operational-light"/);
+  assert.match(shell, /: "operational-light"/);
+  assert.doesNotMatch(shell, /operationalThemeName\(operationalThemeMode\)/);
 });
 
 test("all React and Radix portals use the themed portal contract", () => {
@@ -97,6 +98,10 @@ test("all React and Radix portals use the themed portal contract", () => {
       assert.match(match[0], /container=/, `${label} has an unscoped Radix portal`);
     }
     if (contents.includes("createPortal(")) {
+      // In-shell slots portal into an owned host. They are not document overlays.
+      if (!contents.includes("document.body") && !contents.includes("useHhPortalContainer")) {
+        continue;
+      }
       assert.match(contents, /useHhPortalContainer/, `${label} bypasses the portal provider`);
       assert.match(
         contents,

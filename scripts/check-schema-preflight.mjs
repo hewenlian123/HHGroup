@@ -55,7 +55,7 @@ function readConfig() {
 
 function hasDbObject(table) {
   const re = new RegExp(
-    String.raw`create\s+table\s+if\s+not\s+exists\s+public\.${table}\b|create\s+table\s+public\.${table}\b|create\s+(or\s+replace\s+)?view\s+public\.${table}\b|create\s+materialized\s+view\s+public\.${table}\b`,
+    String.raw`create\s+(?:table\s+(?:if\s+not\s+exists\s+)?|(?:or\s+replace\s+)?view\s+|materialized\s+view\s+)"?public"?\s*\.\s*"?${table}"?(?=\s|\()`,
     "i"
   );
   return re.test(sqlText);

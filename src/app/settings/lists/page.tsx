@@ -5,6 +5,7 @@ import {
   EmptyState,
   NeoFieldLabel,
   NeoInput,
+  NeoMobileCard,
   NeoModal,
   NeoPanel,
   NeoStatus,
@@ -291,7 +292,7 @@ export default function SettingsListsPage() {
             type="button"
             onClick={() => setTab(t)}
             className={cn(
-              "min-h-9 rounded-md border px-3 py-1.5 text-sm font-medium capitalize transition-colors",
+              "min-h-11 lg:min-h-9 rounded-hh-standard border px-3 py-1.5 text-sm font-medium capitalize transition-colors",
               tab === t
                 ? "border-[var(--hh-border-strong)] bg-[var(--hh-l3-selected)] text-[var(--hh-text-primary)]"
                 : "border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-secondary)] hover:bg-[var(--hh-l3-hover)] hover:text-[var(--hh-text-primary)]"
@@ -321,7 +322,12 @@ export default function SettingsListsPage() {
               onKeyDown={(e) => e.key === "Enter" && handleAdd()}
             />
           </div>
-          <Button size="sm" className="h-10" onClick={handleAdd} disabled={!state.addValue.trim()}>
+          <Button
+            size="sm"
+            className="min-h-11 lg:min-h-10"
+            onClick={handleAdd}
+            disabled={!state.addValue.trim()}
+          >
             Add
           </Button>
           <div className="space-y-1.5">
@@ -340,112 +346,202 @@ export default function SettingsListsPage() {
             description="Add a value to make it available in forms."
           />
         ) : (
-          <NeoTable tableClassName="min-w-[720px]">
-            <thead>
-              <tr>
-                <th className={tableRawThClass}>Name</th>
-                <th className={cn(tableRawThClass, "w-24 text-right")}>Used</th>
-                <th className={cn(tableRawThClass, "w-28")}>Status</th>
-                <th className={cn(tableRawThClass, "text-right")}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
+          <>
+            <div data-testid="settings-lists-mobile-records" className="space-y-3 md:hidden">
               {state.filtered.map((row) => (
-                <tr key={row.name} className="table-row-compact">
-                  <td className="py-2.5 px-4">
-                    {state.renameFor === row.name ? (
-                      <div className="flex items-center gap-2">
-                        <NeoInput
-                          value={state.renameValue}
-                          onChange={(e) => state.setRenameValue(e.target.value)}
-                          className="h-8 max-w-[200px] rounded-md"
-                          autoFocus
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") handleRenameSave();
-                            if (e.key === "Escape") {
-                              state.setRenameFor(null);
-                              state.setRenameValue("");
-                            }
-                          }}
-                        />
-                        <Button
-                          size="icon"
-                          variant="outline"
-                          className="btn-outline-ghost h-8 w-8"
-                          onClick={handleRenameSave}
-                          aria-label="Save"
-                        >
-                          <Check className="h-4 w-4 text-[var(--hh-success)]" />
-                        </Button>
-                        <Button
-                          size="icon"
-                          variant="outline"
-                          className="btn-outline-ghost h-8 w-8"
-                          onClick={() => {
-                            state.setRenameFor(null);
-                            state.setRenameValue("");
-                          }}
-                          aria-label="Cancel"
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ) : (
-                      <span className="font-medium">{row.name}</span>
-                    )}
-                  </td>
-                  <td className="py-2.5 px-4 text-right tabular-nums text-[var(--hh-text-secondary)]">
-                    {row.used}
-                  </td>
-                  <td className="px-4 py-2.5">
+                <NeoMobileCard key={row.name} className="space-y-3 p-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-hh-body-strong text-[var(--hh-text-primary)]">
+                        {row.name}
+                      </p>
+                      <p className="text-hh-metadata text-[var(--hh-text-secondary)]">
+                        Used by {row.used} record{row.used === 1 ? "" : "s"}
+                      </p>
+                    </div>
                     <NeoStatus
                       label={row.disabled ? "Disabled" : "Active"}
                       variant={row.disabled ? "warning" : "success"}
                     />
-                  </td>
-                  <td className="py-2.5 px-4 text-right">
-                    {state.renameFor === row.name ? null : (
-                      <div className="flex items-center justify-end gap-1">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="btn-outline-ghost h-8 gap-1"
-                          onClick={() => {
-                            state.setRenameFor(row.name);
-                            state.setRenameValue(row.name);
-                          }}
-                          aria-label="Rename"
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                          Rename
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="btn-outline-ghost h-8 gap-1"
-                          onClick={() => handleDisableEnable(row.name, row.disabled)}
-                          aria-label={row.disabled ? "Enable" : "Disable"}
-                        >
-                          <Ban className="h-3.5 w-3.5" />
-                          {row.disabled ? "Enable" : "Disable"}
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="btn-outline-ghost h-8 gap-1 text-destructive hover:text-destructive"
-                          onClick={() => handleDelete(row.name, row.used)}
-                          aria-label="Delete"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                          Delete
-                        </Button>
-                      </div>
-                    )}
-                  </td>
-                </tr>
+                  </div>
+                  {state.renameFor === row.name ? (
+                    <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] gap-2">
+                      <NeoInput
+                        value={state.renameValue}
+                        onChange={(e) => state.setRenameValue(e.target.value)}
+                        className="min-h-11"
+                        autoFocus
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") handleRenameSave();
+                          if (e.key === "Escape") {
+                            state.setRenameFor(null);
+                            state.setRenameValue("");
+                          }
+                        }}
+                      />
+                      <Button
+                        size="icon"
+                        variant="outline"
+                        className="min-h-11 min-w-11"
+                        onClick={handleRenameSave}
+                        aria-label="Save"
+                      >
+                        <Check className="h-4 w-4 text-[var(--hh-success)]" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="outline"
+                        className="min-h-11 min-w-11"
+                        onClick={() => {
+                          state.setRenameFor(null);
+                          state.setRenameValue("");
+                        }}
+                        aria-label="Cancel"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-3 gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="min-h-11 rounded-hh-standard"
+                        onClick={() => {
+                          state.setRenameFor(row.name);
+                          state.setRenameValue(row.name);
+                        }}
+                      >
+                        Rename
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="min-h-11 rounded-hh-standard"
+                        onClick={() => handleDisableEnable(row.name, row.disabled)}
+                      >
+                        {row.disabled ? "Enable" : "Disable"}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="min-h-11 rounded-hh-standard text-destructive hover:text-destructive"
+                        onClick={() => handleDelete(row.name, row.used)}
+                      >
+                        Delete
+                      </Button>
+                    </div>
+                  )}
+                </NeoMobileCard>
               ))}
-            </tbody>
-          </NeoTable>
+            </div>
+            <NeoTable className="hidden md:block" tableClassName="min-w-[720px]">
+              <thead>
+                <tr>
+                  <th className={tableRawThClass}>Name</th>
+                  <th className={cn(tableRawThClass, "w-24 text-right")}>Used</th>
+                  <th className={cn(tableRawThClass, "w-28")}>Status</th>
+                  <th className={cn(tableRawThClass, "text-right")}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {state.filtered.map((row) => (
+                  <tr key={row.name} className="table-row-compact">
+                    <td className="py-2.5 px-4">
+                      {state.renameFor === row.name ? (
+                        <div className="flex items-center gap-2">
+                          <NeoInput
+                            value={state.renameValue}
+                            onChange={(e) => state.setRenameValue(e.target.value)}
+                            className="h-8 max-w-[200px] rounded-hh-compact"
+                            autoFocus
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") handleRenameSave();
+                              if (e.key === "Escape") {
+                                state.setRenameFor(null);
+                                state.setRenameValue("");
+                              }
+                            }}
+                          />
+                          <Button
+                            size="icon"
+                            variant="outline"
+                            className="btn-outline-ghost h-8 w-8"
+                            onClick={handleRenameSave}
+                            aria-label="Save"
+                          >
+                            <Check className="h-4 w-4 text-[var(--hh-success)]" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="outline"
+                            className="btn-outline-ghost h-8 w-8"
+                            onClick={() => {
+                              state.setRenameFor(null);
+                              state.setRenameValue("");
+                            }}
+                            aria-label="Cancel"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <span className="font-medium">{row.name}</span>
+                      )}
+                    </td>
+                    <td className="py-2.5 px-4 text-right tabular-nums text-[var(--hh-text-secondary)]">
+                      {row.used}
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <NeoStatus
+                        label={row.disabled ? "Disabled" : "Active"}
+                        variant={row.disabled ? "warning" : "success"}
+                      />
+                    </td>
+                    <td className="py-2.5 px-4 text-right">
+                      {state.renameFor === row.name ? null : (
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="btn-outline-ghost h-8 gap-1"
+                            onClick={() => {
+                              state.setRenameFor(row.name);
+                              state.setRenameValue(row.name);
+                            }}
+                            aria-label="Rename"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                            Rename
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="btn-outline-ghost h-8 gap-1"
+                            onClick={() => handleDisableEnable(row.name, row.disabled)}
+                            aria-label={row.disabled ? "Enable" : "Disable"}
+                          >
+                            <Ban className="h-3.5 w-3.5" />
+                            {row.disabled ? "Enable" : "Disable"}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="btn-outline-ghost h-8 gap-1 text-destructive hover:text-destructive"
+                            onClick={() => handleDelete(row.name, row.used)}
+                            aria-label="Delete"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            Delete
+                          </Button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </NeoTable>
+          </>
         )}
       </NeoPanel>
 
@@ -460,7 +556,11 @@ export default function SettingsListsPage() {
               : ""}
           </p>
           <div className="flex justify-end pt-2">
-            <Button size="sm" className="rounded-sm" onClick={() => state.setDeleteBlocked(null)}>
+            <Button
+              size="sm"
+              className="rounded-hh-compact"
+              onClick={() => state.setDeleteBlocked(null)}
+            >
               OK
             </Button>
           </div>

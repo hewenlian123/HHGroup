@@ -119,34 +119,6 @@ async function cleanup(client: SupabaseClient): Promise<void> {
   await deleteByIds(client, "projects", "id", projectIds);
 }
 
-async function markerCounts(
-  client: SupabaseClient
-): Promise<{ workers: number; projects: number; laborEntries: number }> {
-  const { workerIds, projectIds } = await markerIds(client);
-  const laborIds = new Set<string>();
-  if (workerIds.length > 0) {
-    const { data, error } = await client
-      .from("labor_entries")
-      .select("id")
-      .in("worker_id", workerIds);
-    if (error) throw new Error(`Failed to count marker worker entries: ${error.message}`);
-    for (const row of data ?? []) laborIds.add(String(row.id));
-  }
-  if (projectIds.length > 0) {
-    const { data, error } = await client
-      .from("labor_entries")
-      .select("id")
-      .in("project_id", projectIds);
-    if (error) throw new Error(`Failed to count marker project entries: ${error.message}`);
-    for (const row of data ?? []) laborIds.add(String(row.id));
-  }
-  return {
-    workers: workerIds.length,
-    projects: projectIds.length,
-    laborEntries: laborIds.size,
-  };
-}
-
 async function seed(client: SupabaseClient): Promise<void> {
   await cleanup(client);
 

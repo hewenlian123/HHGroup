@@ -1,10 +1,12 @@
 "use client";
 
+import { ContactChannels, ContactSections } from "@/components/contacts/contact-sections";
 import * as React from "react";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { useBreadcrumbEntityLabel } from "@/contexts/breadcrumb-override-context";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { financePathWithReturn } from "@/lib/finance-navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { runOptimisticPersist } from "@/lib/optimistic-save";
 import {
   EmptyState,
@@ -13,7 +15,6 @@ import {
   NeoInput,
   NeoPanel,
   NeoSelect,
-  NeoStatus,
   PageHeader,
   PageLayout,
 } from "@/components/base";
@@ -43,32 +44,10 @@ type CustomerForm = {
 
 type RelatedProject = {
   id: string;
-  name: string | null;
-  status: string | null;
-  client: string | null;
-  customer_id: string | null;
-};
-
-type RelatedEstimate = {
-  id: string;
-  number: string | null;
-  client: string | null;
-  project: string | null;
-  status: string | null;
-};
-
-type RelatedChangeOrder = {
-  id: string;
-  project_id: string;
-  number: string | null;
-  title?: string | null;
-  status: string | null;
-};
-
-type RelatedWork = {
-  projects: RelatedProject[];
-  estimates: RelatedEstimate[];
-  changeOrders: RelatedChangeOrder[];
+  name: string;
+  status: string;
+  customerId?: string | null;
+  sourceEstimateId?: string | null;
 };
 
 const toNullable = (value: string): string | null => {
@@ -78,7 +57,6 @@ const toNullable = (value: string): string | null => {
 
 type CustomerDetailResponse = CustomerRow & {
   projects_count?: number;
-  relatedWork?: RelatedWork;
 };
 
 async function readCustomerDetail(id: string): Promise<CustomerDetailResponse> {
@@ -97,6 +75,7 @@ async function readCustomerDetail(id: string): Promise<CustomerDetailResponse> {
 
 export default function CustomerDetailPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const router = useRouter();
   const id = params?.id as string | undefined;
 
@@ -104,11 +83,7 @@ export default function CustomerDetailPage() {
   const [saving, setSaving] = React.useState(false);
   const [message, setMessage] = React.useState<string | null>(null);
   const [notFound, setNotFound] = React.useState(false);
-  const [relatedWork, setRelatedWork] = React.useState<RelatedWork>({
-    projects: [],
-    estimates: [],
-    changeOrders: [],
-  });
+  const [projects, setProjects] = React.useState<RelatedProject[] | null>(null);
   const [form, setForm] = React.useState<CustomerForm>({
     name: "",
     contact_person: "",
@@ -128,6 +103,8 @@ export default function CustomerDetailPage() {
       return;
     }
     setLoading(true);
+    serverFormRef.current = null;
+    setProjects(null);
     setMessage(null);
     setNotFound(false);
     let row: CustomerDetailResponse;
@@ -151,7 +128,14 @@ export default function CustomerDetailPage() {
     };
     setForm(next);
     serverFormRef.current = { ...next };
-    setRelatedWork(row.relatedWork ?? { projects: [], estimates: [], changeOrders: [] });
+    try {
+      const response = await fetch("/api/projects", { cache: "no-store" });
+      const payload = await response.json();
+      if (!response.ok || !Array.isArray(payload.projects)) throw new Error("Projects unavailable");
+      setProjects(payload.projects.filter((project: RelatedProject) => project.customerId === id));
+    } catch {
+      setProjects(null);
+    }
     setLoading(false);
   }, [id]);
 
@@ -250,8 +234,74 @@ export default function CustomerDetailPage() {
     );
   }
 
+  if (!serverFormRef.current)
+    return (
+      <PageLayout divider={false} header={<PageHeader title="Customer unavailable" />}>
+        <p role="status">{message || "Could not load this customer."}</p>
+        <Button className="min-h-11" onClick={() => void refresh()}>
+          Retry customer
+        </Button>
+        <Button asChild variant="outline" className="min-h-11">
+          <Link href="/customers">Back to Customers</Link>
+        </Button>
+      </PageLayout>
+    );
+
+  const projectLinks = (target: "project" | "documents" | "history") =>
+    projects === null ? (
+      <p role="status">Project links unavailable. Reload the customer to retry.</p>
+    ) : (
+      <div className="space-y-2">
+        {projects.length === 0 && (
+          <p className="text-sm text-[var(--hh-text-secondary)]">
+            No projects with a recorded customer link. Legacy name-only associations are not
+            included.
+          </p>
+        )}
+        {projects.map((project) => (
+          <Button
+            key={project.id}
+            asChild
+            variant="outline"
+            className="min-h-11 max-w-full h-auto whitespace-normal justify-start"
+          >
+            <Link
+              href={
+                target === "documents"
+                  ? `/documents?project_id=${encodeURIComponent(project.id)}`
+                  : `/projects/${project.id}${target === "history" ? "?tab=activity" : ""}`
+              }
+              prefetch={false}
+            >
+              {project.name}
+              {target === "documents" ? " · Documents" : target === "history" ? " · History" : ""}
+            </Link>
+          </Button>
+        ))}
+      </div>
+    );
+  const financeLink = (label: string, href: string) => (
+    <NeoPanel title={label} bodyClassName="space-y-3 p-4">
+      <p className="text-sm text-[var(--hh-text-secondary)]">
+        Open this customer’s records in Finance.
+      </p>
+      <Button asChild variant="outline" className="min-h-11">
+        <Link
+          href={financePathWithReturn(
+            `${href}?customerId=${encodeURIComponent(id!)}`,
+            `/customers/${id}?${searchParams}`
+          )}
+          prefetch={false}
+        >
+          {label}
+        </Link>
+      </Button>
+    </NeoPanel>
+  );
+
   return (
     <PageLayout
+      className="[&_button]:min-h-11"
       divider={false}
       header={
         <PageHeader
@@ -259,10 +309,15 @@ export default function CustomerDetailPage() {
           description="View and edit customer profile."
           actions={
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={() => router.push("/customers")}>
+              <Button
+                variant="outline"
+                size="sm"
+                className="min-h-11"
+                onClick={() => router.push("/customers")}
+              >
                 Back
               </Button>
-              <Button size="sm" onClick={handleSave} disabled={saving}>
+              <Button size="sm" className="min-h-11" onClick={handleSave} disabled={saving}>
                 <SubmitSpinner loading={saving} className="mr-2" />
                 {saving ? "Saving..." : "Save Changes"}
               </Button>
@@ -277,155 +332,149 @@ export default function CustomerDetailPage() {
         </div>
       ) : null}
 
-      <NeoPanel bodyClassName="p-4">
-        <div className="grid gap-3 md:grid-cols-2">
-          <div className="space-y-1">
-            <NeoFieldLabel>Customer Name</NeoFieldLabel>
-            <NeoInput
-              value={form.name}
-              onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
-              placeholder="Optional"
-            />
-          </div>
-          <div className="space-y-1">
-            <NeoFieldLabel>Contact Person</NeoFieldLabel>
-            <NeoInput
-              value={form.contact_person}
-              onChange={(e) => setForm((prev) => ({ ...prev, contact_person: e.target.value }))}
-              placeholder="Optional"
-            />
-          </div>
-          <div className="space-y-1">
-            <NeoFieldLabel>Phone</NeoFieldLabel>
-            <NeoInput
-              value={form.phone}
-              onChange={(e) => setForm((prev) => ({ ...prev, phone: e.target.value }))}
-              placeholder="Optional"
-            />
-          </div>
-          <div className="space-y-1">
-            <NeoFieldLabel>Email</NeoFieldLabel>
-            <NeoInput
-              value={form.email}
-              onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))}
-              placeholder="Optional"
-            />
-          </div>
-          <div className="space-y-1 md:col-span-2">
-            <NeoFieldLabel>Address</NeoFieldLabel>
-            <NeoInput
-              value={form.address}
-              onChange={(e) => setForm((prev) => ({ ...prev, address: e.target.value }))}
-              placeholder="Optional"
-            />
-          </div>
-          <div className="space-y-1 md:col-span-2">
-            <NeoFieldLabel>Notes</NeoFieldLabel>
-            <NeoInput
-              value={form.notes}
-              onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))}
-              placeholder="Optional"
-            />
-          </div>
-          <div className="space-y-1">
-            <NeoFieldLabel>Status</NeoFieldLabel>
-            <NeoSelect
-              value={form.status}
-              onChange={(e) =>
-                setForm((prev) => ({
-                  ...prev,
-                  status: e.target.value === "inactive" ? "inactive" : "active",
-                }))
-              }
-            >
-              <option value="active">active</option>
-              <option value="inactive">inactive</option>
-            </NeoSelect>
-          </div>
-        </div>
-      </NeoPanel>
-
-      <NeoPanel bodyClassName="p-4">
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <div>
-            <h2 className="text-sm font-semibold text-[var(--hh-text-primary)]">Related work</h2>
-            <p className="text-xs text-[var(--hh-text-secondary)]">
-              Projects, estimates, and change orders connected to this customer.
-            </p>
-          </div>
-        </div>
-        <div className="grid gap-4 lg:grid-cols-3">
-          <div className="space-y-2">
-            <p className="text-hh-table-header uppercase text-[var(--hh-text-tertiary)]">
-              Projects
-            </p>
-            {relatedWork.projects.length === 0 ? (
-              <p className="text-sm text-[var(--hh-text-secondary)]">No related projects.</p>
-            ) : (
-              <div className="divide-y divide-border/60">
-                {relatedWork.projects.map((project) => (
-                  <Link
-                    key={project.id}
-                    href={`/projects/${project.id}`}
-                    className="flex items-center justify-between gap-3 py-2 text-sm underline-offset-2 hover:underline"
-                  >
-                    <span className="min-w-0 truncate font-medium text-[var(--hh-text-primary)]">
-                      {project.name ?? "Untitled project"}
-                    </span>
-                    <NeoStatus label={project.status ?? "—"} variant="default" />
+      <ContactChannels phone={serverFormRef.current.phone} email={serverFormRef.current.email} />
+      <ContactSections
+        sections={[
+          {
+            label: "Overview",
+            content: (
+              <>
+                {" "}
+                <NeoPanel bodyClassName="p-4">
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div className="space-y-1">
+                      <NeoFieldLabel>Customer Name</NeoFieldLabel>
+                      <NeoInput
+                        aria-label="Customer Name"
+                        className="min-h-11"
+                        value={form.name}
+                        onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
+                        placeholder="Optional"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <NeoFieldLabel>Contact Person</NeoFieldLabel>
+                      <NeoInput
+                        aria-label="Contact Person"
+                        className="min-h-11"
+                        value={form.contact_person}
+                        onChange={(e) =>
+                          setForm((prev) => ({ ...prev, contact_person: e.target.value }))
+                        }
+                        placeholder="Optional"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <NeoFieldLabel>Phone</NeoFieldLabel>
+                      <NeoInput
+                        aria-label="Phone"
+                        className="min-h-11"
+                        value={form.phone}
+                        onChange={(e) => setForm((prev) => ({ ...prev, phone: e.target.value }))}
+                        placeholder="Optional"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <NeoFieldLabel>Email</NeoFieldLabel>
+                      <NeoInput
+                        aria-label="Email"
+                        className="min-h-11"
+                        value={form.email}
+                        onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))}
+                        placeholder="Optional"
+                      />
+                    </div>
+                    <div className="space-y-1 md:col-span-2">
+                      <NeoFieldLabel>Address</NeoFieldLabel>
+                      <NeoInput
+                        aria-label="Address"
+                        className="min-h-11"
+                        value={form.address}
+                        onChange={(e) => setForm((prev) => ({ ...prev, address: e.target.value }))}
+                        placeholder="Optional"
+                      />
+                    </div>
+                    <div className="space-y-1 md:col-span-2">
+                      <NeoFieldLabel>Notes</NeoFieldLabel>
+                      <NeoInput
+                        aria-label="Notes"
+                        className="min-h-11"
+                        value={form.notes}
+                        onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))}
+                        placeholder="Optional"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <NeoFieldLabel>Status</NeoFieldLabel>
+                      <NeoSelect
+                        aria-label="Status"
+                        className="min-h-11"
+                        value={form.status}
+                        onChange={(e) =>
+                          setForm((prev) => ({
+                            ...prev,
+                            status: e.target.value === "inactive" ? "inactive" : "active",
+                          }))
+                        }
+                      >
+                        <option value="active">active</option>
+                        <option value="inactive">inactive</option>
+                      </NeoSelect>
+                    </div>
+                  </div>
+                </NeoPanel>
+                {financeLink("Customer AR", "/financial/ar")}
+              </>
+            ),
+          },
+          { label: "Projects", content: projectLinks("project") },
+          {
+            label: "Estimates",
+            content: (
+              <div className="space-y-3">
+                <p className="text-sm text-[var(--hh-text-secondary)]">
+                  Estimates linked through this customer’s projects. Other customer-specific
+                  estimate history is unavailable here.
+                </p>
+                {projects
+                  ?.filter((project) => project.sourceEstimateId)
+                  .map((project) => (
+                    <Button key={project.id} asChild variant="outline" className="min-h-11">
+                      <Link href={`/estimates/${project.sourceEstimateId}`} prefetch={false}>
+                        {project.name} · Estimate
+                      </Link>
+                    </Button>
+                  ))}
+                <Button asChild variant="outline" className="min-h-11">
+                  <Link href="/estimates" prefetch={false}>
+                    Open Estimates
                   </Link>
-                ))}
+                </Button>
               </div>
-            )}
-          </div>
-          <div className="space-y-2">
-            <p className="text-hh-table-header uppercase text-[var(--hh-text-tertiary)]">
-              Estimates
-            </p>
-            {relatedWork.estimates.length === 0 ? (
-              <p className="text-sm text-[var(--hh-text-secondary)]">No related estimates.</p>
-            ) : (
-              <div className="divide-y divide-border/60">
-                {relatedWork.estimates.map((estimate) => (
-                  <Link
-                    key={estimate.id}
-                    href={`/estimates/${estimate.id}`}
-                    className="flex items-center justify-between gap-3 py-2 text-sm underline-offset-2 hover:underline"
-                  >
-                    <span className="min-w-0 truncate font-medium text-[var(--hh-text-primary)]">
-                      {estimate.number ?? "Estimate"}
-                    </span>
-                    <NeoStatus label={estimate.status ?? "—"} variant="default" />
-                  </Link>
-                ))}
-              </div>
-            )}
-          </div>
-          <div className="space-y-2">
-            <p className="text-hh-table-header uppercase text-[var(--hh-text-tertiary)]">
-              Change Orders
-            </p>
-            {relatedWork.changeOrders.length === 0 ? (
-              <p className="text-sm text-[var(--hh-text-secondary)]">No related change orders.</p>
-            ) : (
-              <div className="divide-y divide-border/60">
-                {relatedWork.changeOrders.map((co) => (
-                  <Link
-                    key={co.id}
-                    href={`/projects/${co.project_id}/change-orders/${co.id}`}
-                    className="flex items-center justify-between gap-3 py-2 text-sm underline-offset-2 hover:underline"
-                  >
-                    <span className="min-w-0 truncate font-medium text-[var(--hh-text-primary)]">
-                      {co.title ?? co.number ?? "Change order"}
-                    </span>
-                    <NeoStatus label={co.status ?? "—"} variant="default" />
-                  </Link>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      </NeoPanel>
+            ),
+          },
+          {
+            label: "Invoices",
+            content: financeLink("Open customer invoices", "/financial/invoices"),
+          },
+          {
+            label: "Payments",
+            content: financeLink("Open payments received", "/financial/payments"),
+          },
+          { label: "Documents", content: projectLinks("documents") },
+          {
+            label: "History",
+            content: (
+              <>
+                <p className="text-sm text-[var(--hh-text-secondary)]">
+                  Activity is recorded within each project.
+                </p>
+                {projectLinks("history")}
+              </>
+            ),
+          },
+        ]}
+      />
     </PageLayout>
   );
 }

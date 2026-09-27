@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const ROOT = process.cwd();
@@ -98,7 +98,6 @@ const strictRouteFiles = [
 ];
 
 const publicReceiptRouteFiles = [
-  "src/app/api/upload-receipt/options/route.ts",
   "src/app/api/upload-receipt/upload/route.ts",
   "src/app/api/upload-receipt/submit/route.ts",
 ];
@@ -115,6 +114,7 @@ const strictServerActionFiles = [
   "src/app/financial/invoices/new/actions.ts",
   "src/app/financial/payments/actions.ts",
   "src/app/workers/actions.ts",
+  "src/app/punch-list/actions.ts",
 ];
 
 const paymentMutationFiles = [
@@ -125,19 +125,24 @@ const paymentMutationFiles = [
 const PRIVILEGED_CLIENT_CALL = /\bgetServerSupabase(?:Admin|Internal|InternalNoStore)\s*\(/g;
 
 function source(path: string): string {
-  return readFileSync(resolve(ROOT, path), "utf8");
+  const absolute = resolve(ROOT, path);
+  const text = readFileSync(absolute, "utf8");
+  const delegatedRoute = text.match(/^export \{ (?:GET|POST) \} from "(\.[^"]+)";\s*$/);
+  return delegatedRoute ? source(resolve(dirname(absolute), `${delegatedRoute[1]}.ts`)) : text;
 }
 
 describe("production financial authorization boundaries", () => {
   it.each(strictRouteFiles)("uses a strict gate before privileged access in %s", (path) => {
-    expect(source(path)).toContain("requireSupabaseOwnerOrAdmin");
+    expect(source(path)).toMatch(/require(?:SupabaseOwnerOrAdmin|OrganizationRequestClient)/);
   });
 
   it.each(strictRouteFiles)(
     "creates a direct privileged client only after a strict gate in %s",
     (path) => {
       const text = source(path);
-      const strictGateAt = text.search(/await\s+requireSupabaseOwnerOrAdmin(?:WithClient)?\s*\(/);
+      const strictGateAt = text.search(
+        /await\s+require(?:SupabaseOwnerOrAdmin(?:WithClient|RequestClient)?|OrganizationRequestClient)\s*\(/
+      );
       expect(strictGateAt).toBeGreaterThanOrEqual(0);
       for (const match of text.matchAll(PRIVILEGED_CLIENT_CALL)) {
         expect(match.index).toBeGreaterThan(strictGateAt);
@@ -146,7 +151,9 @@ describe("production financial authorization boundaries", () => {
   );
 
   it.each(strictServerActionFiles)("uses a verified session gate in %s", (path) => {
-    expect(source(path)).toContain("requireSupabaseOwnerOrAdminServerAction");
+    expect(source(path)).toMatch(
+      /require(?:SupabaseOwnerOrAdminServerAction|OrganizationServerActionClient)/
+    );
   });
 
   it.each(strictServerActionFiles)(
@@ -154,7 +161,7 @@ describe("production financial authorization boundaries", () => {
     (path) => {
       const text = source(path);
       const strictGateAt = text.search(
-        /await\s+requireSupabaseOwnerOrAdminServerAction(?:WithClient)?\s*\(/
+        /await\s+require(?:SupabaseOwnerOrAdminServerAction(?:WithClient|Client)?|OrganizationServerActionClient)\s*\(/
       );
       expect(strictGateAt).toBeGreaterThanOrEqual(0);
       for (const match of text.matchAll(PRIVILEGED_CLIENT_CALL)) {
@@ -174,12 +181,13 @@ describe("production financial authorization boundaries", () => {
     expect(source(path)).not.toContain("ensureExpensesSourceColumns");
   });
 
-  it("documents the intentionally public receipt upload contract", () => {
+  it("documents authenticated company receipt intake and private review", () => {
     const contract = source("docs/PUBLIC_RECEIPT_UPLOAD_CONTRACT.md");
     expect(contract).toContain("/api/upload-receipt/options");
     expect(contract).toContain("/api/upload-receipt/upload");
     expect(contract).toContain("/api/upload-receipt/submit");
-    expect(contract).toContain("Receipt OCR is not public");
-    expect(contract).toContain("must not use a service-role client");
+    expect(contract).toContain("live canonical-company membership");
+    expect(contract).toContain("never constructs a service-role client");
+    expect(contract).toContain("closes anonymous business access");
   });
 });

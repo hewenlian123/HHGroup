@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { financialDataUnavailable } from "@/lib/financial-availability";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
 import {
@@ -148,8 +149,6 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       "id, worker_id, work_date, cost_amount, status, worker_payment_id",
       "id, worker_id, work_date, cost_amount, status",
       "id, worker_id, work_date, cost_amount",
-      // With total when column exists (older daily log).
-      "id, worker_id, work_date, days_worked, cost_amount, total, status, worker_payment_id, morning, afternoon, hours, notes",
       // project_id on row (newer unified schema).
       "id, worker_id, project_id, work_date, days_worked, cost_amount, status, worker_payment_id, morning, afternoon, hours, notes",
       "id, worker_id, project_id, work_date, cost_amount, status, worker_payment_id, morning, afternoon",
@@ -168,9 +167,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     }
     const laborSettlementMode = laborPayrollSettlementModeFromSelectList(laborColsApplied);
 
-    // worker_payments — canonical: total_amount, note, created_at
+    // Prefer the recorded payment date; preserve compatibility with older schemas.
     let paymentsRes: RawResult = { data: null, error: null };
     for (const cols of [
+      "id, worker_id, total_amount, payment_method, note, payment_date, created_at, labor_entry_ids",
       "id, worker_id, total_amount, payment_method, note, created_at, labor_entry_ids",
       "id, worker_id, total_amount, payment_method, note, created_at",
       "id, worker_id, total_amount, note, created_at",
@@ -179,7 +179,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       paymentsRes = await queryFinancialTable(c, "worker_payments", cols, "created_at");
       if (!paymentsRes.error || !isMissingColumn(paymentsRes.error)) break;
     }
-    if (paymentsRes.error) {
+    if (paymentsRes.error && isMissingColumn(paymentsRes.error)) {
       paymentsRes = await queryFinancialTable(
         c,
         "worker_payments",
@@ -187,7 +187,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         "created_at"
       );
     }
-    if (paymentsRes.error) {
+    if (paymentsRes.error && isMissingColumn(paymentsRes.error)) {
       paymentsRes = await queryFinancialTable(
         c,
         "worker_payments",
@@ -228,6 +228,17 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     }
 
     const [projectsRes] = await Promise.all([c.from("projects").select("id, name")]);
+
+    for (const [source, result] of [
+      ["labor_entries", laborRes],
+      ["worker_payments", paymentsRes],
+      ["worker_reimbursements", reimbRes],
+      ["worker_advances", advancesRes],
+      ["projects", projectsRes],
+    ] as const) {
+      if (result.error) financialDataUnavailable(source, result.error);
+      if (!Array.isArray(result.data)) financialDataUnavailable(source, null);
+    }
 
     if (!worker?.id) {
       return NextResponse.json({ message: "Worker not found" }, { status: 404 });

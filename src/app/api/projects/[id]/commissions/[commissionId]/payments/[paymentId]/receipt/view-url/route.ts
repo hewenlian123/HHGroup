@@ -1,5 +1,6 @@
+import { withSessionCookies } from "@/lib/supabase-response";
 import { NextResponse } from "next/server";
-import { requireSupabaseOwnerOrAdminWithClient } from "@/lib/auth-boundary";
+import { requireOrganizationRequestClient } from "@/lib/auth-boundary";
 import { getCommissionById, getPaymentRecordById } from "@/lib/data";
 import {
   COMMISSION_RECEIPT_BUCKETS,
@@ -8,7 +9,7 @@ import {
   isStoragePathForCommissionReceipt,
   parseCommissionReceiptStorageUrl,
 } from "@/lib/commission-receipt-storage";
-import { createServerSupabaseClient, getServerSupabaseAdmin } from "@/lib/supabase-server";
+import { getServerSupabaseAdmin } from "@/lib/supabase-server";
 import { uuidNormalizedEqual } from "@/lib/uuid-normalize";
 
 const ALLOWED_BUCKETS = new Set<string>(COMMISSION_RECEIPT_BUCKETS);
@@ -23,100 +24,133 @@ export async function GET(
   req: Request,
   ctx: { params: Promise<{ id: string; commissionId: string; paymentId: string }> }
 ) {
-  const guard = await requireSupabaseOwnerOrAdminWithClient(req, getServerSupabaseAdmin);
+  const guard = await requireOrganizationRequestClient(req, {
+    projectId: (await ctx.params).id,
+    write: req.method !== "GET",
+    requireOwnerAdmin: true,
+    noStore: true,
+  });
   if (!guard.ok) return guard.response;
   const { id: projectId, commissionId, paymentId } = await ctx.params;
   if (!projectId || !commissionId || !paymentId)
-    return NextResponse.json({ ok: false, message: "Missing id" }, { status: 400 });
+    return withSessionCookies(
+      NextResponse.json({ ok: false, message: "Missing id" }, { status: 400 }),
+      guard.sessionResponse
+    );
 
   try {
-    const admin = guard.client;
-    // If service role isn't configured in the environment, fall back to the current
-    // authenticated user session (SSR cookies or Authorization header).
-    const supabase = admin ?? (await createServerSupabaseClient());
-    if (!supabase) {
-      return NextResponse.json(
-        { ok: false, message: "Supabase is not configured." },
-        { status: 500 }
-      );
-    }
-    const commission = await getCommissionById(commissionId);
+    const storageAdmin = getServerSupabaseAdmin();
+    const storageClient = storageAdmin ?? guard.client;
+    const commission = await getCommissionById(commissionId, guard.client);
     if (!commission)
-      return NextResponse.json({ ok: false, message: "Commission not found" }, { status: 404 });
-    if (!uuidNormalizedEqual(commission.project_id, projectId))
-      return NextResponse.json(
-        { ok: false, message: "Commission does not belong to this project" },
-        { status: 400 }
+      return withSessionCookies(
+        NextResponse.json({ ok: false, message: "Commission not found" }, { status: 404 }),
+        guard.sessionResponse
       );
-    const existing = await getPaymentRecordById(paymentId);
+    if (!uuidNormalizedEqual(commission.project_id, projectId))
+      return withSessionCookies(
+        NextResponse.json(
+          { ok: false, message: "Commission does not belong to this project" },
+          { status: 400 }
+        ),
+        guard.sessionResponse
+      );
+    const existing = await getPaymentRecordById(paymentId, guard.client);
     if (!existing)
-      return NextResponse.json({ ok: false, message: "Payment not found" }, { status: 404 });
+      return withSessionCookies(
+        NextResponse.json({ ok: false, message: "Payment not found" }, { status: 404 }),
+        guard.sessionResponse
+      );
     if (!uuidNormalizedEqual(existing.commission_id, commissionId))
-      return NextResponse.json(
-        { ok: false, message: "Payment does not match commission" },
-        { status: 400 }
+      return withSessionCookies(
+        NextResponse.json(
+          { ok: false, message: "Payment does not match commission" },
+          { status: 400 }
+        ),
+        guard.sessionResponse
       );
 
     const raw = existing.receipt_url?.trim();
     if (!raw)
-      return NextResponse.json(
-        { ok: false, message: "No receipt uploaded for this payment." },
-        { status: 404 }
+      return withSessionCookies(
+        NextResponse.json(
+          { ok: false, message: "No receipt uploaded for this payment." },
+          { status: 404 }
+        ),
+        guard.sessionResponse
       );
 
     const parsed = parseCommissionReceiptStorageUrl(raw);
     if (!parsed) {
-      return NextResponse.json(
-        {
-          ok: false,
-          message:
-            "Stored receipt URL is not a commission storage link. Remove it and upload again, or contact support.",
-        },
-        { status: 400 }
+      return withSessionCookies(
+        NextResponse.json(
+          {
+            ok: false,
+            message:
+              "Stored receipt URL is not a commission storage link. Remove it and upload again, or contact support.",
+          },
+          { status: 400 }
+        ),
+        guard.sessionResponse
       );
     }
     if (!ALLOWED_BUCKETS.has(parsed.bucket)) {
-      return NextResponse.json(
-        {
-          ok: false,
-          message:
-            "Receipt must be in commission-receipts (or legacy commission-payment-receipts).",
-        },
-        { status: 400 }
+      return withSessionCookies(
+        NextResponse.json(
+          {
+            ok: false,
+            message:
+              "Receipt must be in commission-receipts (or legacy commission-payment-receipts).",
+          },
+          { status: 400 }
+        ),
+        guard.sessionResponse
       );
     }
     if (!isStoragePathForCommissionReceipt(paymentId, parsed.path)) {
-      return NextResponse.json(
-        {
-          ok: false,
-          message:
-            "Receipt file path does not match this payment record (the saved URL may point at the wrong file). Re-upload the receipt.",
-        },
-        { status: 400 }
+      return withSessionCookies(
+        NextResponse.json(
+          {
+            ok: false,
+            message:
+              "Receipt file path does not match this payment record (the saved URL may point at the wrong file). Re-upload the receipt.",
+          },
+          { status: 400 }
+        ),
+        guard.sessionResponse
       );
     }
 
-    const { data, error } = await supabase.storage
+    const { data, error } = await storageClient.storage
       .from(parsed.bucket)
       .createSignedUrl(parsed.path, VIEW_SIGNED_TTL_SEC);
     if (error || !data?.signedUrl) {
-      return NextResponse.json(
-        {
-          ok: false,
-          message: error?.message ?? "Could not create signed URL for receipt.",
-        },
-        { status: admin ? 500 : 403 }
+      return withSessionCookies(
+        NextResponse.json(
+          {
+            ok: false,
+            message: error?.message ?? "Could not create signed URL for receipt.",
+          },
+          { status: storageAdmin ? 500 : 403 }
+        ),
+        guard.sessionResponse
       );
     }
 
-    return NextResponse.json({
-      ok: true,
-      url: data.signedUrl,
-      fileName: fileNameFromStoragePath(parsed.path),
-      isPdf: isPdfStoragePath(parsed.path),
-    });
+    return withSessionCookies(
+      NextResponse.json({
+        ok: true,
+        url: data.signedUrl,
+        fileName: fileNameFromStoragePath(parsed.path),
+        isPdf: isPdfStoragePath(parsed.path),
+      }),
+      guard.sessionResponse
+    );
   } catch (e) {
     const message = e instanceof Error ? e.message : "Failed to resolve receipt URL.";
-    return NextResponse.json({ ok: false, message }, { status: 500 });
+    return withSessionCookies(
+      NextResponse.json({ ok: false, message }, { status: 500 }),
+      guard.sessionResponse
+    );
   }
 }
