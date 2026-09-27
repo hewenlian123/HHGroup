@@ -30,6 +30,7 @@ export const loadDashboardProjectsBundle = cache(async (supabase: SupabaseClient
       id: project.id,
       name: project.name,
       budget: project.budget,
+      contractAmount: project.contractAmount,
     }))
   );
   const readyProjectIds = new Set(contractReview.readyProjectIds);

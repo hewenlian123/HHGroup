@@ -1,5 +1,6 @@
 "use client";
 
+import { computeInvoiceTotals, lineExtension } from "@/lib/money";
 import * as React from "react";
 import Link from "next/link";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
@@ -289,20 +290,10 @@ export default function NewInvoiceClient({
     if (customerId && selected) setClientName(selected);
   }, [customerId, customers]);
 
-  const computedSubtotal = React.useMemo(() => {
-    return lines.reduce(
-      (sum, l) => sum + Math.max(0, safeNumber(l.qty)) * Math.max(0, safeNumber(l.unitPrice)),
-      0
-    );
-  }, [lines]);
-  const computedTax = React.useMemo(
-    () => computedSubtotal * (Math.max(0, safeNumber(taxPct)) / 100),
-    [computedSubtotal, taxPct]
-  );
-  const computedTotal = React.useMemo(
-    () => computedSubtotal + computedTax,
-    [computedSubtotal, computedTax]
-  );
+  const invoiceTotals = React.useMemo(() => computeInvoiceTotals(lines, taxPct), [lines, taxPct]);
+  const computedSubtotal = invoiceTotals.subtotal;
+  const computedTax = invoiceTotals.taxAmount;
+  const computedTotal = invoiceTotals.total;
 
   const validationErrors = React.useMemo(() => {
     const errors: string[] = [];
@@ -675,8 +666,7 @@ export default function NewInvoiceClient({
           ) : null}
           <div className="space-y-3 px-3 py-3 sm:px-4">
             {lines.map((line, idx) => {
-              const amount =
-                Math.max(0, safeNumber(line.qty)) * Math.max(0, safeNumber(line.unitPrice));
+              const amount = lineExtension(line.qty, line.unitPrice);
               const invalidLine = submitAttempted && !lineHasContent(line);
 
               return (

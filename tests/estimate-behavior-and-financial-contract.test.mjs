@@ -25,10 +25,19 @@ test("Estimate totals and payment schedules retain financial authority", () => {
   const pricing = source("src/app/estimates/_components/estimate-edit-customer-section.tsx");
   const payment = source("src/app/estimates/_components/estimate-payment-schedule.tsx");
   const database = source("src/lib/estimates-db.ts");
+  const totals = source("src/lib/estimate-totals.ts");
   const actions = source("src/app/estimates/[id]/actions.ts");
 
-  assert.match(pricing, /estimateSubtotal \+ taxDraft - discountDraft/);
-  assert.match(database, /const total = subtotal \+ tax - discount/);
+  assert.match(
+    pricing,
+    /Math\.max\(0, estimateSubtotal - discountDraft\) \* \(taxRateNumber \/ 100\)/
+  );
+  assert.match(pricing, /estimateSubtotal - discountDraft \+ taxDraft/);
+  assert.match(database, /taxRatePct: meta\.taxRatePct/);
+  assert.match(database, /total: pricing\.total/);
+  assert.match(totals, /const taxableBase = roundMoney\(Math\.max\(0, subtotal - discount\)\)/);
+  assert.match(totals, /roundMoney\(taxableBase \* \(taxRatePct \/ 100\)\)/);
+  assert.match(totals, /total: roundMoney\(subtotal - discount \+ tax\)/);
   assert.match(payment, /Schedule exceeds the Estimate total by/);
   assert.match(payment, /const isOverallocated = remaining < -0\.005/);
   assert.match(database, /await assertPaymentScheduleAllocation/);

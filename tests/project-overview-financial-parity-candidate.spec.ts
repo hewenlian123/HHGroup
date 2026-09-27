@@ -73,7 +73,7 @@ test.describe("Project Overview authoritative financial snapshot", () => {
     await expect(summary.getByText("Paid", { exact: true }).locator("..")).toContainText(
       exactDollar(snapshot.paidAmount)
     );
-    await expect(summary.getByText("Need collect", { exact: true }).locator("..")).toContainText(
+    await expect(summary.getByText("Open AR", { exact: true }).locator("..")).toContainText(
       wholeDollar(snapshot.openAR)
     );
 

@@ -498,6 +498,10 @@ export async function saveEstimateMetaInlineAction(
       ? (formData.get("customerId") as string)?.trim() || null
       : undefined;
     const tax = parseOptionalFiniteFinancialFormValue(formData.get("tax"), "Tax");
+    const taxRatePct = parseOptionalFiniteFinancialFormValue(
+      formData.get("taxRatePct"),
+      "Tax rate"
+    );
     const discount = parseOptionalFiniteFinancialFormValue(formData.get("discount"), "Discount");
     const overheadPct = parseOptionalFiniteFinancialFormValue(
       formData.get("overheadPct"),
@@ -522,12 +526,14 @@ export async function saveEstimateMetaInlineAction(
     if (formData.has("projectName") && !projectName) {
       return { ok: false, error: "Project name is required." };
     }
-    const financialInputError = tax.error ?? discount.error ?? overheadPct.error ?? profitPct.error;
+    const financialInputError =
+      tax.error ?? taxRatePct.error ?? discount.error ?? overheadPct.error ?? profitPct.error;
     if (financialInputError) return { ok: false, error: financialInputError };
     const db = await getEstimateWriteClient();
     if (!db) return { ok: false, error: "Database is not configured." };
     const ok = await updateEstimateMetaWithClient(db, estimateId, {
       ...(customerId !== undefined ? { customerId } : {}),
+      ...(taxRatePct.value !== undefined ? { taxRatePct: taxRatePct.value } : {}),
       ...(clientName != null
         ? {
             client: {

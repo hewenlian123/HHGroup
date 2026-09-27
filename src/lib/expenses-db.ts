@@ -15,7 +15,10 @@ import { financialDataUnavailable } from "@/lib/financial-availability";
 import { dedupeExpenseAttachmentsByStorageKey } from "@/lib/expense-attachment-dedupe";
 import { expenseHasReceiptSignal } from "@/lib/expense-receipt-items";
 import { expenseCountsTowardCanonicalProjectCost } from "@/lib/expense-canonical-cost";
-import { deriveExpenseWorkflowStatus } from "@/lib/expense-workflow-status";
+import {
+  deriveExpenseWorkflowStatus,
+  expenseMatchesInboxPool,
+} from "@/lib/expense-workflow-status";
 import { defaultPaymentMethodName, publicSchemaItemAvailable } from "@/lib/expense-options-db";
 import { isConfirmedExpenseStatus } from "@/lib/project-expense-cost-status";
 import { stripInboxUploadNoiseFromText } from "@/lib/inbox-upload-constants";
@@ -2101,6 +2104,16 @@ export async function getProjectExpenseLinesBundle(
       return !cat || cat === "—";
     });
 
+    const attachCount = attachCounts.get(expId) ?? 0;
+    const hasReceipt = expenseHasReceiptSignal(e.receipt_url, attachCount);
+    const inInbox = expenseMatchesInboxPool({
+      status: (e.status ?? "") as never,
+    });
+    if (inInbox && !hasReceipt && !countedMissingReceipt.has(expId)) {
+      countedMissingReceipt.add(expId);
+      alerts.missingReceiptCount++;
+    }
+
     if (!isConfirmedExpenseStatus(e.status)) {
       if (!countedNeedsReview.has(expId)) {
         countedNeedsReview.add(expId);
@@ -2116,13 +2129,6 @@ export async function getProjectExpenseLinesBundle(
     if (catMissing && !countedMissingClass.has(expId)) {
       countedMissingClass.add(expId);
       alerts.missingClassificationCount++;
-    }
-
-    const attachCount = attachCounts.get(expId) ?? 0;
-    const hasReceipt = expenseHasReceiptSignal(e.receipt_url, attachCount);
-    if (!hasReceipt && !countedMissingReceipt.has(expId)) {
-      countedMissingReceipt.add(expId);
-      alerts.missingReceiptCount++;
     }
   }
 

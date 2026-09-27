@@ -29,6 +29,8 @@ const canonicalFixture = {
   expenseCost: 150,
   subcontractCost: 125,
   commissionCost: 75,
+  changeOrderCost: 0,
+  apBillCost: 0,
 };
 
 function financialOutput(value: {

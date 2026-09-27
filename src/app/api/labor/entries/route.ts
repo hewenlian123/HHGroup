@@ -20,6 +20,7 @@ import {
   buildLaborEntryRateSnapshotWithClient,
   resolveWorkerDailyRateForDateWithClient,
 } from "@/lib/worker-rate-history-db";
+import { canonicalWorkerDailyRate } from "@/lib/worker-daily-rate";
 import { isDuplicateBlockingLaborEntryStatus } from "@/lib/labor-entry-status";
 import { getUnattributedLaborSummary } from "@/lib/profit-engine";
 
@@ -571,7 +572,7 @@ export async function GET(request: Request) {
       entryQuery,
       supabase
         .from("workers")
-        .select("id,name,half_day_rate,daily_rate,status")
+        .select("id,name,half_day_rate,daily_rate,default_ot_rate,status")
         .order("name")
         .limit(500),
       supabase.from("projects").select("id,name").order("name").limit(500),
@@ -589,6 +590,7 @@ export async function GET(request: Request) {
       name: string;
       half_day_rate?: number | null;
       daily_rate?: number | null;
+      default_ot_rate?: number | null;
       status?: string | null;
     }>;
     const effectiveRateByWorkerId = new Map<string, number>();
@@ -618,13 +620,19 @@ export async function GET(request: Request) {
               })),
         workers: workerRows
           .map((row) => {
+            const listed = canonicalWorkerDailyRate({
+              dailyRate: row.daily_rate,
+              halfDayRate: row.half_day_rate,
+            });
             const effectiveDailyRate = effectiveRateByWorkerId.get(row.id);
+            const fullDay =
+              effectiveDailyRate != null && effectiveDailyRate > 0 ? effectiveDailyRate : listed;
             return {
               id: row.id,
               name: row.name ?? "",
-              halfDayRate: effectiveDailyRate ?? safeNumber(row.half_day_rate),
-              dailyRate:
-                effectiveDailyRate ?? (safeNumber(row.daily_rate) || safeNumber(row.half_day_rate)),
+              halfDayRate: fullDay > 0 ? fullDay / 2 : 0,
+              dailyRate: fullDay,
+              defaultOtRate: Number(row.default_ot_rate) || 0,
               status: row.status ?? "active",
             };
           })
@@ -679,6 +687,7 @@ export async function POST(request: Request) {
       workerId: payload.worker_id,
       workDate: payload.work_date,
       hours: payload.hours,
+      otHours: readLaborOvertimeHoursInput(body),
       otAmount: readLaborOvertimeAmountInput(body),
     });
     const { data, error } = await supabase

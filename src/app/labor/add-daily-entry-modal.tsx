@@ -15,6 +15,7 @@ import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover"
 import { VirtualScrollList } from "@/components/ui/virtual-scroll-list";
 import { cn } from "@/lib/utils";
 import { workerRateLocalYmd } from "@/lib/worker-rate-date";
+import { overtimePayAmount } from "@/lib/worker-daily-rate";
 import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import { DayPicker, getDefaultClassNames } from "react-day-picker";
 
@@ -53,6 +54,7 @@ type LaborWorker = {
   name: string;
   halfDayRate?: number | null;
   dailyRate?: number | null;
+  defaultOtRate?: number | null;
   phone?: string | null;
   nickname?: string | null;
   code?: string | null;
@@ -520,7 +522,10 @@ const AddDailyEntryWorkerRow = React.memo(function AddDailyEntryWorkerRow({
 
   const rate = workerDailyRate(worker) ?? 0;
   const baseTotal = computeRegularPay(rate, morning, afternoon);
-  const total = baseTotal + Math.max(0, Number(otAmount) || 0);
+  const explicitOt = Math.max(0, Number(otAmount) || 0);
+  const otFromHours =
+    explicitOt > 0 ? 0 : overtimePayAmount(rate, Number(otHours) || 0, worker.defaultOtRate);
+  const total = baseTotal + explicitOt + otFromHours;
 
   return (
     <div

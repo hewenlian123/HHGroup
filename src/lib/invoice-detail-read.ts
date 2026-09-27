@@ -15,6 +15,15 @@ import type {
   InvoiceStatus,
   InvoiceWithDerived,
 } from "@/lib/invoices-db";
+import {
+  centsToMoney,
+  computeInvoiceTotals,
+  invoiceLineQty,
+  lineExtension,
+  moneyToCents,
+  roundMoney,
+} from "@/lib/money";
+import { collectedAllocationCents } from "@/lib/payment-allocation";
 
 type PaymentReceivedAttachmentWithPreview = PaymentReceivedAttachment & {
   previewUrl?: string | null;
@@ -207,33 +216,44 @@ export async function loadInvoiceDetailWithClient(
   const dueDate = String(row.due_date ?? "").slice(0, 10);
   const issueDate = String(row.issue_date ?? row.created_at ?? "").slice(0, 10);
   const lineItems = itemRows.map((item) => {
-    const qty = toNum(item.quantity ?? item.qty);
+    const qty = invoiceLineQty(item);
     const unitPrice = toNum(item.unit_price);
-    const computedAmount = qty * unitPrice;
-    const storedAmount = toNum(item.amount);
     return {
       description: String(item.description ?? ""),
       qty,
       unitPrice,
-      amount: Math.abs(storedAmount - computedAmount) > 0.005 ? computedAmount : storedAmount,
+      amount: lineExtension(qty, unitPrice),
     };
   });
   const hasLineItems = lineItems.length > 0;
   const taxPct = toNum(row.tax_pct);
-  const subtotal = hasLineItems
-    ? lineItems.reduce((sum, item) => sum + item.amount, 0)
-    : toNum(row.subtotal ?? row.total);
-  const taxAmount = hasLineItems
-    ? Math.round(subtotal * (taxPct / 100) * 100) / 100
-    : toNum(row.tax_amount);
-  const total = hasLineItems ? subtotal + taxAmount : toNum(row.total);
+  const totals = hasLineItems
+    ? computeInvoiceTotals(lineItems, taxPct)
+    : {
+        subtotal: roundMoney(toNum(row.subtotal ?? row.total)),
+        taxAmount: roundMoney(toNum(row.tax_amount)),
+        total: roundMoney(toNum(row.total)),
+      };
+  const { subtotal, taxAmount, total } = totals;
 
   const payments = paymentRows.map(mapInvoicePayment);
-  const activePayments = paymentRows.filter((payment) => String(payment.status ?? "") !== "Voided");
-  const paidTotal = activePayments.reduce((sum, payment) => sum + toNum(payment.amount), 0);
-  const balanceDue = Math.max(0, total - paidTotal);
+  const paidCents = collectedAllocationCents(
+    paymentRows.map((payment) => ({
+      amount: payment.amount,
+      status: payment.status == null ? null : String(payment.status),
+      paymentReceivedId:
+        payment.payment_received_id == null ? null : String(payment.payment_received_id),
+    })),
+    paymentsReceivedRows.map((payment) => ({
+      id: payment.id,
+      amount: payment.amount,
+      status: payment.status,
+    }))
+  );
+  const paidTotal = centsToMoney(paidCents);
+  const balanceDue = centsToMoney(Math.max(0, moneyToCents(total) - paidCents));
   const today = new Date().toISOString().slice(0, 10);
-  const hasPayments = activePayments.length > 0;
+  const hasPayments = paidCents > 0;
 
   let computedStatus: InvoiceComputedStatus = "Unpaid";
   let daysOverdue = 0;

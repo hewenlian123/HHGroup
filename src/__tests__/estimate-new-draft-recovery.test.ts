@@ -23,6 +23,7 @@ function draft(): EstimateNewDraftData {
     validUntil: "2026-09-22",
     salesPerson: "Estimator",
     tax: 123.45,
+    taxRatePct: null,
     taxTouched: true,
     templateDefaultTaxPct: 4.712,
     discount: 67.89,

@@ -11,6 +11,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { getCanonicalProjectProfitBatch, type CanonicalProjectProfit } from "@/lib/profit-engine";
 import { getProjectContractReviewSummary } from "@/lib/financial/project-financial-review";
 import { expenseCountsTowardCanonicalProjectCost } from "@/lib/expense-canonical-cost";
+import { laborEntryCountsTowardCanonicalCost } from "@/lib/labor-cost-eligibility";
+import { invoiceRevenueExTax, roundMoney } from "@/lib/money";
 
 import { getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
 import {
@@ -150,13 +152,13 @@ export const REPORT_DEFINITIONS: Record<ReportsKpiKey, string> = {
   missingReceipts:
     "Inbox Missing Receipts: count of incomplete Expense Inbox records without a receipt URL or attachment signal, expense date in period. Uses the existing Inbox pool and receipt detection; completed expense records are excluded.",
   invoicedRevenue:
-    "Invoiced Revenue: invoice total, issue date in period; Sent/Partially Paid/Paid only. Draft, Void, Legacy and unknown statuses excluded. Not contract revenue or collected cash.",
+    "Invoiced Revenue: invoice subtotal (total minus sales tax when subtotal is absent), issue date in period; Sent/Partially Paid/Paid only. Draft, Void, Legacy and unknown statuses excluded. Not contract revenue or collected cash.",
   cashCollected:
-    "Collected Cash: non-void posted invoice payment allocations, payment_date (paid_at fallback) in period. Deposits are not added again. Each amount is an allocation, not necessarily the full received payment.",
+    "Collected Cash: non-void posted invoice payment allocations plus payments received that were not copied into invoice_payments, payment_date (paid_at fallback) in period. Amounts exclude the invoice sales-tax share. Deposits are not added again.",
   expenses:
     "Expenses: eligible expense_lines.amount, expense_date in period; project scope uses line project with header fallback. Draft, void, legacy, invalid and unapproved inbox uploads excluded. Not proof of cash settlement.",
   laborCost:
-    "Labor Cost: Approved/Locked labor_entries.cost_amount, work_date in period. Accrued labor, not labor payments.",
+    "Labor Cost: labor_entries.cost_amount except paid settlements and voids, work_date in period. Same accrued labor as project cost. Not labor payments.",
   subcontractorCost:
     "Approved Subcontract Cost: Approved subcontract_bills.amount, bill_date in period. Not generic AP or subcontract payments.",
   billsAp:
@@ -295,6 +297,18 @@ function normalizeStatus(status: string | null | undefined): string {
     .replace(/-/g, "_");
 }
 
+function receivedCashCounts(status: string | null | undefined): boolean {
+  if (isVoidLikeStatus(status)) return false;
+  const normalized = normalizeStatus(status);
+  return (
+    normalized === "" ||
+    normalized === "posted" ||
+    normalized === "recorded" ||
+    normalized === "completed" ||
+    normalized === "paid"
+  );
+}
+
 function isVoidLikeStatus(status: string | null | undefined): boolean {
   const s = normalizeStatus(status);
   return (
@@ -324,8 +338,7 @@ function expenseCountsTowardReports(status: string | null | undefined): boolean 
 }
 
 function laborCountsTowardReportsCost(status: string | null | undefined): boolean {
-  const s = normalizeStatus(status);
-  return s === "approved" || s === "locked";
+  return laborEntryCountsTowardCanonicalCost(status);
 }
 
 function subcontractCountsTowardReportsCost(status: string | null | undefined): boolean {
@@ -739,6 +752,7 @@ export async function getReportsData(
   const [
     invoicesRes,
     paymentsRes,
+    paymentsReceivedRes,
     expensesRes,
     laborEntriesRes,
     workerPaymentsRes,
@@ -755,7 +769,7 @@ export async function getReportsData(
       supabase
         .from("invoices")
         .select(
-          "id, project_id, customer_id, invoice_no, client_name, issue_date, due_date, status, total, paid_total, balance_due",
+          "id, project_id, customer_id, invoice_no, client_name, issue_date, due_date, status, total, subtotal, tax_amount, paid_total, balance_due",
           { count: "exact" }
         )
     ),
@@ -765,6 +779,11 @@ export async function getReportsData(
         .select("id, invoice_id, amount, payment_date, paid_at, status, payment_received_id", {
           count: "exact",
         })
+    ),
+    readCompleteRows(() =>
+      supabase
+        .from("payments_received")
+        .select("id, invoice_id, amount, payment_date, status", { count: "exact" })
     ),
     readCompleteRows(() =>
       supabase
@@ -841,6 +860,17 @@ export async function getReportsData(
   const payments = safeRows(
     paymentsRes as QueryResponse<InvoicePaymentRow>,
     "invoice_payments",
+    warnings
+  );
+  const paymentsReceived = safeRows(
+    paymentsReceivedRes as QueryResponse<{
+      id: string;
+      invoice_id: string | null;
+      amount: number | string | null;
+      payment_date: string | null;
+      status: string | null;
+    }>,
+    "payments_received",
     warnings
   );
   const expenses = safeRows(expensesRes as QueryResponse<ExpenseRow>, "expenses", warnings);
@@ -933,12 +963,22 @@ export async function getReportsData(
       previous[key].push(record);
   };
   const paid = sumInvoicePaymentsByInvoice(payments);
+  const linkedReceivedIds = new Set(
+    payments.map((payment) => String(payment.payment_received_id ?? "").trim()).filter(Boolean)
+  );
+  for (const row of paymentsReceived) {
+    const id = String(row.id ?? "").trim();
+    if ((id && linkedReceivedIds.has(id)) || !receivedCashCounts(row.status)) continue;
+    const invoiceId = String(row.invoice_id ?? "").trim();
+    if (!invoiceId) continue;
+    paid.set(invoiceId, (paid.get(invoiceId) ?? 0) + toMoney(row.amount));
+  }
   for (const row of invoices) {
     if (!invoiceCountsTowardRevenue(row.status)) continue;
     const record = {
       id: row.id,
       label: row.invoice_no || row.id,
-      amount: Number(row.total),
+      amount: invoiceRevenueExTax(row),
       date: row.issue_date,
       dueDate: row.due_date,
       status: row.status || "",
@@ -959,10 +999,16 @@ export async function getReportsData(
       continue;
     const invoice = invoiceById.get(row.invoice_id || "");
     if (!invoice || !invoiceCountsTowardRevenue(invoice.status)) continue;
+    const paymentAmount = Number(row.amount) || 0;
+    const invoiceTotal = Number(invoice.total) || 0;
+    const collectedExTax =
+      invoiceTotal > 0
+        ? roundMoney(paymentAmount * (invoiceRevenueExTax(invoice) / invoiceTotal))
+        : roundMoney(paymentAmount);
     add("cashCollected", {
       id: row.id,
       label: `Payment allocation · ${invoice.invoice_no || invoice.id}`,
-      amount: Number(row.amount),
+      amount: collectedExTax,
       date: dateOnly(row.payment_date) ?? dateOnly(row.paid_at),
       status: row.status || "Posted",
       projectId: invoice.project_id,
@@ -971,6 +1017,31 @@ export async function getReportsData(
         ? `/financial/payments?paymentId=${row.payment_received_id}&paymentDetail=${row.payment_received_id}`
         : `/financial/invoices/${invoice.id}`,
       source: "invoice_payments",
+    });
+  }
+  for (const row of paymentsReceived) {
+    const id = String(row.id ?? "").trim();
+    if ((id && linkedReceivedIds.has(id)) || !receivedCashCounts(row.status)) continue;
+    const invoice = invoiceById.get(String(row.invoice_id ?? ""));
+    if (!invoice || !invoiceCountsTowardRevenue(invoice.status)) continue;
+    const paymentAmount = Number(row.amount) || 0;
+    const invoiceTotal = Number(invoice.total) || 0;
+    const collectedExTax =
+      invoiceTotal > 0
+        ? roundMoney(paymentAmount * (invoiceRevenueExTax(invoice) / invoiceTotal))
+        : roundMoney(paymentAmount);
+    add("cashCollected", {
+      id: id || String(row.invoice_id),
+      label: `Payment received · ${invoice.invoice_no || invoice.id}`,
+      amount: collectedExTax,
+      date: dateOnly(row.payment_date),
+      status: row.status || "completed",
+      projectId: invoice.project_id,
+      customerId: invoice.customer_id,
+      href: id
+        ? `/financial/payments?paymentId=${id}&paymentDetail=${id}`
+        : `/financial/invoices/${invoice.id}`,
+      source: "payments_received",
     });
   }
   const expensesById = new Map(expenses.map((e) => [e.id, e]));

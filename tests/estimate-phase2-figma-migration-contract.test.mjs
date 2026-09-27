@@ -52,7 +52,11 @@ test("Estimate keeps production actions while payment and notes remain available
   assert.doesNotMatch(customerSection, /name="overheadPct"/);
   assert.doesNotMatch(customerSection, /name="profitPct"/);
   assert.match(customerSection, /data-testid="estimate-pricing-live-summary"/);
-  assert.match(customerSection, /estimateSubtotal \+ taxDraft - discountDraft/);
+  assert.match(
+    customerSection,
+    /Math\.max\(0, estimateSubtotal - discountDraft\) \* \(taxRateNumber \/ 100\)/
+  );
+  assert.match(customerSection, /estimateSubtotal - discountDraft \+ taxDraft/);
   assert.match(paymentSchedule, /reorderPaymentScheduleAction/);
   assert.match(paymentSchedule, /markPaymentMilestonePaidAction/);
   assert.match(paymentSchedule, /Schedule exceeds the Estimate total by/);

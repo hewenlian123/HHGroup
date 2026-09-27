@@ -7,11 +7,16 @@ const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), "utf
 test("customer-facing Estimate totals preserve the financial field contract", () => {
   const summary = read("src/app/estimates/_components/estimate-builder-summary.tsx");
   const calculations = read("src/lib/estimates-db.ts");
+  const totals = read("src/lib/estimate-totals.ts");
 
   for (const label of ["Subtotal", "Discount", "Tax", "Total", "Scheduled", "Remaining"]) {
     assert.match(summary, new RegExp(`>${label}<|label=\\"${label}\\"`));
   }
-  assert.match(calculations, /const total = subtotal \+ tax - discount/);
+  assert.match(calculations, /taxRatePct: meta\.taxRatePct/);
+  assert.match(calculations, /total: pricing\.total/);
+  assert.match(totals, /const taxableBase = roundMoney\(Math\.max\(0, subtotal - discount\)\)/);
+  assert.match(totals, /roundMoney\(taxableBase \* \(taxRatePct \/ 100\)\)/);
+  assert.match(totals, /total: roundMoney\(subtotal - discount \+ tax\)/);
 });
 
 test("customer details do not edit retired internal planning fields", () => {

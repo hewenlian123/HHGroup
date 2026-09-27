@@ -5,6 +5,7 @@ import {
   financeReturnPath,
   financeReturnLabel,
 } from "@/lib/finance-navigation";
+import { computeInvoiceTotals, lineExtension, moneyToCents } from "@/lib/money";
 
 import * as React from "react";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
@@ -324,20 +325,13 @@ export default function InvoiceDetailClient({
     return errors;
   }, [editClientName, editLines, invoice?.projectId]);
 
-  const editSubtotal = React.useMemo(
-    () =>
-      editLines.reduce(
-        (sum, line) =>
-          sum + Math.max(0, safeNumber(line.qty)) * Math.max(0, safeNumber(line.unitPrice)),
-        0
-      ),
-    [editLines]
+  const editTotals = React.useMemo(
+    () => computeInvoiceTotals(editLines, editTaxPct),
+    [editLines, editTaxPct]
   );
-  const editTaxAmount = React.useMemo(
-    () => Math.round(editSubtotal * (Math.max(0, safeNumber(editTaxPct)) / 100) * 100) / 100,
-    [editSubtotal, editTaxPct]
-  );
-  const editTotal = editSubtotal + editTaxAmount;
+  const editSubtotal = editTotals.subtotal;
+  const editTaxAmount = editTotals.taxAmount;
+  const editTotal = editTotals.total;
 
   const handleSaveEdit = async () => {
     if (!id || !invoice || editSaving || actionBusy) return;
@@ -611,7 +605,11 @@ export default function InvoiceDetailClient({
 
   const isDraft = invoice.status === "Draft";
   const isVoid = invoice.computedStatus === "Void";
-  const canPay = !isVoid && invoice.computedStatus !== "Paid" && !isDraft && invoice.balanceDue > 0;
+  const canPay =
+    !isVoid &&
+    invoice.computedStatus !== "Paid" &&
+    !isDraft &&
+    moneyToCents(invoice.balanceDue) > 0;
   const canBackToEdit = !isDraft && !isVoid && invoice.paidTotal <= 0;
   const primaryActionBusy = actionBusy || editSaving;
   const projectName = project?.name ?? invoice.projectId;
@@ -1032,10 +1030,7 @@ export default function InvoiceDetailClient({
                   {(editing ? editLines : invoice.lineItems).map((line, idx) => {
                     const qty = safeNumber(line.qty);
                     const unitPrice = safeNumber(line.unitPrice);
-                    const savedAmount = "amount" in line ? safeNumber(line.amount) : 0;
-                    const amount = editing
-                      ? Math.max(0, qty) * Math.max(0, unitPrice)
-                      : savedAmount;
+                    const amount = lineExtension(qty, unitPrice);
                     return (
                       <tr
                         key={idx}

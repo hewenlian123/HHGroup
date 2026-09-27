@@ -82,6 +82,7 @@ export default function CustomerDetailPage() {
   const [loading, setLoading] = React.useState(true);
   const [saving, setSaving] = React.useState(false);
   const [message, setMessage] = React.useState<string | null>(null);
+  const [messageTone, setMessageTone] = React.useState<"success" | "error">("success");
   const [notFound, setNotFound] = React.useState(false);
   const [projects, setProjects] = React.useState<RelatedProject[] | null>(null);
   const [form, setForm] = React.useState<CustomerForm>({
@@ -160,8 +161,14 @@ export default function CustomerDetailPage() {
     const baseline = serverFormRef.current;
     if (!baseline) return;
 
+    const customerName = form.name.trim();
+    if (!customerName) {
+      setMessage("Customer name is required.");
+      setMessageTone("error");
+      return;
+    }
     const payload = {
-      name: toNullable(form.name),
+      name: customerName,
       contact_person: toNullable(form.contact_person),
       phone: toNullable(form.phone),
       email: toNullable(form.email),
@@ -176,13 +183,17 @@ export default function CustomerDetailPage() {
       setBusy: setSaving,
       getSnapshot: () => ({ serverForm: { ...baseline }, message }),
       apply: () => {
+        setMessageTone("success");
         setMessage("Customer saved.");
       },
       rollback: (s) => {
         setForm(s.serverForm);
         setMessage(s.message);
       },
-      onError: (msg) => setMessage(msg),
+      onError: (msg) => {
+        setMessageTone("error");
+        setMessage(msg);
+      },
       persist: async () => {
         const res = await fetch(`/api/customers/${encodeURIComponent(id)}`, {
           method: "PATCH",
@@ -327,7 +338,14 @@ export default function CustomerDetailPage() {
       }
     >
       {message ? (
-        <div className="rounded-hh-standard border border-[var(--hh-information-border)] bg-[var(--hh-information-soft-fill)] px-3 py-2 text-hh-body text-[var(--hh-information)]">
+        <div
+          role={messageTone === "error" ? "alert" : "status"}
+          className={
+            messageTone === "error"
+              ? "rounded-hh-standard border border-[var(--hh-danger-border)] bg-[var(--hh-danger-soft-fill)] px-3 py-2 text-hh-body text-[var(--hh-danger)]"
+              : "rounded-hh-standard border border-[var(--hh-information-border)] bg-[var(--hh-information-soft-fill)] px-3 py-2 text-hh-body text-[var(--hh-information)]"
+          }
+        >
           {message}
         </div>
       ) : null}
@@ -349,7 +367,8 @@ export default function CustomerDetailPage() {
                         className="min-h-11"
                         value={form.name}
                         onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
-                        placeholder="Optional"
+                        placeholder="Required"
+                        aria-invalid={!form.name.trim() || undefined}
                       />
                     </div>
                     <div className="space-y-1">

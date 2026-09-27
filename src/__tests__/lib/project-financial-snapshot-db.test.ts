@@ -108,14 +108,14 @@ describe("project financial snapshot DB mapper", () => {
     expect(snapshot.reimbursementCost).toBe(0);
     expect(snapshot.subcontractCost).toBe(900);
     expect(snapshot.apCost).toBe(50);
-    expect(snapshot.actualCost).toBe(2500);
+    expect(snapshot.actualCost).toBe(2550);
     expect(snapshot.cashCollected).toBe(2500);
     expect(snapshot.warnings).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ code: "project_contract_amount_mismatch" }),
         expect.objectContaining({ code: "expense_status_needs_review" }),
         expect.objectContaining({ code: "reimbursement_expense_deduped" }),
-        expect.objectContaining({ code: "ap_bills_not_in_actual_cost" }),
+        expect.objectContaining({ code: "ap_bills_possible_duplicate_cost" }),
       ])
     );
     expect(snapshot.diagnostics).toEqual(
@@ -171,7 +171,7 @@ describe("project financial snapshot DB mapper", () => {
     );
   });
 
-  it("keeps generic AP bills out of actual cost and emits duplicate-risk diagnostics", () => {
+  it("includes unlinked vendor AP in actual cost and skips labor bills", () => {
     const snapshot = mapProjectFinancialRowsToSnapshot({
       projectId: "project-1",
       project: { id: "project-1", budget: 4000 },
@@ -206,22 +206,18 @@ describe("project financial snapshot DB mapper", () => {
     });
 
     expect(snapshot.expenseCost).toBe(1000);
-    expect(snapshot.apCost).toBe(1300);
-    expect(snapshot.actualCost).toBe(1000);
+    expect(snapshot.apCost).toBe(1000);
+    expect(snapshot.actualCost).toBe(2000);
     expect(snapshot.diagnostics).toEqual(
       expect.objectContaining({
         openAP: 1050,
         apCashOut: 250,
         apBillCount: 2,
-        apDiagnosticsWarnings: expect.arrayContaining([
-          "ap_bills_not_in_actual_cost",
-          "ap_bills_possible_duplicate_cost",
-        ]),
+        apDiagnosticsWarnings: expect.arrayContaining(["ap_bills_possible_duplicate_cost"]),
       })
     );
     expect(snapshot.warnings).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ code: "ap_bills_not_in_actual_cost" }),
         expect.objectContaining({ code: "ap_bills_possible_duplicate_cost" }),
       ])
     );
@@ -473,6 +469,8 @@ describe("project financial snapshot DB mapper", () => {
         expenseCost: 0,
         subcontractCost: 0,
         commissionCost: 0,
+        changeOrderCost: 0,
+        apBillCost: 0,
       },
       oldProjectCostDashboard: {
         spentTotal: 0,

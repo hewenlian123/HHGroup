@@ -9,6 +9,7 @@ import {
   createEstimateMilestoneInvoiceAtomicWithClient,
   createInvoiceAtomicWithClient,
 } from "@/lib/invoices-db";
+import { computeInvoiceTotals } from "@/lib/money";
 
 function toNum(v: unknown): number {
   const n = typeof v === "number" ? v : Number(v);
@@ -62,10 +63,10 @@ export async function createInvoiceDraftAction(payload: {
     const customerId = payload.customerId?.trim() || null;
     const sourceEstimateId = payload.sourceEstimateId?.trim() || "";
     const paymentScheduleItemId = payload.paymentScheduleItemId?.trim() || "";
-    let subtotal = items.reduce((s, l) => s + Math.max(0, l.qty) * Math.max(0, l.unitPrice), 0);
     let taxPct = toNum(payload.taxPct ?? 0);
-    let taxAmount = Math.round(subtotal * (taxPct / 100) * 100) / 100;
-    let total = subtotal + taxAmount;
+    const totals = computeInvoiceTotals(items, taxPct);
+    let subtotal = totals.subtotal;
+    let total = totals.total;
 
     if (Boolean(sourceEstimateId) !== Boolean(paymentScheduleItemId)) {
       return { ok: false, error: "Both source estimate and payment milestone are required." };
@@ -108,7 +109,6 @@ export async function createInvoiceDraftAction(payload: {
       }
       subtotal = source.prefill.invoiceSubtotal;
       taxPct = source.prefill.invoiceTaxPct;
-      taxAmount = source.prefill.invoiceTaxAmount;
       total = source.prefill.invoiceTotal;
     }
 

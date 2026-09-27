@@ -44,6 +44,7 @@ export type EstimateNewDraftData = {
   validUntil: string;
   salesPerson: string;
   tax: number;
+  taxRatePct?: number | null;
   taxTouched: boolean;
   templateDefaultTaxPct: number | null;
   discount: number;
@@ -193,6 +194,7 @@ function normalizeDraft(value: unknown): EstimateNewDraftData | null {
     validUntil: stringValue(value.validUntil),
     salesPerson: stringValue(value.salesPerson),
     tax: finiteNumber(value.tax),
+    taxRatePct: nullableFiniteNumber(value.taxRatePct),
     taxTouched: value.taxTouched === true,
     templateDefaultTaxPct: nullableFiniteNumber(value.templateDefaultTaxPct),
     discount: finiteNumber(value.discount),

@@ -33,6 +33,7 @@ test("Pricing Inspector is presentation over the existing customer-total contrac
   const detail = source("src/app/estimates/[id]/estimate-detail-client.tsx");
   const pricing = source("src/app/estimates/_components/estimate-edit-customer-section.tsx");
   const calculations = source("src/lib/estimates-db.ts");
+  const totals = source("src/lib/estimate-totals.ts");
 
   assert.match(detail, /setDetailsSurface\("pricing"\)/);
   assert.match(pricing, /data-estimate-surface=\{detailsSurface\}/);
@@ -43,8 +44,16 @@ test("Pricing Inspector is presentation over the existing customer-total contrac
   for (const legacyInternalField of ["overheadPct", "profitPct"]) {
     assert.doesNotMatch(pricing, new RegExp(`name="${legacyInternalField}"`));
   }
-  assert.match(pricing, /estimateSubtotal \+ taxDraft - discountDraft/);
-  assert.match(calculations, /const total = subtotal \+ tax - discount/);
+  assert.match(
+    pricing,
+    /Math\.max\(0, estimateSubtotal - discountDraft\) \* \(taxRateNumber \/ 100\)/
+  );
+  assert.match(pricing, /estimateSubtotal - discountDraft \+ taxDraft/);
+  assert.match(calculations, /taxRatePct: meta\.taxRatePct/);
+  assert.match(calculations, /total: pricing\.total/);
+  assert.match(totals, /const taxableBase = roundMoney\(Math\.max\(0, subtotal - discount\)\)/);
+  assert.match(totals, /roundMoney\(taxableBase \* \(taxRatePct \/ 100\)\)/);
+  assert.match(totals, /total: roundMoney\(subtotal - discount \+ tax\)/);
   assert.match(calculations, /markup: 0/);
 });
 

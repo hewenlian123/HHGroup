@@ -25,6 +25,7 @@ import {
 } from "@/lib/payment-attachment-upload-browser";
 import { useToast } from "@/components/toast/toast-provider";
 import { formatCurrency } from "@/lib/formatters";
+import { formatMoneyInput, moneyToCents, roundMoney } from "@/lib/money";
 import {
   getArPaymentIntent,
   beginArPaymentIntent,
@@ -185,6 +186,7 @@ export function ReceivePaymentModal({
     null
   );
   const [submissionError, setSubmissionError] = React.useState<string | null>(null);
+  const [amountError, setAmountError] = React.useState<string | null>(null);
   const [invoices, setInvoices] = React.useState<InvoiceWithDerived[]>([]);
   const [projects, setProjects] = React.useState<Awaited<ReturnType<typeof getProjects>>>([]);
   const [invoiceId, setInvoiceId] = React.useState("");
@@ -192,7 +194,7 @@ export function ReceivePaymentModal({
   const [customerName, setCustomerName] = React.useState("");
   const [paymentDate, setPaymentDate] = React.useState(() => new Date().toISOString().slice(0, 10));
   const [amount, setAmount] = React.useState(
-    remainingBalance != null ? String(remainingBalance) : ""
+    remainingBalance != null ? formatMoneyInput(remainingBalance) : ""
   );
   const [paymentMethod, setPaymentMethod] = React.useState<string>(PAYMENT_METHODS[0]);
   const [depositAccount, setDepositAccount] = React.useState("");
@@ -255,7 +257,7 @@ export function ReceivePaymentModal({
     setPendingPayment(pending);
     if (pending) {
       preserveUploadedAttachmentsRef.current = true;
-      setAmount(String(pending.amount));
+      setAmount(formatMoneyInput(pending.amount));
       setPaymentDate(pending.payment_date);
       setPaymentMethod(pending.payment_method);
       setDepositAccount(pending.deposit_account ?? "");
@@ -303,14 +305,16 @@ export function ReceivePaymentModal({
             setInvoiceId(inv.id);
             setProjectId(inv.projectId);
             setCustomerName(inv.clientName);
-            setAmount(remainingBalance != null ? String(remainingBalance) : String(inv.balanceDue));
+            setAmount(
+              formatMoneyInput(remainingBalance != null ? remainingBalance : inv.balanceDue)
+            );
             setNotes((prev) => nextPaymentMemo(prev, inv.invoiceNo));
           }
         } else {
           setInvoiceId("");
           setProjectId("");
           setCustomerName("");
-          setAmount(remainingBalance != null ? String(remainingBalance) : "");
+          setAmount(remainingBalance != null ? formatMoneyInput(remainingBalance) : "");
           setNotes("");
         }
         if (pending) restorePendingPayment(userId, pending.invoice_id);
@@ -332,7 +336,8 @@ export function ReceivePaymentModal({
     if (inv) {
       setProjectId(inv.projectId);
       setCustomerName(inv.clientName);
-      if (amount === "" || amount === String(remainingBalance)) setAmount(String(inv.balanceDue));
+      if (amount === "" || amount === formatMoneyInput(remainingBalance))
+        setAmount(formatMoneyInput(inv.balanceDue));
       setNotes((prev) => nextPaymentMemo(prev, inv.invoiceNo));
     }
   }, [invoiceId, invoices, preselectedInvoiceId, remainingBalance, amount]);
@@ -509,11 +514,21 @@ export function ReceivePaymentModal({
       toast({ title: "Remove or retry failed attachments", variant: "error" });
       return;
     }
-    const num = parseFloat(amount);
-    if (!Number.isFinite(num) || num <= 0) {
-      toast({ title: "Enter a valid amount", variant: "error" });
+    const parsedAmount = parseFloat(amount);
+    const num = roundMoney(parsedAmount);
+    const selectedInvoice = invoices.find((inv) => inv.id === invId);
+    const balanceCap = roundMoney(
+      remainingBalance != null ? remainingBalance : (selectedInvoice?.balanceDue ?? 0)
+    );
+    if (!Number.isFinite(parsedAmount) || num <= 0) {
+      setAmountError("Enter an amount greater than 0.");
       return;
     }
+    if (moneyToCents(num) > moneyToCents(balanceCap)) {
+      setAmountError(`Amount cannot exceed the balance of ${formatCurrency(balanceCap)}.`);
+      return;
+    }
+    setAmountError(null);
     submissionInFlight.current = true;
     setSaving(true);
     setSubmissionError(null);
@@ -563,7 +578,11 @@ export function ReceivePaymentModal({
       setAmount("");
       setNotes("");
     } catch (err) {
-      setSubmissionError(err instanceof Error ? err.message : "Payment outcome is unavailable.");
+      const message = err instanceof Error ? err.message : "Payment outcome is unavailable.";
+      if (/exceeds remaining|invalid payment request|greater than 0/i.test(message)) {
+        setAmountError(message);
+      }
+      setSubmissionError(message);
       toast({
         title: "Failed to record payment",
         description: err instanceof Error ? err.message : undefined,
@@ -622,7 +641,7 @@ export function ReceivePaymentModal({
         <DialogHeader className="border-b border-border/60 pb-3">
           <DialogTitle className="text-base font-medium">Receive Payment</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4 pt-3">
+        <form noValidate onSubmit={handleSubmit} className="space-y-4 pt-3">
           {contextLoading && <p role="status">Loading payment context…</p>}
           {contextError && (
             <div role="alert">
@@ -708,11 +727,19 @@ export function ReceivePaymentModal({
                 step="0.01"
                 value={amount}
                 disabled={saving || !!pendingPayment}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder="0"
+                onChange={(e) => {
+                  setAmount(e.target.value);
+                  setAmountError(null);
+                }}
+                placeholder="0.00"
+                aria-invalid={amountError ? true : undefined}
                 className="h-9 tabular-nums"
-                required
               />
+              {amountError ? (
+                <p role="alert" className="text-xs font-medium text-[var(--hh-danger)]">
+                  {amountError}
+                </p>
+              ) : null}
             </div>
           </div>
           <div className="space-y-2">

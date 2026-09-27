@@ -105,8 +105,11 @@ export async function getSubcontractorById(
 }
 
 /** Insert one subcontractor. */
-export async function insertSubcontractor(draft: SubcontractorDraft): Promise<void> {
-  const c = client();
+export async function insertSubcontractor(
+  draft: SubcontractorDraft,
+  explicitClient?: SupabaseClient
+): Promise<void> {
+  const c = client(explicitClient);
   const status = draft.active === false ? "inactive" : "active";
   const fullPayload = {
     name: draft.name.trim(),

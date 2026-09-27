@@ -1258,7 +1258,7 @@ export async function getFinanceOverviewStats(explicitClient?: SupabaseClient): 
   return { revenue, totalBills, totalExpenses, totalLaborCost, profit };
 }
 
-/** Labor cost (Approved/Locked only) for work_date in the current week (Sun–Sat). For dashboard. */
+/** Canonical labor cost for work_date in the current week (Sun–Sat). For dashboard. */
 export async function getLaborCostThisWeek(explicitClient?: SupabaseClient): Promise<number> {
   const now = new Date();
   const startOfWeek = new Date(now);
@@ -1671,9 +1671,10 @@ export async function getSubcontractorById(
 }
 
 export async function insertSubcontractor(
-  draft: import("../subcontractors-db").SubcontractorDraft
+  draft: import("../subcontractors-db").SubcontractorDraft,
+  explicitClient?: SupabaseClient
 ): Promise<void> {
-  return subcontractorsDb.insertSubcontractor(draft);
+  return subcontractorsDb.insertSubcontractor(draft, explicitClient);
 }
 
 export async function updateSubcontractor(

@@ -1,5 +1,7 @@
 import { readCompleteRows } from "@/lib/read-complete-rows";
 import { expenseCountsTowardCanonicalProjectCost } from "@/lib/expense-canonical-cost";
+import { laborEntryCountsTowardCanonicalCost } from "@/lib/labor-cost-eligibility";
+import { roundMoney } from "@/lib/money";
 import {
   changeOrderAmountValue,
   PROJECT_CHANGE_ORDER_AMOUNT_COLUMNS,
@@ -20,6 +22,13 @@ export type CanonicalProjectProfit = {
   laborCost: number;
   expenseCost: number;
   subcontractCost: number;
+  /** Approved change-order cost impact. Not already included in subcontract bills. */
+  changeOrderCost: number;
+  /**
+   * Project AP bills that are not draft/void, not labor bills, and not linked
+   * to a subcontract. Those linked costs stay on subcontract_bills / labor.
+   */
+  apBillCost: number;
   commissionCost: number;
 };
 
@@ -63,29 +72,37 @@ function isMissingColumn(err: { message?: string } | null): boolean {
 /**
  * Canonical project profit model (single source of truth for revenue/cost/profit):
  *
- * Revenue = base contract + approved change orders
- *   - Base contract = projects.budget (canonical contract value; set on create/convert).
+ * Revenue = base contract + approved change orders, once.
+ *   - Base contract = projects.budget. approve_change_order must not also add the CO
+ *     into budget. Historical folds are reversed by migration
+ *     20260927120000_financial_bugfix_contract.sql.
  *   - Approved change orders = project_change_orders where status = 'Approved' (`total`,
  *     with `total_amount` only as the legacy null fallback).
  *
- * Actual cost = labor cost + expense cost + subcontract cost + commission cost
+ * Actual cost = labor + expenses + approved subcontract bills + change-order cost
+ *   + unlinked project AP + commissions
  *   - Labor cost = sum(labor_entries.cost_amount) allocated to this project via project_id.
+ *     Paid and void rows are excluded. Draft and submitted time still counts, matching
+ *     the fact that Add Entry has no approval step.
  *   - Expense cost = sum(expense_lines.amount) for this project (expense_lines.project_id),
  *     plus lines with null project_id on expenses whose header project_id matches (legacy rows).
  *   - Subcontract cost = sum(subcontract_bills.amount) for this project where status = 'Approved'.
+ *   - Change-order cost = sum(project_change_orders.cost_impact) where status = 'Approved'.
+ *   - Project AP = ap_bills on this project that are not Draft/Void, not bill_type labor,
+ *     and not linked by subcontract_id. Do not also enter that cost as an expense line.
  *   - Commission cost = sum(commissions.commission_amount) for this project.
  *
  * Legacy note: labor_cost_allocation trigger/RPC (migrations 202603082200/2300/2400) updates projects.spent,
  * but canonical does NOT read projects.spent and therefore those legacy mechanisms do NOT affect canonical cost.
  * Canonical labor cost is derived from labor_entries rows linked through project_id.
  *
- * Double-counting rule: expense_lines and subcontract_bills are mutually exclusive by design.
+ * Double-counting rule:
  * - expense_lines = direct project expenses (materials, permits, etc.).
- * - subcontract_bills = obligations to subcontractors (subcontract work).
- * - ap_bills (Bills/AP) are NOT included in project canonical cost.
- *   Bills/AP are for accounts payable + payment tracking, not the canonical project cost model.
- *   Canonical cost sources: labor_entries + expense_lines + subcontract_bills (Approved) + commissions.
- * Do not enter the same cost in both; if a cost is paid to a subcontractor, use subcontract_bills only.
+ * - subcontract_bills = approved obligations to subcontractors.
+ * - ap_bills count only when they are project vendor bills (Pending, Partially Paid, or Paid),
+ *   not Draft/Void, not bill_type Labor, and not linked by subcontract_id.
+ * Do not enter the same cost as both an expense line and an AP bill, or as both a subcontract
+ * bill and a linked AP bill. Commission payments are cash tracking and do not change accrued profit.
  * Commission payments are payment/cash tracking only and do not change accrued project profit.
  *
  * Profit = revenue - actualCost
@@ -129,8 +146,6 @@ type LaborCostRow = {
   status?: unknown;
 };
 
-const LABOR_EXCLUDE_STATUS = new Set(["paid", "void"]);
-
 export type UnattributedLaborSummary = {
   /** All preserved labor rows without a project, regardless of workflow status. */
   entryCount: number;
@@ -168,8 +183,9 @@ export async function getUnattributedLaborSummary(
   }>) {
     const amount = toNum(row.cost_amount);
     recordedCost += amount;
-    const status = row.status != null ? String(row.status).toLowerCase() : "";
-    if (!LABOR_EXCLUDE_STATUS.has(status)) canonicalCost += amount;
+    if (laborEntryCountsTowardCanonicalCost(row.status != null ? String(row.status) : null)) {
+      canonicalCost += amount;
+    }
   }
   return {
     entryCount: (data ?? []).length,
@@ -204,8 +220,7 @@ async function fetchLaborCostForProject(
 
   let sum = 0;
   for (const l of rows) {
-    const st = l.status != null ? String(l.status).toLowerCase() : "";
-    if (LABOR_EXCLUDE_STATUS.has(st)) continue;
+    if (!laborEntryCountsTowardCanonicalCost(l.status != null ? String(l.status) : null)) continue;
     sum += laborLineAmountForProject(l, projectId);
   }
   return sum;
@@ -236,8 +251,7 @@ async function fetchLaborCostBatch(
   }
 
   for (const l of list) {
-    const st = l.status != null ? String(l.status).toLowerCase() : "";
-    if (LABOR_EXCLUDE_STATUS.has(st)) continue;
+    if (!laborEntryCountsTowardCanonicalCost(l.status != null ? String(l.status) : null)) continue;
     for (const pid of projectIds) {
       const add = laborLineAmountForProject(l, pid);
       if (add !== 0) map.set(pid, (map.get(pid) ?? 0) + add);
@@ -394,6 +408,119 @@ async function getExpenseCostViaJoin(
   );
 }
 
+const PROJECT_AP_COST_STATUSES = new Set(["pending", "partially paid", "paid"]);
+
+function apBillCountsTowardProjectCost(row: {
+  status?: unknown;
+  bill_type?: unknown;
+  subcontract_id?: unknown;
+}): boolean {
+  const status = String(row.status ?? "")
+    .trim()
+    .toLowerCase();
+  if (!PROJECT_AP_COST_STATUSES.has(status)) return false;
+  if (row.subcontract_id != null && String(row.subcontract_id).trim() !== "") return false;
+  if (
+    String(row.bill_type ?? "")
+      .trim()
+      .toLowerCase() === "labor"
+  )
+    return false;
+  return true;
+}
+
+function sumApBillRows(rows: Array<Record<string, unknown>>): number {
+  return roundMoney(
+    rows.reduce((sum, row) => {
+      if (!apBillCountsTowardProjectCost(row)) return sum;
+      return sum + toNum(row.amount);
+    }, 0)
+  );
+}
+
+async function sumApprovedChangeOrderCost(
+  c: ReturnType<typeof client>,
+  projectId: string
+): Promise<number> {
+  const { data, error } = await c
+    .from("project_change_orders")
+    .select("cost_impact")
+    .eq("project_id", projectId)
+    .eq("status", "Approved");
+  if (error) {
+    if (isMissingColumn(error)) return 0;
+    failFinancialRead("project_change_orders.cost_impact", error);
+  }
+  return roundMoney(
+    (data ?? []).reduce(
+      (sum, row) => sum + toNum((row as { cost_impact?: unknown }).cost_impact),
+      0
+    )
+  );
+}
+
+async function sumApprovedChangeOrderCostBatch(
+  c: ReturnType<typeof client>,
+  projectIds: string[]
+): Promise<Map<string, number>> {
+  const map = new Map<string, number>();
+  if (projectIds.length === 0) return map;
+  const { data, error } = await readCompleteRows(() =>
+    c
+      .from("project_change_orders")
+      .select("id, project_id, cost_impact", { count: "exact" })
+      .in("project_id", projectIds)
+      .eq("status", "Approved")
+  );
+  if (error) {
+    if (isMissingColumn(error)) return map;
+    failFinancialRead("project_change_orders.cost_impact batch", error);
+  }
+  for (const row of (data ?? []) as Array<{ project_id?: string; cost_impact?: unknown }>) {
+    const pid = row.project_id ?? "";
+    if (!pid) continue;
+    map.set(pid, roundMoney((map.get(pid) ?? 0) + toNum(row.cost_impact)));
+  }
+  return map;
+}
+
+async function sumProjectApCost(c: ReturnType<typeof client>, projectId: string): Promise<number> {
+  const { data, error } = await c
+    .from("ap_bills")
+    .select("amount, status, bill_type, subcontract_id")
+    .eq("project_id", projectId);
+  if (error) {
+    if (isMissingColumn(error)) return 0;
+    failFinancialRead("ap_bills project cost", error);
+  }
+  return sumApBillRows((data ?? []) as Array<Record<string, unknown>>);
+}
+
+async function sumProjectApCostBatch(
+  c: ReturnType<typeof client>,
+  projectIds: string[]
+): Promise<Map<string, number>> {
+  const map = new Map<string, number>();
+  if (projectIds.length === 0) return map;
+  const { data, error } = await readCompleteRows(() =>
+    c
+      .from("ap_bills")
+      .select("id, project_id, amount, status, bill_type, subcontract_id", { count: "exact" })
+      .in("project_id", projectIds)
+  );
+  if (error) {
+    if (isMissingColumn(error)) return map;
+    failFinancialRead("ap_bills project cost batch", error);
+  }
+  for (const row of (data ?? []) as Array<Record<string, unknown>>) {
+    if (!apBillCountsTowardProjectCost(row)) continue;
+    const pid = row.project_id != null ? String(row.project_id) : "";
+    if (!pid) continue;
+    map.set(pid, roundMoney((map.get(pid) ?? 0) + toNum(row.amount)));
+  }
+  return map;
+}
+
 export async function getCanonicalProjectProfit(
   projectId: string,
   explicitClient?: SupabaseClient
@@ -437,6 +564,8 @@ export async function getCanonicalProjectProfit(
   const expenseCost = await getExpenseCostForProject(projectId, explicitClient);
 
   const commissionCost = await getCommissionCostByProject(projectId, explicitClient);
+  const changeOrderCost = await sumApprovedChangeOrderCost(c, projectId);
+  const apBillCost = await sumProjectApCost(c, projectId);
 
   // Subcontract cost
   if (subcontractBillsRes.error) {
@@ -449,9 +578,11 @@ export async function getCanonicalProjectProfit(
       )
     : 0;
 
-  const revenue = baseContract + approvedCO;
-  const actualCost = laborCost + expenseCost + subcontractCost + commissionCost;
-  const profit = revenue - actualCost;
+  const revenue = roundMoney(baseContract + approvedCO);
+  const actualCost = roundMoney(
+    laborCost + expenseCost + subcontractCost + commissionCost + changeOrderCost + apBillCost
+  );
+  const profit = roundMoney(revenue - actualCost);
   const margin = revenue > 0 ? profit / revenue : 0;
 
   return {
@@ -464,6 +595,8 @@ export async function getCanonicalProjectProfit(
     laborCost,
     expenseCost,
     subcontractCost,
+    changeOrderCost,
+    apBillCost,
     commissionCost,
   };
 }
@@ -482,29 +615,39 @@ export async function getCanonicalProjectProfitBatch(
   const c = client(explicitClient);
 
   // 1. Budgets + non-labor cost sources
-  const [projectsRes, cosRes, subBillsRes, expenseByProject, laborByProject, commissionByProject] =
-    await Promise.all([
-      readCompleteRows(() =>
-        c.from("projects").select("id, budget", { count: "exact" }).in("id", projectIds)
-      ),
-      readCompleteRows(() =>
-        c
-          .from("project_change_orders")
-          .select(`id, project_id,${PROJECT_CHANGE_ORDER_AMOUNT_COLUMNS}`, { count: "exact" })
-          .in("project_id", projectIds)
-          .eq("status", "Approved")
-      ),
-      readCompleteRows(() =>
-        c
-          .from("subcontract_bills")
-          .select("id, project_id, amount", { count: "exact" })
-          .in("project_id", projectIds)
-          .eq("status", "Approved")
-      ),
-      getExpenseCostBatch(projectIds, explicitClient),
-      fetchLaborCostBatch(projectIds, explicitClient),
-      getCommissionCostByProjectBatch(projectIds, explicitClient),
-    ]);
+  const [
+    projectsRes,
+    cosRes,
+    subBillsRes,
+    expenseByProject,
+    laborByProject,
+    commissionByProject,
+    changeOrderCostByProject,
+    apBillCostByProject,
+  ] = await Promise.all([
+    readCompleteRows(() =>
+      c.from("projects").select("id, budget", { count: "exact" }).in("id", projectIds)
+    ),
+    readCompleteRows(() =>
+      c
+        .from("project_change_orders")
+        .select(`id, project_id,${PROJECT_CHANGE_ORDER_AMOUNT_COLUMNS}`, { count: "exact" })
+        .in("project_id", projectIds)
+        .eq("status", "Approved")
+    ),
+    readCompleteRows(() =>
+      c
+        .from("subcontract_bills")
+        .select("id, project_id, amount", { count: "exact" })
+        .in("project_id", projectIds)
+        .eq("status", "Approved")
+    ),
+    getExpenseCostBatch(projectIds, explicitClient),
+    fetchLaborCostBatch(projectIds, explicitClient),
+    getCommissionCostByProjectBatch(projectIds, explicitClient),
+    sumApprovedChangeOrderCostBatch(c, projectIds),
+    sumProjectApCostBatch(c, projectIds),
+  ]);
 
   if (projectsRes.error) failFinancialRead("projects batch", projectsRes.error);
   if (cosRes.error) failFinancialRead("project_change_orders batch", cosRes.error);
@@ -547,9 +690,13 @@ export async function getCanonicalProjectProfitBatch(
     const expenseCost = expenseByProject.get(pid) ?? 0;
     const subcontractCost = subByProject.get(pid) ?? 0;
     const commissionCost = commissionByProject.get(pid) ?? 0;
-    const revenue = budget + approvedChangeOrders;
-    const actualCost = laborCost + expenseCost + subcontractCost + commissionCost;
-    const profit = revenue - actualCost;
+    const changeOrderCost = changeOrderCostByProject.get(pid) ?? 0;
+    const apBillCost = apBillCostByProject.get(pid) ?? 0;
+    const revenue = roundMoney(budget + approvedChangeOrders);
+    const actualCost = roundMoney(
+      laborCost + expenseCost + subcontractCost + commissionCost + changeOrderCost + apBillCost
+    );
+    const profit = roundMoney(revenue - actualCost);
     const margin = revenue > 0 ? profit / revenue : 0;
     result.set(pid, {
       revenue,
@@ -561,6 +708,8 @@ export async function getCanonicalProjectProfitBatch(
       laborCost,
       expenseCost,
       subcontractCost,
+      changeOrderCost,
+      apBillCost,
       commissionCost,
     });
   }

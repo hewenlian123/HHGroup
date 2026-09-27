@@ -48,7 +48,7 @@ function sessionClient(deniedTable?: string) {
 }
 
 describe("finance overview session reads", () => {
-  it("uses the supplied session throughout without changing totals or status filters", async () => {
+  it("uses the supplied session throughout without changing totals", async () => {
     const { client, queries } = sessionClient();
     await expect(getFinanceOverviewStats(client)).resolves.toEqual({
       revenue: 1500,
@@ -59,7 +59,7 @@ describe("finance overview session reads", () => {
     });
     expect(
       queries.find((url) => url.pathname.endsWith("/labor_entries"))?.searchParams.get("status")
-    ).toBe("in.(Approved,Locked)");
+    ).toBeNull();
     expect(
       queries.find((url) => url.pathname.endsWith("/ap_bills"))?.searchParams.get("status")
     ).toBe("not.eq.Void");

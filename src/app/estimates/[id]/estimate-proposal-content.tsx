@@ -159,19 +159,19 @@ export function EstimateProposalContent({
               {formatEstimateCurrency(summary.subtotal)}
             </span>
           </div>
-          {summary.tax !== 0 && (
-            <div className="flex justify-between py-1">
-              <span className="text-zinc-600">Tax</span>
-              <span className="tabular-nums font-medium text-zinc-900">
-                {formatEstimateCurrency(summary.tax)}
-              </span>
-            </div>
-          )}
           {summary.discount !== 0 && (
             <div className="flex justify-between py-1">
               <span className="text-zinc-600">Discount</span>
               <span className="tabular-nums font-medium text-zinc-900">
                 {formatEstimateCurrency(-summary.discount)}
+              </span>
+            </div>
+          )}
+          {summary.tax !== 0 && (
+            <div className="flex justify-between py-1">
+              <span className="text-zinc-600">Tax</span>
+              <span className="tabular-nums font-medium text-zinc-900">
+                {formatEstimateCurrency(summary.tax)}
               </span>
             </div>
           )}
