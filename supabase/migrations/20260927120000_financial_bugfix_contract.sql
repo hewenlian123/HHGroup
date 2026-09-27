@@ -172,7 +172,7 @@ begin
   update public.project_change_orders
   set status = 'Approved',
       approved_at = now(),
-      approved_by = p_approved_by
+      approved_by = nullif(btrim(coalesce(p_approved_by, '')), '')::uuid
   where id = p_change_order_id;
 end;
 $$;
@@ -507,6 +507,23 @@ end;
 $$;
 
 
+-- quantity is generated from qty and is null inside this BEFORE trigger, so the
+-- old body used coalesce(quantity, 1) and stored unit_price instead of qty * price.
+-- Round each line to cents (half away from zero) before it is summed.
+create or replace function public.calc_invoice_item_amount()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  new.amount := pg_catalog.round(
+    coalesce(new.qty, 0) * coalesce(new.unit_price, 0),
+    2
+  );
+  return new;
+end;
+$$;
+
 -- Recompute stored invoice totals from cent-rounded line extensions.
 update public.invoice_items
 set amount = pg_catalog.round(coalesce(qty, 0) * coalesce(unit_price, 0), 2)
@@ -522,4 +539,9 @@ from (
   from public.invoice_items
   group by invoice_id
 ) s
-where i.id = s.invoice_id;
+where i.id = s.invoice_id
+  and (
+    i.subtotal is distinct from s.subtotal
+    or i.tax_amount is distinct from pg_catalog.round(s.subtotal * coalesce(i.tax_pct, 0) / 100, 2)
+    or i.total is distinct from s.subtotal + pg_catalog.round(s.subtotal * coalesce(i.tax_pct, 0) / 100, 2)
+  );
