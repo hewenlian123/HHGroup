@@ -193,7 +193,14 @@ export function EstimateEditor({
     if (!editing) return;
     const form = document.getElementById("estimate-meta-form");
     if (!form) return;
-    const markDirty = (): void => void markUnsaved();
+    // Defer past the browser input event and React's onChange. A synchronous
+    // setState here re-renders controlled fields before that onChange, so the
+    // keystroke is discarded.
+    const markDirty = (): void => {
+      window.setTimeout(() => {
+        markUnsaved();
+      }, 0);
+    };
     form.addEventListener("input", markDirty);
     form.addEventListener("change", markDirty);
     return () => {
