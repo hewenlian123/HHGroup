@@ -572,7 +572,7 @@ export async function GET(request: Request) {
       entryQuery,
       supabase
         .from("workers")
-        .select("id,name,half_day_rate,daily_rate,status")
+        .select("id,name,half_day_rate,daily_rate,default_ot_rate,status")
         .order("name")
         .limit(500),
       supabase.from("projects").select("id,name").order("name").limit(500),
@@ -590,6 +590,7 @@ export async function GET(request: Request) {
       name: string;
       half_day_rate?: number | null;
       daily_rate?: number | null;
+      default_ot_rate?: number | null;
       status?: string | null;
     }>;
     const effectiveRateByWorkerId = new Map<string, number>();
@@ -631,6 +632,7 @@ export async function GET(request: Request) {
               name: row.name ?? "",
               halfDayRate: fullDay > 0 ? fullDay / 2 : 0,
               dailyRate: fullDay,
+              defaultOtRate: Number(row.default_ot_rate) || 0,
               status: row.status ?? "active",
             };
           })

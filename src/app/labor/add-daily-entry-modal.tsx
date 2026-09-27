@@ -54,6 +54,7 @@ type LaborWorker = {
   name: string;
   halfDayRate?: number | null;
   dailyRate?: number | null;
+  defaultOtRate?: number | null;
   phone?: string | null;
   nickname?: string | null;
   code?: string | null;
@@ -522,7 +523,8 @@ const AddDailyEntryWorkerRow = React.memo(function AddDailyEntryWorkerRow({
   const rate = workerDailyRate(worker) ?? 0;
   const baseTotal = computeRegularPay(rate, morning, afternoon);
   const explicitOt = Math.max(0, Number(otAmount) || 0);
-  const otFromHours = explicitOt > 0 ? 0 : overtimePayAmount(rate, Number(otHours) || 0, null);
+  const otFromHours =
+    explicitOt > 0 ? 0 : overtimePayAmount(rate, Number(otHours) || 0, worker.defaultOtRate);
   const total = baseTotal + explicitOt + otFromHours;
 
   return (

@@ -652,7 +652,10 @@ export function ProjectDetailTabsClient({
   }, [deleteBusy, projectId, router, toast]);
 
   const snapshotComparison = snapshotState.status === "ready" ? snapshotState.comparison : null;
-  const budgetVal = snapshotComparison?.newSnapshot.contractValue ?? Number.NaN;
+  const budgetVal =
+    snapshotComparison?.newSnapshot.revisedContractValue ??
+    snapshotComparison?.newSnapshot.contractValue ??
+    Number.NaN;
   const editableBudgetVal = (() => {
     const budget = Number(displayProject.budget);
     if (Number.isFinite(budget) && budget > 0) return budget;

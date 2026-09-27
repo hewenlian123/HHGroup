@@ -112,6 +112,10 @@ begin
   end loop;
 end $$;
 
+-- The one-argument overload still adds the change order onto projects.budget and
+-- makes a one-argument call ambiguous with this function's default argument.
+drop function if exists public.approve_change_order(uuid);
+
 create or replace function public.approve_change_order(
   p_change_order_id uuid,
   p_approved_by text default null
