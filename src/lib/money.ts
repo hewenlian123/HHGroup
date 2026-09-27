@@ -17,6 +17,16 @@ export function roundMoney(value: unknown): number {
   return centsToMoney(moneyToCents(value));
 }
 
+/**
+ * Line quantity the invoice writers store in qty.
+ * quantity is a plain copy and can still be the column default (1) on older rows.
+ */
+export function invoiceLineQty(row: { qty?: unknown; quantity?: unknown }): number {
+  const raw = row.qty != null && row.qty !== "" ? row.qty : row.quantity;
+  const value = typeof raw === "number" ? raw : Number(raw);
+  return Number.isFinite(value) ? value : 0;
+}
+
 /** Round one line extension to cents before it is summed. */
 export function lineExtensionCents(qty: unknown, unitPrice: unknown): number {
   const quantity = typeof qty === "number" ? qty : Number(qty);

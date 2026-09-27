@@ -18,6 +18,7 @@ import type {
 import {
   centsToMoney,
   computeInvoiceTotals,
+  invoiceLineQty,
   lineExtension,
   moneyToCents,
   roundMoney,
@@ -215,7 +216,7 @@ export async function loadInvoiceDetailWithClient(
   const dueDate = String(row.due_date ?? "").slice(0, 10);
   const issueDate = String(row.issue_date ?? row.created_at ?? "").slice(0, 10);
   const lineItems = itemRows.map((item) => {
-    const qty = toNum(item.quantity ?? item.qty);
+    const qty = invoiceLineQty(item);
     const unitPrice = toNum(item.unit_price);
     return {
       description: String(item.description ?? ""),

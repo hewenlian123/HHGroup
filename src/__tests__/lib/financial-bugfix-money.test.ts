@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   computeInvoiceTotals,
   formatMoneyInput,
+  invoiceLineQty,
   invoiceRevenueExTax,
   lineExtension,
   moneyToCents,
@@ -30,6 +31,12 @@ describe("invoice cent rounding", () => {
     expect(totals.taxAmount).toBe(211.49);
     expect(totals.total).toBe(4699.76);
     expect(moneyToCents(totals.total)).toBe(469976);
+  });
+
+  it("reads the written qty when the quantity copy is still the default", () => {
+    expect(invoiceLineQty({ qty: 2.5, quantity: 1 })).toBe(2.5);
+    expect(invoiceLineQty({ quantity: 2.5 })).toBe(2.5);
+    expect(invoiceLineQty({})).toBe(0);
   });
 
   it("formats payment amounts without binary dust", () => {

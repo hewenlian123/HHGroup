@@ -9,6 +9,7 @@ import { financialDataUnavailable } from "@/lib/financial-availability";
 import {
   centsToMoney,
   computeInvoiceTotals,
+  invoiceLineQty,
   invoiceRevenueExTax,
   lineExtension,
   moneyToCents,
@@ -239,7 +240,7 @@ function invoiceItemRowIsAvailable(row: InvoiceItemRow, invoiceIds: Set<string>)
     row.id &&
     typeof row.invoice_id === "string" &&
     invoiceIds.has(row.invoice_id) &&
-    isAvailableInvoiceNumber(row.quantity ?? row.qty) &&
+    isAvailableInvoiceNumber(row.qty ?? row.quantity) &&
     isAvailableInvoiceNumber(row.unit_price) &&
     (row.amount == null || isAvailableInvoiceNumber(row.amount))
   );
@@ -256,7 +257,7 @@ function throwInvoiceError(error: { message?: string } | null, fallbackHint: str
 const HINT = "Run supabase/migrations/202602280009_create_invoices.sql";
 
 function toLineItem(r: InvoiceItemRow): InvoiceLineItem {
-  const q = Number(r.quantity ?? r.qty) || 0;
+  const q = invoiceLineQty(r);
   const unitPrice = Number(r.unit_price) || 0;
   return {
     description: r.description ?? "",
