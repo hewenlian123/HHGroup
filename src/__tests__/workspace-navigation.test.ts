@@ -32,7 +32,8 @@ describe("workspace navigation", () => {
     ["/financial/payments?invoiceId=abc", "/financial"],
     ["/bills/abc?addPayment=1", "/financial"],
     ["/dashboard/cashflow", "/financial"],
-    ["/financial/inbox/worker/?workerId=abc#receipt", "/financial/inbox"],
+    // Receipt review shares the Finance shell, including trailing slash, query, and hash.
+    ["/financial/inbox/worker/?workerId=abc#receipt", "/financial"],
     ["/financial/receipt-queue", "/financial/inbox"],
     ["/labor/receipts", "/financial/inbox"],
     ["/financial/vendors/abc", "/customers"],
