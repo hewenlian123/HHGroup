@@ -19,6 +19,6 @@ test("Estimate Preview keeps a visible focus outline in forced colors", () => {
 
   assert.match(
     globals,
-    /@media\s*\(forced-colors:\s*active\)[\s\S]*?\.estimate-preview-tool-button:focus-visible[\s\S]*?outline:\s*2px solid CanvasText\s*!important/,
+    /@media\s*\(forced-colors:\s*active\)[\s\S]*?\.estimate-preview-tool-button:focus-visible[\s\S]*?outline:\s*2px solid CanvasText\s*!important/
   );
 });

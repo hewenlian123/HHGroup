@@ -94,7 +94,7 @@ function emptyDraft(): TemplateDraft {
     description: "",
     category: "General",
     defaultTaxRate: "",
-    
+
     notes: [],
     sections: [
       {
@@ -294,7 +294,7 @@ export function EstimateTemplatesClient({ templates }: { templates: EstimateTemp
     fd.set("description", draft.description);
     fd.set("category", draft.category);
     fd.set("defaultTaxRate", draft.defaultTaxRate);
-    
+
     fd.set("templateData", JSON.stringify(draftToTemplateData(draft)));
 
     startTransition(() => {
@@ -627,7 +627,6 @@ export function EstimateTemplatesClient({ templates }: { templates: EstimateTemp
                       placeholder="Optional"
                     />
                   </label>
-                  
                 </div>
               </div>
 

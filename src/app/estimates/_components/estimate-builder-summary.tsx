@@ -149,7 +149,11 @@ export function EstimateBuilderCompactSummary({
         <div className="estimate-workspace-disclosure">
           <strong>Payment Schedule</strong>
           <p className="text-xs text-muted-foreground">
-            {paymentSummary?.milestoneCount ?? 0} milestones · {previewTotal && previewTotal > 0 ? (((paymentSummary?.scheduledTotal ?? 0) / previewTotal) * 100).toFixed(1) : "0"}% allocated
+            {paymentSummary?.milestoneCount ?? 0} milestones ·{" "}
+            {previewTotal && previewTotal > 0
+              ? (((paymentSummary?.scheduledTotal ?? 0) / previewTotal) * 100).toFixed(1)
+              : "0"}
+            % allocated
           </p>
         </div>
         <details className="estimate-workspace-disclosure">

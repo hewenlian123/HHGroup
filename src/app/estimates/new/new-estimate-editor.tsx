@@ -21,7 +21,6 @@ import { FileText, MoreHorizontal, Plus } from "lucide-react";
 import { useToast } from "@/components/toast/toast-provider";
 import { cn } from "@/lib/utils";
 
-
 import { EstimateBuilderMobileSummary } from "../_components/estimate-builder-summary";
 import { EstimateBuilderSaveStatus } from "../_components/estimate-builder-save-status";
 import { EstimateWorkspace } from "../_components/estimate-workspace";
@@ -585,9 +584,6 @@ export function NewEstimateEditor({
       });
 
       const templateNotes = template.templateData.notes ?? [];
-      
-      
-      
 
       setCategoryNames(nextCategoryNames);
       setSectionOrder(nextSectionOrder);
@@ -772,7 +768,6 @@ export function NewEstimateEditor({
   }, []);
 
   const totalScheduled = paymentMilestones.reduce((sum, m) => sum + m.amount, 0);
-  
 
   const paymentHeaderSummary = React.useMemo(() => {
     if (!paymentMilestones.length) return null;
@@ -976,7 +971,13 @@ export function NewEstimateEditor({
                 <div
                   className="estimate-payment-entry-fields estimate-payment-columns"
                   aria-hidden="true"
-                ><span /><span>Payment Name</span><span>Due</span><span>Amount</span><span className="sr-only">Actions</span></div>
+                >
+                  <span />
+                  <span>Payment Name</span>
+                  <span>Due</span>
+                  <span>Amount</span>
+                  <span className="sr-only">Actions</span>
+                </div>
                 {paymentMilestones.map((milestone) => (
                   <EstimatePaymentInlineRow
                     key={milestone.id}
@@ -1065,8 +1066,6 @@ export function NewEstimateEditor({
                   <Plus size={14} />
                   Add Payment
                 </Button>
-                
-                
               </section>
             }
             notes={

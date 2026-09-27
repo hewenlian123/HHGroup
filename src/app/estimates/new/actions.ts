@@ -17,7 +17,7 @@ export type CreateEstimatePayload = {
   clientEmail?: string;
   estimateDate?: string;
   validUntil?: string;
-  
+
   documentNotes?: EstimateNoteBlock[];
   salesPerson?: string;
   tax?: number;
@@ -112,7 +112,7 @@ export async function createEstimateWithItemsAction(
       clientEmail: payload.clientEmail?.trim() ?? "",
       estimateDate: payload.estimateDate || undefined,
       validUntil: payload.validUntil || undefined,
-      
+
       documentNotes: payload.documentNotes,
       salesPerson: payload.salesPerson?.trim() || undefined,
       tax: payload.tax ?? 0,

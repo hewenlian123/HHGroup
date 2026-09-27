@@ -20,7 +20,11 @@ import {
   readEstimateDocumentStyleFromCostCategoryNames,
   type EstimateDocumentStyle,
 } from "@/lib/estimate-document-style";
-import { preserveRetiredEstimateNotes, normalizeEstimateNoteBlocks, type EstimateNoteBlock } from "@/lib/estimate-notes";
+import {
+  preserveRetiredEstimateNotes,
+  normalizeEstimateNoteBlocks,
+  type EstimateNoteBlock,
+} from "@/lib/estimate-notes";
 import { resolveDuplicateEstimateLineSortOrder } from "@/lib/estimate-line-order";
 import {
   linkEstimateMilestoneInvoiceWithActivityWithClient,
@@ -68,7 +72,7 @@ export type EstimateMetaRecord = {
   profitPct: number;
   estimateDate: string | null;
   validUntil: string | null;
-  
+
   documentNotes: EstimateNoteBlock[];
   salesPerson: string | null;
   documentStyle: EstimateDocumentStyle;
@@ -329,7 +333,7 @@ export async function createEstimateWithClient(
     clientEmail?: string;
     estimateDate?: string;
     validUntil?: string;
-    
+
     documentNotes?: EstimateNoteBlock[];
     salesPerson?: string;
     documentStyle?: EstimateDocumentStyle;
@@ -390,7 +394,7 @@ export async function createEstimateWithClient(
   };
   if (payload.validUntil != null && payload.validUntil !== "")
     metaIns.valid_until = payload.validUntil;
-  
+
   if (payload.documentNotes != null)
     metaIns.document_notes = normalizeEstimateNoteBlocks(payload.documentNotes);
   if (payload.salesPerson != null) metaIns.sales_person = payload.salesPerson;
@@ -434,7 +438,7 @@ export async function createEstimate(payload: {
   clientEmail?: string;
   estimateDate?: string;
   validUntil?: string;
-  
+
   documentNotes?: EstimateNoteBlock[];
   salesPerson?: string;
   documentStyle?: EstimateDocumentStyle;
@@ -457,7 +461,7 @@ export async function createEstimateWithItemsWithClient(
     clientEmail?: string;
     estimateDate?: string;
     validUntil?: string;
-    
+
     documentNotes?: EstimateNoteBlock[];
     salesPerson?: string;
     documentStyle?: EstimateDocumentStyle;
@@ -498,7 +502,7 @@ export async function createEstimateWithItemsWithClient(
     clientEmail: payload.clientEmail,
     estimateDate: payload.estimateDate,
     validUntil: payload.validUntil,
-    
+
     documentNotes: payload.documentNotes,
     salesPerson: payload.salesPerson,
     documentStyle: payload.documentStyle,
@@ -584,7 +588,7 @@ export async function createEstimateWithItems(payload: {
   clientEmail?: string;
   estimateDate?: string;
   validUntil?: string;
-  
+
   documentNotes?: EstimateNoteBlock[];
   salesPerson?: string;
   tax?: number;
@@ -930,7 +934,7 @@ function mapEstimateMetaRow(row: Record<string, unknown>): EstimateMetaRecord {
     profitPct: Number(row.profit_pct ?? 0),
     estimateDate: (row.estimate_date as string) ?? null,
     validUntil: (row.valid_until as string) ?? null,
-    
+
     documentNotes: normalizeEstimateNoteBlocks(row.document_notes),
     salesPerson: (row.sales_person as string) ?? null,
     documentStyle: readEstimateDocumentStyleFromCostCategoryNames(row.cost_category_names),
@@ -1155,7 +1159,7 @@ function toSnapshotRecord(r: Record<string, unknown>): EstimateSnapshotRecord {
           profitPct: Number((metaJson.profitPct as number) ?? 0) || 0,
           estimateDate: (metaJson.estimateDate as string | null) ?? null,
           validUntil: (metaJson.validUntil as string | null) ?? null,
-          
+
           documentNotes: normalizeEstimateNoteBlocks(metaJson.documentNotes),
           salesPerson: (metaJson.salesPerson as string | null) ?? null,
           ...(metaJson.categoryNames && typeof metaJson.categoryNames === "object"
@@ -1347,7 +1351,7 @@ export async function updateEstimateMetaWithClient(
     profitPct?: number;
     estimateDate?: string;
     validUntil?: string;
-    
+
     documentNotes?: EstimateNoteBlock[];
     salesPerson?: string;
     documentStyle?: EstimateDocumentStyle;
@@ -1385,13 +1389,17 @@ export async function updateEstimateMetaWithClient(
 
   if (payload.estimateDate != null) patch.estimate_date = payload.estimateDate || null;
   if (payload.validUntil != null) patch.valid_until = payload.validUntil || null;
-  
+
   if (payload.documentNotes != null) {
     const { data: existing, error: notesReadError } = await c
-      .from("estimate_meta").select("document_notes").eq("estimate_id", estimateId).single();
+      .from("estimate_meta")
+      .select("document_notes")
+      .eq("estimate_id", estimateId)
+      .single();
     if (notesReadError || !existing) return false;
     patch.document_notes = preserveRetiredEstimateNotes(
-      existing.document_notes, normalizeEstimateNoteBlocks(payload.documentNotes)
+      existing.document_notes,
+      normalizeEstimateNoteBlocks(payload.documentNotes)
     );
   }
   if (payload.salesPerson != null) patch.sales_person = payload.salesPerson;
@@ -1430,7 +1438,7 @@ export async function updateEstimateMeta(
     profitPct?: number;
     estimateDate?: string;
     validUntil?: string;
-    
+
     documentNotes?: EstimateNoteBlock[];
     salesPerson?: string;
     documentStyle?: EstimateDocumentStyle;

@@ -39,7 +39,7 @@ export function SaveEstimateAsTemplateDialog({
   const [description, setDescription] = React.useState("");
   const [category, setCategory] = React.useState("General");
   const [defaultTaxRate, setDefaultTaxRate] = React.useState("");
-  
+
   const [busy, startTransition] = React.useTransition();
 
   React.useEffect(() => {
@@ -53,7 +53,6 @@ export function SaveEstimateAsTemplateDialog({
     fd.set("description", description);
     fd.set("category", category);
     fd.set("defaultTaxRate", defaultTaxRate);
-    
 
     startTransition(() => {
       void saveEstimateAsTemplateAction(fd).then((result) => {
@@ -130,7 +129,6 @@ export function SaveEstimateAsTemplateDialog({
               />
             </label>
           </div>
-          
         </div>
 
         <DialogFooter>

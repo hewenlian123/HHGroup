@@ -3,9 +3,20 @@ import { preserveRetiredEstimateNotes, normalizeEstimateNoteBlocks } from "@/lib
 
 describe("Estimate customer notes", () => {
   it("preserves customer card content and order without reviving retired Terms", () => {
-    const first = { id: "a", type: "exclusions", title: "Exclusions", body: "<ul><li>Permits</li></ul>" };
+    const first = {
+      id: "a",
+      type: "exclusions",
+      title: "Exclusions",
+      body: "<ul><li>Permits</li></ul>",
+    };
     const second = { id: "b", type: "custom", title: "Access", body: "Owner provides access." };
-    expect(normalizeEstimateNoteBlocks([first, { id: "old", type: "payment_terms", title: "Terms", body: "Net 30" }, second])).toEqual([first, second]);
+    expect(
+      normalizeEstimateNoteBlocks([
+        first,
+        { id: "old", type: "payment_terms", title: "Terms", body: "Net 30" },
+        second,
+      ])
+    ).toEqual([first, second]);
   });
 });
 

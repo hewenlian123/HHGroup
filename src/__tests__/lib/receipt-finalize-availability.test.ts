@@ -40,27 +40,37 @@ const row: ReceiptQueueRow = {
 
 describe("receipt finalization availability", () => {
   beforeEach(() => vi.resetAllMocks());
-  it.each(["confirm", "bulk"] as const)("retains failures and retries the same atomic identity for %s", async mode => {
-    const rpc = vi.fn().mockResolvedValueOnce({ error: { message: "Transfer failed" } })
-      .mockResolvedValue({ data: { expense_id: "expense-1" }, error: null });
-    const c = { rpc } as unknown as SupabaseClient;
-    await expect(finalizeReceiptQueueExpense(c, row, mode)).rejects.toThrow("Transfer failed");
-    expect(mocks.notifyReceiptQueueChanged).not.toHaveBeenCalled();
-    await finalizeReceiptQueueExpense(c, row, mode);
-    expect(rpc).toHaveBeenCalledTimes(2);
-    expect(rpc).toHaveBeenLastCalledWith("finalize_receipt_queue_operation", { p_receipt_id: row.id, p_expense_id: null });
-    expect(mocks.createQuickExpense).not.toHaveBeenCalled();
-    expect(mocks.deleteReceiptQueueRow).not.toHaveBeenCalled();
-    expect(mocks.notifyReceiptQueueChanged).toHaveBeenCalledTimes(1);
-  });
+  it.each(["confirm", "bulk"] as const)(
+    "retains failures and retries the same atomic identity for %s",
+    async (mode) => {
+      const rpc = vi
+        .fn()
+        .mockResolvedValueOnce({ error: { message: "Transfer failed" } })
+        .mockResolvedValue({ data: { expense_id: "expense-1" }, error: null });
+      const c = { rpc } as unknown as SupabaseClient;
+      await expect(finalizeReceiptQueueExpense(c, row, mode)).rejects.toThrow("Transfer failed");
+      expect(mocks.notifyReceiptQueueChanged).not.toHaveBeenCalled();
+      await finalizeReceiptQueueExpense(c, row, mode);
+      expect(rpc).toHaveBeenCalledTimes(2);
+      expect(rpc).toHaveBeenLastCalledWith("finalize_receipt_queue_operation", {
+        p_receipt_id: row.id,
+        p_expense_id: null,
+      });
+      expect(mocks.createQuickExpense).not.toHaveBeenCalled();
+      expect(mocks.deleteReceiptQueueRow).not.toHaveBeenCalled();
+      expect(mocks.notifyReceiptQueueChanged).toHaveBeenCalledTimes(1);
+    }
+  );
   it("concurrent callers receive the same failure instead of false success", async () => {
-    const rpc = vi.fn().mockResolvedValue({ error: { message: "Blocked canonical Worker source" } });
+    const rpc = vi
+      .fn()
+      .mockResolvedValue({ error: { message: "Blocked canonical Worker source" } });
     const c = { rpc } as unknown as SupabaseClient;
     const first = finalizeReceiptQueueExpense(c, row, "confirm");
     const second = finalizeReceiptQueueExpense(c, row, "bulk");
     expect(first).toBe(second);
     const results = await Promise.allSettled([first, second]);
-    expect(results.map(r => r.status)).toEqual(["rejected", "rejected"]);
+    expect(results.map((r) => r.status)).toEqual(["rejected", "rejected"]);
     expect(rpc).toHaveBeenCalledTimes(1);
     expect(mocks.notifyReceiptQueueChanged).not.toHaveBeenCalled();
   });
@@ -124,14 +134,25 @@ function attachmentClient() {
 describe("receipt metadata retry integrity", () => {
   it("retains exactly one attachment after expense reload fails following metadata commit", async () => {
     const fixture = attachmentClient();
-    const attachment = { id: "71717171-7171-4171-8171-717171717111", fileName: "receipt.jpg",
-      mimeType: "image/jpeg", size: 100, url: "receipt-queue/source.jpg", createdAt: "2026-09-05" };
+    const attachment = {
+      id: "71717171-7171-4171-8171-717171717111",
+      fileName: "receipt.jpg",
+      mimeType: "image/jpeg",
+      size: 100,
+      url: "receipt-queue/source.jpg",
+      createdAt: "2026-09-05",
+    };
     fixture.failReadAfterCommit();
-    await expect(addExpenseAttachmentWithClient(fixture.client, "expense-1", attachment)).rejects.toThrow();
+    await expect(
+      addExpenseAttachmentWithClient(fixture.client, "expense-1", attachment)
+    ).rejects.toThrow();
     expect(fixture.attachments.size).toBe(1);
     await addExpenseAttachmentWithClient(fixture.client, "expense-1", attachment);
     expect(fixture.attachments.size).toBe(1);
-    expect([...fixture.attachments.values()][0]).toMatchObject({ entity_id: "expense-1", file_path: attachment.url });
+    expect([...fixture.attachments.values()][0]).toMatchObject({
+      entity_id: "expense-1",
+      file_path: attachment.url,
+    });
   });
 
   it("rejects a reused attachment identity for a different expense or file", async () => {

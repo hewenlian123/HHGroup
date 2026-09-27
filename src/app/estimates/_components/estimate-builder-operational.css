@@ -4839,8 +4839,7 @@
 .estimate-builder-new .eb-notes-clarifications-panel .eb-scope-subtitle {
   font-size: var(--hh-type-metadata-font-size);
 }
-.estimate-builder-new
-  :where(.eb-pricing-inspector-tabs button, summary, .eb-scope-toolbar input) {
+.estimate-builder-new :where(.eb-pricing-inspector-tabs button, summary, .eb-scope-toolbar input) {
   transition:
     color var(--hh-duration) var(--hh-ease-out),
     background-color var(--hh-duration) var(--hh-ease-out),
@@ -4913,11 +4912,7 @@
     border-bottom: 2px solid Highlight;
   }
   .estimate-builder-new
-    :where(
-      .eb-note-title-textarea,
-      summary,
-      .eb-line-item-card input.eb-input
-    ):focus-visible {
+    :where(.eb-note-title-textarea, summary, .eb-line-item-card input.eb-input):focus-visible {
     outline: 2px solid Highlight !important;
   }
 }

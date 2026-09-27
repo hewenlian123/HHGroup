@@ -49,11 +49,20 @@ function createApproveInboxSupabase(events: string[]) {
   return {
     from(table: string) {
       if (table !== "expense_operations") throw new Error(`Unexpected table ${table}`);
-      return { select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { revision: 7 }, error: null }) }) }) };
+      return {
+        select: () => ({
+          eq: () => ({ maybeSingle: async () => ({ data: { revision: 7 }, error: null }) }),
+        }),
+      };
     },
     rpc: vi.fn(async (name: string, args: Record<string, unknown>) => {
       expect(name).toBe("transition_expense_operation");
-      expect(args).toMatchObject({ p_expense_id: "expense-1", p_expected_revision: 7, p_action: "approve", p_payload: { cost_allocation: "project_cost" } });
+      expect(args).toMatchObject({
+        p_expense_id: "expense-1",
+        p_expected_revision: 7,
+        p_action: "approve",
+        p_payload: { cost_allocation: "project_cost" },
+      });
       expect(args.p_request_id).toEqual(expect.any(String));
       events.push("atomic:approve");
       return { error: null, data: { revision: 8 } };
@@ -106,7 +115,8 @@ describe("expense header sync write paths", () => {
         client: createClient(),
       }));
     mocks.requireSupabaseOwnerOrAdminRequestClient.mockReset().mockImplementation(async () => ({
-      ok: true, client: mocks.getServerSupabaseInternalNoStore(),
+      ok: true,
+      client: mocks.getServerSupabaseInternalNoStore(),
       context: { user: { id: "owner-1" } },
     }));
     mocks.syncExpenseHeaderAmountFromLinesWithClient.mockReset();

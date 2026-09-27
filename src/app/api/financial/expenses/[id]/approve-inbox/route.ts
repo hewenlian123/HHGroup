@@ -8,9 +8,7 @@ import {
   expenseSourceTypeIsWorkerReimbursement,
   validateApproveInboxUploadDraft,
 } from "@/lib/expense-workflow-status";
-import {
-  SUPABASE_MISSING_SERVER_ENV_MESSAGE,
-} from "@/lib/supabase-server";
+import { SUPABASE_MISSING_SERVER_ENV_MESSAGE } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -39,10 +37,7 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ): Promise<NextResponse> {
-  const guard = await requireSupabaseOwnerOrAdminRequestClient(
-    request,
-    { noStore: true }
-  );
+  const guard = await requireSupabaseOwnerOrAdminRequestClient(request, { noStore: true });
   if (!guard.ok) return guard.response;
 
   const { id } = await params;
@@ -77,16 +72,26 @@ export async function POST(
   const gate = validateApproveInboxUploadDraft(current);
   if (gate) return apiError(409, gateMessage(gate));
 
-  const state = await supabase.from("expense_operations").select("revision").eq("expense_id", expenseId).maybeSingle();
+  const state = await supabase
+    .from("expense_operations")
+    .select("revision")
+    .eq("expense_id", expenseId)
+    .maybeSingle();
   if (state.error) return apiError(503, "Review state is unavailable.", state.error.message);
   const { error } = await supabase.rpc("transition_expense_operation", {
     p_expense_id: expenseId,
     p_expected_revision: state.data?.revision ?? 0,
     p_request_id: crypto.randomUUID(),
     p_action: "approve",
-    p_payload: { cost_allocation: current.lines.some(line => line.projectId) || current.headerProjectId ? "project_cost" : "overhead" },
+    p_payload: {
+      cost_allocation:
+        current.lines.some((line) => line.projectId) || current.headerProjectId
+          ? "project_cost"
+          : "overhead",
+    },
   });
-  if (error) return apiError(error.code === "40001" || error.code === "23514" ? 409 : 500, error.message);
+  if (error)
+    return apiError(error.code === "40001" || error.code === "23514" ? 409 : 500, error.message);
 
   const updated = await getExpenseById(expenseId, supabase);
   if (!updated) return apiError(500, "Inbox draft approved, but the expense could not reload.");

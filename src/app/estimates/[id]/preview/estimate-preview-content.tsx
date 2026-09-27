@@ -461,14 +461,18 @@ export function EstimatePreviewContent({
       data-hh-theme="document-light"
       className="estimate-preview-paper-stack text-zinc-900 print:block"
     >
-      <style dangerouslySetInnerHTML={{ __html: `@media print {
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `@media print {
         @page {
           size: Letter;
           margin: 10mm 12mm 15mm;
           @bottom-left { content: ${JSON.stringify(estimate.number).replace(/</g, "\\3c ")}; font-size: 9.5px; color: #71717a; }
           @bottom-right { content: "Page " counter(page) " of " counter(pages); font-size: 9.5px; color: #71717a; }
         }
-      }` }} />
+      }`,
+        }}
+      />
       <section
         data-testid="estimate-preview-page"
         className="estimate-flow-document estimate-a4-page"

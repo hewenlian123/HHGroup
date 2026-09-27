@@ -1336,7 +1336,9 @@ body:has([data-integrated-estimate-workspace="true"])
   padding: 0;
   margin: 0;
 }
-.estimate-workspace-notes {padding: 16px;border-top: 1px solid var(--estimate-divider);
+.estimate-workspace-notes {
+  padding: 16px;
+  border-top: 1px solid var(--estimate-divider);
 }
 .estimate-workspace-notes .eb-notes-header {
   display: none;
@@ -2560,7 +2562,9 @@ body:has([data-integrated-estimate-workspace="true"])
 }
 
 /* Payment notes reuse the scope editor without its full-form chrome. */
-.estimate-builder.estimate-builder.estimate-builder .estimate-payment-entry-details .eb-proposal-scope-editor {
+.estimate-builder.estimate-builder.estimate-builder
+  .estimate-payment-entry-details
+  .eb-proposal-scope-editor {
   min-height: 0 !important;
   padding: 2px 0 !important;
   border: 0 !important;
@@ -2572,7 +2576,11 @@ body:has([data-integrated-estimate-workspace="true"])
 .estimate-builder .estimate-payment-entry-details .eb-proposal-scope-editor > p[aria-hidden] {
   display: none;
 }
-.estimate-builder.estimate-builder.estimate-builder .estimate-payment-entry-details .eb-proposal-scope-editor > div > div {
+.estimate-builder.estimate-builder.estimate-builder
+  .estimate-payment-entry-details
+  .eb-proposal-scope-editor
+  > div
+  > div {
   min-height: 24px;
   padding-block: 0;
   background: transparent;
@@ -2580,7 +2588,9 @@ body:has([data-integrated-estimate-workspace="true"])
 .estimate-builder .estimate-payment-entry-details .eb-proposal-scope-editor > div > div > span {
   margin-top: 2px;
 }
-.estimate-builder.estimate-builder.estimate-builder .estimate-payment-entry-details textarea.eb-proposal-scope-field {
+.estimate-builder.estimate-builder.estimate-builder
+  .estimate-payment-entry-details
+  textarea.eb-proposal-scope-field {
   min-height: 24px !important;
   max-height: none !important;
   padding: 2px 0 !important;
@@ -2594,14 +2604,18 @@ body:has([data-integrated-estimate-workspace="true"])
   color: var(--estimate-text-secondary);
 }
 @supports (field-sizing: content) {
-  .estimate-builder.estimate-builder.estimate-builder .estimate-payment-entry-details textarea.eb-proposal-scope-field {
+  .estimate-builder.estimate-builder.estimate-builder
+    .estimate-payment-entry-details
+    textarea.eb-proposal-scope-field {
     field-sizing: content;
     height: auto !important;
     overflow-y: hidden !important;
   }
 }
 @media (max-width: 767px) {
-  .estimate-builder.estimate-builder.estimate-builder .estimate-payment-entry-details textarea.eb-proposal-scope-field {
+  .estimate-builder.estimate-builder.estimate-builder
+    .estimate-payment-entry-details
+    textarea.eb-proposal-scope-field {
     font-size: 16px;
     line-height: 24px;
   }
@@ -2610,7 +2624,9 @@ body:has([data-integrated-estimate-workspace="true"])
 /* Header and rows share tracks and horizontal gutters at each canvas width. */
 @container estimate-payment (min-width: 681px) {
   .estimate-builder .estimate-payment-entry-fields {
-    grid-template-columns: 18px minmax(80px, 1.65fr) minmax(100px, .9fr) minmax(90px, 1fr) minmax(98px, .9fr) minmax(48px, .55fr) 40px;
+    grid-template-columns:
+      18px minmax(80px, 1.65fr) minmax(100px, 0.9fr) minmax(90px, 1fr) minmax(98px, 0.9fr)
+      minmax(48px, 0.55fr) 40px;
     column-gap: 20px;
   }
   .estimate-builder .estimate-payment-columns {
@@ -2622,7 +2638,9 @@ body:has([data-integrated-estimate-workspace="true"])
 }
 @container estimate-payment (min-width: 900px) {
   .estimate-builder .estimate-payment-entry-fields {
-    grid-template-columns: 18px minmax(160px, 1.65fr) minmax(128px, .9fr) minmax(112px, 1fr) minmax(112px, .9fr) minmax(64px, .55fr) 44px;
+    grid-template-columns:
+      18px minmax(160px, 1.65fr) minmax(128px, 0.9fr) minmax(112px, 1fr)
+      minmax(112px, 0.9fr) minmax(64px, 0.55fr) 44px;
     column-gap: 24px;
   }
 }
@@ -2636,10 +2654,15 @@ body:has([data-integrated-estimate-workspace="true"])
 }
 @container estimate-payment (min-width: 900px) {
   .estimate-builder .estimate-payment-entry-fields {
-    grid-template-columns: 18px minmax(160px, 1.55fr) minmax(128px, .9fr) minmax(128px, 1.1fr) minmax(112px, .9fr) minmax(64px, .55fr) 44px;
+    grid-template-columns:
+      18px minmax(160px, 1.55fr) minmax(128px, 0.9fr) minmax(128px, 1.1fr)
+      minmax(112px, 0.9fr) minmax(64px, 0.55fr) 44px;
   }
 }
-.estimate-builder .estimate-payment-custom-term-edit { font-size: 10px; color: var(--estimate-text-secondary); }
+.estimate-builder .estimate-payment-custom-term-edit {
+  font-size: 10px;
+  color: var(--estimate-text-secondary);
+}
 @container estimate-payment (max-width: 680px) {
 }
 
@@ -2651,28 +2674,59 @@ body:has([data-integrated-estimate-workspace="true"])
 .estimate-builder .estimate-payment-entry-fields > :nth-child(4) {
   padding-inline-start: 0;
 }
-.estimate-builder .estimate-payment-columns > :nth-child(3) { text-align: left; }
-.estimate-builder .estimate-payment-columns > :nth-child(4) { text-align: right; }
+.estimate-builder .estimate-payment-columns > :nth-child(3) {
+  text-align: left;
+}
+.estimate-builder .estimate-payment-columns > :nth-child(4) {
+  text-align: right;
+}
 @container estimate-payment (min-width: 681px) {
-  .estimate-builder .estimate-payment-columns { display: grid; }
-  .estimate-builder .estimate-payment-date-cell { grid-column: 3; grid-row: 1; }
-  .estimate-builder .estimate-payment-amount-cell { grid-column: 4; grid-row: 1; }
-  .estimate-builder .estimate-payment-entry-fields > :last-child { grid-column: 5; grid-row: 1; }
+  .estimate-builder .estimate-payment-columns {
+    display: grid;
+  }
+  .estimate-builder .estimate-payment-date-cell {
+    grid-column: 3;
+    grid-row: 1;
+  }
+  .estimate-builder .estimate-payment-amount-cell {
+    grid-column: 4;
+    grid-row: 1;
+  }
+  .estimate-builder .estimate-payment-entry-fields > :last-child {
+    grid-column: 5;
+    grid-row: 1;
+  }
 }
 @container estimate-payment (max-width: 680px) {
-  .estimate-builder .estimate-payment-columns { display: none; }
+  .estimate-builder .estimate-payment-columns {
+    display: none;
+  }
   .estimate-builder .estimate-payment-entry-fields {
     grid-template-columns: 18px minmax(0, 1fr) minmax(120px, 160px) 28px;
     column-gap: 8px;
   }
-  .estimate-builder .estimate-payment-date-cell { grid-column: 2; grid-row: 2; }
-  .estimate-builder .estimate-payment-amount-cell { grid-column: 3; grid-row: 1; }
-  .estimate-builder .estimate-payment-entry-fields > :last-child { grid-column: 4; grid-row: 1; }
+  .estimate-builder .estimate-payment-date-cell {
+    grid-column: 2;
+    grid-row: 2;
+  }
+  .estimate-builder .estimate-payment-amount-cell {
+    grid-column: 3;
+    grid-row: 1;
+  }
+  .estimate-builder .estimate-payment-entry-fields > :last-child {
+    grid-column: 4;
+    grid-row: 1;
+  }
 }
 
 /* Shared Estimate description presentation: rich text and plain-text bullet bodies. */
 .estimate-builder.estimate-builder.estimate-builder.estimate-builder
-  :is(.proposal-scope-inline-editor, .eb-note-rich-body, textarea.eb-proposal-scope-field, .eb-description-summary-button) {
+  :is(
+    .proposal-scope-inline-editor,
+    .eb-note-rich-body,
+    textarea.eb-proposal-scope-field,
+    .eb-description-summary-button
+  ) {
   box-sizing: border-box;
   min-height: 44px !important;
   max-height: none !important;
@@ -2703,12 +2757,14 @@ body:has([data-integrated-estimate-workspace="true"])
   margin-top: 6px;
 }
 .estimate-builder.estimate-builder.estimate-builder.estimate-builder
-  :is(.proposal-scope-inline-editor, .eb-note-rich-body) :is(p, ul, ol) {
+  :is(.proposal-scope-inline-editor, .eb-note-rich-body)
+  :is(p, ul, ol) {
   margin-block: 0;
   line-height: inherit;
 }
 .estimate-builder.estimate-builder.estimate-builder.estimate-builder
-  :is(.proposal-scope-inline-editor, .eb-note-rich-body) :is(ul, ol) {
+  :is(.proposal-scope-inline-editor, .eb-note-rich-body)
+  :is(ul, ol) {
   padding-inline-start: 1.25em;
 }
 .estimate-builder.estimate-builder.estimate-builder.estimate-builder
@@ -2737,7 +2793,8 @@ body:has([data-integrated-estimate-workspace="true"])
   text-overflow: clip;
 }
 @supports (field-sizing: content) {
-  .estimate-builder.estimate-builder.estimate-builder.estimate-builder textarea.eb-proposal-scope-field {
+  .estimate-builder.estimate-builder.estimate-builder.estimate-builder
+    textarea.eb-proposal-scope-field {
     field-sizing: content;
     height: auto !important;
   }
@@ -2761,7 +2818,8 @@ body:has([data-integrated-estimate-workspace="true"])
 }
 /* The action strip owns the final divider, avoiding a doubled line. */
 .estimate-builder.estimate-builder.estimate-builder
-  .eb-scope-section-lines:has(+ .estimate-workspace-section-actions) > .eb-line-item-card:last-child {
+  .eb-scope-section-lines:has(+ .estimate-workspace-section-actions)
+  > .eb-line-item-card:last-child {
   border-bottom: 0;
 }
 .estimate-builder .estimate-workspace-add-section {
@@ -2801,7 +2859,11 @@ body:has([data-integrated-estimate-workspace="true"])
   box-shadow: none !important;
 }
 .estimate-builder.estimate-builder.estimate-builder.estimate-builder.estimate-builder
-  :is(.estimate-inline-description > input, .eb-line-item-title-control input, .eb-note-card-heading > input) {
+  :is(
+    .estimate-inline-description > input,
+    .eb-line-item-title-control input,
+    .eb-note-card-heading > input
+  ) {
   box-sizing: border-box;
   height: 34px !important;
   min-height: 34px !important;
@@ -2819,17 +2881,33 @@ body:has([data-integrated-estimate-workspace="true"])
   box-shadow: none !important;
 }
 .estimate-builder.estimate-builder.estimate-builder.estimate-builder.estimate-builder
-  :is(.eb-scope-editor-surface, .eb-note-rich-surface, .eb-proposal-scope-editor):has(:is([contenteditable="true"], textarea:not(:disabled))):hover,
+  :is(.eb-scope-editor-surface, .eb-note-rich-surface, .eb-proposal-scope-editor):has(
+    :is([contenteditable="true"], textarea:not(:disabled))
+  ):hover,
 .estimate-builder.estimate-builder.estimate-builder.estimate-builder.estimate-builder
-  :is(.estimate-inline-description > input, .eb-line-item-title-control input, .eb-note-card-heading > input):not(:disabled):hover {
+  :is(
+    .estimate-inline-description > input,
+    .eb-line-item-title-control input,
+    .eb-note-card-heading > input
+  ):not(:disabled):hover {
   background: var(--estimate-surface-hover) !important;
 }
 .estimate-builder.estimate-builder.estimate-builder.estimate-builder.estimate-builder
-  :is(.eb-scope-editor-surface, .eb-note-rich-surface, .eb-proposal-scope-editor):has(:is([contenteditable="true"], textarea:not(:disabled))):focus-within,
+  :is(.eb-scope-editor-surface, .eb-note-rich-surface, .eb-proposal-scope-editor):has(
+    :is([contenteditable="true"], textarea:not(:disabled))
+  ):focus-within,
 .estimate-builder.estimate-builder.estimate-builder.estimate-builder.estimate-builder
-  :is(.estimate-inline-description > input, .eb-line-item-title-control input, .eb-note-card-heading > input):not(:disabled):focus {
+  :is(
+    .estimate-inline-description > input,
+    .eb-line-item-title-control input,
+    .eb-note-card-heading > input
+  ):not(:disabled):focus {
   border-color: var(--estimate-border) !important;
-  background: color-mix(in srgb, var(--estimate-surface-selected) 4%, var(--estimate-surface)) !important;
+  background: color-mix(
+    in srgb,
+    var(--estimate-surface-selected) 4%,
+    var(--estimate-surface)
+  ) !important;
   outline: none !important;
   box-shadow: none !important;
 }
@@ -2840,15 +2918,19 @@ body:has([data-integrated-estimate-workspace="true"])
 }
 
 /* Shared description primitive: identical geometry, typography and toolbar in all contexts. */
-.estimate-builder.estimate-builder.estimate-builder.estimate-builder.estimate-builder .estimate-description-editor {
+.estimate-builder.estimate-builder.estimate-builder.estimate-builder.estimate-builder
+  .estimate-description-editor {
   margin-left: 0;
   margin-top: 6px;
   min-width: 0;
   border-radius: var(--estimate-radius) !important;
   font-family: var(--estimate-font);
-  transition: border-color 150ms ease-out, background-color 150ms ease-out;
+  transition:
+    border-color 150ms ease-out,
+    background-color 150ms ease-out;
 }
-.estimate-builder.estimate-builder.estimate-builder.estimate-builder.estimate-builder .estimate-description-body {
+.estimate-builder.estimate-builder.estimate-builder.estimate-builder.estimate-builder
+  .estimate-description-body {
   font-family: inherit;
   font-size: 12px;
   line-height: 1.45 !important;
@@ -2858,7 +2940,8 @@ body:has([data-integrated-estimate-workspace="true"])
   max-height: none !important;
   overflow: visible !important;
 }
-.estimate-builder.estimate-builder.estimate-builder.estimate-builder.estimate-builder .estimate-description-body[data-empty]::before {
+.estimate-builder.estimate-builder.estimate-builder.estimate-builder.estimate-builder
+  .estimate-description-body[data-empty]::before {
   content: attr(data-placeholder);
   color: var(--estimate-text-muted);
   pointer-events: none;
@@ -2879,7 +2962,9 @@ body:has([data-integrated-estimate-workspace="true"])
   width: 100%;
   text-align: left;
 }
-.estimate-builder .estimate-payment-due-trigger svg { flex-shrink: 0; }
+.estimate-builder .estimate-payment-due-trigger svg {
+  flex-shrink: 0;
+}
 body:has([data-estimate-module]) .estimate-builder-menu {
   font-family: var(--estimate-font);
   font-size: 12px;
@@ -2888,7 +2973,9 @@ body:has([data-estimate-module]) .estimate-builder-menu {
   box-shadow: var(--estimate-shadow);
   animation-duration: 150ms;
 }
-.estimate-builder details[open] > div { animation: none; }
+.estimate-builder details[open] > div {
+  animation: none;
+}
 .estimate-builder .estimate-payment-link-warning {
   border: 0;
   border-top: 1px solid var(--estimate-divider);
@@ -2898,22 +2985,32 @@ body:has([data-estimate-module]) .estimate-builder-menu {
   font-size: 12px;
 }
 @media (max-width: 767px) {
-  .estimate-builder.estimate-builder.estimate-builder.estimate-builder.estimate-builder .estimate-description-body { font-size: 16px; }
+  .estimate-builder.estimate-builder.estimate-builder.estimate-builder.estimate-builder
+    .estimate-description-body {
+    font-size: 16px;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
-  .estimate-builder *, body:has([data-estimate-module]) .estimate-builder-menu {
+  .estimate-builder *,
+  body:has([data-estimate-module]) .estimate-builder-menu {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
 }
 @media (forced-colors: active) {
-  .estimate-builder.estimate-builder.estimate-builder.estimate-builder.estimate-builder .estimate-description-editor:focus-within,
-  .estimate-builder.estimate-builder.estimate-builder.estimate-builder.estimate-builder :is(input, button, [role="textbox"]):focus-visible {
+  .estimate-builder.estimate-builder.estimate-builder.estimate-builder.estimate-builder
+    .estimate-description-editor:focus-within,
+  .estimate-builder.estimate-builder.estimate-builder.estimate-builder.estimate-builder
+    :is(input, button, [role="textbox"]):focus-visible {
     outline: 1px solid Highlight !important;
     outline-offset: 2px;
   }
-  .estimate-builder.estimate-builder.estimate-builder.estimate-builder.estimate-builder .estimate-description-editor [role="textbox"]:focus-visible { outline: none !important; }
+  .estimate-builder.estimate-builder.estimate-builder.estimate-builder.estimate-builder
+    .estimate-description-editor
+    [role="textbox"]:focus-visible {
+    outline: none !important;
+  }
 }
 
 body:has([data-estimate-module]) .estimate-builder-menu [data-highlighted],
@@ -2921,10 +3018,23 @@ body:has([data-estimate-module]) .estimate-builder-menu [data-state="checked"] {
   background: var(--estimate-surface-selected) !important;
   color: var(--estimate-text-primary) !important;
 }
-.estimate-builder.estimate-builder.estimate-builder .eb-estimate-command-amount { display: none !important; }
+.estimate-builder.estimate-builder.estimate-builder .eb-estimate-command-amount {
+  display: none !important;
+}
 @media (max-width: 1199px) {
-  .estimate-builder.estimate-builder.estimate-builder .eb-estimate-command-layout { align-items: stretch; }
-  .estimate-builder.estimate-builder.estimate-builder .eb-estimate-command-copy { width: 100%; max-width: 100%; }
-  .estimate-builder.estimate-builder.estimate-builder .eb-estimate-command-title-row { flex-wrap: wrap; }
-  .estimate-builder.estimate-builder.estimate-builder .eb-estimate-command-title { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+  .estimate-builder.estimate-builder.estimate-builder .eb-estimate-command-layout {
+    align-items: stretch;
+  }
+  .estimate-builder.estimate-builder.estimate-builder .eb-estimate-command-copy {
+    width: 100%;
+    max-width: 100%;
+  }
+  .estimate-builder.estimate-builder.estimate-builder .eb-estimate-command-title-row {
+    flex-wrap: wrap;
+  }
+  .estimate-builder.estimate-builder.estimate-builder .eb-estimate-command-title {
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
 }

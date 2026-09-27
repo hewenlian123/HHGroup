@@ -74,7 +74,7 @@ describe("Estimate financial read integrity", () => {
               estimate_id: "estimate-1",
               cost_code: "010000",
               desc: "Zero-cost allowance",
-        itemName: "",
+              itemName: "",
               qty: 0,
               unit: "EA",
               unit_cost: 0,

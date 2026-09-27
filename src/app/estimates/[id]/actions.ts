@@ -459,7 +459,7 @@ export async function convertToProjectWithSetupAction(
         projectManager: (formData.get("projectManager") as string)?.trim() || undefined,
         startDate: (formData.get("startDate") as string)?.trim() || undefined,
         endDate: (formData.get("endDate") as string)?.trim() || undefined,
-        
+
         estimateRef: (formData.get("estimateRef") as string)?.trim() || undefined,
       },
       estimateActivityActorFromAuth(guard.context),
@@ -509,7 +509,7 @@ export async function saveEstimateMetaInlineAction(
     );
     const estimateDate = (formData.get("estimateDate") as string)?.trim();
     const validUntil = (formData.get("validUntil") as string)?.trim();
-    
+
     const salesPerson = (formData.get("salesPerson") as string)?.trim();
     const documentStyleRaw = (formData.get("documentStyle") as string)?.trim();
     const documentStyle =
@@ -564,7 +564,7 @@ export async function saveEstimateMetaInlineAction(
       ...(profitPct.value !== undefined ? { profitPct: profitPct.value } : {}),
       ...(estimateDate != null ? { estimateDate: estimateDate || undefined } : {}),
       ...(validUntil != null ? { validUntil } : {}),
-      
+
       ...(salesPerson != null ? { salesPerson } : {}),
       ...(documentStyle != null ? { documentStyle } : {}),
     });
@@ -577,8 +577,6 @@ export async function saveEstimateMetaInlineAction(
     return { ok: false, error: safeEstimateActionError(error, "操作失败") };
   }
 }
-
-
 
 export async function addPaymentMilestoneAction(formData: FormData) {
   const estimateId = formData.get("estimateId");
@@ -1403,7 +1401,7 @@ export async function saveEstimateMetaAction(formData: FormData) {
       : undefined;
     const estimateDate = (formData.get("estimateDate") as string)?.trim();
     const validUntil = (formData.get("validUntil") as string)?.trim();
-    
+
     const salesPerson = (formData.get("salesPerson") as string)?.trim();
     const documentStyleRaw = (formData.get("documentStyle") as string)?.trim();
     const documentStyle =
@@ -1450,7 +1448,7 @@ export async function saveEstimateMetaAction(formData: FormData) {
       ...(profitPct.value !== undefined ? { profitPct: profitPct.value } : {}),
       ...(estimateDate != null ? { estimateDate: estimateDate || undefined } : {}),
       ...(validUntil != null ? { validUntil } : {}),
-      
+
       ...(salesPerson != null ? { salesPerson } : {}),
       ...(documentStyle != null ? { documentStyle } : {}),
     });

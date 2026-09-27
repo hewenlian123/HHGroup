@@ -22,7 +22,7 @@ type EstimateTemplateRow = {
   description: string | null;
   category: string | null;
   default_tax_rate: number | string | null;
-  
+
   template_data: unknown;
   is_archived: boolean | null;
   created_at: string | null;
@@ -34,7 +34,7 @@ type EstimateTemplateWriteInput = {
   description?: string | null;
   category?: string | null;
   defaultTaxRate?: number | null;
-  
+
   templateData: EstimateTemplateData;
 };
 
@@ -55,8 +55,6 @@ function cleanText(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
 }
 
-
-
 function cleanTaxRate(value: unknown): number | null {
   if (value == null || value === "") return null;
   const n = Number(value);
@@ -71,7 +69,7 @@ function rowToTemplate(row: EstimateTemplateRow): EstimateTemplateRecord {
     description: cleanText(row.description),
     category: cleanText(row.category) || "General",
     defaultTaxRate: cleanTaxRate(row.default_tax_rate),
-    
+
     templateData: normalizeEstimateTemplateData(row.template_data),
     isArchived: Boolean(row.is_archived),
     createdAt: row.created_at ?? "",
@@ -87,7 +85,7 @@ function writePayload(input: EstimateTemplateWriteInput): Record<string, unknown
     description: cleanText(input.description),
     category: cleanText(input.category) || "General",
     default_tax_rate: cleanTaxRate(input.defaultTaxRate),
-    
+
     template_data: normalizeEstimateTemplateData(input.templateData),
     updated_at: new Date().toISOString(),
   };
@@ -165,13 +163,19 @@ export async function updateEstimateTemplate(
   const id = cleanText(templateId);
   if (!id) throw new Error("Template id is required.");
   const c = client(explicitClient);
-  const { data: existing, error: readError } = await c.from("estimate_templates")
-    .select("template_data").eq("id", id).single();
+  const { data: existing, error: readError } = await c
+    .from("estimate_templates")
+    .select("template_data")
+    .eq("id", id)
+    .single();
   if (readError || !existing) throw new Error(readError?.message ?? "Could not read template.");
   const payload = writePayload(input);
   payload.template_data = {
     ...normalizeEstimateTemplateData(input.templateData),
-    notes: preserveRetiredEstimateNotes(existing.template_data?.notes, normalizeEstimateNoteBlocks(input.templateData.notes)),
+    notes: preserveRetiredEstimateNotes(
+      existing.template_data?.notes,
+      normalizeEstimateNoteBlocks(input.templateData.notes)
+    ),
   };
   const { data, error } = await c
     .from("estimate_templates")
@@ -224,7 +228,7 @@ export async function duplicateEstimateTemplate(
       description: source.description,
       category: source.category,
       defaultTaxRate: source.defaultTaxRate,
-      
+
       templateData: source.templateData,
     },
     c

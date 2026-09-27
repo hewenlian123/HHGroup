@@ -3,7 +3,7 @@ import { estimateLineItemText } from "@/lib/sanitize-line-item-html";
 
 describe("Estimate Item Name document mapping", () => {
   it("preserves the complete description independently and retains legacy snapshots", () => {
-    const desc = 'Original first line\n<p>Full detailed description</p>';
+    const desc = "Original first line\n<p>Full detailed description</p>";
     expect(estimateLineItemText({ itemName: "Concrete slab", desc })).toEqual({
       title: "Concrete slab",
       body: desc,

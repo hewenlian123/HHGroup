@@ -63,9 +63,23 @@ export function EstimateWorkspace({
           </header>
           {children}
           {notes ? (
-            <section id="estimate-customer-notes" className="estimate-workspace-notes" tabIndex={-1}>{notes}</section>
+            <section
+              id="estimate-customer-notes"
+              className="estimate-workspace-notes"
+              tabIndex={-1}
+            >
+              {notes}
+            </section>
           ) : null}
-          {payment ? <section id="estimate-payment-schedule" className="estimate-workspace-payment-bottom" tabIndex={-1}>{payment}</section> : null}
+          {payment ? (
+            <section
+              id="estimate-payment-schedule"
+              className="estimate-workspace-payment-bottom"
+              tabIndex={-1}
+            >
+              {payment}
+            </section>
+          ) : null}
         </div>
       </div>
     </div>

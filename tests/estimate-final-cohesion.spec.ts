@@ -32,7 +32,9 @@ async function capture(page: Page, testInfo: TestInfo, name: string): Promise<vo
   await testInfo.attach(name, { path, contentType: "image/png" });
 }
 
-test("Estimate List remains operational in the current implementation", async ({ page }, testInfo) => {
+test("Estimate List remains operational in the current implementation", async ({
+  page,
+}, testInfo) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await loginAsE2EOwner(page, "/estimates");
 
@@ -105,9 +107,7 @@ test("Estimate Builder transient controls use the current shared components", as
   await capture(page, testInfo, "estimate-builder-transient-controls-1440");
 });
 
-test("Estimate Preview and Print expose their required actions", async ({
-  page,
-}, testInfo) => {
+test("Estimate Preview and Print expose their required actions", async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await loginAsE2EOwner(page, `/estimates/${E2E_PRESERVED_ESTIMATE_ID}/preview`);
 
@@ -133,9 +133,7 @@ test("Estimate Preview and Print expose their required actions", async ({
   await capture(page, testInfo, "estimate-print-operational-1440");
 });
 
-test("Estimate surfaces honor reduced motion without spatial animation", async ({
-  page,
-}) => {
+test("Estimate surfaces honor reduced motion without spatial animation", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await loginAsE2EOwner(page, "/estimates/new");
 

@@ -712,7 +712,8 @@ export function EstimateEditor({
     [costBreakdownSections, worksheetSections]
   );
 
-  const [paymentPreviewSummary, setPaymentPreviewSummary] = React.useState<EstimateBuilderPaymentSummary | null>(null);
+  const [paymentPreviewSummary, setPaymentPreviewSummary] =
+    React.useState<EstimateBuilderPaymentSummary | null>(null);
   const paymentSummary = React.useMemo((): EstimateBuilderPaymentSummary | null => {
     if (!paymentSchedule.length) return null;
     const scheduledTotal = paymentSchedule.reduce((s, p) => s + (Number(p.amount) || 0), 0);
@@ -720,14 +721,11 @@ export function EstimateEditor({
   }, [paymentSchedule]);
 
   const [localDocumentNotes, setLocalDocumentNotes] = React.useState(meta.documentNotes ?? []);
-  
-  
-  
-  
+
   React.useEffect(() => {
     setLocalDocumentNotes(meta.documentNotes ?? []);
   }, [meta.documentNotes]);
-  
+
   const updateDocumentNotes = React.useCallback(
     (nextNotes: typeof localDocumentNotes) => {
       setLocalDocumentNotes(nextNotes);
@@ -747,12 +745,6 @@ export function EstimateEditor({
     },
     [estimateId, isReadOnly, markUnsaved, toast, trackMutation]
   );
-
-  
-
-  
-
-  
 
   const [itemOrderBusy, setItemOrderBusy] = React.useState(false);
   const [itemMoveAnnouncement, setItemMoveAnnouncement] = React.useState("");
@@ -961,7 +953,13 @@ export function EstimateEditor({
     ]
   );
 
-  const notesSurface = (<EstimateNotesClarifications notes={localDocumentNotes} onNotesChange={updateDocumentNotes} disabled={isReadOnly} />);
+  const notesSurface = (
+    <EstimateNotesClarifications
+      notes={localDocumentNotes}
+      onNotesChange={updateDocumentNotes}
+      disabled={isReadOnly}
+    />
+  );
   const paymentScheduleSurface = (
     <EstimatePaymentSchedule
       estimateId={estimateId}

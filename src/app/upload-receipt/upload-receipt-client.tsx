@@ -83,7 +83,7 @@ export function UploadReceiptClient() {
   React.useEffect(() => {
     if (inheritedProjectApplied.current || projects.length === 0) return;
     const inherited = searchParams.get("projectId") ?? searchParams.get("project_id");
-    if (inherited && projects.some(project => project.id === inherited)) setProjectId(inherited);
+    if (inherited && projects.some((project) => project.id === inherited)) setProjectId(inherited);
     inheritedProjectApplied.current = true;
   }, [projects, searchParams]);
 

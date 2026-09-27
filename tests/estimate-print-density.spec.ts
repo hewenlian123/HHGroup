@@ -15,7 +15,6 @@ import {
   seedDenseEstimateFixture,
 } from "./estimate-dense-fixture";
 
-
 const AFTER_EVIDENCE_DIR = "test-results/estimate-print-density/after";
 
 test.beforeAll(seedDenseEstimateFixture);
@@ -56,26 +55,48 @@ test(`${DENSE_ESTIMATE_NUMBER} uses premium print density without losing documen
   await page.goto(`/estimates/${DENSE_ESTIMATE_ID}/print?pdf=1`);
   await expect(page.getByTestId("estimate-line-item-output")).toHaveCount(62);
   await page.emulateMedia({ media: "print" });
-  const printBytes = await page.pdf({ format: "Letter", preferCSSPageSize: true, printBackground: true });
+  const printBytes = await page.pdf({
+    format: "Letter",
+    preferCSSPageSize: true,
+    printBackground: true,
+  });
   expect(printBytes.toString("latin1").match(/\/Type\s*\/Page\b/g)?.length).toBe(pdfPageCount);
   await mkdir(AFTER_EVIDENCE_DIR, { recursive: true });
   await writeFile(`${AFTER_EVIDENCE_DIR}/E2E-EST-DENSE-0079-after-density.pdf`, pdfBytes);
 });
 
-
 test("small sections share pages and a large section flows across pages", async ({ page }) => {
   test.setTimeout(120_000);
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   expect(["localhost", "127.0.0.1"]).toContain(new URL(url).hostname);
-  const db = createClient(url, (process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY)!);
-  const change = async (query: PromiseLike<{ error: unknown }>) => expect((await query).error).toBeNull();
-  await change(db.from("estimate_payment_schedule_items").delete().eq("estimate_id", DENSE_ESTIMATE_ID));
+  const db = createClient(
+    url,
+    (process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY)!
+  );
+  const change = async (query: PromiseLike<{ error: unknown }>) =>
+    expect((await query).error).toBeNull();
+  await change(
+    db.from("estimate_payment_schedule_items").delete().eq("estimate_id", DENSE_ESTIMATE_ID)
+  );
   await change(db.from("estimate_items").delete().eq("estimate_id", DENSE_ESTIMATE_ID));
-  await change(db.from("estimate_meta").update({ tax: 0, discount: 0 }).eq("estimate_id", DENSE_ESTIMATE_ID));
-  await change(db.from("estimate_items").insert(Array.from({ length: 3 }, (_, i) => ({
-    estimate_id: DENSE_ESTIMATE_ID, cost_code: `dense-0${i + 1}`, item_name: `Small item ${i + 1}`,
-    desc: `Small item body ${i + 1}.`, qty: 1, unit: "EA", unit_cost: 100, markup_pct: 0, sort_order: i,
-  }))));
+  await change(
+    db.from("estimate_meta").update({ tax: 0, discount: 0 }).eq("estimate_id", DENSE_ESTIMATE_ID)
+  );
+  await change(
+    db.from("estimate_items").insert(
+      Array.from({ length: 3 }, (_, i) => ({
+        estimate_id: DENSE_ESTIMATE_ID,
+        cost_code: `dense-0${i + 1}`,
+        item_name: `Small item ${i + 1}`,
+        desc: `Small item body ${i + 1}.`,
+        qty: 1,
+        unit: "EA",
+        unit_cost: 100,
+        markup_pct: 0,
+        sort_order: i,
+      }))
+    )
+  );
   await page.setViewportSize({ width: 1440, height: 1000 });
   await loginAsE2EOwner(page, `/estimates/${DENSE_ESTIMATE_ID}/preview`);
   await expect(page.getByTestId("estimate-line-item-output")).toHaveCount(3);
@@ -84,12 +105,24 @@ test("small sections share pages and a large section flows across pages", async 
   const small = await page.pdf({ preferCSSPageSize: true, printBackground: true });
   await writeFile("test-results/estimate-print-density/flow/small-sections.pdf", small);
   expect(small.toString("latin1").match(/\/Type\s*\/Page\b/g)?.length).toBeLessThanOrEqual(2);
-  await change(db.from("estimate_items").update({ cost_code: "dense-01" }).eq("estimate_id", DENSE_ESTIMATE_ID));
-  await change(db.from("estimate_items").insert(Array.from({ length: 25 }, (_, i) => ({
-    estimate_id: DENSE_ESTIMATE_ID, cost_code: "dense-01", item_name: `Large section item ${i + 4}`,
-    desc: `Large item ${i + 4}: labor, materials, preparation, installation and cleanup.`,
-    qty: 1, unit: "EA", unit_cost: 100, markup_pct: 0, sort_order: i + 3,
-  }))));
+  await change(
+    db.from("estimate_items").update({ cost_code: "dense-01" }).eq("estimate_id", DENSE_ESTIMATE_ID)
+  );
+  await change(
+    db.from("estimate_items").insert(
+      Array.from({ length: 25 }, (_, i) => ({
+        estimate_id: DENSE_ESTIMATE_ID,
+        cost_code: "dense-01",
+        item_name: `Large section item ${i + 4}`,
+        desc: `Large item ${i + 4}: labor, materials, preparation, installation and cleanup.`,
+        qty: 1,
+        unit: "EA",
+        unit_cost: 100,
+        markup_pct: 0,
+        sort_order: i + 3,
+      }))
+    )
+  );
   await page.goto(`/estimates/${DENSE_ESTIMATE_ID}/print?pdf=1`);
   await expect(page.getByTestId("estimate-line-item-output")).toHaveCount(28);
   const large = await page.pdf({ preferCSSPageSize: true, printBackground: true });

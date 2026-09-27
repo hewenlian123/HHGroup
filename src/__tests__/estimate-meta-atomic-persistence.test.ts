@@ -86,9 +86,14 @@ function createRpcOnlyClient(result?: { data: unknown; error: { message: string 
     rpc,
     // Only SELECT is exposed: a direct update/insert still fails this atomic-write contract.
     from: vi.fn(() => ({
-      select: () => ({ eq: () => ({ single: async () => ({
-        data: { document_notes: [] }, error: null,
-      }) }) }),
+      select: () => ({
+        eq: () => ({
+          single: async () => ({
+            data: { document_notes: [] },
+            error: null,
+          }),
+        }),
+      }),
     })),
   };
 }

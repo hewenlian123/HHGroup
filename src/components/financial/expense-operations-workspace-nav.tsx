@@ -19,7 +19,11 @@ const SURFACES: Array<{
 ];
 
 function surfaceForPathname(pathname: string): ExpenseOperationsSurface | null {
-  if (pathname.startsWith("/financial/expenses/intake") || pathname.startsWith("/financial/inbox/worker")) return "intake";
+  if (
+    pathname.startsWith("/financial/expenses/intake") ||
+    pathname.startsWith("/financial/inbox/worker")
+  )
+    return "intake";
   return SURFACES.find((surface) => pathname.startsWith(surface.pathname))?.id ?? null;
 }
 

@@ -74,14 +74,7 @@ const LINE_ITEM_STATUSES = new Set([
   "excluded",
   "owner_supplied",
 ]);
-const NOTE_TYPES = new Set([
-  "exclusions",
-  "assumptions",
-  
-  "warranty",
-  "schedule_note",
-  "custom",
-]);
+const NOTE_TYPES = new Set(["exclusions", "assumptions", "warranty", "schedule_note", "custom"]);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);

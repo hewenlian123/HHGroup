@@ -72,11 +72,15 @@ for (const viewport of [
   });
 }
 
-test("Review persists request, resolution, approval and Post without another expense", async ({ page }, testInfo) => {
+test("Review persists request, resolution, approval and Post without another expense", async ({
+  page,
+}, testInfo) => {
   test.setTimeout(180_000);
   const errors: string[] = [];
-  page.on("pageerror", error => errors.push(error.message));
-  page.on("console", message => { if (message.type() === "error") errors.push(message.text()); });
+  page.on("pageerror", (error) => errors.push(error.message));
+  page.on("console", (message) => {
+    if (message.type() === "error") errors.push(message.text());
+  });
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   expect(["127.0.0.1", "localhost"]).toContain(new URL(url).hostname);
   await loginAsE2EOwner(page, "/financial/inbox");

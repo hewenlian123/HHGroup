@@ -1,7 +1,7 @@
 export const ESTIMATE_NOTE_TYPES = [
   "exclusions",
   "assumptions",
-  
+
   "warranty",
   "schedule_note",
   "custom",
@@ -19,7 +19,7 @@ export type EstimateNoteBlock = {
 export const NOTE_TYPE_LABELS: Record<EstimateNoteType, string> = {
   exclusions: "Exclusions",
   assumptions: "Assumptions",
-  
+
   warranty: "Warranty",
   schedule_note: "Schedule Note",
   custom: "Custom Note",
@@ -53,9 +53,12 @@ export function normalizeEstimateNoteBlocks(input: unknown): EstimateNoteBlock[]
 }
 
 /** Keep retired records in storage when editing customer notes; never expose them as cards. */
-export function preserveRetiredEstimateNotes(existing: unknown, customerNotes: EstimateNoteBlock[]): unknown[] {
-  const retired = Array.isArray(existing) ? existing.filter((note) =>
-    note && typeof note === "object" && note.type === "payment_terms"
-  ) : [];
+export function preserveRetiredEstimateNotes(
+  existing: unknown,
+  customerNotes: EstimateNoteBlock[]
+): unknown[] {
+  const retired = Array.isArray(existing)
+    ? existing.filter((note) => note && typeof note === "object" && note.type === "payment_terms")
+    : [];
   return [...customerNotes, ...retired];
 }

@@ -1,4 +1,7 @@
-import { lineItemBodyLooksLikeHtml, sanitizeLineItemDescriptionHtml } from "@/lib/sanitize-line-item-html";
+import {
+  lineItemBodyLooksLikeHtml,
+  sanitizeLineItemDescriptionHtml,
+} from "@/lib/sanitize-line-item-html";
 
 function escapeHtmlText(s: string): string {
   return s
@@ -49,4 +52,3 @@ export function normalizeEditorDescriptionHtml(raw: string): string {
   }
   return clean.replace(edgeEmptyParagraph, "").trim();
 }
-

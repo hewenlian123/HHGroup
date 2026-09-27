@@ -32,7 +32,7 @@ export type EstimateTemplateRecord = {
   description: string;
   category: string;
   defaultTaxRate: number | null;
-  
+
   templateData: EstimateTemplateData;
   isArchived: boolean;
   createdAt: string;
@@ -52,7 +52,7 @@ export type EstimateTemplateDraft = {
   description: string;
   category: string;
   defaultTaxRate: string;
-  
+
   sections: EstimateTemplateDraftSection[];
   notes: EstimateNoteBlock[];
 };
@@ -60,7 +60,7 @@ export type EstimateTemplateDraft = {
 const NOTE_TYPES = new Set<EstimateNoteType>([
   "exclusions",
   "assumptions",
-  
+
   "warranty",
   "schedule_note",
   "custom",
@@ -130,7 +130,7 @@ export function estimateTemplateDraftFromRecord(
     description: template.description,
     category: template.category,
     defaultTaxRate: template.defaultTaxRate == null ? "" : String(template.defaultTaxRate),
-    
+
     sections: template.templateData.sections.map((section) => ({
       id: makeId("template-section"),
       title: section.title,

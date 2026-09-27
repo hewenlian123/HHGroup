@@ -33,7 +33,9 @@ test("empty scope search dismisses with Escape", async ({ page }) => {
 test("customer notes are directly visible without audience tabs", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Customer Notes", exact: true })).toBeVisible();
   await expect(page.getByRole("tab", { name: "Customer Notes", exact: true })).toHaveCount(0);
-  await expect(page.getByText("Client-facing scope notes and clarifications", { exact: true })).toBeVisible();
+  await expect(
+    page.getByText("Client-facing scope notes and clarifications", { exact: true })
+  ).toBeVisible();
 });
 
 for (const width of [1440, 1140, 1024, 768, 640, 390]) {

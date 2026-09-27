@@ -2040,5 +2040,7 @@ body:has([data-estimate-pdf-capture="true"]) .estimate-page-label {
     break-after: auto;
     page-break-after: auto;
   }
-  .estimate-flow-footer { display: none; }
+  .estimate-flow-footer {
+    display: none;
+  }
 }

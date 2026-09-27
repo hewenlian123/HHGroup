@@ -2811,7 +2811,10 @@ export function ExpenseInboxPreviewModal({
             </ProgressiveDisclosure>
           </div>
         )}
-        <ExpenseOperationReview expenseId={expense.id} disabled={saving || markBusy || reviewDraftDirty} />
+        <ExpenseOperationReview
+          expenseId={expense.id}
+          disabled={saving || markBusy || reviewDraftDirty}
+        />
       </div>
       {inlineReviewWorkspace ? (
         <div
@@ -2863,10 +2866,22 @@ export function ExpenseInboxPreviewModal({
             {reviewStatusMessage}
           </div>
           <div className="flex flex-wrap items-center justify-end gap-2">
-            <Button type="button" variant="ghost" disabled={saving || markBusy || reviewDraftDirty} onClick={() => {
-              const compose = panelRef.current?.querySelector<HTMLDetailsElement>("[data-expense-operation-compose]");
-              if (compose) { compose.open = true; compose.querySelector<HTMLTextAreaElement>("textarea")?.focus(); }
-            }}>Request Info</Button>
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={saving || markBusy || reviewDraftDirty}
+              onClick={() => {
+                const compose = panelRef.current?.querySelector<HTMLDetailsElement>(
+                  "[data-expense-operation-compose]"
+                );
+                if (compose) {
+                  compose.open = true;
+                  compose.querySelector<HTMLTextAreaElement>("textarea")?.focus();
+                }
+              }}
+            >
+              Request Info
+            </Button>
             <Button
               type="button"
               variant="outline"
@@ -2895,7 +2910,7 @@ export function ExpenseInboxPreviewModal({
                 <SubmitSpinner loading={saving || markBusy} className="mr-2" />
                 {(inlineReviewWorkspace || inboxUploadPreview) && previewNav?.canNext
                   ? "Approve & Next"
-                  : (inlineReviewWorkspace || inboxUploadPreview)
+                  : inlineReviewWorkspace || inboxUploadPreview
                     ? "Approve"
                     : "Mark Done"}
               </Button>
@@ -2990,7 +3005,7 @@ export function ExpenseInboxPreviewModal({
                 <SubmitSpinner loading={markBusy} className="mr-2" />
                 {(inlineReviewWorkspace || inboxUploadPreview) && previewNav?.canNext
                   ? "Approve & Next"
-                  : (inlineReviewWorkspace || inboxUploadPreview)
+                  : inlineReviewWorkspace || inboxUploadPreview
                     ? "Approve"
                     : "Mark Done"}
               </Button>

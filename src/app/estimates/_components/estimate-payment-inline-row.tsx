@@ -303,7 +303,13 @@ export function EstimatePaymentInlineRow({
           </div>
         </div>
 
-        <span ref={(node) => { if (node) node.inert = busy; }}>{actions}</span>
+        <span
+          ref={(node) => {
+            if (node) node.inert = busy;
+          }}
+        >
+          {actions}
+        </span>
       </div>
       <details className="estimate-payment-entry-details">
         <summary>{value.description?.trim() ? "Note" : "Add note"}</summary>
