@@ -48,7 +48,7 @@
   --hh-sidebar-text-pin: #aeb9c8;
   --hh-sidebar-text-meta: #8391a5;
   --hh-sidebar-text-icon: #7f8da2;
-  --hh-sidebar-text-label: #6f7e94;
+  --hh-sidebar-text-label: #728196;
   --hh-sidebar-line: rgba(255, 255, 255, 0.07);
   --hh-sidebar-raised: rgba(255, 255, 255, 0.05);
   --hh-sidebar-hover: rgba(255, 255, 255, 0.08);
@@ -143,7 +143,7 @@
   --hh-radius-2xl: 14px;
   --hh-radius-full: 999px;
 
-  --hh-font-wordmark: var(--font-cormorant), "Iowan Old Style", Palatino, Georgia, serif;
+  --hh-font-wordmark: var(--font-cormorant, "Iowan Old Style"), Palatino, Georgia, serif;
   --hh-duration-hover: 120ms;
   --hh-duration-sheet: 180ms;
   --hh-duration-shimmer: 1.2s;
@@ -154,7 +154,8 @@ html[data-hh-theme="operational-light"],
 [data-hh-theme="operational-dark"],
 [data-hh-theme="operational-light"] {
   color-scheme: light;
-  --hh-font-family-sans: var(--font-inter), Inter, ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-inter, Inter), ui-sans-serif, system-ui, sans-serif;
+  --hh-font-family-sans: var(--font-inter, Inter), ui-sans-serif, system-ui, sans-serif;
   --hh-sidebar-inset: 0px;
   --hh-sidebar-width-expanded: 240px;
   --hh-topbar-height-desktop: 56px;
@@ -438,14 +439,21 @@ html[data-hh-theme="operational-light"],
     var(--hh-shadow-card);
 }
 
-.neo-sidebar {
+/*
+ * Next emits the legacy `.neo-sidebar { background: var(--hh-l1-workspace) }`
+ * rule after this file and drops cascade layers, so a single class loses.
+ * The theme selector keeps the navy gradient above that shorthand.
+ */
+:is(html[data-hh-theme="operational-dark"], html[data-hh-theme="operational-light"]) .neo-sidebar {
   border-width: 0 1px 0 0;
   border-color: var(--hh-navy-edge);
   border-radius: 0;
   background-color: var(--hh-navy);
   background-image: var(--hh-grad-sidebar);
+  background-repeat: no-repeat;
   box-shadow: var(--hh-shadow-nav-shell);
   color: var(--hh-sidebar-text-item);
+  font-family: var(--font-inter, Inter), ui-sans-serif, system-ui, sans-serif;
   --hh-text-primary: var(--hh-sidebar-text-strong);
   --hh-text-secondary: var(--hh-sidebar-text-item);
   --hh-text-tertiary: var(--hh-sidebar-text-meta);
@@ -545,7 +553,8 @@ html[data-hh-theme="operational-light"],
   color: var(--hh-navy-deep);
 }
 
-[data-app-topbar].neo-command-bar {
+:is(html[data-hh-theme="operational-dark"], html[data-hh-theme="operational-light"])
+  [data-app-topbar].neo-command-bar {
   border-radius: 0;
   border-bottom: 1px solid var(--hh-line);
   background: color-mix(in srgb, var(--hh-surface) 92%, transparent);
