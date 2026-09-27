@@ -186,6 +186,52 @@ const config: Config = {
           "4": "hsl(var(--chart-4))",
           "5": "hsl(var(--chart-5))",
         },
+        /** Navy + brass v3 semantic names. Hex lives in src/styles/tokens.css. */
+        ink: { DEFAULT: "var(--hh-ink)", 2: "var(--hh-ink-2)" },
+        faint: "var(--hh-faint)",
+        placeholder: "var(--hh-placeholder)",
+        icon: "var(--hh-icon)",
+        th: "var(--hh-th)",
+        line: {
+          DEFAULT: "var(--hh-line)",
+          2: "var(--hh-line-2)",
+          input: "var(--hh-line-input)",
+          cell: "var(--hh-line-cell)",
+        },
+        navy: {
+          DEFAULT: "var(--hh-navy)",
+          deep: "var(--hh-navy-deep)",
+          edge: "var(--hh-navy-edge)",
+          glow: "var(--hh-navy-glow)",
+        },
+        link: "var(--hh-link)",
+        brass: {
+          hi: "var(--hh-brass-hi)",
+          DEFAULT: "var(--hh-brass)",
+          lo: "var(--hh-brass-lo)",
+          edge: "var(--hh-brass-edge)",
+          light: "var(--hh-brass-light)",
+        },
+        success: {
+          bg: "var(--hh-success-bg)",
+          fg: "var(--hh-success-fg)",
+          solid: "var(--hh-success-solid)",
+        },
+        warning: {
+          bg: "var(--hh-warning-bg)",
+          fg: "var(--hh-warning-fg)",
+          solid: "var(--hh-warning-solid)",
+        },
+        danger: {
+          bg: "var(--hh-danger-bg)",
+          fg: "var(--hh-danger-fg)",
+          solid: "var(--hh-danger-solid)",
+        },
+        info: {
+          bg: "var(--hh-info-bg)",
+          fg: "var(--hh-info-fg)",
+          solid: "var(--hh-info-solid)",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -195,6 +241,8 @@ const config: Config = {
         "hh-standard": "var(--hh-radius-standard)",
         "hh-panel": "var(--hh-radius-panel)",
         "hh-task": "var(--hh-radius-task)",
+        card: "var(--hh-radius-xl)",
+        "card-m": "var(--hh-radius-2xl)",
       },
       width: {
         "hh-sidebar-expanded": "var(--hh-sidebar-width-expanded)",
@@ -207,6 +255,7 @@ const config: Config = {
       },
       fontFamily: {
         sans: ["var(--hh-font-family-sans)"],
+        wordmark: ["var(--hh-font-wordmark)"],
       },
       fontSize: {
         "hh-page-title": [
@@ -335,6 +384,21 @@ const config: Config = {
           "var(--hh-type-label-font-size)",
           { lineHeight: "var(--hh-type-label-line-height)" },
         ],
+        "display-hero": [
+          "40px",
+          { lineHeight: "46px", letterSpacing: "-0.03em", fontWeight: "700" },
+        ],
+        "title-page": [
+          "29px",
+          { lineHeight: "36px", letterSpacing: "-0.022em", fontWeight: "650" },
+        ],
+        "num-xl": ["28px", { lineHeight: "34px", letterSpacing: "-0.025em", fontWeight: "700" }],
+        "num-l": ["20px", { lineHeight: "34px", letterSpacing: "-0.02em", fontWeight: "650" }],
+        "title-card": [
+          "15.5px",
+          { lineHeight: "22px", letterSpacing: "-0.01em", fontWeight: "600" },
+        ],
+        "num-m": ["16px", { lineHeight: "22px", letterSpacing: "-0.012em", fontWeight: "650" }],
       },
       boxShadow: {
         operational: "var(--hh-shadow-operational)",
@@ -342,6 +406,15 @@ const config: Config = {
         task: "var(--hh-shadow-task)",
         overlay: "var(--hh-shadow-overlay)",
         sidebar: "var(--hh-shadow-sidebar)",
+        card: "var(--hh-shadow-card)",
+        hero: "var(--hh-shadow-hero)",
+        "btn-primary": "var(--hh-shadow-btn-primary)",
+        "btn-secondary": "var(--hh-shadow-btn-secondary)",
+      },
+      backgroundImage: {
+        brass: "var(--hh-grad-brass)",
+        sidebar: "var(--hh-grad-sidebar)",
+        hero: "var(--hh-grad-hero)",
       },
       keyframes: {
         "receipt-queue-badge": {

@@ -375,27 +375,20 @@ export function Sidebar({
         className
       )}
     >
-      <div
-        className={cn(
-          "relative z-[1] flex h-12 items-center gap-2 border-b border-[var(--hh-border)] bg-[var(--hh-l1-workspace)]",
-          collapsed ? "px-3" : "px-3"
-        )}
-      >
-        <Avatar className="h-7 w-7 rounded-md ring-1 ring-inset ring-[var(--hh-border)]">
-          {logoUrl ? <AvatarImage src={logoUrl} alt={orgName} className="object-contain" /> : null}
-          <AvatarFallback
-            className={cn(
-              "rounded-md bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)]",
-              TYPO.tableHeader
-            )}
-          >
+      <div className={cn("hh-brand relative z-[1] px-3", collapsed && "justify-center px-2")}>
+        <Avatar className="hh-logo-mark h-[34px] w-[34px] rounded-none">
+          {logoUrl ? <AvatarImage src={logoUrl} alt="" /> : null}
+          <AvatarFallback className="rounded-none bg-transparent text-[var(--hh-brass)]">
             {getCompanyInitials(orgName)}
           </AvatarFallback>
         </Avatar>
         {!collapsed && (
           <div className="min-w-0">
-            <p className={cn("truncate", TYPO.tableHeader)}>HH Unified</p>
-            <p className={cn("truncate", TYPO.primaryName)}>{orgName}</p>
+            <p className="hh-wordmark truncate">
+              {orgName.split(" ")[0]}
+              {orgName.includes(" ") ? <span> {orgName.split(" ").slice(1).join(" ")}</span> : null}
+            </p>
+            <p className="hh-logo-caption truncate">Logo placeholder</p>
           </div>
         )}
       </div>
@@ -485,10 +478,10 @@ export function Sidebar({
       {!collapsed && (
         <div className="relative z-[1] border-t border-[var(--hh-border)] px-3 py-3">
           <div className="flex items-center gap-2.5 rounded-md border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-2.5 py-2">
-            <Avatar className="h-8 w-8 shrink-0 rounded-md ring-1 ring-inset ring-[var(--hh-border)]">
+            <Avatar className="h-8 w-8 shrink-0 rounded-full ring-1 ring-inset ring-[var(--hh-brass-light)]">
               <AvatarFallback
                 className={cn(
-                  "rounded-md bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-secondary)]",
+                  "hh-user-avatar rounded-full text-[var(--hh-navy-deep)]",
                   TYPO.tableHeader
                 )}
               >

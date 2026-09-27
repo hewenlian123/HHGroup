@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
 import { OS, TYPO } from "@/lib/typography";
 
-const tableShellClass = cn(OS.tableShell, "rounded-hh-panel");
+const tableShellClass = cn(OS.tableShell, "hh-table rounded-hh-panel");
 
 /** Legacy raw table cell borders — light row dividers only (prefer `Table` primitives). */
 export const tableCellBorderClass = "border-b border-[var(--hh-border)] last:border-b-0";

@@ -1,0 +1,20 @@
+# Files in this list fail CI on any raw color that is not already in
+# scripts/raw-color-baseline.json. Everywhere else, new raw colors warn.
+src/app/globals.css
+src/app/layout.tsx
+src/components/ui/button.tsx
+src/components/ui/badge.tsx
+src/components/ui/card.tsx
+src/components/ui/input.tsx
+src/components/ui/textarea.tsx
+src/components/ui/select.tsx
+src/components/ui/table.tsx
+src/components/ui/tabs.tsx
+src/components/ui/skeleton.tsx
+src/components/base/status-badge.tsx
+src/components/layout/sidebar.tsx
+src/components/layout/floating-action-button.tsx
+src/components/toast/toast-provider.tsx
+src/lib/typography.ts
+src/lib/motion-system.ts
+src/__tests__/navy-brass-tokens.test.ts

@@ -28,26 +28,26 @@ function normalizedVariant(variant: ToastVariant | undefined) {
 
 const variantPresentation = {
   success: {
-    className:
-      "border-[var(--hh-success-border)] bg-[var(--hh-success-soft-fill)] text-[var(--hh-success)]",
+    className: "hh-toast border-[var(--hh-line)] bg-[var(--hh-surface)] text-[var(--hh-ink)]",
+    iconClassName: "text-[var(--hh-success)]",
     Icon: CheckCircle2,
     label: "Success",
   },
   warning: {
-    className:
-      "border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] text-[var(--hh-warning)]",
+    className: "hh-toast border-[var(--hh-line)] bg-[var(--hh-surface)] text-[var(--hh-ink)]",
+    iconClassName: "text-[var(--hh-warning)]",
     Icon: AlertTriangle,
     label: "Warning",
   },
   information: {
-    className:
-      "border-[var(--hh-information-border)] bg-[var(--hh-information-soft-fill)] text-[var(--hh-information)]",
+    className: "hh-toast border-[var(--hh-line)] bg-[var(--hh-surface)] text-[var(--hh-ink)]",
+    iconClassName: "text-[var(--hh-information)]",
     Icon: Info,
     label: "Information",
   },
   danger: {
-    className:
-      "border-[var(--hh-danger-border)] bg-[var(--hh-danger-soft-fill)] text-[var(--hh-danger)]",
+    className: "hh-toast border-[var(--hh-line)] bg-[var(--hh-surface)] text-[var(--hh-ink)]",
+    iconClassName: "text-[var(--hh-danger)]",
     Icon: XCircle,
     label: "Error",
   },
@@ -105,9 +105,13 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         {toasts.map((toast) => {
           const presentation = variantPresentation[normalizedVariant(toast.variant)];
           const Icon = presentation.Icon;
+          const tone = normalizedVariant(toast.variant);
           const content = (
             <>
-              <Icon className="mt-px h-4 w-4 shrink-0" aria-hidden="true" />
+              <Icon
+                className={cn("mt-px h-4 w-4 shrink-0", presentation.iconClassName)}
+                aria-hidden="true"
+              />
               <span className="min-w-0 flex-1">
                 <span className={cn("block", TYPO.bodyStrong)}>{toast.title}</span>
                 {toast.description ? (
@@ -123,6 +127,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             <div
               key={toast.id}
               data-toast="true"
+              data-toast-tone={tone}
               aria-label={`${presentation.label}: ${toast.title}`}
               className={cn(
                 "pointer-events-auto flex min-h-hh-touch items-start gap-hh-2 rounded-hh-standard border px-hh-3 py-hh-2 shadow-floating",

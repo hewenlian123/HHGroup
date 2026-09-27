@@ -35,15 +35,15 @@ export const NEO = {
   input: "neo-input",
   amount: "neo-amount",
   surface:
-    "rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-operational",
+    "hh-card rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-operational",
   surfaceMuted:
     "rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)]",
   buttonPrimary:
-    "border-transparent bg-[var(--hh-action-primary)] text-[var(--hh-action-primary-foreground)] hover:opacity-90 active:bg-[var(--hh-action-primary)] dark:hover:bg-[var(--hh-gold-hover)] dark:hover:opacity-100 dark:active:bg-[var(--hh-gold-hover)]",
+    "hh-btn-primary border-transparent bg-[var(--hh-action-primary)] text-[var(--hh-action-primary-foreground)] hover:opacity-90 active:bg-[var(--hh-action-primary)] dark:hover:bg-[var(--hh-gold-hover)] dark:hover:opacity-100 dark:active:bg-[var(--hh-gold-hover)]",
   buttonSecondary:
-    "border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)]",
+    "hh-btn-secondary border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)]",
   buttonGhost:
-    "border-0 bg-transparent text-[var(--hh-text-secondary)] hover:bg-[var(--hh-l3-hover)] hover:text-[var(--hh-text-primary)] active:bg-[var(--hh-l3-pressed)]",
+    "hh-btn-ghost border-0 bg-transparent text-[var(--hh-text-secondary)] hover:bg-[var(--hh-l3-hover)] hover:text-[var(--hh-text-primary)] active:bg-[var(--hh-l3-pressed)]",
   focusRing: "hh-focus-ring",
   status: {
     success: "hh-pill-success",
