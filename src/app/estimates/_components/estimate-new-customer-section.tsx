@@ -63,8 +63,10 @@ export type EstimateNewCustomerSectionProps = {
   selectedCustomer: CustomerOption | null;
   /** Subtotal for tax preset rate → dollar amount. */
   estimateSubtotal: number;
-  /** Subtotal + tax (before discount). */
+  /** Subtotal before discount. Percent discounts use this base, then tax. */
   preDiscountTotal: number;
+  taxRatePct: number | null;
+  onTaxRateChange: (ratePct: number) => void;
   documentStyle: EstimateDocumentStyle;
   submitAttempted: boolean;
   detailsOpen?: boolean;
@@ -98,6 +100,8 @@ export function EstimateNewCustomerSection({
   selectedCustomer,
   estimateSubtotal,
   preDiscountTotal,
+  taxRatePct,
+  onTaxRateChange,
   submitAttempted,
   onClientNameChange,
   onProjectNameChange,
@@ -473,25 +477,25 @@ export function EstimateNewCustomerSection({
                   <div className={cn(EB.sheetField, "min-w-0")}>
                     <div className={EB.sheetLabelRow}>
                       <Label htmlFor="new-builder-tax" className={EB.sheetLabel}>
-                        Tax amount
+                        Tax rate %
                       </Label>
                       <EstimateTaxPresetMenu
-                        estimateSubtotal={estimateSubtotal}
+                        estimateSubtotal={Math.max(0, estimateSubtotal - Math.max(0, discount))}
                         tax={tax}
                         onApplyTax={onTaxChange}
                         onTaxTouched={onTaxTouched}
+                        onApplyRate={onTaxRateChange}
                       />
                     </div>
                     <Input
                       id="new-builder-tax"
                       type="number"
-                      step="0.01"
+                      step="0.001"
                       min={0}
-                      value={tax}
+                      value={taxRatePct ?? ""}
                       onChange={(e) => {
-                        onTaxTouched();
                         const n = Number(e.target.value);
-                        onTaxChange(Number.isFinite(n) ? Math.max(0, n) : 0);
+                        onTaxRateChange(Number.isFinite(n) ? Math.max(0, n) : 0);
                       }}
                       className={ebSheetInput(cn("text-sm text-foreground", EB.inputNumeric))}
                     />

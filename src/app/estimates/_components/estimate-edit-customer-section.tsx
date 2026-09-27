@@ -34,11 +34,27 @@ import type { EstimateDocumentStyle } from "@/lib/estimate-document-style";
 import { cn } from "@/lib/utils";
 import { ChevronDown } from "lucide-react";
 import { formatEstimateCurrency } from "./estimate-currency";
+import { roundMoney } from "@/lib/money";
 
 const metaLabel =
   "eb-estimate-context-label mb-0.5 block text-hh-metadata font-medium leading-tight text-muted-foreground";
 const metaPanel = cn(EB.draftPanel, "eb-estimate-context-panel px-3 py-3 sm:px-4");
 const metaInput = ebSheetInput("text-sm");
+
+function initialTaxRateText(
+  tax: number,
+  discount: number,
+  subtotal: number,
+  storedRate: number | null | undefined
+): string {
+  if (storedRate != null && Number.isFinite(Number(storedRate))) {
+    return String(Number(storedRate));
+  }
+  const base = Math.max(0, subtotal - Math.max(0, discount));
+  if (!(base > 0) || !(tax > 0)) return "0";
+  const inferred = Math.round((tax / base) * 10000) / 100;
+  return String(inferred);
+}
 
 export type EstimateEditCustomerMeta = {
   client: { name: string; phone: string; email: string; address: string };
@@ -48,6 +64,7 @@ export type EstimateEditCustomerMeta = {
   salesPerson?: string | null;
   notes?: string | null;
   documentStyle?: EstimateDocumentStyle;
+  taxRatePct?: number | null;
 };
 
 function ReadOnlyMetaRows({
@@ -179,8 +196,15 @@ export function EstimateEditCustomerSection({
   const [formResetKey, setFormResetKey] = React.useState(0);
   const [estimateDate, setEstimateDate] = React.useState(meta.estimateDate ?? today);
   const [validUntil, setValidUntil] = React.useState(meta.validUntil ?? "");
-  const [taxDraft, setTaxDraft] = React.useState(tax);
-  const [discountDraft, setDiscountDraft] = React.useState(discount);
+  const [taxRateText, setTaxRateText] = React.useState(() =>
+    initialTaxRateText(tax, discount, estimateSubtotal, meta.taxRatePct)
+  );
+  const [discountText, setDiscountText] = React.useState(() => String(discount ?? 0));
+  const discountDraft = Math.max(0, Number(discountText) || 0);
+  const taxRateNumber = Math.max(0, Number(taxRateText) || 0);
+  const taxDraft = roundMoney(
+    Math.max(0, estimateSubtotal - discountDraft) * (taxRateNumber / 100)
+  );
   const [selectedCustomerId, setSelectedCustomerId] = React.useState<string | null>(
     customerId ?? null
   );
@@ -195,7 +219,7 @@ export function EstimateEditCustomerSection({
   >([]);
   const [selectedProjectId, setSelectedProjectId] = React.useState("");
   const [projectsLoading, setProjectsLoading] = React.useState(false);
-  const projectedCustomerTotal = estimateSubtotal + taxDraft - discountDraft;
+  const projectedCustomerTotal = estimateSubtotal - discountDraft + taxDraft;
   const discountExceedsPreDiscountTotal = projectedCustomerTotal < 0;
   const [documentStyleDraft, setDocumentStyleDraft] = React.useState<EstimateDocumentStyle>(
     meta.documentStyle ?? "proposal"
@@ -206,10 +230,13 @@ export function EstimateEditCustomerSection({
   React.useEffect(() => {
     // Same-value RSC refreshes replace the `meta` object identity. Depend on the
     // server-authoritative scalar values so they cannot overwrite an active draft.
+    // Tax and discount stay local while the sheet is open so typing is not reset.
+    if (!detailsOpen) {
+      setTaxRateText(initialTaxRateText(tax, discount, estimateSubtotal, meta.taxRatePct));
+      setDiscountText(String(discount ?? 0));
+    }
     setEstimateDate(meta.estimateDate ?? today);
     setValidUntil(meta.validUntil ?? "");
-    setTaxDraft(tax);
-    setDiscountDraft(discount);
     setSelectedCustomerId(customerId ?? null);
     setClientNameDraft(meta.client.name);
     setClientPhoneDraft(meta.client.phone);
@@ -230,8 +257,11 @@ export function EstimateEditCustomerSection({
     meta.project.name,
     meta.project.siteAddress,
     meta.validUntil,
+    meta.taxRatePct,
     tax,
     today,
+    detailsOpen,
+    estimateSubtotal,
   ]);
 
   React.useEffect(() => {
@@ -285,8 +315,8 @@ export function EstimateEditCustomerSection({
   const discardDetails = (): void => {
     setEstimateDate(meta.estimateDate ?? today);
     setValidUntil(meta.validUntil ?? "");
-    setTaxDraft(tax);
-    setDiscountDraft(discount);
+    setTaxRateText(initialTaxRateText(tax, discount, estimateSubtotal, meta.taxRatePct));
+    setDiscountText(String(discount ?? 0));
     setSelectedCustomerId(customerId ?? null);
     setClientNameDraft(meta.client.name);
     setClientPhoneDraft(meta.client.phone);
@@ -595,27 +625,28 @@ export function EstimateEditCustomerSection({
                       </div>
                       <div className={cn(EB.sheetField, "min-w-0")}>
                         <div className={EB.sheetLabelRow}>
-                          <Label htmlFor="tax" className={EB.sheetLabel}>
-                            Tax amount
+                          <Label htmlFor="taxRatePct" className={EB.sheetLabel}>
+                            Tax rate %
                           </Label>
                           <EstimateTaxPresetMenu
-                            estimateSubtotal={estimateSubtotal}
+                            estimateSubtotal={Math.max(0, estimateSubtotal - discountDraft)}
                             tax={taxDraft}
-                            onApplyTax={setTaxDraft}
+                            onApplyTax={(amount) => {
+                              const base = Math.max(0, estimateSubtotal - discountDraft);
+                              const rate = base > 0 ? Math.round((amount / base) * 10000) / 100 : 0;
+                              setTaxRateText(String(rate));
+                            }}
                             onTaxTouched={() => undefined}
                           />
                         </div>
+                        <input type="hidden" name="tax" value={String(taxDraft)} />
                         <Input
-                          id="tax"
-                          name="tax"
-                          type="number"
-                          step="0.01"
-                          min={0}
-                          value={taxDraft}
-                          onChange={(e) => {
-                            const n = Number(e.target.value);
-                            setTaxDraft(Number.isFinite(n) ? Math.max(0, n) : 0);
-                          }}
+                          id="taxRatePct"
+                          name="taxRatePct"
+                          type="text"
+                          inputMode="decimal"
+                          value={taxRateText}
+                          onChange={(e) => setTaxRateText(e.target.value)}
                           className={ebSheetInput(cn("text-sm text-foreground", EB.inputNumeric))}
                         />
                       </div>
@@ -626,21 +657,17 @@ export function EstimateEditCustomerSection({
                           </Label>
                           <EstimateDiscountOptionsPopover
                             discount={discountDraft}
-                            preDiscountTotal={estimateSubtotal + taxDraft}
-                            onDiscountChange={setDiscountDraft}
+                            preDiscountTotal={estimateSubtotal}
+                            onDiscountChange={(amount) => setDiscountText(String(amount))}
                           />
                         </div>
                         <Input
                           id="discount"
                           name="discount"
-                          type="number"
-                          step="0.01"
-                          min={0}
-                          value={discountDraft}
-                          onChange={(e) => {
-                            const n = Number(e.target.value);
-                            setDiscountDraft(Number.isFinite(n) ? Math.max(0, n) : 0);
-                          }}
+                          type="text"
+                          inputMode="decimal"
+                          value={discountText}
+                          onChange={(e) => setDiscountText(e.target.value)}
                           className={ebSheetInput(cn("text-sm text-foreground", EB.inputNumeric))}
                         />
                       </div>

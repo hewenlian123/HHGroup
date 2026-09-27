@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { requireSupabaseOwnerOrAdminServerAction } from "@/lib/auth-boundary";
 import { PageLayout, PageHeader, Divider, SectionHeader } from "@/components/base";
 import { getProjectById, getLaborEntriesWithJoins, getWorkers } from "@/lib/data";
+import { laborEntryCountsTowardCanonicalCost } from "@/lib/labor-cost-eligibility";
 import { ServerDataLoadFallback } from "@/components/server-data-load-fallback";
 import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
 import { SetBreadcrumbEntityTitle } from "@/components/layout/set-breadcrumb-entity-title";
@@ -67,7 +68,7 @@ export default async function ProjectLaborPage({ params }: Props) {
   const hourlyRateByWorkerId = new Map(workers.map((w) => [w.id, (w.halfDayRate ?? 0) / 4]));
   const entryAmount = (workerId: string, hours: number) =>
     (hourlyRateByWorkerId.get(workerId) ?? 0) * hours;
-  const approvedLocked = entries.filter((e) => e.status === "Approved" || e.status === "Locked");
+  const approvedLocked = entries.filter((e) => laborEntryCountsTowardCanonicalCost(e.status));
   const totalLaborCost = approvedLocked.reduce(
     (s, e) => s + (e.cost_amount ?? entryAmount(e.worker_id, e.hours)),
     0

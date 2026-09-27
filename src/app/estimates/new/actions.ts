@@ -21,6 +21,7 @@ export type CreateEstimatePayload = {
   documentNotes?: EstimateNoteBlock[];
   salesPerson?: string;
   tax?: number;
+  taxRatePct?: number | null;
   discount?: number;
   overheadPct?: number;
   profitPct?: number;
@@ -116,6 +117,7 @@ export async function createEstimateWithItemsAction(
       documentNotes: payload.documentNotes,
       salesPerson: payload.salesPerson?.trim() || undefined,
       tax: payload.tax ?? 0,
+      taxRatePct: payload.taxRatePct,
       discount: payload.discount ?? 0,
       overheadPct: payload.overheadPct ?? 0,
       profitPct: payload.profitPct ?? 0,

@@ -6,6 +6,16 @@
 import { getSupabaseClient } from "@/lib/supabase";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { financialDataUnavailable } from "@/lib/financial-availability";
+import {
+  centsToMoney,
+  computeInvoiceTotals,
+  invoiceRevenueExTax,
+  lineExtension,
+  moneyToCents,
+  paymentCollectedExTax,
+  roundMoney,
+} from "@/lib/money";
+import { isVoidCashStatus } from "@/lib/payment-allocation";
 
 export type InvoiceStatus = "Draft" | "Sent" | "Partially Paid" | "Paid" | "Void";
 
@@ -248,13 +258,11 @@ const HINT = "Run supabase/migrations/202602280009_create_invoices.sql";
 function toLineItem(r: InvoiceItemRow): InvoiceLineItem {
   const q = Number(r.quantity ?? r.qty) || 0;
   const unitPrice = Number(r.unit_price) || 0;
-  const computedAmount = q * unitPrice;
-  const storedAmount = Number(r.amount) || 0;
   return {
     description: r.description ?? "",
     qty: q,
     unitPrice,
-    amount: Math.abs(storedAmount - computedAmount) > 0.005 ? computedAmount : storedAmount,
+    amount: lineExtension(q, unitPrice),
   };
 }
 
@@ -278,13 +286,14 @@ function toInvoice(row: InvoiceRow, items: InvoiceItemRow[]): Invoice {
   const lineItems = items.map(toLineItem);
   const hasLineItems = lineItems.length > 0;
   const taxPct = Number(row.tax_pct) || 0;
-  const subtotal = hasLineItems
-    ? lineItems.reduce((sum, item) => sum + item.amount, 0)
-    : Number(row.subtotal ?? row.total) || 0;
-  const taxAmount = hasLineItems
-    ? Math.round(subtotal * (taxPct / 100) * 100) / 100
-    : Number(row.tax_amount) || 0;
-  const total = hasLineItems ? subtotal + taxAmount : Number(row.total) || 0;
+  const totals = hasLineItems
+    ? computeInvoiceTotals(lineItems, taxPct)
+    : {
+        subtotal: roundMoney(Number(row.subtotal ?? row.total) || 0),
+        taxAmount: roundMoney(Number(row.tax_amount) || 0),
+        total: roundMoney(Number(row.total) || 0),
+      };
+  const { subtotal, taxAmount, total } = totals;
   return {
     id: row.id,
     invoiceNo: row.invoice_no ?? row.id.slice(0, 8),
@@ -301,6 +310,51 @@ function toInvoice(row: InvoiceRow, items: InvoiceItemRow[]): Invoice {
     total,
     notes: row.notes ?? undefined,
   };
+}
+
+async function appendUnallocatedPaymentsReceived(
+  c: SupabaseClient,
+  invoiceIds: string[],
+  paymentsByInvoiceId: Map<string, InvoicePayment[]>
+): Promise<void> {
+  if (invoiceIds.length === 0) return;
+  const res = await c
+    .from("payments_received")
+    .select("id, invoice_id, amount, payment_date, status")
+    .in("invoice_id", invoiceIds);
+  if (res.error) {
+    if (isMissingTable(res.error) || isMissingColumn(res.error)) return;
+    financialDataUnavailable("payments_received", res.error);
+  }
+  const linked = new Set<string>();
+  for (const list of paymentsByInvoiceId.values()) {
+    for (const payment of list) {
+      const id = String(payment.paymentReceivedId ?? "").trim();
+      if (id) linked.add(id);
+    }
+  }
+  for (const row of (res.data ?? []) as Array<{
+    id?: string;
+    invoice_id?: string;
+    amount?: number | string | null;
+    payment_date?: string | null;
+    status?: string | null;
+  }>) {
+    const id = String(row.id ?? "").trim();
+    const invoiceId = String(row.invoice_id ?? "").trim();
+    if (!id || !invoiceId || linked.has(id)) continue;
+    const arr = paymentsByInvoiceId.get(invoiceId) ?? [];
+    arr.push({
+      id,
+      invoiceId,
+      date: String(row.payment_date ?? "").slice(0, 10),
+      amount: Number(row.amount) || 0,
+      method: "",
+      status: isVoidCashStatus(row.status) ? "Voided" : "Posted",
+      paymentReceivedId: id,
+    });
+    paymentsByInvoiceId.set(invoiceId, arr);
+  }
 }
 
 function toPayment(r: InvoicePaymentRow): InvoicePayment {
@@ -445,8 +499,12 @@ export function computeInvoiceDerived(
   computedStatus: InvoiceComputedStatus;
   daysOverdue: number;
 } {
-  const paidTotal = payments.filter((p) => p.status !== "Voided").reduce((s, p) => s + p.amount, 0);
-  const balanceDue = Math.max(0, inv.total - paidTotal);
+  const paidCents = payments
+    .filter((p) => p.status !== "Voided")
+    .reduce((s, p) => s + moneyToCents(p.amount), 0);
+  const paidTotal = centsToMoney(paidCents);
+  const balanceDue = centsToMoney(Math.max(0, moneyToCents(inv.total) - paidCents));
+  const settled = moneyToCents(balanceDue) === 0;
   const today = now.toISOString().slice(0, 10);
   const hasPayments = payments.filter((p) => p.status !== "Voided").length > 0;
 
@@ -454,9 +512,9 @@ export function computeInvoiceDerived(
     return { paidTotal, balanceDue, computedStatus: "Void", daysOverdue: 0 };
   if (inv.status === "Draft") {
     // Payments may exist before status is flipped to Sent (or mark-sent failed); still show AR correctly.
-    if (balanceDue === 0 && hasPayments)
+    if (settled && hasPayments)
       return { paidTotal, balanceDue, computedStatus: "Paid", daysOverdue: 0 };
-    if (hasPayments && balanceDue > 0) {
+    if (hasPayments && !settled) {
       if (inv.dueDate < today) {
         const daysOverdue = Math.max(
           0,
@@ -469,7 +527,7 @@ export function computeInvoiceDerived(
       return { paidTotal, balanceDue, computedStatus: "Partial", daysOverdue: 0 };
     }
     const daysOverdue =
-      balanceDue > 0 && inv.dueDate < today
+      !settled && inv.dueDate < today
         ? Math.max(
             0,
             Math.floor(
@@ -479,7 +537,7 @@ export function computeInvoiceDerived(
         : 0;
     return { paidTotal, balanceDue, computedStatus: "Draft", daysOverdue };
   }
-  if (balanceDue === 0) return { paidTotal, balanceDue, computedStatus: "Paid", daysOverdue: 0 };
+  if (settled) return { paidTotal, balanceDue, computedStatus: "Paid", daysOverdue: 0 };
   if (inv.dueDate < today) {
     const daysOverdue = Math.max(
       0,
@@ -584,7 +642,9 @@ export async function getInvoicesWithDerivedPaged(
   if (invoiceIds.length) {
     const payRes = await c
       .from("invoice_payments")
-      .select("id, invoice_id, amount, payment_date, paid_at, method, reference, memo, status")
+      .select(
+        "id, invoice_id, amount, payment_date, paid_at, method, reference, memo, status, payment_received_id"
+      )
       .in("invoice_id", invoiceIds);
     if (payRes.error) financialDataUnavailable("invoice_payments", payRes.error);
     if (!Array.isArray(payRes.data)) financialDataUnavailable("invoice_payments", null);
@@ -596,6 +656,7 @@ export async function getInvoicesWithDerivedPaged(
         paymentsByInvoiceId.set(payment.invoiceId, arr);
       }
     }
+    await appendUnallocatedPaymentsReceived(c, invoiceIds, paymentsByInvoiceId);
   }
 
   // Compute derived per invoice
@@ -637,9 +698,11 @@ export async function getInvoiceByIdWithDerived(
   const inv = await getInvoiceById(id, explicitClient);
   if (!inv) return null;
   const payments = await getPaymentsByInvoiceId(id, explicitClient);
+  const paymentsByInvoiceId = new Map<string, InvoicePayment[]>([[id, payments]]);
+  await appendUnallocatedPaymentsReceived(client(explicitClient), [id], paymentsByInvoiceId);
   const { paidTotal, balanceDue, computedStatus, daysOverdue } = computeInvoiceDerived(
     inv,
-    payments
+    paymentsByInvoiceId.get(id) ?? payments
   );
   return { ...inv, paidTotal, balanceDue, computedStatus, daysOverdue };
 }
@@ -1303,39 +1366,96 @@ export async function getInvoicesByProjectAggregate(
   };
 }
 
-/** Revenue (sum invoices.total) and collected (sum invoice_payments.amount) for a project. No stored derived fields. */
+type ReceivableInvoiceRow = {
+  id: string;
+  total?: number;
+  subtotal?: number | null;
+  tax_amount?: number | null;
+  status?: string | null;
+};
+
+/** Ex-tax collected cash: invoice allocations plus unlinked payments_received on those invoices. */
+async function collectedExTaxForInvoices(
+  c: SupabaseClient,
+  invoices: ReceivableInvoiceRow[],
+  restrictPaymentsToInvoices: boolean
+): Promise<number> {
+  const ids = invoices.map((row) => row.id);
+  const invoiceById = new Map(invoices.map((row) => [row.id, row]));
+  let payQuery = c
+    .from("invoice_payments")
+    .select("invoice_id, amount, status, payment_received_id");
+  if (restrictPaymentsToInvoices) payQuery = payQuery.in("invoice_id", ids);
+  const payRes = await payQuery;
+  if (payRes.error) throw payRes.error;
+
+  let receivedQuery = c.from("payments_received").select("id, invoice_id, amount, status");
+  if (restrictPaymentsToInvoices) receivedQuery = receivedQuery.in("invoice_id", ids);
+  const receivedRes = await receivedQuery;
+  if (
+    receivedRes.error &&
+    !isMissingTable(receivedRes.error) &&
+    !isMissingColumn(receivedRes.error)
+  ) {
+    throw receivedRes.error;
+  }
+
+  const linked = new Set<string>();
+  let collected = 0;
+  for (const row of (payRes.data ?? []) as Array<{
+    invoice_id?: string | null;
+    amount?: number | string | null;
+    status?: string | null;
+    payment_received_id?: string | null;
+  }>) {
+    if (isVoidCashStatus(row.status)) continue;
+    const linkedId = String(row.payment_received_id ?? "").trim();
+    if (linkedId) linked.add(linkedId);
+    const invoice = row.invoice_id ? invoiceById.get(row.invoice_id) : undefined;
+    collected += paymentCollectedExTax(row.amount, invoice ?? null);
+  }
+  for (const row of (receivedRes.data ?? []) as Array<{
+    id?: string | null;
+    invoice_id?: string | null;
+    amount?: number | string | null;
+    status?: string | null;
+  }>) {
+    const id = String(row.id ?? "").trim();
+    if (id && linked.has(id)) continue;
+    if (isVoidCashStatus(row.status)) continue;
+    const invoice = invoiceById.get(String(row.invoice_id ?? ""));
+    if (!invoice) continue;
+    collected += paymentCollectedExTax(row.amount, invoice);
+  }
+  return roundMoney(collected);
+}
+
+/** Revenue (ex-tax) and collected cash (ex-tax) for a project. No stored derived fields. */
 export async function getProjectRevenueAndCollected(
   projectId: string
 ): Promise<{ revenue: number; collected: number }> {
   const c = client();
   const { data: invRows, error: invErr } = await c
     .from("invoices")
-    .select("id, total, status")
+    .select("id, total, subtotal, tax_amount, status")
     .eq("project_id", projectId)
     .neq("status", "Void");
   if (invErr || !invRows?.length) {
     return { revenue: 0, collected: 0 };
   }
-  const receivableRows = (
-    invRows as { id: string; total?: number; status?: string | null }[]
-  ).filter((row) => invoiceCountsTowardReceivable(row.status));
+  const receivableRows = (invRows as ReceivableInvoiceRow[]).filter((row) =>
+    invoiceCountsTowardReceivable(row.status)
+  );
   if (receivableRows.length === 0) return { revenue: 0, collected: 0 };
-  const revenue = receivableRows.reduce((s, r) => s + Number(r.total ?? 0), 0);
-  const ids = receivableRows.map((r) => r.id);
-  const { data: payRows, error: payErr } = await c
-    .from("invoice_payments")
-    .select("amount, status")
-    .in("invoice_id", ids);
-  if (payErr) return { revenue, collected: 0 };
-  const collected = (payRows ?? []).reduce((s, r) => {
-    const row = r as { amount?: number; status?: string };
-    if (row.status === "Voided") return s;
-    return s + Number(row.amount ?? 0);
-  }, 0);
-  return { revenue, collected };
+  const revenue = receivableRows.reduce((s, r) => s + invoiceRevenueExTax(r), 0);
+  try {
+    return { revenue, collected: await collectedExTaxForInvoices(c, receivableRows, true) };
+  } catch {
+    return { revenue, collected: 0 };
+  }
 }
 
-/** Company-wide revenue (sum invoices.total where not Void) and collected (sum invoice_payments.amount where not Voided). */
+/** Company-wide ex-tax invoiced revenue and ex-tax collected cash. */
 export async function getCompanyRevenueAndCollected(explicitClient?: SupabaseClient): Promise<{
   revenue: number;
   collected: number;
@@ -1343,23 +1463,18 @@ export async function getCompanyRevenueAndCollected(explicitClient?: SupabaseCli
   const c = client(explicitClient);
   const { data: invRows, error: invErr } = await c
     .from("invoices")
-    .select("id, total, status")
+    .select("id, total, subtotal, tax_amount, status")
     .neq("status", "Void");
   if (invErr) financialDataUnavailable("company invoice revenue", invErr);
-  const receivableRows = (invRows ?? [])
-    .map((r) => r as { id: string; total?: number; status?: string | null })
-    .filter((row) => invoiceCountsTowardReceivable(row.status));
-  const revenue = receivableRows.reduce((s, r) => s + Number(r.total ?? 0), 0);
-  const { data: payRows, error: payErr } = await c
-    .from("invoice_payments")
-    .select("amount, status");
-  if (payErr) financialDataUnavailable("company invoice collections", payErr);
-  const collected = (payRows ?? []).reduce((s, r) => {
-    const row = r as { amount?: number; status?: string };
-    if (row.status === "Voided") return s;
-    return s + Number(row.amount ?? 0);
-  }, 0);
-  return { revenue, collected };
+  const receivableRows = ((invRows ?? []) as ReceivableInvoiceRow[]).filter((row) =>
+    invoiceCountsTowardReceivable(row.status)
+  );
+  const revenue = receivableRows.reduce((s, r) => s + invoiceRevenueExTax(r), 0);
+  try {
+    return { revenue, collected: await collectedExTaxForInvoices(c, receivableRows, false) };
+  } catch (error) {
+    financialDataUnavailable("company invoice collections", error);
+  }
 }
 
 export type InvoiceRecentRow = {

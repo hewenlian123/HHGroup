@@ -1,6 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { laborEntryPaymentIdMapFromWorkerPayments } from "@/lib/labor-balance-shared";
 import { parseLaborOvertimeAmountFromNotes } from "@/lib/labor-overtime-notes";
+import {
+  canonicalWorkerDailyRate,
+  displayedWorkerDailyRate,
+  overtimePayAmount,
+} from "@/lib/worker-daily-rate";
 import { normalizeWorkerRateDate } from "@/lib/worker-rate-date";
 
 export { normalizeWorkerRateDate } from "@/lib/worker-rate-date";
@@ -21,6 +26,8 @@ export type EffectiveDailyRate = {
   dailyRate: number;
   rateHistoryId: string | null;
   effectiveFrom: string | null;
+  storedDailyRate?: number;
+  storedHalfDayRate?: number;
 };
 
 export type LaborEntryRateSnapshot = {
@@ -283,6 +290,30 @@ async function loadRateApplyCandidatesWithClient(
   return { candidates, skippedCount };
 }
 
+async function readWorkerHourlyOtRate(c: SupabaseClient, workerId: string): Promise<number | null> {
+  const { data, error } = await c
+    .from("workers")
+    .select("default_ot_rate")
+    .eq("id", workerId)
+    .maybeSingle();
+  if (error || !data) return null;
+  const rate = safeNumber((data as { default_ot_rate?: unknown }).default_ot_rate);
+  return rate > 0 ? rate : null;
+}
+
+export async function priceLaborOvertimeWithClient(
+  c: SupabaseClient,
+  workerId: string,
+  dailyRate: number,
+  overtimeHours: number,
+  explicitAmount: number
+): Promise<number> {
+  if (explicitAmount > 0) return explicitAmount;
+  if (!(overtimeHours > 0)) return 0;
+  const otRate = await readWorkerHourlyOtRate(c, workerId);
+  return overtimePayAmount(dailyRate, overtimeHours, otRate);
+}
+
 async function fallbackWorkerDailyRate(
   c: SupabaseClient,
   workerId: string
@@ -298,14 +329,18 @@ async function fallbackWorkerDailyRate(
     half_day_rate?: number | null;
     created_at?: string | null;
   };
-  const dailyRate =
-    row.daily_rate != null && safeNumber(row.daily_rate) > 0
-      ? safeNumber(row.daily_rate)
-      : safeNumber(row.half_day_rate);
+  const storedDailyRate = Math.max(0, safeNumber(row.daily_rate));
+  const storedHalfDayRate = Math.max(0, safeNumber(row.half_day_rate));
+  const dailyRate = canonicalWorkerDailyRate({
+    dailyRate: row.daily_rate,
+    halfDayRate: row.half_day_rate,
+  });
   return {
     dailyRate: Math.max(0, dailyRate),
     rateHistoryId: null,
     effectiveFrom: row.created_at ? String(row.created_at).slice(0, 10) : null,
+    storedDailyRate,
+    storedHalfDayRate,
   };
 }
 
@@ -351,8 +386,14 @@ export async function resolveWorkerDailyRateForDateWithClient(
 
   if (!error && data) {
     const row = data as { id?: string; daily_rate?: number | null; effective_from?: string | null };
+    const listed = await fallbackWorkerDailyRate(c, workerId);
+    const dailyRate = displayedWorkerDailyRate({
+      dailyRate: listed.storedDailyRate,
+      halfDayRate: listed.storedHalfDayRate,
+      historyDailyRate: row.daily_rate,
+    });
     return {
-      dailyRate: Math.max(0, safeNumber(row.daily_rate)),
+      dailyRate,
       rateHistoryId: row.id ?? null,
       effectiveFrom: row.effective_from ? String(row.effective_from).slice(0, 10) : null,
     };
@@ -404,8 +445,9 @@ export async function buildLaborEntryRateSnapshotWithClient(
     hours?: unknown;
     morning?: unknown;
     afternoon?: unknown;
-    /** Manual fixed overtime amount. Overtime hours are informational and never auto-price OT. */
+    /** Manual fixed overtime amount. Hours are priced at the worker OT rate or 1.5× hourly when no amount is given. */
     otAmount?: unknown;
+    otHours?: unknown;
     fixedOvertimeAmount?: unknown;
     existingDailyRateSnapshot?: unknown;
   }
@@ -419,11 +461,16 @@ export async function buildLaborEntryRateSnapshotWithClient(
           effectiveFrom: null,
         }
       : await resolveWorkerDailyRateForDateWithClient(c, params.workerId, params.workDate);
-  const amount = laborCostFromDailyRate(
+  const explicitOt = safeNumber(params.otAmount ?? params.fixedOvertimeAmount);
+  const otHours = safeNumber(params.otHours);
+  const overtimeAmount = await priceLaborOvertimeWithClient(
+    c,
+    params.workerId,
     effective.dailyRate,
-    daysWorked,
-    safeNumber(params.otAmount ?? params.fixedOvertimeAmount)
+    explicitOt > 0 ? 0 : otHours,
+    explicitOt
   );
+  const amount = laborCostFromDailyRate(effective.dailyRate, daysWorked, overtimeAmount);
   return {
     days_worked: daysWorked,
     daily_rate_snapshot: effective.dailyRate,

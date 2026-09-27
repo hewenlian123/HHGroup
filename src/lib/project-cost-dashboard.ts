@@ -93,7 +93,7 @@ export async function getProjectCostDashboard(
   }
 
   const labor = canonical.laborCost;
-  const bills = canonical.subcontractCost;
+  const bills = canonical.subcontractCost + canonical.apBillCost + canonical.changeOrderCost;
   const commission = canonical.commissionCost;
   const other = expenseOther + reimb;
   const materials = expenseMaterials;

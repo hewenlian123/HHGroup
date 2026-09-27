@@ -30,7 +30,7 @@ export type FinanceOwnerDashboard = {
     /** Sum of non-void invoice totals with issue date in current month. */
     invoicedThisMonth: number;
     expenseThisMonth: number;
-    /** Approved/Locked accrued labor for current calendar month. */
+    /** Canonical accrued labor for the current calendar month. */
     laborCostThisMonth: number;
     unpaidInvoices: number;
     /**

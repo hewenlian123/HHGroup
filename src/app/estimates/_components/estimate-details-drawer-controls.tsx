@@ -33,6 +33,8 @@ type EstimateTaxPresetMenuProps = {
   tax: number;
   onApplyTax: (amount: number) => void;
   onTaxTouched: () => void;
+  /** When set, presets store a rate instead of a frozen dollar amount. */
+  onApplyRate?: (ratePct: number) => void;
 };
 
 export function EstimateTaxPresetMenu({
@@ -40,6 +42,7 @@ export function EstimateTaxPresetMenu({
   tax,
   onApplyTax,
   onTaxTouched,
+  onApplyRate,
 }: EstimateTaxPresetMenuProps): React.ReactElement {
   const [customPresets, setCustomPresets] = React.useState<EstimateTaxPreset[]>([]);
 
@@ -48,6 +51,10 @@ export function EstimateTaxPresetMenu({
   }, []);
 
   const applyRate = (ratePct: number): void => {
+    if (onApplyRate) {
+      onApplyRate(ratePct);
+      return;
+    }
     onTaxTouched();
     onApplyTax(taxAmountFromSubtotalAndRate(estimateSubtotal, ratePct));
   };

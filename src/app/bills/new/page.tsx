@@ -1,5 +1,6 @@
 import { PageLayout, PageHeader } from "@/components/base";
 import { getSubcontractors, getSubcontractsWithDetailsAll } from "@/lib/data";
+import { requireSupabaseOwnerOrAdminServerActionClient } from "@/lib/auth-boundary";
 import { fetchBillsPageData } from "../bills-api";
 import { billsPageWrapClass } from "../bills-ui-styles";
 import { NewBillClient } from "./new-bill-client";
@@ -8,9 +9,11 @@ export const dynamic = "force-dynamic";
 
 async function fetchSubcontractLinkOptions() {
   try {
+    const guard = await requireSupabaseOwnerOrAdminServerActionClient({ noStore: true });
+    if (!guard.ok) throw new Error(guard.error);
     const [subcontractors, subcontracts] = await Promise.all([
-      getSubcontractors(),
-      getSubcontractsWithDetailsAll(),
+      getSubcontractors(guard.client),
+      getSubcontractsWithDetailsAll(guard.client),
     ]);
     return { subcontractors, subcontracts, message: null as string | null };
   } catch {

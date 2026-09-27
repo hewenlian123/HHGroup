@@ -40,12 +40,12 @@ function fixture(rows: Record<string, unknown[]> = {}, denied?: string, code = "
   return { client, calls };
 }
 describe("Phase 3 authenticated financial reads", () => {
-  it("uses the caller session for labor and preserves Approved/Locked cost", async () => {
+  it("uses the caller session for labor and counts canonical cost without an approval filter", async () => {
     const { client, calls } = fixture({
       labor_entries: [{ cost_amount: 125.25, status: "Approved" }],
     });
     expect(await getTotalLaborCost(client)).toBe(125.25);
-    expect(calls[0].searchParams.get("status")).toBe("in.(Approved,Locked)");
+    expect(calls[0].searchParams.get("status")).toBeNull();
   });
   it("keeps successful empty ledgers distinct from unavailable", async () => {
     const { client } = fixture();

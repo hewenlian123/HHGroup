@@ -18,6 +18,7 @@ export {
   type ApBillStatus,
 } from "@/lib/ap-bill-domain";
 import { getSupabaseClient } from "@/lib/supabase";
+import { reportingApEligible } from "@/lib/finance-reporting-eligibility";
 import { financialDataUnavailable } from "@/lib/financial-availability";
 
 const BILLS_TABLE = "ap_bills";
@@ -173,6 +174,7 @@ export function summarizeApBillsForDashboard(
   let dueThisWeekAmount = 0;
 
   for (const bill of bills) {
+    if (!reportingApEligible(bill.status)) continue;
     const balance = apOutstandingBalance(bill);
     if (balance <= 0) continue;
     totalOutstanding += balance;

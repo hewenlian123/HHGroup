@@ -15,6 +15,7 @@ import {
 import { buildLaborEntryRateSnapshotWithClient } from "@/lib/worker-rate-history-db";
 import { isHiddenLaborEntryStatus } from "@/lib/labor-entry-status";
 import { financialDataUnavailable } from "@/lib/financial-availability";
+import { laborEntryCountsTowardCanonicalCost } from "@/lib/labor-cost-eligibility";
 
 export type LaborEntryStatus = "Draft" | "Submitted" | "Approved" | "Locked";
 
@@ -680,20 +681,18 @@ export async function getWorkerPayableSummary(
   };
 }
 
-/** Total labor cost (sum labor_entries.cost_amount for Approved/Locked). For finance overview. */
+/** Total labor cost. Same eligibility as project profit: every entry except paid and void. */
 export async function getTotalLaborCost(explicitClient?: SupabaseClient): Promise<number> {
   const c = client(explicitClient);
-  const { data: rows, error } = await c
-    .from("labor_entries")
-    .select("cost_amount, status")
-    .in("status", ["Approved", "Locked"]);
+  const { data: rows, error } = await c.from("labor_entries").select("cost_amount, status");
   if (error) {
     throw new Error(error.message ?? "Failed to load total labor cost.");
   }
-  return (rows ?? []).reduce(
-    (s, r) => s + Number((r as { cost_amount?: number }).cost_amount ?? 0),
-    0
-  );
+  return (rows ?? []).reduce((s, r) => {
+    const row = r as { cost_amount?: number; status?: string | null };
+    if (!laborEntryCountsTowardCanonicalCost(row.status)) return s;
+    return s + Number(row.cost_amount ?? 0);
+  }, 0);
 }
 
 export async function getDailyLaborEntriesByDate(workDate: string): Promise<DailyLaborEntryRow[]> {
@@ -1001,7 +1000,7 @@ export async function getProjectLaborBreakdown(
       { worker_name: string | null; days: Set<string>; total_labor_cost: number }
     >();
     for (const e of entries) {
-      if (e.status !== "Approved" && e.status !== "Locked") continue;
+      if (!laborEntryCountsTowardCanonicalCost(e.status)) continue;
       const key = e.worker_id;
       if (!key) continue;
       const cur = byWorker.get(key) ?? {
@@ -1059,7 +1058,7 @@ export async function getMonthlyPayrollSummary(
       () => [] as Awaited<ReturnType<typeof getLaborEntriesWithJoins>>
     );
     const filtered = entries.filter(
-      (e) => e.work_date?.startsWith(monthStr) && (e.status === "Approved" || e.status === "Locked")
+      (e) => e.work_date?.startsWith(monthStr) && laborEntryCountsTowardCanonicalCost(e.status)
     );
     const byWorker = new Map<string, { worker_name: string | null; total_labor_cost: number }>();
     for (const e of filtered) {

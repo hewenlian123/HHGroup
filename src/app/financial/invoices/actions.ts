@@ -15,6 +15,7 @@ import {
   type InvoiceLineItem,
 } from "@/lib/data";
 import { createServerSupabaseClient, getServerSupabaseAdmin } from "@/lib/supabase-server";
+import { lineExtension } from "@/lib/money";
 
 function toSafeLineItems(
   lineItems: Array<{ description: string; qty: number; unitPrice: number }>
@@ -28,7 +29,7 @@ function toSafeLineItems(
         description,
         qty,
         unitPrice,
-        amount: qty * unitPrice,
+        amount: lineExtension(qty, unitPrice),
       };
     })
     .filter((item) => item.description.length > 0);

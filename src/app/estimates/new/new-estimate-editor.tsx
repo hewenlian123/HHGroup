@@ -16,6 +16,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { createEstimateWithItemsAction } from "./actions";
+import { computeEstimatePricing } from "@/lib/estimate-totals";
 import type { CostCode } from "@/lib/data";
 import { FileText, MoreHorizontal, Plus } from "lucide-react";
 import { useToast } from "@/components/toast/toast-provider";
@@ -189,6 +190,9 @@ export function NewEstimateEditor({
   const [validUntil, setValidUntil] = React.useState("");
   const [salesPerson, setSalesPerson] = React.useState("");
   const [tax, setTax] = React.useState(0);
+  const [taxRatePct, setTaxRatePct] = React.useState<number | null>(() =>
+    Number.isFinite(initialDefaultTaxPct) && initialDefaultTaxPct >= 0 ? initialDefaultTaxPct : 0
+  );
   const [taxTouched, setTaxTouched] = React.useState(false);
   const [defaultTaxPct] = React.useState(() =>
     Number.isFinite(initialDefaultTaxPct) && initialDefaultTaxPct >= 0 ? initialDefaultTaxPct : 0
@@ -239,6 +243,7 @@ export function NewEstimateEditor({
       validUntil,
       salesPerson,
       tax,
+      taxRatePct,
       taxTouched,
       templateDefaultTaxPct,
       discount,
@@ -268,6 +273,7 @@ export function NewEstimateEditor({
       selectedCustomer,
       selectedTemplateId,
       tax,
+      taxRatePct,
       taxTouched,
       templateDefaultTaxPct,
       validUntil,
@@ -380,6 +386,13 @@ export function NewEstimateEditor({
     setValidUntil(recovered.validUntil);
     setSalesPerson(recovered.salesPerson);
     setTax(recovered.tax);
+    setTaxRatePct(
+      recovered.taxRatePct != null
+        ? recovered.taxRatePct
+        : recovered.taxTouched
+          ? null
+          : (recovered.templateDefaultTaxPct ?? defaultTaxPct)
+    );
     setTaxTouched(recovered.taxTouched);
     setTemplateDefaultTaxPct(recovered.templateDefaultTaxPct);
     setDiscount(recovered.discount);
@@ -395,7 +408,7 @@ export function NewEstimateEditor({
     setDirty(true);
     setSaveStatus("unsaved");
     setRecoveryState("unsaved");
-  }, [recoveryNotice, today]);
+  }, [defaultTaxPct, recoveryNotice, today]);
 
   const discardRecoveredDraft = React.useCallback((): void => {
     clearEstimateNewDraftRecovery();
@@ -439,7 +452,12 @@ export function NewEstimateEditor({
       else if (t === "subcontractor") subcontractorCost += tot;
     });
     const subtotal = lineItems.reduce((s, li) => s + lineTotal(li), 0);
-    const grandTotal = subtotal + tax - discount;
+    const pricing = computeEstimatePricing({
+      subtotal,
+      discount,
+      tax,
+      taxRatePct,
+    });
     return {
       materialCost,
       laborCost,
@@ -447,11 +465,11 @@ export function NewEstimateEditor({
       subtotal,
       overhead: 0,
       profit: 0,
-      tax,
-      discount,
-      grandTotal,
+      tax: pricing.tax,
+      discount: pricing.discount,
+      grandTotal: pricing.total,
     };
-  }, [lineItems, codeToType, tax, discount]);
+  }, [lineItems, codeToType, tax, discount, taxRatePct]);
 
   const worksheetSections = React.useMemo(() => {
     const orderedCodes = [
@@ -544,16 +562,11 @@ export function NewEstimateEditor({
   }, [clientName, hasValidLineItem, projectName]);
 
   React.useEffect(() => {
-    if (taxTouched) return;
-    const pct = Math.max(0, Number(templateDefaultTaxPct ?? defaultTaxPct) || 0);
-    if (!(pct > 0)) {
-      if (tax !== 0) setTax(0);
-      return;
-    }
-    const computed = summary.subtotal * (pct / 100);
-    if (Number.isFinite(computed)) setTax(Number(computed.toFixed(2)));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [defaultTaxPct, summary.subtotal, taxTouched, templateDefaultTaxPct]);
+    if (taxRatePct == null) return;
+    const taxable = Math.max(0, summary.subtotal - Math.max(0, discount));
+    const computed = Number((taxable * (Math.max(0, taxRatePct) / 100)).toFixed(2));
+    if (Number.isFinite(computed)) setTax(computed);
+  }, [discount, summary.subtotal, taxRatePct]);
 
   const applyEstimateTemplate = React.useCallback(
     (template: EstimateTemplateRecord, options: { quiet?: boolean } = {}): void => {
@@ -595,6 +608,11 @@ export function NewEstimateEditor({
         }))
       );
       setTemplateDefaultTaxPct(template.defaultTaxRate);
+      setTaxRatePct(
+        template.defaultTaxRate != null && Number.isFinite(template.defaultTaxRate)
+          ? Math.max(0, template.defaultTaxRate)
+          : 0
+      );
       setTaxTouched(false);
       setTax(0);
       setDiscount(0);
@@ -615,6 +633,7 @@ export function NewEstimateEditor({
       setSelectedTemplateId(templateId);
       if (!templateId) {
         setTemplateDefaultTaxPct(null);
+        setTaxRatePct(defaultTaxPct);
         setCategoryNames({});
         setSectionOrder([]);
         setLineItems([]);
@@ -626,7 +645,7 @@ export function NewEstimateEditor({
       const template = templates.find((item) => item.id === templateId);
       if (template) applyEstimateTemplate(template);
     },
-    [applyEstimateTemplate, templates]
+    [applyEstimateTemplate, defaultTaxPct, templates]
   );
 
   React.useEffect(() => {
@@ -690,7 +709,8 @@ export function NewEstimateEditor({
         estimateDate: estimateDate || undefined,
         validUntil: validUntil || undefined,
         salesPerson: salesPerson.trim() || undefined,
-        tax,
+        tax: summary.tax,
+        taxRatePct,
         discount,
         overheadPct: 0,
         profitPct: 0,
@@ -941,11 +961,12 @@ export function NewEstimateEditor({
                 estimateDate={estimateDate}
                 validUntil={validUntil}
                 salesPerson={salesPerson}
-                tax={tax}
+                tax={summary.tax}
+                taxRatePct={taxRatePct}
                 discount={discount}
                 selectedCustomer={selectedCustomer}
                 estimateSubtotal={summary.subtotal}
-                preDiscountTotal={summary.subtotal + summary.tax}
+                preDiscountTotal={summary.subtotal}
                 submitAttempted={submitAttempted}
                 onClientNameChange={setClientName}
                 onProjectNameChange={setProjectName}
@@ -955,6 +976,7 @@ export function NewEstimateEditor({
                 onValidUntilChange={setValidUntil}
                 onSalesPersonChange={setSalesPerson}
                 onTaxChange={setTax}
+                onTaxRateChange={setTaxRatePct}
                 onTaxTouched={() => setTaxTouched(true)}
                 onDiscountChange={setDiscount}
                 onCustomerPickerChange={handleCustomerPickerChange}

@@ -289,6 +289,7 @@ export async function getProjectsDashboard(
       | "name"
       | "status"
       | "budget"
+      | "contractAmount"
       | "updated"
       | "sourceEstimateId"
       | "snapshotRevenue"
@@ -302,7 +303,7 @@ export async function getProjectsDashboard(
   const { data: rows, error } = await c
     .from("projects")
     .select(
-      "id,name,status,budget,updated_at,created_at,source_estimate_id,snapshot_revenue,snapshot_budget_cost,snapshot_breakdown"
+      "id,name,status,budget,contract_amount,updated_at,created_at,source_estimate_id,snapshot_revenue,snapshot_budget_cost,snapshot_breakdown"
     )
     .order("updated_at", { ascending: false })
     .limit(cap);
@@ -316,6 +317,7 @@ export async function getProjectsDashboard(
       name: string | null;
       status: string | null;
       budget: number | null;
+      contract_amount?: number | null;
       updated_at: string | null;
       created_at: string | null;
       source_estimate_id: string | null;
@@ -329,6 +331,7 @@ export async function getProjectsDashboard(
       name: row.name ?? "",
       status,
       budget: Number(row.budget) || 0,
+      contractAmount: row.contract_amount == null ? null : Number(row.contract_amount) || 0,
       updated: row.updated_at ?? row.created_at ?? new Date().toISOString().slice(0, 10),
       sourceEstimateId: row.source_estimate_id,
       snapshotRevenue: row.snapshot_revenue == null ? null : Number(row.snapshot_revenue),

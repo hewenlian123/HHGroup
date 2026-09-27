@@ -158,6 +158,7 @@ type SnapshotCostSummary = {
   billedAmount: number;
   paidAmount: number;
   openAR: number;
+  remainingToBill: number;
 };
 
 function useProjectFinancialSnapshotSummary(
@@ -580,13 +581,14 @@ export function ProjectDetailTabsClient({
           throw new Error(result.error);
         }
         setEditModalOpen(false);
-        toast({ title: "Project updated" });
+        toast({ title: "Project updated", variant: "success" });
+        router.refresh();
       } catch (cause) {
         flushSync(() => setDisplayProject(snapshot));
         throw cause instanceof Error ? cause : new Error("Couldn't save project. Try again.");
       }
     },
-    [projectId, toast]
+    [projectId, router, toast]
   );
 
   const handleArchiveConfirm = React.useCallback(async () => {
@@ -651,8 +653,13 @@ export function ProjectDetailTabsClient({
 
   const snapshotComparison = snapshotState.status === "ready" ? snapshotState.comparison : null;
   const budgetVal = snapshotComparison?.newSnapshot.contractValue ?? Number.NaN;
-  const editableBudgetVal =
-    displayProject.contractAmount ?? displayProject.budget ?? financialSummary?.budget ?? 0;
+  const editableBudgetVal = (() => {
+    const budget = Number(displayProject.budget);
+    if (Number.isFinite(budget) && budget > 0) return budget;
+    const contract = Number(displayProject.contractAmount);
+    if (Number.isFinite(contract) && contract > 0) return contract;
+    return Number(financialSummary?.budget) || 0;
+  })();
   const snapshotWarnings =
     snapshotComparison?.warnings ?? snapshotComparison?.newSnapshot.warnings ?? [];
   const snapshotDiagnostics =
@@ -670,6 +677,7 @@ export function ProjectDetailTabsClient({
         billedAmount: snapshotComparison.newSnapshot.billedAmount,
         paidAmount: snapshotComparison.newSnapshot.paidAmount,
         openAR: snapshotComparison.newSnapshot.openAR,
+        remainingToBill: snapshotComparison.newSnapshot.remainingToBill,
       }
     : {
         actualCost: Number.NaN,
@@ -681,6 +689,7 @@ export function ProjectDetailTabsClient({
         billedAmount: Number.NaN,
         paidAmount: Number.NaN,
         openAR: Number.NaN,
+        remainingToBill: Number.NaN,
       };
   const commissionSummary = React.useMemo(
     () =>
@@ -1173,13 +1182,17 @@ export function ProjectDetailTabsClient({
                           tone="positive"
                         />
                         <DetailRow
-                          label="Need collect"
+                          label="Open AR"
                           value={fmtMoney(topNeedCollectValue)}
                           tone={
                             Number.isFinite(topNeedCollectValue) && topNeedCollectValue > 0
                               ? "attention"
                               : "positive"
                           }
+                        />
+                        <DetailRow
+                          label="Remaining to bill"
+                          value={fmtMoney(snapshotCostSummary.remainingToBill)}
                         />
                         <DetailRow
                           label="Billed"

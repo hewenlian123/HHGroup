@@ -185,6 +185,8 @@ export function dashboardDomain() {
           expenseCost: 0,
           subcontractCost: 0,
           commissionCost: 0,
+          changeOrderCost: 0,
+          apBillCost: 0,
         },
       ],
     ])

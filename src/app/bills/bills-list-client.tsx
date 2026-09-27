@@ -7,6 +7,7 @@ import {
 
 import { useFinanceRecordFocus } from "@/hooks/use-finance-query-state";
 import { financePathWithReturn } from "@/lib/finance-navigation";
+import { reportingApEligible } from "@/lib/finance-reporting-eligibility";
 
 import {
   refreshRscNonBlocking,
@@ -115,7 +116,7 @@ function localMoney(value: number): number {
 }
 
 function localOutstandingBalance(bill: ApBillWithProject): number {
-  if (bill.status === "Void" || bill.status === "Paid") return 0;
+  if (!reportingApEligible(bill.status)) return 0;
   const derived = Math.max(0, localMoney(bill.amount - bill.paid_amount));
   if (bill.balance_amount <= 0 && derived > 0) return derived;
   return Math.max(0, localMoney(bill.balance_amount));

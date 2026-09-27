@@ -6,6 +6,7 @@ import {
   getServerSupabaseAdmin,
 } from "@/lib/supabase-server";
 import { insertWorker, type WorkerRow } from "@/lib/workers-db";
+import { canonicalWorkerDailyRate } from "@/lib/worker-daily-rate";
 
 export const dynamic = "force-dynamic";
 
@@ -176,19 +177,26 @@ export async function GET(req: Request) {
   try {
     const { data: rows, error } = await admin
       .from("workers")
-      .select("id, name, role, phone, half_day_rate, status, notes, created_at")
+      .select("id, name, role, phone, half_day_rate, daily_rate, status, notes, created_at")
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message ?? "Failed to load workers.");
-    const workers = (rows ?? []).map((r: Record<string, unknown>) => ({
-      id: r.id,
-      name: r.name ?? "",
-      role: r.role ?? null,
-      phone: r.phone ?? null,
-      half_day_rate: Number(r.half_day_rate) || 0,
-      status: r.status ?? "active",
-      notes: r.notes ?? null,
-      created_at: r.created_at ?? "",
-    }));
+    const workers = (rows ?? []).map((r: Record<string, unknown>) => {
+      const fullDay = canonicalWorkerDailyRate({
+        dailyRate: r.daily_rate,
+        halfDayRate: r.half_day_rate,
+      });
+      return {
+        id: r.id,
+        name: r.name ?? "",
+        role: r.role ?? null,
+        phone: r.phone ?? null,
+        half_day_rate: fullDay,
+        daily_rate: fullDay,
+        status: r.status ?? "active",
+        notes: r.notes ?? null,
+        created_at: r.created_at ?? "",
+      };
+    });
     return NextResponse.json(workers, { headers: NO_CACHE_HEADERS });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Failed to load workers.";

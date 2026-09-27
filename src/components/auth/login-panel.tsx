@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Eye, EyeOff, Loader2, LockKeyhole, Mail } from "lucide-react";
 
 import {
@@ -34,7 +33,6 @@ export function LoginPanel({
   initialError = null,
   initialMessage = null,
 }: LoginPanelProps) {
-  const router = useRouter();
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [rememberDevice, setRememberDevice] = React.useState(true);
@@ -66,8 +64,7 @@ export function LoginPanel({
       return;
     }
 
-    router.replace(body.redirectTo || redirectTo);
-    router.refresh();
+    window.location.assign(body.redirectTo || redirectTo);
   }
 
   return (

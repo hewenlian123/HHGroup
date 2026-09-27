@@ -7,6 +7,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Sql } from "postgres";
 import { getSupabaseClient } from "@/lib/supabase";
 import { lineTotal } from "@/lib/estimate-domain";
+import { computeEstimatePricing } from "@/lib/estimate-totals";
 export {
   groupEstimateItemsByCategoryId,
   lineTotal,
@@ -67,6 +68,8 @@ export type EstimateMetaRecord = {
   client: { name: string; phone: string; email: string; address: string };
   project: { name: string; siteAddress: string };
   tax: number;
+  /** Percent applied after discount. Null keeps a legacy fixed tax amount. */
+  taxRatePct?: number | null;
   discount: number;
   overheadPct: number;
   profitPct: number;
@@ -280,7 +283,13 @@ export function orderedCategoryEntriesForEstimateSave(
 /** Compute summary from items and meta. Pass codeToType map (code -> 'material'|'labor'|'subcontractor') for breakdown. */
 export function computeSummary(
   items: EstimateItemRow[],
-  meta: { tax?: number; discount?: number; overheadPct?: number; profitPct?: number },
+  meta: {
+    tax?: number;
+    discount?: number;
+    taxRatePct?: number | null;
+    overheadPct?: number;
+    profitPct?: number;
+  },
   codeToType: (code: string) => "material" | "labor" | "subcontractor" | undefined
 ): EstimateSummary {
   let materialCost = 0,
@@ -294,18 +303,21 @@ export function computeSummary(
     else subcontractorCost += tot;
   }
   const subtotal = items.reduce((s, row) => s + lineTotal(row), 0);
-  const tax = meta.tax ?? 0;
-  const discount = meta.discount ?? 0;
-  const total = subtotal + tax - discount;
+  const pricing = computeEstimatePricing({
+    subtotal,
+    discount: meta.discount,
+    tax: meta.tax,
+    taxRatePct: meta.taxRatePct,
+  });
   return {
     materialCost,
     laborCost,
     subcontractorCost,
-    subtotal,
-    tax,
-    discount,
+    subtotal: pricing.subtotal,
+    tax: pricing.tax,
+    discount: pricing.discount,
     markup: 0,
-    total,
+    total: pricing.total,
   };
 }
 
@@ -338,6 +350,7 @@ export async function createEstimateWithClient(
     salesPerson?: string;
     documentStyle?: EstimateDocumentStyle;
     tax?: number;
+    taxRatePct?: number | null;
     discount?: number;
     overheadPct?: number;
     profitPct?: number;
@@ -389,6 +402,7 @@ export async function createEstimateWithClient(
     estimate_date: now,
     tax: payload.tax ?? 0,
     discount: payload.discount ?? 0,
+    ...(payload.taxRatePct != null ? { tax_rate_pct: payload.taxRatePct } : {}),
     overhead_pct: payload.overheadPct ?? 0,
     profit_pct: payload.profitPct ?? 0,
   };
@@ -407,6 +421,11 @@ export async function createEstimateWithClient(
   let e2 = e2Initial;
   if (e2 && metaIns.document_notes != null && isMissingColumnError(e2, "document_notes")) {
     delete metaIns.document_notes;
+    const retry = await c.from("estimate_meta").insert(metaIns);
+    e2 = retry.error;
+  }
+  if (e2 && metaIns.tax_rate_pct != null && isMissingColumnError(e2, "tax_rate_pct")) {
+    delete metaIns.tax_rate_pct;
     const retry = await c.from("estimate_meta").insert(metaIns);
     e2 = retry.error;
   }
@@ -466,6 +485,7 @@ export async function createEstimateWithItemsWithClient(
     salesPerson?: string;
     documentStyle?: EstimateDocumentStyle;
     tax?: number;
+    taxRatePct?: number | null;
     discount?: number;
     overheadPct?: number;
     profitPct?: number;
@@ -507,6 +527,7 @@ export async function createEstimateWithItemsWithClient(
     salesPerson: payload.salesPerson,
     documentStyle: payload.documentStyle,
     tax: payload.tax,
+    taxRatePct: payload.taxRatePct,
     discount: payload.discount,
     overheadPct: payload.overheadPct,
     profitPct: payload.profitPct,
@@ -929,6 +950,8 @@ function mapEstimateMetaRow(row: Record<string, unknown>): EstimateMetaRecord {
       siteAddress: (row.project_site_address as string) ?? "",
     },
     tax: Number(row.tax ?? 0),
+    taxRatePct:
+      row.tax_rate_pct == null || row.tax_rate_pct === "" ? null : Number(row.tax_rate_pct),
     discount: Number(row.discount ?? 0),
     overheadPct: Number(row.overhead_pct ?? 0),
     profitPct: Number(row.profit_pct ?? 0),
@@ -1346,6 +1369,7 @@ export async function updateEstimateMetaWithClient(
     client?: { name?: string; phone?: string; email?: string; address?: string };
     project?: { name?: string; siteAddress?: string };
     tax?: number;
+    taxRatePct?: number | null;
     discount?: number;
     overheadPct?: number;
     profitPct?: number;
@@ -1419,6 +1443,13 @@ export async function updateEstimateMetaWithClient(
     p_patch: patch,
   });
   if (error || !Array.isArray(data)) return false;
+  if (payload.taxRatePct !== undefined) {
+    const rateWrite = await c
+      .from("estimate_meta")
+      .update({ tax_rate_pct: payload.taxRatePct })
+      .eq("estimate_id", estimateId);
+    if (rateWrite.error && !isMissingColumnError(rateWrite.error, "tax_rate_pct")) return false;
+  }
   return data.some(
     (row) =>
       row != null &&
