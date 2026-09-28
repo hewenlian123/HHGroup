@@ -54,7 +54,7 @@ export function PaymentDeleteDependenciesDialog({
 
         <div className="max-h-[50vh] space-y-2 overflow-y-auto pr-1">
           {blockers.length === 0 ? (
-            <p className="rounded-hh-compact border border-dashed border-border px-3 py-4 text-sm text-muted-foreground">
+            <p className="rounded-hh-compact border border-dashed border-[var(--hh-line)] px-3 py-4 text-sm text-[var(--hh-muted)]">
               No blocking dependencies were found. Refresh the check and try deleting again.
             </p>
           ) : (
@@ -63,16 +63,16 @@ export function PaymentDeleteDependenciesDialog({
               return (
                 <div
                   key={`${dep.type}-${dep.id}`}
-                  className="rounded-hh-compact border border-border bg-card px-3 py-3"
+                  className="rounded-hh-compact border border-[var(--hh-line)] bg-card px-3 py-3"
                 >
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-foreground">{dep.label}</p>
+                      <p className="text-sm font-medium text-[var(--hh-ink)]">{dep.label}</p>
                       {dep.description ? (
-                        <p className="mt-1 text-sm text-muted-foreground">{dep.description}</p>
+                        <p className="mt-1 text-sm text-[var(--hh-muted)]">{dep.description}</p>
                       ) : null}
-                      {meta ? <p className="mt-1 text-xs text-muted-foreground">{meta}</p> : null}
-                      <p className="mt-1 break-all text-xs text-muted-foreground">ID: {dep.id}</p>
+                      {meta ? <p className="mt-1 text-xs text-[var(--hh-muted)]">{meta}</p> : null}
+                      <p className="mt-1 break-all text-xs text-[var(--hh-muted)]">ID: {dep.id}</p>
                     </div>
                     {dep.href ? (
                       <Button asChild size="sm" variant="outline">

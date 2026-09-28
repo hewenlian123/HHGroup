@@ -154,7 +154,7 @@ export default async function ARPage({
   return (
     <div
       data-revenue-ar-v2
-      className="page-container page-stack py-4 text-[var(--hh-text-secondary)] md:py-6"
+      className="page-container page-stack mx-auto w-full max-w-[1120px] py-4 text-[var(--hh-text)] md:py-6"
     >
       <FinanceContextBack />
       <div className="hidden md:block">
