@@ -137,23 +137,49 @@ test("Batch D owns one live region, semantic feedback, busy state, and responsiv
         const success = document.querySelector('[data-toast][aria-label^="Success:"]');
         const danger = document.querySelector('[data-toast][aria-label^="Error:"]');
         const dismiss = danger.querySelector('button[aria-label^="Dismiss"]');
+        const successStyles = getComputedStyle(success);
+        const dangerStyles = getComputedStyle(danger);
         return {
-          successColor: getComputedStyle(success).color,
-          successVariable: getComputedStyle(success).getPropertyValue("--hh-success"),
+          successText: successStyles.color,
+          successIcon: getComputedStyle(success.querySelector("svg")).color,
+          successShadow: successStyles.boxShadow,
+          successSolid: resolveColor("--hh-success-solid"),
+          ink: resolveColor("--hh-ink"),
           successToken: resolveColor("--hh-success"),
-          dangerColor: getComputedStyle(danger).color,
+          dangerText: dangerStyles.color,
+          dangerIcon: getComputedStyle(danger.querySelector("svg")).color,
+          dangerShadow: dangerStyles.boxShadow,
+          dangerBar: resolveColor("--hh-danger-bar"),
           dangerToken: resolveColor("--hh-danger"),
-          animation: getComputedStyle(danger).animationName,
+          animation: dangerStyles.animationName,
           dismissHeight: dismiss.getBoundingClientRect().height,
           noOverflow: document.documentElement.scrollWidth <= window.innerWidth,
         };
       });
       assert.equal(
-        result.successColor,
-        result.successToken,
-        `${viewport.name} ${theme} success (${result.successVariable})`
+        result.successText,
+        result.ink,
+        `${viewport.name} ${theme} success text stays ink`
       );
-      assert.equal(result.dangerColor, result.dangerToken, `${viewport.name} ${theme} danger`);
+      assert.equal(
+        result.successIcon,
+        result.successToken,
+        `${viewport.name} ${theme} success icon`
+      );
+      assert.ok(
+        result.successShadow.includes(result.successSolid),
+        `${viewport.name} ${theme} success bar`
+      );
+      assert.equal(
+        result.dangerText,
+        result.ink,
+        `${viewport.name} ${theme} danger text stays ink`
+      );
+      assert.equal(result.dangerIcon, result.dangerToken, `${viewport.name} ${theme} danger icon`);
+      assert.ok(
+        result.dangerShadow.includes(result.dangerBar),
+        `${viewport.name} ${theme} danger bar`
+      );
       assert.equal(result.animation, "none", `${viewport.name} ${theme} reduced motion`);
       assert.equal(result.noOverflow, true, `${viewport.name} ${theme} no overflow`);
       if (viewport.name === "mobile") assert.ok(result.dismissHeight >= 44, "mobile dismiss touch");
