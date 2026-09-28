@@ -1,3 +1,5 @@
+import { computeRemainingContract } from "@/lib/financial/remaining-contract";
+
 export type ProjectFinancialWarningSeverity = "info" | "warning";
 
 export type ProjectFinancialWarning = {
@@ -555,7 +557,11 @@ export function calculateProjectFinancialSnapshot(
     paidAmount,
     openAR: toMoney(Math.max(0, billedAmount - paidAmount)),
     invoicedExTax,
-    remainingToBill: toMoney(Math.max(0, revisedContractValue - invoicedExTax)),
+    remainingToBill: computeRemainingContract({
+      originalContract: contractValue,
+      approvedChangeOrders,
+      invoicedExcludingTax: invoicedExTax,
+    }).remainingContract,
     changeOrderCost,
     actualCost,
     expenseCost,
