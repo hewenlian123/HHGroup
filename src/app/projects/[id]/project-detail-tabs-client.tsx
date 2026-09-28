@@ -901,22 +901,20 @@ export function ProjectDetailTabsClient({
               <div className="hidden min-w-0 space-y-2 lg:block">
                 <Link
                   href={backHref}
-                  className="inline-flex min-h-9 items-center gap-1.5 rounded-hh-standard px-1 text-[12px] font-[650] text-[var(--hh-muted)] hover:text-[var(--hh-ink)]"
+                  className="inline-flex min-h-9 items-center gap-1.5 rounded-hh-standard px-1 text-hh-metadata font-[650] text-[var(--hh-muted)] hover:text-[var(--hh-ink)]"
                 >
                   <ArrowLeft className="h-4 w-4" aria-hidden="true" />
                   {backLabel}
                 </Link>
                 <div className="flex flex-wrap items-center gap-2">
-                  <p className="text-[11px] font-[650] uppercase tracking-[0.08em] text-[var(--hh-muted)]">
+                  <p className="text-hh-label font-[650] uppercase text-[var(--hh-muted)]">
                     Project
                     {displayProject.estimateRef ? ` · ${displayProject.estimateRef}` : ""}
                   </p>
                   <ProjectDetailStatusPill status={displayProject.status} />
                 </div>
-                <h1 className="text-[29px] font-[650] leading-9 tracking-[-0.022em] text-[var(--hh-ink)]">
-                  {displayProject.name}
-                </h1>
-                <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-[var(--hh-muted)]">
+                <h1 className="text-title-page text-[var(--hh-ink)]">{displayProject.name}</h1>
+                <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-hh-body text-[var(--hh-muted)]">
                   {[
                     displayProject.client,
                     displayProject.address,
@@ -988,7 +986,7 @@ export function ProjectDetailTabsClient({
             {headerFinancialWarning ? (
               <p
                 data-testid="project-header-financial-warning"
-                className="rounded-[10px] border border-[var(--hh-warning-ring)] bg-[var(--hh-warning-bg)] px-3 py-2 text-[13px] font-[650] text-[var(--hh-warning-fg)]"
+                className="rounded-hh-task border border-[var(--hh-warning-ring)] bg-[var(--hh-warning-bg)] px-3 py-2 text-hh-body font-[650] text-[var(--hh-warning-fg)]"
               >
                 {headerFinancialWarning}
               </p>
@@ -1059,7 +1057,7 @@ export function ProjectDetailTabsClient({
             >
               <TabsList
                 aria-label="Project workspace sections"
-                className="h-auto min-h-11 flex-1 flex-wrap justify-start gap-6 border-0 max-lg:gap-1 max-lg:rounded-[12px] max-lg:bg-[var(--hh-chip-strong)] max-lg:p-1"
+                className="h-auto min-h-11 flex-1 flex-wrap justify-start gap-6 border-0 max-lg:gap-1 max-lg:rounded-card max-lg:bg-[var(--hh-chip-strong)] max-lg:p-1"
               >
                 {PROJECT_WORKSPACE_TABS.filter(
                   (t) => t.key !== "people" && t.key !== "closeout"
@@ -1075,8 +1073,8 @@ export function ProjectDetailTabsClient({
                       key={t.key}
                       value={t.key}
                       className={cn(
-                        "min-h-11 gap-1.5 px-1 text-[13.5px] font-medium text-[var(--hh-muted)] data-[state=active]:text-[var(--hh-ink)]",
-                        "max-lg:min-h-11 max-lg:flex-1 max-lg:rounded-[9px] max-lg:px-2 max-lg:after:hidden max-lg:data-[state=active]:bg-[var(--hh-surface)] max-lg:data-[state=active]:shadow-[var(--hh-shadow-seg-on)]",
+                        "min-h-11 gap-1.5 px-1 text-hh-body font-medium text-[var(--hh-muted)] data-[state=active]:text-[var(--hh-ink)]",
+                        "max-lg:min-h-11 max-lg:flex-1 max-lg:rounded-hh-standard max-lg:px-2 max-lg:after:hidden max-lg:data-[state=active]:bg-[var(--hh-surface)] max-lg:data-[state=active]:shadow-seg",
                         !t.mobile && "hidden lg:inline-flex"
                       )}
                     >
@@ -1084,7 +1082,7 @@ export function ProjectDetailTabsClient({
                       {count > 0 ? (
                         <span
                           aria-hidden="true"
-                          className="rounded-[5px] bg-[var(--hh-chip-strong)] px-1.5 text-[11px] font-[650] text-[var(--hh-th)]"
+                          className="rounded-hh-compact bg-[var(--hh-chip-strong)] px-1.5 text-hh-label font-[650] text-[var(--hh-th)]"
                         >
                           {count}
                         </span>

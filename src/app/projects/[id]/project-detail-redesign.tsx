@@ -30,8 +30,8 @@ import type { ProjectTaskWithWorker } from "@/lib/project-tasks-db";
 import type { ActivityLog } from "@/lib/activity-logs-db";
 
 const cardClass =
-  "flex min-w-0 flex-col overflow-hidden rounded-card border border-[var(--hh-line)] bg-[var(--hh-surface)] shadow-[var(--hh-shadow-card)]";
-const labelClass = "text-[11px] font-[650] uppercase tracking-[0.06em] text-[var(--hh-muted)]";
+  "flex min-w-0 flex-col overflow-hidden rounded-card border border-[var(--hh-line)] bg-[var(--hh-surface)] shadow-card";
+const labelClass = "text-hh-label font-[650] uppercase text-[var(--hh-muted)]";
 const moneyClass = "hh-fin tabular-nums";
 
 function finite(value: number | null | undefined): value is number {
@@ -79,10 +79,8 @@ function OverviewCard({
     <section data-testid={testId} className={cn(cardClass, className)}>
       <header className="flex items-start justify-between gap-3 px-5 pb-3.5 pt-4">
         <div className="min-w-0">
-          <h2 className="text-[15.5px] font-[650] leading-[22px] tracking-[-0.01em] text-[var(--hh-ink)]">
-            {title}
-          </h2>
-          {meta ? <p className="mt-0.5 text-[12px] text-[var(--hh-muted)]">{meta}</p> : null}
+          <h2 className="text-title-card text-[var(--hh-ink)]">{title}</h2>
+          {meta ? <p className="mt-0.5 text-hh-metadata text-[var(--hh-muted)]">{meta}</p> : null}
         </div>
         {action}
       </header>
@@ -101,7 +99,7 @@ function TextLink({
   href?: string;
 }) {
   const className =
-    "inline-flex min-h-11 items-center gap-1 text-[12.5px] font-[650] text-[var(--hh-link)] lg:min-h-8";
+    "inline-flex min-h-11 items-center gap-1 text-hh-metadata font-[650] text-[var(--hh-link)] lg:min-h-8";
   if (href) {
     return (
       <Link href={href} className={className}>
@@ -121,7 +119,7 @@ function CardFooterLink({ label, onClick }: { label: string; onClick: () => void
     <button
       type="button"
       onClick={onClick}
-      className="flex h-[42px] w-full items-center justify-center gap-1 border-t border-[var(--hh-line-2)] bg-[var(--hh-surface-footer)] text-[12.5px] font-[650] text-[var(--hh-link)]"
+      className="flex h-[42px] w-full items-center justify-center gap-1 border-t border-[var(--hh-line-2)] bg-[var(--hh-surface-footer)] text-hh-metadata font-[650] text-[var(--hh-link)]"
     >
       {label}
       <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
@@ -132,8 +130,8 @@ function CardFooterLink({ label, onClick }: { label: string; onClick: () => void
 function EmptyCopy({ title, body }: { title: string; body: string }) {
   return (
     <div className="px-5 py-8 text-center">
-      <p className="text-[14px] font-[650] text-[var(--hh-ink)]">{title}</p>
-      <p className="mt-1 text-[12.5px] leading-5 text-[var(--hh-muted)]">{body}</p>
+      <p className="text-hh-body-strong font-[650] text-[var(--hh-ink)]">{title}</p>
+      <p className="mt-1 text-hh-metadata leading-5 text-[var(--hh-muted)]">{body}</p>
     </div>
   );
 }
@@ -145,12 +143,12 @@ export function ProjectOverdueBanner({ invoice }: { invoice: InvoiceWithDerived 
   return (
     <div
       role="status"
-      className="flex flex-wrap items-center gap-3 rounded-[10px] border border-[var(--hh-danger-ring)] bg-[var(--hh-danger-bg)] px-3 py-2.5"
+      className="flex flex-wrap items-center gap-3 rounded-hh-task border border-[var(--hh-danger-ring)] bg-[var(--hh-danger-bg)] px-3 py-2.5"
     >
       <span className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-hh-standard bg-[var(--hh-danger-bg)] text-[var(--hh-danger-fg)]">
         <TriangleAlert className="h-3.5 w-3.5" aria-hidden="true" />
       </span>
-      <p className="min-w-0 flex-1 text-[13px] leading-5 text-[var(--hh-danger-fg)]">
+      <p className="min-w-0 flex-1 text-hh-body leading-5 text-[var(--hh-danger-fg)]">
         <span className="font-[650]">
           {invoice.invoiceNo} is {invoice.daysOverdue} days overdue
         </span>
@@ -164,7 +162,7 @@ export function ProjectOverdueBanner({ invoice }: { invoice: InvoiceWithDerived 
       </p>
       <Link
         href={`/financial/invoices/${invoice.id}`}
-        className="inline-flex min-h-11 items-center px-2 text-[12.5px] font-[650] text-[var(--hh-link)] lg:min-h-8"
+        className="inline-flex min-h-11 items-center px-2 text-hh-metadata font-[650] text-[var(--hh-link)] lg:min-h-8"
       >
         View
       </Link>
@@ -194,7 +192,7 @@ function CostBars({
 
   return (
     <div className="px-5 pb-4">
-      <p className="text-[12px] text-[var(--hh-muted)]">
+      <p className="text-hh-metadata text-[var(--hh-muted)]">
         <span
           data-testid="project-overview-cost-actual"
           className={cn(moneyClass, "font-[650] text-[var(--hh-ink)]")}
@@ -225,14 +223,14 @@ function CostBars({
               role="img"
               aria-label={summary}
             >
-              <span className="truncate text-[13px] text-[var(--hh-text)]">{line.label}</span>
-              <span className="relative h-3 overflow-hidden rounded-[4px] bg-[var(--hh-track-soft)] shadow-[inset_0_0_0_1px_var(--hh-track-ring)]">
+              <span className="truncate text-hh-body text-[var(--hh-text)]">{line.label}</span>
+              <span className="relative h-3 overflow-hidden rounded-hh-compact bg-[var(--hh-track-soft)] ring-1 ring-inset ring-[var(--hh-track-ring)]">
                 <span
-                  className="absolute inset-y-0 left-0 rounded-[4px] bg-[var(--hh-track)]"
+                  className="absolute inset-y-0 left-0 rounded-hh-compact bg-[var(--hh-track)]"
                   style={{ width: `${Math.max(0, Math.min(100, track))}%` }}
                 />
                 <span
-                  className="absolute inset-y-0 left-0 rounded-[4px]"
+                  className="absolute inset-y-0 left-0 rounded-hh-compact"
                   style={{
                     width: `${Math.max(0, Math.min(100, over ? (line.actual / scale) * 100 : fill))}%`,
                     backgroundImage: over
@@ -241,7 +239,7 @@ function CostBars({
                   }}
                 />
               </span>
-              <span className={cn(moneyClass, "text-right text-[13px]")}>
+              <span className={cn(moneyClass, "text-right text-hh-body")}>
                 <span
                   data-testid={`project-overview-cost-${line.label.toLowerCase().replace(/\s+/g, "-")}`}
                   className="font-[650] text-[var(--hh-ink)]"
@@ -254,7 +252,7 @@ function CostBars({
               </span>
               <span
                 className={cn(
-                  "hidden text-right text-[13px] font-[650] sm:block",
+                  "hidden text-right text-hh-body font-[650] sm:block",
                   over ? "text-[var(--hh-danger-fg)]" : "text-[var(--hh-ink-2)]"
                 )}
               >
@@ -265,7 +263,7 @@ function CostBars({
           );
         })}
       </div>
-      <p className="mt-2 text-[11.5px] text-[var(--hh-muted)]">
+      <p className="mt-2 text-hh-helper text-[var(--hh-muted)]">
         {hasBudget
           ? "Bars scaled to the largest budget or cost line. Over budget is marked in the percent."
           : "Bars scaled to the largest cost line. Category budgets are not on this snapshot."}
@@ -419,15 +417,15 @@ export function ProjectOverviewPanels({
             const body = (
               <>
                 <span
-                  className="flex h-11 w-11 items-center justify-center rounded-[12px] text-[var(--hh-sidebar-text-strong)]"
+                  className="flex h-11 w-11 items-center justify-center rounded-card text-[var(--hh-sidebar-text-strong)]"
                   style={{ backgroundImage: "var(--hh-grad-bar-navy)" }}
                 >
                   <Icon className="h-5 w-5" aria-hidden="true" />
                 </span>
-                <span className="mt-3 block text-[16px] font-[650] leading-5 text-[var(--hh-ink)]">
+                <span className="mt-3 block text-num-m leading-5 text-[var(--hh-ink)]">
                   {action.label}
                 </span>
-                <span className="mt-0.5 block text-[12px] text-[var(--hh-muted)]">
+                <span className="mt-0.5 block text-hh-metadata text-[var(--hh-muted)]">
                   {action.meta}
                 </span>
               </>
@@ -477,7 +475,7 @@ export function ProjectOverviewPanels({
                         aria-label={done ? `Mark ${task.title} open` : `Mark ${task.title} done`}
                         onClick={() => onToggleTask(task.id, !done)}
                         className={cn(
-                          "mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-[6px] border",
+                          "mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-hh-compact border",
                           done
                             ? "border-[var(--hh-success-solid)] bg-[var(--hh-success-bg)] text-[var(--hh-success-fg)]"
                             : "border-[var(--hh-line-input)] bg-[var(--hh-surface)]"
@@ -488,13 +486,13 @@ export function ProjectOverviewPanels({
                       <div className="min-w-0 flex-1">
                         <p
                           className={cn(
-                            "text-[15px] leading-5 text-[var(--hh-ink)]",
+                            "text-hh-body-strong leading-5 text-[var(--hh-ink)]",
                             done && "line-through"
                           )}
                         >
                           {task.title}
                         </p>
-                        <p className="mt-0.5 text-[12px] text-[var(--hh-muted)]">
+                        <p className="mt-0.5 text-hh-metadata text-[var(--hh-muted)]">
                           {[task.worker_name, task.due_date ? displayDate(task.due_date) : null]
                             .filter(Boolean)
                             .join(" · ") || "No due date"}
@@ -506,7 +504,7 @@ export function ProjectOverviewPanels({
                         </p>
                       </div>
                       {!done && index === tasks.findIndex((item) => taskOpen(item.status)) ? (
-                        <span className="rounded-full bg-[var(--hh-chip-strong)] px-2 py-0.5 text-[11px] font-[650] text-[var(--hh-th)]">
+                        <span className="rounded-full bg-[var(--hh-chip-strong)] px-2 py-0.5 text-hh-label font-[650] text-[var(--hh-th)]">
                           Next
                         </span>
                       ) : null}
@@ -532,14 +530,14 @@ export function ProjectOverviewPanels({
                   key={name}
                   className="flex min-h-14 items-center gap-3 border-t border-[var(--hh-line-2)] px-5 py-3 first:border-t-0"
                 >
-                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--hh-chip)] text-[12px] font-[650] text-[var(--hh-ink)]">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--hh-chip)] text-hh-metadata font-[650] text-[var(--hh-ink)]">
                     {name.slice(0, 1).toUpperCase()}
                   </span>
                   <span className="min-w-0">
-                    <span className="block truncate text-[15px] font-[650] text-[var(--hh-ink)]">
+                    <span className="block truncate text-hh-body-strong font-[650] text-[var(--hh-ink)]">
                       {name}
                     </span>
-                    <span className="block text-[12px] text-[var(--hh-muted)]">
+                    <span className="block text-hh-metadata text-[var(--hh-muted)]">
                       Assigned on an open task
                     </span>
                   </span>
@@ -593,23 +591,23 @@ export function ProjectOverviewPanels({
                         className="block px-5 py-3 hover:bg-[var(--hh-hover)]"
                       >
                         <span className="flex items-baseline justify-between gap-3">
-                          <span className="text-[13px] font-[650] text-[var(--hh-ink)]">
+                          <span className="text-hh-body font-[650] text-[var(--hh-ink)]">
                             {invoice.invoiceNo}
                           </span>
                           <span
                             className={cn(
                               moneyClass,
-                              "text-[13px] font-[650] text-[var(--hh-ink)]"
+                              "text-hh-body font-[650] text-[var(--hh-ink)]"
                             )}
                           >
                             {formatOverviewMoney(invoice.total)}
                           </span>
                         </span>
-                        <span className="mt-0.5 block truncate text-[12px] text-[var(--hh-muted)]">
+                        <span className="mt-0.5 block truncate text-hh-metadata text-[var(--hh-muted)]">
                           {invoice.lineItems[0]?.description || invoice.notes || invoice.clientName}
                         </span>
                         <span className="mt-1.5 flex items-center justify-between gap-2">
-                          <span className="text-[11.5px] text-[var(--hh-muted)]">
+                          <span className="text-hh-helper text-[var(--hh-muted)]">
                             Issued {displayDate(invoice.issueDate)}
                           </span>
                           <InvoiceStatusBadge status={invoice.computedStatus} />
@@ -650,23 +648,23 @@ export function ProjectOverviewPanels({
                         className="block px-5 py-3 hover:bg-[var(--hh-hover)]"
                       >
                         <span className="flex items-baseline justify-between gap-3">
-                          <span className="text-[13px] font-[650] text-[var(--hh-ink)]">
+                          <span className="text-hh-body font-[650] text-[var(--hh-ink)]">
                             {order.number}
                           </span>
                           <span
                             className={cn(
                               moneyClass,
-                              "text-[13px] font-[650] text-[var(--hh-ink)]"
+                              "text-hh-body font-[650] text-[var(--hh-ink)]"
                             )}
                           >
                             {formatOverviewMoney(order.total, { sign: "always" })}
                           </span>
                         </span>
-                        <span className="mt-0.5 block truncate text-[12px] text-[var(--hh-muted)]">
+                        <span className="mt-0.5 block truncate text-hh-metadata text-[var(--hh-muted)]">
                           {order.title || order.description || "Change order"}
                         </span>
                         <span className="mt-1.5 flex items-center justify-between gap-2">
-                          <span className="text-[11.5px] text-[var(--hh-muted)]">
+                          <span className="text-hh-helper text-[var(--hh-muted)]">
                             {displayDate(order.date)}
                           </span>
                           <Badge
@@ -703,24 +701,24 @@ export function ProjectOverviewPanels({
             <div className="grid gap-3 px-5 pb-5 sm:grid-cols-3">
               <div>
                 <p className={labelClass}>Collected</p>
-                <p className={cn(moneyClass, "mt-1 text-[16px] font-[650] text-[var(--hh-ink)]")}>
+                <p className={cn(moneyClass, "mt-1 text-num-m text-[var(--hh-ink)]")}>
                   {formatOverviewMoney(paid)}
                 </p>
               </div>
               <div>
                 <p className={labelClass}>Cash out</p>
-                <p className={cn(moneyClass, "mt-1 text-[16px] font-[650] text-[var(--hh-ink)]")}>
+                <p className={cn(moneyClass, "mt-1 text-num-m text-[var(--hh-ink)]")}>
                   {formatOverviewMoney(cashOut)}
                 </p>
               </div>
               <div>
                 <p className={labelClass}>Net cash</p>
-                <p className={cn(moneyClass, "mt-1 text-[16px] font-[650] text-[var(--hh-ink)]")}>
+                <p className={cn(moneyClass, "mt-1 text-num-m text-[var(--hh-ink)]")}>
                   {formatOverviewMoney(cashPosition, { sign: "always" })}
                 </p>
               </div>
             </div>
-            <p className="border-t border-[var(--hh-line-2)] bg-[var(--hh-surface-footer)] px-5 py-3 text-[12px] text-[var(--hh-muted)]">
+            <p className="border-t border-[var(--hh-line-2)] bg-[var(--hh-surface-footer)] px-5 py-3 text-hh-metadata text-[var(--hh-muted)]">
               A cumulative cash-flow line is not shown. This project has no authoritative
               transaction history to plot.
             </p>
@@ -776,7 +774,7 @@ export function ProjectOverviewPanels({
                 View schedule
               </Button>
             </div>
-            <div className="space-y-2 border-t border-[var(--hh-line-2)] px-5 py-3 text-[13px]">
+            <div className="space-y-2 border-t border-[var(--hh-line-2)] px-5 py-3 text-hh-body">
               <p>
                 <Link
                   href={`/financial/inbox?project_id=${encodeURIComponent(projectId)}`}
@@ -807,7 +805,7 @@ export function ProjectOverviewPanels({
               />
             ) : (
               <div className="px-5 pb-4">
-                <div className="mb-3 text-[12px] text-[var(--hh-muted)]">
+                <div className="mb-3 text-hh-metadata text-[var(--hh-muted)]">
                   <span>
                     {doneSchedule} of {scheduleItems.length} complete
                   </span>
@@ -843,10 +841,10 @@ export function ProjectOverviewPanels({
                           ) : null}
                         </span>
                         <span className="min-w-0">
-                          <span className="block truncate text-[13px] font-[650] text-[var(--hh-ink)]">
+                          <span className="block truncate text-hh-body font-[650] text-[var(--hh-ink)]">
                             {item.title}
                           </span>
-                          <span className="block text-[11.5px] text-[var(--hh-muted)]">
+                          <span className="block text-hh-helper text-[var(--hh-muted)]">
                             {[displayDate(item.start_date), item.status]
                               .filter(Boolean)
                               .join(" · ")}
@@ -870,14 +868,14 @@ export function ProjectOverviewPanels({
                     key={log.id}
                     className="flex gap-3 border-t border-[var(--hh-line-2)] px-5 py-3 first:border-t-0"
                   >
-                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--hh-chip)] text-[11px] font-[650] text-[var(--hh-ink)]">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--hh-chip)] text-hh-label font-[650] text-[var(--hh-ink)]">
                       {(log.type || "A").slice(0, 1).toUpperCase()}
                     </span>
                     <span className="min-w-0">
-                      <span className="block text-[13px] text-[var(--hh-text)]">
+                      <span className="block text-hh-body text-[var(--hh-text)]">
                         {log.description || log.type}
                       </span>
-                      <span className="mt-0.5 block text-[11.5px] text-[var(--hh-muted)]">
+                      <span className="mt-0.5 block text-hh-helper text-[var(--hh-muted)]">
                         {displayDate(log.created_at)}
                       </span>
                     </span>
@@ -889,14 +887,14 @@ export function ProjectOverviewPanels({
                         key={row.id}
                         className="flex gap-3 border-t border-[var(--hh-line-2)] px-5 py-3 first:border-t-0"
                       >
-                        <span className="min-w-0 flex-1 text-[13px] text-[var(--hh-text)]">
+                        <span className="min-w-0 flex-1 text-hh-body text-[var(--hh-text)]">
                           {row.vendorName || row.memo || "Cost recorded"}
-                          <span className="mt-0.5 block text-[11.5px] text-[var(--hh-muted)]">
+                          <span className="mt-0.5 block text-hh-helper text-[var(--hh-muted)]">
                             {displayDate(row.date)}
                           </span>
                         </span>
                         <span
-                          className={cn(moneyClass, "text-[13px] font-[650] text-[var(--hh-ink)]")}
+                          className={cn(moneyClass, "text-hh-body font-[650] text-[var(--hh-ink)]")}
                         >
                           {formatOverviewMoney(row.amount)}
                         </span>
@@ -915,8 +913,8 @@ export function ProjectOverviewPanels({
 function DetailItem({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex items-start justify-between gap-4 border-b border-[var(--hh-line-2)] py-2.5 last:border-b-0">
-      <span className="text-[13px] text-[var(--hh-muted)]">{label}</span>
-      <span className="min-w-0 text-right text-[13px] font-[650] text-[var(--hh-ink)]">
+      <span className="text-hh-body text-[var(--hh-muted)]">{label}</span>
+      <span className="min-w-0 text-right text-hh-body font-[650] text-[var(--hh-ink)]">
         {children}
       </span>
     </div>
@@ -967,20 +965,14 @@ export function ProjectKpiRow({
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1.12fr)_minmax(0,1.12fr)_minmax(240px,0.96fr)]">
       <section
-        className="rounded-card border border-[var(--hh-navy-edge)] p-5 text-[var(--hh-sidebar-text-strong)] shadow-[var(--hh-shadow-hero)]"
+        className="rounded-card border border-[var(--hh-navy-edge)] p-5 text-[var(--hh-sidebar-text-strong)] shadow-hero"
         style={{ backgroundImage: "var(--hh-grad-hero)" }}
       >
         <p className={cn(labelClass, "text-[var(--hh-sidebar-text-pin)]")}>Est. profit</p>
-        <p
-          data-testid="project-header-profit"
-          className={cn(
-            moneyClass,
-            "mt-2 text-[40px] font-[700] leading-[46px] tracking-[-0.03em]"
-          )}
-        >
+        <p data-testid="project-header-profit" className={cn(moneyClass, "mt-2 text-display-hero")}>
           {profitText}
         </p>
-        <p className="mt-2 text-[13px] text-[var(--hh-sidebar-text-pin)]">
+        <p className="mt-2 text-hh-body text-[var(--hh-sidebar-text-pin)]">
           <span
             data-testid="project-header-margin"
             className="font-[650] text-[var(--hh-sidebar-text-strong)]"
@@ -999,7 +991,7 @@ export function ProjectKpiRow({
               }}
             />
           </div>
-          <div className="mt-1 flex justify-between text-[10.5px] text-[var(--hh-sidebar-text-pin)]">
+          <div className="mt-1 flex justify-between text-hh-helper text-[var(--hh-sidebar-text-pin)]">
             <span>0%</span>
             <span>50%</span>
           </div>
@@ -1012,10 +1004,7 @@ export function ProjectKpiRow({
             <p className={labelClass}>Cash collected</p>
             <p
               data-testid="project-header-collected"
-              className={cn(
-                moneyClass,
-                "mt-1 text-[28px] font-[700] leading-[34px] tracking-[-0.025em] text-[var(--hh-ink)]"
-              )}
+              className={cn(moneyClass, "mt-1 text-num-xl text-[var(--hh-ink)]")}
             >
               {collectedUnavailable ? "Unavailable" : formatOverviewMoney(collected)}
             </p>
@@ -1024,10 +1013,7 @@ export function ProjectKpiRow({
             <p className={labelClass}>Open A/R</p>
             <p
               data-testid="project-header-need-collect"
-              className={cn(
-                moneyClass,
-                "mt-1 text-[20px] font-[650] leading-[34px] tracking-[-0.02em] text-[var(--hh-ink)]"
-              )}
+              className={cn(moneyClass, "mt-1 text-num-l text-[var(--hh-ink)]")}
             >
               {formatOverviewMoney(openAr)}
             </p>
@@ -1044,7 +1030,7 @@ export function ProjectKpiRow({
           />
           <span className="h-full bg-[var(--hh-series-2)]" style={{ width: `${openWidth}%` }} />
         </div>
-        <p className="mt-2 text-[12px] text-[var(--hh-muted)]">
+        <p className="mt-2 text-hh-metadata text-[var(--hh-muted)]">
           <span className="mr-3 inline-flex items-center gap-1.5">
             <span className="h-2 w-2 rounded-full bg-[var(--hh-navy)]" aria-hidden="true" />
             Collected
@@ -1066,7 +1052,7 @@ export function ProjectKpiRow({
           <div>
             <p className={labelClass}>Revised contract</p>
             {finite(approvedChangeOrders) && approvedChangeOrders !== 0 ? (
-              <p className="mt-1 text-[12px] text-[var(--hh-muted)]">
+              <p className="mt-1 text-hh-metadata text-[var(--hh-muted)]">
                 incl. {formatOverviewMoney(approvedChangeOrders, { sign: "always" })} approved
                 change orders
               </p>
@@ -1074,7 +1060,7 @@ export function ProjectKpiRow({
           </div>
           <p
             data-testid="project-header-contract-value"
-            className={cn(moneyClass, "text-[16px] font-[650] text-[var(--hh-ink)]")}
+            className={cn(moneyClass, "text-num-m text-[var(--hh-ink)]")}
           >
             {contractText}
           </p>
@@ -1082,11 +1068,11 @@ export function ProjectKpiRow({
         <div className="flex items-start justify-between gap-3 py-3">
           <div>
             <p className={labelClass}>Billed</p>
-            <p className="mt-1 text-[12px] text-[var(--hh-muted)]">
+            <p className="mt-1 text-hh-metadata text-[var(--hh-muted)]">
               Remaining to bill {formatOverviewMoney(remainingToBill)}
             </p>
           </div>
-          <p className={cn(moneyClass, "text-[16px] font-[650] text-[var(--hh-ink)]")}>
+          <p className={cn(moneyClass, "text-num-m text-[var(--hh-ink)]")}>
             {formatOverviewMoney(billed)}
           </p>
         </div>
@@ -1100,7 +1086,7 @@ export function ProjectKpiRow({
             data-testid="project-header-actual-cost"
             className={cn(
               moneyClass,
-              "text-[16px] font-[650] text-[var(--hh-link)] underline decoration-[var(--hh-link-underline)] underline-offset-4"
+              "text-num-m text-[var(--hh-link)] underline decoration-[var(--hh-link-underline)] underline-offset-4"
             )}
           >
             {actualText}
@@ -1133,23 +1119,23 @@ export function ProjectMobileIntro({
     >
       <Link
         href={backHref}
-        className="inline-flex min-h-11 items-center gap-1.5 text-[13px] font-[650] text-[var(--hh-sidebar-text-item)]"
+        className="inline-flex min-h-11 items-center gap-1.5 text-hh-body font-[650] text-[var(--hh-sidebar-text-item)]"
       >
         <ArrowLeft className="h-4 w-4" aria-hidden="true" />
         {backLabel}
       </Link>
       <div className="mt-2 flex flex-wrap items-center gap-2">
-        <p className="text-[11px] font-[650] uppercase tracking-[0.08em] text-[var(--hh-sidebar-text-pin)]">
+        <p className="text-hh-label font-[650] uppercase text-[var(--hh-sidebar-text-pin)]">
           Project
         </p>
         {status}
       </div>
-      <h1 className="mt-1 text-[26px] font-[650] leading-[31px] tracking-[-0.022em]">{name}</h1>
+      <h1 className="mt-1 text-title-page">{name}</h1>
       {address ? (
-        <p className="mt-1 text-[13px] text-[var(--hh-sidebar-text-item)]">{address}</p>
+        <p className="mt-1 text-hh-body text-[var(--hh-sidebar-text-item)]">{address}</p>
       ) : null}
       {scheduleProgress ? (
-        <p className="mt-3 text-[13px] text-[var(--hh-sidebar-text-pin)]">
+        <p className="mt-3 text-hh-body text-[var(--hh-sidebar-text-pin)]">
           Schedule items {scheduleProgress}
         </p>
       ) : null}
