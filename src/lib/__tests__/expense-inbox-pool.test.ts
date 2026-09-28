@@ -222,3 +222,22 @@ describe("countExpensesMatchingInboxPool", () => {
     expect(countExpensesMatchingInboxPool(rows)).toBe(2);
   });
 });
+
+describe("T2 explicit save workflow", () => {
+  it("keeps pending records in review even when fields are complete", async () => {
+    const { expenseStatusAfterSave } = await import("@/lib/expense-workflow-status");
+    expect(expenseStatusAfterSave("pending")).toBe("pending");
+    expect(expenseStatusAfterSave("draft")).toBe("draft");
+    expect(expenseStatusAfterSave("approved")).toBe("approved");
+    expect(expenseStatusAfterSave("paid")).toBe("paid");
+  });
+  it("recognizes receipts by business source, not only upload reference", async () => {
+    const { expenseRequiresReceiptReview } = await import("@/lib/expense-workflow-status");
+    expect(expenseRequiresReceiptReview({ sourceType: "receipt_upload" })).toBe(true);
+    expect(expenseRequiresReceiptReview({ sourceType: "company" })).toBe(false);
+    expect(
+      expenseRequiresReceiptReview({ sourceType: "company", receiptUrl: "receipts/legacy.jpg" })
+    ).toBe(true);
+    expect(expenseRequiresReceiptReview({ referenceNo: "INBOX-UP-test" })).toBe(true);
+  });
+});

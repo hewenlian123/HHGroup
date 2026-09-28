@@ -3,7 +3,6 @@
  * ensure dedicated worker row, cleanup prior receipts/reimbursements/expenses, API assertions.
  */
 import { mkdirSync } from "node:fs";
-import { dirname } from "node:path";
 
 import type { APIRequestContext } from "@playwright/test";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";

@@ -1,4 +1,5 @@
 import { getProjectContractReviewIssues } from "@/lib/financial/project-financial-review";
+import { invoiceLineQty } from "@/lib/money";
 import type { ProjectFinancialSnapshot } from "@/lib/financial/project-financial-snapshot";
 import { computeSummary, type EstimateItemRow } from "@/lib/estimates-db";
 import type { FinanceOwnerDashboard } from "@/lib/finance-owner-dashboard";
@@ -334,7 +335,7 @@ function groupBy(rows: UnknownRow[], field: string): Map<string, UnknownRow[]> {
 function invoiceLineAmount(row: UnknownRow): number {
   const storedAmount = toNullableMoney(row.amount);
   if (storedAmount != null) return storedAmount;
-  return toMoney(toMoney(row.quantity ?? row.qty) * toMoney(row.unit_price));
+  return toMoney(toMoney(invoiceLineQty(row)) * toMoney(row.unit_price));
 }
 
 function isVoidPayment(row: UnknownRow): boolean {

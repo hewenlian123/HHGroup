@@ -14,7 +14,12 @@ export function SubcontractorsActions() {
 
   return (
     <>
-      <Button type="button" onClick={() => setModalOpen(true)} size="sm" className="h-9 rounded-sm">
+      <Button
+        type="button"
+        onClick={() => setModalOpen(true)}
+        size="sm"
+        className="h-9 rounded-hh-compact"
+      >
         Add Subcontractor
       </Button>
       <AddSubcontractorModal

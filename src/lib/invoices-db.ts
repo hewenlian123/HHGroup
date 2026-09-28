@@ -5,6 +5,18 @@
 
 import { getSupabaseClient } from "@/lib/supabase";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { financialDataUnavailable } from "@/lib/financial-availability";
+import {
+  centsToMoney,
+  computeInvoiceTotals,
+  invoiceLineQty,
+  invoiceRevenueExTax,
+  lineExtension,
+  moneyToCents,
+  paymentCollectedExTax,
+  roundMoney,
+} from "@/lib/money";
+import { isVoidCashStatus } from "@/lib/payment-allocation";
 
 export type InvoiceStatus = "Draft" | "Sent" | "Partially Paid" | "Paid" | "Void";
 
@@ -114,7 +126,7 @@ type InvoiceItemRow = {
   quantity?: number;
   qty?: number;
   unit_price: number;
-  amount: number;
+  amount?: number | null;
 };
 
 type InvoicePaymentRow = {
@@ -171,11 +183,6 @@ function isMissingColumn(err: { message?: string } | null): boolean {
   return /column .* does not exist|could not find the .* column|schema cache/i.test(m);
 }
 
-function isQuantityColumnUnsupported(err: { message?: string } | null): boolean {
-  const m = err?.message ?? "";
-  return /quantity/i.test(m) && /column|generated|schema cache|could not find/i.test(m);
-}
-
 function normalizeReceivableStatus(status: string | null | undefined): string {
   return String(status ?? "")
     .trim()
@@ -220,48 +227,23 @@ function isoDateLike(value: unknown): string | null {
   return text ? text.slice(0, 10) : null;
 }
 
-async function insertInvoiceItems(
-  c: ReturnType<typeof client>,
-  rows: Array<{
-    invoice_id: string;
-    description: string;
-    qty: number;
-    unit_price: number;
-    amount: number;
-  }>
-): Promise<{ error?: string }> {
-  if (rows.length === 0) return {};
-  const rowsWithQuantity = rows.map((row) => ({ ...row, quantity: row.qty }));
-  let { error } = await c.from("invoice_items").insert(rowsWithQuantity);
-  if (error && isQuantityColumnUnsupported(error)) {
-    const fallback = await c.from("invoice_items").insert(rows);
-    error = fallback.error;
-  }
-  return error ? { error: error.message ?? "Failed to create invoice items." } : {};
+function isAvailableInvoiceNumber(value: unknown): boolean {
+  if (value == null || (typeof value === "string" && value.trim() === "")) return false;
+  return Number.isFinite(Number(value));
 }
 
-async function syncInvoiceStoredTotals(
-  c: ReturnType<typeof client>,
-  invoiceId: string,
-  lineItems: InvoiceLineItem[],
-  taxPct: number
-): Promise<void> {
-  const subtotal = lineItems.reduce((sum, item) => {
-    const quantity = Math.max(0, Number(item.qty) || 0);
-    const unitPrice = Math.max(0, Number(item.unitPrice) || 0);
-    return sum + quantity * unitPrice;
-  }, 0);
-  const safeTaxPct = Math.max(0, Number(taxPct) || 0);
-  const taxAmount = Math.round(subtotal * (safeTaxPct / 100) * 100) / 100;
-  await c
-    .from("invoices")
-    .update({
-      subtotal,
-      tax_pct: safeTaxPct,
-      tax_amount: taxAmount,
-      total: subtotal + taxAmount,
-    })
-    .eq("id", invoiceId);
+function invoiceItemRowIsAvailable(row: InvoiceItemRow, invoiceIds: Set<string>): boolean {
+  return Boolean(
+    row &&
+    typeof row === "object" &&
+    typeof row.id === "string" &&
+    row.id &&
+    typeof row.invoice_id === "string" &&
+    invoiceIds.has(row.invoice_id) &&
+    isAvailableInvoiceNumber(row.qty ?? row.quantity) &&
+    isAvailableInvoiceNumber(row.unit_price) &&
+    (row.amount == null || isAvailableInvoiceNumber(row.amount))
+  );
 }
 
 /** Avoid appending migration HINT to connection/network errors. */
@@ -275,15 +257,13 @@ function throwInvoiceError(error: { message?: string } | null, fallbackHint: str
 const HINT = "Run supabase/migrations/202602280009_create_invoices.sql";
 
 function toLineItem(r: InvoiceItemRow): InvoiceLineItem {
-  const q = Number(r.quantity ?? r.qty) || 0;
+  const q = invoiceLineQty(r);
   const unitPrice = Number(r.unit_price) || 0;
-  const computedAmount = q * unitPrice;
-  const storedAmount = Number(r.amount) || 0;
   return {
     description: r.description ?? "",
     qty: q,
     unitPrice,
-    amount: Math.abs(storedAmount - computedAmount) > 0.005 ? computedAmount : storedAmount,
+    amount: lineExtension(q, unitPrice),
   };
 }
 
@@ -307,13 +287,14 @@ function toInvoice(row: InvoiceRow, items: InvoiceItemRow[]): Invoice {
   const lineItems = items.map(toLineItem);
   const hasLineItems = lineItems.length > 0;
   const taxPct = Number(row.tax_pct) || 0;
-  const subtotal = hasLineItems
-    ? lineItems.reduce((sum, item) => sum + item.amount, 0)
-    : Number(row.subtotal ?? row.total) || 0;
-  const taxAmount = hasLineItems
-    ? Math.round(subtotal * (taxPct / 100) * 100) / 100
-    : Number(row.tax_amount) || 0;
-  const total = hasLineItems ? subtotal + taxAmount : Number(row.total) || 0;
+  const totals = hasLineItems
+    ? computeInvoiceTotals(lineItems, taxPct)
+    : {
+        subtotal: roundMoney(Number(row.subtotal ?? row.total) || 0),
+        taxAmount: roundMoney(Number(row.tax_amount) || 0),
+        total: roundMoney(Number(row.total) || 0),
+      };
+  const { subtotal, taxAmount, total } = totals;
   return {
     id: row.id,
     invoiceNo: row.invoice_no ?? row.id.slice(0, 8),
@@ -330,6 +311,51 @@ function toInvoice(row: InvoiceRow, items: InvoiceItemRow[]): Invoice {
     total,
     notes: row.notes ?? undefined,
   };
+}
+
+async function appendUnallocatedPaymentsReceived(
+  c: SupabaseClient,
+  invoiceIds: string[],
+  paymentsByInvoiceId: Map<string, InvoicePayment[]>
+): Promise<void> {
+  if (invoiceIds.length === 0) return;
+  const res = await c
+    .from("payments_received")
+    .select("id, invoice_id, amount, payment_date, status")
+    .in("invoice_id", invoiceIds);
+  if (res.error) {
+    if (isMissingTable(res.error) || isMissingColumn(res.error)) return;
+    financialDataUnavailable("payments_received", res.error);
+  }
+  const linked = new Set<string>();
+  for (const list of paymentsByInvoiceId.values()) {
+    for (const payment of list) {
+      const id = String(payment.paymentReceivedId ?? "").trim();
+      if (id) linked.add(id);
+    }
+  }
+  for (const row of (res.data ?? []) as Array<{
+    id?: string;
+    invoice_id?: string;
+    amount?: number | string | null;
+    payment_date?: string | null;
+    status?: string | null;
+  }>) {
+    const id = String(row.id ?? "").trim();
+    const invoiceId = String(row.invoice_id ?? "").trim();
+    if (!id || !invoiceId || linked.has(id)) continue;
+    const arr = paymentsByInvoiceId.get(invoiceId) ?? [];
+    arr.push({
+      id,
+      invoiceId,
+      date: String(row.payment_date ?? "").slice(0, 10),
+      amount: Number(row.amount) || 0,
+      method: "",
+      status: isVoidCashStatus(row.status) ? "Voided" : "Posted",
+      paymentReceivedId: id,
+    });
+    paymentsByInvoiceId.set(invoiceId, arr);
+  }
 }
 
 function toPayment(r: InvoicePaymentRow): InvoicePayment {
@@ -357,10 +383,15 @@ async function getInvoiceItemsOrEmpty(
     .eq("invoice_id", invoiceId)
     .order("created_at", { ascending: true });
   if (itemRes.error) {
-    if (isMissingTable(itemRes.error)) return [];
-    throw new Error(itemRes.error.message ?? "Failed to load invoice items.");
+    financialDataUnavailable("invoice items", itemRes.error);
   }
-  return (itemRes.data ?? []) as InvoiceItemRow[];
+  if (!Array.isArray(itemRes.data)) financialDataUnavailable("invoice items", null);
+  const rows = itemRes.data as InvoiceItemRow[];
+  const invoiceIdSet = new Set([invoiceId]);
+  if (rows.some((row) => !invoiceItemRowIsAvailable(row, invoiceIdSet))) {
+    financialDataUnavailable("invoice items", null);
+  }
+  return rows;
 }
 
 /** Select columns; paid/balance are computed from invoice_payments, not stored. */
@@ -383,17 +414,18 @@ export async function getInvoices(explicitClient?: SupabaseClient): Promise<Invo
   const itemsByInvoiceId = new Map<string, InvoiceItemRow[]>();
   if (invoiceIds.length) {
     const itemsRes = await c.from("invoice_items").select("*").in("invoice_id", invoiceIds);
-    if (itemsRes.error) {
-      if (!isMissingTable(itemsRes.error)) {
-        throw new Error(itemsRes.error.message ?? "Failed to load invoice items.");
-      }
-    } else {
-      for (const it of (itemsRes.data ?? []) as InvoiceItemRow[]) {
-        const key = it.invoice_id;
-        const arr = itemsByInvoiceId.get(key) ?? [];
-        arr.push(it);
-        itemsByInvoiceId.set(key, arr);
-      }
+    if (itemsRes.error) financialDataUnavailable("invoice items", itemsRes.error);
+    if (!Array.isArray(itemsRes.data)) financialDataUnavailable("invoice items", null);
+    const itemRows = itemsRes.data as InvoiceItemRow[];
+    const invoiceIdSet = new Set(invoiceIds);
+    if (itemRows.some((row) => !invoiceItemRowIsAvailable(row, invoiceIdSet))) {
+      financialDataUnavailable("invoice items", null);
+    }
+    for (const it of itemRows) {
+      const key = it.invoice_id;
+      const arr = itemsByInvoiceId.get(key) ?? [];
+      arr.push(it);
+      itemsByInvoiceId.set(key, arr);
     }
   }
 
@@ -410,12 +442,8 @@ export async function getInvoiceById(
     .select(INVOICE_COLS)
     .eq("id", id)
     .maybeSingle();
-  if (error || !row) {
-    if (error && isMissingTable(error)) throw new Error(`invoices: table not found. ${HINT}`);
-    if (error && isNetworkError(error))
-      throw new Error(error.message ?? "Network error. Check connection and Supabase URL.");
-    return null;
-  }
+  if (error) throwInvoiceError(error, "Failed to load invoice.");
+  if (!row) return null;
   const itemRows = await getInvoiceItemsOrEmpty(id, explicitClient);
   return toInvoice(row as InvoiceRow, itemRows);
 }
@@ -458,31 +486,36 @@ export async function getPaymentsByInvoiceId(
     rows = fb.data as typeof rows;
     error = fb.error;
   }
-  if (error && !isMissingColumn(error)) return [];
+  if (error) throwInvoiceError(error, "Failed to load invoice payments.");
   return ((rows ?? []) as InvoicePaymentRow[]).map(toPayment);
 }
 
-function computeDerived(
+export function computeInvoiceDerived(
   inv: Invoice,
-  payments: InvoicePayment[]
+  payments: InvoicePayment[],
+  now = new Date()
 ): {
   paidTotal: number;
   balanceDue: number;
   computedStatus: InvoiceComputedStatus;
   daysOverdue: number;
 } {
-  const paidTotal = payments.filter((p) => p.status !== "Voided").reduce((s, p) => s + p.amount, 0);
-  const balanceDue = Math.max(0, inv.total - paidTotal);
-  const today = new Date().toISOString().slice(0, 10);
+  const paidCents = payments
+    .filter((p) => p.status !== "Voided")
+    .reduce((s, p) => s + moneyToCents(p.amount), 0);
+  const paidTotal = centsToMoney(paidCents);
+  const balanceDue = centsToMoney(Math.max(0, moneyToCents(inv.total) - paidCents));
+  const settled = moneyToCents(balanceDue) === 0;
+  const today = now.toISOString().slice(0, 10);
   const hasPayments = payments.filter((p) => p.status !== "Voided").length > 0;
 
   if (inv.status === "Void")
     return { paidTotal, balanceDue, computedStatus: "Void", daysOverdue: 0 };
   if (inv.status === "Draft") {
     // Payments may exist before status is flipped to Sent (or mark-sent failed); still show AR correctly.
-    if (balanceDue === 0 && hasPayments)
+    if (settled && hasPayments)
       return { paidTotal, balanceDue, computedStatus: "Paid", daysOverdue: 0 };
-    if (hasPayments && balanceDue > 0) {
+    if (hasPayments && !settled) {
       if (inv.dueDate < today) {
         const daysOverdue = Math.max(
           0,
@@ -495,7 +528,7 @@ function computeDerived(
       return { paidTotal, balanceDue, computedStatus: "Partial", daysOverdue: 0 };
     }
     const daysOverdue =
-      balanceDue > 0 && inv.dueDate < today
+      !settled && inv.dueDate < today
         ? Math.max(
             0,
             Math.floor(
@@ -505,7 +538,7 @@ function computeDerived(
         : 0;
     return { paidTotal, balanceDue, computedStatus: "Draft", daysOverdue };
   }
-  if (balanceDue === 0) return { paidTotal, balanceDue, computedStatus: "Paid", daysOverdue: 0 };
+  if (settled) return { paidTotal, balanceDue, computedStatus: "Paid", daysOverdue: 0 };
   if (inv.dueDate < today) {
     const daysOverdue = Math.max(
       0,
@@ -536,7 +569,10 @@ export async function getInvoicesWithDerived(
   const payments = await getInvoicePayments(explicitClient);
   let withDerived: InvoiceWithDerived[] = list.map((inv) => {
     const invPayments = payments.filter((p) => p.invoiceId === inv.id);
-    const { paidTotal, balanceDue, computedStatus, daysOverdue } = computeDerived(inv, invPayments);
+    const { paidTotal, balanceDue, computedStatus, daysOverdue } = computeInvoiceDerived(
+      inv,
+      invPayments
+    );
     return { ...inv, paidTotal, balanceDue, computedStatus, daysOverdue };
   });
   if (filters?.status) withDerived = withDerived.filter((i) => i.computedStatus === filters.status);
@@ -598,7 +634,8 @@ export async function getInvoicesWithDerivedPaged(
     throwInvoiceError(invRes.error, HINT);
   }
 
-  const invoiceRows = ((invRes.data ?? []) as InvoiceRow[]).map((r) => toInvoice(r, []));
+  if (!Array.isArray(invRes.data)) financialDataUnavailable("invoices", null);
+  const invoiceRows = (invRes.data as InvoiceRow[]).map((r) => toInvoice(r, []));
   const invoiceIds = invoiceRows.map((r) => r.id).filter(Boolean);
 
   // Pull payments for only these invoices (batched)
@@ -606,22 +643,30 @@ export async function getInvoicesWithDerivedPaged(
   if (invoiceIds.length) {
     const payRes = await c
       .from("invoice_payments")
-      .select("id, invoice_id, amount, payment_date, paid_at, method, reference, memo, status")
+      .select(
+        "id, invoice_id, amount, payment_date, paid_at, method, reference, memo, status, payment_received_id"
+      )
       .in("invoice_id", invoiceIds);
-    if (!payRes.error && Array.isArray(payRes.data)) {
-      for (const p of (payRes.data ?? []) as InvoicePaymentRow[]) {
+    if (payRes.error) financialDataUnavailable("invoice_payments", payRes.error);
+    if (!Array.isArray(payRes.data)) financialDataUnavailable("invoice_payments", null);
+    {
+      for (const p of payRes.data as InvoicePaymentRow[]) {
         const payment = toPayment(p);
         const arr = paymentsByInvoiceId.get(payment.invoiceId) ?? [];
         arr.push(payment);
         paymentsByInvoiceId.set(payment.invoiceId, arr);
       }
     }
+    await appendUnallocatedPaymentsReceived(c, invoiceIds, paymentsByInvoiceId);
   }
 
   // Compute derived per invoice
   let rows: InvoiceWithDerived[] = invoiceRows.map((inv) => {
     const invPayments = paymentsByInvoiceId.get(inv.id) ?? [];
-    const { paidTotal, balanceDue, computedStatus, daysOverdue } = computeDerived(inv, invPayments);
+    const { paidTotal, balanceDue, computedStatus, daysOverdue } = computeInvoiceDerived(
+      inv,
+      invPayments
+    );
     return { ...inv, paidTotal, balanceDue, computedStatus, daysOverdue };
   });
 
@@ -654,7 +699,12 @@ export async function getInvoiceByIdWithDerived(
   const inv = await getInvoiceById(id, explicitClient);
   if (!inv) return null;
   const payments = await getPaymentsByInvoiceId(id, explicitClient);
-  const { paidTotal, balanceDue, computedStatus, daysOverdue } = computeDerived(inv, payments);
+  const paymentsByInvoiceId = new Map<string, InvoicePayment[]>([[id, payments]]);
+  await appendUnallocatedPaymentsReceived(client(explicitClient), [id], paymentsByInvoiceId);
+  const { paidTotal, balanceDue, computedStatus, daysOverdue } = computeInvoiceDerived(
+    inv,
+    paymentsByInvoiceId.get(id) ?? payments
+  );
   return { ...inv, paidTotal, balanceDue, computedStatus, daysOverdue };
 }
 
@@ -669,17 +719,24 @@ export type OverdueInvoiceRow = {
 };
 
 /** Invoices with balance due and past due date. For dashboard Overdue Invoices widget. */
-export async function getOverdueInvoices(): Promise<OverdueInvoiceRow[]> {
-  const list = await getInvoicesWithDerived();
+export async function getOverdueInvoices(
+  explicitClient?: SupabaseClient
+): Promise<OverdueInvoiceRow[]> {
+  const list = await getInvoicesWithDerived(undefined, explicitClient);
   const overdue = list.filter((i) => i.computedStatus === "Overdue" && i.balanceDue > 0);
   if (overdue.length === 0) return [];
   const projectIds = Array.from(
     new Set(overdue.map((i) => i.projectId).filter(Boolean))
   ) as string[];
-  const c = client();
-  const { data: projRows } = await c.from("projects").select("id, name").in("id", projectIds);
+  const c = client(explicitClient);
+  const { data: projRows, error: projectError } = await c
+    .from("projects")
+    .select("id, name")
+    .in("id", projectIds);
+  if (projectError) financialDataUnavailable("overdue invoice projects", projectError);
+  if (!Array.isArray(projRows)) financialDataUnavailable("overdue invoice projects", null);
   const projectNameById = new Map(
-    (projRows ?? []).map((r: { id: string; name?: string }) => [r.id, r.name ?? ""])
+    projRows.map((r: { id: string; name?: string }) => [r.id, r.name ?? ""])
   );
   return overdue.map((i) => ({
     id: i.id,
@@ -1100,88 +1157,123 @@ export async function deleteInvoice(invoiceId: string): Promise<boolean> {
   return !error && Boolean(data);
 }
 
-export async function createInvoice(payload: {
-  invoiceNo?: string;
-  projectId: string;
-  customerId?: string | null;
-  clientName: string;
-  issueDate: string;
-  dueDate: string;
-  lineItems: InvoiceLineItem[];
-  taxPct?: number;
-  notes?: string;
-}): Promise<Invoice> {
-  const c = client();
-  const subtotal = payload.lineItems.reduce((s, l) => s + l.amount, 0);
-  const taxPct = payload.taxPct ?? 0;
-  const taxAmount = Math.round(subtotal * (taxPct / 100) * 100) / 100;
-  const total = subtotal + taxAmount;
+export async function createInvoice(
+  payload: {
+    idempotencyKey?: string;
+    invoiceNo?: string;
+    projectId: string;
+    customerId?: string | null;
+    clientName: string;
+    issueDate: string;
+    dueDate: string;
+    lineItems: InvoiceLineItem[];
+    taxPct?: number;
+    notes?: string;
+  },
+  explicitClient?: SupabaseClient
+): Promise<Invoice> {
+  return createInvoiceAtomicWithClient(payload, client(explicitClient));
+}
 
-  const isUniqueInvoiceNo = (err: unknown): boolean => {
-    const code = (err as { code?: string } | null)?.code;
-    const msg = (err as { message?: string } | null)?.message ?? "";
-    return code === "23505" || /invoice_no|invoices_invoice_no_key/i.test(msg);
+export async function createInvoiceAtomicWithClient(
+  payload: {
+    idempotencyKey?: string;
+    invoiceNo?: string;
+    projectId: string;
+    customerId?: string | null;
+    clientName: string;
+    issueDate: string;
+    dueDate: string;
+    lineItems: InvoiceLineItem[];
+    taxPct?: number;
+    notes?: string;
+  },
+  explicitClient: SupabaseClient
+): Promise<Invoice> {
+  const idempotencyKey = payload.idempotencyKey?.trim() || globalThis.crypto.randomUUID();
+  const { data, error } = await explicitClient.rpc("create_invoice_atomic", {
+    p_idempotency_key: idempotencyKey,
+    p_header: {
+      invoice_no: payload.invoiceNo?.trim() || null,
+      project_id: payload.projectId || null,
+      customer_id: payload.customerId || null,
+      client_name: payload.clientName ?? "",
+      issue_date: payload.issueDate.slice(0, 10),
+      due_date: payload.dueDate.slice(0, 10),
+      status: "Draft",
+      notes: payload.notes ?? null,
+      tax_pct: payload.taxPct ?? 0,
+    },
+    p_items: payload.lineItems.map((item) => ({
+      description: item.description,
+      qty: item.qty,
+      unit_price: item.unitPrice,
+    })),
+  });
+  if (error) throw new Error(error.message ?? "Failed to create invoice.");
+  const invoiceId = String((data as { invoice_id?: unknown } | null)?.invoice_id ?? "");
+  if (!invoiceId) throw new Error("Atomic invoice create returned no invoice id.");
+  const saved = await getInvoiceById(invoiceId, explicitClient);
+  if (!saved)
+    throw new Error("Atomic invoice create completed but the invoice could not be loaded.");
+  return saved;
+}
+
+export async function createEstimateMilestoneInvoiceAtomicWithClient(
+  payload: {
+    idempotencyKey: string;
+    invoiceNo?: string;
+    projectId: string;
+    customerId?: string | null;
+    clientName: string;
+    issueDate: string;
+    dueDate: string;
+    lineItems: InvoiceLineItem[];
+    taxPct?: number;
+    notes?: string;
+    estimateId: string;
+    scheduleItemId: string;
+    actor: { userId: string; label: string };
+  },
+  explicitClient: SupabaseClient
+): Promise<{ id: string; reused: boolean; linked: boolean }> {
+  const { data, error } = await explicitClient.rpc("create_estimate_milestone_invoice_atomic", {
+    p_idempotency_key: payload.idempotencyKey.trim(),
+    p_header: {
+      invoice_no: payload.invoiceNo?.trim() || null,
+      project_id: payload.projectId || null,
+      customer_id: payload.customerId || null,
+      client_name: payload.clientName ?? "",
+      issue_date: payload.issueDate.slice(0, 10),
+      due_date: payload.dueDate.slice(0, 10),
+      status: "Draft",
+      notes: payload.notes ?? null,
+      tax_pct: payload.taxPct ?? 0,
+    },
+    p_items: payload.lineItems.map((item) => ({
+      description: item.description,
+      qty: item.qty,
+      unit_price: item.unitPrice,
+    })),
+    p_estimate_id: payload.estimateId,
+    p_schedule_item_id: payload.scheduleItemId,
+    p_actor_user_id: payload.actor.userId,
+    p_actor_label: payload.actor.label.trim(),
+  });
+  if (error) throw new Error(error.message ?? "Failed to create milestone invoice atomically.");
+
+  const result = data as {
+    invoice_id?: unknown;
+    reused?: unknown;
+    linked?: unknown;
+  } | null;
+  const invoiceId = String(result?.invoice_id ?? "").trim();
+  if (!invoiceId) throw new Error("Atomic milestone invoice create returned no invoice id.");
+  return {
+    id: invoiceId,
+    reused: result?.reused === true,
+    linked: result?.linked === true,
   };
-
-  let lastErr: unknown = null;
-  for (let attempt = 0; attempt < 2; attempt++) {
-    const customInvoiceNo = payload.invoiceNo?.trim();
-    let invoiceNo = customInvoiceNo ?? "";
-    if (!invoiceNo) {
-      const { count } = await c.from("invoices").select("id", { count: "exact", head: true });
-      const nextNum = (count ?? 0) + 1 + attempt;
-      invoiceNo = `INV-${String(nextNum).padStart(4, "0")}`;
-    }
-
-    const { data: invRow, error: invErr } = await c
-      .from("invoices")
-      .insert({
-        invoice_no: invoiceNo,
-        project_id: payload.projectId || null,
-        customer_id: payload.customerId || null,
-        client_name: payload.clientName ?? "",
-        issue_date: payload.issueDate.slice(0, 10),
-        due_date: payload.dueDate.slice(0, 10),
-        status: "Draft",
-        notes: payload.notes ?? null,
-        tax_pct: taxPct,
-        subtotal,
-        tax_amount: taxAmount,
-        total,
-      })
-      .select(
-        "id, invoice_no, project_id, customer_id, client_name, issue_date, due_date, status, notes, tax_pct, subtotal, tax_amount, total"
-      )
-      .single();
-
-    if (!invErr && invRow) {
-      const inv = invRow as InvoiceRow;
-      const itemRows = payload.lineItems.map((item) => {
-        const quantity = Number(item.qty) || 0;
-        const unitPrice = Number(item.unitPrice) || 0;
-        return {
-          invoice_id: inv.id,
-          description: item.description,
-          qty: quantity,
-          unit_price: unitPrice,
-          amount: quantity * unitPrice,
-        };
-      });
-      const itemInsert = await insertInvoiceItems(c, itemRows);
-      if (itemInsert.error) {
-        await c.from("invoices").delete().eq("id", inv.id);
-        throw new Error(itemInsert.error);
-      }
-      await syncInvoiceStoredTotals(c, inv.id, payload.lineItems, taxPct);
-      const savedItemRows = await getInvoiceItemsOrEmpty(inv.id);
-      return toInvoice(inv, savedItemRows);
-    }
-
-    lastErr = invErr;
-    if (!payload.invoiceNo && invErr && isUniqueInvoiceNo(invErr) && attempt === 0) continue;
-    throw new Error(invErr?.message ?? "Failed to create invoice.");
-  }
-  throw new Error((lastErr as { message?: string } | null)?.message ?? "Failed to create invoice.");
 }
 
 export async function updateInvoice(
@@ -1196,59 +1288,34 @@ export async function updateInvoice(
     lineItems: InvoiceLineItem[];
     taxPct: number;
     notes: string;
-  }>
+  }>,
+  explicitClient?: SupabaseClient
 ): Promise<boolean> {
-  const c = client();
-  const inv = await getInvoiceById(invoiceId);
+  const c = client(explicitClient);
+  const inv = await getInvoiceById(invoiceId, explicitClient);
   if (!inv || inv.status !== "Draft") return false;
-  const updates: Record<string, unknown> = {};
-  if (payload.projectId !== undefined) updates.project_id = payload.projectId || null;
-  if (payload.customerId !== undefined) updates.customer_id = payload.customerId || null;
-  if (payload.invoiceNo !== undefined)
-    updates.invoice_no = payload.invoiceNo.trim() || inv.invoiceNo;
-  if (payload.clientName !== undefined) updates.client_name = payload.clientName.trim();
-  if (payload.issueDate != null) updates.issue_date = payload.issueDate.slice(0, 10);
-  if (payload.dueDate != null) updates.due_date = payload.dueDate.slice(0, 10);
-  if (payload.notes !== undefined) updates.notes = payload.notes ?? null;
-  if (payload.taxPct != null) updates.tax_pct = payload.taxPct;
-  if (payload.lineItems != null || payload.taxPct != null) {
-    const nextItems = payload.lineItems ?? inv.lineItems;
-    const subtotal = nextItems.reduce((sum, item) => {
-      const quantity = Math.max(0, Number(item.qty) || 0);
-      const unitPrice = Math.max(0, Number(item.unitPrice) || 0);
-      return sum + quantity * unitPrice;
-    }, 0);
-    const taxPct = Math.max(0, Number(payload.taxPct ?? inv.taxPct ?? 0) || 0);
-    const taxAmount = Math.round(subtotal * (taxPct / 100) * 100) / 100;
-    updates.subtotal = subtotal;
-    updates.tax_pct = taxPct;
-    updates.tax_amount = taxAmount;
-    updates.total = subtotal + taxAmount;
-  }
-  if (Object.keys(updates).length > 0) {
-    const { error: updateErr } = await c.from("invoices").update(updates).eq("id", invoiceId);
-    if (updateErr) return false;
-  }
-  if (payload.lineItems != null) {
-    const { error: deleteErr } = await c.from("invoice_items").delete().eq("invoice_id", invoiceId);
-    if (deleteErr) return false;
-    const itemRows = payload.lineItems.map((item) => {
-      const quantity = Number(item.qty) || 0;
-      const unitPrice = Number(item.unitPrice) || 0;
-      return {
-        invoice_id: invoiceId,
+  const { error } = await c.rpc("update_invoice_atomic", {
+    p_invoice_id: invoiceId,
+    p_header: {
+      invoice_no: payload.invoiceNo?.trim() || inv.invoiceNo,
+      project_id:
+        payload.projectId !== undefined ? payload.projectId || null : inv.projectId || null,
+      customer_id:
+        payload.customerId !== undefined ? payload.customerId || null : inv.customerId || null,
+      client_name: payload.clientName !== undefined ? payload.clientName.trim() : inv.clientName,
+      issue_date: payload.issueDate != null ? payload.issueDate.slice(0, 10) : inv.issueDate,
+      due_date: payload.dueDate != null ? payload.dueDate.slice(0, 10) : inv.dueDate,
+      notes: payload.notes !== undefined ? (payload.notes ?? null) : (inv.notes ?? null),
+      tax_pct: Math.max(0, payload.taxPct ?? inv.taxPct ?? 0),
+    },
+    p_items:
+      payload.lineItems?.map((item) => ({
         description: item.description,
-        qty: quantity,
-        unit_price: unitPrice,
-        amount: quantity * unitPrice,
-      };
-    });
-    const itemInsert = await insertInvoiceItems(c, itemRows);
-    if (itemInsert.error) return false;
-    const taxPct = Math.max(0, Number(payload.taxPct ?? inv.taxPct ?? 0) || 0);
-    await syncInvoiceStoredTotals(c, invoiceId, payload.lineItems, taxPct);
-  }
-  return true;
+        qty: item.qty,
+        unit_price: item.unitPrice,
+      })) ?? null,
+  });
+  return !error;
 }
 
 export async function markInvoiceSent(invoiceId: string): Promise<boolean> {
@@ -1300,63 +1367,115 @@ export async function getInvoicesByProjectAggregate(
   };
 }
 
-/** Revenue (sum invoices.total) and collected (sum invoice_payments.amount) for a project. No stored derived fields. */
+type ReceivableInvoiceRow = {
+  id: string;
+  total?: number;
+  subtotal?: number | null;
+  tax_amount?: number | null;
+  status?: string | null;
+};
+
+/** Ex-tax collected cash: invoice allocations plus unlinked payments_received on those invoices. */
+async function collectedExTaxForInvoices(
+  c: SupabaseClient,
+  invoices: ReceivableInvoiceRow[],
+  restrictPaymentsToInvoices: boolean
+): Promise<number> {
+  const ids = invoices.map((row) => row.id);
+  const invoiceById = new Map(invoices.map((row) => [row.id, row]));
+  let payQuery = c
+    .from("invoice_payments")
+    .select("invoice_id, amount, status, payment_received_id");
+  if (restrictPaymentsToInvoices) payQuery = payQuery.in("invoice_id", ids);
+  const payRes = await payQuery;
+  if (payRes.error) throw payRes.error;
+
+  let receivedQuery = c.from("payments_received").select("id, invoice_id, amount, status");
+  if (restrictPaymentsToInvoices) receivedQuery = receivedQuery.in("invoice_id", ids);
+  const receivedRes = await receivedQuery;
+  if (
+    receivedRes.error &&
+    !isMissingTable(receivedRes.error) &&
+    !isMissingColumn(receivedRes.error)
+  ) {
+    throw receivedRes.error;
+  }
+
+  const linked = new Set<string>();
+  let collected = 0;
+  for (const row of (payRes.data ?? []) as Array<{
+    invoice_id?: string | null;
+    amount?: number | string | null;
+    status?: string | null;
+    payment_received_id?: string | null;
+  }>) {
+    if (isVoidCashStatus(row.status)) continue;
+    const linkedId = String(row.payment_received_id ?? "").trim();
+    if (linkedId) linked.add(linkedId);
+    const invoice = row.invoice_id ? invoiceById.get(row.invoice_id) : undefined;
+    collected += paymentCollectedExTax(row.amount, invoice ?? null);
+  }
+  for (const row of (receivedRes.data ?? []) as Array<{
+    id?: string | null;
+    invoice_id?: string | null;
+    amount?: number | string | null;
+    status?: string | null;
+  }>) {
+    const id = String(row.id ?? "").trim();
+    if (id && linked.has(id)) continue;
+    if (isVoidCashStatus(row.status)) continue;
+    const invoice = invoiceById.get(String(row.invoice_id ?? ""));
+    if (!invoice) continue;
+    collected += paymentCollectedExTax(row.amount, invoice);
+  }
+  return roundMoney(collected);
+}
+
+/** Revenue (ex-tax) and collected cash (ex-tax) for a project. No stored derived fields. */
 export async function getProjectRevenueAndCollected(
   projectId: string
 ): Promise<{ revenue: number; collected: number }> {
   const c = client();
   const { data: invRows, error: invErr } = await c
     .from("invoices")
-    .select("id, total, status")
+    .select("id, total, subtotal, tax_amount, status")
     .eq("project_id", projectId)
     .neq("status", "Void");
   if (invErr || !invRows?.length) {
     return { revenue: 0, collected: 0 };
   }
-  const receivableRows = (
-    invRows as { id: string; total?: number; status?: string | null }[]
-  ).filter((row) => invoiceCountsTowardReceivable(row.status));
+  const receivableRows = (invRows as ReceivableInvoiceRow[]).filter((row) =>
+    invoiceCountsTowardReceivable(row.status)
+  );
   if (receivableRows.length === 0) return { revenue: 0, collected: 0 };
-  const revenue = receivableRows.reduce((s, r) => s + Number(r.total ?? 0), 0);
-  const ids = receivableRows.map((r) => r.id);
-  const { data: payRows, error: payErr } = await c
-    .from("invoice_payments")
-    .select("amount, status")
-    .in("invoice_id", ids);
-  if (payErr) return { revenue, collected: 0 };
-  const collected = (payRows ?? []).reduce((s, r) => {
-    const row = r as { amount?: number; status?: string };
-    if (row.status === "Voided") return s;
-    return s + Number(row.amount ?? 0);
-  }, 0);
-  return { revenue, collected };
+  const revenue = receivableRows.reduce((s, r) => s + invoiceRevenueExTax(r), 0);
+  try {
+    return { revenue, collected: await collectedExTaxForInvoices(c, receivableRows, true) };
+  } catch {
+    return { revenue, collected: 0 };
+  }
 }
 
-/** Company-wide revenue (sum invoices.total where not Void) and collected (sum invoice_payments.amount where not Voided). */
-export async function getCompanyRevenueAndCollected(): Promise<{
+/** Company-wide ex-tax invoiced revenue and ex-tax collected cash. */
+export async function getCompanyRevenueAndCollected(explicitClient?: SupabaseClient): Promise<{
   revenue: number;
   collected: number;
 }> {
-  const c = client();
+  const c = client(explicitClient);
   const { data: invRows, error: invErr } = await c
     .from("invoices")
-    .select("id, total, status")
+    .select("id, total, subtotal, tax_amount, status")
     .neq("status", "Void");
-  if (invErr) return { revenue: 0, collected: 0 };
-  const receivableRows = (invRows ?? [])
-    .map((r) => r as { id: string; total?: number; status?: string | null })
-    .filter((row) => invoiceCountsTowardReceivable(row.status));
-  const revenue = receivableRows.reduce((s, r) => s + Number(r.total ?? 0), 0);
-  const { data: payRows, error: payErr } = await c
-    .from("invoice_payments")
-    .select("amount, status");
-  if (payErr) return { revenue, collected: 0 };
-  const collected = (payRows ?? []).reduce((s, r) => {
-    const row = r as { amount?: number; status?: string };
-    if (row.status === "Voided") return s;
-    return s + Number(row.amount ?? 0);
-  }, 0);
-  return { revenue, collected };
+  if (invErr) financialDataUnavailable("company invoice revenue", invErr);
+  const receivableRows = ((invRows ?? []) as ReceivableInvoiceRow[]).filter((row) =>
+    invoiceCountsTowardReceivable(row.status)
+  );
+  const revenue = receivableRows.reduce((s, r) => s + invoiceRevenueExTax(r), 0);
+  try {
+    return { revenue, collected: await collectedExTaxForInvoices(c, receivableRows, false) };
+  } catch (error) {
+    financialDataUnavailable("company invoice collections", error);
+  }
 }
 
 export type InvoiceRecentRow = {
@@ -1370,15 +1489,17 @@ export type InvoiceRecentRow = {
 };
 
 /** Recent invoices for dashboard activity feed. Ordered by created_at desc, limit. */
-export async function getInvoicesRecent(limit: number): Promise<InvoiceRecentRow[]> {
-  const c = client();
+export async function getInvoicesRecent(
+  limit: number,
+  explicitClient?: SupabaseClient
+): Promise<InvoiceRecentRow[]> {
+  const c = client(explicitClient);
   const { data: rows, error } = await c
     .from("invoices")
     .select("id, project_id, invoice_no, client_name, total, created_at, projects(name)")
     .order("created_at", { ascending: false })
     .limit(Math.max(1, Math.min(limit, 100)));
   if (error) {
-    if (isMissingTable(error)) return [];
     throwInvoiceError(error, "Failed to load recent invoices.");
   }
   return (rows ?? []).map((r) => {

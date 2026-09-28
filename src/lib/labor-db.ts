@@ -7,10 +7,14 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseClient } from "@/lib/supabase";
+import { canonicalWorkerDailyRate } from "@/lib/worker-daily-rate";
+import { laborEntryCountsTowardCanonicalCost } from "@/lib/labor-cost-eligibility";
+import { financialDataUnavailable } from "@/lib/financial-availability";
 import {
   buildLaborEntryRateSnapshotWithClient,
   changeWorkerDailyRateWithClient,
   ensureInitialWorkerRateHistoryWithClient,
+  priceLaborOvertimeWithClient,
 } from "@/lib/worker-rate-history-db";
 import { syncLaborWorkerProjectionWithClient } from "@/lib/labor-workers-projection";
 import {
@@ -90,7 +94,10 @@ export type LaborShiftEntry = LaborEntry;
 
 /** Calculate pay for display: AM = dailyRate/2, PM = dailyRate/2, AM+PM = dailyRate. Hours-only entries: hours * (dailyRate/8). */
 export function calculateLaborPay(worker: Worker, entry: LaborEntry): number {
-  const dailyRate = worker.dailyRate ?? (worker.halfDayRate ?? 0) * 2;
+  const dailyRate = canonicalWorkerDailyRate({
+    dailyRate: worker.dailyRate,
+    halfDayRate: worker.halfDayRate,
+  });
   const hasAmPm =
     entry.morning === true ||
     entry.morning === false ||
@@ -188,7 +195,7 @@ type LaborPaymentRow = {
   payment_date: string;
   amount: number;
   method: string | null;
-  memo: string | null;
+  note: string | null;
   applied_start_date: string | null;
   applied_end_date: string | null;
   created_at: string;
@@ -220,15 +227,17 @@ function isMissingColumn(err: { message?: string } | null): boolean {
 
 function toWorker(r: WorkerRow): Worker {
   const halfDay = Number(r.half_day_rate) || 0;
-  const dailyRate =
-    r.daily_rate != null && Number(r.daily_rate) > 0 ? Number(r.daily_rate) : halfDay;
+  const dailyRate = canonicalWorkerDailyRate({
+    dailyRate: r.daily_rate,
+    halfDayRate: halfDay,
+  });
   return {
     id: r.id,
     name: r.name ?? "",
     phone: r.phone ?? undefined,
     trade: r.role ?? undefined,
     status: r.status === "inactive" ? "inactive" : "active",
-    halfDayRate: halfDay,
+    halfDayRate: dailyRate > 0 ? dailyRate / 2 : halfDay,
     dailyRate,
     notes: r.notes ?? undefined,
     createdAt: r.created_at?.slice(0, 10) ?? "",
@@ -286,7 +295,7 @@ function toLaborPayment(r: LaborPaymentRow): LaborPayment {
     paymentDate: r.payment_date?.slice(0, 10) ?? "",
     amount: Number(r.amount) || 0,
     method: r.method ?? "",
-    memo: r.memo ?? undefined,
+    memo: r.note ?? undefined,
     attachments: [],
     appliedRange:
       r.applied_start_date && r.applied_end_date
@@ -315,8 +324,8 @@ export async function getWorkers(explicitClient?: SupabaseClient): Promise<Worke
   return (rows ?? []).map((r) => toWorker(r as WorkerRow));
 }
 
-export async function getLaborWorkers(): Promise<Worker[]> {
-  const all = await getWorkers();
+export async function getLaborWorkers(explicitClient?: SupabaseClient): Promise<Worker[]> {
+  const all = await getWorkers(explicitClient);
   return all.filter((w) => w.status === "active");
 }
 
@@ -469,7 +478,8 @@ export async function updateWorker(
 
 export async function deleteWorker(id: string, explicitClient?: SupabaseClient): Promise<void> {
   const c = client(explicitClient);
-  await c.from("workers").delete().eq("id", id);
+  const { error } = await c.from("workers").delete().eq("id", id);
+  if (error) throw new Error(error.message ?? "Failed to delete worker.");
 }
 
 export async function getLaborAllocatedByProject(
@@ -480,9 +490,8 @@ export async function getLaborAllocatedByProject(
   const c = client(explicitClient);
   let q = c
     .from("labor_entries")
-    .select(LABOR_ENTRIES_COLS_WITH_COST)
-    .eq("project_id", projectId)
-    .in("status", ["Approved", "Locked"]);
+    .select(`${LABOR_ENTRIES_COLS_WITH_COST}, status`)
+    .eq("project_id", projectId);
   if (date) q = q.eq("work_date", date.slice(0, 10)) as typeof q;
   const { data: rows, error } = await q;
   if (error) {
@@ -491,32 +500,37 @@ export async function getLaborAllocatedByProject(
       throw new Error(`labor_entries project attribution schema is unavailable: ${error.message}`);
     throw new Error(error.message ?? "Failed to load labor_entries.");
   }
-  const entries = (rows ?? []) as Array<LaborEntryRow & { cost_amount?: number | null }>;
-  return entries.reduce((total, r) => total + (Number(r.cost_amount) || 0), 0);
+  const entries = (rows ?? []) as Array<
+    LaborEntryRow & { cost_amount?: number | null; status?: string | null }
+  >;
+  return entries.reduce((total, r) => {
+    if (!laborEntryCountsTowardCanonicalCost(r.status)) return total;
+    return total + (Number(r.cost_amount) || 0);
+  }, 0);
 }
 
-/** Sum of labor cost (Approved/Locked only) for work_date in [startDate, endDate] (inclusive). For dashboard "Labor Cost This Week". */
+/** Sum of canonical labor cost for work_date in [startDate, endDate] (inclusive). */
 export async function getLaborCostForDateRange(
   startDate: string,
-  endDate: string
+  endDate: string,
+  explicitClient?: SupabaseClient
 ): Promise<number> {
-  const c = client();
+  const c = client(explicitClient);
   const start = startDate.slice(0, 10);
   const end = endDate.slice(0, 10);
   const { data: rows, error } = await c
     .from("labor_entries")
-    .select("cost_amount")
-    .in("status", ["Approved", "Locked"])
+    .select("cost_amount, status")
     .gte("work_date", start)
     .lte("work_date", end);
   if (error) {
-    if (isMissingTable(error) || isMissingColumn(error)) return 0;
-    throw new Error(error.message ?? "Failed to load labor cost.");
+    financialDataUnavailable("labor cost", error);
   }
-  return (rows ?? []).reduce(
-    (sum, r) => sum + (Number((r as { cost_amount?: number }).cost_amount) || 0),
-    0
-  );
+  return (rows ?? []).reduce((sum, r) => {
+    const row = r as { cost_amount?: number; status?: string | null };
+    if (!laborEntryCountsTowardCanonicalCost(row.status)) return sum;
+    return sum + (Number(row.cost_amount) || 0);
+  }, 0);
 }
 
 export async function getLaborEntries(_status?: "draft" | "confirmed"): Promise<LaborEntry[]> {
@@ -674,13 +688,20 @@ export async function insertDailyLaborEntriesWithClient(
     if (hours <= 0) continue;
     const otHours = Math.max(0, Number(r.otHours) || 0);
     const otAmount = Math.max(0, Number(r.otAmount) || 0);
+    const pricedOt = await priceLaborOvertimeWithClient(
+      c,
+      r.workerId,
+      worker.dailyRate,
+      otHours,
+      otAmount
+    );
     const snapshot = await buildLaborEntryRateSnapshotWithClient(c, {
       workerId: r.workerId,
       workDate: date,
       hours,
       morning: r.morning,
       afternoon: r.afternoon,
-      otAmount,
+      otAmount: pricedOt,
     });
     payloads.push({
       worker_id: r.workerId,
@@ -690,7 +711,7 @@ export async function insertDailyLaborEntriesWithClient(
       afternoon: !!r.afternoon,
       hours,
       cost_code: options?.costCode?.trim() || null,
-      notes: mergeLaborOvertimeIntoNotes(options?.notes, { hours: otHours, amount: otAmount }),
+      notes: mergeLaborOvertimeIntoNotes(options?.notes, { hours: otHours, amount: pricedOt }),
       ...snapshot,
     });
   }
@@ -1105,7 +1126,8 @@ export async function getLaborPayments(
   if (filters?.workerId) q = q.eq("worker_id", filters.workerId) as typeof q;
   if (filters?.startDate) q = q.gte("payment_date", filters.startDate.slice(0, 10)) as typeof q;
   if (filters?.endDate) q = q.lte("payment_date", filters.endDate.slice(0, 10)) as typeof q;
-  const { data: rows } = await q;
+  const { data: rows, error } = await q;
+  if (error) financialDataUnavailable("labor payments", error);
   return (rows ?? []).map((r) => toLaborPayment(r as LaborPaymentRow));
 }
 
@@ -1129,7 +1151,7 @@ export async function createLaborPayment(payload: {
       payment_date: payload.paymentDate.slice(0, 10),
       amount: Math.max(0, payload.amount),
       method: payload.method ?? null,
-      memo: payload.memo ?? null,
+      note: payload.memo ?? null,
       applied_start_date: payload.appliedRange?.startDate?.slice(0, 10) ?? null,
       applied_end_date: payload.appliedRange?.endDate?.slice(0, 10) ?? null,
     })

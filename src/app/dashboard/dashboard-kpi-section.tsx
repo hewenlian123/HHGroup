@@ -4,7 +4,6 @@ import {
   getApBillsSummaryCached,
   getLaborCostThisWeekCached,
   getOverdueInvoicesCached,
-  getProjectRiskOverviewCached,
   getRecentTransactionsCached,
   loadDashboardProjectsBundle,
 } from "./dashboard-bundle";
@@ -14,15 +13,15 @@ export async function DashboardKpiSection() {
   try {
     const projectSupabase = await createServerSupabaseClient({ noStore: true });
     if (!projectSupabase) throw new Error("Authenticated project session is not configured.");
-    const [bundle, apBillsSummary, overdueInvoices, laborCostThisWeek, riskOverview, recentTx] =
+    const [bundle, apBillsSummary, overdueInvoices, laborCostThisWeek, recentTx] =
       await Promise.all([
         loadDashboardProjectsBundle(projectSupabase),
         getApBillsSummaryCached(projectSupabase),
-        getOverdueInvoicesCached(),
-        getLaborCostThisWeekCached(),
-        getProjectRiskOverviewCached(projectSupabase),
-        getRecentTransactionsCached(24),
+        getOverdueInvoicesCached(projectSupabase),
+        getLaborCostThisWeekCached(projectSupabase),
+        getRecentTransactionsCached(24, projectSupabase),
       ]);
+    const riskOverview = bundle.riskOverview;
 
     const readyProjectIds = new Set(
       (bundle.contractReview ?? emptyDashboardContractReview).readyProjectIds

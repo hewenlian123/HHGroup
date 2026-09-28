@@ -1,3 +1,4 @@
+import { requireOrganizationServerActionClient } from "@/lib/auth-boundary";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageLayout, PageHeader, Divider, SectionHeader } from "@/components/base";
@@ -13,7 +14,12 @@ import { BillRowActions } from "./bill-row-actions";
 import { SetBreadcrumbEntityTitle } from "@/components/layout/set-breadcrumb-entity-title";
 import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
 import { subcontractBillCountsAsBilled } from "@/lib/subcontractor-financials";
-import { getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
+import {
+  ProjectFinancialTable,
+  ProjectFinancialTableCell,
+  ProjectFinancialTableHead,
+  ProjectFinancialTableHeader,
+} from "../../../_components/project-financial-responsive-table";
 
 function fmtUsd(n: number): string {
   return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -23,11 +29,17 @@ type Props = { params: Promise<{ id: string; subId: string }> };
 
 export default async function SubcontractBillsPage({ params }: Props) {
   const { id: projectId, subId } = await params;
-  const supabase = getServerSupabaseInternalNoStore();
+  const guard = await requireOrganizationServerActionClient({
+    projectId,
+    requireOwnerAdmin: true,
+    noStore: true,
+  });
+  if (!guard.ok) notFound();
+  const supabase = guard.client;
   const [subcontract, bills, payments, deductions] = await Promise.all([
-    getSubcontractById(subId),
-    getBillsBySubcontract(subId),
-    getPaymentsBySubcontractIds([subId]),
+    getSubcontractById(subId, supabase),
+    getBillsBySubcontract(subId, supabase),
+    getPaymentsBySubcontractIds([subId], supabase),
     getSubcontractDeductionsBySubcontractIds([subId], supabase ?? undefined),
   ]);
 
@@ -51,7 +63,7 @@ export default async function SubcontractBillsPage({ params }: Props) {
           actions={
             <Link
               href={`/projects/${projectId}/subcontracts`}
-              className="text-hh-body text-[var(--hh-text-secondary)] hover:text-[var(--hh-text-primary)]"
+              className="inline-flex min-h-[44px] items-center text-hh-body text-[var(--hh-text-secondary)] hover:text-[var(--hh-text-primary)]"
             >
               Subcontracts
             </Link>
@@ -68,29 +80,47 @@ export default async function SubcontractBillsPage({ params }: Props) {
 
       <div className="airtable-table-wrap airtable-table-wrap--ruled">
         <div className="airtable-table-scroll">
-          <table className="w-full text-hh-body">
-            <thead>
+          <ProjectFinancialTable aria-label="Subcontract bills">
+            <ProjectFinancialTableHead>
               <tr>
-                <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
+                <ProjectFinancialTableHeader
+                  id="subcontract-bill-date"
+                  className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]"
+                >
                   Bill Date
-                </th>
-                <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
+                </ProjectFinancialTableHeader>
+                <ProjectFinancialTableHeader
+                  id="subcontract-bill-due"
+                  className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]"
+                >
                   Due
-                </th>
-                <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
+                </ProjectFinancialTableHeader>
+                <ProjectFinancialTableHeader
+                  id="subcontract-bill-description"
+                  className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]"
+                >
                   Description
-                </th>
-                <th className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
+                </ProjectFinancialTableHeader>
+                <ProjectFinancialTableHeader
+                  id="subcontract-bill-amount"
+                  className="h-8 px-3 text-right align-middle hh-fin text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums"
+                >
                   Amount
-                </th>
-                <th className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
+                </ProjectFinancialTableHeader>
+                <ProjectFinancialTableHeader
+                  id="subcontract-bill-status"
+                  className="h-8 px-3 text-left align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]"
+                >
                   Status
-                </th>
-                <th className="h-8 px-3 text-right align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
+                </ProjectFinancialTableHeader>
+                <ProjectFinancialTableHeader
+                  id="subcontract-bill-actions"
+                  className="h-8 px-3 text-right align-middle text-hh-metadata font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]"
+                >
                   Actions
-                </th>
+                </ProjectFinancialTableHeader>
               </tr>
-            </thead>
+            </ProjectFinancialTableHead>
             <tbody>
               {bills.length === 0 ? (
                 <tr>
@@ -112,10 +142,18 @@ export default async function SubcontractBillsPage({ params }: Props) {
                       r.status !== "Void";
                     return (
                       <tr key={r.id} className={listTableRowStaticClassName}>
-                        <td className="h-11 min-h-[44px] px-3 py-0 align-middle hh-fin text-hh-table-cell font-medium tabular-nums">
+                        <ProjectFinancialTableCell
+                          headerId="subcontract-bill-date"
+                          label="Bill Date"
+                          className="h-11 min-h-[44px] px-3 py-0 align-middle hh-fin text-hh-table-cell font-medium tabular-nums"
+                        >
                           {r.bill_date}
-                        </td>
-                        <td className="h-11 min-h-[44px] px-3 py-0 align-middle hh-fin text-hh-table-cell tabular-nums">
+                        </ProjectFinancialTableCell>
+                        <ProjectFinancialTableCell
+                          headerId="subcontract-bill-due"
+                          label="Due"
+                          className="h-11 min-h-[44px] px-3 py-0 align-middle hh-fin text-hh-table-cell tabular-nums"
+                        >
                           {r.due_date ? (
                             <div className="flex items-center gap-2">
                               <span
@@ -136,17 +174,33 @@ export default async function SubcontractBillsPage({ params }: Props) {
                           ) : (
                             <span className="text-[var(--hh-text-secondary)]">—</span>
                           )}
-                        </td>
-                        <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell text-[var(--hh-text-secondary)]">
+                        </ProjectFinancialTableCell>
+                        <ProjectFinancialTableCell
+                          headerId="subcontract-bill-description"
+                          label="Description"
+                          className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell text-[var(--hh-text-secondary)]"
+                        >
                           {r.description ?? "—"}
-                        </td>
-                        <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums">
+                        </ProjectFinancialTableCell>
+                        <ProjectFinancialTableCell
+                          headerId="subcontract-bill-amount"
+                          label="Amount"
+                          className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums"
+                        >
                           ${fmtUsd(r.amount)}
-                        </td>
-                        <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell">
+                        </ProjectFinancialTableCell>
+                        <ProjectFinancialTableCell
+                          headerId="subcontract-bill-status"
+                          label="Status"
+                          className="h-11 min-h-[44px] px-3 py-0 align-middle text-hh-table-cell"
+                        >
                           {r.status}
-                        </td>
-                        <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle text-hh-table-cell">
+                        </ProjectFinancialTableCell>
+                        <ProjectFinancialTableCell
+                          headerId="subcontract-bill-actions"
+                          label="Actions"
+                          className="h-11 min-h-[44px] px-3 py-0 text-right align-middle text-hh-table-cell"
+                        >
                           {r.status === "Pending" ? (
                             <div className="flex items-center justify-end gap-2">
                               <ApproveBillButton
@@ -173,14 +227,14 @@ export default async function SubcontractBillsPage({ params }: Props) {
                               netPayable={netPayable}
                             />
                           )}
-                        </td>
+                        </ProjectFinancialTableCell>
                       </tr>
                     );
                   })()
                 )
               )}
             </tbody>
-          </table>
+          </ProjectFinancialTable>
         </div>
       </div>
     </PageLayout>

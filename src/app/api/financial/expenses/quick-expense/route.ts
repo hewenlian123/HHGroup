@@ -7,13 +7,11 @@ import {
 import {
   addExpenseAttachmentWithClient,
   createQuickExpenseWithClient,
+  getExpenseById,
   type Expense,
   type ExpenseAttachment,
 } from "@/lib/expenses-db";
-import {
-  replaceSubcontractDeductionForExpense,
-  type SubcontractDeductionInput,
-} from "@/lib/subcontract-deductions-db";
+import type { SubcontractDeductionInput } from "@/lib/subcontract-deductions-db";
 import { hawaiiTodayYmd } from "@/lib/hawaii-calendar-date";
 
 export const dynamic = "force-dynamic";
@@ -41,6 +39,7 @@ type QuickExpenseRequest = {
   referenceNo?: unknown;
   attachments?: unknown;
   subcontractDeduction?: unknown;
+  idempotencyKey?: unknown;
 };
 
 function apiError(status: number, message: string): NextResponse {
@@ -124,13 +123,36 @@ export async function POST(request: Request) {
   }
 
   const vendorName = optionalString(body.vendorName) ?? "Unknown";
+  const idempotencyKey = optionalString(body.idempotencyKey);
+  if (!idempotencyKey) return apiError(400, "Expense idempotency key is required.");
   const totalAmount = Number(body.totalAmount);
   if (!Number.isFinite(totalAmount) || totalAmount < 0) {
     return apiError(400, "Quick expense amount must be a valid number.");
   }
 
   try {
-    let expense = await createQuickExpenseWithClient(supabase, {
+    const deduction = normalizeSubcontractDeduction(body.subcontractDeduction);
+    const referenceNo = optionalString(body.referenceNo);
+    let expense: Expense | null = null;
+    if (
+      body.sourceType === "receipt_upload" &&
+      referenceNo &&
+      /^INBOX-UP-[a-f0-9]{64}$/i.test(referenceNo)
+    ) {
+      const existing = await supabase
+        .from("expenses")
+        .select("id, source_type")
+        .eq("reference_no", referenceNo)
+        .maybeSingle();
+      if (existing.error) throw new Error("Receipt recovery lookup unavailable.");
+      if (existing.data) {
+        if (existing.data.source_type !== "receipt_upload")
+          return apiError(409, "Receipt reference conflicts with another expense.");
+        expense = await getExpenseById(existing.data.id, supabase);
+        if (!expense) throw new Error("Receipt recovery unavailable.");
+      }
+    }
+    expense ??= await createQuickExpenseWithClient(supabase, {
       date: optionalString(body.date) ?? hawaiiTodayYmd(),
       vendorName,
       totalAmount,
@@ -142,24 +164,20 @@ export async function POST(request: Request) {
       projectId: optionalString(body.projectId),
       paymentAccountId: optionalString(body.paymentAccountId),
       referenceNo: optionalString(body.referenceNo),
+      idempotencyKey,
+      subcontractDeduction: deduction
+        ? {
+            ...deduction,
+            projectId: deduction.projectId ?? optionalString(body.projectId),
+            amount: deduction.amount ?? totalAmount,
+          }
+        : null,
     });
 
-    const deduction = normalizeSubcontractDeduction(body.subcontractDeduction);
-    if (deduction) {
-      const savedDeduction = await replaceSubcontractDeductionForExpense(
-        expense.id,
-        {
-          ...deduction,
-          projectId: deduction.projectId ?? optionalString(body.projectId),
-          amount: deduction.amount ?? totalAmount,
-        },
-        supabase
-      );
-      expense = { ...expense, subcontractDeduction: savedDeduction };
-    }
-
     for (const attachment of normalizeAttachments(body.attachments)) {
-      expense = (await addExpenseAttachmentWithClient(supabase, expense.id, attachment)) ?? expense;
+      const attached = await addExpenseAttachmentWithClient(supabase, expense.id, attachment);
+      if (!attached) throw new Error("Receipt metadata saved, but expense reload is unavailable.");
+      expense = attached;
     }
 
     return NextResponse.json({ ok: true, expense }, { headers: NO_CACHE_HEADERS });

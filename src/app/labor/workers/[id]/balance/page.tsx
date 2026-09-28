@@ -1,4 +1,5 @@
 "use client";
+import { LaborReadState } from "@/components/labor/labor-read-state";
 
 import * as React from "react";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
@@ -31,6 +32,10 @@ import {
 import { formatLedgerDate, LEDGER_DATE_CLASS } from "@/lib/ledger-date";
 import { safeWorkerReturnPath, workerDetailReturnPath } from "@/lib/worker-return-path";
 import { workerRateLocalYmd } from "@/lib/worker-rate-date";
+import {
+  idempotentSubmissionForPayload,
+  type IdempotentSubmission,
+} from "@/lib/financial-idempotency";
 
 type LaborEntryRow = {
   id: string;
@@ -179,7 +184,7 @@ function KpiTile({
     <div
       className={cn(
         "min-h-[76px] rounded-hh-task border px-3 py-3 shadow-operational",
-        "flex flex-col justify-between transition-[border-color,background-color,transform] duration-200 ease-out hover:-translate-y-px hover:border-[var(--hh-border-strong)] hover:bg-[var(--hh-l3-hover)]",
+        "flex flex-col justify-between",
         emphasisClass
       )}
     >
@@ -392,6 +397,8 @@ export default function WorkerBalanceDetailPage() {
   const [advances, setAdvances] = React.useState<AdvanceRow[]>([]);
   const [payments, setPayments] = React.useState<PaymentRow[]>([]);
   const [loading, setLoading] = React.useState(true);
+  const [readUnavailable, setReadUnavailable] = React.useState(false);
+  const readGeneration = React.useRef(0);
   const [message, setMessage] = React.useState<string | null>(null);
 
   const [payModalOpen, setPayModalOpen] = React.useState(false);
@@ -402,6 +409,7 @@ export default function WorkerBalanceDetailPage() {
   const [expandedMonths, setExpandedMonths] = React.useState<Set<string>>(new Set());
   const [expandedReimbMonths, setExpandedReimbMonths] = React.useState<Set<string>>(new Set());
   const [paySubmitting, setPaySubmitting] = React.useState(false);
+  const atomicPayrollSubmissionRef = React.useRef<IdempotentSubmission | null>(null);
   const [payError, setPayError] = React.useState<string | null>(null);
   const [laborPayrollMode, setLaborPayrollMode] =
     React.useState<LaborPayrollSettlementMode>("payment_link");
@@ -418,12 +426,19 @@ export default function WorkerBalanceDetailPage() {
 
   const load = React.useCallback(async () => {
     if (!workerId) return;
+    const generation = ++readGeneration.current;
+    setReadUnavailable(false);
+    setSelectedLaborIds(new Set());
+    setSelectedReimbIds(new Set());
+    setPayModalOpen(false);
     setLoading(true);
     setMessage(null);
     try {
       const res = await fetch(`/api/labor/workers/${workerId}/balance`, { cache: "no-store" });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message ?? "Failed to load.");
+      if (generation !== readGeneration.current) return;
+      if (!res.ok || !data.summary || !Array.isArray(data.laborEntries))
+        throw new Error(data.message ?? "Failed to load.");
       setLaborPayrollMode(
         data.laborPayrollSettlementMode === "status_fallback" ? "status_fallback" : "payment_link"
       );
@@ -454,9 +469,16 @@ export default function WorkerBalanceDetailPage() {
       setAdvances(data.advances ?? []);
       setPayments(data.payments ?? []);
     } catch (e) {
+      if (generation !== readGeneration.current) return;
+      setReadUnavailable(true);
+      setSummary(null);
+      setLaborEntries([]);
+      setReimbursements([]);
+      setAdvances([]);
+      setPayments([]);
       setMessage(e instanceof Error ? e.message : "Failed to load.");
     } finally {
-      setLoading(false);
+      if (generation === readGeneration.current) setLoading(false);
     }
   }, [workerId]);
 
@@ -827,7 +849,16 @@ export default function WorkerBalanceDetailPage() {
 
   const handlePaySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!workerId || !hasPaySelection || totalPaymentAmount <= 0 || netPaymentAmount <= 0) return;
+    if (
+      loading ||
+      readUnavailable ||
+      !summary ||
+      !workerId ||
+      !hasPaySelection ||
+      totalPaymentAmount <= 0 ||
+      netPaymentAmount <= 0
+    )
+      return;
     if (splitRows.length > 1) {
       setPayError("Split payments need backend support before saving.");
       return;
@@ -846,17 +877,25 @@ export default function WorkerBalanceDetailPage() {
     setPaySubmitting(true);
     setPayError(null);
     try {
+      const requestBody = {
+        amount: netPaymentAmount,
+        payment_method: method,
+        payment_date: submittedPaymentDate,
+        notes: payNotes.trim() || null,
+        labor_entry_ids: Array.from(selectedLaborIds).sort(),
+        reimbursement_ids: Array.from(selectedReimbIds).sort(),
+        advance_deduction_amount: advanceDeductionAmount,
+      };
+      atomicPayrollSubmissionRef.current = idempotentSubmissionForPayload(
+        atomicPayrollSubmissionRef.current,
+        requestBody
+      );
       const res = await fetch(`/api/labor/workers/${workerId}/pay`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          amount: netPaymentAmount,
-          payment_method: method,
-          payment_date: submittedPaymentDate,
-          notes: payNotes.trim() || null,
-          labor_entry_ids: Array.from(selectedLaborIds),
-          reimbursement_ids: Array.from(selectedReimbIds),
-          advance_deduction_amount: advanceDeductionAmount,
+          ...requestBody,
+          idempotency_key: atomicPayrollSubmissionRef.current.key,
         }),
       });
       const data = (await res.json()) as { message?: string; payment?: { id?: string } };
@@ -871,6 +910,7 @@ export default function WorkerBalanceDetailPage() {
       setLastPaymentMonth(submittedPaymentDate.slice(0, 7));
       setMessage("Payment saved.");
       dispatchClientDataSync({ reason: "worker-pay" });
+      atomicPayrollSubmissionRef.current = null;
     } catch (err) {
       setPayError(err instanceof Error ? err.message : "Payment failed.");
     } finally {
@@ -887,6 +927,8 @@ export default function WorkerBalanceDetailPage() {
       </div>
     );
   }
+
+  if (readUnavailable) return <LaborReadState title="Worker balance" retry={() => void load()} />;
 
   return (
     <div className=" page-shell-wide mx-auto flex w-full min-w-0 flex-col gap-4 overflow-x-hidden px-4 py-4 pb-[max(1.5rem,env(safe-area-inset-bottom,0px))] md:px-6 md:py-6">
@@ -983,7 +1025,10 @@ export default function WorkerBalanceDetailPage() {
           <div className="flex flex-col gap-4">
             {/* Summary KPI tiles */}
             {summary != null && (
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+              <div
+                data-testid="worker-balance-summary"
+                className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5"
+              >
                 <KpiTile label="Labor owed" value={formatCurrency(summary.laborOwed)} />
                 <KpiTile label="Reimbursements" value={formatCurrency(summary.reimbursements)} />
                 <KpiTile label="Payments" value={formatCurrency(summary.payments)} />

@@ -26,8 +26,9 @@ describe("modern Supabase key consumer contract", () => {
 
   it("supports modern server secrets in local verification without logging key prefixes", () => {
     const consumers = [
-      "playwright.config.ts",
+      "tests/e2e-webserver-env.ts",
       ".env.test.example",
+      "tests/e2e-auth-owner.ts",
       "tests/global-setup.ts",
       "tests/global-teardown.ts",
       "tests/e2e-supabase-env-diagnostic.ts",
@@ -54,11 +55,12 @@ describe("modern Supabase key consumer contract", () => {
     );
   });
 
-  it("uses the server-only client for authenticated project financial API reads", () => {
+  it("uses the verified request identity for authenticated project financial API reads", () => {
     const route = source("src/app/api/projects/[id]/tab/route.ts");
 
     expect(route).toMatch(
-      /const supabase = getServerSupabaseInternalNoStore\(\)[\s\S]*?getCanonicalProjectProfit\(id,\s*supabase\)/i
+      /requireOrganizationRequestClient\(_req,[\s\S]*?const supabase = guard\.client[\s\S]*?getCanonicalProjectProfit\(id,\s*supabase\)/i
     );
+    expect(route).not.toContain("getServerSupabaseInternalNoStore");
   });
 });

@@ -529,13 +529,13 @@ test.describe("Inbox draft upload receipt", () => {
         { timeout: 15_000 }
       );
 
-      await dialogPaymentAccountSelect(expenseDialog, page).click();
+      await dialogPaymentAccountSelect(expenseDialog).click();
       await page
         .locator('[role="listbox"]')
         .last()
         .getByRole("option", { name: "—", exact: true })
         .click();
-      await expect(dialogPaymentAccountSelect(expenseDialog, page)).toContainText("—", {
+      await expect(dialogPaymentAccountSelect(expenseDialog)).toContainText("—", {
         timeout: 15_000,
       });
 
@@ -751,7 +751,7 @@ test.describe("Inbox draft upload receipt", () => {
         await page.getByRole("option", { name: "ACH", exact: true }).click();
       }
 
-      await pickOrCreatePaymentInSelect(page, dialogPaymentAccountSelect(expenseDialog, page));
+      await pickOrCreatePaymentInSelect(page, dialogPaymentAccountSelect(expenseDialog));
 
       await expenseDialog.getByRole("button", { name: /^Save$/ }).click();
       await expect(expenseDialog.getByRole("heading", { name: /^Expense$/ })).toBeVisible({

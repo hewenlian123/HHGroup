@@ -24,6 +24,7 @@ export type EstimateNewDraftMilestone = {
   description: string;
   amount: number;
   dueDate?: string;
+  paymentTerm?: string | null;
 };
 
 export type EstimateNewDraftData = {
@@ -43,6 +44,7 @@ export type EstimateNewDraftData = {
   validUntil: string;
   salesPerson: string;
   tax: number;
+  taxRatePct?: number | null;
   taxTouched: boolean;
   templateDefaultTaxPct: number | null;
   discount: number;
@@ -73,14 +75,7 @@ const LINE_ITEM_STATUSES = new Set([
   "excluded",
   "owner_supplied",
 ]);
-const NOTE_TYPES = new Set([
-  "exclusions",
-  "assumptions",
-  "payment_terms",
-  "warranty",
-  "schedule_note",
-  "custom",
-]);
+const NOTE_TYPES = new Set(["exclusions", "assumptions", "warranty", "schedule_note", "custom"]);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -173,6 +168,7 @@ function normalizeMilestones(value: unknown): EstimateNewDraftMilestone[] {
         description: stringValue(entry.description),
         amount: finiteNumber(entry.amount),
         ...(dueDate ? { dueDate } : {}),
+        paymentTerm: stringValue(entry.paymentTerm) || null,
       },
     ];
   });
@@ -198,6 +194,7 @@ function normalizeDraft(value: unknown): EstimateNewDraftData | null {
     validUntil: stringValue(value.validUntil),
     salesPerson: stringValue(value.salesPerson),
     tax: finiteNumber(value.tax),
+    taxRatePct: nullableFiniteNumber(value.taxRatePct),
     taxTouched: value.taxTouched === true,
     templateDefaultTaxPct: nullableFiniteNumber(value.templateDefaultTaxPct),
     discount: finiteNumber(value.discount),

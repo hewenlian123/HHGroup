@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import "../estimates/estimate-module.css";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -66,10 +67,9 @@ type TemplateDraft = EstimateTemplateDraft;
 
 const FIELD =
   "hh-focus-ring hh-type-text-entry h-hh-control-comfortable rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-none placeholder:text-[var(--hh-text-tertiary)] focus-visible:border-[var(--hh-border-strong)]";
-const PRIMARY_ACTION =
-  "hh-focus-ring rounded-hh-compact border border-transparent bg-[var(--hh-action-primary)] text-[var(--hh-action-primary-foreground)] shadow-none hover:opacity-90";
+const PRIMARY_ACTION = "estimate-module-primary hh-focus-ring rounded-hh-compact shadow-none";
 const SECONDARY_ACTION =
-  "rounded-md border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-none hover:border-[var(--hh-border-strong)] hover:bg-[var(--hh-l2-operational-surface)]";
+  "estimate-module-secondary rounded-md border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-none hover:border-[var(--hh-border-strong)] hover:bg-[var(--hh-l2-operational-surface)]";
 
 function makeId(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -94,7 +94,7 @@ function emptyDraft(): TemplateDraft {
     description: "",
     category: "General",
     defaultTaxRate: "",
-    defaultTerms: "",
+
     notes: [],
     sections: [
       {
@@ -294,7 +294,7 @@ export function EstimateTemplatesClient({ templates }: { templates: EstimateTemp
     fd.set("description", draft.description);
     fd.set("category", draft.category);
     fd.set("defaultTaxRate", draft.defaultTaxRate);
-    fd.set("defaultTerms", draft.defaultTerms);
+
     fd.set("templateData", JSON.stringify(draftToTemplateData(draft)));
 
     startTransition(() => {
@@ -317,7 +317,7 @@ export function EstimateTemplatesClient({ templates }: { templates: EstimateTemp
   };
 
   return (
-    <div className="space-y-4">
+    <div className="estimate-module estimate-template-library space-y-4">
       <FilterToolbar className="items-stretch gap-2 md:items-center md:justify-between">
         <div className="relative min-w-[220px] flex-1">
           <Search
@@ -360,7 +360,7 @@ export function EstimateTemplatesClient({ templates }: { templates: EstimateTemp
         {activeTemplates.slice(0, 6).map((template) => (
           <NeoPanel
             key={template.id}
-            className="transition-colors hover:border-[var(--hh-border-strong)]"
+            className="estimate-module-panel transition-colors hover:border-[var(--hh-border-strong)]"
             bodyClassName="p-4"
           >
             <div className="flex min-h-[188px] flex-col gap-4">
@@ -428,6 +428,7 @@ export function EstimateTemplatesClient({ templates }: { templates: EstimateTemp
       </div>
 
       <NeoPanel
+        className="estimate-module-panel"
         eyebrow="Template library"
         title="Reusable estimate scopes"
         description="Edit, duplicate, archive, or delete reusable proposal templates."
@@ -494,7 +495,7 @@ export function EstimateTemplatesClient({ templates }: { templates: EstimateTemp
                       </DropdownMenuTrigger>
                       <DropdownMenuContent
                         align="end"
-                        className="min-w-[210px] rounded-hh-standard border border-[var(--hh-border-floating)] bg-[var(--hh-l4-floating-surface)] p-hh-1 text-[var(--hh-text-primary)] shadow-floating"
+                        className="estimate-module-surface min-w-[210px] rounded-hh-standard border border-[var(--hh-border-floating)] bg-[var(--hh-l4-floating-surface)] p-hh-1 text-[var(--hh-text-primary)] shadow-floating"
                       >
                         <DropdownMenuItem onSelect={() => openEdit(template)}>
                           <Edit3 className="mr-2 h-4 w-4" />
@@ -559,7 +560,7 @@ export function EstimateTemplatesClient({ templates }: { templates: EstimateTemp
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent
-          className="flex max-h-[92vh] max-w-[min(1180px,calc(100vw-1rem))] flex-col overflow-hidden p-0"
+          className="estimate-module-surface flex max-h-[92vh] max-w-[min(1180px,calc(100vw-1rem))] flex-col overflow-hidden p-0"
           data-testid="estimate-template-dialog"
         >
           <DialogHeader>
@@ -624,19 +625,6 @@ export function EstimateTemplatesClient({ templates }: { templates: EstimateTemp
                       step="0.01"
                       className={cn(FIELD, "mt-1")}
                       placeholder="Optional"
-                    />
-                  </label>
-                  <label className="block text-xs font-medium text-[var(--hh-text-secondary)]">
-                    Default Terms
-                    <EstimateAutoResizeTextarea
-                      value={draft.defaultTerms}
-                      onChange={(event) =>
-                        setDraft((d) => ({ ...d, defaultTerms: event.target.value }))
-                      }
-                      className={cn(FIELD, "mt-1 min-h-[96px] w-full py-2")}
-                      placeholder="Payment terms or reusable proposal notes…"
-                      minHeight={96}
-                      maxHeight={260}
                     />
                   </label>
                 </div>
@@ -787,6 +775,9 @@ export function EstimateTemplatesClient({ templates }: { templates: EstimateTemp
                                               lineNumberByItemId.get(item.id) ?? itemIndex + 1
                                             } quantity`}
                                           />
+                                        </div>
+                                        <div className="estimate-template-unit-field">
+                                          <span className={EB.readLabel}>Unit</span>
                                           <Input
                                             value={item.unit}
                                             onChange={(event) =>
@@ -794,7 +785,7 @@ export function EstimateTemplatesClient({ templates }: { templates: EstimateTemp
                                                 unit: event.target.value,
                                               })
                                             }
-                                            className={ebInput("mt-1 h-8 min-h-8 w-full px-2")}
+                                            className={ebInput("h-8 min-h-8 w-full px-2")}
                                             aria-label={`Template item ${
                                               lineNumberByItemId.get(item.id) ?? itemIndex + 1
                                             } unit`}

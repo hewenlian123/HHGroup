@@ -17,12 +17,17 @@ export async function resetE2ESeedWorkerPayrollStateWithClient(
   const wid = E2E_PRESERVED_WORKER_ID;
   const keepLaborId = E2E_PRESERVED_LABOR_ENTRY_ID;
 
-  const payDel = await admin.from("worker_payments").delete().eq("worker_id", wid);
-  if (
-    payDel.error &&
-    !/relation.*does not exist|schema cache|pgrst205/i.test(payDel.error.message ?? "")
-  ) {
-    console.warn("[e2e-reset-worker-payroll] worker_payments cleanup:", payDel.error.message);
+  const paymentRows = await admin.from("worker_payments").select("id").eq("worker_id", wid);
+  if (paymentRows.error) {
+    if (!/relation.*does not exist|schema cache|pgrst205/i.test(paymentRows.error.message ?? ""))
+      throw paymentRows.error;
+  }
+  for (const payment of paymentRows.error ? [] : (paymentRows.data ?? [])) {
+    const reversal = await admin.rpc("reverse_worker_payment_atomic", {
+      p_payment_id: payment.id,
+      p_idempotency_key: `e2e-reset:${payment.id}`,
+    });
+    if (reversal.error) throw reversal.error;
   }
 
   const delStray = await admin

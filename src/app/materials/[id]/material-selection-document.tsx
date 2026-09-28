@@ -74,7 +74,7 @@ function MaterialSelectionDocumentStyles() {
         }
 
         [data-app-sidebar],
-        [data-app-main-column] > header,
+        [data-app-shell-topbar-slot],
         .neo-command-bar,
         .no-print {
           display: none !important;

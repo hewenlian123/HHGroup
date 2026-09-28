@@ -1,0 +1,4 @@
+interface:
+  display_name: "HH Database Migration Guard"
+  short_description: "Guard HH migrations and local database verification"
+  default_prompt: "Use $hh-database-migration-guard to validate this HH Group database or migration change safely."

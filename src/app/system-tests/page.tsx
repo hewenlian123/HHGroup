@@ -1,8 +1,10 @@
 "use client";
 
 import * as React from "react";
+import { NeoMobileCard, NeoTable, StatusBadge } from "@/components/base";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
+import { tableRawTdClass, tableRawThClass } from "@/components/ui/table";
 
 /** Shape returned by /api/test/run-all */
 type TestRow = {
@@ -40,22 +42,14 @@ const FULL_SYSTEM_OPTIONS: { id: string; label: string }[] = [
   { id: "labor_workflow", label: "Labor & Payment" },
 ];
 
-function StatusBadge({ status }: { status: TestRow["status"] }) {
-  if (status === "passed")
-    return (
-      <span className="inline-flex items-center gap-1 text-hh-profit-positive dark:text-hh-profit-positive">
-        ● Passed
-      </span>
-    );
-  if (status === "warning")
-    return (
-      <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400">
-        ● Warning
-      </span>
-    );
-  return (
-    <span className="inline-flex items-center gap-1 text-red-600 dark:text-red-400">● Failed</span>
-  );
+function TestStatusBadge({ status }: { status: TestRow["status"] }) {
+  const config = {
+    passed: { label: "Passed", variant: "success" as const },
+    warning: { label: "Warning", variant: "warning" as const },
+    failed: { label: "Failed", variant: "danger" as const },
+  }[status];
+
+  return <StatusBadge {...config} />;
 }
 
 function ResultsTable({ tests, running }: { tests: TestRow[]; running: boolean }) {
@@ -68,28 +62,50 @@ function ResultsTable({ tests, running }: { tests: TestRow[]; running: boolean }
   }
 
   return (
-    <div className="table-responsive">
-      <table className="w-full text-sm min-w-[480px] sm:min-w-0 border-collapse">
+    <>
+      <div className="space-y-2 md:hidden" data-testid="system-test-result-cards">
+        {tests.map((row, index) => (
+          <NeoMobileCard
+            key={`${row.test}-${index}`}
+            data-testid="system-test-result-card"
+            className="space-y-3 p-3"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <p className="min-w-0 font-medium text-[var(--hh-text-primary)]">{row.test}</p>
+              <TestStatusBadge status={row.status} />
+            </div>
+            <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-hh-table-cell">
+              <dt className="text-[var(--hh-text-secondary)]">Time</dt>
+              <dd className="text-right tabular-nums text-[var(--hh-text-primary)]">
+                {row.executionTimeMs} ms
+              </dd>
+              <dt className="text-[var(--hh-text-secondary)]">Message</dt>
+              <dd className="break-words text-right text-[var(--hh-text-primary)]">
+                {row.message || "—"}
+              </dd>
+            </dl>
+          </NeoMobileCard>
+        ))}
+      </div>
+      <NeoTable className="hidden md:block" tableClassName="min-w-[680px]">
         <thead>
-          <tr className="border-b border-border/60 text-left text-xs text-muted-foreground uppercase tracking-wide">
-            <th className="py-2 pr-4 font-medium">Test</th>
-            <th className="py-2 pr-4 font-medium">Status</th>
-            <th className="py-2 pr-4 font-medium">Time</th>
-            <th className="py-2 font-medium">Message</th>
+          <tr>
+            <th className={tableRawThClass}>Test</th>
+            <th className={tableRawThClass}>Status</th>
+            <th className={tableRawThClass}>Time</th>
+            <th className={tableRawThClass}>Message</th>
           </tr>
         </thead>
         <tbody>
           {tests.map((row, i) => (
-            <tr key={`${row.test}-${i}`} className="border-b border-border/30">
-              <td className="py-2 pr-4 font-medium">{row.test}</td>
-              <td className="py-2 pr-4">
-                <StatusBadge status={row.status} />
+            <tr key={`${row.test}-${i}`}>
+              <td className={tableRawTdClass}>{row.test}</td>
+              <td className={tableRawTdClass}>
+                <TestStatusBadge status={row.status} />
               </td>
-              <td className="py-2 pr-4 tabular-nums text-muted-foreground">
-                {row.executionTimeMs} ms
-              </td>
+              <td className={`${tableRawTdClass} tabular-nums`}>{row.executionTimeMs} ms</td>
               <td
-                className="py-2 text-muted-foreground max-w-[320px] truncate"
+                className={`${tableRawTdClass} max-w-[320px] truncate`}
                 title={row.message || undefined}
               >
                 {row.message || "—"}
@@ -97,8 +113,72 @@ function ResultsTable({ tests, running }: { tests: TestRow[]; running: boolean }
             </tr>
           ))}
         </tbody>
-      </table>
-    </div>
+      </NeoTable>
+    </>
+  );
+}
+
+function RunAllResults({ groups }: { groups: RunAllGroup[] }) {
+  return (
+    <>
+      <div className="space-y-2 md:hidden" data-testid="system-test-result-cards">
+        {groups.map((group) => (
+          <NeoMobileCard
+            key={group.name}
+            data-testid="system-test-result-card"
+            className="space-y-3 p-3"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <p className="min-w-0 font-medium text-[var(--hh-text-primary)]">{group.name}</p>
+              <StatusBadge
+                label={group.ok ? "Passed" : "Failed"}
+                variant={group.ok ? "success" : "danger"}
+              />
+            </div>
+            <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-hh-table-cell">
+              <dt className="text-[var(--hh-text-secondary)]">Time</dt>
+              <dd className="text-right tabular-nums text-[var(--hh-text-primary)]">
+                {group.executionTimeMs} ms
+              </dd>
+              <dt className="text-[var(--hh-text-secondary)]">Message</dt>
+              <dd className="break-words text-right text-[var(--hh-text-primary)]">
+                {group.error ?? "—"}
+              </dd>
+            </dl>
+          </NeoMobileCard>
+        ))}
+      </div>
+      <NeoTable className="hidden md:block" tableClassName="min-w-[680px]">
+        <thead>
+          <tr>
+            <th className={tableRawThClass}>Test</th>
+            <th className={tableRawThClass}>Status</th>
+            <th className={tableRawThClass}>Time</th>
+            <th className={tableRawThClass}>Message</th>
+          </tr>
+        </thead>
+        <tbody>
+          {groups.map((group) => (
+            <tr key={group.name}>
+              <td className={tableRawTdClass}>{group.name}</td>
+              <td className={tableRawTdClass}>
+                <StatusBadge
+                  label={group.ok ? "Passed" : "Failed"}
+                  variant={group.ok ? "success" : "danger"}
+                />
+              </td>
+              <td className={`${tableRawTdClass} tabular-nums`}>{group.executionTimeMs} ms</td>
+              <td
+                className={`${tableRawTdClass} max-w-[320px] truncate`}
+                title={group.error ?? undefined}
+              >
+                {group.error ?? "—"}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </NeoTable>
+    </>
   );
 }
 
@@ -214,60 +294,20 @@ export default function SystemTestsPage() {
           <Button
             size="sm"
             variant="default"
-            className="min-h-[44px] sm:min-h-0"
+            className="min-h-[44px] lg:min-h-0"
             onClick={runAllTests}
             disabled={anyRunning}
           >
             {runAllRunning ? "Running…" : "Run All Tests"}
           </Button>
         </div>
-        {runAllError && <p className="text-sm text-red-600 dark:text-red-400">{runAllError}</p>}
+        {runAllError && <p className="text-sm text-[var(--hh-danger)]">{runAllError}</p>}
         {runAllTotalTime != null && !runAllRunning && (
           <p className="text-xs text-muted-foreground">
             Completed in {(runAllTotalTime / 1000).toFixed(1)}s
           </p>
         )}
-        {runAllGroups.length > 0 && (
-          <div className="table-responsive">
-            <table className="w-full text-sm min-w-[480px] sm:min-w-0 border-collapse">
-              <thead>
-                <tr className="border-b border-border/60 text-left text-xs text-muted-foreground uppercase tracking-wide">
-                  <th className="py-2 pr-4 font-medium">Test</th>
-                  <th className="py-2 pr-4 font-medium">Status</th>
-                  <th className="py-2 pr-4 font-medium">Time</th>
-                  <th className="py-2 font-medium">Message</th>
-                </tr>
-              </thead>
-              <tbody>
-                {runAllGroups.map((row) => (
-                  <tr key={row.name} className="border-b border-border/30">
-                    <td className="py-2 pr-4 font-medium">{row.name}</td>
-                    <td className="py-2 pr-4">
-                      <span
-                        className={
-                          row.ok
-                            ? "inline-flex items-center gap-1 text-hh-profit-positive dark:text-hh-profit-positive"
-                            : "inline-flex items-center gap-1 text-red-600 dark:text-red-400"
-                        }
-                      >
-                        ● {row.ok ? "Passed" : "Failed"}
-                      </span>
-                    </td>
-                    <td className="py-2 pr-4 tabular-nums text-muted-foreground">
-                      {row.executionTimeMs} ms
-                    </td>
-                    <td
-                      className="py-2 text-muted-foreground max-w-[320px] truncate"
-                      title={row.error ?? undefined}
-                    >
-                      {row.error ?? "—"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        {runAllGroups.length > 0 ? <RunAllResults groups={runAllGroups} /> : null}
       </div>
 
       <div className="border-t border-border/60" />
@@ -281,7 +321,7 @@ export default function SystemTestsPage() {
           <Button
             size="sm"
             variant="outline"
-            className="min-h-[44px] sm:min-h-0"
+            className="min-h-[44px] lg:min-h-0"
             onClick={() => runWorkflowTests()}
             disabled={anyRunning}
           >
@@ -292,7 +332,7 @@ export default function SystemTestsPage() {
               key={id}
               size="sm"
               variant="outline"
-              className="btn-outline-ghost min-h-[44px] sm:min-h-0 text-xs"
+              className="btn-outline-ghost min-h-[44px] lg:min-h-0 text-xs"
               onClick={() => runWorkflowTests(id)}
               disabled={anyRunning}
             >
@@ -300,7 +340,7 @@ export default function SystemTestsPage() {
             </Button>
           ))}
         </div>
-        {workflowError && <p className="text-sm text-red-600 dark:text-red-400">{workflowError}</p>}
+        {workflowError && <p className="text-sm text-[var(--hh-danger)]">{workflowError}</p>}
         {workflowTime != null && (
           <p className="text-xs text-muted-foreground">Completed in {workflowTime} ms</p>
         )}
@@ -322,7 +362,7 @@ export default function SystemTestsPage() {
           <Button
             size="sm"
             variant="outline"
-            className="min-h-[44px] sm:min-h-0"
+            className="min-h-[44px] lg:min-h-0"
             onClick={() => runFullSystemTests()}
             disabled={anyRunning}
           >
@@ -333,7 +373,7 @@ export default function SystemTestsPage() {
               key={id}
               size="sm"
               variant="outline"
-              className="btn-outline-ghost min-h-[44px] sm:min-h-0 text-xs"
+              className="btn-outline-ghost min-h-[44px] lg:min-h-0 text-xs"
               onClick={() => runFullSystemTests(id)}
               disabled={anyRunning}
             >
@@ -341,7 +381,7 @@ export default function SystemTestsPage() {
             </Button>
           ))}
         </div>
-        {systemError && <p className="text-sm text-red-600 dark:text-red-400">{systemError}</p>}
+        {systemError && <p className="text-sm text-[var(--hh-danger)]">{systemError}</p>}
         {systemTime != null && (
           <p className="text-xs text-muted-foreground">Completed in {systemTime} ms</p>
         )}

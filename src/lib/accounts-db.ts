@@ -35,33 +35,21 @@ function isMissingTable(err: { message?: string } | null): boolean {
 }
 
 export async function getAccounts(): Promise<Account[]> {
-  const c = client();
-  try {
-    const q = c
-      .from("accounts")
-      .select("id, name, type, last_four, notes, created_at, updated_at")
-      .order("name");
-
-    const { data: rows, error } = await q;
-    if (error) {
-      if (isMissingTable(error)) return [];
-      throw new Error(error.message ?? "Failed to load accounts.");
-    }
-    return (rows ?? []).map((r: Record<string, unknown>) => ({
-      id: r.id as string,
-      name: (r.name as string) ?? "",
-      type: (r.type as AccountType) ?? "Other",
-      lastFour: (r.last_four as string)?.trim() || null,
-      notes: (r.notes as string)?.trim() || null,
-      createdAt: (r.created_at as string) ?? new Date().toISOString(),
-      updatedAt: (r.updated_at as string) ?? new Date().toISOString(),
-    }));
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    if (/schema cache|table.*accounts|could not find|relation.*does not exist/i.test(msg))
-      return [];
-    throw e;
-  }
+  const { data: rows, error } = await client()
+    .from("accounts")
+    .select("id, name, type, last_four, notes, created_at, updated_at")
+    .order("name");
+  if (error) throw new Error(error.message ?? "Failed to load accounts.");
+  if (!Array.isArray(rows)) throw new Error("Accounts are unavailable.");
+  return rows.map((r: Record<string, unknown>) => ({
+    id: r.id as string,
+    name: (r.name as string) ?? "",
+    type: (r.type as AccountType) ?? "Other",
+    lastFour: (r.last_four as string)?.trim() || null,
+    notes: (r.notes as string)?.trim() || null,
+    createdAt: (r.created_at as string) ?? new Date().toISOString(),
+    updatedAt: (r.updated_at as string) ?? new Date().toISOString(),
+  }));
 }
 
 export async function createAccount(input: {

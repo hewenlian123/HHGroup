@@ -97,9 +97,10 @@ test("removes every known permissive policy and fails closed on unclassified pol
   assert.match(sql, /notify\s+pgrst,\s*'reload schema'/i);
 });
 
-test("keeps material-selection reads and writes behind owner/admin server boundaries", () => {
+test("keeps material-selection reads and writes behind organization session boundaries", () => {
   const materialDb = source(resolve(ROOT, "src/lib/material-selection-sheets-db.ts"));
-  assert.match(materialDb, /getServerSupabaseAdminNoStore/);
+  assert.match(materialDb, /const c = explicitClient;/);
+  assert.doesNotMatch(materialDb, /getServerSupabaseAdmin/);
   assert.doesNotMatch(materialDb, /getServerSupabaseInternalNoStore/);
 
   for (const relativePath of [
@@ -114,8 +115,8 @@ test("keeps material-selection reads and writes behind owner/admin server bounda
   ]) {
     assert.match(
       source(resolve(ROOT, relativePath)),
-      /requireSupabaseOwnerOrAdmin(?:ServerAction)?/,
-      `${relativePath} must establish the strict owner/admin boundary before material data access`
+      /requireOrganization(?:ServerAction|Request)Client/,
+      `${relativePath} must establish the organization session boundary before material data access`
     );
   }
 
@@ -123,14 +124,16 @@ test("keeps material-selection reads and writes behind owner/admin server bounda
     "src/app/api/materials/[id]/items/route.ts",
     "src/app/api/materials/[id]/pdf/route.ts",
   ]) {
-    assert.match(source(resolve(ROOT, relativePath)), /getServerSupabaseAdmin/);
+    assert.match(source(resolve(ROOT, relativePath)), /guard\.client/);
+    assert.doesNotMatch(source(resolve(ROOT, relativePath)), /getServerSupabaseAdmin/);
   }
 
   const materialWorkflow = source(resolve(ROOT, "tests/material-selections.spec.ts"));
   assert.match(materialWorkflow, /loginAsE2EOwner/);
 
   const materialNewPage = source(resolve(ROOT, "src/app/materials/new/page.tsx"));
-  assert.match(materialNewPage, /getServerSupabaseAdmin\(\)/);
+  assert.match(materialNewPage, /const supabase = guard\.client/);
+  assert.doesNotMatch(materialNewPage, /getServerSupabaseAdmin/);
   assert.match(materialNewPage, /getProjects\(supabase\)/);
 });
 

@@ -159,11 +159,9 @@ async function smokeTestModulePage(page, path, expectedText, options = {}) {
 // ── main ──────────────────────────────────────────────────────────────────────
 
 async function main() {
-  // Require puppeteer here so the error is caught below
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
   let puppeteer;
   try {
-    puppeteer = require("puppeteer");
+    puppeteer = (await import("puppeteer")).default;
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     process.stdout.write(

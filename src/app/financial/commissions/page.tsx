@@ -1,42 +1,31 @@
-import {
-  getCommissionSummary,
-  getAllCommissionsWithPayments,
-  getProjects,
-  summarizeCommissions,
-} from "@/lib/data";
-import { humanizeSupabaseRequestError } from "@/lib/supabase";
+import { getCommissionSummary, getAllCommissionsWithPayments, getProjects } from "@/lib/data";
+import { authorizedAppRole } from "@/lib/auth-role";
+import { FinancialDataUnavailableError } from "@/lib/financial-availability";
+import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { CommissionsClient } from "./commissions-client";
 
 export const dynamic = "force-dynamic";
 
-const emptySummary = {
-  totalCommission: 0,
-  paidCommission: 0,
-  outstandingCommission: 0,
-  thisMonthPaid: 0,
-};
-
 export default async function CommissionPaymentsPage() {
-  const [sumRes, comRes, projRes] = await Promise.allSettled([
-    getCommissionSummary(),
-    getAllCommissionsWithPayments(),
-    getProjects(),
-  ]);
-
-  const commissions = comRes.status === "fulfilled" ? comRes.value : [];
-  const projects = projRes.status === "fulfilled" ? projRes.value : [];
-
-  let summary = emptySummary;
-  if (sumRes.status === "fulfilled") {
-    summary = sumRes.value;
-  } else if (commissions.length > 0) {
-    summary = { ...summarizeCommissions(commissions), thisMonthPaid: 0 };
+  const supabase = await createServerSupabaseClient({ noStore: true });
+  if (!supabase) throw new FinancialDataUnavailableError("commission session", null);
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+  if (authError) throw new FinancialDataUnavailableError("commission session", authError);
+  if (!user || !authorizedAppRole(user)) {
+    throw new FinancialDataUnavailableError("commission session", {
+      code: "42501",
+      message: "Owner or admin authentication required.",
+    });
   }
 
-  let loadError: string | null = null;
-  if (comRes.status === "rejected") loadError = humanizeSupabaseRequestError(comRes.reason);
-  else if (projRes.status === "rejected") loadError = humanizeSupabaseRequestError(projRes.reason);
-  else if (sumRes.status === "rejected") loadError = humanizeSupabaseRequestError(sumRes.reason);
+  const [summary, commissions, projects] = await Promise.all([
+    getCommissionSummary(supabase),
+    getAllCommissionsWithPayments(supabase),
+    getProjects(supabase),
+  ]);
 
   const projectNameById = new Map(projects.map((p) => [p.id, p.name ?? ""]));
   const rows = commissions.map((c) => ({
@@ -53,7 +42,7 @@ export default async function CommissionPaymentsPage() {
       summary={summary}
       rows={rows}
       projectOptions={projectOptions}
-      loadError={loadError}
+      loadError={null}
     />
   );
 }

@@ -1,54 +1,48 @@
 "use client";
 
-import * as React from "react";
-import { usePathname, useSearchParams } from "next/navigation";
-import { Sidebar } from "./sidebar";
-import { Topbar } from "./topbar";
-import { BottomNav } from "./bottom-nav";
-import { FloatingActionButton } from "./floating-action-button";
-import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
-import { PWAInstallPrompt } from "../pwa-install-prompt";
-import { SystemHealthProvider } from "@/contexts/system-health-context";
-import { BreadcrumbOverrideProvider } from "@/contexts/breadcrumb-override-context";
-import { LaborAddEntryProvider } from "@/contexts/labor-add-entry-context";
-import { AttachmentPreviewProvider } from "@/contexts/attachment-preview-context";
-import { SystemHealthPoller } from "@/components/system-health/system-health-poller";
-import { NeoCommandPalette } from "@/components/command/neo-command-palette";
-import { cn } from "@/lib/utils";
-import { useIsTabletNav } from "@/hooks/use-is-tablet-nav";
-import { ScrollLockRecovery } from "./scroll-lock-recovery";
+import { usePathname } from "next/navigation";
+import dynamic from "next/dynamic";
 import { ToastProvider } from "@/components/toast/toast-provider";
+import { AttachmentPreviewProvider } from "@/contexts/attachment-preview-context";
+import { BreadcrumbOverrideProvider } from "@/contexts/breadcrumb-override-context";
 import {
   HhRouteThemeRoot,
   type HhContextName,
   type HhThemeName,
 } from "@/contexts/hh-theme-context";
-import {
-  applyOperationalThemeMode,
-  operationalThemeName,
-  readOperationalThemeMode,
-  type OperationalThemeMode,
-} from "@/lib/operational-theme";
+import { LaborAddEntryProvider } from "@/contexts/labor-add-entry-context";
+import { SystemHealthProvider } from "@/contexts/system-health-context";
+import { getHhProjectOsWorkspace } from "@/lib/navigation/ia";
+import { isLaborWorkspace } from "@/lib/navigation/labor-workspace";
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+type AppShellProps = {
+  children: React.ReactNode;
+};
+
+const AppShellChrome = dynamic(
+  () => import("./app-shell-chrome").then((module) => module.AppShellChrome),
+  { ssr: false }
+);
+
+function AppShellProviders({ children }: { children: React.ReactNode }) {
+  return (
+    <ToastProvider>
+      <AttachmentPreviewProvider>{children}</AttachmentPreviewProvider>
+    </ToastProvider>
+  );
+}
+
+/**
+ * Server-renderable structural shell used while isolating the client-only
+ * chrome import graph. Route content intentionally remains in the HTML.
+ */
+export function AppShell({ children }: AppShellProps) {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const isTabletNav = useIsTabletNav();
-  const modeParam = searchParams?.get("mode")?.toLowerCase() ?? "";
-  const workerModeUrl =
-    (pathname === "/labor/daily-entry" || pathname === "/labor/daily") && modeParam === "worker";
   const authPage =
     pathname === "/login" ||
     pathname === "/forgot-password" ||
     pathname === "/reset-password" ||
     pathname === "/unlock";
-  const barePage =
-    authPage ||
-    pathname === "/receipt" ||
-    pathname === "/upload-receipt" ||
-    pathname?.startsWith("/upload-receipt/") ||
-    pathname?.startsWith("/receipt/print/") ||
-    workerModeUrl;
   const documentRoute = Boolean(
     pathname &&
     (pathname.startsWith("/receipt/print/") ||
@@ -68,8 +62,36 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const publicWorkerIntake =
     pathname === "/receipt" ||
     pathname === "/upload-receipt" ||
+    pathname?.startsWith("/upload-receipt/");
+  const barePage =
+    authPage ||
+    pathname === "/receipt" ||
+    pathname === "/upload-receipt" ||
     pathname?.startsWith("/upload-receipt/") ||
-    workerModeUrl;
+    pathname?.startsWith("/receipt/print/");
+  const estimatePathSegments = pathname?.split("/").filter(Boolean) ?? [];
+  const integratedEstimateWorkspace =
+    estimatePathSegments[0] === "estimates" &&
+    Boolean(estimatePathSegments[1]) &&
+    (estimatePathSegments[1] === "new" ||
+      estimatePathSegments.length === 2 ||
+      estimatePathSegments[2] === "snapshot");
+  const estimateModule = Boolean(
+    pathname &&
+    !documentRoute &&
+    !viewerRoute &&
+    (pathname === "/estimates" ||
+      pathname.startsWith("/estimates/") ||
+      pathname.startsWith("/estimate-templates"))
+  );
+  const showsWorkspaceNavigation = Boolean(
+    pathname &&
+    !integratedEstimateWorkspace &&
+    !/\/(print|preview)(\/|$)/.test(pathname) &&
+    !/^\/labor\/payments\/[^/]+\/receipt(?:\/|$)/.test(pathname) &&
+    !/^\/(projects|estimates)\/[^/]+/.test(pathname) &&
+    (isLaborWorkspace(pathname) || getHhProjectOsWorkspace(pathname)?.entries.length)
+  );
   const routeContext: HhContextName = documentRoute
     ? "document-route"
     : viewerRoute
@@ -79,55 +101,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         : publicWorkerIntake
           ? "public-worker-intake"
           : "operational";
-  const [operationalThemeMode, setOperationalThemeMode] =
-    React.useState<OperationalThemeMode>(readOperationalThemeMode);
   const routeTheme: HhThemeName = documentRoute
     ? "document-light"
     : viewerRoute
-      ? "neo-dark"
+      ? "operational-light"
       : authPage
         ? "auth"
         : publicWorkerIntake
           ? "public"
-          : operationalThemeName(operationalThemeMode);
-  const [mobileOpen, setMobileOpen] = React.useState(false);
-  const [collapsed, setCollapsed] = React.useState(false);
-  const [commandOpen, setCommandOpen] = React.useState(false);
-  /** When true on tablet, sidebar shows labels; when false, icon rail only. */
-  const [tabletSidebarExpanded, setTabletSidebarExpanded] = React.useState(false);
-
-  React.useEffect(() => {
-    applyOperationalThemeMode(operationalThemeMode);
-  }, [operationalThemeMode]);
-
-  React.useEffect(() => {
-    try {
-      const raw = window.localStorage.getItem("hh.sidebarCollapsed");
-      if (raw === "1") setCollapsed(true);
-    } catch {
-      // ignore
-    }
-  }, []);
-
-  React.useEffect(() => {
-    try {
-      window.localStorage.setItem("hh.sidebarCollapsed", collapsed ? "1" : "0");
-    } catch {
-      // ignore
-    }
-  }, [collapsed]);
-
-  React.useEffect(() => {
-    setTabletSidebarExpanded(false);
-  }, [pathname]);
-
-  const handleToggleSidebar = React.useCallback(() => {
-    if (isTabletNav) {
-      setTabletSidebarExpanded((e) => !e);
-    } else {
-      setCollapsed((c) => !c);
-    }
-  }, [isTabletNav]);
+          : "operational-light";
 
   if (barePage) {
     const printReceiptBg = pathname?.startsWith("/receipt/print/");
@@ -137,85 +119,58 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         theme={routeTheme}
         className={printReceiptBg ? "min-h-screen bg-[#f5f5f5]" : "min-h-screen bg-workspace"}
       >
-        <ToastProvider>
-          <AttachmentPreviewProvider>
-            <ScrollLockRecovery />
-            {children}
-          </AttachmentPreviewProvider>
-        </ToastProvider>
+        <AppShellProviders>
+          <AppShellChrome pathname={pathname} bare integratedEstimateWorkspace={false} />
+          {children}
+        </AppShellProviders>
       </HhRouteThemeRoot>
     );
   }
 
   return (
     <HhRouteThemeRoot context={routeContext} theme={routeTheme}>
-      <ToastProvider>
-        <AttachmentPreviewProvider>
-          <BreadcrumbOverrideProvider>
-            <SystemHealthProvider>
-              <LaborAddEntryProvider>
-                <ScrollLockRecovery />
-                <SystemHealthPoller />
-                <div className="app-shell hh-app-shell neo-app-shell flex min-h-0 overflow-hidden bg-canvas sm:p-hh-sidebar-inset">
-                  {/* Tablet/Desktop (640px+): sidebar fixed left, collapsible. */}
-                  <Sidebar
-                    className="hidden sm:flex shrink-0 transition-[width] duration-200"
-                    collapsed={isTabletNav ? !tabletSidebarExpanded : collapsed}
-                    onToggleCollapsed={handleToggleSidebar}
-                  />
-                  {/* Mobile (<640px): slide-out drawer (hamburger menu). */}
-                  <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-                    <SheetContent
-                      side="left"
-                      className={cn(
-                        "w-hh-sidebar-expanded max-w-[85vw] p-0 shadow-none transition-transform duration-200 data-[state=open]:slide-in-from-left data-[state=closed]:slide-out-to-left",
-                        "border-r border-[var(--hh-border)] bg-canvas"
-                      )}
-                    >
-                      <SheetTitle className="sr-only">Navigation menu</SheetTitle>
-                      <SheetDescription className="sr-only">
-                        Main HH Project OS navigation sections and module links.
-                      </SheetDescription>
-                      <Sidebar
-                        className="h-full w-full !rounded-none !border-none !shadow-none"
-                        onNavigate={() => setMobileOpen(false)}
-                      />
-                    </SheetContent>
-                  </Sheet>
+      <AppShellProviders>
+        <BreadcrumbOverrideProvider>
+          <SystemHealthProvider>
+            <LaborAddEntryProvider>
+              <div
+                className="app-shell hh-app-shell flex min-h-0 overflow-hidden bg-[var(--hh-surface-workspace)] [font-family:var(--hh-font-family-sans)]"
+                data-integrated-estimate-workspace={
+                  integratedEstimateWorkspace ? "true" : undefined
+                }
+              >
+                <div
+                  data-app-shell-sidebar-slot
+                  className="hidden shrink-0 empty:w-hh-sidebar-expanded sm:block"
+                />
+                <AppShellChrome
+                  pathname={pathname}
+                  bare={false}
+                  integratedEstimateWorkspace={integratedEstimateWorkspace}
+                />
+                <div
+                  data-app-main-column
+                  className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+                >
+                  <div data-app-shell-topbar-slot className="shrink-0 empty:h-14" />
                   <div
-                    data-app-main-column
-                    className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+                    data-app-shell-workspace-slot
+                    className={showsWorkspaceNavigation ? "shrink-0 empty:h-[61px]" : "shrink-0"}
+                  />
+                  <main
+                    data-app-scroll-root
+                    data-estimate-module={estimateModule ? "true" : undefined}
+                    className="min-h-0 flex-1 scroll-smooth overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[var(--hh-surface-canvas)] [-webkit-overflow-scrolling:touch] pb-[calc(4rem+env(safe-area-inset-bottom))] sm:pb-0"
                   >
-                    <Topbar
-                      onOpenSidebar={() => setMobileOpen(true)}
-                      onToggleSidebar={handleToggleSidebar}
-                      onOpenCommandPalette={() => setCommandOpen(true)}
-                      operationalThemeMode={operationalThemeMode}
-                      showOperationalThemeToggle={routeContext === "operational"}
-                      onToggleOperationalTheme={() =>
-                        setOperationalThemeMode((mode) => (mode === "dark" ? "light" : "dark"))
-                      }
-                    />
-                    <main
-                      data-app-scroll-root
-                      className={cn(
-                        "neo-workspace-canvas min-h-0 flex-1 scroll-smooth overflow-y-auto overflow-x-hidden overscroll-y-contain bg-canvas [-webkit-overflow-scrolling:touch]",
-                        "pb-[calc(4rem+env(safe-area-inset-bottom))] sm:pb-0"
-                      )}
-                    >
-                      {children}
-                    </main>
-                    <BottomNav className="fixed bottom-0 left-0 right-0 z-30 sm:hidden" />
-                    <FloatingActionButton />
-                    <NeoCommandPalette open={commandOpen} onOpenChange={setCommandOpen} />
-                  </div>
+                    {children}
+                  </main>
+                  <div data-app-shell-bottom-slot />
                 </div>
-                <PWAInstallPrompt />
-              </LaborAddEntryProvider>
-            </SystemHealthProvider>
-          </BreadcrumbOverrideProvider>
-        </AttachmentPreviewProvider>
-      </ToastProvider>
+              </div>
+            </LaborAddEntryProvider>
+          </SystemHealthProvider>
+        </BreadcrumbOverrideProvider>
+      </AppShellProviders>
     </HhRouteThemeRoot>
   );
 }

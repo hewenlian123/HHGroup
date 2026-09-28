@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { PageLayout, PageHeader, Divider, SectionHeader } from "@/components/base";
 import { getSubcontractors } from "@/lib/data";
+import { requireSupabaseOwnerOrAdminServerActionClient } from "@/lib/auth-boundary";
 import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
 import { SubcontractorsActions } from "./subcontractors-actions";
 import { SubcontractorsTableClient } from "./subcontractors-table-client";
@@ -13,7 +14,9 @@ export default async function SubcontractorsPage() {
   let rows: Awaited<ReturnType<typeof getSubcontractors>> = [];
   let dataLoadWarning: string | null = null;
   try {
-    rows = await getSubcontractors();
+    const guard = await requireSupabaseOwnerOrAdminServerActionClient({ noStore: true });
+    if (!guard.ok) throw new Error(guard.error);
+    rows = await getSubcontractors(guard.client);
   } catch (e) {
     logServerPageDataError("settings/subcontractors", e);
     dataLoadWarning = serverDataLoadWarning(e, "subcontractors");

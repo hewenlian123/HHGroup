@@ -1,6 +1,8 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
+import { useProjectWorkspaceScope } from "@/components/projects/project-workspace-context";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import {
   EmptyState,
@@ -134,7 +136,7 @@ function ScheduleCalendarGrid({
         <button
           type="button"
           onClick={prevMonth}
-          className="rounded-md px-2 py-1 text-sm font-medium text-[var(--hh-text-secondary)] transition-colors hover:bg-[var(--hh-l2-operational-surface)] hover:text-[var(--hh-text-primary)]"
+          className="hh-focus-ring hh-touch-min rounded-hh-compact px-2 py-1 text-sm font-medium text-[var(--hh-text-secondary)] transition-colors hover:bg-[var(--hh-l3-hover)] hover:text-[var(--hh-text-primary)]"
         >
           ←
         </button>
@@ -142,12 +144,12 @@ function ScheduleCalendarGrid({
         <button
           type="button"
           onClick={nextMonth}
-          className="rounded-md px-2 py-1 text-sm font-medium text-[var(--hh-text-secondary)] transition-colors hover:bg-[var(--hh-l2-operational-surface)] hover:text-[var(--hh-text-primary)]"
+          className="hh-focus-ring hh-touch-min rounded-hh-compact px-2 py-1 text-sm font-medium text-[var(--hh-text-secondary)] transition-colors hover:bg-[var(--hh-l3-hover)] hover:text-[var(--hh-text-primary)]"
         >
           →
         </button>
       </div>
-      <div className="grid grid-cols-7 gap-px overflow-hidden rounded-lg border border-[var(--hh-border)] bg-[var(--hh-border)]">
+      <div className="grid grid-cols-7 gap-px overflow-hidden rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-border)]">
         {weekDays.map((w) => (
           <div
             key={w}
@@ -172,7 +174,7 @@ function ScheduleCalendarGrid({
                     <div
                       key={s.id}
                       className={cn(
-                        "truncate rounded-md border px-1.5 py-0.5 text-xs font-medium",
+                        "truncate rounded-hh-compact border px-1.5 py-0.5 text-xs font-medium",
                         CALENDAR_STATUS_CLASS[s.status] ?? CALENDAR_STATUS_CLASS.planned
                       )}
                       title={`${s.title} — ${statusLabel(s.status)}`}
@@ -218,6 +220,15 @@ const ScheduleTableRow = React.memo(function ScheduleTableRow({
 });
 
 export default function SchedulePage() {
+  return (
+    <React.Suspense fallback={<p role="status">Loading workspace…</p>}>
+      <SchedulePageContent />
+    </React.Suspense>
+  );
+}
+
+function SchedulePageContent() {
+  const { projectId: scopedProjectId, embedded } = useProjectWorkspaceScope();
   const [viewMode, setViewMode] = React.useState<ViewMode>("list");
   const [schedule, setSchedule] = React.useState<ScheduleRow[]>([]);
   const [projects, setProjects] = React.useState<{ id: string; name: string }[]>([]);
@@ -241,14 +252,18 @@ export default function SchedulePage() {
       const res = await fetch("/api/operations/schedule");
       const data = await res.json();
       if (!data.ok) throw new Error(data.message || "Failed to load");
-      setSchedule(data.schedule ?? []);
+      setSchedule(
+        (data.schedule ?? []).filter(
+          (row: ScheduleRow) => !scopedProjectId || row.project_id === scopedProjectId
+        )
+      );
       setProjects(data.projects ?? []);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load schedule.");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [scopedProjectId]);
 
   React.useEffect(() => {
     load();
@@ -264,14 +279,14 @@ export default function SchedulePage() {
   const openModal = React.useCallback(() => {
     setForm((prev) => ({
       ...prev,
-      project_id: projects[0]?.id ?? "",
+      project_id: scopedProjectId || projects[0]?.id || "",
       title: "",
       start_date: "",
       end_date: "",
       status: "planned",
     }));
     setModalOpen(true);
-  }, [projects]);
+  }, [projects, scopedProjectId]);
 
   const handleCreate = React.useCallback(async () => {
     if (!form.project_id) {
@@ -324,13 +339,36 @@ export default function SchedulePage() {
   return (
     <PageLayout
       divider={false}
-      className={cn("md:max-w-5xl", mobileListPagePaddingClass, "max-md:!gap-3")}
+      className={cn(
+        "md:max-w-5xl",
+        embedded ? "!max-w-none !p-0" : mobileListPagePaddingClass,
+        "max-md:!gap-3"
+      )}
       header={
         <>
+          {scopedProjectId && !embedded ? (
+            <Button asChild variant="ghost" className="min-h-11 self-start">
+              <Link href={`/projects/${encodeURIComponent(scopedProjectId)}?tab=schedule`}>
+                Back to project
+              </Link>
+            </Button>
+          ) : null}
+          {embedded ? (
+            <Link
+              href="/schedule"
+              className="inline-flex min-h-11 items-center self-start text-hh-metadata underline"
+            >
+              All projects · schedule
+            </Link>
+          ) : null}
           <div className="hidden md:block">
             <PageHeader
               title="Schedule"
-              description="Project schedule across all projects."
+              description={
+                scopedProjectId
+                  ? "Schedule for this project."
+                  : "Project schedule across all projects."
+              }
               actions={
                 <Button size="sm" onClick={openModal}>
                   + New schedule item
@@ -341,7 +379,13 @@ export default function SchedulePage() {
           <div className="md:hidden">
             <MobileListHeader
               title="Schedule"
-              fab={<MobileFabButton ariaLabel="New schedule item" onClick={openModal} />}
+              fab={
+                <MobileFabButton
+                  ariaLabel="New schedule item"
+                  onClick={openModal}
+                  className="motion-reduce:transition-none"
+                />
+              }
             />
           </div>
         </>
@@ -354,7 +398,7 @@ export default function SchedulePage() {
           activeFilterCount={activeDrawerFilterCount}
           searchSlot={
             <div className="relative w-full">
-              <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--hh-text-secondary)]" />
               <NeoInput
                 aria-label="Search schedule"
                 value={searchQuery}
@@ -366,12 +410,12 @@ export default function SchedulePage() {
           }
         />
         <MobileFilterSheet open={filtersOpen} onOpenChange={setFiltersOpen} title="View">
-          <div className="flex gap-1 rounded-lg border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-1">
+          <div className="flex gap-1 rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-1">
             <button
               type="button"
               onClick={() => setViewMode("list")}
               className={cn(
-                "min-h-11 flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                "hh-focus-ring hh-touch-min flex-1 rounded-hh-compact px-3 py-2 text-sm font-medium transition-colors",
                 viewMode === "list"
                   ? "bg-[var(--hh-l3-selected)] text-[var(--hh-text-primary)]"
                   : "text-[var(--hh-text-secondary)] hover:text-[var(--hh-text-primary)]"
@@ -383,7 +427,7 @@ export default function SchedulePage() {
               type="button"
               onClick={() => setViewMode("calendar")}
               className={cn(
-                "min-h-11 flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                "hh-focus-ring hh-touch-min flex-1 rounded-hh-compact px-3 py-2 text-sm font-medium transition-colors",
                 viewMode === "calendar"
                   ? "bg-[var(--hh-l3-selected)] text-[var(--hh-text-primary)]"
                   : "text-[var(--hh-text-secondary)] hover:text-[var(--hh-text-primary)]"
@@ -402,12 +446,12 @@ export default function SchedulePage() {
         </MobileFilterSheet>
 
         <NeoToolbar className="hidden justify-between md:flex">
-          <div className="flex items-center gap-1 rounded-lg border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-1">
+          <div className="flex items-center gap-1 rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-1">
             <button
               type="button"
               onClick={() => setViewMode("list")}
               className={cn(
-                "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                "hh-focus-ring hh-touch-min rounded-hh-compact px-3 py-1.5 text-sm font-medium transition-colors",
                 viewMode === "list"
                   ? "bg-[var(--hh-l3-selected)] text-[var(--hh-text-primary)]"
                   : "text-[var(--hh-text-secondary)] hover:text-[var(--hh-text-primary)]"
@@ -419,7 +463,7 @@ export default function SchedulePage() {
               type="button"
               onClick={() => setViewMode("calendar")}
               className={cn(
-                "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                "hh-focus-ring hh-touch-min rounded-hh-compact px-3 py-1.5 text-sm font-medium transition-colors",
                 viewMode === "calendar"
                   ? "bg-[var(--hh-l3-selected)] text-[var(--hh-text-primary)]"
                   : "text-[var(--hh-text-secondary)] hover:text-[var(--hh-text-primary)]"
@@ -429,13 +473,13 @@ export default function SchedulePage() {
             </button>
           </div>
           <div className="relative min-w-0 flex-1 md:max-w-md">
-            <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--hh-text-secondary)]" />
             <NeoInput
               aria-label="Search schedule"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search schedule…"
-              className="h-9 pl-8 text-sm"
+              className="pl-8 text-sm"
             />
           </div>
         </NeoToolbar>
@@ -590,6 +634,8 @@ export default function SchedulePage() {
               <NeoFieldLabel>Project</NeoFieldLabel>
               <NeoSelect
                 value={form.project_id}
+                aria-label="Project"
+                disabled={Boolean(scopedProjectId)}
                 onChange={(e) => setForm((p) => ({ ...p, project_id: e.target.value }))}
                 className="w-full"
               >

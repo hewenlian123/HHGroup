@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { requireOrganizationServerActionClient } from "@/lib/auth-boundary";
 import {
   insertSubcontractBill,
   approveSubcontractBill,
@@ -10,6 +11,38 @@ import {
   recordSubcontractPayment,
 } from "@/lib/data";
 
+async function authenticatedFinancialClient(
+  projectId: string,
+  subcontractId: string,
+  billId?: string
+) {
+  const guard = await requireOrganizationServerActionClient({
+    projectId,
+    write: true,
+    requireOwnerAdmin: true,
+    noStore: true,
+  });
+  if (!guard.ok) throw new Error(guard.error);
+  const subcontract = await guard.client
+    .from("subcontracts")
+    .select("id")
+    .eq("id", subcontractId)
+    .eq("project_id", projectId)
+    .maybeSingle();
+  if (subcontract.error || !subcontract.data) throw new Error("Subcontract not found.");
+  if (billId) {
+    const bill = await guard.client
+      .from("subcontract_bills")
+      .select("id")
+      .eq("id", billId)
+      .eq("subcontract_id", subcontractId)
+      .eq("project_id", projectId)
+      .maybeSingle();
+    if (bill.error || !bill.data) throw new Error("Bill not found.");
+  }
+  return guard.client;
+}
+
 export async function addSubcontractBillAction(draft: {
   subcontract_id: string;
   project_id: string;
@@ -18,7 +51,10 @@ export async function addSubcontractBillAction(draft: {
   amount: number;
   description?: string | null;
 }) {
-  await insertSubcontractBill(draft);
+  await insertSubcontractBill(
+    draft,
+    await authenticatedFinancialClient(draft.project_id, draft.subcontract_id)
+  );
 }
 
 export async function approveSubcontractBillAction(
@@ -27,7 +63,10 @@ export async function approveSubcontractBillAction(
   billId: string
 ): Promise<{ ok: boolean; message?: string; error?: string }> {
   try {
-    const result = await approveSubcontractBill(billId);
+    const result = await approveSubcontractBill(
+      billId,
+      await authenticatedFinancialClient(projectId, subcontractId, billId)
+    );
     revalidatePath(`/projects/${projectId}/subcontracts/${subcontractId}/bills`);
     return {
       ok: true,
@@ -50,7 +89,11 @@ export async function updateSubcontractBillAction(
   }
 ): Promise<{ ok: boolean; error?: string }> {
   try {
-    await updateSubcontractBill(billId, patch);
+    await updateSubcontractBill(
+      billId,
+      patch,
+      await authenticatedFinancialClient(projectId, subcontractId, billId)
+    );
     revalidatePath(`/projects/${projectId}/subcontracts/${subcontractId}/bills`);
     return { ok: true };
   } catch (e) {
@@ -64,7 +107,10 @@ export async function deleteSubcontractBillDraftAction(
   billId: string
 ): Promise<{ ok: boolean; error?: string }> {
   try {
-    await deleteSubcontractBillDraft(billId);
+    await deleteSubcontractBillDraft(
+      billId,
+      await authenticatedFinancialClient(projectId, subcontractId, billId)
+    );
     revalidatePath(`/projects/${projectId}/subcontracts/${subcontractId}/bills`);
     return { ok: true };
   } catch (e) {
@@ -78,7 +124,10 @@ export async function voidSubcontractBillAction(
   billId: string
 ): Promise<{ ok: boolean; error?: string }> {
   try {
-    await voidSubcontractBill(billId);
+    await voidSubcontractBill(
+      billId,
+      await authenticatedFinancialClient(projectId, subcontractId, billId)
+    );
     revalidatePath(`/projects/${projectId}/subcontracts/${subcontractId}/bills`);
     return { ok: true };
   } catch (e) {
@@ -99,7 +148,11 @@ export async function recordSubcontractPaymentAction(
   }
 ): Promise<{ ok: boolean; error?: string }> {
   try {
-    await recordSubcontractPayment(input);
+    if (input.subcontract_id !== subcontractId) throw new Error("Subcontract mismatch.");
+    await recordSubcontractPayment(
+      input,
+      await authenticatedFinancialClient(projectId, subcontractId, input.bill_id)
+    );
     revalidatePath(`/projects/${projectId}/subcontracts/${subcontractId}/bills`);
     return { ok: true };
   } catch (e) {

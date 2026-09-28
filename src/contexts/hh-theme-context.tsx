@@ -26,7 +26,7 @@ type HhThemeState = {
 
 const DEFAULT_THEME_STATE: HhThemeState = {
   context: "operational",
-  theme: "operational-dark",
+  theme: "operational-light",
 };
 
 const HhThemeContext = React.createContext<HhThemeState>(DEFAULT_THEME_STATE);

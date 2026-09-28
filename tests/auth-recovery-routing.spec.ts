@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { expect, test } from "@playwright/test";
 
-import { getE2EOwnerCredentials, loginAsE2EOwner } from "./e2e-auth-owner";
+import { getE2EOwnerCredentials, loginAsE2EOwner, resetE2EOwnerPassword } from "./e2e-auth-owner";
 
 const MAILPIT_ORIGIN = "http://127.0.0.1:54324";
 
@@ -225,7 +225,7 @@ test.describe.serial("password recovery routing", () => {
       );
     } finally {
       await handoffContext.close();
-      await getE2EOwnerCredentials();
+      await resetE2EOwnerPassword();
     }
   });
 });

@@ -5,26 +5,26 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  AP_BILL_TYPES,
+  AP_BILL_STATUSES,
+  type ApBillType,
+  type ApBillStatus,
+} from "@/lib/ap-bill-domain";
+export {
+  AP_BILL_TYPES,
+  AP_BILL_STATUSES,
+  type ApBillType,
+  type ApBillStatus,
+} from "@/lib/ap-bill-domain";
 import { getSupabaseClient } from "@/lib/supabase";
+import { reportingApEligible } from "@/lib/finance-reporting-eligibility";
+import { financialDataUnavailable } from "@/lib/financial-availability";
 
 const BILLS_TABLE = "ap_bills";
 const AP_BILLS_BASE_SELECT =
   "id, bill_no, bill_type, vendor_name, project_id, issue_date, due_date, amount, paid_amount, balance_amount, status, category, notes, attachment_url, created_at, updated_at, created_by, projects(name)";
 const AP_BILLS_LINKED_SELECT = `${AP_BILLS_BASE_SELECT}, subcontractor_id, subcontract_id, subcontractors(name), subcontracts(cost_code, description, project_id)`;
-
-export const AP_BILL_TYPES = [
-  "Vendor",
-  "Labor",
-  "Overhead",
-  "Utility",
-  "Permit",
-  "Equipment",
-  "Other",
-] as const;
-export type ApBillType = (typeof AP_BILL_TYPES)[number];
-
-export const AP_BILL_STATUSES = ["Draft", "Pending", "Partially Paid", "Paid", "Void"] as const;
-export type ApBillStatus = (typeof AP_BILL_STATUSES)[number];
 
 export const PAID_BILL_LOCKED_MESSAGE =
   "Paid bills cannot be edited directly. Create an adjustment or void/recreate the bill.";
@@ -104,13 +104,6 @@ function isMissingLinkedApColumns(err: { message?: string; code?: string } | nul
   );
 }
 
-function omitSubcontractLinkColumns<T extends Record<string, unknown>>(payload: T) {
-  const fallback = { ...payload };
-  delete fallback.subcontractor_id;
-  delete fallback.subcontract_id;
-  return fallback;
-}
-
 function toNum(v: unknown): number {
   if (v == null) return 0;
   const n = Number(v);
@@ -181,6 +174,7 @@ export function summarizeApBillsForDashboard(
   let dueThisWeekAmount = 0;
 
   for (const bill of bills) {
+    if (!reportingApEligible(bill.status)) continue;
     const balance = apOutstandingBalance(bill);
     if (balance <= 0) continue;
     totalOutstanding += balance;
@@ -261,8 +255,7 @@ async function sumApBillPayments(billId: string, explicitClient: SupabaseLike): 
     .select("amount")
     .eq("bill_id", billId);
   if (error) {
-    if (isMissingTable(error)) return 0;
-    throw new Error(error.message ?? "Failed to load bill payments.");
+    financialDataUnavailable("AP bill payments", error);
   }
   return money(
     (data ?? []).reduce((sum, row) => sum + toNum((row as { amount?: unknown }).amount), 0)
@@ -313,8 +306,7 @@ export async function getApBillById(
     }
   }
   if (error) {
-    if (isMissingTable(error)) return null;
-    throw new Error(error.message ?? "Failed to load bill.");
+    financialDataUnavailable("AP bill", error);
   }
   if (!row) return null;
   return mapBillWithProject(row as Record<string, unknown>);
@@ -365,8 +357,7 @@ export async function getApBills(
     error = retryResult.error;
   }
   if (error) {
-    if (isMissingTable(error)) return [];
-    throw new Error(error.message ?? "Failed to load bills.");
+    financialDataUnavailable("AP bills", error);
   }
   let list = (rows ?? []).map((r: Record<string, unknown>) => mapBillWithProject(r));
   if (filters.search?.trim()) {
@@ -401,10 +392,11 @@ export async function getApBillsBySubcontractIds(
     .select(AP_BILLS_LINKED_SELECT)
     .in("subcontract_id", subcontractIds)
     .order("created_at", { ascending: false });
-  if (error && isMissingLinkedApColumns(error)) return [];
+  if (error && isMissingLinkedApColumns(error)) {
+    financialDataUnavailable("subcontract AP bill linkage", error);
+  }
   if (error) {
-    if (isMissingTable(error)) return [];
-    throw new Error(error.message ?? "Failed to load subcontract AP bills.");
+    financialDataUnavailable("subcontract AP bills", error);
   }
   return (rows ?? []).map((r: Record<string, unknown>) => mapBillWithProject(r));
 }
@@ -430,8 +422,7 @@ export async function getApBillsRecent(
     error = retry.error;
   }
   if (error) {
-    if (isMissingTable(error)) return [];
-    throw new Error(error.message ?? "Failed to load recent bills.");
+    financialDataUnavailable("recent AP bills", error);
   }
   return (rows ?? []).map((r: Record<string, unknown>) => mapBillWithProject(r));
 }
@@ -450,10 +441,32 @@ export async function getApBillPayments(
     .eq("bill_id", billId)
     .order("payment_date", { ascending: false });
   if (error) {
-    if (isMissingTable(error)) return [];
-    throw new Error(error.message ?? "Failed to load payments.");
+    financialDataUnavailable("AP bill payments", error);
   }
   return (rows ?? []).map((r) => mapPayment(r as Record<string, unknown>));
+}
+
+/** Paged AP cash-out history. Never includes customer receipts or Labor payments. */
+export async function getApPaymentsPage(explicitClient: SupabaseClient, requestedPage = 1) {
+  const page = Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
+  const pageSize = 50;
+  const { data, error, count } = await explicitClient
+    .from("ap_bill_payments")
+    .select(
+      `id, bill_id, payment_date, amount, payment_method, reference_no, notes, created_at, created_by, ap_bills(${AP_BILLS_BASE_SELECT})`,
+      { count: "exact" }
+    )
+    .order("payment_date", { ascending: false })
+    .order("id", { ascending: false })
+    .range((page - 1) * pageSize, page * pageSize - 1);
+  if (error) financialDataUnavailable("AP outgoing payment history", error);
+  if (!Array.isArray(data) || count === null)
+    financialDataUnavailable("AP outgoing payment history", null);
+  const payments = (data as unknown as Record<string, unknown>[]).map((row) => ({
+    ...mapPayment(row),
+    bill: row.ap_bills ? mapBillWithProject(row.ap_bills as Record<string, unknown>) : null,
+  }));
+  return { payments, total: count, page, pageSize };
 }
 
 /** Create a new bill. */
@@ -494,13 +507,7 @@ export async function createApBill(
     subcontractor_id: draft.subcontractor_id || null,
     subcontract_id: draft.subcontract_id || null,
   };
-  let { data: row, error } = await c.from(BILLS_TABLE).insert(payload).select("*").single();
-  if (error && isMissingLinkedApColumns(error)) {
-    const fallback = omitSubcontractLinkColumns(payload);
-    const retry = await c.from(BILLS_TABLE).insert(fallback).select("*").single();
-    row = retry.data;
-    error = retry.error;
-  }
+  const { data: row, error } = await c.from(BILLS_TABLE).insert(payload).select("*").single();
   if (error) {
     if (isMissingTable(error))
       throw new Error("Bills table not found. Please ensure the bills table exists in Supabase.");
@@ -581,20 +588,13 @@ export async function updateApBill(
     return getApBillById(id, explicitClient).then((b) =>
       b ? mapBill(b as unknown as Record<string, unknown>) : null
     );
-  let { data: row, error } = await c
+  const { data: row, error } = await c
     .from(BILLS_TABLE)
     .update(updates)
     .eq("id", id)
     .select("*")
     .maybeSingle();
-  if (error && isMissingLinkedApColumns(error)) {
-    const fallback = omitSubcontractLinkColumns(updates);
-    const retry = await c.from(BILLS_TABLE).update(fallback).eq("id", id).select("*").maybeSingle();
-    row = retry.data;
-    error = retry.error;
-  }
   if (error) {
-    if (isMissingTable(error)) return null;
     throw new Error(error.message ?? "Failed to update bill.");
   }
   if (!row) return null;
@@ -605,6 +605,7 @@ export async function updateApBill(
 export async function addApBillPayment(
   billId: string,
   payment: {
+    idempotency_key: string;
     payment_date: string;
     amount: number;
     payment_method?: string | null;
@@ -613,28 +614,24 @@ export async function addApBillPayment(
   },
   explicitClient?: SupabaseLike
 ): Promise<ApBillPaymentRow> {
-  const c = client(explicitClient);
-  const amt = Math.max(0, payment.amount);
-  const { data: row, error } = await c
-    .from("ap_bill_payments")
-    .insert({
-      bill_id: billId,
-      payment_date: payment.payment_date.slice(0, 10),
-      amount: amt,
-      payment_method: payment.payment_method?.trim() || null,
-      reference_no: payment.reference_no?.trim() || null,
-      notes: payment.notes?.trim() || null,
-    })
-    .select("*")
-    .single();
-  if (error) {
-    if (isMissingTable(error))
-      throw new Error(
-        "AP Bill Payments table not found. Please run the ap_bills migration in Supabase."
-      );
-    throw new Error(error.message ?? "Failed to add payment.");
-  }
-  return mapPayment(row as Record<string, unknown>);
+  if (!Number.isFinite(payment.amount) || money(payment.amount) <= 0)
+    throw new Error("Payment amount must be positive and valid.");
+  if (!payment.idempotency_key?.trim()) throw new Error("Payment idempotency key is required.");
+  const { data, error } = await client(explicitClient).rpc("record_ap_bill_payment_atomic", {
+    p_bill_id: billId,
+    p_idempotency_key: payment.idempotency_key.trim(),
+    p_payment_date: payment.payment_date.slice(0, 10),
+    p_amount: payment.amount,
+    p_payment_method: payment.payment_method?.trim() || null,
+    p_reference_no: payment.reference_no?.trim() || null,
+    p_notes: payment.notes?.trim() || null,
+  });
+  if (error)
+    throw Object.assign(new Error(error.message ?? "Failed to add payment."), { code: error.code });
+  const row = (data as { payment?: Record<string, unknown> } | null)?.payment;
+  if (!row || row.bill_id !== billId || typeof row.id !== "string")
+    throw new Error("Atomic AP payment returned an invalid committed result.");
+  return mapPayment(row);
 }
 
 /** Mark bill as Pending (confirm). */
@@ -673,37 +670,24 @@ export async function deleteApBillDraft(
   explicitClient?: SupabaseLike
 ): Promise<boolean> {
   const c = client(explicitClient);
-  const { data: bill, error: billErr } = await c
-    .from(BILLS_TABLE)
-    .select("id,status")
-    .eq("id", id)
-    .maybeSingle();
-  if (billErr) {
-    if (isMissingTable(billErr)) return false;
-    throw new Error(billErr.message ?? "Failed to load bill.");
+  const billId = id.trim();
+  if (!billId) return false;
+  const { data, error } = await c.rpc("delete_ap_bill_draft_atomic", {
+    p_bill_id: billId,
+    p_idempotency_key: `ap-bill-delete:${billId}`,
+  });
+  if (error) {
+    if (error.code === "P0002" || /^Bill not found\.?$/i.test(error.message ?? "")) return false;
+    throw new Error(error.message ?? "Failed to delete bill.");
   }
-  if (!bill) return false;
-  const status = ((bill as { status?: unknown })?.status ?? "").toString();
-  if (status !== "Draft") throw new Error("Only Draft bills can be deleted");
-
-  try {
-    const { count, error: payErr } = await c
-      .from("ap_bill_payments")
-      .select("id", { count: "exact", head: true })
-      .eq("bill_id", id);
-    if (!payErr && (count ?? 0) > 0) throw new Error("Cannot delete a bill with payments");
-  } catch (e) {
-    if (e instanceof Error && e.message === "Cannot delete a bill with payments") throw e;
-    // ap_bill_payments may not exist; allow delete
+  if (!data || typeof data !== "object") {
+    throw new Error("Atomic Draft AP Bill delete returned an invalid result.");
   }
-
-  const { data: deleted, error: delErr } = await c
-    .from(BILLS_TABLE)
-    .delete()
-    .eq("id", id)
-    .select("id");
-  if (delErr) throw new Error(delErr.message ?? "Failed to delete bill.");
-  return (deleted ?? []).length > 0;
+  const result = data as Record<string, unknown>;
+  if (result.bill_id !== billId || typeof result.reused !== "boolean") {
+    throw new Error("Atomic Draft AP Bill delete returned an invalid result.");
+  }
+  return true;
 }
 
 /** Total amount of all non-void bills (for finance overview). */
@@ -713,8 +697,7 @@ export async function getTotalBillsAmount(explicitClient?: SupabaseLike): Promis
     .from(BILLS_TABLE)
     .select("amount")
     .not("status", "eq", "Void");
-  if (error && isMissingTable(error)) return 0;
-  if (error) throw new Error(error.message ?? "Failed to load bills.");
+  if (error) financialDataUnavailable("AP Bill total", error);
   return (rows ?? []).reduce((s, r) => s + toNum((r as { amount?: number }).amount), 0);
 }
 
@@ -743,35 +726,23 @@ export async function getApBillsSummary(explicitClient?: SupabaseLike): Promise<
     .select("id, amount, paid_amount, balance_amount, status, due_date")
     .not("status", "eq", "Void");
   if (error) {
-    // Table missing or other error — return zeroed summary rather than crashing.
-    return {
-      totalOutstanding: 0,
-      overdueCount: 0,
-      overdueAmount: 0,
-      dueThisWeekCount: 0,
-      dueThisWeekAmount: 0,
-      paidThisMonthAmount: 0,
-    };
+    financialDataUnavailable("AP Bill summary", error);
   }
   const list = (bills ?? []) as ApSummaryBill[];
 
-  let paidThisMonthAmount = 0;
-  try {
-    const { data: payments } = await c
-      .from("ap_bill_payments")
-      .select("amount")
-      .gte("payment_date", startOfMonth)
-      .lte(
-        "payment_date",
-        new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10)
-      );
-    paidThisMonthAmount = (payments ?? []).reduce(
-      (s, p) => s + toNum((p as { amount?: number }).amount),
-      0
+  const { data: payments, error: paymentError } = await c
+    .from("ap_bill_payments")
+    .select("amount")
+    .gte("payment_date", startOfMonth)
+    .lte(
+      "payment_date",
+      new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10)
     );
-  } catch {
-    // ap_bill_payments may not exist
-  }
+  if (paymentError) financialDataUnavailable("AP Bill payment summary", paymentError);
+  const paidThisMonthAmount = (payments ?? []).reduce(
+    (s, p) => s + toNum((p as { amount?: number }).amount),
+    0
+  );
 
   return summarizeApBillsForDashboard(list, {
     today,

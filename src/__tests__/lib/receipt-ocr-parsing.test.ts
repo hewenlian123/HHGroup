@@ -5,6 +5,7 @@ import {
   parseAmountProduction,
   parseTaxAmountFromText,
   mergeReceiptOcrResults,
+  runReceiptOcrForImageFile,
   type ReceiptOcrResult,
 } from "@/lib/receipt-ocr-client";
 
@@ -125,6 +126,37 @@ AMOUNT DUE $48.60
 `;
     expect(parseTaxAmountFromText(text)).toBe(3.6);
   });
+
+  it.each([503, 200])(
+    "does not invent an OCR date after HTTP %i and unavailable browser fallback",
+    async (status) => {
+      const body =
+        status === 200
+          ? JSON.stringify({
+              vendor_name: "Unknown",
+              total_amount: 0,
+              purchase_date: new Date().toISOString().slice(0, 10),
+              ocr_status: "fallback",
+              confidence: { vendor: "low", amount: "low", date: "low" },
+            })
+          : null;
+      vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(body, { status })));
+      try {
+        const entry = await runReceiptOcrForImageFile(
+          new File(["unreadable fixture"], "unavailable.png", { type: "image/png" }),
+          { localTimeoutMs: 1 }
+        );
+        expect(entry.source).toBe("manual");
+        expect(entry.result.purchase_date).toBe("");
+        const merged = mergeReceiptOcrResults([entry], { inferCategory: () => "Other" });
+        expect(merged.clampedPurchase).toBeNull();
+        expect(merged.dateConfidence).toBe("low");
+        expect(merged.autoFillDate).toBe(false);
+      } finally {
+        vi.unstubAllGlobals();
+      }
+    }
+  );
 
   it("mergeReceiptOcrResults sets needsReview when field confidence is not all high", () => {
     const ocr: ReceiptOcrResult = {

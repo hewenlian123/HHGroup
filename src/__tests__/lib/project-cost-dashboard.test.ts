@@ -59,6 +59,8 @@ describe("project cost dashboard", () => {
       expenseCost: 150,
       subcontractCost: 75,
       commissionCost: 125,
+      changeOrderCost: 0,
+      apBillCost: 0,
     });
     mocks.sumPaidWorkerReimbursementsForProject.mockResolvedValue(25);
   });

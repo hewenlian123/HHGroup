@@ -1,11 +1,7 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
-import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
+import { requireSupabaseOwnerOrAdminRequestClient } from "@/lib/auth-boundary";
 import { addApBillPayment, getApBillById } from "@/lib/ap-bills-db";
-import {
-  SUPABASE_MISSING_SERVER_ENV_MESSAGE,
-  createRouteSupabaseClient,
-} from "@/lib/supabase-server";
 import { safeErrorMessage } from "@/lib/system-response-safety";
 
 export const dynamic = "force-dynamic";
@@ -19,6 +15,11 @@ const NO_CACHE_HEADERS: Record<string, string> = {
 
 function apiError(status: number, message: string): NextResponse {
   return NextResponse.json({ ok: false, message }, { status, headers: NO_CACHE_HEADERS });
+}
+
+function withSessionCookies(response: NextResponse, sessionResponse: NextResponse): NextResponse {
+  for (const cookie of sessionResponse.cookies.getAll()) response.cookies.set(cookie);
+  return response;
 }
 
 function logBillsError(action: string, error: unknown) {
@@ -63,10 +64,9 @@ async function readJson(request: Request): Promise<Record<string, unknown> | nul
 }
 
 export async function POST(request: Request, ctx: { params: Promise<{ id: string }> }) {
-  const guard = await requireSupabaseOwnerOrAdmin(request);
+  const guard = await requireSupabaseOwnerOrAdminRequestClient(request, { noStore: true });
   if (!guard.ok) return guard.response;
-  const supabase = createRouteSupabaseClient(request, NextResponse.next());
-  if (!supabase) return apiError(503, SUPABASE_MISSING_SERVER_ENV_MESSAGE);
+  const { client: supabase, sessionResponse } = guard;
 
   const { id } = await ctx.params;
   if (!id?.trim()) return apiError(400, "Missing bill id.");
@@ -74,6 +74,8 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
   const body = await readJson(request);
   if (!body) return apiError(400, "Invalid payment payload.");
 
+  const idempotencyKey = stringOrNull(body.idempotency_key);
+  if (!idempotencyKey) return apiError(400, "Payment idempotency key is required.");
   const amount = numberOrNull(body.amount);
   const paymentDate = stringOrNull(body.payment_date);
   if (amount == null || amount <= 0) return apiError(400, "Payment amount must be greater than 0.");
@@ -85,6 +87,7 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
     const payment = await addApBillPayment(
       id,
       {
+        idempotency_key: idempotencyKey,
         payment_date: paymentDate,
         amount,
         payment_method: stringOrNull(body.payment_method),
@@ -93,29 +96,41 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
       },
       supabase
     );
-    const updatedBill = await getApBillById(id, supabase);
-    const billForRevalidation = updatedBill ?? bill;
-    revalidatePath(`/bills/${id}`);
-    revalidatePath("/bills");
-    if (billForRevalidation.project_id) {
-      revalidatePath(`/projects/${billForRevalidation.project_id}`);
-      revalidatePath(`/projects/${billForRevalidation.project_id}/subcontracts`);
-      if (billForRevalidation.subcontract_id) {
-        revalidatePath(
-          `/projects/${billForRevalidation.project_id}/subcontracts/${billForRevalidation.subcontract_id}`
-        );
+    const billForRevalidation = bill;
+    try {
+      revalidatePath(`/bills/${id}`);
+      revalidatePath("/bills");
+      if (billForRevalidation.project_id) {
+        revalidatePath(`/projects/${billForRevalidation.project_id}`);
+        revalidatePath(`/projects/${billForRevalidation.project_id}/subcontracts`);
+        if (billForRevalidation.subcontract_id) {
+          revalidatePath(
+            `/projects/${billForRevalidation.project_id}/subcontracts/${billForRevalidation.subcontract_id}`
+          );
+        }
       }
+      if (billForRevalidation.subcontractor_id) {
+        revalidatePath(`/subcontractors/${billForRevalidation.subcontractor_id}`);
+        revalidatePath("/subcontractors");
+      }
+    } catch (error) {
+      logBillsError("payment committed; cache refresh", error);
     }
-    if (billForRevalidation.subcontractor_id) {
-      revalidatePath(`/subcontractors/${billForRevalidation.subcontractor_id}`);
-      revalidatePath("/subcontractors");
-    }
-    return NextResponse.json(
-      { ok: true, payment, bill: updatedBill ?? bill },
-      { headers: NO_CACHE_HEADERS }
+    return withSessionCookies(
+      NextResponse.json({ ok: true, payment }, { headers: NO_CACHE_HEADERS }),
+      sessionResponse
     );
   } catch (error) {
     logBillsError("create", error);
-    return apiError(500, safeFailureMessage(error, "Failed to add payment."));
+    const code = (error as { code?: unknown } | null)?.code;
+    const rejected = typeof code === "string" && /^(22|23|42|P0)/.test(code);
+    return NextResponse.json(
+      {
+        ok: false,
+        message: safeFailureMessage(error, "Failed to add payment."),
+        outcome: rejected ? "rejected" : "unknown",
+      },
+      { status: rejected ? 400 : 500, headers: NO_CACHE_HEADERS }
+    );
   }
 }

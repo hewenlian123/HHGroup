@@ -1,4 +1,4 @@
-import { defaultExpenseListSort, type ExpenseListSort } from "@/lib/expenses-db";
+import { defaultExpenseListSort, type ExpenseListSort } from "@/lib/expense-domain";
 
 export const EXPENSE_SORT_STORAGE_KEY = "hh-expenses-sort-v1";
 

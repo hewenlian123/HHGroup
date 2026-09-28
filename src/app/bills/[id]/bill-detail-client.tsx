@@ -1,9 +1,11 @@
 "use client";
 
+import { financePathWithReturn, financeReturnPath } from "@/lib/finance-navigation";
+
 import { syncRouterNonBlocking } from "@/components/perf/sync-router-non-blocking";
 import * as React from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   KpiTile,
   NeoAmount,
@@ -20,11 +22,12 @@ import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { tableRawTdClass, tableRawThClass } from "@/components/ui/table";
 import type { ApBillWithProject, ApBillPaymentRow } from "@/lib/data";
 import { useAttachmentPreview } from "@/contexts/attachment-preview-context";
-import { createBrowserClient } from "@/lib/supabase";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { resolvePreviewSignedUrl } from "@/lib/storage-signed-url";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import { TYPO } from "@/lib/typography";
 import { cn } from "@/lib/utils";
+import { beginPendingSubmission, getPendingSubmission } from "@/lib/financial-idempotency";
 import {
   billsDestructiveGhostClass,
   billsDetailDdClass,
@@ -39,6 +42,7 @@ type Props = {
   bill: ApBillWithProject;
   payments: ApBillPaymentRow[];
   addPaymentOpen: boolean;
+  drawerReturnTo?: string;
 };
 
 async function readApiMessage(response: Response, fallback: string): Promise<string> {
@@ -46,16 +50,19 @@ async function readApiMessage(response: Response, fallback: string): Promise<str
   return typeof body?.message === "string" ? body.message : fallback;
 }
 
-export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPaymentOpen }: Props) {
+export function BillDetailClient({
+  bill,
+  payments,
+  addPaymentOpen: initialAddPaymentOpen,
+  drawerReturnTo,
+}: Props) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { openPreview } = useAttachmentPreview();
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   const configured = Boolean(url && anon);
-  const supabase = React.useMemo(
-    () => (configured ? createBrowserClient(url as string, anon as string) : null),
-    [configured, url, anon]
-  );
+  const [supabase, setSupabase] = React.useState<SupabaseClient | null>(null);
   const [addPaymentOpen, setAddPaymentOpen] = React.useState(initialAddPaymentOpen);
   const [paymentDate, setPaymentDate] = React.useState(() => new Date().toISOString().slice(0, 10));
   const [paymentAmount, setPaymentAmount] = React.useState("");
@@ -63,11 +70,49 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
   const [paymentRef, setPaymentRef] = React.useState("");
   const [paymentNotes, setPaymentNotes] = React.useState("");
   const [submitting, setSubmitting] = React.useState(false);
+  const [intentStorageKey, setIntentStorageKey] = React.useState<string | null>(null);
+  const paymentInFlight = React.useRef(false);
+  const [hasPendingPayment, setHasPendingPayment] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [voidConfirm, setVoidConfirm] = React.useState(false);
   const [deleteConfirm, setDeleteConfirm] = React.useState(false);
 
-  const canAddPayment = bill.status === "Pending" || bill.status === "Partially Paid";
+  React.useEffect(() => {
+    let active = true;
+    async function restoreIntent() {
+      if (!configured) throw new Error("Payment session is unavailable.");
+      const { createBrowserClient } = await import("@/lib/supabase");
+      const client = createBrowserClient(url as string, anon as string);
+      const identity = await client.auth.getUser();
+      if (!identity?.data.user || identity.error)
+        throw new Error("Payment session is unavailable.");
+      if (!active) return;
+      setSupabase(client);
+      const key = `hh:ap-payment:${identity.data.user.id}:${bill.id}`;
+      const pending = getPendingSubmission(localStorage, key);
+      if (!active) return;
+      setIntentStorageKey(key);
+      setHasPendingPayment(Boolean(pending));
+      if (pending) {
+        const draft = JSON.parse(pending.fingerprint);
+        setPaymentDate(draft.payment_date);
+        setPaymentAmount(String(draft.amount));
+        setPaymentMethod(draft.payment_method ?? "");
+        setPaymentRef(draft.reference_no ?? "");
+        setPaymentNotes(draft.notes ?? "");
+      }
+    }
+    void restoreIntent().catch((error) => {
+      if (active)
+        setError(error instanceof Error ? error.message : "Payment session is unavailable.");
+    });
+    return () => {
+      active = false;
+    };
+  }, [bill.id, configured, url, anon]);
+
+  const canAddPayment =
+    hasPendingPayment || bill.status === "Pending" || bill.status === "Partially Paid";
   const canVoid =
     bill.status === "Pending" || bill.status === "Partially Paid" || bill.status === "Paid";
 
@@ -85,6 +130,7 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
 
   const handleAddPayment = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (paymentInFlight.current) return;
     if (!canAddPayment) {
       setError("Only pending bills can be paid.");
       return;
@@ -94,23 +140,36 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
       setError("Enter a valid amount.");
       return;
     }
+    paymentInFlight.current = true;
     setSubmitting(true);
     setError(null);
     try {
+      if (!intentStorageKey) throw new Error("Payment session is unavailable.");
+      const draft = {
+        payment_date: paymentDate,
+        amount: amt,
+        payment_method: paymentMethod || undefined,
+        reference_no: paymentRef || undefined,
+        notes: paymentNotes || undefined,
+      };
+      const intent = beginPendingSubmission(localStorage, intentStorageKey, draft);
+      setHasPendingPayment(true);
       const response = await fetch(`/api/bills/${encodeURIComponent(bill.id)}/payments`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          payment_date: paymentDate,
-          amount: amt,
-          payment_method: paymentMethod || undefined,
-          reference_no: paymentRef || undefined,
-          notes: paymentNotes || undefined,
-        }),
+        body: JSON.stringify({ ...draft, idempotency_key: intent.key }),
       });
-      if (!response.ok) {
-        throw new Error(await readApiMessage(response, "Failed to add payment."));
+      const result = await response.json();
+      if (!response.ok || result.ok !== true) {
+        if (result.outcome === "rejected") {
+          localStorage.removeItem(intentStorageKey);
+          setHasPendingPayment(false);
+        }
+        throw new Error(result.message ?? "Failed to add payment.");
       }
+      if (getPendingSubmission(localStorage, intentStorageKey)?.key === intent.key)
+        localStorage.removeItem(intentStorageKey);
+      setHasPendingPayment(false);
       setPaymentAmount("");
       setPaymentMethod("");
       setPaymentRef("");
@@ -120,6 +179,7 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to add payment.");
     } finally {
+      paymentInFlight.current = false;
       setSubmitting(false);
     }
   };
@@ -159,7 +219,7 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
       method: "DELETE",
     });
     if (response.ok) {
-      router.push("/bills");
+      router.push(financeReturnPath(searchParams.get("returnTo"), "/bills"));
       syncRouterNonBlocking(router);
     } else {
       setError(await readApiMessage(response, "Failed to delete bill."));
@@ -168,6 +228,11 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
 
   return (
     <div className="mx-auto flex min-w-0 max-w-[1000px] flex-col gap-4 md:gap-5">
+      {error && !addPaymentOpen ? (
+        <p role="alert" className="text-[var(--hh-danger)]">
+          {error}
+        </p>
+      ) : null}
       <NeoPanel title="Bill details" bodyClassName="px-4 py-4 md:px-6 md:py-5">
         <dl className={billsDetailDlClass}>
           <dt className={billsDetailDtClass}>Bill no.</dt>
@@ -177,7 +242,21 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
           <dt className={billsDetailDtClass}>Type</dt>
           <dd className={billsDetailDdClass}>{bill.bill_type}</dd>
           <dt className={billsDetailDtClass}>Project</dt>
-          <dd className={billsDetailDdClass}>{bill.project_name ?? "—"}</dd>
+          <dd className={billsDetailDdClass}>
+            {bill.project_id ? (
+              <Link
+                className="underline"
+                href={financePathWithReturn(
+                  `/projects/${bill.project_id}`,
+                  drawerReturnTo ?? `/bills/${bill.id}`
+                )}
+              >
+                {bill.project_name ?? "Open project"}
+              </Link>
+            ) : (
+              "—"
+            )}
+          </dd>
           <dt className={billsDetailDtClass}>Subcontract</dt>
           <dd className={billsDetailDdClass}>
             {bill.project_id && bill.subcontract_id ? (
@@ -218,7 +297,9 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
         </dl>
       </NeoPanel>
 
-      <section className="grid min-w-0 gap-3 sm:grid-cols-3">
+      <section
+        className={cn("grid min-w-0 gap-3", drawerReturnTo ? "grid-cols-3" : "sm:grid-cols-3")}
+      >
         <KpiTile label="Total amount" value={formatCurrency(bill.amount)} />
         <KpiTile label="Paid amount" value={formatCurrency(bill.paid_amount)} tone="positive" />
         <KpiTile label="Balance" value={formatCurrency(bill.balance_amount)} />
@@ -228,14 +309,14 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
         title="Payment history"
         description={payments.length === 0 ? "No payments recorded yet." : undefined}
         action={
-          canAddPayment ? (
+          canAddPayment && !drawerReturnTo ? (
             <Button
-              variant="outline"
+              variant={drawerReturnTo ? "default" : "outline"}
               size="sm"
-              className={billsGhostButtonClass}
+              className={drawerReturnTo ? billsPrimaryButtonClass : billsGhostButtonClass}
               onClick={() => setAddPaymentOpen(true)}
             >
-              Add payment
+              {drawerReturnTo ? "Pay bill" : "Add payment"}
             </Button>
           ) : undefined
         }
@@ -288,27 +369,46 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
         )}
       </NeoPanel>
 
-      {bill.notes ? (
+      {bill.notes || drawerReturnTo ? (
         <NeoPanel title="Notes" bodyClassName="px-4 py-4 md:px-6 md:py-5">
-          <p className="text-hh-table-cell text-[var(--hh-text-secondary)]">{bill.notes}</p>
+          <p className="text-hh-table-cell text-[var(--hh-text-secondary)]">
+            {bill.notes || "No notes"}
+          </p>
         </NeoPanel>
       ) : null}
 
       <div
         className={cn(
           "flex flex-wrap items-center gap-2 border-t border-[var(--hh-border)] pt-4",
-          "max-md:[&_button]:min-h-11 max-md:[&_a]:min-h-11"
+          "max-md:[&_button]:min-h-11 max-md:[&_a]:min-h-11",
+          drawerReturnTo && "order-first border-t-0 pt-0"
         )}
       >
+        {drawerReturnTo && canAddPayment ? (
+          <Button size="sm" onClick={() => setAddPaymentOpen(true)}>
+            Pay bill
+          </Button>
+        ) : null}
         <Button variant="outline" size="sm" className={billsGhostButtonClass} asChild>
-          <Link href={`/bills/${bill.id}/edit`}>Edit bill</Link>
+          <Link
+            href={financePathWithReturn(
+              `/bills/${bill.id}/edit`,
+              drawerReturnTo ?? searchParams.get("returnTo")
+            )}
+          >
+            Edit bill
+          </Link>
         </Button>
+        {drawerReturnTo && !bill.attachment_url ? (
+          <p className="text-hh-metadata">No attachments</p>
+        ) : null}
         {bill.attachment_url ? (
           <Button
             variant="outline"
             size="sm"
             type="button"
             className={billsGhostButtonClass}
+            disabled={!supabase}
             onClick={() => {
               const raw = (bill.attachment_url ?? "").trim();
               if (!raw) return;
@@ -342,7 +442,15 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
             Approve
           </Button>
         ) : null}
-        {canVoid &&
+        {drawerReturnTo && canVoid ? (
+          <Button asChild variant="outline" size="sm">
+            <Link href={financePathWithReturn(`/bills/${bill.id}`, drawerReturnTo)}>
+              Void · review full bill
+            </Link>
+          </Button>
+        ) : null}
+        {!drawerReturnTo &&
+          canVoid &&
           (!voidConfirm ? (
             <Button
               variant="outline"
@@ -373,7 +481,8 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
             </>
           ))}
 
-        {bill.status === "Draft" &&
+        {!drawerReturnTo &&
+          bill.status === "Draft" &&
           payments.length === 0 &&
           (!deleteConfirm ? (
             <Button
@@ -427,7 +536,7 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
                 form="bill-add-payment-form"
                 size="sm"
                 className={billsPrimaryButtonClass}
-                disabled={submitting}
+                disabled={submitting || !intentStorageKey}
               >
                 <SubmitSpinner loading={submitting} className="mr-2" />
                 {submitting ? "Saving…" : "Add payment"}
@@ -439,6 +548,7 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
             <div className="space-y-1.5">
               <NeoFieldLabel required>Payment date</NeoFieldLabel>
               <NeoInput
+                disabled={submitting || !intentStorageKey}
                 type="date"
                 value={paymentDate}
                 onChange={(e) => setPaymentDate(e.target.value)}
@@ -449,6 +559,7 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
             <div className="space-y-1.5">
               <NeoFieldLabel required>Amount</NeoFieldLabel>
               <NeoInput
+                disabled={submitting || !intentStorageKey}
                 type="number"
                 step="0.01"
                 min="0"
@@ -463,6 +574,7 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
             <div className="space-y-1.5">
               <NeoFieldLabel>Payment method</NeoFieldLabel>
               <NeoInput
+                disabled={submitting || !intentStorageKey}
                 value={paymentMethod}
                 onChange={(e) => setPaymentMethod(e.target.value)}
                 className="h-11 rounded-hh-standard"
@@ -472,6 +584,7 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
             <div className="space-y-1.5">
               <NeoFieldLabel>Reference no.</NeoFieldLabel>
               <NeoInput
+                disabled={submitting || !intentStorageKey}
                 value={paymentRef}
                 onChange={(e) => setPaymentRef(e.target.value)}
                 className="h-11 rounded-hh-standard"
@@ -480,6 +593,7 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
             <div className="space-y-1.5">
               <NeoFieldLabel>Notes</NeoFieldLabel>
               <NeoInput
+                disabled={submitting || !intentStorageKey}
                 value={paymentNotes}
                 onChange={(e) => setPaymentNotes(e.target.value)}
                 className="h-11 rounded-hh-standard"

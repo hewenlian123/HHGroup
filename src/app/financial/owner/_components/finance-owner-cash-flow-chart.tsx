@@ -1,19 +1,27 @@
+import Link from "next/link";
+import { financePathWithReturn } from "@/lib/finance-navigation";
 import { Activity } from "lucide-react";
 import type { FinanceOwnerCashFlowPoint } from "@/lib/finance-owner-dashboard";
 import { fmtUsdAxis, fmtUsdFull } from "../_lib/format-owner-currency";
 
 /** Lightweight SVG dual-series chart — Stripe / equities-inspired density. */
-export function FinanceOwnerCashFlowChart({ points }: { points: FinanceOwnerCashFlowPoint[] }) {
+export function FinanceOwnerCashFlowChart({
+  points,
+  context,
+}: {
+  points: FinanceOwnerCashFlowPoint[];
+  context: string;
+}) {
   if (points.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center rounded-hh-task border border-dashed border-[var(--hh-border-strong)] bg-[var(--hh-l3-selected)] px-5 py-14 text-center transition-colors duration-200 ease-out max-md:px-4 max-md:py-16">
         <div className="flex h-12 w-12 items-center justify-center rounded-full border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)]">
           <Activity className="h-6 w-6 text-[var(--hh-text-tertiary)]" aria-hidden />
         </div>
-        <p className="mt-4 text-sm font-semibold text-foreground">No cash movement yet</p>
+        <p className="mt-4 text-sm font-semibold text-foreground">No reporting activity yet</p>
         <p className="mt-1 max-w-sm text-xs leading-relaxed text-muted-foreground">
-          When payments and expenses land in this six-month window, your inflows and outflows will
-          plot here.
+          When payments and expenses land in this six-month window, the collected and accrued series
+          will plot here.
         </p>
       </div>
     );
@@ -60,13 +68,27 @@ export function FinanceOwnerCashFlowChart({ points }: { points: FinanceOwnerCash
 
   return (
     <div className="w-full min-w-0">
+      <nav aria-label="Monthly reporting records" className="flex flex-wrap gap-3">
+        {points.map((p) => (
+          <Link
+            key={p.start}
+            className="text-sm underline"
+            href={financePathWithReturn(
+              `/reports?period=custom&from=${p.start}&to=${p.end}`,
+              context
+            )}
+          >
+            {p.label} records
+          </Link>
+        ))}
+      </nav>
       <div className="relative w-full min-h-[232px] sm:min-h-[268px]">
         <svg
           viewBox={`0 0 ${w} ${h}`}
           preserveAspectRatio="xMidYMid meet"
           className="h-full w-full min-h-[inherit] text-foreground"
           role="img"
-          aria-label="Cash in and cash out over the last six months"
+          aria-label="Collected cash and accrued expense plus labor over the last six months"
         >
           <defs>
             <linearGradient id="ownerCfIncomeFill" x1="0" y1="0" x2="0" y2="1">
@@ -142,11 +164,11 @@ export function FinanceOwnerCashFlowChart({ points }: { points: FinanceOwnerCash
       <div className="mt-8 flex flex-wrap items-center gap-x-8 gap-y-2 border-t border-[var(--hh-border)] pt-5 text-hh-status font-medium tracking-normal text-muted-foreground">
         <span className="inline-flex items-center gap-2">
           <span className="h-[3px] w-6 rounded-full bg-[var(--hh-success)]" />
-          Cash in
+          Collected cash
         </span>
         <span className="inline-flex items-center gap-2">
           <span className="h-[3px] w-6 rounded-full bg-[var(--hh-danger)]" />
-          Cash out
+          Accrued expense + labor
         </span>
       </div>
     </div>

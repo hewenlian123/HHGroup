@@ -120,7 +120,7 @@ function compileBatchCHarness() {
   }
 }
 
-test("Batch C keyboard, portal depth, async confirmation, and responsive contracts", async (t) => {
+test("Batch C V2 keyboard, portal depth, async confirmation, and responsive contracts", async (t) => {
   const { bundle, css } = compileBatchCHarness();
   const browser = await chromium.launch({ headless: true });
   t.after(() => browser.close());
@@ -129,6 +129,9 @@ test("Batch C keyboard, portal depth, async confirmation, and responsive contrac
   await page.setContent(`<style>${css}</style><div id="root"></div>`);
   await page.addScriptTag({ content: bundle });
   await page.locator("[data-tooltip-trigger]").waitFor();
+  await page.evaluate(() => {
+    document.documentElement.dataset.hhTheme = "operational-light";
+  });
 
   for (const viewport of [
     { name: "mobile", width: 390, height: 844 },
@@ -137,47 +140,41 @@ test("Batch C keyboard, portal depth, async confirmation, and responsive contrac
     { name: "desktop", width: 1440, height: 900 },
   ]) {
     await page.setViewportSize(viewport);
-    for (const theme of ["light", "dark"]) {
-      await page.evaluate((nextTheme) => {
-        document.documentElement.classList.toggle("dark", nextTheme === "dark");
-      }, theme);
-
-      const trigger = page.getByRole("combobox", { name: "Project" });
-      await trigger.focus();
-      await page.keyboard.press("ArrowDown");
-      const listbox = page.getByRole("listbox");
-      await listbox.waitFor();
-      const floating = await listbox.locator("xpath=..").evaluate((element) => {
-        const styles = getComputedStyle(element);
-        return {
-          background: styles.backgroundColor,
-          border: styles.borderColor,
-          shadow: styles.boxShadow,
-          position: styles.position,
-        };
-      });
-      assert.equal(floating.position, "fixed", `${viewport.name} ${theme} portaled position`);
-      assert.notEqual(floating.shadow, "none", `${viewport.name} ${theme} floating shadow`);
-      assert.notEqual(floating.background, "rgba(0, 0, 0, 0)");
-      assert.notEqual(floating.border, "rgba(0, 0, 0, 0)");
-      assert.equal(
-        await trigger.getAttribute("aria-activedescendant").then(Boolean),
-        true,
-        `${viewport.name} ${theme} active descendant`
-      );
-      await page.keyboard.press("Escape");
-      await listbox.waitFor({ state: "detached" });
-      assert.equal(await trigger.getAttribute("aria-expanded"), "false");
-      await page.waitForFunction(
-        () => document.activeElement?.getAttribute("aria-label") === "Project"
-      );
-      assert.equal(await trigger.evaluate((node) => document.activeElement === node), true);
-      assert.equal(
-        await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
-        true,
-        `${viewport.name} ${theme} no overflow`
-      );
-    }
+    const trigger = page.getByRole("combobox", { name: "Project" });
+    await trigger.focus();
+    await page.keyboard.press("ArrowDown");
+    const listbox = page.getByRole("listbox");
+    await listbox.waitFor();
+    const floating = await listbox.locator("xpath=..").evaluate((element) => {
+      const styles = getComputedStyle(element);
+      return {
+        background: styles.backgroundColor,
+        border: styles.borderColor,
+        shadow: styles.boxShadow,
+        position: styles.position,
+      };
+    });
+    assert.equal(floating.position, "fixed", `${viewport.name} portaled position`);
+    assert.notEqual(floating.shadow, "none", `${viewport.name} floating shadow`);
+    assert.notEqual(floating.background, "rgba(0, 0, 0, 0)");
+    assert.notEqual(floating.border, "rgba(0, 0, 0, 0)");
+    assert.equal(
+      await trigger.getAttribute("aria-activedescendant").then(Boolean),
+      true,
+      `${viewport.name} active descendant`
+    );
+    await page.keyboard.press("Escape");
+    await listbox.waitFor({ state: "detached" });
+    assert.equal(await trigger.getAttribute("aria-expanded"), "false");
+    await page.waitForFunction(
+      () => document.activeElement?.getAttribute("aria-label") === "Project"
+    );
+    assert.equal(await trigger.evaluate((node) => document.activeElement === node), true);
+    assert.equal(
+      await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+      true,
+      `${viewport.name} no overflow`
+    );
   }
 
   const tooltipTrigger = page.locator("[data-tooltip-trigger]");
@@ -213,7 +210,7 @@ test("Batch C keyboard, portal depth, async confirmation, and responsive contrac
   });
   assert.notEqual(taskStyles.background, "rgba(0, 0, 0, 0)");
   assert.notEqual(taskStyles.shadow, "none");
-  assert.equal(taskStyles.radius, "12px");
+  assert.equal(taskStyles.radius, "8px");
 
   const confirm = page.getByRole("button", { name: "Delete", exact: true });
   await confirm.click();

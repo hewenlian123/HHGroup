@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { revalidateEstimatePaths } from "@/app/estimates/revalidate-estimate-paths";
+import { getSupabaseServerPostgres } from "@/lib/supabase-server-postgres";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { requireSupabaseOwnerOrAdminServerAction } from "@/lib/auth-boundary";
 import { getServerSupabaseAdmin } from "@/lib/supabase-server";
@@ -12,6 +13,7 @@ import {
   updateLineItemWithClient,
   duplicateLineItemWithClient,
   deleteLineItemWithClient,
+  deleteEstimateSectionWithSql,
   createCustomEstimateCategoryWithClient,
   createEstimateCategoryWithExplicitCodeWithClient,
   addPaymentMilestoneWithClient,
@@ -33,11 +35,8 @@ import {
 } from "@/lib/estimates-db";
 import { normalizeEstimateNoteBlocks } from "@/lib/estimate-notes";
 import { allocateTaxInclusiveMilestoneToInvoice } from "@/lib/estimate-milestone-invoice-allocation";
-import {
-  estimateActivityActorFromAuth,
-  linkEstimateMilestoneInvoiceWithActivityWithClient,
-  type EstimateActivityActor,
-} from "@/lib/estimate-activity";
+import { estimateActivityActorFromAuth, type EstimateActivityActor } from "@/lib/estimate-activity";
+import { createEstimateMilestoneInvoiceAtomicWithClient } from "@/lib/invoices-db";
 import {
   convertEstimateSnapshotToProject,
   convertEstimateToProjectWithSetup,
@@ -45,6 +44,24 @@ import {
 } from "@/lib/data";
 
 export type EstimateStatus = "Draft" | "Sent" | "Approved" | "Rejected" | "Converted";
+
+type FinancialFormValue = { value?: number; error?: string };
+
+function parseOptionalFiniteFinancialFormValue(
+  value: FormDataEntryValue | null,
+  label: string
+): FinancialFormValue {
+  if (value == null) return {};
+  if (typeof value !== "string") return { error: `${label} must be a finite number.` };
+
+  const trimmed = value.trim();
+  if (!trimmed) return {};
+
+  const parsed = Number(trimmed);
+  return Number.isFinite(parsed)
+    ? { value: parsed }
+    : { error: `${label} must be a finite number.` };
+}
 
 async function getEstimateWriteClient(): Promise<SupabaseClient | null> {
   const guard = await requireSupabaseOwnerOrAdminServerAction();
@@ -157,27 +174,6 @@ function safeSupabaseActionError(
   return safeEstimateActionError(error?.message ? new Error(error.message) : null, fallback);
 }
 
-function isUniqueInvoiceNoError(error: { code?: string; message?: string } | null): boolean {
-  const message = error?.message ?? "";
-  return error?.code === "23505" || /invoice_no|invoices_invoice_no_key/i.test(message);
-}
-
-function isQuantityColumnUnsupported(error: { message?: string } | null): boolean {
-  const message = error?.message ?? "";
-  return /quantity/i.test(message) && /column|generated|schema cache|could not find/i.test(message);
-}
-
-async function deleteDraftInvoiceGraph(c: SupabaseClient, invoiceId: string): Promise<void> {
-  const itemsDelete = await c.from("invoice_items").delete().eq("invoice_id", invoiceId);
-  if (itemsDelete.error) {
-    throw new Error("Draft Invoice cleanup failed after Estimate linkage was rejected.");
-  }
-  const invoiceDelete = await c.from("invoices").delete().eq("id", invoiceId);
-  if (invoiceDelete.error) {
-    throw new Error("Draft Invoice cleanup failed after Estimate linkage was rejected.");
-  }
-}
-
 async function resolveProjectForScheduleInvoice(
   c: SupabaseClient,
   estimateId: string,
@@ -247,83 +243,6 @@ async function resolveCustomerIdForScheduleInvoice(
   ]);
   if (matches.length !== 1) throw new Error(CUSTOMER_LINK_ERROR);
   return cleanText(matches[0].id);
-}
-
-async function nextInvoiceNo(c: SupabaseClient, attempt: number): Promise<string> {
-  const { count } = await c.from("invoices").select("id", { count: "exact", head: true });
-  return `INV-${String((count ?? 0) + 1 + attempt).padStart(4, "0")}`;
-}
-
-async function insertScheduleInvoice(
-  c: SupabaseClient,
-  payload: {
-    projectId: string;
-    customerId: string;
-    clientName: string;
-    title: string;
-    notes: string;
-    issueDate: string;
-    dueDate: string;
-    subtotal: number;
-    taxPct: number;
-    taxAmount: number;
-    total: number;
-  }
-): Promise<string> {
-  let lastError: { message?: string } | null = null;
-  for (let attempt = 0; attempt < 3; attempt++) {
-    const invoiceNo = await nextInvoiceNo(c, attempt);
-    const { data, error } = await c
-      .from("invoices")
-      .insert({
-        invoice_no: invoiceNo,
-        project_id: payload.projectId,
-        customer_id: payload.customerId,
-        client_name: payload.clientName,
-        issue_date: payload.issueDate,
-        due_date: payload.dueDate,
-        status: "Draft",
-        notes: payload.notes,
-        tax_pct: payload.taxPct,
-        subtotal: payload.subtotal,
-        tax_amount: payload.taxAmount,
-        total: payload.total,
-      })
-      .select("id")
-      .single();
-    if (!error && data?.id) return String(data.id);
-    lastError = error;
-    if (!isUniqueInvoiceNoError(error)) break;
-  }
-  throw new Error(lastError?.message ?? "Failed to create invoice.");
-}
-
-async function insertScheduleInvoiceLine(
-  c: SupabaseClient,
-  invoiceId: string,
-  description: string,
-  amount: number
-): Promise<void> {
-  const row = {
-    invoice_id: invoiceId,
-    description,
-    qty: 1,
-    quantity: 1,
-    unit_price: amount,
-    amount,
-  };
-  let { error } = await c.from("invoice_items").insert(row);
-  if (error && isQuantityColumnUnsupported(error)) {
-    const fallback = await c.from("invoice_items").insert({
-      invoice_id: row.invoice_id,
-      description: row.description,
-      qty: row.qty,
-      unit_price: row.unit_price,
-      amount: row.amount,
-    });
-    error = fallback.error;
-  }
-  if (error) throw new Error(error.message ?? "Failed to create invoice line item.");
 }
 
 export async function approveEstimateAction(formData: FormData) {
@@ -540,7 +459,7 @@ export async function convertToProjectWithSetupAction(
         projectManager: (formData.get("projectManager") as string)?.trim() || undefined,
         startDate: (formData.get("startDate") as string)?.trim() || undefined,
         endDate: (formData.get("endDate") as string)?.trim() || undefined,
-        notes: (formData.get("notes") as string)?.trim() || undefined,
+
         estimateRef: (formData.get("estimateRef") as string)?.trim() || undefined,
       },
       estimateActivityActorFromAuth(guard.context),
@@ -578,13 +497,23 @@ export async function saveEstimateMetaInlineAction(
     const customerId = formData.has("customerId")
       ? (formData.get("customerId") as string)?.trim() || null
       : undefined;
-    const tax = formData.get("tax");
-    const discount = formData.get("discount");
-    const overheadPct = formData.get("overheadPct");
-    const profitPct = formData.get("profitPct");
+    const tax = parseOptionalFiniteFinancialFormValue(formData.get("tax"), "Tax");
+    const taxRatePct = parseOptionalFiniteFinancialFormValue(
+      formData.get("taxRatePct"),
+      "Tax rate"
+    );
+    const discount = parseOptionalFiniteFinancialFormValue(formData.get("discount"), "Discount");
+    const overheadPct = parseOptionalFiniteFinancialFormValue(
+      formData.get("overheadPct"),
+      "Overhead percentage"
+    );
+    const profitPct = parseOptionalFiniteFinancialFormValue(
+      formData.get("profitPct"),
+      "Profit percentage"
+    );
     const estimateDate = (formData.get("estimateDate") as string)?.trim();
     const validUntil = (formData.get("validUntil") as string)?.trim();
-    const notes = (formData.get("notes") as string)?.trim();
+
     const salesPerson = (formData.get("salesPerson") as string)?.trim();
     const documentStyleRaw = (formData.get("documentStyle") as string)?.trim();
     const documentStyle =
@@ -597,10 +526,14 @@ export async function saveEstimateMetaInlineAction(
     if (formData.has("projectName") && !projectName) {
       return { ok: false, error: "Project name is required." };
     }
+    const financialInputError =
+      tax.error ?? taxRatePct.error ?? discount.error ?? overheadPct.error ?? profitPct.error;
+    if (financialInputError) return { ok: false, error: financialInputError };
     const db = await getEstimateWriteClient();
     if (!db) return { ok: false, error: "Database is not configured." };
     const ok = await updateEstimateMetaWithClient(db, estimateId, {
       ...(customerId !== undefined ? { customerId } : {}),
+      ...(taxRatePct.value !== undefined ? { taxRatePct: taxRatePct.value } : {}),
       ...(clientName != null
         ? {
             client: {
@@ -631,15 +564,13 @@ export async function saveEstimateMetaInlineAction(
       ...(projectAddress != null && projectName == null
         ? { project: { siteAddress: projectAddress } }
         : {}),
-      ...(tax != null && tax !== "" ? { tax: Number(tax) || 0 } : {}),
-      ...(discount != null && discount !== "" ? { discount: Number(discount) || 0 } : {}),
-      ...(overheadPct != null && overheadPct !== ""
-        ? { overheadPct: Number(overheadPct) || 0 }
-        : {}),
-      ...(profitPct != null && profitPct !== "" ? { profitPct: Number(profitPct) || 0 } : {}),
+      ...(tax.value !== undefined ? { tax: tax.value } : {}),
+      ...(discount.value !== undefined ? { discount: discount.value } : {}),
+      ...(overheadPct.value !== undefined ? { overheadPct: overheadPct.value } : {}),
+      ...(profitPct.value !== undefined ? { profitPct: profitPct.value } : {}),
       ...(estimateDate != null ? { estimateDate: estimateDate || undefined } : {}),
       ...(validUntil != null ? { validUntil } : {}),
-      ...(formData.has("notes") ? { notes: notes ?? "" } : {}),
+
       ...(salesPerson != null ? { salesPerson } : {}),
       ...(documentStyle != null ? { documentStyle } : {}),
     });
@@ -650,27 +581,6 @@ export async function saveEstimateMetaInlineAction(
     return { ok: Boolean(ok) };
   } catch (error) {
     return { ok: false, error: safeEstimateActionError(error, "操作失败") };
-  }
-}
-
-export async function saveEstimateInternalNotesInlineAction(
-  estimateId: string,
-  notes: string
-): Promise<{ ok: boolean; error?: string }> {
-  if (!estimateId.trim()) return { ok: false, error: "Missing estimate id" };
-  try {
-    const db = await getEstimateWriteClient();
-    if (!db) return { ok: false, error: "Database is not configured." };
-    const ok = await updateEstimateMetaWithClient(db, estimateId, { notes });
-    if (!ok) return { ok: false, error: "Could not save internal notes." };
-    revalidateEstimatePaths(estimateId);
-    revalidatePath("/estimates");
-    return { ok: true };
-  } catch (error) {
-    return {
-      ok: false,
-      error: safeEstimateActionError(error, "Could not save internal notes."),
-    };
   }
 }
 
@@ -706,6 +616,7 @@ export async function addPaymentMilestoneInlineAction(
     const item = await addPaymentMilestoneWithClient(db, estimateId, {
       title: (formData.get("title") as string)?.trim() || "Payment",
       description: (formData.get("description") as string)?.trim() || "",
+      paymentTerm: (formData.get("paymentTerm") as string)?.trim() || null,
       amount: Number(formData.get("amount")) || 0,
       dueDate: (formData.get("dueDate") as string)?.trim() || undefined,
     });
@@ -736,6 +647,9 @@ export async function updatePaymentMilestoneAction(formData: FormData) {
     await updatePaymentMilestoneWithClient(db, estimateId, itemId, {
       ...(title != null ? { title } : {}),
       ...(description != null ? { description } : {}),
+      ...(formData.has("paymentTerm")
+        ? { paymentTerm: String(formData.get("paymentTerm") ?? "").trim() || null }
+        : {}),
       ...(amount != null && amount !== "" ? { amount: Number(amount) } : {}),
       ...(dueDate !== undefined ? { dueDate } : {}),
     });
@@ -765,6 +679,9 @@ export async function updatePaymentMilestoneInlineAction(
     const ok = await updatePaymentMilestoneWithClient(db, estimateId, itemId, {
       ...(title != null ? { title } : {}),
       ...(description != null ? { description } : {}),
+      ...(formData.has("paymentTerm")
+        ? { paymentTerm: String(formData.get("paymentTerm") ?? "").trim() || null }
+        : {}),
       ...(amount != null && amount !== "" ? { amount: Number(amount) } : {}),
       dueDate: dueDateRaw || null,
     });
@@ -956,42 +873,31 @@ export async function createInvoiceFromPaymentScheduleItemAction(
     const today = new Date().toISOString().slice(0, 10);
     const invoiceTitle = `Payment Schedule - ${scheduleTitle}`;
     const notes = `Generated from Estimate ${estimateNumber}, Payment Schedule ${scheduleTitle}.`;
-    const invoiceId = await insertScheduleInvoice(db, {
-      projectId,
-      customerId,
-      clientName,
-      title: invoiceTitle,
-      notes,
-      issueDate: today,
-      dueDate: cleanText(item.due_date) || today,
-      subtotal: allocation.subtotal,
-      taxPct: allocation.taxPct,
-      taxAmount: allocation.taxAmount,
-      total: allocation.total,
-    });
-
-    try {
-      await insertScheduleInvoiceLine(db, invoiceId, invoiceTitle, allocation.subtotal);
-      const linked = await linkEstimateMilestoneInvoiceWithActivityWithClient(db, {
+    const created = await createEstimateMilestoneInvoiceAtomicWithClient(
+      {
+        idempotencyKey: `invoice-milestone:${safeEstimateId}:${safeScheduleItemId}`,
+        projectId,
+        customerId,
+        clientName,
+        issueDate: today,
+        dueDate: cleanText(item.due_date) || today,
+        taxPct: allocation.taxPct,
+        notes,
+        lineItems: [
+          {
+            description: invoiceTitle,
+            qty: 1,
+            unitPrice: allocation.subtotal,
+            amount: allocation.subtotal,
+          },
+        ],
         estimateId: safeEstimateId,
         scheduleItemId: safeScheduleItemId,
-        invoiceId,
         actor,
-      });
-      if (!linked.linked) {
-        await deleteDraftInvoiceGraph(db, invoiceId);
-        const concurrentInvoiceId = cleanText(linked.invoiceId);
-        if (concurrentInvoiceId) {
-          revalidateEstimatePaths(safeEstimateId);
-          revalidatePath(`/financial/invoices/${concurrentInvoiceId}`);
-          return { ok: true, invoiceId: concurrentInvoiceId };
-        }
-        return { ok: false, error: "Could not link invoice to payment schedule." };
-      }
-    } catch (error) {
-      await deleteDraftInvoiceGraph(db, invoiceId);
-      throw error;
-    }
+      },
+      db
+    );
+    const invoiceId = created.id;
 
     revalidateEstimatePaths(safeEstimateId);
     revalidatePath("/estimates");
@@ -1143,7 +1049,8 @@ export async function addLineItemAction(formData: FormData) {
     if (!db) return;
     const item = await addLineItemWithClient(db, estimateId, {
       costCode,
-      desc: (formData.get("desc") as string)?.trim() || "New item",
+      itemName: (formData.get("itemName") as string) ?? "New item",
+      desc: (formData.get("desc") as string) ?? "",
       qty: Number(formData.get("qty")) || 1,
       unit: (formData.get("unit") as string)?.trim() || "EA",
       unitCost: Number(formData.get("unitCost")) || 0,
@@ -1173,7 +1080,8 @@ export async function addLineItemCatalogInlineAction(
     if (!db) return { ok: false, error: "Database is not configured." };
     const item = await addLineItemWithClient(db, estimateId, {
       costCode,
-      desc: "New item",
+      itemName: "New item",
+      desc: "",
       qty: 1,
       unit: "EA",
       unitCost: 0,
@@ -1190,6 +1098,37 @@ export async function addLineItemCatalogInlineAction(
     return { ok: true };
   } catch (e) {
     return { ok: false, error: safeEstimateActionError(e, "Could not add line item.") };
+  }
+}
+
+export async function deleteEstimateSectionAction(
+  estimateId: string,
+  costCode: string
+): Promise<{ ok: boolean; error?: string }> {
+  if (!estimateId.trim() || !costCode.trim())
+    return { ok: false, error: "Estimate and section are required." };
+  try {
+    const db = await getEstimateWriteClient();
+    if (!db) return { ok: false, error: "Database is not configured or access was denied." };
+    const sql = getSupabaseServerPostgres();
+    if (!sql)
+      return {
+        ok: false,
+        error: "Section deletion requires the server database connection to be configured.",
+      };
+    await deleteEstimateSectionWithSql(sql, estimateId, costCode);
+    revalidateEstimatePaths(estimateId);
+    revalidatePath("/estimates");
+    return { ok: true };
+  } catch (error) {
+    if (error instanceof Error && error.message.includes("Payment schedule total")) {
+      return {
+        ok: false,
+        error:
+          "Adjust the Payment Schedule before deleting this section: scheduled payments would exceed the new estimate total.",
+      };
+    }
+    return { ok: false, error: safeEstimateActionError(error, "Could not delete section.") };
   }
 }
 
@@ -1308,6 +1247,7 @@ export async function updateLineItemAction(formData: FormData) {
   const itemId = formData.get("itemId");
   if (typeof estimateId !== "string" || typeof itemId !== "string") return;
   try {
+    const itemName = formData.get("itemName") as string | null;
     const desc = formData.get("desc") as string | null;
     const qty = formData.get("qty");
     const unit = formData.get("unit") as string | null;
@@ -1315,6 +1255,7 @@ export async function updateLineItemAction(formData: FormData) {
     const db = await getEstimateWriteClient();
     if (!db) return;
     const ok = await updateLineItemWithClient(db, estimateId, itemId, {
+      ...(itemName != null ? { itemName } : {}),
       ...(desc != null ? { desc } : {}),
       ...(qty != null && qty !== "" ? { qty: Number(qty) } : {}),
       ...(unit != null ? { unit } : {}),
@@ -1339,11 +1280,13 @@ export async function updateLineItemInlineAction(
   try {
     const db = await getEstimateWriteClient();
     if (!db) return { ok: false, error: "Database is not configured." };
+    const itemName = formData.get("itemName") as string | null;
     const desc = formData.get("desc") as string | null;
     const qty = formData.get("qty");
     const unit = formData.get("unit") as string | null;
     const unitCost = formData.get("unitCost");
     const ok = await updateLineItemWithClient(db, estimateId, itemId, {
+      ...(itemName != null ? { itemName } : {}),
       ...(desc != null ? { desc } : {}),
       ...(qty != null && qty !== "" ? { qty: Number(qty) } : {}),
       ...(unit != null ? { unit } : {}),
@@ -1435,6 +1378,18 @@ export async function deleteLineItemInlineAction(
 export async function saveEstimateMetaAction(formData: FormData) {
   const estimateId = formData.get("estimateId");
   if (typeof estimateId !== "string") return;
+  const tax = parseOptionalFiniteFinancialFormValue(formData.get("tax"), "Tax");
+  const discount = parseOptionalFiniteFinancialFormValue(formData.get("discount"), "Discount");
+  const overheadPct = parseOptionalFiniteFinancialFormValue(
+    formData.get("overheadPct"),
+    "Overhead percentage"
+  );
+  const profitPct = parseOptionalFiniteFinancialFormValue(
+    formData.get("profitPct"),
+    "Profit percentage"
+  );
+  const financialInputError = tax.error ?? discount.error ?? overheadPct.error ?? profitPct.error;
+  if (financialInputError) throw new Error(financialInputError);
   try {
     const clientName = (formData.get("clientName") as string)?.trim();
     const projectName = (formData.get("projectName") as string)?.trim();
@@ -1450,13 +1405,9 @@ export async function saveEstimateMetaAction(formData: FormData) {
     const customerId = formData.has("customerId")
       ? (formData.get("customerId") as string)?.trim() || null
       : undefined;
-    const tax = formData.get("tax");
-    const discount = formData.get("discount");
-    const overheadPct = formData.get("overheadPct");
-    const profitPct = formData.get("profitPct");
     const estimateDate = (formData.get("estimateDate") as string)?.trim();
     const validUntil = (formData.get("validUntil") as string)?.trim();
-    const notes = (formData.get("notes") as string)?.trim();
+
     const salesPerson = (formData.get("salesPerson") as string)?.trim();
     const documentStyleRaw = (formData.get("documentStyle") as string)?.trim();
     const documentStyle =
@@ -1497,15 +1448,13 @@ export async function saveEstimateMetaAction(formData: FormData) {
       ...(projectAddress != null && projectName == null
         ? { project: { siteAddress: projectAddress } }
         : {}),
-      ...(tax != null && tax !== "" ? { tax: Number(tax) || 0 } : {}),
-      ...(discount != null && discount !== "" ? { discount: Number(discount) || 0 } : {}),
-      ...(overheadPct != null && overheadPct !== ""
-        ? { overheadPct: Number(overheadPct) || 0 }
-        : {}),
-      ...(profitPct != null && profitPct !== "" ? { profitPct: Number(profitPct) || 0 } : {}),
+      ...(tax.value !== undefined ? { tax: tax.value } : {}),
+      ...(discount.value !== undefined ? { discount: discount.value } : {}),
+      ...(overheadPct.value !== undefined ? { overheadPct: overheadPct.value } : {}),
+      ...(profitPct.value !== undefined ? { profitPct: profitPct.value } : {}),
       ...(estimateDate != null ? { estimateDate: estimateDate || undefined } : {}),
       ...(validUntil != null ? { validUntil } : {}),
-      ...(formData.has("notes") ? { notes: notes ?? "" } : {}),
+
       ...(salesPerson != null ? { salesPerson } : {}),
       ...(documentStyle != null ? { documentStyle } : {}),
     });

@@ -40,7 +40,7 @@ for (const viewport of viewports) {
       expect(shell.fontFamily).toMatch(/Geist/i);
       expect(shell.horizontalOverflow).toBeLessThanOrEqual(1);
 
-      const sharedPageTitle = page.locator('[data-neo-page-header="true"] h1').first();
+      const sharedPageTitle = page.locator('[data-page-header="true"] h1').first();
       if (await sharedPageTitle.isVisible().catch(() => false)) {
         const title = await sharedPageTitle.evaluate((element) => {
           const style = getComputedStyle(element);
@@ -58,7 +58,7 @@ for (const viewport of viewports) {
           return [style.fontSize, style.lineHeight, style.fontWeight];
         });
         expect(entry).toEqual(
-          viewport.width < 768 ? ["16px", "24px", "500"] : ["14px", "20px", "500"]
+          viewport.width < 768 ? ["16px", "24px", "400"] : ["14px", "20px", "400"]
         );
       }
 

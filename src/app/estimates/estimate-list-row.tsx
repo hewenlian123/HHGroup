@@ -3,13 +3,10 @@
 import { memo, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  NeoAmount,
-  NeoMobileCard,
-  NeoStatus,
-  RowActionsMenu,
-  type StatusBadgeVariant,
-} from "@/components/base";
+import { RowActionsMenu } from "@/components/base/row-actions-menu";
+import { StatusBadge, type StatusBadgeVariant } from "@/components/base/status-badge";
+import { FinancialText } from "@/components/ui/financial-text";
+import { MobileListRow } from "@/components/ui/mobile-list-row";
 import { tableRawTdClass } from "@/components/ui/table";
 import { listTableRowClassName } from "@/lib/list-table-interaction";
 import type { EstimateListItem } from "@/lib/data";
@@ -18,7 +15,7 @@ import { cn } from "@/lib/utils";
 
 function estimateStatusMeta(status: string): { label: string; variant: StatusBadgeVariant } {
   if (status === "Draft") return { label: "Draft", variant: "muted" };
-  if (status === "Sent") return { label: "Sent", variant: "warning" };
+  if (status === "Sent") return { label: "Sent", variant: "info" };
   if (status === "Approved") return { label: "Approved", variant: "success" };
   if (status === "Rejected") return { label: "Rejected", variant: "danger" };
   if (status === "Converted") return { label: "Converted to Project", variant: "success" };
@@ -32,9 +29,10 @@ function estimateRevisionLabel(row: EstimateListItem): string {
 function EstimateListStatus({ status }: { status: string }) {
   const meta = estimateStatusMeta(status);
   return (
-    <NeoStatus
+    <StatusBadge
       label={meta.label}
       variant={meta.variant}
+      showDot={false}
       className="text-hh-status h-5 whitespace-nowrap px-2"
     />
   );
@@ -81,7 +79,7 @@ const EstimateListRowMobile = memo(function EstimateListRowMobile({
   const [isPending, startTransition] = useTransition();
 
   return (
-    <NeoMobileCard className="estimate-list-mobile-card flex min-h-[84px] items-start gap-1.5 p-3">
+    <MobileListRow className="estimate-list-mobile-card flex min-h-[84px] items-start gap-1.5 p-3">
       <Link
         href={href}
         className="estimate-list-mobile-link min-w-0 flex-1 rounded-hh-compact text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)]"
@@ -90,7 +88,9 @@ const EstimateListRowMobile = memo(function EstimateListRowMobile({
           <p className="text-hh-body-strong truncate text-[var(--hh-text-primary)]">
             {revisionLabel}
           </p>
-          <NeoAmount className="hh-fin shrink-0">{formatEstimateCurrency(row.total)}</NeoAmount>
+          <FinancialText className="hh-fin shrink-0">
+            {formatEstimateCurrency(row.total)}
+          </FinancialText>
         </div>
         <div className="mt-1.5 min-w-0">
           <p className="text-hh-label truncate text-[var(--hh-text-secondary)]">{row.client}</p>
@@ -133,7 +133,7 @@ const EstimateListRowMobile = memo(function EstimateListRowMobile({
             : []),
         ]}
       />
-    </NeoMobileCard>
+    </MobileListRow>
   );
 });
 
@@ -194,9 +194,9 @@ export const EstimateListRow = memo(function EstimateListRow({
         <EstimateListStatus status={row.status} />
       </td>
       <td className={cn(tableRawTdClass, "estimate-list-col-total text-right")}>
-        <NeoAmount className="estimate-list-row-total">
+        <FinancialText className="estimate-list-row-total">
           {formatEstimateCurrency(row.total)}
-        </NeoAmount>
+        </FinancialText>
       </td>
       <td
         className={cn(

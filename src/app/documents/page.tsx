@@ -1,6 +1,6 @@
 import { PageLayout, PageHeader, Divider } from "@/components/base";
 import { getDocumentsPaged, getProjectsDashboard } from "@/lib/data";
-import { createServerSupabaseClient } from "@/lib/supabase-server";
+import { requireOrganizationServerActionClient } from "@/lib/auth-boundary";
 import { DocumentsListClient } from "./documents-list-client";
 
 export const dynamic = "force-dynamic";
@@ -17,10 +17,13 @@ type Props = {
 };
 
 export default async function DocumentsPage({ searchParams }: Props) {
-  const supabase = await createServerSupabaseClient({ noStore: true });
-  if (!supabase) throw new Error("Authenticated Documents session is not configured.");
-
   const sp = await searchParams;
+  const guard = await requireOrganizationServerActionClient({
+    noStore: true,
+    ...(sp.project_id ? { projectId: sp.project_id } : {}),
+  });
+  if (!guard.ok) throw new Error(guard.error);
+  const supabase = guard.client;
   const page = Math.max(1, Number(sp.page ?? "1") || 1);
   const filters = {
     search: sp.search ?? undefined,

@@ -33,16 +33,16 @@ export function EstimatePreviewSummaryPanel({
           <span className="text-zinc-600">Subtotal</span>
           <span className="tabular-nums text-zinc-900">${fmt(subtotal)}</span>
         </div>
-        {display.showTax ? (
-          <div className="flex justify-between gap-6">
-            <span className="text-zinc-600">{display.taxLabel}</span>
-            <span className="tabular-nums text-zinc-900">${fmt(tax)}</span>
-          </div>
-        ) : null}
         {display.showDiscount ? (
           <div className="flex justify-between gap-6">
             <span className="text-zinc-600">Discount</span>
             <span className="tabular-nums text-zinc-900">−${fmt(discount)}</span>
+          </div>
+        ) : null}
+        {display.showTax ? (
+          <div className="flex justify-between gap-6">
+            <span className="text-zinc-600">{display.taxLabel}</span>
+            <span className="tabular-nums text-zinc-900">${fmt(tax)}</span>
           </div>
         ) : null}
         <div className="mt-4 flex justify-between gap-6 border-t border-zinc-200/80 pt-4 text-[18px] font-semibold tracking-[-0.025em] text-zinc-950">

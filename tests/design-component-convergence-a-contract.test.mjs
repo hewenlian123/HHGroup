@@ -66,7 +66,10 @@ test("shared motion and selection primitives use restrained state feedback", () 
 
   assert.doesNotMatch(motion, /hover:-translate|active:scale|hover:scale|zoom-in|zoom-out/);
   assert.doesNotMatch(tabs, /hover:-translate|active:scale/);
-  assert.match(tabs, /data-\[state=active\]:bg-\[var\(--hh-l3-selected\)\]/);
+  assert.match(tabs, /after:bg-\[var\(--hh-accent-primary\)\]/);
+  assert.match(tabs, /data-\[state=active\]:after:scale-x-100/);
+  assert.match(tabs, /data-\[state=active\]:text-\[var\(--hh-accent-primary\)\]/);
+  assert.doesNotMatch(tabs, /data-\[state=active\]:bg-\[var\(--hh-l3-selected\)\]/);
 });
 
 test("Pagination exposes navigation, current position, boundaries, and loading continuity", () => {

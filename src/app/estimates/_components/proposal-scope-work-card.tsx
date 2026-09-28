@@ -1,76 +1,15 @@
 "use client";
 
 import * as React from "react";
-import { Bold, Italic, List, ListOrdered } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { EstimateStitchInspectorContext } from "./estimate-stitch-inspector";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import {
   lineItemBodyLooksLikeHtml,
   sanitizeLineItemDescriptionHtml,
 } from "@/lib/sanitize-line-item-html";
+import { EstimateDescriptionEditor } from "./estimate-description-editor";
 import { EB, ebInput } from "./estimate-builder-ui";
-
-function escapeHtmlText(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
-
-function plainBodyToEditorHtml(plain: string): string {
-  const t = (plain ?? "").replace(/\r\n/g, "\n").trim();
-  if (!t) return "<p><br></p>";
-  const chunks = t.split("\n").map((line) => {
-    const withBr = escapeHtmlText(line).replace(/\u2028/g, "<br />");
-    return `<p>${withBr || "<br />"}</p>`;
-  });
-  return chunks.join("");
-}
-
-function bodyToEditorInnerHtml(body: string): string {
-  const trimmed = (body ?? "").trim();
-  if (!trimmed) return "<p><br></p>";
-  if (lineItemBodyLooksLikeHtml(trimmed)) {
-    const clean = sanitizeLineItemDescriptionHtml(trimmed);
-    return clean || "<p><br></p>";
-  }
-  return plainBodyToEditorHtml(body ?? "");
-}
-
-function normalizeEditorDescriptionHtml(raw: string): string {
-  let clean = sanitizeLineItemDescriptionHtml(raw);
-  const emptyInline = String.raw`(?:\s|&nbsp;|&#160;|<br>)*`;
-  const emptyParagraph = String.raw`<p>${emptyInline}<\/p>`;
-  const emptyListItem = new RegExp(
-    String.raw`<li(?: class="[^"]*")?>${emptyInline}(?:${emptyParagraph}${emptyInline})*<\/li>`,
-    "gi"
-  );
-  const edgeEmptyParagraph = new RegExp(
-    String.raw`^(?:${emptyParagraph})+|(?:${emptyParagraph})+$`,
-    "gi"
-  );
-  const emptyList = /<(ul|ol)(?: class="[^"]*")?>\s*<\/\1>/gi;
-
-  let previous = "";
-  while (clean !== previous) {
-    previous = clean;
-    clean = clean.replace(emptyListItem, "").replace(emptyList, "");
-  }
-  return clean.replace(edgeEmptyParagraph, "").trim();
-}
-
-function removeEmptyEditorBoundaryParagraphs(root: HTMLElement): void {
-  const isEmptyParagraph = (node: Element | null): node is HTMLParagraphElement => {
-    if (!(node instanceof HTMLParagraphElement)) return false;
-    const text = (node.textContent ?? "").replace(/\u00a0/g, "").trim();
-    return text.length === 0 && !node.querySelector("img,video,audio,iframe");
-  };
-
-  while (isEmptyParagraph(root.firstElementChild)) root.firstElementChild.remove();
-  while (isEmptyParagraph(root.lastElementChild)) root.lastElementChild.remove();
-}
 
 function descriptionSummaryText(body: string): string {
   const source = lineItemBodyLooksLikeHtml(body)
@@ -92,21 +31,6 @@ function descriptionSummaryText(body: string): string {
     .replace(/\s+/g, " ")
     .trim();
 }
-
-function execCommandSafe(cmd: string): void {
-  try {
-    document.execCommand(cmd, false);
-  } catch {
-    /* ignore */
-  }
-}
-
-const DESCRIPTION_FORMAT_COMMANDS = [
-  { label: "Bold", command: "bold", Icon: Bold },
-  { label: "Italic", command: "italic", Icon: Italic },
-  { label: "Bullet list", command: "insertUnorderedList", Icon: List },
-  { label: "Numbered list", command: "insertOrderedList", Icon: ListOrdered },
-] as const;
 
 export type ProposalScopeWorkCardProps = {
   /** Customer-facing line / room name */
@@ -134,12 +58,16 @@ export type ProposalScopeWorkCardProps = {
   footer?: React.ReactNode;
   /** Qty / unit price / total beside title (proposal-style inline row) */
   inlinePricing?: React.ReactNode;
+  rowActions?: React.ReactNode;
   /** Optional 1-based line index badge */
   lineIndex?: number;
   /** Unified index + title + pricing + description grid (/estimates/new) */
   lineItemGridLayout?: boolean;
   /** Status pill or other chips beside title */
   titleTrailingSlot?: React.ReactNode;
+  lineSubtotal?: number;
+  persistedLineSubtotal?: number;
+  pricingSummary?: { qty: number; unit: string; unitPrice: string; total: string };
   className?: string;
 };
 
@@ -157,7 +85,7 @@ export function ProposalScopeWorkCard({
   onTitleBlur,
   onDescriptionBlur,
   titleInvalid = false,
-  titlePlaceholder = "Title",
+  titlePlaceholder = "Item Name",
   titleInputAriaLabel,
   descriptionEditorAriaLabel,
   dragSlot,
@@ -165,168 +93,90 @@ export function ProposalScopeWorkCard({
   deleteNode,
   footer,
   inlinePricing,
+  rowActions,
   lineIndex,
   lineItemGridLayout = false,
   titleTrailingSlot,
+  pricingSummary,
+  lineSubtotal,
+  persistedLineSubtotal,
   className,
 }: ProposalScopeWorkCardProps): React.ReactElement {
+  const inspector = React.useContext(EstimateStitchInspectorContext);
+  const inspectorId = React.useId();
+  const rowRef = React.useRef<HTMLDivElement>(null);
+  const selected = inspector?.selected === inspectorId;
+  const selectRow = () => inspector?.select(inspectorId);
+  const select = inspector?.select;
+  const setPricing = inspector?.setPricing;
+  const openingSubtotalRef = React.useRef<number | null>(null);
+  React.useLayoutEffect(() => {
+    if (!selected || lineSubtotal == null) {
+      openingSubtotalRef.current = null;
+      return;
+    }
+    openingSubtotalRef.current ??= lineSubtotal;
+    setPricing?.({
+      id: inspectorId,
+      subtotal: lineSubtotal,
+      impact: lineSubtotal - openingSubtotalRef.current,
+      adjustment: persistedLineSubtotal == null ? 0 : lineSubtotal - persistedLineSubtotal,
+    });
+    return () => setPricing?.((current) => (current?.id === inspectorId ? null : current));
+  }, [selected, lineSubtotal, persistedLineSubtotal, inspectorId, setPricing]);
+  React.useEffect(
+    () => () => {
+      select?.((current) => (current === inspectorId ? null : current));
+    },
+    [inspectorId, select]
+  );
+  React.useLayoutEffect(() => {
+    if (selected && rowRef.current?.closest('[inert], [aria-hidden="true"]')) {
+      select?.((current) => (current === inspectorId ? null : current));
+    }
+  });
+  const titleChangedSinceFocusRef = React.useRef(false);
   const editorRef = React.useRef<HTMLDivElement>(null);
-  const descriptionSummaryRef = React.useRef<HTMLButtonElement>(null);
-  const editorFocusedRef = React.useRef(false);
-  const editorSelectionRef = React.useRef<Range | null>(null);
-  const [descriptionEditing, setDescriptionEditing] = React.useState(false);
-
   const showDragRow = Boolean(dragSlot);
   const showLineItemActions = !readOnly && (Boolean(duplicateNode) || Boolean(deleteNode));
 
-  const resizeEditorToContent = React.useCallback((): void => {
-    const el = editorRef.current;
-    if (!el) return;
-    el.style.height = "auto";
-    const minPx = 104;
-    const sh = el.scrollHeight;
-    const next = Math.max(sh, minPx);
-    el.style.height = `${next}px`;
-    el.style.overflowY = "hidden";
-  }, []);
-
-  const captureEditorSelection = (): void => {
-    const root = editorRef.current;
-    const selection = window.getSelection();
-    if (!root || !selection || selection.rangeCount === 0) return;
-    const range = selection.getRangeAt(0);
-    if (!root.contains(range.commonAncestorContainer)) return;
-    editorSelectionRef.current = range.cloneRange();
-  };
-
-  const restoreEditorSelection = (): void => {
-    const range = editorSelectionRef.current;
-    if (!range) return;
-    const selection = window.getSelection();
-    selection?.removeAllRanges();
-    selection?.addRange(range);
-  };
-
-  const pushDescriptionFromEditor = (): string => {
-    const raw = editorRef.current?.innerHTML ?? "";
-    const normalized = normalizeEditorDescriptionHtml(raw);
-    onDescriptionChange?.(normalized);
-    return normalized;
-  };
-
-  const handleDescriptionInput = (): void => {
-    pushDescriptionFromEditor();
-    resizeEditorToContent();
-  };
-
-  const collapseDescriptionEditor = (focusSummary: boolean): void => {
-    editorFocusedRef.current = false;
-    const normalized = pushDescriptionFromEditor();
-    setDescriptionEditing(false);
-    onDescriptionBlur?.(normalized);
-    if (focusSummary) {
-      requestAnimationFrame(() => descriptionSummaryRef.current?.focus());
-    }
-  };
-
-  const handleDescriptionSurfaceBlur = (event: React.FocusEvent<HTMLDivElement>): void => {
-    const nextTarget = event.relatedTarget;
-    if (nextTarget instanceof Node && event.currentTarget.contains(nextTarget)) return;
-    collapseDescriptionEditor(false);
-  };
-
-  React.useLayoutEffect(() => {
-    if (readOnly || !descriptionEditing) return;
-    const el = editorRef.current;
-    if (!el) return;
-    if (editorFocusedRef.current) return;
-    el.innerHTML = bodyToEditorInnerHtml(description);
-    el.focus();
-    removeEmptyEditorBoundaryParagraphs(el);
-    resizeEditorToContent();
-    const selection = window.getSelection();
-    const range = document.createRange();
-    const caretTarget =
-      el.querySelector<HTMLElement>(
-        "ol:last-child > li:last-child, ul:last-child > li:last-child"
-      ) ??
-      el.lastElementChild ??
-      el;
-    range.selectNodeContents(caretTarget);
-    range.collapse(false);
-    selection?.removeAllRanges();
-    selection?.addRange(range);
-    captureEditorSelection();
-  }, [description, descriptionEditing, readOnly, resizeEditorToContent]);
-
-  const handleToolbarMouseDown = (e: React.MouseEvent): void => {
-    captureEditorSelection();
-    e.preventDefault();
-  };
-
-  const focusEditor = (): void => {
-    editorRef.current?.focus();
-  };
-
-  const ensureListFormatting = (cmd: string, beforeHtml: string): void => {
-    const tagName =
-      cmd === "insertOrderedList" ? "ol" : cmd === "insertUnorderedList" ? "ul" : null;
-    const root = editorRef.current;
-    const selection = window.getSelection();
-    if (!tagName || !root || !selection || selection.rangeCount === 0) return;
-    if (root.innerHTML !== beforeHtml && root.querySelector(tagName)) return;
-
-    const range = selection.getRangeAt(0);
-    const blocks = Array.from(root.children).filter((block) => range.intersectsNode(block));
-    if (blocks.length === 0) return;
-
-    const list = document.createElement(tagName);
-    for (const block of blocks) {
-      const item = document.createElement("li");
-      while (block.firstChild) item.appendChild(block.firstChild);
-      list.appendChild(item);
-    }
-    blocks[0]?.replaceWith(list);
-    for (const block of blocks.slice(1)) block.remove();
-
-    const nextRange = document.createRange();
-    nextRange.selectNodeContents(list);
-    selection.removeAllRanges();
-    selection.addRange(nextRange);
-    captureEditorSelection();
-  };
-
-  const runFormatCommand = (cmd: string): void => {
-    focusEditor();
-    restoreEditorSelection();
-    const beforeHtml = editorRef.current?.innerHTML ?? "";
-    execCommandSafe(cmd);
-    ensureListFormatting(cmd, beforeHtml);
-    pushDescriptionFromEditor();
-    requestAnimationFrame(() => {
-      resizeEditorToContent();
-    });
-  };
-
-  const handleDescriptionKeyDown = (event: React.KeyboardEvent<HTMLDivElement>): void => {
-    if (event.key === "Escape") {
-      event.preventDefault();
-      event.stopPropagation();
-      collapseDescriptionEditor(true);
-    }
-  };
-
   const useLineItemGrid = lineItemGridLayout && Boolean(inlinePricing);
 
+  const TitleControl = Input;
   const titleField = readOnly ? (
     <p className="text-hh-body font-semibold leading-snug tracking-normal text-foreground">
       {title.trim() || "—"}
     </p>
   ) : (
-    <Input
+    <TitleControl
       value={title}
-      onChange={(e) => onTitleChange?.(e.target.value)}
-      onBlur={() => onTitleBlur?.()}
+      onFocus={() => {
+        titleChangedSinceFocusRef.current = false;
+      }}
+      onChange={(e) => {
+        titleChangedSinceFocusRef.current = true;
+        onTitleChange?.(e.target.value);
+      }}
+      onBlur={() => {
+        if (!titleChangedSinceFocusRef.current) return;
+        titleChangedSinceFocusRef.current = false;
+        onTitleBlur?.();
+      }}
+      onKeyDown={(event) => {
+        if (
+          event.key !== "Enter" ||
+          event.shiftKey ||
+          event.altKey ||
+          event.ctrlKey ||
+          event.metaKey ||
+          event.nativeEvent.isComposing
+        )
+          return;
+        const next = editorRef.current;
+        if (!next) return;
+        event.preventDefault();
+        next.focus();
+      }}
       disabled={disabled}
       placeholder={titlePlaceholder}
       aria-label={titleInputAriaLabel}
@@ -339,126 +189,46 @@ export function ProposalScopeWorkCard({
 
   const descriptionSummary = descriptionSummaryText(description);
   const descriptionBlock = (
-    <div className={cn(EB.lineItemDescriptionBlock, !useLineItemGrid && "pt-1.5")}>
+    <div
+      className={cn(EB.lineItemDescriptionBlock, !useLineItemGrid && "pt-1.5")}
+      data-description-empty={!descriptionSummary || undefined}
+    >
       <span className={cn(EB.readLabel, "block pb-1")}>Description</span>
-      {readOnly ? (
-        <div className="eb-scope-description-readonly-wrap">
-          <div
-            className={cn(
-              "eb-scope-description-readonly min-w-0 truncate px-0 py-0.5 text-hh-body leading-[1.4] text-foreground",
-              descriptionSummary ? "min-h-0" : "min-h-[2rem] text-muted-foreground"
-            )}
-            title={descriptionSummary || undefined}
-          >
-            {descriptionSummary || "—"}
-          </div>
-        </div>
-      ) : !descriptionEditing ? (
-        <button
-          ref={descriptionSummaryRef}
-          type="button"
-          className="eb-description-summary-button flex h-8 min-h-8 w-full min-w-0 items-center rounded-hh-compact px-2 text-left text-hh-body text-foreground outline-none"
-          onClick={() => {
-            if (!disabled) setDescriptionEditing(true);
-          }}
-          disabled={disabled}
-          aria-label={descriptionEditorAriaLabel}
-          aria-expanded="false"
-          title={descriptionSummary || "Add description"}
-        >
-          <span
-            className={cn(
-              "eb-description-summary-text block min-w-0 flex-1 truncate",
-              !descriptionSummary && "text-muted-foreground"
-            )}
-          >
-            {descriptionSummary || "Add description…"}
-          </span>
-        </button>
-      ) : (
-        <div
-          className="eb-scope-editor-surface"
-          data-description-expanded="true"
-          onBlur={handleDescriptionSurfaceBlur}
-          onKeyDown={handleDescriptionKeyDown}
-        >
-          <div
-            ref={editorRef}
-            role="textbox"
-            aria-multiline
-            aria-label={descriptionEditorAriaLabel}
-            contentEditable={!disabled}
-            suppressContentEditableWarning
-            onFocus={() => {
-              editorFocusedRef.current = true;
-              requestAnimationFrame(() => {
-                resizeEditorToContent();
-              });
-            }}
-            onInput={handleDescriptionInput}
-            className={cn(
-              "proposal-scope-inline-editor w-full break-words px-2 py-2 text-hh-body leading-[1.4] text-foreground outline-none",
-              "[&_ul]:my-0 [&_ul]:list-disc [&_ul]:pl-3 [&_ol]:my-0 [&_ol]:list-decimal [&_ol]:pl-3",
-              "[&_p]:my-0 [&_p]:min-h-[1.05em]",
-              "[&_strong]:font-semibold [&_b]:font-semibold",
-              "[&_em]:italic [&_i]:italic",
-              disabled && "pointer-events-none opacity-50"
-            )}
-            onPaste={(e) => {
-              e.preventDefault();
-              const text = e.clipboardData.getData("text/plain");
-              try {
-                document.execCommand("insertText", false, text);
-              } catch {
-                /* ignore */
-              }
-              requestAnimationFrame(() => {
-                resizeEditorToContent();
-              });
-            }}
-          />
-          <div
-            className="eb-scope-editor-toolbar flex min-h-8 items-center gap-0 border-t px-1 py-0.5"
-            onMouseDown={handleToolbarMouseDown}
-          >
-            {DESCRIPTION_FORMAT_COMMANDS.map(({ label, command, Icon }) => (
-              <Button
-                key={command}
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="eb-scope-editor-format-button h-6 w-6 min-h-6 min-w-6 shrink-0 px-0 text-muted-foreground hover:bg-muted hover:text-foreground"
-                aria-label={label}
-                disabled={disabled}
-                onMouseDown={handleToolbarMouseDown}
-                onClick={() => runFormatCommand(command)}
-              >
-                <Icon className="h-2.5 w-2.5" strokeWidth={2} />
-              </Button>
-            ))}
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="eb-scope-editor-done ml-auto h-6 min-h-6 px-2 text-xs font-medium"
-              data-testid="estimate-description-done"
-              onMouseDown={handleToolbarMouseDown}
-              onClick={() => collapseDescriptionEditor(true)}
-            >
-              Done
-            </Button>
-          </div>
-        </div>
-      )}
+      <EstimateDescriptionEditor
+        body={description}
+        label={descriptionEditorAriaLabel}
+        disabled={disabled}
+        readOnly={readOnly}
+        editorRef={editorRef}
+        bodyClassName="proposal-scope-inline-editor"
+        onChange={onDescriptionChange}
+        onBlur={onDescriptionBlur}
+      />
     </div>
   );
 
-  return (
+  const card = (
     <div
       className={cn(
         "eb-proposal-scope-work-card rounded-sm border-0 bg-transparent px-0 pb-0 pt-0 shadow-none backdrop-blur-none",
         className
       )}
+      onClick={(event) => {
+        if (
+          !inspector ||
+          !useLineItemGrid ||
+          disabled ||
+          !event.currentTarget.contains(event.target as Node)
+        )
+          return;
+        if (
+          (event.target as HTMLElement).closest(
+            'button, input, select, textarea, a, [role="button"], [contenteditable], [draggable="true"]'
+          )
+        )
+          return;
+        selectRow();
+      }}
     >
       {showDragRow && !useLineItemGrid ? (
         <div className={cn(EB.lineItemDragRow, "flex items-center px-1 pt-0.5")}>
@@ -536,5 +306,94 @@ export function ProposalScopeWorkCard({
 
       {footer ? <div className="border-t border-border bg-transparent">{footer}</div> : null}
     </div>
+  );
+  if (!inspector || !useLineItemGrid || !pricingSummary) return card;
+  return (
+    <>
+      {!readOnly ? (
+        <div
+          ref={rowRef}
+          className="estimate-stitch-data-row estimate-inline-row"
+          onClick={selectRow}
+          data-stitch-selected={selected || undefined}
+          onFocusCapture={() => {
+            inspector.select(inspectorId);
+          }}
+          onKeyDown={(event) => {
+            if (
+              event.defaultPrevented ||
+              event.nativeEvent.isComposing ||
+              event.altKey ||
+              event.ctrlKey ||
+              event.metaKey
+            )
+              return;
+            const fields = Array.from(
+              event.currentTarget.querySelectorAll<HTMLElement>(
+                'input:not(:disabled), [contenteditable="true"]'
+              )
+            );
+            const index = fields.indexOf(event.target as HTMLElement);
+            if (index < 0) return;
+            const step = event.shiftKey ? -1 : 1;
+            if (event.key === "Tab" || (event.key === "Enter" && !event.shiftKey)) {
+              const next = fields[index + step];
+              if (next) {
+                event.preventDefault();
+                next.focus();
+                if (next instanceof HTMLInputElement) next.select();
+              }
+            }
+          }}
+        >
+          <span className="estimate-stitch-row-drag">{dragSlot}</span>
+          <div className="estimate-inline-description">
+            {titleField}
+            {descriptionBlock}
+          </div>
+          <div className="estimate-inline-pricing">{inlinePricing}</div>
+          <span className="estimate-stitch-row-actions estimate-inline-actions">{rowActions}</span>
+        </div>
+      ) : (
+        <div
+          ref={rowRef}
+          className="estimate-stitch-data-row"
+          data-stitch-selected={selected || undefined}
+          onClick={(event) => {
+            if (
+              disabled ||
+              !event.currentTarget.contains(event.target as Node) ||
+              (event.target as HTMLElement).closest("button, a, input, [role=menuitem]")
+            )
+              return;
+            selectRow();
+          }}
+        >
+          <span className="estimate-stitch-row-drag">{dragSlot}</span>
+          <div className="estimate-inline-description">
+            <button
+              type="button"
+              onClick={selectRow}
+              aria-label={`Select line ${lineIndex ?? "item"}`}
+              aria-pressed={selected}
+              disabled={disabled}
+            >
+              <strong>{title || "New line item"}</strong>
+              {titleTrailingSlot}
+            </button>
+            {descriptionBlock}
+          </div>
+          {pricingSummary ? (
+            <div className="estimate-stitch-selected-pricing" aria-label="Selected line pricing">
+              <span>{pricingSummary.qty}</span>
+              <span>{pricingSummary.unit}</span>
+              <span>{pricingSummary.unitPrice}</span>
+              <strong>{pricingSummary.total}</strong>
+            </div>
+          ) : null}
+          <span className="estimate-stitch-row-actions">{rowActions}</span>
+        </div>
+      )}
+    </>
   );
 }

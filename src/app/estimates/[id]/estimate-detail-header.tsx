@@ -1,6 +1,8 @@
 "use client";
 
 import * as React from "react";
+import { estimateInspectorTotal } from "../_components/estimate-line-item-model";
+import { EstimateStitchInspectorContext } from "../_components/estimate-stitch-inspector";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
@@ -73,7 +75,6 @@ export function EstimateDetailHeader({
   onSave,
   onSaveAndPreview,
   onPreview,
-  onDone,
   onSend,
   onApprove,
   onReject,
@@ -108,7 +109,6 @@ export function EstimateDetailHeader({
   onSave: () => void;
   onSaveAndPreview: () => void;
   onPreview?: () => void;
-  onDone: () => void;
   onSend: () => void;
   onApprove: () => void;
   onReject: () => void;
@@ -136,6 +136,9 @@ export function EstimateDetailHeader({
         ]
       : [];
   const headerUtilityActions = [
+    ...(editing && onEditDetails
+      ? [{ label: "Edit details", action: onEditDetails, Icon: Pencil }]
+      : []),
     { label: "Info", action: onInfoClick, Icon: Info },
     { label: "Pricing", action: onPricingClick, Icon: CircleDollarSign },
     { label: "Notes", action: onNotesClick, Icon: StickyNote },
@@ -156,72 +159,70 @@ export function EstimateDetailHeader({
     Boolean(revisionContext && !revisionContext.isCurrent) ||
     Boolean(onDuplicateClick) ||
     Boolean(onSaveAsTemplateClick);
+  const inspector = React.useContext(EstimateStitchInspectorContext);
+  const previewTotal = estimateInspectorTotal(grandTotal, inspector?.pricing ?? null);
+  const visibleSaveStatus = editing && saveStatus === "idle" ? "saved" : saveStatus;
 
   return (
     <EstimateWorkspaceCommandHeader
-      title={estimateNumber}
+      title={projectName?.trim() || estimateNumber}
       revisionLabel={revisionLabel}
       status={status}
-      context={[clientName, projectName, siteAddress]}
+      contextChip={estimateNumber}
+      context={[estimateNumber, clientName, siteAddress]}
       facts={[
         { label: "Estimate date", value: formatHeaderDate(estimateDate) ?? "—" },
         { label: "Valid until", value: formatHeaderDate(validUntil) ?? "—" },
       ]}
-      amount={grandTotal == null ? undefined : formatEstimateCurrency(grandTotal)}
-      saveStatus={editing ? saveStatus : "idle"}
+      amount={previewTotal == null ? undefined : formatEstimateCurrency(previewTotal)}
+      amountLabel={inspector?.pricing?.adjustment ? "Estimate total (preview)" : "Estimate total"}
+      saveStatus={editing ? visibleSaveStatus : "idle"}
       reserveSaveStatusSpace={editing}
       testId="estimate-detail-header"
+      navigation={
+        <>
+          <span aria-current="page">Estimate</span>
+          {editing || onPreview ? (
+            <button
+              type="button"
+              disabled={pending}
+              onClick={editing ? onSaveAndPreview : onPreview}
+            >
+              Client View
+            </button>
+          ) : (
+            <Link
+              href={`/estimates/${estimateId}/preview`}
+              aria-disabled={pending || undefined}
+              onClick={(event) => {
+                if (pending) event.preventDefault();
+              }}
+            >
+              Client View
+            </Link>
+          )}
+          {onActivityClick ? (
+            <button type="button" disabled={pending} onClick={onActivityClick}>
+              Activity
+            </button>
+          ) : null}
+        </>
+      }
     >
       <div
-        className="flex w-full min-w-0 flex-wrap items-center justify-start gap-1.5 max-md:flex-nowrap sm:justify-end xl:w-auto xl:max-w-[68%] xl:flex-nowrap"
+        className="eb-estimate-command-actions flex w-full min-w-0 flex-wrap items-center justify-start gap-1.5 max-md:flex-nowrap sm:justify-end xl:w-auto xl:max-w-[68%] xl:flex-nowrap"
         data-testid="estimate-detail-header-actions"
       >
-        {headerUtilityActions.map(({ label, action, Icon }) => (
-          <Button
-            key={label}
-            type="button"
-            variant="outline"
-            size="sm"
-            className={cn(
-              "hidden min-h-8 whitespace-nowrap px-2.5 xl:inline-flex",
-              ESTIMATE_HEADER_BUTTON
-            )}
-            disabled={pending}
-            onClick={action}
-          >
-            <Icon className="mr-1.5 h-3.5 w-3.5" aria-hidden />
-            {label}
-          </Button>
-        ))}
-        {editing && onEditDetails ? (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className={cn(
-              "min-h-11 whitespace-nowrap px-4 max-md:flex-1 lg:min-h-8",
-              ESTIMATE_HEADER_BUTTON
-            )}
-            disabled={pending}
-            onClick={onEditDetails}
-          >
-            <Pencil className="mr-2 h-3.5 w-3.5" aria-hidden />
-            Edit details
-          </Button>
-        ) : null}
         {editing ? (
           <Button
             type="button"
             variant="outline"
             size="sm"
-            className={cn(
-              "hidden min-h-11 whitespace-nowrap px-4 lg:inline-flex lg:min-h-8",
-              ESTIMATE_HEADER_BUTTON
-            )}
+            className={cn("min-h-11 whitespace-nowrap px-4 lg:min-h-8", ESTIMATE_HEADER_BUTTON)}
             disabled={pending}
             onClick={onSaveAndPreview}
           >
-            Save &amp; Preview
+            Preview
           </Button>
         ) : (
           <Button
@@ -309,7 +310,7 @@ export function EstimateDetailHeader({
             ) : null}
           </>
         ) : (
-          <div className="hidden lg:contents">
+          <div className="contents">
             <Button
               type="button"
               size="sm"
@@ -322,16 +323,6 @@ export function EstimateDetailHeader({
             >
               <SubmitSpinner loading={pending} className="mr-2" />
               {pending ? "Saving…" : "Save"}
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className={cn("min-h-11 whitespace-nowrap px-4 lg:min-h-8", ESTIMATE_HEADER_BUTTON)}
-              disabled={pending}
-              onClick={onDone}
-            >
-              Done
             </Button>
           </div>
         )}
@@ -403,7 +394,7 @@ export function EstimateDetailHeader({
 
         {overflowUtilityActions.length > 0 ||
         headerUtilityActions.length > 0 ||
-        (!editing && (onDuplicateClick || onSaveAsTemplateClick)) ? (
+        (!editing && (onDuplicateClick || onSaveAsTemplateClick || canDelete)) ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -411,7 +402,8 @@ export function EstimateDetailHeader({
                 variant="outline"
                 size="sm"
                 className={cn(
-                  "hidden min-h-11 w-11 shrink-0 md:inline-flex md:w-auto md:px-3 lg:min-h-8",
+                  "min-h-11 w-11 shrink-0 md:w-auto md:px-3 lg:min-h-8",
+                  !editing && "hidden md:inline-flex",
                   ESTIMATE_HEADER_BUTTON
                 )}
                 disabled={pending}
@@ -420,26 +412,15 @@ export function EstimateDetailHeader({
                 <MoreVertical className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="end"
-              className="min-w-[220px] rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md"
-            >
+            <DropdownMenuContent align="end" className="min-w-[220px]">
               {headerUtilityActions.map(({ label, action, Icon }) => (
-                <DropdownMenuItem
-                  key={label}
-                  onSelect={action}
-                  className="rounded-sm focus:bg-muted focus:text-foreground xl:hidden"
-                >
+                <DropdownMenuItem key={label} onSelect={action}>
                   <Icon className="mr-2 h-4 w-4" aria-hidden />
                   {label}
                 </DropdownMenuItem>
               ))}
               {overflowUtilityActions.map(({ label, action, Icon }) => (
-                <DropdownMenuItem
-                  key={label}
-                  onSelect={action}
-                  className="rounded-sm focus:bg-muted focus:text-foreground"
-                >
+                <DropdownMenuItem key={label} onSelect={action}>
                   <Icon className="mr-2 h-4 w-4" aria-hidden />
                   {label}
                 </DropdownMenuItem>
@@ -452,7 +433,6 @@ export function EstimateDetailHeader({
               {!editing && onDuplicateClick ? (
                 <DropdownMenuItem
                   onSelect={onDuplicateClick}
-                  className="rounded-sm focus:bg-muted focus:text-foreground"
                   data-testid="duplicate-estimate-action"
                 >
                   <Copy className="mr-2 h-4 w-4" />
@@ -462,33 +442,31 @@ export function EstimateDetailHeader({
               {!editing && onSaveAsTemplateClick ? (
                 <DropdownMenuItem
                   onSelect={onSaveAsTemplateClick}
-                  className="rounded-sm focus:bg-muted focus:text-foreground"
                   data-testid="save-estimate-as-template-action"
                 >
                   <FilePlus2 className="mr-2 h-4 w-4" />
                   Save as Template
                 </DropdownMenuItem>
               ) : null}
+              {!editing &&
+              canDelete &&
+              (headerUtilityActions.length > 0 ||
+                overflowUtilityActions.length > 0 ||
+                onDuplicateClick ||
+                onSaveAsTemplateClick) ? (
+                <DropdownMenuSeparator />
+              ) : null}
+              {!editing && canDelete ? (
+                <DropdownMenuItem
+                  onSelect={onDeleteClick}
+                  className="text-destructive focus:text-destructive"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" aria-hidden />
+                  Delete estimate
+                </DropdownMenuItem>
+              ) : null}
             </DropdownMenuContent>
           </DropdownMenu>
-        ) : null}
-
-        {!editing && canDelete ? (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className={cn(
-              "hidden min-h-11 w-11 shrink-0 md:inline-flex md:w-auto lg:min-h-8",
-              ESTIMATE_HEADER_BUTTON,
-              "hover:border-destructive/30 hover:text-destructive"
-            )}
-            disabled={pending}
-            onClick={onDeleteClick}
-            aria-label="Delete estimate"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
         ) : null}
 
         {!editing ? (
@@ -505,26 +483,15 @@ export function EstimateDetailHeader({
                 <MoreVertical className="h-4 w-4" aria-hidden />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="end"
-              className="min-w-[220px] rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md"
-            >
+            <DropdownMenuContent align="end" className="min-w-[220px]">
               {headerUtilityActions.map(({ label, action, Icon }) => (
-                <DropdownMenuItem
-                  key={`mobile-${label}`}
-                  onSelect={action}
-                  className="min-h-11 rounded-sm focus:bg-muted focus:text-foreground"
-                >
+                <DropdownMenuItem key={`mobile-${label}`} onSelect={action} className="min-h-11">
                   <Icon className="mr-2 h-4 w-4" aria-hidden />
                   {label}
                 </DropdownMenuItem>
               ))}
               {overflowUtilityActions.map(({ label, action, Icon }) => (
-                <DropdownMenuItem
-                  key={`mobile-${label}`}
-                  onSelect={action}
-                  className="min-h-11 rounded-sm focus:bg-muted focus:text-foreground"
-                >
+                <DropdownMenuItem key={`mobile-${label}`} onSelect={action} className="min-h-11">
                   <Icon className="mr-2 h-4 w-4" aria-hidden />
                   {label}
                 </DropdownMenuItem>
@@ -533,10 +500,7 @@ export function EstimateDetailHeader({
                 <DropdownMenuSeparator />
               ) : null}
               {canSend ? (
-                <DropdownMenuItem
-                  onSelect={onSend}
-                  className="min-h-11 rounded-sm focus:bg-muted focus:text-foreground"
-                >
+                <DropdownMenuItem onSelect={onSend} className="min-h-11">
                   Mark as Sent
                 </DropdownMenuItem>
               ) : null}
@@ -545,7 +509,7 @@ export function EstimateDetailHeader({
                   key={`mobile-${item.label}`}
                   onSelect={item.action}
                   className={cn(
-                    "min-h-11 rounded-sm focus:bg-muted focus:text-foreground",
+                    "min-h-11",
                     item.destructive && "text-destructive focus:text-destructive"
                   )}
                 >
@@ -553,17 +517,14 @@ export function EstimateDetailHeader({
                 </DropdownMenuItem>
               ))}
               {canConvert && onConvertClick ? (
-                <DropdownMenuItem
-                  onSelect={onConvertClick}
-                  className="min-h-11 rounded-sm focus:bg-muted focus:text-foreground"
-                >
+                <DropdownMenuItem onSelect={onConvertClick} className="min-h-11">
                   Convert to Project
                 </DropdownMenuItem>
               ) : null}
               {canCreateRevision && onCreateRevision ? (
                 <DropdownMenuItem
                   onSelect={onCreateRevision}
-                  className="min-h-11 rounded-sm focus:bg-muted focus:text-foreground"
+                  className="min-h-11"
                   data-testid="create-estimate-revision-action-mobile"
                 >
                   <FileClock className="mr-2 h-4 w-4" aria-hidden />
@@ -571,7 +532,7 @@ export function EstimateDetailHeader({
                 </DropdownMenuItem>
               ) : null}
               {revisionContext?.previousRevisionId ? (
-                <DropdownMenuItem asChild className="min-h-11 rounded-sm">
+                <DropdownMenuItem asChild className="min-h-11">
                   <Link href={`/estimates/${revisionContext.previousRevisionId}`}>
                     <ArrowLeft className="mr-2 h-4 w-4" aria-hidden />
                     Previous revision
@@ -579,7 +540,7 @@ export function EstimateDetailHeader({
                 </DropdownMenuItem>
               ) : null}
               {revisionContext && !revisionContext.isCurrent ? (
-                <DropdownMenuItem asChild className="min-h-11 rounded-sm">
+                <DropdownMenuItem asChild className="min-h-11">
                   <Link href={`/estimates/${revisionContext.currentRevisionId}`}>
                     Current revision
                   </Link>
@@ -588,7 +549,7 @@ export function EstimateDetailHeader({
               {onDuplicateClick ? (
                 <DropdownMenuItem
                   onSelect={onDuplicateClick}
-                  className="min-h-11 rounded-sm focus:bg-muted focus:text-foreground"
+                  className="min-h-11"
                   data-testid="duplicate-estimate-action-mobile"
                 >
                   <Copy className="mr-2 h-4 w-4" aria-hidden />
@@ -598,7 +559,7 @@ export function EstimateDetailHeader({
               {onSaveAsTemplateClick ? (
                 <DropdownMenuItem
                   onSelect={onSaveAsTemplateClick}
-                  className="min-h-11 rounded-sm focus:bg-muted focus:text-foreground"
+                  className="min-h-11"
                   data-testid="save-estimate-as-template-action-mobile"
                 >
                   <FilePlus2 className="mr-2 h-4 w-4" aria-hidden />
@@ -609,7 +570,7 @@ export function EstimateDetailHeader({
               {canDelete ? (
                 <DropdownMenuItem
                   onSelect={onDeleteClick}
-                  className="min-h-11 rounded-sm text-destructive focus:bg-muted focus:text-destructive"
+                  className="min-h-11 text-destructive focus:text-destructive"
                 >
                   <Trash2 className="mr-2 h-4 w-4" aria-hidden />
                   Delete estimate

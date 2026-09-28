@@ -72,6 +72,13 @@ describe("AP bills dashboard summary", () => {
           amount: 100,
           paid_amount: 0,
           balance_amount: 0,
+          status: "Pending",
+          due_date: "2026-05-18",
+        },
+        {
+          amount: 150,
+          paid_amount: 0,
+          balance_amount: 150,
           status: "Draft",
           due_date: "2026-05-18",
         },

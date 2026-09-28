@@ -10,7 +10,7 @@
 [data-hh-theme="operational-dark"] .expenses-ui,
 [data-hh-theme="neo-dark"].expenses-ui,
 [data-hh-theme="neo-dark"] .expenses-ui {
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 .expenses-ui-content {
@@ -31,8 +31,8 @@
     [role="option"],
     [role="combobox"]
   ) {
-  transition-property: color, background-color, border-color, opacity, box-shadow !important;
-  transition-duration: 120ms;
+  transition-property: background-color, border-color, opacity, scale !important;
+  transition-duration: 140ms;
   transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
 }
 
@@ -62,7 +62,7 @@
     [role="option"],
     [role="combobox"]
   ):active {
-  opacity: 0.9;
+  opacity: 1;
 }
 
 .expenses-ui [data-expense-id]:active {
@@ -75,7 +75,7 @@
 }
 
 .expenses-ui .expense-row-continuity {
-  transition-duration: 180ms;
+  transition-duration: 140ms;
   transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
 }
 
@@ -95,7 +95,7 @@
   overflow-x: auto;
   overflow-y: hidden;
   overscroll-behavior-x: contain;
-  scrollbar-color: rgb(115 115 115 / 0.3) transparent;
+  scrollbar-color: var(--hh-scrollbar) transparent;
   scrollbar-width: thin;
 }
 
@@ -109,11 +109,11 @@
 
 .expenses-ui .expense-compact-table-scroll::-webkit-scrollbar-thumb {
   border-radius: 999px;
-  background: rgb(115 115 115 / 0.26);
+  background: var(--hh-scrollbar);
 }
 
 .expenses-ui .expense-compact-table-scroll::-webkit-scrollbar-thumb:hover {
-  background: rgb(115 115 115 / 0.4);
+  background: var(--hh-scrollbar-hover);
 }
 
 .expenses-ui .expense-row-continuity {
@@ -121,7 +121,7 @@
 }
 
 .expenses-ui .expense-row-continuity:has(:focus-visible) {
-  box-shadow: inset 2px 0 0 var(--hh-text-secondary);
+  box-shadow: inset 1px 0 0 var(--hh-brand-gold);
 }
 
 /* Completed-expense ledger only: keep normal rows quiet and anchor attention to exceptions/focus. */
@@ -136,7 +136,7 @@
 
 .expenses-ui[data-expenses-list-page="expenses"] .exp-row {
   background-color: var(--hh-l1-workspace);
-  transition-duration: 120ms;
+  transition-duration: 140ms;
 }
 
 .expenses-ui[data-expenses-list-page="expenses"] [data-expense-mobile-ledger] > .exp-row {
@@ -156,12 +156,12 @@
 .expenses-ui[data-expenses-list-page="expenses"] .exp-row[aria-selected="true"],
 .expenses-ui[data-expenses-list-page="expenses"] .exp-row[data-expense-selected="true"] {
   background-color: var(--hh-l3-selected);
-  box-shadow: inset 2px 0 0 var(--hh-text-secondary);
+  box-shadow: inset 1px 0 0 var(--hh-brand-gold);
 }
 
 .expenses-ui[data-expenses-list-page="expenses"] .exp-row.expense-ledger-row-active {
   background-color: var(--hh-l3-selected);
-  box-shadow: inset 2px 0 0 var(--hh-text-secondary);
+  box-shadow: inset 1px 0 0 var(--hh-brand-gold);
 }
 
 .expenses-ui[data-expenses-list-page="expenses"] .exp-row:focus-within {
@@ -170,7 +170,7 @@
 }
 
 .expenses-ui[data-expenses-list-page="expenses"] .exp-row:has(:focus-visible) {
-  box-shadow: inset 2px 0 0 var(--hh-text-secondary);
+  box-shadow: inset 1px 0 0 var(--hh-brand-gold);
 }
 
 .expenses-ui[data-expenses-list-page="expenses"]
@@ -182,7 +182,7 @@
   .exp-row.expense-ledger-row-active:not([aria-selected="true"]):not(
     [data-expense-selected="true"]
   ) {
-  box-shadow: inset 2px 0 0 var(--hh-text-secondary);
+  box-shadow: inset 1px 0 0 var(--hh-brand-gold);
 }
 
 .expenses-ui[data-expenses-list-page="expenses"] .exp-row:active {
@@ -196,13 +196,14 @@
     [data-expense-selected="true"],
     .expense-ledger-row-active
   )
-  :is([data-expense-merchant] > p:first-child, [data-expense-amount], [data-expense-amount] *) {
+  [data-expense-merchant]
+  > p:first-child {
   color: var(--hh-text-strong) !important;
 }
 
 @media (hover: hover) and (min-width: 1024px) {
   .expenses-ui[data-expenses-list-page="expenses"] .exp-row > td:last-child {
-    opacity: 0.44;
+    opacity: 1;
     transition: opacity 120ms cubic-bezier(0.2, 0, 0, 1);
   }
 
@@ -247,8 +248,7 @@
 }
 
 .expenses-ui[data-expenses-list-page="inbox"] [data-inbox-decision-brief] dt {
-  color: var(--hh-text-tertiary);
-  opacity: 0.88;
+  color: var(--hh-text-secondary);
 }
 
 .expenses-ui[data-expenses-list-page="inbox"] [data-inbox-decision-brief] dd {
@@ -295,10 +295,10 @@
 }
 
 .expenses-ui[data-expenses-list-page="inbox"] .exp-row {
-  border-bottom-color: transparent !important;
+  border-bottom-color: var(--hh-border-subtle) !important;
   background-color: var(--hh-l2-operational-surface);
   box-shadow: none !important;
-  transition-duration: 120ms;
+  transition-duration: 140ms;
 }
 
 .expenses-ui[data-expenses-list-page="inbox"] .exp-row:hover,
@@ -308,11 +308,11 @@
 
 .expenses-ui[data-expenses-list-page="inbox"] .exp-row[data-expense-active="true"] {
   background-color: var(--hh-l3-selected);
-  box-shadow: inset 2px 0 0 var(--hh-text-secondary) !important;
+  box-shadow: inset 1px 0 0 var(--hh-brand-gold) !important;
 }
 
 .expenses-ui[data-expenses-list-page="inbox"] .exp-row:has(:focus-visible) {
-  box-shadow: inset 2px 0 0 var(--hh-text-secondary) !important;
+  box-shadow: inset 1px 0 0 var(--hh-brand-gold) !important;
 }
 
 .expenses-ui[data-expenses-list-page="inbox"] .exp-row:active {
@@ -321,7 +321,8 @@
 
 .expenses-ui[data-expenses-list-page="inbox"]
   .exp-row:is(:hover, [data-expense-active="true"])
-  :is([data-expense-amount], [data-expense-amount] *) {
+  [data-expense-merchant]
+  > p:first-child {
   color: var(--hh-text-strong) !important;
 }
 
@@ -337,7 +338,7 @@
 
 @media (hover: hover) and (min-width: 1024px) {
   .expenses-ui[data-expenses-list-page="inbox"] .exp-row > td:last-child {
-    opacity: 0.48;
+    opacity: 1;
     transition: opacity 120ms cubic-bezier(0.2, 0, 0, 1);
   }
 
@@ -357,7 +358,7 @@
 
 .expenses-ui-dialog[data-expense-component-surface="receipt-review"] [data-expense-detail-body] {
   overscroll-behavior: contain;
-  scrollbar-color: rgb(127 127 127 / 0.28) transparent;
+  scrollbar-color: var(--hh-scrollbar) transparent;
   scrollbar-width: thin;
 }
 
@@ -396,7 +397,7 @@
 }
 
 .expenses-ui-dialog [data-expense-approval-action]:disabled {
-  opacity: 0.48;
+  opacity: 1;
 }
 
 @media (max-width: 767px) {
@@ -422,8 +423,8 @@
 }
 
 .expenses-ui[data-expenses-list-page="expenses"] [data-expenses-kpi-strip] dt {
-  color: var(--hh-text-tertiary);
-  opacity: 0.86;
+  color: var(--hh-text-secondary);
+  opacity: 1;
 }
 
 .expenses-ui[data-expenses-list-page="expenses"] [data-expenses-kpi-strip] dd {
@@ -447,7 +448,7 @@
 }
 
 .expenses-ui .exp-btn-primary:hover {
-  background-color: var(--hh-action-primary) !important;
+  background-color: var(--hh-action-primary-hover) !important;
   opacity: 1;
 }
 
@@ -486,7 +487,7 @@
 
 .expenses-ui .exp-icon-danger:hover {
   color: var(--hh-danger) !important;
-  background-color: rgb(225 29 72 / 0.12) !important;
+  background-color: var(--hh-danger-soft-fill) !important;
 }
 
 /* Row dividers: use Tailwind `divide-y` on the list inside `.exp-list-card` */
@@ -503,7 +504,7 @@
 [data-hh-theme="operational-dark"] .expenses-ui-dialog,
 [data-hh-theme="neo-dark"].expenses-ui-dialog,
 [data-hh-theme="neo-dark"] .expenses-ui-dialog {
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 .expenses-ui-dialog .exp-dlg-muted {
@@ -543,7 +544,7 @@
 }
 
 .expenses-ui-dialog :where(.text-zinc-950) {
-  color: var(--hh-action-primary-foreground) !important;
+  color: var(--hh-text-primary) !important;
 }
 
 /* Expense Operations component contract — consistent portaled surfaces and feedback. */
@@ -560,8 +561,8 @@
     [role="option"],
     [role="combobox"]
   ) {
-  transition-property: color, background-color, border-color, opacity, box-shadow !important;
-  transition-duration: 120ms;
+  transition-property: background-color, border-color, opacity, scale !important;
+  transition-duration: 140ms;
   transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
 }
 
@@ -590,7 +591,7 @@
     [role="option"],
     [role="combobox"]
   ):active {
-  opacity: 0.9;
+  opacity: 1;
 }
 
 .expenses-ui-dialog[data-state="open"] {
@@ -660,7 +661,7 @@
 
 /* New Expense shares the workspace surface language while keeping one scroll owner. */
 body:has(.expense-new-dialog[data-state="open"]) > [data-state="open"].fixed.inset-0.z-50 {
-  background-color: rgb(9 9 9 / 0.28) !important;
+  background-color: var(--hh-overlay-soft) !important;
   -webkit-backdrop-filter: none !important;
   backdrop-filter: none !important;
 }
@@ -673,7 +674,7 @@ body:has([data-hh-theme="neo-dark"].expense-new-dialog[data-state="open"])
   > [data-state="open"].fixed.inset-0.z-50,
 body:has([data-hh-theme="neo-dark"] .expense-new-dialog[data-state="open"])
   > [data-state="open"].fixed.inset-0.z-50 {
-  background-color: rgb(0 0 0 / 0.58) !important;
+  background-color: var(--hh-overlay-strong) !important;
 }
 
 .expense-new-dialog {
@@ -772,7 +773,7 @@ body:has([data-hh-theme="neo-dark"] .expense-new-dialog[data-state="open"])
 .expense-new-dialog-scroll,
 .expense-new-component-surface,
 .expense-new-component-surface [data-expense-component-scroll="true"] {
-  scrollbar-color: rgb(115 115 115 / 0.24) transparent;
+  scrollbar-color: var(--hh-scrollbar) transparent;
   scrollbar-width: thin;
 }
 
@@ -793,14 +794,14 @@ body:has([data-hh-theme="neo-dark"] .expense-new-dialog[data-state="open"])
 .expense-new-component-surface::-webkit-scrollbar-thumb,
 .expense-new-component-surface [data-expense-component-scroll="true"]::-webkit-scrollbar-thumb {
   border-radius: 999px;
-  background: rgb(115 115 115 / 0.24);
+  background: var(--hh-scrollbar);
 }
 
 .expense-new-dialog-scroll::-webkit-scrollbar-thumb:hover,
 .expense-new-component-surface::-webkit-scrollbar-thumb:hover,
 .expense-new-component-surface
   [data-expense-component-scroll="true"]::-webkit-scrollbar-thumb:hover {
-  background: rgb(115 115 115 / 0.38);
+  background: var(--hh-scrollbar-hover);
 }
 
 /* The default `md` breakpoint begins at 768px; Expense treats that exact portrait width as a sheet. */
@@ -933,7 +934,7 @@ body:has([data-hh-theme="neo-dark"] .expense-new-dialog[data-state="open"])
 
 .expense-detail-panel-body {
   overscroll-behavior: contain;
-  scrollbar-color: rgb(127 127 127 / 0.28) transparent;
+  scrollbar-color: var(--hh-scrollbar) transparent;
   scrollbar-width: thin;
 }
 
@@ -1038,10 +1039,6 @@ body:has([data-hh-theme="neo-dark"] .expense-new-dialog[data-state="open"])
   font-weight: var(--hh-type-financial-font-weight);
 }
 
-.expenses-ui[data-expenses-list-page="expenses"] [data-expense-amount] * {
-  color: var(--hh-text-primary) !important;
-}
-
 @media (min-width: 1024px) {
   .expenses-ui[data-expense-workspace-detail-open="true"] {
     height: 100%;
@@ -1102,7 +1099,7 @@ body:has([data-hh-theme="neo-dark"] .expense-new-dialog[data-state="open"])
     background: var(--hh-l1-workspace);
   }
 
-  .expense-review-inline-evidence {
+  .expense-review-workspace .expense-review-inline-evidence {
     display: none;
   }
 
@@ -1455,7 +1452,7 @@ body:has([data-hh-theme="neo-dark"] .expense-new-dialog[data-state="open"])
 
   .upload-receipt-mobile-overlay {
     z-index: 9998 !important;
-    background: rgb(0 0 0 / 0.35) !important;
+    background: var(--hh-overlay-soft) !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
     animation: none !important;
@@ -1531,5 +1528,1671 @@ body:has([data-hh-theme="neo-dark"] .expense-new-dialog[data-state="open"])
   .expenses-ui-dialog[data-expense-component-surface][data-state="open"],
   .expenses-ui-dialog[data-expense-component-surface][data-state="closed"] {
     animation-duration: 0.01ms !important;
+  }
+}
+
+/* Expenses reference workspace: layout only; all appearance resolves through shared HH tokens. */
+.expenses-ui {
+  background: var(--hh-l0-canvas);
+}
+
+.expenses-ui [aria-current="page"] {
+  color: var(--hh-brand-accent-text);
+  border-bottom: 1px solid var(--hh-brand-gold);
+}
+.expenses-ui :is(button, a, input, select, textarea):focus-visible,
+.expenses-ui-dialog :is(button, a, input, select, textarea, summary):focus-visible,
+.expenses-ui [data-expense-keyboard-row]:focus-visible {
+  outline: 2px solid var(--hh-focus-ring);
+  outline-offset: 2px;
+}
+.expenses-ui :is(button, a, input, select, textarea) {
+  touch-action: manipulation;
+}
+.expenses-ui :is(button, a):active {
+  opacity: 1;
+  background-color: var(--hh-l3-pressed);
+}
+.expenses-ui ::selection,
+.expenses-ui-dialog ::selection {
+  background: var(--hh-brand-selected);
+  color: var(--hh-text-primary);
+}
+.expenses-ui [data-expense-amount][data-amount-direction="negative"] *,
+.expenses-ui [data-amount-direction="negative"],
+.expenses-ui-dialog [data-amount-direction="negative"] {
+  color: var(--hh-danger) !important;
+}
+.expenses-ui [data-expense-amount][data-amount-direction="positive"] *,
+.expenses-ui [data-amount-direction="positive"],
+.expenses-ui-dialog [data-amount-direction="positive"] {
+  color: var(--hh-success) !important;
+}
+.expenses-ui [data-expense-amount][data-amount-direction="neutral"] * {
+  color: var(--hh-text-primary) !important;
+}
+.expenses-ui .expense-compact-table-scroll {
+  scrollbar-color: var(--hh-border-strong) var(--hh-l2-operational-surface);
+}
+.expenses-ui .expense-compact-table-scroll table {
+  min-width: 1120px;
+}
+.expenses-ui .expense-compact-table-scroll th {
+  height: 36px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: none;
+}
+.expenses-ui .expense-compact-table-scroll .exp-row > td {
+  padding-block: 8px;
+  font-size: 12px;
+}
+.expenses-ui [data-expenses-kpi-strip] {
+  background: var(--hh-l1-workspace);
+  border: 1px solid var(--hh-border);
+  border-radius: 8px;
+}
+.expenses-ui [data-expenses-kpi-strip] dt {
+  text-transform: none;
+  font-weight: 500;
+}
+.expense-primary-filters select {
+  max-width: 170px;
+  min-height: 36px;
+  padding: 6px 28px 6px 10px;
+  border: 1px solid var(--hh-border-strong);
+  border-radius: 6px;
+  color: var(--hh-text-primary);
+  background: var(--hh-l1-workspace);
+  font-size: 12px;
+}
+.expense-filter-bar {
+  justify-content: flex-start !important;
+  max-width: none !important;
+}
+.expense-operations-workspace {
+  gap: 16px;
+}
+.expense-detail-panel {
+  transition:
+    opacity 200ms cubic-bezier(0.16, 1, 0.3, 1),
+    translate 200ms cubic-bezier(0.16, 1, 0.3, 1);
+  transform: translateX(0);
+}
+.expense-detail-panel-header {
+  padding: 12px 16px;
+}
+.expense-detail-panel-header p:first-child {
+  text-transform: none;
+  font-size: 14px;
+  color: var(--hh-text-primary);
+}
+.expense-detail-actions {
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 12px 16px;
+}
+.expense-detail-actions > div {
+  max-width: 100%;
+  flex-wrap: wrap;
+}
+.expense-detail-actions [data-expense-review-status] {
+  flex-basis: 100%;
+  order: 3;
+  padding: 0;
+  text-align: left;
+}
+.expense-detail-actions [data-expense-approval-action] {
+  color: var(--hh-action-primary-foreground);
+  background: var(--hh-action-primary);
+  border-color: var(--hh-action-primary);
+}
+.expense-detail-facts dd {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.expense-detail-view [data-expense-detail-identity] {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.expense-detail-view [data-expense-detail-identity] h2 {
+  order: -1;
+  margin-top: 0;
+  font-size: 20px;
+}
+.expense-detail-view [data-expense-detail-amount] {
+  font-size: 28px;
+}
+.expense-review-start {
+  display: none;
+  border: 1px solid var(--hh-border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--hh-l1-workspace);
+}
+.expense-review-start-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 32px;
+  text-align: center;
+  background: var(--hh-surface-subtle);
+}
+.expense-review-start h2 {
+  font-size: 14px;
+  font-weight: 600;
+}
+.expense-review-start p,
+.expense-review-start ol {
+  max-width: 34ch;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--hh-text-secondary);
+}
+.expense-review-start-details {
+  padding: 24px;
+  border-left: 1px solid var(--hh-border);
+}
+.expense-review-start ol {
+  list-style: decimal;
+  padding-left: 18px;
+  margin-block: 20px;
+}
+.expense-review-start li + li {
+  margin-top: 12px;
+}
+.expenses-ui[data-expenses-list-page="inbox"] [data-inbox-decision-brief] dl {
+  display: none;
+}
+.expenses-ui[data-expenses-list-page="inbox"] [data-inbox-shortcuts] {
+  display: none;
+}
+.expenses-ui[data-expenses-list-page="inbox"] [data-expense-mobile-ledger] {
+  border: 0;
+}
+.expenses-ui[data-expenses-list-page="inbox"] [data-expense-mobile-ledger] > li {
+  border-radius: 0;
+  border-width: 0 0 1px;
+  box-shadow: none;
+}
+.expenses-ui[data-expenses-list-page="inbox"] [data-inbox-toolbar] {
+  padding: 10px;
+}
+.expenses-ui[data-expenses-list-page="inbox"] [data-inbox-pagination] {
+  padding: 10px;
+  font-size: 11px;
+}
+.expenses-ui[data-expenses-list-page="inbox"] [data-expenses-pagination-controls] {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.expenses-ui[data-expenses-list-page="inbox"] [data-expenses-ledger-body] {
+  overflow: auto;
+}
+
+.expense-overview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-block: 20px;
+}
+.expense-overview-header h1 {
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.025em;
+}
+.expense-overview-header p {
+  margin-top: 6px;
+  color: var(--hh-text-secondary);
+  font-size: 13px;
+}
+.expense-overview-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-bottom: 20px;
+  border: 1px solid var(--hh-border);
+  border-radius: 6px;
+  background: var(--hh-l1-workspace);
+}
+.expense-overview-kpis > div {
+  padding: 12px 20px;
+  min-width: 0;
+}
+.expense-overview-kpis > div + div {
+  border-left: 1px solid var(--hh-border);
+}
+.expense-overview-kpis dt {
+  font-size: 12px;
+  min-height: 18px;
+  line-height: 18px;
+  color: var(--hh-text-secondary);
+}
+.expense-overview-kpis dd {
+  margin-top: 5px;
+  line-height: 28px;
+  letter-spacing: -0.02em;
+  font-size: 22px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.expense-overview-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1.8fr) minmax(280px, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+.expense-overview-main,
+.expense-overview-secondary {
+  display: grid;
+  min-width: 0;
+  gap: 16px;
+}
+.expense-overview-panel {
+  min-width: 0;
+  border: 1px solid var(--hh-border);
+  border-radius: 8px;
+  background: var(--hh-l2-operational-surface);
+  overflow: hidden;
+}
+.expense-overview-panel > header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 14px 20px;
+  min-height: 56px;
+}
+.expense-overview-panel h2 {
+  font-size: 14px;
+  line-height: 20px;
+  letter-spacing: -0.01em;
+  color: var(--hh-text-primary);
+  font-weight: 600;
+}
+.expense-overview-panel header p,
+.expense-period {
+  font-size: 11px;
+  color: var(--hh-text-secondary);
+  margin-top: 4px;
+}
+.expense-overview-panel header a,
+.expense-reimbursement-summary a {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 32px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--hh-brand-accent-text);
+}
+.expense-spending-chart {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 16px;
+  padding: 12px 24px 4px;
+}
+.expense-chart-column {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--hh-text-secondary);
+}
+.expense-chart-value {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  color: var(--hh-text-primary);
+}
+.expense-chart-track {
+  height: 112px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  width: 100%;
+  border-bottom: 1px solid var(--hh-border-strong);
+}
+.expense-chart-bar {
+  width: min(38px, 75%);
+  background: var(--hh-chart-history);
+  border-radius: 3px 3px 0 0;
+}
+.expense-chart-bar[data-current="true"] {
+  background: var(--hh-chart-current);
+}
+.expense-chart-bar[data-refund="true"] {
+  background: var(--hh-chart-positive);
+}
+.expense-chart-note {
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--hh-text-secondary);
+  padding: 10px 20px 14px;
+}
+.expense-attention-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 20px;
+  border-top: 1px solid var(--hh-border);
+}
+.expense-attention-row > span:first-child {
+  flex: 1;
+  min-width: 0;
+}
+.expense-overview :is(strong) {
+  font-weight: 600;
+}
+.expense-attention-row strong,
+.expense-recent-row strong {
+  display: block;
+  font-size: 13px;
+}
+.expense-attention-row small,
+.expense-recent-row small {
+  display: block;
+  margin-top: 2px;
+  color: var(--hh-text-secondary);
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+.expense-attention-count {
+  font-size: 13px;
+  min-width: 28px;
+  text-align: right;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.expense-attention-count[data-active="true"] {
+  color: var(--hh-warning);
+}
+.expense-recent-row {
+  display: grid;
+  grid-template-columns: 90px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 20px;
+  border-top: 1px solid var(--hh-border);
+}
+.expense-recent-row time {
+  font-size: 11px;
+  color: var(--hh-text-secondary);
+}
+.expense-recent-amount {
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.expense-panel-empty {
+  padding: 24px 20px;
+  font-size: 13px;
+  color: var(--hh-text-secondary);
+}
+.expense-panel-empty button {
+  margin-top: 12px;
+}
+.expense-category-row {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 12px 20px;
+  font-size: 12px;
+}
+.expense-category-row > span:first-child {
+  min-width: 0;
+  flex: 1;
+}
+.expense-category-track {
+  display: block;
+  height: 3px;
+  margin-top: 10px;
+  background: var(--hh-surface-subtle);
+}
+.expense-category-track > span {
+  display: block;
+  height: 100%;
+  background: var(--hh-text-secondary);
+}
+.expense-reimbursement-summary {
+  padding: 0 20px 20px;
+}
+.expense-reimbursement-summary > span {
+  font-size: 12px;
+  color: var(--hh-text-secondary);
+}
+.expense-reimbursement-summary strong {
+  display: block;
+  font-size: 22px;
+  line-height: 28px;
+  color: var(--hh-text-primary);
+  margin-block: 8px;
+  font-variant-numeric: tabular-nums;
+}
+.expense-reimbursement-summary p {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--hh-text-secondary);
+  margin-bottom: 12px;
+}
+.expense-exception-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 20px;
+  border-top: 1px solid var(--hh-border);
+  font-size: 12px;
+}
+@media (hover: hover) and (pointer: fine) {
+  .expense-overview-panel > a:hover {
+    background: var(--hh-l3-hover);
+  }
+  .expenses-ui [data-expense-id]:hover {
+    background: var(--hh-l3-hover);
+  }
+}
+@media (min-width: 768px) {
+  .expense-operations-workspace[data-expense-detail-open="true"] {
+    grid-template-columns: minmax(0, 1fr) 380px;
+    align-items: stretch;
+  }
+  .expense-operations-workspace[data-receipt-inbox-workspace] {
+    grid-template-columns: 260px minmax(0, 1fr);
+    gap: 12px;
+    min-height: 560px;
+  }
+  .expense-operations-workspace[data-receipt-inbox-workspace][data-expense-detail-open="true"] {
+    grid-template-columns: 260px minmax(0, 1fr);
+  }
+  .expense-review-start {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 340px;
+  }
+  .expense-review-workspace {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 340px;
+  }
+  .expense-operations-workspace[data-receipt-inbox-workspace] [data-expenses-ledger] {
+    visibility: visible;
+  }
+  .expense-operations-workspace[data-receipt-inbox-workspace] .expense-operations-ledger-panel {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+  .expense-operations-workspace[data-receipt-inbox-workspace] [data-expenses-ledger-body] {
+    flex: 1;
+    min-height: 0;
+  }
+  .expense-operations-workspace[data-receipt-inbox-workspace] [data-expenses-ledger-body] > * {
+    max-height: 65vh;
+    overflow-y: auto;
+  }
+  .expense-operations-workspace[data-receipt-inbox-workspace]
+    [data-expenses-pagination-controls]
+    > div {
+    flex-wrap: wrap;
+  }
+}
+@media (min-width: 768px) and (max-width: 1199px) {
+  .expense-operations-workspace[data-receipt-inbox-workspace],
+  .expense-operations-workspace[data-receipt-inbox-workspace][data-expense-detail-open="true"] {
+    grid-template-columns: clamp(220px, 28vw, 250px) minmax(0, 1fr);
+  }
+  .expense-review-workspace,
+  .expense-review-start {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .expense-review-start-details {
+    border-left: 0;
+    border-top: 1px solid var(--hh-border);
+  }
+  .expense-receipt-review-stage {
+    display: none;
+  }
+  .expense-review-workspace .expense-review-inline-evidence {
+    display: block;
+  }
+  .expense-detail-panel {
+    position: static;
+    width: auto;
+    min-height: 560px;
+    max-height: none;
+    z-index: auto;
+    border: 1px solid var(--hh-border);
+    border-radius: 8px;
+  }
+  .expense-operations-workspace[data-expense-detail-open="true"] > [data-expenses-ledger] {
+    visibility: visible;
+  }
+  .expense-overview-columns {
+    grid-template-columns: minmax(0, 1.4fr) minmax(260px, 1fr);
+    gap: 16px;
+  }
+  .expense-detail-actions {
+    flex-wrap: wrap;
+  }
+}
+@media (max-width: 767px) {
+  .expense-overview-columns {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+  .expense-overview-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .expense-overview-kpis > div {
+    padding: 12px;
+  }
+  .expense-overview-kpis > div:nth-child(3) {
+    border-left: 0;
+  }
+  .expense-overview-kpis > div:nth-child(n + 3) {
+    border-top: 1px solid var(--hh-border);
+  }
+  .expense-overview-kpis dd {
+    font-size: 20px;
+  }
+  .expense-overview-header h1 {
+    font-size: 22px;
+  }
+  .expense-spending-chart {
+    gap: 6px;
+    padding-inline: 12px;
+  }
+  .expense-recent-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 6px 12px;
+    padding: 14px 16px;
+  }
+  .expense-recent-row time {
+    grid-column: 1 / -1;
+  }
+  .expense-detail-actions {
+    flex-wrap: wrap;
+  }
+  .expenses-ui-dialog :is(input, textarea, select) {
+    font-size: 16px;
+  }
+  .expense-detail-panel {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .expenses-ui *,
+  .expenses-ui-dialog * {
+    animation: none !important;
+    transition-duration: 0ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+@media (forced-colors: active) {
+  .expenses-ui [aria-current="page"],
+  .expenses-ui [data-expense-id]:focus-visible {
+    outline: 2px solid Highlight;
+  }
+  .expense-chart-bar,
+  .expense-category-track > span {
+    background: CanvasText;
+    border: 1px solid CanvasText;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .expense-operations-workspace:not(
+      [data-receipt-inbox-workspace]
+    )[data-expense-detail-open="true"] {
+    grid-template-columns: minmax(220px, 1fr) minmax(300px, 1.25fr);
+  }
+  .expense-operations-workspace[data-expense-detail-open="true"] .expense-detail-panel {
+    min-height: 560px;
+    max-height: 75dvh;
+  }
+}
+@media (max-width: 767px) {
+  .expense-detail-panel .expense-detail-back {
+    display: inline-flex;
+  }
+}
+
+/* Premium polish: preserve the workspace composition and make state and information sharper. */
+.expenses-ui .expense-compact-table-scroll .expense-ledger-date-group > td {
+  padding-block: 0;
+}
+.expenses-ui .expense-ledger-date-group button {
+  font-size: 12px;
+  line-height: 18px;
+}
+.expenses-ui .expense-compact-table-scroll [data-expense-merchant] > p:first-child {
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 600;
+}
+.expenses-ui [data-expense-row-metadata],
+.expenses-ui [data-expense-row-description],
+.expenses-ui [data-expense-mobile-context] {
+  color: var(--hh-text-secondary);
+  line-height: 16px;
+}
+.expenses-ui .expense-status-badge {
+  border-radius: 4px;
+  font-size: 11px;
+  line-height: 16px;
+}
+.expenses-ui .expense-status-inline {
+  color: var(--hh-text-secondary);
+  font-size: 11px;
+  gap: 3px;
+}
+.expenses-ui .expense-primary-filters {
+  gap: 6px;
+}
+.expenses-ui [data-expenses-list-toolbar="desktop"] {
+  column-gap: 6px;
+  row-gap: 8px;
+}
+.expenses-ui [data-expenses-list-toolbar="desktop"] > div:first-child {
+  min-width: 160px;
+}
+.expenses-ui .expense-filter-bar input {
+  background: var(--hh-l2-operational-surface);
+}
+.expenses-ui [data-expenses-kpi-strip] dd {
+  line-height: 24px;
+  font-size: 17px;
+}
+.expenses-ui [data-expense-amount] {
+  font-variant-numeric: tabular-nums lining-nums;
+}
+.expense-overview-kpis > div:first-child dd {
+  font-size: 26px;
+}
+.expense-chart-column[data-current="true"] > span:last-child {
+  font-weight: 600;
+  color: var(--hh-brand-accent-text);
+}
+.expense-chart-column[data-current="true"] .expense-chart-value {
+  font-weight: 600;
+}
+.expense-chart-column[data-zero="true"] .expense-chart-value {
+  color: var(--hh-text-secondary);
+}
+.expense-spending-chart[data-zero-trend="true"] {
+  padding-top: 2px;
+}
+.expense-spending-chart[data-zero-trend="true"] .expense-chart-track {
+  height: 8px;
+}
+.expense-chart-zero-note {
+  margin: 14px 20px 0;
+  padding: 12px;
+  border: 1px solid var(--hh-border-subtle);
+  background: var(--hh-l1-workspace);
+  color: var(--hh-text-secondary);
+  font-size: 12px;
+  line-height: 18px;
+}
+.expense-exception-row strong {
+  font-variant-numeric: tabular-nums;
+}
+.expense-exception-row strong[data-attention="true"] {
+  color: var(--hh-warning);
+}
+.expense-overview-secondary .expense-overview-panel > header {
+  align-items: flex-start;
+}
+.expenses-ui .expense-detail-panel {
+  background: var(--hh-l4-floating-surface) !important;
+}
+.expense-detail-panel-body {
+  background: var(--hh-l4-floating-surface);
+}
+.expense-detail-panel-header,
+.expense-detail-actions {
+  border-color: var(--hh-border);
+}
+.expense-detail-facts dt {
+  font-size: 11px;
+  line-height: 16px;
+}
+.expense-detail-facts dd {
+  margin-top: 3px;
+  line-height: 19px;
+}
+.expense-detail-view > :not([hidden]) ~ :not([hidden]) {
+  margin-top: 20px;
+}
+.expense-detail-view > section + section {
+  scroll-margin-top: 16px;
+}
+.expense-detail-panel input[aria-invalid="true"],
+.expense-detail-panel [role="combobox"][aria-invalid="true"] {
+  border-color: var(--hh-danger);
+  outline: 1px solid var(--hh-danger);
+  outline-offset: 0;
+}
+.expense-detail-panel [data-expense-review-field="amount"] > label {
+  color: var(--hh-text-secondary);
+}
+.expense-detail-panel [data-expense-review-field="amount"][data-amount-direction="negative"] input {
+  color: var(--hh-danger);
+}
+.expense-detail-panel [data-expense-review-field="amount"][data-amount-direction="positive"] input {
+  color: var(--hh-success);
+}
+.expense-receipt-frame {
+  border-radius: 4px;
+  box-shadow: var(--hh-shadow-operational);
+}
+.expense-receipt-review-stage {
+  background: var(--hh-l1-workspace);
+}
+.expense-receipt-review-stage > div > div:first-child {
+  border-bottom: 1px solid var(--hh-border);
+  margin-bottom: 12px;
+}
+.expense-receipt-review-stage > div > div:first-child p:first-child {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: none;
+  color: var(--hh-text-primary);
+}
+.expenses-ui[data-expenses-list-page="inbox"] .exp-divide > .exp-row {
+  border-bottom: 1px solid var(--hh-border-subtle) !important;
+}
+.expenses-ui[data-expenses-list-page="inbox"] .exp-row[data-expense-selected="true"] {
+  background: var(--hh-l3-selected);
+  box-shadow: inset 1px 0 0 var(--hh-brand-gold) !important;
+}
+.expenses-ui[data-expenses-list-page="inbox"] [data-expense-row-primary] {
+  align-items: flex-start;
+  gap: 8px;
+}
+.expenses-ui[data-expenses-list-page="inbox"] [data-expense-amount] {
+  font-size: 13px;
+  min-width: 0;
+  width: auto;
+  max-width: 45%;
+}
+.expenses-ui[data-expenses-list-page="inbox"] [data-expense-amount] > span {
+  font-size: 13px;
+  line-height: 18px;
+}
+.expenses-ui[data-expenses-list-page="inbox"] [data-inbox-pagination] {
+  border-top: 1px solid var(--hh-border);
+}
+.expense-detail-actions [data-expense-approval-action]:hover:not(:disabled) {
+  background: var(--hh-action-primary-hover);
+}
+.expense-detail-actions [data-expense-approval-action]:active:not(:disabled) {
+  background: var(--hh-action-primary-hover);
+}
+.expense-detail-actions [data-expense-approval-action] {
+  min-height: 44px;
+  font-weight: 600;
+}
+@media (hover: hover) and (pointer: fine) {
+  .expenses-ui :is(button, a, [data-expense-id]):hover,
+  .expenses-ui-dialog :is(button, a):hover {
+    transition-duration: 140ms;
+  }
+}
+@media (min-width: 1200px) and (pointer: fine) {
+  .expense-review-fields :is(input:not([type="checkbox"]), [role="combobox"]) {
+    min-height: 38px;
+    height: 38px;
+  }
+  .expense-review-fields {
+    row-gap: 14px;
+  }
+  .expenses-ui [data-expense-keyboard-row] button[aria-label^="Select"] {
+    min-width: 24px;
+    min-height: 24px;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  @starting-style {
+    .expense-detail-panel {
+      translate: 6px;
+      opacity: 0.72;
+    }
+  }
+}
+@media (max-width: 767px) {
+  .expense-overview-header > div:last-child {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+  .expense-overview-header button {
+    min-height: 44px;
+    padding-inline: 10px;
+  }
+  .expense-overview-kpis > div:first-child dd {
+    font-size: 22px;
+  }
+  .expense-recent-row {
+    padding-block: 12px;
+  }
+  .expense-chart-value {
+    font-size: 10px;
+  }
+  .expense-detail-actions[data-expense-inline-review-actions] {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .expense-detail-actions[data-expense-inline-review-actions] > div:last-child {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+    width: 100%;
+  }
+  .expense-detail-actions[data-expense-inline-review-actions] > div:last-child button {
+    min-width: 0;
+    width: 100%;
+    padding-inline: 10px;
+    min-height: 48px;
+  }
+  .expense-detail-actions [data-expense-review-status] {
+    line-height: 18px;
+  }
+}
+
+/* Button color roles only: neutral primary, white secondary; gold remains an accent. */
+:is(.expenses-ui, .expenses-ui-dialog)
+  :is(.exp-btn-primary, [class~="bg-[var(--hh-action-primary)]"]) {
+  border-color: var(--hh-action-primary) !important;
+  background-color: var(--hh-action-primary) !important;
+  color: var(--hh-action-primary-foreground) !important;
+}
+:is(.expenses-ui, .expenses-ui-dialog)
+  :is(.exp-btn-primary, [class~="bg-[var(--hh-action-primary)]"]):is(:hover, :active):not(
+    :disabled
+  ),
+.expense-new-dialog
+  [data-new-expense-save="true"][data-new-expense-save-readiness="ready"]:is(:hover, :active):not(
+    :disabled
+  ) {
+  background-color: var(--hh-action-primary-hover) !important;
+  border-color: var(--hh-action-primary-hover) !important;
+}
+:is(.expenses-ui, .expenses-ui-dialog) button[class~="bg-[var(--hh-l1-workspace)]"] {
+  background-color: var(--hh-l2-operational-surface);
+  color: var(--hh-text-primary);
+}
+:is(.expenses-ui, .expenses-ui-dialog)
+  button[class~="bg-[var(--hh-l1-workspace)]"]:is(:hover, :active):not(:disabled) {
+  background-color: var(--hh-l3-hover);
+}
+body:has(.expenses-ui) [data-workspace-navigation] a[aria-current="page"] {
+  background-color: var(--hh-surface-primary);
+  color: var(--hh-brand-accent-text);
+  border-bottom-color: var(--hh-brand-gold);
+}
+body:has(.expenses-ui) [data-sidebar-navigation] a[aria-current="page"] svg {
+  color: var(--hh-brand-accent);
+}
+
+.expenses-ui [data-expense-operations-shell],
+.expenses-ui [data-expense-operations-shell] a[aria-current="page"] {
+  background-color: var(--hh-surface-primary);
+}
+.expenses-ui [data-expense-operations-shell] a[aria-current="page"] {
+  color: var(--hh-text-primary);
+  border-bottom-color: var(--hh-brand-gold);
+}
+.expenses-ui .expense-status-inline [data-testid="expense-status-inline-dot"] {
+  color: var(--hh-success);
+}
+.expenses-ui .expense-status-badge[class~="text-[var(--hh-danger)]"] {
+  color: var(--hh-danger);
+  border-color: var(--hh-danger-border);
+  background-color: var(--hh-danger-soft-fill);
+}
+.expenses-ui .expense-status-badge[class~="text-[var(--hh-danger)]"] > span {
+  background-color: var(--hh-danger);
+}
+
+/* List inspection density; Receipt Inbox keeps its existing workspace proportions. */
+@media (min-width: 1200px) {
+  .expense-operations-workspace[data-expense-detail-open="true"]:not(
+      [data-receipt-inbox-workspace]
+    ) {
+    grid-template-columns: minmax(0, 1fr) 420px;
+  }
+}
+.expense-detail-view[data-expense-inspection] > :not([hidden]) ~ :not([hidden]) {
+  margin-top: 14px;
+}
+.expense-detail-view[data-expense-inspection] .expense-detail-facts {
+  row-gap: 12px;
+}
+.expense-detail-view[data-expense-inspection] .expense-evidence-action {
+  min-height: 60px;
+}
+
+/* Expenses List polish: one content-sized ledger surface, using existing Radix roles. */
+.expenses-ui[data-expenses-list-page="expenses"] [data-expenses-pagination-controls] {
+  gap: 6px;
+}
+.expenses-ui[data-expenses-list-page="expenses"] [data-expenses-pagination] {
+  padding: 4px 12px;
+  background: var(--hh-surface-primary);
+  border-top: 1px solid var(--hh-border-subtle);
+  font-size: 11px;
+}
+.expenses-ui[data-expenses-list-page="expenses"] [data-expense-keyboard-row]:focus-visible {
+  outline: 2px solid var(--gold-9);
+  outline-offset: -2px;
+}
+.expenses-ui[data-expenses-list-page="expenses"]
+  [data-expense-keyboard-row][data-expense-active="true"] {
+  background-color: var(--gold-1) !important;
+  box-shadow: inset 1px 0 0 var(--hh-brand-gold);
+}
+.expenses-ui[data-expenses-list-page="expenses"]
+  .expense-ledger-date-group
+  button
+  > span:last-child {
+  flex: 1;
+  justify-content: flex-end;
+  gap: 6px;
+  font-size: 11px;
+}
+.expenses-ui[data-expenses-list-page="expenses"]
+  .expense-ledger-date-group
+  button
+  > span:first-of-type {
+  font-weight: 600;
+}
+.expenses-ui[data-expenses-list-page="expenses"] .expense-ledger-date-group button {
+  padding-block: 4px;
+  font-size: 12px;
+  line-height: 18px;
+}
+.expenses-ui[data-expenses-list-page="expenses"] .expense-ledger-date-group {
+  background: var(--hh-surface-subtle);
+}
+.expenses-ui[data-expenses-list-page="expenses"] [data-expense-amount] {
+  text-align: right;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+.expenses-ui[data-expenses-list-page="expenses"] [data-expense-context] :is(span, p) {
+  color: var(--hh-text-secondary);
+  font-size: 12px;
+}
+.expenses-ui[data-expenses-list-page="expenses"]
+  .expense-compact-table-scroll
+  [data-expense-merchant]
+  > p
+  + p {
+  margin-top: 1px;
+  font-size: 11px;
+  line-height: 15px;
+  color: var(--hh-text-secondary);
+}
+.expenses-ui[data-expenses-list-page="expenses"]
+  .expense-compact-table-scroll
+  [data-expense-merchant]
+  > p:first-child {
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 600;
+}
+.expenses-ui[data-expenses-list-page="expenses"] .expense-compact-table-scroll {
+  max-height: 65dvh;
+  overflow-y: auto;
+}
+.expenses-ui[data-expenses-list-page="expenses"] .expense-compact-table-scroll .exp-row {
+  height: 46px;
+  min-height: 46px;
+}
+.expenses-ui[data-expenses-list-page="expenses"] .expense-compact-table-scroll .exp-row > td {
+  padding-block: 4px;
+}
+.expenses-ui[data-expenses-list-page="expenses"] [data-expense-context] > span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.expenses-ui[data-expenses-list-page="expenses"] .expense-status-inline {
+  height: 20px;
+}
+.expenses-ui[data-expenses-list-page="expenses"] .expense-compact-table-scroll thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  height: 32px;
+  padding-block: 7px;
+  background-color: var(--gray-3);
+  color: var(--hh-text-secondary);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 16px;
+  text-transform: none;
+  letter-spacing: normal;
+}
+.expenses-ui[data-expenses-list-page="expenses"] .expense-compact-table-scroll thead {
+  background: var(--gray-3);
+}
+.expenses-ui[data-expenses-list-page="expenses"]
+  [data-expenses-list-toolbar="desktop"]
+  [data-filter-active="true"] {
+  border-color: var(--hh-border-emphasis);
+  font-weight: 500;
+  color: var(--hh-text-primary);
+}
+.expenses-ui[data-expenses-list-page="expenses"]
+  [data-expenses-list-toolbar="desktop"]
+  :is(
+    input,
+    select,
+    button[role="combobox"],
+    button[aria-haspopup="dialog"],
+    [data-expenses-filter-date]
+  ) {
+  height: 36px;
+  min-height: 36px;
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 18px;
+  border: 1px solid var(--hh-border-input);
+  background-color: var(--hh-surface-primary);
+  color: var(--hh-text-primary);
+  box-shadow: none;
+  font-weight: 400;
+}
+.expenses-ui[data-expenses-list-page="expenses"]
+  [data-expenses-list-toolbar="desktop"]
+  > div:first-child {
+  flex: 1 1 240px;
+  max-width: none;
+  min-width: 180px;
+}
+.expenses-ui[data-expenses-list-page="expenses"] [data-expenses-list-toolbar="desktop"] {
+  gap: 6px;
+}
+.expenses-ui[data-expenses-list-page="expenses"]
+  .expense-operations-ledger-panel
+  > [data-neo-toolbar="true"] {
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--hh-border-subtle);
+}
+.expenses-ui[data-expenses-list-page="expenses"] .expense-operations-ledger-panel {
+  border: 1px solid var(--hh-border-subtle);
+  border-radius: 6px;
+  background: var(--hh-surface-primary);
+  box-shadow: var(--hh-shadow-operational);
+}
+.expenses-ui[data-expenses-list-page="expenses"] [data-expenses-kpi-strip] dd {
+  margin-top: 2px;
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 26px;
+  color: var(--hh-text-primary);
+  font-variant-numeric: tabular-nums;
+}
+.expenses-ui[data-expenses-list-page="expenses"] [data-expenses-kpi-strip] dt {
+  font-size: 10px;
+  font-weight: 400;
+  line-height: 14px;
+}
+.expenses-ui[data-expenses-list-page="expenses"] [data-expenses-kpi-strip] dl {
+  column-gap: 16px;
+}
+.expenses-ui[data-expenses-list-page="expenses"] [data-expenses-kpi-strip] {
+  padding-block: 0;
+  background: var(--hh-surface-subtle);
+  border: 0;
+}
+@media (hover: hover) and (pointer: fine) {
+  .expenses-ui[data-expenses-list-page="expenses"]
+    [data-expense-keyboard-row]:not([data-expense-active="true"]):hover {
+    background-color: var(--hh-l3-hover) !important;
+  }
+}
+@media (min-width: 768px) {
+  .expenses-ui[data-expenses-list-page="expenses"]
+    [data-expenses-pagination]
+    :is(button, [role="combobox"]) {
+    height: 32px;
+    min-height: 32px;
+    border-radius: 6px;
+  }
+  .expenses-ui[data-expenses-list-page="expenses"] [data-expenses-pagination] button {
+    width: 32px;
+    min-width: 32px;
+    border-color: transparent;
+  }
+}
+.expenses-ui[data-expenses-list-page="expenses"][data-expense-workspace-detail-open="false"]
+  [data-expenses-ledger] {
+  align-self: start;
+}
+.expenses-ui[data-expenses-list-page="expenses"][data-expense-workspace-detail-open="false"]
+  [data-expenses-ledger],
+.expenses-ui[data-expenses-list-page="expenses"][data-expense-workspace-detail-open="false"]
+  .expense-operations-ledger-panel,
+.expenses-ui[data-expenses-list-page="expenses"][data-expense-workspace-detail-open="false"]
+  [data-expenses-ledger-body],
+.expenses-ui[data-expenses-list-page="expenses"][data-expense-workspace-detail-open="false"]
+  [data-expense-ledger-content],
+.expenses-ui[data-expenses-list-page="expenses"][data-expense-workspace-detail-open="false"]
+  .expense-compact-table-scroll {
+  height: auto;
+  min-height: 0;
+  flex: 0 0 auto;
+}
+@media (max-width: 767px) {
+  .expenses-ui[data-expenses-list-page="expenses"] [data-expenses-kpi-strip] dl {
+    gap: 8px 4px;
+  }
+  .expenses-ui[data-expenses-list-page="expenses"] [data-expenses-kpi-strip] dd {
+    font-size: 20px;
+    line-height: 26px;
+  }
+}
+
+.expenses-ui[data-expenses-list-page="expenses"] [data-expenses-kpi-strip] dd > * {
+  font-size: inherit;
+  line-height: inherit;
+  font-weight: inherit;
+}
+.expenses-ui[data-expenses-list-page="expenses"] [data-expense-context] :is(span, p) {
+  opacity: 1;
+}
+
+/* Final precision details stay within the list and reuse official Radix steps. */
+.expenses-ui[data-expenses-list-page="expenses"] [data-expenses-kpi-strip] dl > div {
+  position: relative;
+  padding-block: 6px;
+}
+.expenses-ui[data-expenses-list-page="expenses"] [data-expenses-kpi-strip] dl > div + div::before {
+  content: "";
+  position: absolute;
+  inset-inline-start: -8px;
+  top: 10px;
+  bottom: 10px;
+  width: 1px;
+  background: var(--hh-border-subtle);
+}
+.expenses-ui[data-expenses-list-page="expenses"] .expense-primary-filters {
+  align-items: center;
+  gap: 6px;
+}
+.expenses-ui[data-expenses-list-page="expenses"]
+  [data-expenses-list-toolbar="desktop"]
+  :is(select, button[aria-haspopup="dialog"], [data-expenses-filter-date]) {
+  padding-inline: 10px;
+}
+.expenses-ui[data-expenses-list-page="expenses"]
+  [data-expenses-list-toolbar="desktop"]
+  :is(input, select, button):focus-visible {
+  outline: 2px solid var(--gold-9);
+  outline-offset: 2px;
+}
+.expenses-ui[data-expenses-list-page="expenses"]
+  [data-expenses-list-toolbar="desktop"]
+  :is([data-filter-active="true"], button:has([data-expenses-active-filter-count])) {
+  border-color: var(--hh-brand-gold);
+  font-weight: 500;
+}
+.expenses-ui[data-expenses-list-page="expenses"]
+  [data-expenses-ledger]
+  [class~="bg-[var(--hh-warning-soft-fill)]"] {
+  color: var(--amber-12);
+}
+.expenses-ui[data-expenses-list-page="expenses"]
+  [data-expenses-pagination-controls]
+  [role="combobox"] {
+  border-color: var(--hh-border-subtle);
+  color: var(--hh-text-secondary);
+}
+@media (max-width: 767px) {
+  .expenses-ui[data-expenses-list-page="expenses"] [data-expenses-kpi-strip] dl > div::before {
+    display: none;
+  }
+}
+@media (forced-colors: active) {
+  .expenses-ui[data-expenses-list-page="expenses"]
+    [data-expense-keyboard-row][data-expense-active="true"] {
+    outline: 1px solid Highlight;
+    outline-offset: -1px;
+  }
+  .expenses-ui[data-expenses-list-page="expenses"] [data-expense-keyboard-row]:focus-visible,
+  .expenses-ui[data-expenses-list-page="expenses"]
+    [data-expenses-list-toolbar="desktop"]
+    :is(input, select, button):focus-visible {
+    outline: 2px solid Highlight;
+  }
+}
+
+/* Stable group columns and compact status text; no state or amount color overrides. */
+.expenses-ui[data-expenses-list-page="expenses"]
+  [data-expense-date-group="desktop"]
+  button
+  > span:last-child {
+  display: grid;
+  grid-template-columns: minmax(64px, max-content) 8px minmax(96px, max-content);
+  text-align: right;
+  white-space: nowrap;
+}
+.expenses-ui[data-expenses-list-page="expenses"]
+  .expense-compact-table-scroll
+  .expense-status-badge {
+  height: 20px;
+  min-height: 20px;
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.expenses-ui[data-expenses-list-page="expenses"]
+  .expense-compact-table-scroll
+  .expense-status-inline
+  [data-testid="expense-status-inline-dot"] {
+  font-size: 8px;
+}
+.expenses-ui[data-expenses-list-page="expenses"]
+  [data-expenses-pagination-controls]
+  > div:first-child
+  > span {
+  min-width: 24px;
+}
+
+/* Receipt Inbox: connected operational surfaces; existing responsive workflow is retained. */
+.expenses-ui[data-expenses-list-page="inbox"] nav[aria-label="Receipt Inbox sources"] {
+  padding: 0;
+  gap: 12px;
+  border-radius: 0;
+  background: var(--hh-surface-primary);
+  border-bottom: 1px solid var(--hh-border-subtle);
+}
+.expenses-ui[data-expenses-list-page="inbox"] nav[aria-label="Receipt Inbox sources"] a {
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+  color: var(--hh-text-secondary);
+  padding-inline: 6px;
+}
+.expenses-ui[data-expenses-list-page="inbox"]
+  nav[aria-label="Receipt Inbox sources"]
+  a[aria-current="page"] {
+  color: var(--hh-text-primary);
+  border-bottom: 2px solid var(--hh-brand-gold);
+  font-weight: 600;
+}
+.expenses-ui[data-expenses-list-page="inbox"] [data-inbox-decision-brief] {
+  border: 0;
+  background: var(--hh-surface-subtle);
+  padding: 4px 8px;
+}
+.expenses-ui[data-expenses-list-page="inbox"] [data-inbox-queue-summary] {
+  gap: 6px 12px;
+  font-size: 11px;
+  line-height: 18px;
+}
+.expenses-ui[data-expenses-list-page="inbox"] [data-inbox-queue-surface] > h2 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  font-size: 13px;
+}
+.expenses-ui[data-expenses-list-page="inbox"] [data-neo-toolbar] :is(input, button[aria-haspopup]) {
+  border-radius: 6px;
+  border-color: var(--hh-border-input);
+  font-size: 12px;
+}
+.expenses-ui[data-expenses-list-page="inbox"] [data-expense-mobile-ledger] > li.exp-row {
+  padding: 12px;
+  background: var(--hh-surface-primary);
+}
+.expenses-ui[data-expenses-list-page="inbox"]
+  [data-expense-keyboard-row][data-expense-active="true"] {
+  background: var(--gold-1) !important;
+  box-shadow: inset 1px 0 0 var(--hh-brand-gold);
+}
+.expenses-ui[data-expenses-list-page="inbox"] [data-expense-merchant] > p:first-child {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 18px;
+}
+.expenses-ui[data-expenses-list-page="inbox"]
+  :is([data-inbox-item-date], [data-inbox-compact-context]) {
+  font-size: 11px;
+  line-height: 16px;
+}
+.expenses-ui[data-expenses-list-page="inbox"] [data-expense-amount] {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.expenses-ui[data-expenses-list-page="inbox"]
+  :is([data-expenses-empty], [data-expenses-empty-mobile]) {
+  min-height: 0;
+  padding: 24px 12px;
+  justify-content: flex-start;
+}
+.expenses-ui[data-expenses-list-page="inbox"] [data-expenses-empty] > * {
+  padding: 12px 0;
+}
+.expenses-ui[data-expenses-list-page="inbox"] .expense-review-start-preview,
+.expenses-ui[data-expenses-list-page="inbox"] [data-expense-receipt-stage] {
+  background: var(--gray-3);
+}
+.expenses-ui[data-expenses-list-page="inbox"] .expense-review-start-preview {
+  gap: 8px;
+  padding: 24px;
+}
+.expenses-ui[data-expenses-list-page="inbox"] .expense-review-start-preview p {
+  font-size: 12px;
+  max-width: 28ch;
+}
+.expenses-ui[data-expenses-list-page="inbox"] .expense-review-start-details {
+  padding: 16px;
+  background: var(--hh-surface-primary);
+}
+.expenses-ui[data-expenses-list-page="inbox"] .expense-review-start ol {
+  margin-block: 14px;
+  font-size: 12px;
+}
+.expenses-ui[data-expenses-list-page="inbox"] .expense-review-start li + li {
+  margin-top: 6px;
+}
+.expenses-ui[data-expenses-list-page="inbox"] .expense-receipt-frame {
+  border-radius: 4px;
+  border: 1px solid var(--hh-border-subtle);
+  background: var(--hh-surface-primary);
+  box-shadow: var(--hh-shadow-operational);
+}
+.expenses-ui[data-expenses-list-page="inbox"] .expense-receipt-frame[data-receipt-ready="false"] {
+  background: var(--gray-3);
+  border-color: transparent;
+  box-shadow: none;
+}
+.expenses-ui[data-expenses-list-page="inbox"] [data-expense-receipt-stage] > div > div:first-child {
+  border-bottom: 1px solid var(--hh-border-subtle);
+  margin-bottom: 12px;
+  background: var(--hh-surface-subtle);
+}
+.expenses-ui[data-expenses-list-page="inbox"]
+  [data-expense-receipt-stage]
+  > div
+  > div:first-child
+  p:first-child {
+  color: var(--hh-text-primary);
+  font-size: 13px;
+  text-transform: none;
+}
+.expenses-ui[data-expenses-list-page="inbox"] [data-expense-inline-review] {
+  --tw-space-y-reverse: 0;
+}
+.expenses-ui[data-expenses-list-page="inbox"] [data-expense-inline-review] > * + * {
+  margin-top: 16px;
+}
+.expenses-ui[data-expenses-list-page="inbox"] [data-expense-inline-review] > .space-y-3 > .grid {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+}
+.expenses-ui[data-expenses-list-page="inbox"] .expense-review-fields > [data-expense-review-field] {
+  grid-column: 1 / -1;
+}
+.expenses-ui[data-expenses-list-page="inbox"] .expense-detail-panel-body {
+  padding: 14px 16px;
+}
+.expenses-ui[data-expenses-list-page="inbox"] [data-expense-inline-review] label {
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 16px;
+}
+.expenses-ui[data-expenses-list-page="inbox"] [data-expense-inline-review-actions] {
+  padding: 10px 12px;
+  background: var(--hh-surface-primary);
+  border-top: 1px solid var(--hh-border-subtle);
+}
+.expenses-ui[data-expenses-list-page="inbox"]
+  :is(button, input, select, textarea, a, [tabindex]):focus-visible {
+  outline: 2px solid var(--gold-9);
+  outline-offset: -2px;
+}
+.expenses-ui[data-expenses-list-page="inbox"] [class~="bg-[var(--hh-warning-soft-fill)]"] {
+  color: var(--amber-12);
+}
+@media (min-width: 768px) {
+  .expenses-ui[data-expenses-list-page="inbox"] [data-receipt-inbox-workspace] {
+    gap: 0;
+    border: 1px solid var(--hh-border-subtle);
+    border-radius: 6px;
+    background: var(--hh-surface-primary);
+    box-shadow: var(--hh-shadow-operational);
+  }
+  .expenses-ui[data-expenses-list-page="inbox"]
+    :is(.expense-operations-ledger-panel, .expense-review-start, .expense-detail-panel) {
+    border: 0 !important;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  .expenses-ui[data-expenses-list-page="inbox"] [data-expenses-ledger] {
+    border-right: 1px solid var(--hh-border-subtle);
+  }
+  .expenses-ui[data-expenses-list-page="inbox"]
+    [data-expense-inline-review]
+    :is(input:not([type="checkbox"]), button[role="combobox"]) {
+    min-height: 38px;
+    height: 38px;
+    border-radius: 6px;
+  }
+  .expenses-ui[data-expenses-list-page="inbox"]
+    [data-neo-toolbar]
+    :is(input, button[aria-haspopup]) {
+    height: 36px;
+    min-height: 36px;
+  }
+}
+@media (min-width: 1200px) {
+  .expenses-ui[data-expenses-list-page="inbox"] [data-receipt-inbox-workspace] {
+    grid-template-columns: 280px minmax(0, 1fr);
+  }
+  .expenses-ui[data-expenses-list-page="inbox"]
+    :is(.expense-review-workspace, .expense-review-start) {
+    grid-template-columns: minmax(0, 1fr) 360px;
+  }
+  .expenses-ui[data-expenses-list-page="inbox"] .expense-review-panel {
+    border-left: 1px solid var(--hh-border-subtle);
+  }
+}
+@media (hover: hover) and (pointer: fine) {
+  .expenses-ui[data-expenses-list-page="inbox"]
+    [data-expense-keyboard-row]:not([data-expense-active="true"]):hover {
+    background: var(--hh-l3-hover) !important;
+  }
+}
+@media (forced-colors: active) {
+  .expenses-ui[data-expenses-list-page="inbox"]
+    [data-expense-keyboard-row][data-expense-active="true"] {
+    outline: 1px solid Highlight;
+    outline-offset: -1px;
+  }
+  .expenses-ui[data-expenses-list-page="inbox"]
+    :is(button, input, select, textarea, a, [tabindex]):focus-visible {
+    outline: 2px solid Highlight;
+  }
+}
+
+/* Shared Expenses feedback: surfaces retain their approved Radix roles. */
+.expenses-ui :is([data-expense-id], [data-worker-receipt-id], .expense-recent-row) {
+  transition:
+    background-color 160ms cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 160ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.expenses-ui
+  :is([data-expense-operations-shell] a, nav[aria-label="Receipt Inbox sources"] a, [role="tab"]) {
+  transition-property: background-color, border-color !important;
+  transition-duration: 160ms;
+}
+@media (hover: hover) and (pointer: fine) {
+  .expenses-ui :is([data-expense-id], [data-worker-receipt-id], .expense-recent-row):hover {
+    transition-duration: 120ms;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  :is(.expenses-ui, .expenses-ui-dialog)
+    button:not(:disabled):not([aria-disabled="true"]):not([role]):not(
+      [data-worker-receipt-control]
+    ):not(:focus-visible):active {
+    scale: 0.985;
+    transition-duration: 120ms;
+  }
+  body:has(.expenses-ui) [data-toast][aria-label^="Success:"][data-state="open"],
+  .worker-receipts-ui [role="status"]:has([class*="hh-success"]),
+  .worker-receipts-ui [role="status"][class*="hh-success"] {
+    animation: expense-confirmation-in 180ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+}
+@keyframes expense-confirmation-in {
+  from {
+    opacity: 0.72;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .expenses-ui,
+  .expenses-ui *,
+  .expenses-ui *::before,
+  .expenses-ui *::after,
+  .expenses-ui-dialog,
+  .expenses-ui-dialog *,
+  .expenses-ui-overlay,
+  body:has(.expenses-ui) [data-toast],
+  body:has(.expenses-ui) .hh-overlay-scrim,
+  .expense-detail-panel {
+    animation: none !important;
+    transition-duration: 0ms !important;
+    scale: none !important;
+    translate: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* One outer geometry for every Expenses sibling; internal workspaces remain independent. */
+.expenses-ui {
+  --expenses-shell-gutter: 16px;
+  --expenses-shell-gap: 24px;
+  --expenses-shell-nav-height: 44px;
+  --expenses-shell-header-height: 64px;
+}
+.expenses-ui .expenses-page-shell {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+  margin-inline: auto;
+  padding: 16px var(--expenses-shell-gutter) max(24px, env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: var(--expenses-shell-gap);
+}
+.expenses-page-shell .expenses-page-stack {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--expenses-shell-gap);
+}
+.expenses-page-shell > *,
+.expenses-page-stack > * {
+  margin-block: 0;
+}
+.expenses-page-shell [data-expense-operations-shell] {
+  margin: 0;
+  padding-block: 0;
+  min-height: var(--expenses-shell-nav-height);
+}
+.expenses-page-shell [data-expense-operations-shell] nav {
+  padding-block: 0;
+}
+.expenses-page-shell [data-expense-operations-shell] a {
+  min-height: var(--expenses-shell-nav-height);
+}
+.expenses-page-shell .expenses-page-header {
+  min-height: var(--expenses-shell-header-height);
+  margin: 0;
+  padding-block: 0;
+}
+.expenses-page-shell .expenses-page-header p {
+  margin-top: 4px;
+}
+.expenses-page-shell .expense-overview-header {
+  align-items: flex-start;
+}
+@media (min-width: 768px) {
+  .expenses-ui {
+    --expenses-shell-gutter: 24px;
+  }
+}
+
+[data-app-scroll-root]:has(.expenses-page-shell) {
+  scrollbar-gutter: stable;
+}
+body:has(.expenses-page-shell) [data-workspace-navigation] {
+  padding-inline: 16px;
+}
+@media (min-width: 768px) {
+  body:has(.expenses-page-shell) [data-workspace-navigation] {
+    padding-inline: 24px;
+  }
+}
+
+/* Tablet review uses the current page-shell wrapper and scrolls each pane internally. */
+@media (min-width: 768px) and (max-width: 1199px) {
+  .expenses-ui[data-expenses-list-page="inbox"][data-expense-workspace-detail-open="true"],
+  .expenses-ui[data-expenses-list-page="inbox"][data-expense-workspace-detail-open="true"]
+    > [aria-busy],
+  .expenses-ui[data-expenses-list-page="inbox"][data-expense-workspace-detail-open="true"]
+    [data-finance-review-shell] {
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .expenses-ui[data-expenses-list-page="inbox"][data-expense-workspace-detail-open="true"]
+    [data-finance-review-shell]
+    > :not([data-review-region="workspace"]) {
+    flex-shrink: 0;
+  }
+  .expenses-ui[data-expenses-list-page="inbox"][data-expense-workspace-detail-open="true"]
+    .finance-review-workspace {
+    flex: 1;
+    min-height: 0;
+  }
+  .expenses-ui[data-expenses-list-page="inbox"][data-expense-workspace-detail-open="true"]
+    :is([data-receipt-inbox-workspace], [data-expense-detail-panel]) {
+    height: 100%;
+    min-height: 0;
+    max-height: 100%;
+  }
+  .expenses-ui[data-expenses-list-page="inbox"][data-expense-workspace-detail-open="true"]
+    [data-inbox-pagination] {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .expenses-ui[data-expenses-list-page="inbox"][data-expense-workspace-detail-open="true"]
+    [data-expenses-pagination-controls]
+    > div {
+    flex-wrap: nowrap;
   }
 }

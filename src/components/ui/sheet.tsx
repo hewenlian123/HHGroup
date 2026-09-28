@@ -87,6 +87,23 @@ const SheetContent = React.forwardRef<
         className
       )}
       {...props}
+      onInteractOutside={(event) => {
+        if (
+          event.target instanceof Element &&
+          event.target.closest("[data-attachment-preview-modal]")
+        ) {
+          event.preventDefault();
+          return;
+        }
+        props.onInteractOutside?.(event);
+      }}
+      onEscapeKeyDown={(event) => {
+        if (document.querySelector("[data-attachment-preview-modal]")) {
+          event.preventDefault();
+          return;
+        }
+        props.onEscapeKeyDown?.(event);
+      }}
     >
       <SheetPrimitive.Close className="hh-focus-ring hh-touch-square absolute right-hh-4 top-hh-4 flex items-center justify-center rounded-hh-compact opacity-70 transition-colors duration-150 ease-out hover:bg-[var(--hh-l3-hover)] hover:opacity-100 active:bg-[var(--hh-l3-pressed)] disabled:pointer-events-none touch-manipulation data-[state=open]:bg-[var(--hh-l3-selected)]">
         <X className="h-4 w-4" />

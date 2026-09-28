@@ -30,7 +30,6 @@ import {
   REIMBURSEMENT_VISUAL_NOTES,
   REIMBURSEMENT_VISUAL_VENDOR,
   REIMBURSEMENT_VISUAL_WORKER_ID,
-  REIMBURSEMENT_VISUAL_WORKER_NAME,
   screenshotPath,
   waitUntilWorkerAppearsInUploadOptions,
 } from "./reimbursement-flow-visual-helpers";

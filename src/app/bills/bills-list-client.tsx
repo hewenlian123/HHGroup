@@ -1,4 +1,13 @@
 "use client";
+import {
+  BillDetailLink,
+  BillDetailSheet,
+  openBillDetail,
+} from "@/components/financial/bill-detail-sheet";
+
+import { useFinanceRecordFocus } from "@/hooks/use-finance-query-state";
+import { financePathWithReturn } from "@/lib/finance-navigation";
+import { reportingApEligible } from "@/lib/finance-reporting-eligibility";
 
 import {
   refreshRscNonBlocking,
@@ -6,9 +15,8 @@ import {
 } from "@/components/perf/sync-router-non-blocking";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import * as React from "react";
-import { startTransition } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import {
   StatusBadge,
   ConfirmDialog,
@@ -36,7 +44,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { ApBillWithProject } from "@/lib/data";
-import { AP_BILL_TYPES, AP_BILL_STATUSES } from "@/lib/data";
+import { AP_BILL_TYPES, AP_BILL_STATUSES } from "@/lib/ap-bill-domain";
 import {
   Ban,
   CheckCircle2,
@@ -108,7 +116,7 @@ function localMoney(value: number): number {
 }
 
 function localOutstandingBalance(bill: ApBillWithProject): number {
-  if (bill.status === "Void" || bill.status === "Paid") return 0;
+  if (!reportingApEligible(bill.status)) return 0;
   const derived = Math.max(0, localMoney(bill.amount - bill.paid_amount));
   if (bill.balance_amount <= 0 && derived > 0) return derived;
   return Math.max(0, localMoney(bill.balance_amount));
@@ -156,6 +164,9 @@ function subtractBillFromSummary(summary: BillsSummary, bill: ApBillWithProject)
 export function BillsListClient({ bills, summary, projects }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  useFinanceRecordFocus(true);
+  const pathname = usePathname();
+  const listContext = `${pathname}?${searchParams.toString()}`;
   const [localBills, setLocalBills] = React.useState<ApBillWithProject[]>(bills);
   React.useEffect(() => setLocalBills(bills), [bills]);
   const [localSummary, setLocalSummary] = React.useState(summary);
@@ -180,22 +191,27 @@ export function BillsListClient({ bills, summary, projects }: Props) {
   React.useEffect(() => setShowVoidInput(showVoidBills), [showVoidBills]);
 
   useOnAppSync(
-    React.useCallback(() => {
-      syncRouterNonBlocking(router);
-    }, [router]),
+    React.useCallback(
+      (detail) => {
+        if (!detail.refreshScheduled) refreshRscNonBlocking(router);
+      },
+      [router]
+    ),
     [router]
   );
 
   const setFilters = React.useCallback(
     (updates: Record<string, string | boolean>) => {
-      const next = new URLSearchParams(searchParams);
+      const next = new URLSearchParams(window.location.search);
       Object.entries(updates).forEach(([k, v]) => {
         if (v !== "" && v !== false) next.set(k, String(v));
         else next.delete(k);
       });
-      router.push(`/bills?${next.toString()}`, { scroll: false });
+      const href = `${pathname}?${next.toString()}`;
+      window.history.replaceState(null, "", href);
+      router.push(href, { scroll: false });
     },
-    [router, searchParams]
+    [router, pathname]
   );
 
   const handleVoid = React.useCallback(
@@ -311,10 +327,12 @@ export function BillsListClient({ bills, summary, projects }: Props) {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="min-w-[160px]">
             <DropdownMenuItem asChild>
-              <Link href={`/bills/${bill.id}`}>
+              <BillDetailLink
+                href={financePathWithReturn(`/bills/${bill.id}`, listContext, bill.id)}
+              >
                 <ExternalLink className="h-4 w-4" />
                 Open
-              </Link>
+              </BillDetailLink>
             </DropdownMenuItem>
             {canApprove ? (
               <DropdownMenuItem
@@ -328,10 +346,16 @@ export function BillsListClient({ bills, summary, projects }: Props) {
             ) : null}
             {canPay ? (
               <DropdownMenuItem asChild>
-                <Link href={`/bills/${bill.id}?addPayment=1`}>
+                <BillDetailLink
+                  href={financePathWithReturn(
+                    `/bills/${bill.id}?addPayment=1`,
+                    listContext,
+                    bill.id
+                  )}
+                >
                   <CreditCard className="h-4 w-4" />
                   Pay
-                </Link>
+                </BillDetailLink>
               </DropdownMenuItem>
             ) : null}
             {canDelete ? (
@@ -362,7 +386,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
         </DropdownMenu>
       );
     },
-    [handleApprove]
+    [handleApprove, listContext]
   );
 
   return (
@@ -373,10 +397,17 @@ export function BillsListClient({ bills, summary, projects }: Props) {
         "max-md:!gap-3"
       )}
     >
-      <MobileListHeader
-        title="Bills"
-        fab={<MobileFabPlus href="/bills/new" ariaLabel="New bill" />}
-      />
+      {pathname !== "/financial/payables" ? (
+        <MobileListHeader
+          title="Bills"
+          fab={
+            <MobileFabPlus
+              href={financePathWithReturn("/bills/new", listContext)}
+              ariaLabel="New bill"
+            />
+          }
+        />
+      ) : null}
       <MobileSearchFiltersRow
         filterSheetOpen={filtersOpen}
         onOpenFilters={() => setFiltersOpen(true)}
@@ -621,7 +652,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
             message="No bills yet. Create one to track payables."
             action={
               <Button asChild size="sm" className={billsPrimaryButtonClass}>
-                <Link href="/bills/new">New bill</Link>
+                <Link href={financePathWithReturn("/bills/new", listContext)}>New bill</Link>
               </Button>
             }
           />
@@ -634,7 +665,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
               Track vendor, labor, and other payables in one place.
             </p>
             <Button asChild size="touch" className={cn("mt-5", billsPrimaryButtonClass)}>
-              <Link href="/bills/new">Create first bill</Link>
+              <Link href={financePathWithReturn("/bills/new", listContext)}>Create first bill</Link>
             </Button>
           </NeoPanel>
         </>
@@ -646,10 +677,12 @@ export function BillsListClient({ bills, summary, projects }: Props) {
               return (
                 <div
                   key={bill.id}
+                  data-finance-record={bill.id}
+                  tabIndex={-1}
                   className="group relative flex min-h-[52px] min-w-0 items-center py-2.5"
                 >
-                  <Link
-                    href={`/bills/${bill.id}`}
+                  <BillDetailLink
+                    href={financePathWithReturn(`/bills/${bill.id}`, listContext, bill.id)}
                     className="flex min-w-0 flex-1 items-center gap-3 pr-12 text-left"
                   >
                     <div className="min-w-0 flex-1">
@@ -674,7 +707,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
                       </span>
                       <StatusBadge label={s.label} variant={s.variant} />
                     </div>
-                  </Link>
+                  </BillDetailLink>
                   <div
                     className="absolute right-0 top-1/2 -translate-y-1/2"
                     onClick={(e) => {
@@ -708,8 +741,22 @@ export function BillsListClient({ bills, summary, projects }: Props) {
                 {localBills.map((bill) => (
                   <tr
                     key={bill.id}
+                    data-finance-record={bill.id}
+                    tabIndex={0}
                     className={listTableRowClassName}
-                    onClick={() => startTransition(() => router.push(`/bills/${bill.id}`))}
+                    onClick={(event) => {
+                      event.currentTarget.focus({ preventScroll: true });
+                      openBillDetail(bill.id);
+                    }}
+                    onKeyDown={(event) => {
+                      if (
+                        event.target === event.currentTarget &&
+                        (event.key === "Enter" || event.key === " ")
+                      ) {
+                        event.preventDefault();
+                        openBillDetail(bill.id);
+                      }
+                    }}
                   >
                     <td className={cn(tableRawTdClass, "max-w-[220px]")}>
                       <span
@@ -786,6 +833,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
         </>
       )}
 
+      <BillDetailSheet />
       <ConfirmDialog
         open={voidConfirmId !== null}
         onOpenChange={(open) => !open && setVoidConfirmId(null)}

@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
 import { getWorkerReceipts } from "@/lib/worker-receipts-db";
-import { SUPABASE_MISSING_SERVER_ENV_MESSAGE, getServerSupabaseAdmin } from "@/lib/supabase-server";
+import {
+  SUPABASE_MISSING_SERVER_ENV_MESSAGE,
+  getServerSupabaseAdminNoStore,
+} from "@/lib/supabase-server";
 import { createSignedStorageUrl } from "@/lib/storage-signed-url";
 import { parseWorkerReceiptStoragePath, WORKER_RECEIPT_BUCKET } from "@/lib/worker-receipt-storage";
 
@@ -15,7 +18,7 @@ const NO_CACHE_HEADERS = {
 export async function GET(request: Request) {
   const guard = await requireSupabaseOwnerOrAdmin(request);
   if (!guard.ok) return guard.response;
-  const client = getServerSupabaseAdmin();
+  const client = getServerSupabaseAdminNoStore();
   if (!client) {
     return NextResponse.json(
       { message: SUPABASE_MISSING_SERVER_ENV_MESSAGE },
@@ -31,7 +34,7 @@ export async function GET(request: Request) {
         const signedUrl = path
           ? await createSignedStorageUrl(client, WORKER_RECEIPT_BUCKET, path, 300)
           : null;
-        return { ...receipt, receiptUrl: signedUrl };
+        return { ...receipt, receiptUrl: signedUrl ?? receipt.receiptUrl };
       })
     );
     return NextResponse.json({ receipts }, { headers: NO_CACHE_HEADERS });

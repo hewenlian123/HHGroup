@@ -1,7 +1,7 @@
 import {
   inferAttachmentPreviewType,
   type AttachmentPreviewFileItem,
-} from "@/components/attachment-preview-modal";
+} from "@/contexts/attachment-preview-context";
 import type { ExpenseReceiptItem } from "@/lib/expense-receipt-items";
 import { peekCachedReceiptSignedUrl } from "@/lib/receipt-preview-url-cache";
 

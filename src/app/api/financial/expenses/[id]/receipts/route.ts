@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { unstable_noStore as noStore } from "next/cache";
-import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
+import { requireSupabaseOwnerOrAdminRequestClient } from "@/lib/auth-boundary";
 import {
   ExpenseReceiptManifestError,
   loadExpenseReceiptManifest,
@@ -17,7 +17,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ): Promise<NextResponse> {
   noStore();
-  const auth = await requireSupabaseOwnerOrAdmin(request);
+  const auth = await requireSupabaseOwnerOrAdminRequestClient(request, { noStore: true });
   if (!auth.ok) return auth.response;
 
   const expenseId = (params.id ?? "").trim();
@@ -29,7 +29,7 @@ export async function GET(
   }
 
   try {
-    const manifest = await loadExpenseReceiptManifest(expenseId);
+    const manifest = await loadExpenseReceiptManifest(expenseId, auth.client);
     return NextResponse.json(
       { ok: true, ...manifest },
       { headers: { "Cache-Control": "private, no-store" } }

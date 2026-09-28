@@ -9,7 +9,7 @@ import { getSupabaseClient } from "@/lib/supabase";
 export type WorkerPayment = {
   id: string;
   workerId: string;
-  /** Legacy UI field; DB has no project scope on worker_payments — always null. */
+  /** Explicit settlement_metadata.project_id; unscoped/global payments remain null. */
   projectId: string | null;
   /** Calendar date for display / receipt sequencing (payment_date, fallback created_at). */
   paymentDate: string;
@@ -32,6 +32,35 @@ export type CreateWorkerPaymentInput = {
   paymentMethod: string;
   notes?: string | null;
   idempotencyKey?: string | null;
+  /** Exact pending advances to settle inside the payroll RPC. */
+  advanceIds?: string[];
+  advanceDeductionAmount?: number;
+};
+
+export type RecordWorkerPayrollSettlementInput = {
+  idempotencyKey: string;
+  workerId: string;
+  projectId?: string | null;
+  amount: number;
+  paymentMethod: string;
+  paymentDate: string;
+  notes?: string | null;
+  laborEntryIds: string[];
+  reimbursementIds: string[];
+  advanceIds: string[];
+  advanceDeductionAmount: number;
+};
+
+export type AtomicWorkerPayrollSettlementResult = {
+  payment: WorkerPayment;
+  reused: boolean;
+};
+
+export type WorkerPayrollSettlementReplaySelection = {
+  paymentDate: string;
+  laborEntryIds: string[];
+  reimbursementIds: string[];
+  advanceIds: string[];
 };
 
 function client() {
@@ -65,6 +94,7 @@ function isRetryableWorkerPaymentsSelectError(err: { message?: string } | null):
  * Extra variants cover legacy or partial schemas without breaking the payments UI.
  */
 const WORKER_PAYMENTS_SELECT_VARIANTS = [
+  "id, worker_id, total_amount, payment_method, note, payment_date, created_at, labor_entry_ids, settlement_metadata",
   "id, worker_id, total_amount, payment_method, note, payment_date, created_at, labor_entry_ids",
   "id, worker_id, total_amount, payment_method, note, payment_date, created_at",
   "id, worker_id, amount, payment_method, note, payment_date, created_at",
@@ -94,10 +124,11 @@ function normalizePaymentDate(raw: string | null | undefined): string | null {
 function fromRow(r: Record<string, unknown>): WorkerPayment {
   const createdAt = (r.created_at as string) ?? "";
   const paymentDate = normalizePaymentDate((r.payment_date as string | null) ?? null);
+  const metadata = r.settlement_metadata as { project_id?: unknown } | null;
   return {
     id: (r.id as string) ?? "",
     workerId: (r.worker_id as string) ?? "",
-    projectId: null,
+    projectId: typeof metadata?.project_id === "string" ? metadata.project_id : null,
     paymentDate: paymentDate ?? createdAt.slice(0, 10),
     amount: Number(r.total_amount ?? r.amount) || 0,
     paymentMethod: (r.payment_method as string | null) ?? null,
@@ -105,6 +136,99 @@ function fromRow(r: Record<string, unknown>): WorkerPayment {
     createdAt,
     laborEntryIds: parseLaborEntryIds(r.labor_entry_ids),
     idempotencyKey: (r.idempotency_key as string | null) ?? null,
+  };
+}
+
+export async function recordWorkerPayrollSettlementWithClient(
+  c: SupabaseClient,
+  input: RecordWorkerPayrollSettlementInput
+): Promise<AtomicWorkerPayrollSettlementResult> {
+  const idempotencyKey = input.idempotencyKey.trim();
+  if (!idempotencyKey) throw new Error("Payroll idempotency key is required.");
+
+  const { data, error } = await c.rpc("record_worker_payroll_settlement", {
+    p_idempotency_key: idempotencyKey,
+    p_worker_id: input.workerId,
+    p_project_id: input.projectId ?? null,
+    p_amount: input.amount,
+    p_payment_method: input.paymentMethod,
+    p_payment_date: input.paymentDate.slice(0, 10),
+    p_notes: input.notes ?? null,
+    p_labor_entry_ids: input.laborEntryIds,
+    p_reimbursement_ids: input.reimbursementIds,
+    p_advance_ids: input.advanceIds,
+    p_advance_deduction_amount: input.advanceDeductionAmount,
+  });
+  if (error) {
+    const failure = new Error(error.message ?? "Failed to record payroll settlement atomically.");
+    Object.assign(failure, { code: error.code });
+    throw failure;
+  }
+
+  const result = data as { payment_id?: unknown; reused?: unknown } | null;
+  const paymentId = String(result?.payment_id ?? "");
+  if (!paymentId) throw new Error("Atomic payroll RPC returned no payment id.");
+
+  const { data: paymentRow, error: paymentError } = await c
+    .from("worker_payments")
+    .select("*")
+    .eq("id", paymentId)
+    .single();
+  if (paymentError || !paymentRow) {
+    throw new Error(paymentError?.message ?? "Payroll settled, but payment could not be reloaded.");
+  }
+  return {
+    payment: fromRow(paymentRow as Record<string, unknown>),
+    reused: result?.reused === true,
+  };
+}
+
+function metadataStringArray(metadata: Record<string, unknown>, key: string): string[] {
+  const value = metadata[key];
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string" && item.length > 0)
+    : [];
+}
+
+/**
+ * Loads only the canonical item selection needed to re-enter the atomic RPC.
+ * The caller must never treat this lookup as success: the RPC revalidates the
+ * fingerprint, completion marker, and every persisted settlement link.
+ */
+export async function getWorkerPayrollSettlementReplaySelectionWithClient(
+  c: SupabaseClient,
+  idempotencyKey: string
+): Promise<WorkerPayrollSettlementReplaySelection | null> {
+  const key = idempotencyKey.trim();
+  if (!key) return null;
+  const { data, error } = await c
+    .from("worker_payments")
+    .select("payment_date, labor_entry_ids, settlement_metadata")
+    .eq("idempotency_key", key)
+    .maybeSingle();
+  if (error) {
+    const failure = new Error(error.message ?? "Failed to load payroll retry state.");
+    Object.assign(failure, { code: error.code });
+    throw failure;
+  }
+  if (!data) return null;
+
+  const row = data as Record<string, unknown>;
+  const metadata =
+    row.settlement_metadata &&
+    typeof row.settlement_metadata === "object" &&
+    !Array.isArray(row.settlement_metadata)
+      ? (row.settlement_metadata as Record<string, unknown>)
+      : {};
+  const paymentDate = normalizePaymentDate(row.payment_date as string | null);
+  if (!paymentDate) throw new Error("Existing payroll retry state has no canonical payment date.");
+
+  return {
+    paymentDate,
+    laborEntryIds:
+      parseLaborEntryIds(row.labor_entry_ids) ?? metadataStringArray(metadata, "labor_entry_ids"),
+    reimbursementIds: metadataStringArray(metadata, "reimbursement_ids"),
+    advanceIds: metadataStringArray(metadata, "advance_ids"),
   };
 }
 
@@ -212,7 +336,8 @@ export async function getWorkerPaymentsWithClient(
       .select(cols as never)
       .order(dateColumn, { ascending: false });
     if (filters?.workerId) q = q.eq("worker_id", filters.workerId);
-    // worker_payments has no project_id — ignore projectId filter.
+    // Apply the canonical scope before limiting, so other projects cannot crowd out results.
+    if (filters?.projectId) q = q.eq("settlement_metadata->>project_id", filters.projectId);
     if (filters?.fromDate) {
       q =
         dateColumn === "payment_date"
@@ -233,10 +358,20 @@ export async function getWorkerPaymentsWithClient(
   for (const cols of WORKER_PAYMENTS_SELECT_VARIANTS) {
     const res = await runSelect(cols);
     if (!res.error) {
-      return ((res.data ?? []) as unknown as Record<string, unknown>[]).map(fromRow);
+      if (!Array.isArray(res.data))
+        throw new Error("Worker payments unavailable: invalid query result.");
+      const payments = (res.data as unknown as Record<string, unknown>[]).map(fromRow);
+      return filters?.projectId
+        ? payments.filter((payment) => payment.projectId === filters.projectId)
+        : payments;
     }
     lastError = res.error;
-    if (isMissingTable(res.error)) return [];
+    if (filters?.projectId)
+      throw new Error(
+        `Worker payments unavailable: ${res.error.message ?? "project scope could not be read."}`
+      );
+    if (isMissingTable(res.error))
+      throw new Error("Worker payments unavailable: table is missing.");
     if (!isRetryableWorkerPaymentsSelectError(res.error)) {
       throw new Error(res.error.message ?? "Failed to load worker payments.");
     }

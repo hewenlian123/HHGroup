@@ -1,5 +1,7 @@
+import { withSessionCookies } from "@/lib/supabase-response";
 import { NextResponse } from "next/server";
-import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { requireOrganizationRequestClient } from "@/lib/auth-boundary";
 import { getProjectFinancialReview } from "@/lib/financial/project-financial-review-db";
 import { getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
 import { redactSensitiveText, safeErrorMessage } from "@/lib/system-response-safety";
@@ -174,8 +176,9 @@ const STORAGE_BUCKETS = [
   "attachments",
 ] as const;
 
+// RLS is also explanatory UI copy; require an actual failure phrase for the acronym.
 const RAW_TECHNICAL_ERROR_RE =
-  /permission denied|row-level security|\brls\b|schema cache|could not find (?:the )?(?:table|column)|pgrst\d+|TypeError:|ReferenceError:|Unhandled Runtime Error|Application error|Internal Server Error/i;
+  /permission denied|row-level security|\brls(?:\s+(?:policy|check))?[\s:]+(?:violation|error|denied|failed|failure)\b|\bviolates\s+(?:an?\s+)?rls\b|schema cache|could not find (?:the )?(?:table|column)|pgrst\d+|TypeError:|ReferenceError:|Unhandled Runtime Error|Application error|Internal Server Error/i;
 const RAW_CURRENCY_RE = /\$\s*-?\d[\d,]*\.\d{3,}\b/;
 const BAD_VALUE_RE = /\b(?:NaN|Infinity|undefined|null)\b/i;
 const TEST_COPY_RE = /E2E-ST|E2E-ZIP|E2E test marker|sample data|test data/i;
@@ -194,9 +197,7 @@ function isOptionalModuleCheck(check: HealthCheck): boolean {
   return (
     check.category === "optionalModule" ||
     (check.code === "optional_module_disabled" &&
-      (check.name === "AP bills" ||
-        check.name === "AP bill payments" ||
-        check.name === "Legacy payment methods"))
+      (check.name === "AP bills" || check.name === "AP bill payments"))
   );
 }
 
@@ -656,7 +657,7 @@ async function buildSchemaSection(request: Request): Promise<QaSection> {
     const optionalDisabled = optional.filter(isOptionalModuleCheck);
     const storageWarnings = storage.filter((check) => check.status !== "ok");
     const driftWarnings = (summary.schemaDriftWarnings ?? []).filter(
-      (warning) => !/AP Bills module|payment_methods/i.test(warning)
+      (warning) => !/AP Bills module/i.test(warning)
     );
     const companyProfileCheck: QaCheck =
       summary.companyProfile?.code === "company_profile_e2e_marker"
@@ -771,9 +772,12 @@ async function buildSchemaSection(request: Request): Promise<QaSection> {
   }
 }
 
-async function buildFinancialSection(): Promise<QaSection> {
+async function buildFinancialSection(
+  client: SupabaseClient,
+  organizationIds: string[]
+): Promise<QaSection> {
   try {
-    const review = await getProjectFinancialReview();
+    const review = await getProjectFinancialReview(client, organizationIds);
     const flagged = review.flaggedProjects;
     const placeholderCount = review.summary.placeholder + review.summary.zero;
     const suspiciousHugeCount = review.summary.suspiciousHuge;
@@ -1027,7 +1031,10 @@ function summarize(sections: QaSection[]) {
 }
 
 export async function GET(request: Request) {
-  const guard = await requireSupabaseOwnerOrAdmin(request);
+  const guard = await requireOrganizationRequestClient(request, {
+    requireOwnerAdmin: true,
+    noStore: true,
+  });
   if (!guard.ok) return guard.response;
 
   const checkedAt = new Date().toISOString();
@@ -1048,7 +1055,10 @@ export async function GET(request: Request) {
     buildDestructiveSafetySection(request),
     buildSchemaSection(request),
     buildCompanyProfileSection(supabase),
-    buildFinancialSection(),
+    buildFinancialSection(
+      guard.client,
+      guard.context.memberships.map((m) => m.organization_id)
+    ),
     buildDataQualitySection(request),
     buildPreviewSection(supabase),
   ]);
@@ -1066,17 +1076,20 @@ export async function GET(request: Request) {
   ];
   const summary = summarize(sections);
 
-  return NextResponse.json(
-    {
-      ok: summary.critical === 0,
-      checkedAt,
-      mode:
-        process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production"
-          ? "production-safe"
-          : "local-safe",
-      summary,
-      sections,
-    },
-    { headers: NO_CACHE_HEADERS }
+  return withSessionCookies(
+    NextResponse.json(
+      {
+        ok: summary.critical === 0,
+        checkedAt,
+        mode:
+          process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production"
+            ? "production-safe"
+            : "local-safe",
+        summary,
+        sections,
+      },
+      { headers: NO_CACHE_HEADERS }
+    ),
+    guard.sessionResponse
   );
 }

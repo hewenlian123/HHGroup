@@ -103,6 +103,72 @@ describe("buildDataQualityReport", () => {
     expect(report.summary.critical).toBe(0);
   });
 
+  it.each([0, 1000])(
+    "accepts an unpaid Draft balance representation of %s before issuance",
+    (balance) => {
+      const report = buildDataQualityReport({
+        invoices: [
+          {
+            id: "unissued-draft",
+            status: "Draft",
+            total: 1000,
+            subtotal: 1000,
+            paid_total: 0,
+            balance_due: balance,
+          },
+        ],
+      });
+      expect(report.issues.map((issue) => issue.issueCode)).not.toContain(
+        "invoice_balance_due_mismatch"
+      );
+      expect(report.summary.critical).toBe(0);
+    }
+  );
+
+  it("still flags an arbitrary Draft balance mismatch as critical", () => {
+    const report = buildDataQualityReport({
+      invoices: [
+        {
+          id: "invalid-draft-cache",
+          status: "Draft",
+          total: 1000,
+          subtotal: 1000,
+          paid_total: 0,
+          balance_due: 75,
+        },
+      ],
+    });
+    expect(report.issues).toContainEqual(
+      expect.objectContaining({ issueCode: "invoice_balance_due_mismatch", severity: "critical" })
+    );
+  });
+
+  it("does not treat a Draft with posted cash as an unissued zero-balance exception", () => {
+    const report = buildDataQualityReport({
+      invoices: [
+        {
+          id: "draft-with-cash",
+          status: "Draft",
+          total: 1000,
+          subtotal: 1000,
+          paid_total: 200,
+          balance_due: 0,
+        },
+      ],
+      invoicePayments: [
+        { id: "posted-cash", invoice_id: "draft-with-cash", amount: 200, status: "Posted" },
+      ],
+    });
+    expect(report.issues).toContainEqual(
+      expect.objectContaining({
+        issueCode: "invoice_balance_due_mismatch",
+        severity: "critical",
+        expectedValue: 800,
+      })
+    );
+    expect(report.issues.map((issue) => issue.issueCode)).toContain("unpaid_invoice_has_payments");
+  });
+
   it("falls back to stored paid total when an invoice has no payment rows", () => {
     const report = buildDataQualityReport({
       invoices: [
@@ -187,6 +253,9 @@ describe("buildDataQualityReport", () => {
             billedAmount: 0,
             paidAmount: 0,
             openAR: 0,
+            remainingToBill: 1000,
+            invoicedExTax: 0,
+            changeOrderCost: 0,
             actualCost: 90,
             expenseCost: 50,
             laborCost: 40,

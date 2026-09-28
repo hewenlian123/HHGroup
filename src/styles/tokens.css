@@ -149,17 +149,22 @@
   --hh-duration-shimmer: 1.2s;
 }
 
-html[data-hh-theme="operational-dark"],
-html[data-hh-theme="operational-light"],
-[data-hh-theme="operational-dark"],
-[data-hh-theme="operational-light"] {
+html[data-hh-theme="operational-dark"][data-hh-theme="operational-dark"],
+html[data-hh-theme="operational-light"][data-hh-theme="operational-light"] {
   color-scheme: light;
   font-family: var(--font-inter, Inter), ui-sans-serif, system-ui, sans-serif;
   --hh-font-family-sans: var(--font-inter, Inter), ui-sans-serif, system-ui, sans-serif;
   --hh-sidebar-inset: 0px;
   --hh-sidebar-width-expanded: 240px;
+  --hh-sidebar-width-collapsed: 72px;
   --hh-topbar-height-desktop: 56px;
   --hh-topbar-height-mobile: 56px;
+  --hh-surface-canvas: var(--hh-page);
+  --hh-surface-workspace: var(--hh-surface);
+  --hh-surface-section: var(--hh-surface-sunken);
+  --hh-surface-subtle: var(--hh-hover);
+  --hh-surface-hover: var(--hh-hover);
+  --hh-surface-selected: var(--hh-chip);
   --hh-l0-canvas: var(--hh-page);
   --hh-l1-workspace: var(--hh-surface);
   --hh-l2-operational-surface: var(--hh-surface);
@@ -178,8 +183,12 @@ html[data-hh-theme="operational-light"],
   --hh-text-secondary: var(--hh-muted);
   --hh-text-tertiary: var(--hh-faint);
   --hh-text-dim: var(--hh-faint);
+  --hh-text-muted: var(--hh-faint);
   --hh-border-subtle: var(--hh-line-2);
   --hh-border: var(--hh-line);
+  --hh-border-default: var(--hh-line);
+  --hh-border-input: var(--hh-line-input);
+  --hh-border-emphasis: var(--hh-line-input);
   --hh-border-floating: var(--hh-line);
   --hh-border-strong: var(--hh-line-input);
   --hh-gold: var(--hh-brass);
@@ -189,9 +198,14 @@ html[data-hh-theme="operational-light"],
   --hh-input: var(--hh-line-input);
   --hh-input-background: var(--hh-surface);
   --hh-action-primary: var(--hh-brass);
+  --hh-action-primary-hover: var(--hh-brass-lo);
   --hh-action-primary-foreground: var(--hh-on-brass);
+  --hh-accent-primary: var(--hh-ink);
+  --hh-accent-hover: var(--hh-ink-2);
+  --hh-accent-soft: var(--hh-chip);
   --hh-focus-ring: var(--hh-link);
   --hh-ring: var(--hh-link);
+  --hh-overlay-scrim: var(--hh-scrim);
   --hh-success: var(--hh-success-fg);
   --hh-warning: var(--hh-warning-fg);
   --hh-information: var(--hh-info-fg);
@@ -388,13 +402,8 @@ html[data-hh-theme="operational-light"],
 }
 
 .hh-tabs-list {
-  height: 42px;
-  gap: 26px;
-  border-width: 0 0 1px;
-  border-color: var(--hh-line);
   border-radius: 0;
   background-color: transparent;
-  padding: 0;
 }
 
 .hh-tabs-list [role="tab"][data-state="active"] {
@@ -402,7 +411,6 @@ html[data-hh-theme="operational-light"],
   background-color: transparent;
   color: var(--hh-ink);
   font-weight: 600;
-  box-shadow: inset 0 -2px 0 var(--hh-ink);
 }
 
 :is([data-hh-theme="operational-dark"], [data-hh-theme="operational-light"]) .hh-overlay {
@@ -440,11 +448,36 @@ html[data-hh-theme="operational-light"],
 }
 
 /*
- * Next emits the legacy `.neo-sidebar { background: var(--hh-l1-workspace) }`
- * rule after this file and drops cascade layers, so a single class loses.
- * The theme selector keeps the navy gradient above that shorthand.
+ * The shell stylesheet paints a light sidebar after this file. Doubling the
+ * theme attribute keeps the navy gradient, readable labels, and brass mark
+ * above that shorthand and above the v2 light aliases.
  */
-:is(html[data-hh-theme="operational-dark"], html[data-hh-theme="operational-light"]) .neo-sidebar {
+:is(
+    html[data-hh-theme="operational-dark"][data-hh-theme="operational-dark"],
+    html[data-hh-theme="operational-light"][data-hh-theme="operational-light"]
+  )
+  .hh-app-shell {
+  background: var(--hh-page);
+  color: var(--hh-ink);
+  font-family: var(--font-inter, Inter), ui-sans-serif, system-ui, sans-serif;
+  --shell-font: var(--font-inter, Inter), ui-sans-serif, system-ui, sans-serif;
+  --shell-background: var(--hh-page);
+  --shell-surface: var(--hh-surface);
+  --shell-subtle: var(--hh-hover);
+  --shell-hover: var(--hh-hover);
+  --shell-border: var(--hh-line);
+  --shell-text: var(--hh-ink);
+  --shell-muted: var(--hh-muted);
+  --shell-sidebar-expanded: var(--hh-sidebar-width-expanded);
+  --shell-sidebar-collapsed: var(--hh-sidebar-width-collapsed);
+}
+
+:is(
+    html[data-hh-theme="operational-dark"][data-hh-theme="operational-dark"],
+    html[data-hh-theme="operational-light"][data-hh-theme="operational-light"]
+  )
+  .neo-sidebar {
+  width: var(--hh-sidebar-width-expanded);
   border-width: 0 1px 0 0;
   border-color: var(--hh-navy-edge);
   border-radius: 0;
@@ -454,24 +487,54 @@ html[data-hh-theme="operational-light"],
   box-shadow: var(--hh-shadow-nav-shell);
   color: var(--hh-sidebar-text-item);
   font-family: var(--font-inter, Inter), ui-sans-serif, system-ui, sans-serif;
+  --hh-font-family-sans: var(--font-inter, Inter), ui-sans-serif, system-ui, sans-serif;
+  --hh-surface-workspace: transparent;
+  --hh-surface-section: var(--hh-sidebar-raised);
+  --hh-surface-subtle: var(--hh-sidebar-raised);
+  --hh-surface-hover: var(--hh-sidebar-hover);
+  --hh-surface-selected: transparent;
   --hh-text-primary: var(--hh-sidebar-text-strong);
   --hh-text-secondary: var(--hh-sidebar-text-item);
   --hh-text-tertiary: var(--hh-sidebar-text-meta);
+  --hh-text-muted: var(--hh-sidebar-text-icon);
   --hh-text-strong: var(--hh-sidebar-text-strong);
   --hh-border: var(--hh-sidebar-line);
+  --hh-border-subtle: var(--hh-sidebar-line);
+  --hh-border-default: var(--hh-sidebar-line);
   --hh-border-strong: var(--hh-sidebar-line);
   --hh-l1-workspace: transparent;
   --hh-l2-operational-surface: var(--hh-sidebar-raised);
   --hh-l3-hover: var(--hh-sidebar-hover);
   --hh-l3-selected: transparent;
   --hh-l3-pressed: var(--hh-sidebar-hover);
+  --hh-accent-primary: var(--hh-brass-light);
+  --hh-accent-hover: var(--hh-sidebar-text-strong);
+  --hh-accent-soft: var(--hh-sidebar-hover);
+  --hh-focus-ring: var(--hh-sidebar-text-strong);
   --hh-action-primary: transparent;
   --hh-action-primary-foreground: var(--hh-sidebar-text-strong);
-  --hh-gold-hover: var(--hh-sidebar-hover);
-  --hh-gold-muted: transparent;
+  --shell-surface: transparent;
+  --shell-selected: transparent;
+  --shell-selected-text: var(--hh-sidebar-text-strong);
+  --shell-accent: var(--hh-brass-light);
+  --shell-font: var(--font-inter, Inter), ui-sans-serif, system-ui, sans-serif;
 }
 
-.neo-sidebar a[aria-current="page"] {
+:is(
+    html[data-hh-theme="operational-dark"][data-hh-theme="operational-dark"],
+    html[data-hh-theme="operational-light"][data-hh-theme="operational-light"]
+  )
+  .neo-sidebar[data-collapsed="true"] {
+  width: var(--hh-sidebar-width-collapsed);
+}
+
+:is(
+    html[data-hh-theme="operational-dark"][data-hh-theme="operational-dark"],
+    html[data-hh-theme="operational-light"][data-hh-theme="operational-light"]
+  )
+  .neo-sidebar
+  [data-sidebar-navigation]
+  a[aria-current="page"] {
   background-color: transparent;
   background-image: var(--hh-grad-nav-active);
   box-shadow: var(--hh-shadow-nav-active);
@@ -479,19 +542,34 @@ html[data-hh-theme="operational-light"],
   font-weight: 600;
 }
 
-.neo-sidebar a[aria-current="page"]::before {
+:is(
+    html[data-hh-theme="operational-dark"][data-hh-theme="operational-dark"],
+    html[data-hh-theme="operational-light"][data-hh-theme="operational-light"]
+  )
+  .neo-sidebar
+  [data-sidebar-navigation]
+  a[aria-current="page"]::before {
   content: "";
+  display: block;
   position: absolute;
   top: 7px;
   bottom: 7px;
-  left: -8px;
+  left: 0;
   width: 3px;
   border-radius: 0 3px 3px 0;
+  background-color: var(--hh-brass);
   background-image: var(--hh-grad-brass);
   box-shadow: var(--hh-shadow-indicator);
 }
 
-.neo-sidebar a[aria-current="page"] svg {
+:is(
+    html[data-hh-theme="operational-dark"][data-hh-theme="operational-dark"],
+    html[data-hh-theme="operational-light"][data-hh-theme="operational-light"]
+  )
+  .neo-sidebar
+  [data-sidebar-navigation]
+  a[aria-current="page"]
+  svg {
   color: var(--hh-brass-light);
 }
 
@@ -553,25 +631,55 @@ html[data-hh-theme="operational-light"],
   color: var(--hh-navy-deep);
 }
 
-:is(html[data-hh-theme="operational-dark"], html[data-hh-theme="operational-light"])
-  [data-app-topbar].neo-command-bar {
+:is(
+    html[data-hh-theme="operational-dark"][data-hh-theme="operational-dark"],
+    html[data-hh-theme="operational-light"][data-hh-theme="operational-light"]
+  )
+  .hh-app-shell
+  [data-app-topbar] {
   border-radius: 0;
   border-bottom: 1px solid var(--hh-line);
-  background: color-mix(in srgb, var(--hh-surface) 92%, transparent);
+  background-color: color-mix(in srgb, var(--hh-surface) 92%, transparent);
   box-shadow: none;
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   color: var(--hh-muted);
+  font-family: var(--font-inter, Inter), ui-sans-serif, system-ui, sans-serif;
 }
 
-nav[aria-label="Bottom navigation"] a[aria-current="page"] {
+:is(
+    html[data-hh-theme="operational-dark"][data-hh-theme="operational-dark"],
+    html[data-hh-theme="operational-light"][data-hh-theme="operational-light"]
+  )
+  .hh-app-shell
+  [aria-label="Open quick actions"].hh-btn-primary {
+  background-color: var(--hh-brass);
+  background-image: var(--hh-grad-brass);
+  color: var(--hh-on-brass);
+  border-color: var(--hh-brass-edge);
+}
+
+:is(
+    html[data-hh-theme="operational-dark"][data-hh-theme="operational-dark"],
+    html[data-hh-theme="operational-light"][data-hh-theme="operational-light"]
+  )
+  nav[aria-label="Bottom navigation"]
+  a[aria-current="page"] {
   position: relative;
   background-color: transparent;
+  background-image: none;
+  box-shadow: none;
   color: var(--hh-ink);
 }
 
-nav[aria-label="Bottom navigation"] a[aria-current="page"]::before {
+:is(
+    html[data-hh-theme="operational-dark"][data-hh-theme="operational-dark"],
+    html[data-hh-theme="operational-light"][data-hh-theme="operational-light"]
+  )
+  nav[aria-label="Bottom navigation"]
+  a[aria-current="page"]::before {
   content: "";
+  display: block;
   position: absolute;
   top: 0;
   left: 50%;
@@ -579,6 +687,7 @@ nav[aria-label="Bottom navigation"] a[aria-current="page"]::before {
   height: 3px;
   transform: translateX(-50%);
   border-radius: 0 0 3px 3px;
+  background-color: var(--hh-brass);
   background-image: var(--hh-grad-brass);
   box-shadow: var(--hh-shadow-indicator);
 }

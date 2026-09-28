@@ -1,9 +1,11 @@
 "use client";
 
 import * as React from "react";
+import { useAuth } from "@/components/auth/auth-provider";
 import { useSystemHealth } from "@/contexts/system-health-context";
 import { useToast } from "@/components/toast/toast-provider";
 import { usePathname, useRouter } from "next/navigation";
+import { scheduleInitialSystemHealthPoll } from "./system-health-poll-scheduler";
 import { shouldShowSystemHealthToast } from "./system-health-toast-policy";
 
 const POLL_INTERVAL_MS = 60_000;
@@ -12,7 +14,7 @@ const STATUS_CACHE_TTL_MS = 30_000;
 let cachedStatus: { status: "ok" | "warning"; at: number } | null = null;
 let inFlightStatusRequest: Promise<"ok" | "warning"> | null = null;
 
-async function fetchSystemHealthStatus(): Promise<"ok" | "warning"> {
+export async function fetchSystemHealthStatus(): Promise<"ok" | "warning"> {
   const now = Date.now();
   if (cachedStatus && now - cachedStatus.at < STATUS_CACHE_TTL_MS) {
     return cachedStatus.status;
@@ -22,8 +24,12 @@ async function fetchSystemHealthStatus(): Promise<"ok" | "warning"> {
 
   inFlightStatusRequest = (async () => {
     const res = await fetch("/api/system-health", { method: "GET" });
-    const data = await res.json().catch(() => ({}));
-    const status = data?.status === "warning" ? "warning" : "ok";
+    if (!res.ok) throw new Error("System health is unavailable.");
+    const data = await res.json();
+    if (data?.status !== "ok" && data?.status !== "warning") {
+      throw new Error("System health returned an invalid status.");
+    }
+    const status: "ok" | "warning" = data.status;
     cachedStatus = { status, at: Date.now() };
     return status;
   })();
@@ -37,12 +43,16 @@ async function fetchSystemHealthStatus(): Promise<"ok" | "warning"> {
 
 export function SystemHealthPoller() {
   const { setSystemHealth } = useSystemHealth();
+  const { initialized, permissions, role } = useAuth();
+  const canReadSystemHealth =
+    initialized && permissions["settings.view"] && (role === "owner" || role === "admin");
   const { toast } = useToast();
   const router = useRouter();
   const pathname = usePathname();
   const hasShownToastRef = React.useRef(false);
 
   React.useEffect(() => {
+    if (!canReadSystemHealth) return;
     if (pathname === "/system-health" || pathname === "/settings/system-health") return;
 
     let cancelled = false;
@@ -84,13 +94,14 @@ export function SystemHealthPoller() {
       }
     };
 
-    void run();
+    const cancelInitialPoll = scheduleInitialSystemHealthPoll(run);
     const interval = setInterval(run, POLL_INTERVAL_MS);
     return () => {
       cancelled = true;
+      cancelInitialPoll();
       clearInterval(interval);
     };
-  }, [pathname, setSystemHealth, toast, router]);
+  }, [pathname, setSystemHealth, toast, router, canReadSystemHealth]);
 
   return null;
 }

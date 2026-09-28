@@ -1,4 +1,5 @@
 "use client";
+import { LaborReadState } from "@/components/labor/labor-read-state";
 
 import * as React from "react";
 import Link from "next/link";
@@ -9,10 +10,11 @@ import { Select } from "@/components/ui/native-select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   MobileFabPlus,
+  MobileFilterSheet,
   MobileListHeader,
   mobileListPagePaddingClass,
 } from "@/components/mobile/mobile-list-chrome";
-import { NeoAmount, NeoToolbar } from "@/components/base";
+import { ConfirmDialog, NeoAmount, NeoToolbar } from "@/components/base";
 import { type LaborEntryWithJoins } from "@/lib/daily-labor-db";
 import { cn } from "@/lib/utils";
 import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
@@ -35,12 +37,13 @@ import {
   ListOrdered,
   Pencil,
   Plus,
+  SlidersHorizontal,
   Trash2,
   WalletCards,
 } from "lucide-react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { formatCurrency, formatDate, formatInteger, formatNumber } from "@/lib/formatters";
-import { encodeWorkerReturnPath } from "@/lib/worker-return-path";
+import { encodeWorkerReturnPath, safeWorkerReturnPath } from "@/lib/worker-return-path";
 
 function monthAdd(ym: string, deltaMonths: number): string {
   const [y, m] = ym.split("-").map(Number);
@@ -51,21 +54,21 @@ function monthAdd(ym: string, deltaMonths: number): string {
 function sessionBadgeClass(session: LaborSession): string {
   if (session === "morning")
     return "bg-[var(--hh-warning-soft-fill)] text-[var(--hh-warning)] ring-1 ring-[var(--hh-warning-border)]";
-  if (session === "afternoon") return "bg-zinc-100 text-zinc-700 ring-1 ring-zinc-200/70";
+  if (session === "afternoon")
+    return "bg-[var(--hh-l3-hover)] text-[var(--hh-text-secondary)] ring-1 ring-[var(--hh-border)]";
   return "bg-[var(--hh-success-soft-fill)] text-[var(--hh-success)] ring-1 ring-[var(--hh-success-border)]";
 }
 
 const timeShell =
-  "rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-operational md:rounded-hh-task";
+  "rounded-hh-task bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] md:rounded-hh-task";
 
-const timeKpiTile =
-  "rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-operational md:rounded-hh-task";
+const timeKpiTile = "text-[var(--hh-text-primary)]";
 
 const timeKpiIcon =
-  "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[var(--hh-border)] bg-[var(--hh-l3-hover)] text-[var(--hh-text-secondary)] md:h-8 md:w-8";
+  "flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--hh-l3-hover)] text-[var(--hh-text-secondary)] md:h-8 md:w-8";
 
 const timeSegmentedShell =
-  "relative flex h-10 min-h-[44px] shrink-0 items-center rounded-hh-compact border border-[var(--hh-border)] bg-[var(--hh-l3-hover)] p-0.5 shadow-operational ";
+  "relative flex h-11 min-h-11 shrink-0 items-center rounded-hh-compact border border-[var(--hh-border)] bg-[var(--hh-l3-hover)] p-0.5 md:h-hh-control-standard md:min-h-[var(--hh-control-height-standard)]";
 
 const timeSegmentedPill =
   "absolute inset-y-0.5 left-0.5 w-[calc(50%-2px)] rounded-hh-standard bg-[var(--hh-action-primary)] shadow-operational transition-transform duration-200 ease-out";
@@ -343,24 +346,14 @@ export default function LaborPageClient() {
   const { dateFrom: monthStart, dateTo: monthEnd } = getMonthRange(selectedMonth);
   const [projectFilter, setProjectFilter] = React.useState<string>("");
   const [workerFilter, setWorkerFilter] = React.useState<string>("");
-  const appliedProjectIdFromUrl = React.useRef(false);
-  const appliedWorkerIdFromUrl = React.useRef(false);
+  const routeWorkerId = searchParams.get("workerId") ?? "";
+  const routeProjectId = searchParams.get("projectId") ?? searchParams.get("project_id") ?? "";
   React.useEffect(() => {
-    if (appliedProjectIdFromUrl.current) return;
-    const pid = searchParams.get("project_id");
-    if (pid) {
-      setProjectFilter(pid);
-      appliedProjectIdFromUrl.current = true;
-    }
-  }, [searchParams]);
+    setWorkerFilter(routeWorkerId);
+  }, [routeWorkerId]);
   React.useEffect(() => {
-    if (appliedWorkerIdFromUrl.current) return;
-    const workerId = searchParams.get("workerId");
-    if (workerId) {
-      setWorkerFilter(workerId);
-      appliedWorkerIdFromUrl.current = true;
-    }
-  }, [searchParams]);
+    setProjectFilter(routeProjectId);
+  }, [routeProjectId]);
   React.useEffect(() => {
     const month = searchParams.get("month");
     if (month && /^\d{4}-\d{2}$/.test(month)) {
@@ -377,7 +370,9 @@ export default function LaborPageClient() {
       // ignore storage errors
     }
     setModalOpen(true);
-    router.replace("/labor", { scroll: false });
+    const next = new URLSearchParams(searchParams.toString());
+    next.delete("addDaily");
+    router.replace(`/labor?${next}`, { scroll: false });
   }, [searchParams, router]);
   const workerModeAutoOpenedRef = React.useRef(false);
   React.useEffect(() => {
@@ -412,11 +407,13 @@ export default function LaborPageClient() {
   const entriesLoadSeqRef = React.useRef(0);
   monthEntriesRef.current = monthEntries;
   const [loadingProjects, setLoadingProjects] = React.useState(true);
-  const [loadingEntries, setLoadingEntries] = React.useState(false);
+  const [readUnavailable, setReadUnavailable] = React.useState(false);
+  const [loadingEntries, setLoadingEntries] = React.useState(true);
   const [message, setMessage] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [lastSavedEntry, setLastSavedEntry] = React.useState<DailyEntrySaveResult | null>(null);
   const [modalOpen, setModalOpen] = React.useState(false);
+  const [filtersOpen, setFiltersOpen] = React.useState(false);
   const openAddEntryModal = React.useCallback(() => setModalOpen(true), []);
   useRegisterLaborOpenDailyEntry(openAddEntryModal);
   const [expandedDate, setExpandedDate] = React.useState<string | null>(null);
@@ -427,6 +424,9 @@ export default function LaborPageClient() {
   const [selectedDayForDetail, setSelectedDayForDetail] = React.useState<string | null>(null);
   const [editOpen, setEditOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<LaborEntryWithJoins | null>(null);
+  const [deleteTarget, setDeleteTarget] = React.useState<LaborEntryWithJoins | null>(null);
+  const deleteCompletedRef = React.useRef(false);
+  const workspaceFocusRef = React.useRef<HTMLDivElement>(null);
   const todayYmd = React.useMemo(() => new Date().toISOString().slice(0, 10), []);
 
   const sessionFromFlags = React.useCallback((e: LaborEntryWithJoins): LaborSession => {
@@ -452,6 +452,7 @@ export default function LaborPageClient() {
     entriesLoadSeqRef.current = seq;
     setLoadingEntries(true);
     setLoadingProjects(true);
+    setReadUnavailable(false);
     try {
       const params = new URLSearchParams({
         view: "joined",
@@ -464,13 +465,15 @@ export default function LaborPageClient() {
         cache: "no-store",
       });
       const body = (await response.json().catch(() => ({}))) as LaborEntriesResponse;
-      if (!response.ok) throw new Error(body.message ?? "Failed to load labor entries.");
+      if (!response.ok || !Array.isArray(body.entries))
+        throw new Error(body.message ?? "Failed to load labor entries.");
       if (entriesLoadSeqRef.current !== seq) return;
       setMonthEntries(body.entries ?? []);
       setProjects(body.projects ?? []);
       setWorkers(body.workers ?? []);
       setError(null);
     } catch (e) {
+      setReadUnavailable(true);
       if (entriesLoadSeqRef.current !== seq) return;
       setMonthEntries([]);
       setError(e instanceof Error ? e.message : "Failed to load labor entries.");
@@ -514,7 +517,7 @@ export default function LaborPageClient() {
   );
 
   const handleDelete = React.useCallback(
-    async (e: LaborEntryWithJoins) => {
+    (e: LaborEntryWithJoins) => {
       if (workerMode) {
         toast({
           title: "Delete is disabled in worker link",
@@ -523,29 +526,31 @@ export default function LaborPageClient() {
         });
         return;
       }
-      const ok = window.confirm(
-        `Delete entry for ${e.worker_name ?? "worker"} on ${e.work_date?.slice(0, 10) ?? "date"}?`
-      );
-      if (!ok) return;
-      const snapshot = monthEntriesRef.current;
-      setMonthEntries((prev) => prev.filter((x) => x.id !== e.id));
-      setMessage("Entry deleted.");
-      setError(null);
-      try {
-        const response = await fetch(`/api/labor/entries?id=${encodeURIComponent(e.id)}`, {
-          method: "DELETE",
-        });
-        const body = (await response.json().catch(() => ({}))) as { message?: string };
-        if (!response.ok) throw new Error(body.message ?? "Failed to delete.");
-        void loadMonthEntries();
-      } catch (err) {
-        setMonthEntries(snapshot);
-        setMessage(null);
-        setError(err instanceof Error ? err.message : "Failed to delete.");
-      }
+      setDeleteTarget(e);
     },
-    [loadMonthEntries, toast, workerMode]
+    [toast, workerMode]
   );
+
+  const confirmDeleteEntry = React.useCallback(async () => {
+    if (!deleteTarget) return;
+    const snapshot = monthEntriesRef.current;
+    setMonthEntries(snapshot.filter((entry) => entry.id !== deleteTarget.id));
+    setError(null);
+    try {
+      const response = await fetch(`/api/labor/entries?id=${encodeURIComponent(deleteTarget.id)}`, {
+        method: "DELETE",
+      });
+      const body = (await response.json().catch(() => ({}))) as { message?: string };
+      if (!response.ok) throw new Error(body.message ?? "Failed to delete labor entry.");
+      setMessage("Entry deleted.");
+      deleteCompletedRef.current = true;
+      toast({ title: "Labor entry deleted", variant: "success" });
+      void loadMonthEntries();
+    } catch (cause) {
+      setMonthEntries(snapshot);
+      throw cause instanceof Error ? cause : new Error("Failed to delete labor entry.");
+    }
+  }, [deleteTarget, loadMonthEntries, toast]);
 
   const summary = React.useMemo(() => {
     const totalLaborCost = monthEntries.reduce((sum, e) => sum + (e.cost_amount ?? 0), 0);
@@ -593,34 +598,49 @@ export default function LaborPageClient() {
     () => datesInMonth.filter((date) => (entriesByDate.get(date) ?? []).length > 0),
     [datesInMonth, entriesByDate]
   );
+  const activeLaborFilterCount = Number(Boolean(projectFilter)) + Number(Boolean(workerFilter));
+
+  if (loadingEntries || readUnavailable)
+    return (
+      <LaborReadState
+        title="Time entries"
+        busy={loadingEntries}
+        retry={() => void loadMonthEntries()}
+      />
+    );
 
   return (
     <div
-      className={cn(
-        " min-w-0 overflow-x-hidden pb-[max(1rem,env(safe-area-inset-bottom,0px))] pt-[max(0.35rem,env(safe-area-inset-top,0px))] text-[var(--hh-text-secondary)]",
-        "flex flex-col"
-      )}
+      className={cn("min-w-0 overflow-x-hidden text-[var(--hh-text-secondary)]", "flex flex-col")}
     >
+      {searchParams.get("returnTo") && (
+        <div className="px-4">
+          <Button asChild variant="outline" className="min-h-11">
+            <Link href={safeWorkerReturnPath(searchParams.get("returnTo"))}>Back to Worker</Link>
+          </Button>
+        </div>
+      )}
       <div
+        ref={workspaceFocusRef}
+        tabIndex={-1}
         className={cn(
-          " page-shell-wide mx-auto flex w-full max-w-[430px] flex-1 flex-col gap-2 px-4 py-2 pb-4 sm:max-w-[460px] md:gap-2 md:px-6 md:pb-6 md:pt-3",
+          "page-container page-shell-wide flex w-full flex-1 flex-col gap-hh-3",
           mobileListPagePaddingClass,
-          "max-md:!gap-2"
+          "max-md:!gap-3"
         )}
       >
         <div className="hidden md:block">
           <PageHeader
-            className="gap-1 border-b border-[var(--hh-border)] pb-3 lg:items-baseline lg:gap-x-4 [&_h1]:!text-hh-financial-total [&_h1]:!font-semibold [&_h1]:!leading-none [&_h1]:!tracking-normal [&_h1]:!text-[var(--hh-text-primary)] [&_p]:!mt-1 [&_p]:!max-w-xl [&_p]:!text-hh-body [&_p]:!leading-snug [&_p]:!text-[var(--hh-text-secondary)]"
             title="Daily Labor"
             subtitle="Track and manage daily labor entries by worker and project."
             actions={
               <Button
                 size="sm"
-                className="h-9 shrink-0 gap-1.5 border-transparent bg-[var(--hh-action-primary)] text-zinc-950 shadow-none hover:bg-[var(--hh-action-primary)]"
+                className="h-hh-control-standard shrink-0 gap-hh-2"
                 onClick={() => setModalOpen(true)}
                 disabled={loadingProjects}
               >
-                <Plus className="h-3.5 w-3.5" aria-hidden />
+                <Plus className="h-4 w-4" aria-hidden />
                 Add Entry
               </Button>
             }
@@ -628,116 +648,178 @@ export default function LaborPageClient() {
         </div>
 
         <MobileListHeader
-          title="Labor"
+          title="Daily Labor"
           fab={<MobileFabPlus href="/labor?addDaily=1" ariaLabel="Add entry" />}
         />
 
-        <div className={cn(timeShell, "p-3 md:p-3")}>
-          <NeoToolbar className="!flex-col !items-stretch gap-3 border-0 bg-transparent p-0 shadow-none dark:bg-transparent">
-            <div className="flex w-full flex-wrap items-end gap-3 md:flex-nowrap">
-              <div className="flex min-w-[160px] flex-1 flex-col gap-1 sm:flex-initial">
-                <label className="text-hh-status font-medium uppercase tracking-normal text-text-secondary/75 dark:text-muted-foreground">
-                  Month
-                </label>
-                <Select
-                  value={selectedMonth}
-                  onChange={(e) => {
-                    setSelectedMonth(e.target.value);
-                    setExpandedDate(null);
-                    setExpandedDailyEntryGroups(new Set());
-                    setSelectedDayForDetail(null);
-                  }}
-                  className="h-10 min-h-[44px] min-w-0 sm:min-h-10 sm:w-[200px]"
-                >
-                  {MONTH_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-              <div className="flex min-w-[180px] flex-1 flex-col gap-1 sm:flex-initial">
-                <label className="text-hh-status font-medium uppercase tracking-normal text-text-secondary/75 dark:text-muted-foreground">
-                  Project
-                </label>
-                <Select
-                  value={projectFilter}
-                  onChange={(e) => {
-                    setProjectFilter(e.target.value);
-                    setExpandedDate(null);
-                    setExpandedDailyEntryGroups(new Set());
-                  }}
-                  className="h-10 min-h-[44px] min-w-0 sm:min-h-10 sm:w-[220px]"
-                >
-                  <option value="">All Projects</option>
-                  {projects.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-              <div className="flex min-w-[180px] flex-1 flex-col gap-1 sm:flex-initial">
-                <label className="text-hh-status font-medium uppercase tracking-normal text-text-secondary/75 dark:text-muted-foreground">
-                  Worker
-                </label>
-                <Select
-                  value={workerFilter}
-                  onChange={(e) => {
-                    setWorkerFilter(e.target.value);
-                    setExpandedDate(null);
-                    setExpandedDailyEntryGroups(new Set());
-                  }}
-                  className="h-10 min-h-[44px] min-w-0 sm:min-h-10 sm:w-[220px]"
-                >
-                  <option value="">All Workers</option>
-                  {workers.map((w) => (
-                    <option key={w.id} value={w.id}>
-                      {w.name}
-                    </option>
-                  ))}
-                </Select>
-              </div>
+        <NeoToolbar className="gap-hh-2 p-hh-2 md:items-end">
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-hh-2 md:contents">
+            <div className="flex min-w-0 flex-col gap-hh-1 md:w-48">
+              <label className="text-hh-label font-medium text-[var(--hh-text-secondary)]">
+                Month
+              </label>
+              <Select
+                aria-label="Month"
+                value={selectedMonth}
+                onChange={(e) => {
+                  setSelectedMonth(e.target.value);
+                  setExpandedDate(null);
+                  setExpandedDailyEntryGroups(new Set());
+                  setSelectedDayForDetail(null);
+                }}
+                className="h-11 min-h-11 min-w-0 md:h-hh-control-standard md:min-h-[var(--hh-control-height-standard)]"
+              >
+                {MONTH_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </Select>
             </div>
-            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-zinc-100/80 pt-3 dark:border-border/60">
-              <div className={cn(timeSegmentedShell, "w-full sm:w-[260px]")}>
-                <span
-                  aria-hidden
-                  className={cn(
-                    timeSegmentedPill,
-                    view === "calendar" && "translate-x-[calc(100%+2px)]"
-                  )}
-                />
-                <button
-                  type="button"
-                  onClick={() => setView("list")}
-                  className={cn(
-                    timeSegmentedButton,
-                    view === "list"
-                      ? "text-zinc-950"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  <ListOrdered className="h-3.5 w-3.5" aria-hidden />
-                  List
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setView("calendar")}
-                  className={cn(
-                    timeSegmentedButton,
-                    view === "calendar"
-                      ? "text-zinc-950"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  <CalendarDays className="h-3.5 w-3.5" aria-hidden />
-                  Calendar
-                </button>
-              </div>
+            <div className="hidden min-w-0 flex-col gap-hh-1 md:flex md:w-52">
+              <label className="text-hh-label font-medium text-[var(--hh-text-secondary)]">
+                Project
+              </label>
+              <Select
+                aria-label="Project"
+                value={projectFilter}
+                onChange={(e) => {
+                  setProjectFilter(e.target.value);
+                  setExpandedDate(null);
+                  setExpandedDailyEntryGroups(new Set());
+                }}
+                className="h-hh-control-standard min-h-[var(--hh-control-height-standard)] min-w-0"
+              >
+                <option value="">All Projects</option>
+                {projects.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </Select>
             </div>
-          </NeoToolbar>
-        </div>
+            <div className="hidden min-w-0 flex-col gap-hh-1 md:flex md:w-52">
+              <label className="text-hh-label font-medium text-[var(--hh-text-secondary)]">
+                Worker
+              </label>
+              <Select
+                aria-label="Worker"
+                value={workerFilter}
+                onChange={(e) => {
+                  setWorkerFilter(e.target.value);
+                  setExpandedDate(null);
+                  setExpandedDailyEntryGroups(new Set());
+                }}
+                className="h-hh-control-standard min-h-[var(--hh-control-height-standard)] min-w-0"
+              >
+                <option value="">All Workers</option>
+                {workers.map((w) => (
+                  <option key={w.id} value={w.id}>
+                    {w.name}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-11 min-h-11 shrink-0 gap-hh-2 px-hh-3 md:hidden"
+              aria-label="Labor filters"
+              aria-expanded={filtersOpen}
+              onClick={() => setFiltersOpen(true)}
+            >
+              <SlidersHorizontal className="h-4 w-4" aria-hidden />
+              Filters
+              {activeLaborFilterCount > 0 ? (
+                <span className="min-w-4 tabular-nums">{activeLaborFilterCount}</span>
+              ) : null}
+            </Button>
+          </div>
+          <div className={cn(timeSegmentedShell, "w-full md:ml-auto md:w-56")}>
+            <span
+              aria-hidden
+              className={cn(
+                timeSegmentedPill,
+                view === "calendar" && "translate-x-[calc(100%+2px)]"
+              )}
+            />
+            <button
+              type="button"
+              onClick={() => setView("list")}
+              aria-pressed={view === "list"}
+              className={cn(
+                timeSegmentedButton,
+                view === "list"
+                  ? "text-[var(--hh-action-primary-foreground)]"
+                  : "text-[var(--hh-text-secondary)] hover:text-[var(--hh-text-primary)]"
+              )}
+            >
+              <ListOrdered className="h-3.5 w-3.5" aria-hidden />
+              List
+            </button>
+            <button
+              type="button"
+              onClick={() => setView("calendar")}
+              aria-pressed={view === "calendar"}
+              className={cn(
+                timeSegmentedButton,
+                view === "calendar"
+                  ? "text-[var(--hh-action-primary-foreground)]"
+                  : "text-[var(--hh-text-secondary)] hover:text-[var(--hh-text-primary)]"
+              )}
+            >
+              <CalendarDays className="h-3.5 w-3.5" aria-hidden />
+              Calendar
+            </button>
+          </div>
+        </NeoToolbar>
+
+        <MobileFilterSheet open={filtersOpen} onOpenChange={setFiltersOpen} title="Labor filters">
+          <label className="flex flex-col gap-hh-1 text-hh-label font-medium text-[var(--hh-text-secondary)]">
+            Project
+            <Select
+              aria-label="Project"
+              value={projectFilter}
+              onChange={(e) => {
+                setProjectFilter(e.target.value);
+                setExpandedDate(null);
+                setExpandedDailyEntryGroups(new Set());
+              }}
+              className="h-11 min-h-11"
+            >
+              <option value="">All Projects</option>
+              {projects.map((project) => (
+                <option key={project.id} value={project.id}>
+                  {project.name}
+                </option>
+              ))}
+            </Select>
+          </label>
+          <label className="flex flex-col gap-hh-1 text-hh-label font-medium text-[var(--hh-text-secondary)]">
+            Worker
+            <Select
+              aria-label="Worker"
+              value={workerFilter}
+              onChange={(e) => {
+                setWorkerFilter(e.target.value);
+                setExpandedDate(null);
+                setExpandedDailyEntryGroups(new Set());
+              }}
+              className="h-11 min-h-11"
+            >
+              <option value="">All Workers</option>
+              {workers.map((worker) => (
+                <option key={worker.id} value={worker.id}>
+                  {worker.name}
+                </option>
+              ))}
+            </Select>
+          </label>
+          <Button type="button" className="h-11 w-full" onClick={() => setFiltersOpen(false)}>
+            Done
+          </Button>
+        </MobileFilterSheet>
 
         {error ? <p className="py-3 text-sm text-[var(--hh-danger)]">{error}</p> : null}
         {message ? <p className="py-3 text-sm text-muted-foreground">{message}</p> : null}
@@ -780,11 +862,7 @@ export default function LaborPageClient() {
                   Open Worker
                 </Link>
               </Button>
-              <Button
-                asChild
-                size="sm"
-                className="min-h-[40px] rounded-hh-task bg-[var(--hh-action-primary)] text-zinc-950 hover:bg-[var(--hh-action-primary)]"
-              >
+              <Button asChild size="sm" className="min-h-[40px] rounded-hh-task">
                 <Link
                   href={`/labor/workers/${encodeURIComponent(
                     lastSavedEntry.workerId
@@ -877,11 +955,11 @@ export default function LaborPageClient() {
               <p className="mb-2 text-hh-status font-medium uppercase tracking-normal text-text-secondary/75 dark:text-muted-foreground">
                 PROJECT LABOR COST
               </p>
-              <div className="overflow-hidden rounded-hh-standard border border-gray-100 bg-white shadow-sm dark:border-border dark:bg-card dark:shadow-none">
+              <div className="divide-y divide-[var(--hh-border)]">
                 {projectLaborCost.map(({ id, name, total }) => (
                   <div
                     key={id}
-                    className="flex items-center justify-between gap-3 border-b border-gray-100 px-2.5 py-2.5 last:border-b-0 bg-[var(--hh-l3-hover)] dark:border-border dark:hover:bg-muted/40"
+                    className="flex items-center justify-between gap-3 px-2.5 py-2.5 hover:bg-[var(--hh-l3-hover)]"
                   >
                     <span className="text-sm font-medium text-foreground truncate">{name}</span>
                     <NeoAmount className="shrink-0 text-sm">{formatCurrency(total)}</NeoAmount>
@@ -924,7 +1002,7 @@ export default function LaborPageClient() {
                 </Button>
               </div>
             ) : (
-              <div className="flex flex-col divide-y divide-border/60 rounded-hh-compact border border-border/70 overflow-hidden">
+              <div className="flex flex-col divide-y divide-border/60 overflow-hidden">
                 {datesInMonth
                   .filter((d) => (entriesByDate.get(d) ?? []).length > 0)
                   .map((date) => {
@@ -948,7 +1026,7 @@ export default function LaborPageClient() {
                             <span className="text-hh-section-title font-semibold text-foreground shrink-0">
                               {formatShortDate(date)}
                             </span>
-                            <span className="text-xs text-muted-foreground/80 truncate">
+                            <span className="truncate text-xs text-[var(--hh-text-secondary)]">
                               {entries.length} entries
                             </span>
                             <NeoAmount
@@ -969,12 +1047,16 @@ export default function LaborPageClient() {
                           </span>
                         </button>
                         <div
+                          inert={isExpanded ? undefined : ("" as unknown as boolean)}
+                          aria-hidden={!isExpanded}
                           className={cn(
-                            "overflow-hidden transition-[max-height] duration-200 ease-out",
-                            isExpanded ? "max-h-[2000px]" : "max-h-0"
+                            "grid transition-[grid-template-rows,opacity] duration-standard ease-motion-out motion-reduce:transition-none",
+                            isExpanded
+                              ? "grid-rows-[1fr] opacity-100"
+                              : "pointer-events-none grid-rows-[0fr] opacity-0"
                           )}
                         >
-                          <div className="border-t border-border/60 bg-background">
+                          <div className="min-h-0 overflow-hidden border-t border-border/60 bg-background">
                             <div className="overflow-x-auto">
                               <table className="hidden w-full min-w-[480px] border-collapse text-sm md:table">
                                 <thead>
@@ -1260,7 +1342,7 @@ export default function LaborPageClient() {
                                                       <div className="mt-1 flex items-center justify-end gap-2">
                                                         <button
                                                           type="button"
-                                                          className="inline-flex h-11 w-11 items-center justify-center rounded-hh-compact border border-border/70 text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground active:scale-[0.98]"
+                                                          className="inline-flex h-11 w-11 items-center justify-center rounded-hh-compact border border-border/70 text-muted-foreground transition-colors duration-fast ease-motion-out hover:bg-muted/40 hover:text-foreground active:duration-micro"
                                                           onClick={() => openEdit(child)}
                                                           aria-label={`Edit ${sessionLabel(childSession)} entry for ${row.workerName}`}
                                                         >
@@ -1268,7 +1350,7 @@ export default function LaborPageClient() {
                                                         </button>
                                                         <button
                                                           type="button"
-                                                          className="inline-flex h-11 w-11 items-center justify-center rounded-hh-compact border border-border/70 text-muted-foreground transition-colors hover:bg-muted/40 hover:text-destructive active:scale-[0.98]"
+                                                          className="inline-flex h-11 w-11 items-center justify-center rounded-hh-compact border border-border/70 text-muted-foreground transition-colors duration-fast ease-motion-out hover:bg-muted/40 hover:text-destructive active:duration-micro"
                                                           onClick={() => void handleDelete(child)}
                                                           aria-label={`Delete ${sessionLabel(childSession)} entry for ${row.workerName}`}
                                                           disabled={workerMode}
@@ -1325,7 +1407,7 @@ export default function LaborPageClient() {
                                           <div className="mt-1 flex items-center justify-end gap-2">
                                             <button
                                               type="button"
-                                              className="inline-flex h-11 w-11 items-center justify-center rounded-hh-compact border border-border/70 text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground active:scale-[0.98]"
+                                              className="inline-flex h-11 w-11 items-center justify-center rounded-hh-compact border border-border/70 text-muted-foreground transition-colors duration-fast ease-motion-out hover:bg-muted/40 hover:text-foreground active:duration-micro"
                                               onClick={() => openEdit(e)}
                                               aria-label="Edit"
                                             >
@@ -1333,7 +1415,7 @@ export default function LaborPageClient() {
                                             </button>
                                             <button
                                               type="button"
-                                              className="inline-flex h-11 w-11 items-center justify-center rounded-hh-compact border border-border/70 text-muted-foreground transition-colors hover:bg-muted/40 hover:text-destructive active:scale-[0.98]"
+                                              className="inline-flex h-11 w-11 items-center justify-center rounded-hh-compact border border-border/70 text-muted-foreground transition-colors duration-fast ease-motion-out hover:bg-muted/40 hover:text-destructive active:duration-micro"
                                               onClick={() => void handleDelete(e)}
                                               aria-label="Delete"
                                               disabled={workerMode}
@@ -1694,7 +1776,13 @@ export default function LaborPageClient() {
           </section>
         )}
 
-        <QuickTimesheetModal open={modalOpen} onOpenChange={setModalOpen} onSuccess={handleSaved} />
+        <QuickTimesheetModal
+          initialWorkerId={routeWorkerId}
+          initialProjectId={routeProjectId}
+          open={modalOpen}
+          onOpenChange={setModalOpen}
+          onSuccess={handleSaved}
+        />
 
         <EditEntryModal
           open={editOpen}
@@ -1830,6 +1918,22 @@ export default function LaborPageClient() {
             </div>
           </DialogContent>
         </Dialog>
+        <ConfirmDialog
+          open={!!deleteTarget}
+          onOpenChange={(open) => {
+            if (open) return;
+            setDeleteTarget(null);
+            if (deleteCompletedRef.current) {
+              deleteCompletedRef.current = false;
+              window.requestAnimationFrame(() => workspaceFocusRef.current?.focus());
+            }
+          }}
+          title="Delete labor entry?"
+          description={`Delete the entry for ${deleteTarget?.worker_name ?? "this worker"} on ${deleteTarget?.work_date?.slice(0, 10) ?? "this date"}? This cannot be undone.`}
+          confirmLabel="Delete"
+          destructive
+          onConfirm={confirmDeleteEntry}
+        />
       </div>
     </div>
   );

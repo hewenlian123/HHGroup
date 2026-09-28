@@ -85,32 +85,41 @@ export function SendPaymentReceiptModal({ open, data, onOpenChange }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg rounded-md border-border/60">
-        <DialogHeader className="border-b border-border/60 pb-3">
-          <DialogTitle className="text-base font-medium">Send payment receipt</DialogTitle>
+      <DialogContent
+        data-revenue-ar-v2
+        className="max-w-lg rounded-hh-task border-[var(--hh-border)]"
+      >
+        <DialogHeader className="border-b border-[var(--hh-border)] pb-3">
+          <DialogTitle className="text-hh-section-title font-semibold text-[var(--hh-text-primary)]">
+            Send payment receipt
+          </DialogTitle>
         </DialogHeader>
 
         {data ? (
           <div className="space-y-4 pt-2">
-            <div className="rounded-xl border border-black/[0.06] bg-muted/[0.18] px-3 py-3 text-sm dark:border-white/[0.08]">
+            <div className="rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 py-3 text-hh-body">
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="font-medium text-foreground">{data.receiptNo}</p>
-                  <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                  <p className="font-medium text-[var(--hh-text-primary)]">{data.receiptNo}</p>
+                  <p className="mt-0.5 truncate text-hh-metadata text-[var(--hh-text-secondary)]">
                     {data.customerName} · {data.invoice.invoiceNo ?? data.invoice.id.slice(0, 8)}
                   </p>
                 </div>
-                <p className="shrink-0 font-semibold tabular-nums text-emerald-700 dark:text-emerald-400">
+                <p className="shrink-0 font-semibold tabular-nums text-[var(--hh-success)]">
                   {formatCurrency(data.payment.amount)}
                 </p>
               </div>
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              <label
+                htmlFor="payment-receipt-recipient"
+                className="text-hh-status font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]"
+              >
                 To
               </label>
               <Input
+                id="payment-receipt-recipient"
                 type="email"
                 value={recipient}
                 onChange={(e) => setRecipient(e.target.value)}
@@ -119,28 +128,40 @@ export function SendPaymentReceiptModal({ open, data, onOpenChange }: Props) {
               />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              <label
+                htmlFor="payment-receipt-subject"
+                className="text-hh-status font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]"
+              >
                 Subject
               </label>
-              <Input value={subject} onChange={(e) => setSubject(e.target.value)} className="h-9" />
+              <Input
+                id="payment-receipt-subject"
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+                className="h-9"
+              />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              <label
+                htmlFor="payment-receipt-message"
+                className="text-hh-status font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]"
+              >
                 Message
               </label>
               <Textarea
+                id="payment-receipt-message"
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
                 className="min-h-[170px] resize-none"
               />
             </div>
 
-            <p className="text-xs text-muted-foreground">
+            <p className="text-hh-metadata text-[var(--hh-text-secondary)]">
               Email draft uses your mail app. The PDF cannot be attached automatically from the
               browser, so download it here and attach it to the draft.
             </p>
 
-            <div className="flex flex-col-reverse gap-2 border-t border-border/60 pt-2 sm:flex-row sm:justify-end">
+            <div className="flex flex-col-reverse gap-2 border-t border-[var(--hh-border)] pt-2 sm:flex-row sm:justify-end">
               <Button
                 type="button"
                 variant="outline"
@@ -165,7 +186,9 @@ export function SendPaymentReceiptModal({ open, data, onOpenChange }: Props) {
             </div>
           </div>
         ) : (
-          <p className="py-8 text-center text-sm text-muted-foreground">Loading receipt...</p>
+          <p className="py-8 text-center text-hh-body text-[var(--hh-text-secondary)]">
+            Loading receipt...
+          </p>
         )}
       </DialogContent>
     </Dialog>

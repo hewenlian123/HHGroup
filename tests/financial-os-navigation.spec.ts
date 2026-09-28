@@ -31,7 +31,7 @@ const financialRoutes: FinancialRoute[] = [
   {
     label: "AR Summary",
     path: "/financial/ar",
-    heading: /^Accounts Receivable$/i,
+    heading: /^Invoices & AR$/i,
     activeLabel: "AR",
   },
   {
@@ -194,7 +194,9 @@ async function waitForRouteReady(page: Page, route: FinancialRoute, heading = ro
 async function expectActiveSidebarItem(page: Page, label: string) {
   const link = navLink(page, label);
   await expect(link).toBeVisible({ timeout: 20_000 });
-  await expect(link).toHaveClass(/text-white/, { timeout: 10_000 });
+  await expect(link).toHaveAttribute("aria-current", "page", { timeout: 10_000 });
+  await expect(link).toHaveClass(/bg-\[var\(--hh-surface-selected\)\]/, { timeout: 10_000 });
+  await expect(link).toHaveClass(/text-\[var\(--hh-accent-hover\)\]/, { timeout: 10_000 });
 }
 
 async function openMobileMenu(page: Page) {

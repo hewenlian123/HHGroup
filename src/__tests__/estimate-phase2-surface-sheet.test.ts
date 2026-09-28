@@ -7,11 +7,11 @@ import {
 
 const EXPECTED_WIDTHS: Record<EstimateSurfaceSheetKind, number> = {
   information: 440,
-  pricing: 400,
+  pricing: 360,
   notes: 480,
   payment: 700,
-  revision: 440,
-  activity: 400,
+  revision: 360,
+  activity: 360,
 };
 
 describe("Estimate Phase 2 surface sheet presentation", () => {
@@ -38,6 +38,6 @@ describe("Estimate Phase 2 surface sheet presentation", () => {
     const className = estimateSurfaceSheetClassName("activity", "caller-owned-class");
 
     expect(className).toContain("caller-owned-class");
-    expect(className).toContain("md:!w-[400px]");
+    expect(className).toContain("md:!w-[360px]");
   });
 });

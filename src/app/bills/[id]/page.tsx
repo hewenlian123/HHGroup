@@ -1,3 +1,4 @@
+import { financeReturnPath, financeReturnLabel } from "@/lib/finance-navigation";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { PageLayout, PageHeader } from "@/components/base";
@@ -8,11 +9,15 @@ import { billsDetailMaxClass, billsPageWrapClass } from "../bills-ui-styles";
 
 export const dynamic = "force-dynamic";
 
-type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ addPayment?: string }> };
+type Props = {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ addPayment?: string; returnTo?: string }>;
+};
 
 export default async function BillDetailPage({ params, searchParams }: Props) {
   const { id } = await params;
   const sp = await searchParams;
+  const returnHref = financeReturnPath(sp.returnTo, "/bills");
   const detail = await fetchBillDetailData(id);
   if (!detail) notFound();
   const { bill, payments } = detail;
@@ -25,8 +30,8 @@ export default async function BillDetailPage({ params, searchParams }: Props) {
           title={bill.bill_no ?? "Bill"}
           description={`${bill.vendor_name} · ${bill.bill_type}${bill.project_name ? ` · ${bill.project_name}` : ""}`}
           actions={
-            <Link href="/bills" className="text-sm text-muted-foreground hover:text-foreground">
-              Back to Bills
+            <Link href={returnHref} className="text-sm text-muted-foreground hover:text-foreground">
+              {financeReturnLabel(returnHref)}
             </Link>
           }
         />

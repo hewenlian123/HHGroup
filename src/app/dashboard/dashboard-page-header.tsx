@@ -1,40 +1,28 @@
-/** Static dashboard title row — renders immediately with the route shell (no data). */
+import type { ReactNode } from "react";
+
 import { formatDate } from "@/lib/formatters";
 import { TYPO } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 
-export function DashboardPageHeader() {
-  const chipDate = formatDate(new Date());
-
+/** Static title content shared by the loaded and loading Operations Home. */
+export function DashboardPageHeader({ actions }: { actions?: ReactNode }) {
   return (
     <header
       data-dashboard-page-header="true"
-      className="dashboard-command-hero relative isolate flex min-w-0 max-w-full shrink-0 flex-col gap-3 overflow-hidden rounded-hh-standard border px-4 py-4 max-md:gap-3 md:flex-row md:items-end md:justify-between md:gap-4 md:px-5 md:py-5"
+      className="flex min-w-0 flex-col gap-4 md:flex-row md:items-end md:justify-between"
     >
       <div className="min-w-0">
-        <p className={cn(TYPO.sectionLabel, "text-[var(--hh-text-tertiary)]")}>
-          HH · Command Center
-        </p>
-        <h1 className={cn(TYPO.pageTitle, "mt-1 text-[var(--hh-text-primary)]")}>
-          Executive Command Center
-        </h1>
-        <p
-          className={cn(
-            TYPO.pageSubtitle,
-            "mt-2 max-w-[760px] text-pretty text-[var(--hh-text-secondary)]"
-          )}
-        >
-          Liquidity, margin, payables, risk, and next actions in one operating view.
+        <h1 className={cn(TYPO.pageTitle, "text-[var(--hh-text-primary)]")}>Operations Home</h1>
+        <p className={cn(TYPO.pageSubtitle, "mt-2 max-w-[44rem] text-pretty")}>
+          Priorities, guarded project profit, and recent finance activity.
         </p>
       </div>
-      <span
-        className={cn(
-          TYPO.date,
-          "inline-flex h-11 min-h-[44px] shrink-0 items-center justify-center self-start rounded-full border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-4 text-[var(--hh-text-primary)] shadow-operational transition-[background,border-color,box-shadow] duration-150 hover:border-[var(--hh-border-strong)] hover:bg-[var(--hh-l3-hover)] max-md:w-full max-md:self-stretch md:h-9 md:w-auto md:min-h-0"
-        )}
-      >
-        {chipDate}
-      </span>
+      <div className="flex min-w-0 flex-col gap-3 md:items-end">
+        <time className={cn(TYPO.date, "text-[var(--hh-text-secondary)]")}>
+          {formatDate(new Date())}
+        </time>
+        {actions}
+      </div>
     </header>
   );
 }

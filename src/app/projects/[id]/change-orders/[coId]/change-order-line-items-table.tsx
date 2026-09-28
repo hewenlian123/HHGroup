@@ -23,5 +23,14 @@ export function ChangeOrderLineItemsTable({ items }: { items: ChangeOrderItem[] 
     },
   ];
 
-  return <DataTable<ChangeOrderItem> columns={lineColumns} data={items} getRowId={(r) => r.id} />;
+  return (
+    <div className="max-xl:[&>div:first-child]:!hidden max-xl:[&>div:nth-child(2)]:!grid xl:[&>div:first-child]:!block xl:[&>div:nth-child(2)]:!hidden">
+      <DataTable<ChangeOrderItem>
+        columns={lineColumns}
+        data={items}
+        getRowId={(r) => r.id}
+        mobileTitleKey="description"
+      />
+    </div>
+  );
 }

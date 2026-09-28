@@ -4,37 +4,20 @@ import { revalidatePath } from "next/cache";
 import { requireSupabaseOwnerOrAdminServerActionWithClient } from "@/lib/auth-boundary";
 import { createServerSupabaseClient, getServerSupabaseAdmin } from "@/lib/supabase-server";
 import { getEstimateInvoicePrefill } from "./estimate-prefill";
+import { estimateActivityActorFromAuth } from "@/lib/estimate-activity";
 import {
-  estimateActivityActorFromAuth,
-  linkEstimateMilestoneInvoiceWithActivityWithClient,
-} from "@/lib/estimate-activity";
+  createEstimateMilestoneInvoiceAtomicWithClient,
+  createInvoiceAtomicWithClient,
+} from "@/lib/invoices-db";
+import { computeInvoiceTotals } from "@/lib/money";
 
 function toNum(v: unknown): number {
   const n = typeof v === "number" ? v : Number(v);
   return Number.isFinite(n) ? n : 0;
 }
 
-function isQuantityColumnUnsupported(error: { message?: string } | null): boolean {
-  const message = error?.message ?? "";
-  return /quantity/i.test(message) && /column|generated|schema cache|could not find/i.test(message);
-}
-
-async function removeRejectedEstimateInvoice(
-  db: Awaited<ReturnType<typeof createServerSupabaseClient>>,
-  invoiceId: string
-): Promise<void> {
-  if (!db) throw new Error("Draft Invoice cleanup is unavailable.");
-  const itemsDelete = await db.from("invoice_items").delete().eq("invoice_id", invoiceId);
-  if (itemsDelete.error) {
-    throw new Error("Draft Invoice cleanup failed after Estimate linkage was rejected.");
-  }
-  const invoiceDelete = await db.from("invoices").delete().eq("id", invoiceId);
-  if (invoiceDelete.error) {
-    throw new Error("Draft Invoice cleanup failed after Estimate linkage was rejected.");
-  }
-}
-
 export async function createInvoiceDraftAction(payload: {
+  idempotencyKey?: string;
   invoiceNo?: string;
   projectId: string;
   customerId?: string | null;
@@ -80,10 +63,10 @@ export async function createInvoiceDraftAction(payload: {
     const customerId = payload.customerId?.trim() || null;
     const sourceEstimateId = payload.sourceEstimateId?.trim() || "";
     const paymentScheduleItemId = payload.paymentScheduleItemId?.trim() || "";
-    let subtotal = items.reduce((s, l) => s + Math.max(0, l.qty) * Math.max(0, l.unitPrice), 0);
     let taxPct = toNum(payload.taxPct ?? 0);
-    let taxAmount = Math.round(subtotal * (taxPct / 100) * 100) / 100;
-    let total = subtotal + taxAmount;
+    const totals = computeInvoiceTotals(items, taxPct);
+    let subtotal = totals.subtotal;
+    let total = totals.total;
 
     if (Boolean(sourceEstimateId) !== Boolean(paymentScheduleItemId)) {
       return { ok: false, error: "Both source estimate and payment milestone are required." };
@@ -126,118 +109,41 @@ export async function createInvoiceDraftAction(payload: {
       }
       subtotal = source.prefill.invoiceSubtotal;
       taxPct = source.prefill.invoiceTaxPct;
-      taxAmount = source.prefill.invoiceTaxAmount;
       total = source.prefill.invoiceTotal;
     }
 
-    const customInvoiceNo = payload.invoiceNo?.trim();
-    let invoiceNo = customInvoiceNo ?? "";
-    if (!invoiceNo) {
-      const { count } = await supabase
-        .from("invoices")
-        .select("id", { count: "exact", head: true });
-      const nextNum = (count ?? 0) + 1;
-      invoiceNo = `INV-${String(nextNum).padStart(4, "0")}`;
-    }
-
-    const { data: invRow, error: invErr } = await supabase
-      .from("invoices")
-      .insert({
-        invoice_no: invoiceNo,
-        project_id: projectId || null,
-        customer_id: customerId,
-        client_name: clientName,
-        issue_date: safeIssueDate,
-        due_date: safeDueDate,
-        status: "Draft",
-        notes: payload.notes ?? null,
-        tax_pct: taxPct,
-        subtotal,
-        tax_amount: taxAmount,
-        total,
-      })
-      .select("id")
-      .single();
-    if (invErr || !invRow?.id)
-      return { ok: false, error: invErr?.message ?? "Failed to create invoice." };
-
-    const invoiceId = String(invRow.id);
-    const itemRows = items.map((l) => ({
-      invoice_id: invoiceId,
-      description: l.description,
-      qty: Math.max(0, l.qty),
-      quantity: Math.max(0, l.qty),
-      unit_price: Math.max(0, l.unitPrice),
-      amount: Math.max(0, l.qty) * Math.max(0, l.unitPrice),
-    }));
-    if (itemRows.length > 0) {
-      let { error: itemsErr } = await supabase.from("invoice_items").insert(itemRows);
-      if (itemsErr && isQuantityColumnUnsupported(itemsErr)) {
-        const fallbackRows = itemRows.map(
-          ({ invoice_id, description, qty, unit_price, amount }) => ({
-            invoice_id,
-            description,
-            qty,
-            unit_price,
-            amount,
-          })
-        );
-        const fallback = await supabase.from("invoice_items").insert(fallbackRows);
-        itemsErr = fallback.error;
-      }
-      if (itemsErr) {
-        await supabase.from("invoices").delete().eq("id", invoiceId);
-        return { ok: false, error: itemsErr.message ?? "Failed to create invoice items." };
-      }
-    }
-
-    if (sourceEstimateId && paymentScheduleItemId) {
-      let linked: { invoiceId: string; linked: boolean };
-      try {
-        linked = await linkEstimateMilestoneInvoiceWithActivityWithClient(supabase, {
-          estimateId: sourceEstimateId,
-          scheduleItemId: paymentScheduleItemId,
-          invoiceId,
-          actor: activityActor,
-        });
-      } catch (error) {
-        try {
-          await removeRejectedEstimateInvoice(supabase, invoiceId);
-        } catch (cleanupError) {
-          return {
-            ok: false,
-            error:
-              cleanupError instanceof Error
-                ? cleanupError.message
-                : "Draft Invoice cleanup failed after Estimate linkage was rejected.",
-          };
-        }
-        return {
-          ok: false,
-          error: error instanceof Error ? error.message : "Failed to link estimate milestone.",
-        };
-      }
-      if (!linked.linked) {
-        await removeRejectedEstimateInvoice(supabase, invoiceId);
-        const existingInvoiceId = linked.invoiceId.trim();
-        if (existingInvoiceId) {
-          revalidatePath(`/estimates/${sourceEstimateId}`);
-          revalidatePath(`/financial/invoices/${existingInvoiceId}`);
-          return { ok: true, invoiceId: existingInvoiceId };
-        }
-        return { ok: false, error: "Could not link invoice to estimate milestone." };
-      }
-    }
-
-    await supabase
-      .from("invoices")
-      .update({
-        subtotal,
-        tax_pct: taxPct,
-        tax_amount: taxAmount,
-        total,
-      })
-      .eq("id", invoiceId);
+    const idempotencyKey =
+      sourceEstimateId && paymentScheduleItemId
+        ? `invoice-milestone:${sourceEstimateId}:${paymentScheduleItemId}`
+        : payload.idempotencyKey?.trim() || globalThis.crypto.randomUUID();
+    const invoiceCreatePayload = {
+      idempotencyKey,
+      invoiceNo: payload.invoiceNo,
+      projectId,
+      customerId,
+      clientName,
+      issueDate: safeIssueDate,
+      dueDate: safeDueDate,
+      taxPct,
+      notes: payload.notes,
+      lineItems: items.map((item) => ({
+        ...item,
+        amount: Math.max(0, item.qty) * Math.max(0, item.unitPrice),
+      })),
+    };
+    const created =
+      sourceEstimateId && paymentScheduleItemId
+        ? await createEstimateMilestoneInvoiceAtomicWithClient(
+            {
+              ...invoiceCreatePayload,
+              estimateId: sourceEstimateId,
+              scheduleItemId: paymentScheduleItemId,
+              actor: activityActor,
+            },
+            supabase
+          )
+        : await createInvoiceAtomicWithClient(invoiceCreatePayload, supabase);
+    const invoiceId = created.id;
 
     revalidatePath("/financial/invoices");
     revalidatePath(`/financial/invoices/${invoiceId}`);

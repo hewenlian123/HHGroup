@@ -35,13 +35,13 @@ export const NEO = {
   input: "neo-input",
   amount: "neo-amount",
   surface:
-    "hh-card rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-operational",
+    "hh-card rounded-hh-panel border border-[var(--hh-border)] bg-[var(--hh-l1-workspace)] text-[var(--hh-text-primary)] shadow-none",
   surfaceMuted:
-    "rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)]",
+    "rounded-hh-panel border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)]",
   buttonPrimary:
-    "hh-btn-primary border-transparent bg-[var(--hh-action-primary)] text-[var(--hh-action-primary-foreground)] hover:opacity-90 active:bg-[var(--hh-action-primary)] dark:hover:bg-[var(--hh-gold-hover)] dark:hover:opacity-100 dark:active:bg-[var(--hh-gold-hover)]",
+    "hh-btn-primary border-[var(--hh-action-primary)] bg-[var(--hh-action-primary)] text-[var(--hh-action-primary-foreground)] hover:border-[var(--hh-action-primary-hover)] hover:bg-[var(--hh-action-primary-hover)] active:border-[var(--hh-action-primary-hover)] active:bg-[var(--hh-action-primary-hover)]",
   buttonSecondary:
-    "hh-btn-secondary border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)]",
+    "hh-btn-secondary border-[var(--hh-input)] bg-[var(--hh-l1-workspace)] text-[var(--hh-text-primary)] hover:border-[var(--hh-border-emphasis)] hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)]",
   buttonGhost:
     "hh-btn-ghost border-0 bg-transparent text-[var(--hh-text-secondary)] hover:bg-[var(--hh-l3-hover)] hover:text-[var(--hh-text-primary)] active:bg-[var(--hh-l3-pressed)]",
   focusRing: "hh-focus-ring",
@@ -92,8 +92,8 @@ export type AmountTone = "neutral" | "muted" | "income" | "expense" | "danger";
 export const AMOUNT_TONE_CLASS: Record<AmountTone, string> = {
   neutral: OS.neutralAmount,
   muted: "text-[var(--hh-text-secondary)]",
-  income: "text-[var(--hh-success)]",
-  expense: "text-[var(--hh-danger)]",
+  income: OS.neutralAmount,
+  expense: OS.neutralAmount,
   danger: "text-[var(--hh-danger)]",
 };
 

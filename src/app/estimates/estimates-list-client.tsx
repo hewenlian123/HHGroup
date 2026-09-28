@@ -3,14 +3,18 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FlaskConical, Plus, Search } from "lucide-react";
+import { FlaskConical, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { tableRawThClass } from "@/components/ui/table";
+import { TableShell, tableRawThClass } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { EstimateListRow, EstimateMobileList } from "./estimate-list-row";
 import { EstimateSuccessBanner } from "./[id]/estimate-success-banner";
 import type { EstimateListItem, EstimateStatus } from "@/lib/estimates-db";
-import { ConfirmDialog, EmptyState, NeoTable, NeoToolbar, PageHeader } from "@/components/base";
+import { ConfirmDialog } from "@/components/base/confirm-dialog";
+import { PageHeader } from "@/components/base/page-layout";
+import { NativeSelect } from "@/components/ui/native-select";
+import { EmptyState, ErrorRetry } from "@/components/ui/system-state";
+import { Toolbar } from "@/components/ui/toolbar";
 import { useToast } from "@/components/toast/toast-provider";
 import { syncRouterNonBlocking } from "@/components/perf/sync-router-non-blocking";
 import { formatEstimateCurrency } from "./_components/estimate-currency";
@@ -21,7 +25,6 @@ import {
 import { duplicateEstimateAsDraftAction } from "./actions";
 import {
   MobileEmptyState,
-  MobileFabPlus,
   MobileFilterSheet,
   MobileListHeader,
   MobileSearchFiltersRow,
@@ -29,12 +32,13 @@ import {
 } from "@/components/mobile/mobile-list-chrome";
 import { cn } from "@/lib/utils";
 import "./estimate-list-operational.css";
+import "./estimate-module.css";
 
-const PAGE_BG = "estimate-list-workspace text-[var(--hh-text-secondary)]";
+const PAGE_BG = "estimate-module estimate-list-workspace text-[var(--hh-text-secondary)]";
 const FIELD =
-  "estimate-list-search-field text-hh-control h-hh-control-standard rounded-hh-compact border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-none transition-[border-color,background-color,box-shadow] duration-150 placeholder:text-[var(--hh-text-tertiary)] hover:border-[var(--hh-border-strong)] hover:bg-[var(--hh-l3-hover)] focus-visible:border-[var(--hh-border-strong)] focus-visible:bg-[var(--hh-l2-operational-surface)] focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)]";
+  "estimate-list-search-field text-hh-control h-hh-control-standard rounded-hh-compact border border-[var(--hh-border-default)] bg-[var(--hh-surface-workspace)] text-[var(--hh-text-primary)] shadow-none transition-[border-color,background-color,box-shadow] duration-150 placeholder:text-[var(--hh-text-muted)] hover:border-[var(--hh-border-input)] hover:bg-[var(--hh-surface-hover)] focus-visible:border-[var(--hh-accent-primary)] focus-visible:bg-[var(--hh-surface-workspace)] focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)]";
 const PRIMARY_ACTION =
-  "rounded-hh-compact border border-[var(--hh-action-primary)] bg-[var(--hh-action-primary)] text-[var(--hh-action-primary-foreground)] shadow-none hover:opacity-90 focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)]";
+  "estimate-module-primary rounded-hh-compact shadow-none focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)]";
 
 const STATUS_FILTERS: ReadonlyArray<{
   value: EstimateStatus | "all";
@@ -177,39 +181,21 @@ export function EstimatesListClient({
         PAGE_BG
       )}
     >
-      <MobileListHeader
-        title="Estimates"
-        tone="page"
-        fab={<MobileFabPlus href="/estimates/new" ariaLabel="New estimate" />}
-      />
+      <MobileListHeader title="Estimates" tone="page" fab={null} />
 
       <div className="hidden md:block">
         <PageHeader
           className="estimate-list-page-header"
           title="Estimates"
-          description={`${totalEstimates} ${totalEstimates === 1 ? "estimate" : "estimates"} · ${formatEstimateCurrency(totalValue)} pipeline`}
-          actions={
-            <div className="flex items-center gap-2">
-              <Button asChild size="sm" className={cn("min-h-10 px-3", PRIMARY_ACTION)}>
-                <Link href="/estimates/new">
-                  <Plus className="mr-2 h-4 w-4" />
-                  New Estimate
-                </Link>
-              </Button>
-            </div>
+          description={
+            loadWarning
+              ? "Estimates unavailable"
+              : `${totalEstimates} ${totalEstimates === 1 ? "estimate" : "estimates"} · ${formatEstimateCurrency(totalValue)} pipeline`
           }
         />
       </div>
 
       <EstimateSuccessBanner saved={saved} />
-      {loadWarning && (
-        <p
-          role="status"
-          className="text-hh-body rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l3-hover)] px-3 py-2 text-[var(--hh-text-secondary)]"
-        >
-          {loadWarning}
-        </p>
-      )}
       {errorMessage && (
         <p
           role="alert"
@@ -219,7 +205,7 @@ export function EstimatesListClient({
         </p>
       )}
 
-      {rows.length > 0 ? (
+      {!loadWarning && rows.length > 0 ? (
         <div
           data-testid="estimate-list-summary-rail"
           className="estimate-list-summary-rail hidden md:flex"
@@ -229,7 +215,7 @@ export function EstimatesListClient({
             <button
               key={filter.value}
               type="button"
-              className="estimate-list-status-filter"
+              className="estimate-list-status-filter hh-touch-min"
               data-active={statusFilter === filter.value ? "true" : undefined}
               aria-pressed={statusFilter === filter.value}
               onClick={() => setStatusFilter(filter.value)}
@@ -244,7 +230,7 @@ export function EstimatesListClient({
       ) : null}
 
       <section data-testid="estimate-list-records" className="estimate-list-records">
-        {rows.length > 0 ? (
+        {!loadWarning && rows.length > 0 ? (
           <>
             <MobileSearchFiltersRow
               filterSheetOpen={filtersOpen}
@@ -269,7 +255,7 @@ export function EstimatesListClient({
                 >
                   Status
                 </label>
-                <select
+                <NativeSelect
                   id="estimate-mobile-status-filter"
                   className={cn(FIELD, "w-full appearance-none px-3")}
                   value={statusFilter}
@@ -281,7 +267,7 @@ export function EstimatesListClient({
                   <option value="Approved">Approved</option>
                   <option value="Rejected">Rejected</option>
                   <option value="Converted">Converted</option>
-                </select>
+                </NativeSelect>
               </div>
               <Button
                 type="button"
@@ -291,7 +277,10 @@ export function EstimatesListClient({
                 Done
               </Button>
             </MobileFilterSheet>
-            <NeoToolbar className="estimate-list-toolbar hidden gap-2 p-2 md:flex md:flex-row md:items-center md:justify-between">
+            <Toolbar
+              variant="filters"
+              className="estimate-list-toolbar hidden gap-2 p-2 md:flex md:flex-row md:items-center md:justify-between"
+            >
               <div className="relative min-w-[260px] max-w-md flex-1">
                 <Search
                   className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--hh-text-tertiary)]"
@@ -305,49 +294,33 @@ export function EstimatesListClient({
                   className={cn(FIELD, "pl-9")}
                 />
               </div>
-              <select
-                aria-label="Filter estimates by status"
-                className={cn(FIELD, "w-full appearance-none px-3 md:w-[180px]")}
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value as EstimateStatus | "all")}
-              >
-                <option value="all">All statuses</option>
-                <option value="Draft">Draft</option>
-                <option value="Sent">Sent</option>
-                <option value="Approved">Approved</option>
-                <option value="Rejected">Rejected</option>
-                <option value="Converted">Converted</option>
-              </select>
-            </NeoToolbar>
+            </Toolbar>
           </>
         ) : null}
 
-        {rows.length === 0 ? (
+        {loadWarning ? (
+          <ErrorRetry
+            title="Estimates unavailable"
+            description={loadWarning}
+            retryLabel="Retry"
+            onRetry={() => router.refresh()}
+          />
+        ) : rows.length === 0 ? (
           <>
             <MobileEmptyState
               icon={<FlaskConical className="h-8 w-8 opacity-80" aria-hidden />}
-              message={
-                loadWarning
-                  ? "Could not load estimates."
-                  : "No estimates yet. Create one to get started."
-              }
+              message="No estimates yet. Create one to get started."
               action={
-                !loadWarning ? (
-                  <Button asChild size="sm" variant="outline">
-                    <Link href="/estimates/new">New estimate</Link>
-                  </Button>
-                ) : undefined
+                <Button asChild size="sm" variant="outline">
+                  <Link href="/estimates/new">New estimate</Link>
+                </Button>
               }
             />
             <div className="hidden md:block">
               <EmptyState
-                title={loadWarning ? "Could not load estimates" : "No estimates yet"}
-                description={
-                  loadWarning
-                    ? "Check your connection and database configuration, then refresh."
-                    : "Create an estimate to get started."
-                }
-                icon={<FlaskConical className="h-5 w-5" />}
+                title="No estimates yet"
+                description="Create an estimate to get started."
+                icon={<FlaskConical className="h-5 w-5" aria-hidden />}
                 action={
                   <Button asChild size="sm" className={cn("h-9", PRIMARY_ACTION)}>
                     <Link href="/estimates/new">New Estimate</Link>
@@ -377,43 +350,50 @@ export function EstimatesListClient({
               onCopyPrevious={(row) => void handleCopyPrevious(row)}
             />
             <div className="hidden lg:block">
-              <NeoTable
-                className="estimate-list-table-shell"
-                tableClassName="estimate-list-table min-w-[720px] lg:min-w-0"
-              >
-                <thead>
-                  <tr>
-                    <th className={cn(tableRawThClass, "estimate-list-col-number")}>Estimate</th>
-                    <th className={cn(tableRawThClass, "estimate-list-col-customer-project")}>
-                      Customer / Project
-                    </th>
-                    <th className={cn(tableRawThClass, "estimate-list-col-revision")}>Revision</th>
-                    <th className={cn(tableRawThClass, "estimate-list-col-status")}>Status</th>
-                    <th
-                      className={cn(
-                        tableRawThClass,
-                        "estimate-list-col-total text-right tabular-nums"
-                      )}
-                    >
-                      Total
-                    </th>
-                    <th className={cn(tableRawThClass, "estimate-list-col-updated")}>Updated</th>
-                    <th className={cn(tableRawThClass, "estimate-list-col-actions text-right")}>
-                      <span className="sr-only">Actions</span>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map((row) => (
-                    <EstimateListRow
-                      key={row.id}
-                      row={row}
-                      onRequestDelete={setDeleteTarget}
-                      onCopyPrevious={(source) => void handleCopyPrevious(source)}
-                    />
-                  ))}
-                </tbody>
-              </NeoTable>
+              <TableShell className="estimate-list-table-shell">
+                <div className="estimate-list-table-scroll max-w-full overflow-x-auto">
+                  <table className="estimate-list-table w-full min-w-[720px] border-collapse lg:min-w-0">
+                    <thead>
+                      <tr>
+                        <th className={cn(tableRawThClass, "estimate-list-col-number")}>
+                          Estimate
+                        </th>
+                        <th className={cn(tableRawThClass, "estimate-list-col-customer-project")}>
+                          Customer / Project
+                        </th>
+                        <th className={cn(tableRawThClass, "estimate-list-col-revision")}>
+                          Revision
+                        </th>
+                        <th className={cn(tableRawThClass, "estimate-list-col-status")}>Status</th>
+                        <th
+                          className={cn(
+                            tableRawThClass,
+                            "estimate-list-col-total text-right tabular-nums"
+                          )}
+                        >
+                          Total
+                        </th>
+                        <th className={cn(tableRawThClass, "estimate-list-col-updated")}>
+                          Updated
+                        </th>
+                        <th className={cn(tableRawThClass, "estimate-list-col-actions text-right")}>
+                          <span className="sr-only">Actions</span>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filtered.map((row) => (
+                        <EstimateListRow
+                          key={row.id}
+                          row={row}
+                          onRequestDelete={setDeleteTarget}
+                          onCopyPrevious={(source) => void handleCopyPrevious(source)}
+                        />
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </TableShell>
             </div>
           </>
         )}

@@ -1,11 +1,11 @@
 /**
  * Project tasks — Supabase only. Table: project_tasks.
- * Uses service_role admin client so GET and DELETE see the same data (RLS bypass).
+ * Authenticated Operations callers pass one request-scoped RLS client.
  * Test data: tasks created by system tests use title prefix "Workflow Test" and are excluded from UI list / protected from UI delete.
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { getServerSupabase, getServerSupabaseAdmin } from "@/lib/supabase-server";
+import { getSupabaseClient } from "@/lib/supabase";
 
 export type ProjectTaskStatus = "todo" | "in_progress" | "done";
 export type ProjectTaskPriority = "low" | "medium" | "high";
@@ -34,11 +34,9 @@ export type ProjectTaskDraft = {
 
 export type ProjectTaskWithWorker = ProjectTask & { worker_name: string | null };
 
-function client(): SupabaseClient {
-  // Prefer admin (service role) when configured; otherwise fall back to server client (anon/service role depending on env).
-  const admin = getServerSupabaseAdmin();
-  const server = getServerSupabase();
-  const c = admin ?? server;
+function client(explicitClient?: SupabaseClient): SupabaseClient {
+  if (explicitClient) return explicitClient;
+  const c = getSupabaseClient();
   if (!c) throw new Error("Supabase client not configured.");
   return c;
 }
@@ -69,10 +67,10 @@ function toTask(r: Record<string, unknown>): ProjectTask {
 }
 
 /** Get all tasks across all projects (for Operations Tasks page), with project and worker names. */
-export async function getAllTasksWithProject(): Promise<
-  (ProjectTaskWithWorker & { project_name: string | null })[]
-> {
-  const c = client();
+export async function getAllTasksWithProject(
+  explicitClient?: SupabaseClient
+): Promise<(ProjectTaskWithWorker & { project_name: string | null })[]> {
+  const c = client(explicitClient);
   const { data: rows, error } = await c
     .from("project_tasks")
     .select(COLS)
@@ -84,9 +82,21 @@ export async function getAllTasksWithProject(): Promise<
     new Set(tasks.map((t) => t.assigned_worker_id).filter(Boolean))
   ) as string[];
   const [projectsRes, workersRes] = await Promise.all([
-    projectIds.length ? c.from("projects").select("id, name").in("id", projectIds) : { data: [] },
-    workerIds.length ? c.from("workers").select("id, name").in("id", workerIds) : { data: [] },
+    projectIds.length
+      ? c.from("projects").select("id, name").in("id", projectIds)
+      : { data: [], error: null },
+    workerIds.length
+      ? c.from("workers").select("id, name").in("id", workerIds)
+      : { data: [], error: null },
   ]);
+  if (
+    projectsRes.error ||
+    projectsRes.data == null ||
+    workersRes.error ||
+    workersRes.data == null
+  ) {
+    throw new Error("Task project and worker names are unavailable.");
+  }
   const projectNames = new Map<string, string>(
     ((projectsRes.data ?? []) as { id: string; name: string }[]).map((p) => [p.id, p.name ?? ""])
   );
@@ -101,8 +111,11 @@ export async function getAllTasksWithProject(): Promise<
 }
 
 /** Get all tasks for a project, with worker names when assigned_worker_id is set. */
-export async function getProjectTasks(projectId: string): Promise<ProjectTaskWithWorker[]> {
-  const c = client();
+export async function getProjectTasks(
+  projectId: string,
+  explicitClient?: SupabaseClient
+): Promise<ProjectTaskWithWorker[]> {
+  const c = client(explicitClient);
   const { data: rows, error } = await c
     .from("project_tasks")
     .select(COLS)
@@ -115,7 +128,11 @@ export async function getProjectTasks(projectId: string): Promise<ProjectTaskWit
   ) as string[];
   const workerNames = new Map<string, string>();
   if (workerIds.length > 0) {
-    const { data: workers } = await c.from("workers").select("id, name").in("id", workerIds);
+    const { data: workers, error: workersError } = await c
+      .from("workers")
+      .select("id, name")
+      .in("id", workerIds);
+    if (workersError) throw new Error(workersError.message ?? "Failed to load task workers.");
     (workers ?? []).forEach((w: { id: string; name: string }) =>
       workerNames.set(w.id, w.name ?? "")
     );
@@ -127,8 +144,11 @@ export async function getProjectTasks(projectId: string): Promise<ProjectTaskWit
 }
 
 /** Get one task by id. */
-export async function getProjectTaskById(taskId: string): Promise<ProjectTask | null> {
-  const c = client();
+export async function getProjectTaskById(
+  taskId: string,
+  explicitClient?: SupabaseClient
+): Promise<ProjectTask | null> {
+  const c = client(explicitClient);
   const { data: row, error } = await c
     .from("project_tasks")
     .select(COLS)
@@ -139,8 +159,11 @@ export async function getProjectTaskById(taskId: string): Promise<ProjectTask | 
 }
 
 /** Create a task. */
-export async function createProjectTask(draft: ProjectTaskDraft): Promise<ProjectTask> {
-  const c = client();
+export async function createProjectTask(
+  draft: ProjectTaskDraft,
+  explicitClient?: SupabaseClient
+): Promise<ProjectTask> {
+  const c = client(explicitClient);
   const { data: row, error } = await c
     .from("project_tasks")
     .insert({
@@ -166,9 +189,10 @@ export async function updateProjectTask(
       ProjectTask,
       "title" | "description" | "status" | "assigned_worker_id" | "due_date" | "priority"
     >
-  >
+  >,
+  explicitClient?: SupabaseClient
 ): Promise<ProjectTask | null> {
-  const c = client();
+  const c = client(explicitClient);
   const updates: Record<string, unknown> = {};
   if (patch.title !== undefined) updates.title = patch.title.trim();
   if (patch.description !== undefined) updates.description = patch.description?.trim() ?? null;
@@ -176,7 +200,7 @@ export async function updateProjectTask(
   if (patch.assigned_worker_id !== undefined) updates.assigned_worker_id = patch.assigned_worker_id;
   if (patch.due_date !== undefined) updates.due_date = patch.due_date?.slice(0, 10) ?? null;
   if (patch.priority !== undefined) updates.priority = patch.priority;
-  if (Object.keys(updates).length === 0) return getProjectTaskById(taskId);
+  if (Object.keys(updates).length === 0) return getProjectTaskById(taskId, c);
   const { data: row, error } = await c
     .from("project_tasks")
     .update(updates)
@@ -188,8 +212,11 @@ export async function updateProjectTask(
 }
 
 /** Delete a task. */
-export async function deleteProjectTask(taskId: string): Promise<void> {
-  const c = client();
+export async function deleteProjectTask(
+  taskId: string,
+  explicitClient?: SupabaseClient
+): Promise<void> {
+  const c = client(explicitClient);
   const { error } = await c.from("project_tasks").delete().eq("id", taskId);
   if (error) throw new Error(error.message ?? "Failed to delete task.");
 }

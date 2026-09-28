@@ -1,0 +1,228 @@
+/* List and template presentation shares the Estimate module's inherited tokens. */
+.estimate-module,
+.estimate-module-surface {
+  font-family: var(--estimate-font);
+  color: var(--estimate-text-primary);
+}
+
+.estimate-module.estimate-list-workspace {
+  background: var(--estimate-bg);
+}
+
+:is(.estimate-module, .estimate-module-surface) .estimate-module-primary {
+  border: 1px solid var(--estimate-action-border);
+  background: var(--estimate-action);
+  color: var(--estimate-action-text);
+  box-shadow: none;
+}
+
+:is(.estimate-module, .estimate-module-surface) .estimate-module-primary:hover {
+  border-color: var(--estimate-action-border);
+  background: var(--estimate-action-hover);
+  color: var(--estimate-action-text);
+}
+
+.estimate-module .estimate-module-secondary {
+  background: var(--estimate-surface);
+  border-color: var(--estimate-border);
+  color: var(--estimate-text-secondary);
+}
+
+.estimate-module .estimate-list-summary-rail {
+  gap: 4px;
+  border-bottom: 0;
+}
+
+.estimate-module .estimate-list-status-filter {
+  border: 1px solid transparent;
+  border-radius: var(--estimate-radius);
+  color: var(--estimate-text-secondary);
+}
+
+.estimate-module .estimate-list-status-filter[data-active="true"] {
+  background: var(--estimate-surface-selected);
+  border-color: var(--estimate-action-border);
+  color: var(--estimate-accent-text);
+}
+
+.estimate-module .estimate-list-status-count {
+  background: var(--estimate-surface-hover);
+  color: inherit;
+}
+
+.estimate-module .estimate-list-records,
+.estimate-module .estimate-module-panel {
+  background: var(--estimate-surface);
+  border: 1px solid var(--estimate-border);
+  border-radius: var(--estimate-panel-radius);
+  box-shadow: none;
+}
+
+.estimate-module .estimate-list-records > [role="toolbar"] {
+  border-radius: var(--estimate-panel-radius) var(--estimate-panel-radius) 0 0;
+  background: var(--estimate-surface);
+}
+
+.estimate-module table thead th {
+  background: var(--estimate-surface-hover);
+  color: var(--estimate-text-secondary);
+  border-color: var(--estimate-divider);
+  font-weight: 500;
+}
+
+.estimate-module table tbody td {
+  border-color: var(--estimate-divider);
+}
+
+.estimate-module .estimate-list-row:hover,
+.estimate-template-library tbody tr:hover {
+  background: var(--estimate-row-hover);
+  box-shadow: none;
+}
+
+:is(.estimate-module, .estimate-module-surface) :is(input, textarea, select) {
+  background: var(--estimate-surface);
+  border-color: var(--estimate-border);
+  color: var(--estimate-text-primary);
+  border-radius: var(--estimate-radius);
+}
+
+.estimate-module-surface {
+  background: var(--estimate-surface);
+  border-color: var(--estimate-border);
+  border-radius: var(--estimate-panel-radius);
+}
+
+.estimate-module-surface .estimate-builder {
+  background: transparent;
+}
+
+.estimate-module-surface [data-slot="dialog-footer"] {
+  background: var(--estimate-surface-hover);
+  border-color: var(--estimate-border);
+}
+
+/* Long imported Estimate numbers must not run into the customer column. */
+.estimate-list-workspace table td:first-child a {
+  display: block;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Template editing is inline; it does not use the workspace inspector grid. */
+.estimate-module-surface[data-testid="estimate-template-dialog"]
+  .estimate-builder
+  .eb-line-item-grid--pricing {
+  display: flex !important;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  padding: 12px;
+}
+
+.estimate-module-surface[data-testid="estimate-template-dialog"]
+  .estimate-builder
+  .eb-line-item-item-cell {
+  display: grid !important;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 4px 8px;
+}
+
+.estimate-module-surface[data-testid="estimate-template-dialog"]
+  .estimate-builder
+  :is(
+    .eb-line-item-index-control,
+    .eb-line-title-input-wrap,
+    .eb-line-item-description-block,
+    .eb-line-pricing-qty,
+    .eb-line-pricing-unit,
+    .eb-line-total-block,
+    .eb-line-item-more-trigger
+  ) {
+  grid-area: auto !important;
+  min-width: 0;
+}
+
+.estimate-module-surface[data-testid="estimate-template-dialog"]
+  .estimate-builder
+  .eb-line-title-label {
+  display: none !important;
+}
+
+.estimate-module-surface[data-testid="estimate-template-dialog"]
+  .estimate-builder
+  .eb-line-item-pricing-wrap {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.2fr) minmax(0, 1.5fr);
+  gap: 10px;
+  align-items: end;
+}
+
+.estimate-module-surface[data-testid="estimate-template-dialog"]
+  .estimate-builder
+  :is(
+    .eb-line-pricing-qty,
+    .eb-line-pricing-unit,
+    .estimate-template-unit-field,
+    .eb-line-total-block
+  ) {
+  display: flex !important;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.estimate-module-surface[data-testid="estimate-template-dialog"]
+  .estimate-builder
+  .eb-line-item-pricing-wrap
+  .eb-read-label {
+  display: block !important;
+  color: var(--estimate-text-secondary);
+  font-size: 11px;
+  line-height: 16px;
+}
+
+.estimate-module-surface[data-testid="estimate-template-dialog"]
+  .estimate-builder
+  .eb-line-pricing-total-col {
+  display: flex !important;
+  align-items: end;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.estimate-module-surface[data-testid="estimate-template-dialog"]
+  .estimate-builder
+  .eb-line-total-amount {
+  display: flex;
+  align-items: center;
+  min-height: 34px;
+}
+
+.estimate-module-surface[data-testid="estimate-template-dialog"]
+  .estimate-builder
+  .eb-line-item-grid--pricing
+  input {
+  min-height: 34px !important;
+  width: 100%;
+  padding: 4px 8px !important;
+  border: 1px solid var(--estimate-border) !important;
+  background: var(--estimate-surface) !important;
+}
+
+@media (max-width: 639px) {
+  .estimate-module-surface[data-testid="estimate-template-dialog"]
+    .estimate-builder
+    .eb-line-item-pricing-wrap {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .estimate-module-surface[data-testid="estimate-template-dialog"]
+    .estimate-builder
+    .eb-line-item-grid--pricing
+    input {
+    min-height: 44px !important;
+  }
+}

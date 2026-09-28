@@ -33,6 +33,8 @@ type EstimateTaxPresetMenuProps = {
   tax: number;
   onApplyTax: (amount: number) => void;
   onTaxTouched: () => void;
+  /** When set, presets store a rate instead of a frozen dollar amount. */
+  onApplyRate?: (ratePct: number) => void;
 };
 
 export function EstimateTaxPresetMenu({
@@ -40,6 +42,7 @@ export function EstimateTaxPresetMenu({
   tax,
   onApplyTax,
   onTaxTouched,
+  onApplyRate,
 }: EstimateTaxPresetMenuProps): React.ReactElement {
   const [customPresets, setCustomPresets] = React.useState<EstimateTaxPreset[]>([]);
 
@@ -48,6 +51,10 @@ export function EstimateTaxPresetMenu({
   }, []);
 
   const applyRate = (ratePct: number): void => {
+    if (onApplyRate) {
+      onApplyRate(ratePct);
+      return;
+    }
     onTaxTouched();
     onApplyTax(taxAmountFromSubtotalAndRate(estimateSubtotal, ratePct));
   };
@@ -82,6 +89,9 @@ export function EstimateTaxPresetMenu({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className={cn(EB.lineItemMoreMenu, EB.commandMenu)}>
+        <p className="max-w-64 px-2 py-2 text-xs text-[var(--hh-text-tertiary)]">
+          Applies a fixed tax amount from the current subtotal. Reapply after scope changes.
+        </p>
         {BUILTIN_ESTIMATE_TAX_PRESETS.map((preset) => (
           <DropdownMenuItem
             key={preset.id}
@@ -198,6 +208,10 @@ export function EstimateDiscountOptionsPopover({
         </Button>
         <div className="border-t border-white/[0.08] pt-2 space-y-1.5">
           <p className="text-hh-status uppercase text-[var(--hh-text-tertiary)]">Percentage %</p>
+          <p className="text-xs text-[var(--hh-text-tertiary)]">
+            Calculated from subtotal plus tax, then saved as a fixed discount. Reapply after pricing
+            changes.
+          </p>
           <div className="flex gap-1.5">
             <Input
               type="number"

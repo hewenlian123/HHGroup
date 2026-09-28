@@ -3,6 +3,7 @@
  */
 
 import { getSupabaseClient } from "@/lib/supabase";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type SitePhoto = {
   id: string;
@@ -26,8 +27,8 @@ export type SitePhotoDraft = {
   uploaded_by?: string | null;
 };
 
-function client() {
-  const c = getSupabaseClient();
+function client(explicitClient?: SupabaseClient) {
+  const c = explicitClient ?? getSupabaseClient();
   if (!c) throw new Error("Supabase is not configured.");
   return c;
 }
@@ -47,8 +48,11 @@ function toRow(r: Record<string, unknown>): SitePhoto {
 }
 
 /** Get site photos, optionally filtered by project_id. */
-export async function getSitePhotos(projectId?: string | null): Promise<SitePhotoWithProject[]> {
-  const c = client();
+export async function getSitePhotos(
+  projectId?: string | null,
+  explicitClient?: SupabaseClient
+): Promise<SitePhotoWithProject[]> {
+  const c = client(explicitClient);
   let q = c.from("site_photos").select(COLS).order("created_at", { ascending: false });
   if (projectId?.trim()) {
     q = q.eq("project_id", projectId.trim());
@@ -58,7 +62,11 @@ export async function getSitePhotos(projectId?: string | null): Promise<SitePhot
   const items = (rows ?? []).map((r) => toRow(r as Record<string, unknown>));
   const projectIds = Array.from(new Set(items.map((i) => i.project_id)));
   if (projectIds.length === 0) return items.map((i) => ({ ...i, project_name: null }));
-  const { data: projects } = await c.from("projects").select("id, name").in("id", projectIds);
+  const { data: projects, error: projectsError } = await c
+    .from("projects")
+    .select("id, name")
+    .in("id", projectIds);
+  if (projectsError) throw new Error(projectsError.message ?? "Failed to load photo projects.");
   const projectNames = new Map<string, string>(
     ((projects ?? []) as { id: string; name: string }[]).map((p) => [p.id, p.name ?? ""])
   );
@@ -69,23 +77,31 @@ export async function getSitePhotos(projectId?: string | null): Promise<SitePhot
 }
 
 /** Get one site photo by id. */
-export async function getSitePhotoById(id: string): Promise<SitePhotoWithProject | null> {
-  const c = client();
+export async function getSitePhotoById(
+  id: string,
+  explicitClient?: SupabaseClient
+): Promise<SitePhotoWithProject | null> {
+  const c = client(explicitClient);
   const { data: row, error } = await c.from("site_photos").select(COLS).eq("id", id).maybeSingle();
-  if (error || !row) return null;
+  if (error) throw new Error(error.message ?? "Failed to load site photo.");
+  if (!row) return null;
   const item = toRow(row as Record<string, unknown>);
-  const { data: proj } = await c
+  const { data: proj, error: projectError } = await c
     .from("projects")
     .select("id, name")
     .eq("id", item.project_id)
     .maybeSingle();
+  if (projectError) throw new Error(projectError.message ?? "Failed to load photo project.");
   const project_name = (proj as { name?: string } | null)?.name ?? null;
   return { ...item, project_name };
 }
 
 /** Create a site photo. */
-export async function createSitePhoto(draft: SitePhotoDraft): Promise<SitePhoto> {
-  const c = client();
+export async function createSitePhoto(
+  draft: SitePhotoDraft,
+  explicitClient?: SupabaseClient
+): Promise<SitePhoto> {
+  const c = client(explicitClient);
   const { data: row, error } = await c
     .from("site_photos")
     .insert({
@@ -104,9 +120,10 @@ export async function createSitePhoto(draft: SitePhotoDraft): Promise<SitePhoto>
 /** Update a site photo. */
 export async function updateSitePhoto(
   id: string,
-  patch: Partial<Pick<SitePhoto, "description" | "tags" | "uploaded_by">>
+  patch: Partial<Pick<SitePhoto, "description" | "tags" | "uploaded_by">>,
+  explicitClient?: SupabaseClient
 ): Promise<SitePhoto | null> {
-  const c = client();
+  const c = client(explicitClient);
   const updates: Record<string, unknown> = {};
   if (patch.description !== undefined) updates.description = patch.description?.trim() ?? null;
   if (patch.tags !== undefined) updates.tags = patch.tags?.trim() ?? null;
@@ -118,13 +135,15 @@ export async function updateSitePhoto(
     .eq("id", id)
     .select(COLS)
     .single();
-  if (error || !row) return null;
+  if (error) throw new Error(error.message ?? "Failed to update site photo.");
+  if (!row) return null;
   return toRow(row as Record<string, unknown>);
 }
 
 /** Delete a site photo. */
-export async function deleteSitePhoto(id: string): Promise<void> {
-  const c = client();
-  const { error } = await c.from("site_photos").delete().eq("id", id);
+export async function deleteSitePhoto(id: string, explicitClient?: SupabaseClient): Promise<void> {
+  const c = client(explicitClient);
+  const { data, error } = await c.from("site_photos").delete().eq("id", id).select("id");
   if (error) throw new Error(error.message ?? "Failed to delete site photo.");
+  if (!data?.length) throw new Error("Photo was not deleted or access was denied.");
 }

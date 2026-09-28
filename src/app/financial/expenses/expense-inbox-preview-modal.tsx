@@ -1,7 +1,11 @@
 "use client";
 
+import { ExpenseOperationReview } from "@/components/financial/expense-operation-review";
+import { expenseRequiresReceiptReview } from "@/lib/expense-workflow-status";
+
 import "./expenses-ui-theme.css";
 import * as React from "react";
+import { useReviewContentMotion } from "@/hooks/use-review-content-motion";
 import Link from "next/link";
 import { flushSync } from "react-dom";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -10,6 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
+import { ConfirmDialog } from "@/components/base";
 import {
   getExpenseTotal,
   isExpenseCategoryDisabled,
@@ -40,12 +45,8 @@ import { persistLastExpensePaymentAccountId } from "@/lib/expense-payment-prefer
 import type { ExpenseReviewSavePatch } from "./edit-expense-modal";
 import { defaultPaymentMethodName, isPaymentAccountOptionActive } from "@/lib/expense-options-db";
 import { cn } from "@/lib/utils";
+import { stripInboxUploadNoiseFromText } from "@/lib/inbox-upload-constants";
 import {
-  isInboxUploadExpenseReference,
-  stripInboxUploadNoiseFromText,
-} from "@/lib/inbox-upload-constants";
-import {
-  deriveExpenseWorkflowStatus,
   expenseCostAllocationFromProjectId,
   expenseCostAllocationRequiresProject,
   expenseHasCategoryForWorkflow,
@@ -53,7 +54,7 @@ import {
   expenseNeedsReviewFromDb,
   expenseSourceTypeIsWorkerReimbursement,
   expenseStatusUiLabel,
-  preserveConfirmedExpenseStatusOnCompleteSave,
+  expenseStatusAfterSave,
   validateApproveInboxUploadDraft,
   EXPENSE_COST_ALLOCATION_OVERHEAD,
   EXPENSE_COST_ALLOCATION_PROJECT_COST,
@@ -85,13 +86,12 @@ import {
   composeExpenseDescription,
   parseExpenseDescription,
 } from "@/lib/expense-form-system";
-import { AlertCircle, ArrowLeft, ChevronDown, ExternalLink, FileText, X } from "lucide-react";
+import { AlertCircle, ChevronDown, ExternalLink, FileText, X } from "lucide-react";
 
 type ProjectOption = { id: string; name: string | null };
 type WorkerOption = { id: string; name: string };
 
-const FIELD_LABEL =
-  "text-hh-status font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]";
+const FIELD_LABEL = "text-hh-status font-medium tracking-normal text-[var(--hh-text-secondary)]";
 const INPUT_CLASS =
   "h-11 rounded-md border-[var(--hh-border)] bg-[var(--hh-l1-workspace)] text-sm text-[var(--hh-text-primary)] shadow-none placeholder:text-[var(--hh-text-tertiary)] focus-visible:border-[var(--hh-focus-ring)] focus-visible:ring-[var(--hh-focus-ring)] max-md:min-h-12 max-md:text-base";
 const SELECT_TRIGGER_CLASS =
@@ -235,9 +235,17 @@ function projectLabelFromExpense(expense: Expense, projectNameById: Map<string, 
   return "Multiple";
 }
 
-function ModalSection({ title, children }: { title: string; children: React.ReactNode }) {
+function ModalSection({
+  title,
+  children,
+  id,
+}: {
+  title: string;
+  children: React.ReactNode;
+  id?: string;
+}) {
   return (
-    <div className="space-y-3">
+    <div id={id} className="space-y-3">
       <h3 data-expense-detail-section-title className={FIELD_LABEL}>
         {title}
       </h3>
@@ -418,6 +426,7 @@ function HeaderLineMismatchPanel({
 }
 
 type Props = {
+  navigationGuardRef?: React.MutableRefObject<((navigate: () => void) => void) | null>;
   expense: Expense | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -442,6 +451,8 @@ type Props = {
   };
   /** Hint only: possible duplicate among loaded inbox rows. */
   possibleDuplicate?: boolean;
+  duplicateExpenses?: Expense[];
+  onInspectDuplicate?: (expense: Expense) => void;
   /** After attachment upload/remove in edit mode — sync list + React Query. */
   onAttachmentsUpdated?: (expense: Expense) => void;
   /** System Health issue context for read-only diagnostic display. */
@@ -461,6 +472,7 @@ type Props = {
 };
 
 export function ExpenseInboxPreviewModal({
+  navigationGuardRef,
   expense,
   open,
   onOpenChange,
@@ -475,6 +487,8 @@ export function ExpenseInboxPreviewModal({
   onMarkReviewed,
   previewNav,
   possibleDuplicate = false,
+  duplicateExpenses = [],
+  onInspectDuplicate,
   onAttachmentsUpdated,
   issueContext = null,
   presentation = "dialog",
@@ -527,6 +541,23 @@ export function ExpenseInboxPreviewModal({
   const [previewPmArchived, setPreviewPmArchived] = React.useState(false);
   const [previewCatArchived, setPreviewCatArchived] = React.useState(false);
   const [previewPaArchived, setPreviewPaArchived] = React.useState(false);
+  const [pendingDiscardAction, setPendingDiscardAction] = React.useState<(() => void) | null>(null);
+  const panelRef = React.useRef<HTMLElement>(null);
+  useReviewContentMotion(
+    panelRef,
+    expense?.id,
+    ".expense-detail-panel-body, [data-expense-receipt-stage]"
+  );
+  const closingMotion = React.useRef<Animation | null>(null);
+  React.useEffect(
+    () => () => {
+      closingMotion.current?.cancel();
+      closingMotion.current = null;
+      if (panelRef.current) panelRef.current.inert = false;
+    },
+    [expense?.id]
+  );
+  const [phoneDetail, setPhoneDetail] = React.useState(false);
   const vendorInputRef = React.useRef<HTMLInputElement>(null);
   const amountInputRef = React.useRef<HTMLInputElement>(null);
   const editActionRef = React.useRef<HTMLButtonElement>(null);
@@ -538,6 +569,17 @@ export function ExpenseInboxPreviewModal({
   const [previewThumbErrorByKey, setPreviewThumbErrorByKey] = React.useState<
     Record<string, boolean>
   >({});
+
+  const [attachmentExpenseId, setAttachmentExpenseId] = React.useState(expense?.id);
+  // Reset before commit: receipt effects must never combine a new ID with prior evidence.
+  if (attachmentExpenseId !== expense?.id) {
+    setAttachmentExpenseId(expense?.id);
+    setAttachments(expense ? getExpenseDisplayAttachments(expense) : []);
+    setSecureReceiptItems([]);
+    setThumbById({});
+    setPreviewThumbSignedByDedupeKey({});
+    setPreviewThumbErrorByKey({});
+  }
 
   const expensePreviewRef = React.useRef(expense);
   const attachmentsPreviewRef = React.useRef(attachments);
@@ -573,6 +615,8 @@ export function ExpenseInboxPreviewModal({
     window.requestAnimationFrame(() => {
       const target =
         key === "amount" ? amountInputRef.current : document.getElementById(idByKey[key]);
+      const disclosure = target?.closest("details");
+      if (disclosure) disclosure.open = true;
       target?.focus({ preventScroll: true });
       target?.scrollIntoView({ block: "nearest" });
     });
@@ -597,10 +641,7 @@ export function ExpenseInboxPreviewModal({
           focusReviewControl("worker");
           return;
         }
-      } else if (
-        isInboxUploadExpenseReference(candidate.referenceNo) &&
-        !candidate.paymentAccountId?.trim()
-      ) {
+      } else if (expenseRequiresReceiptReview(candidate) && !candidate.paymentAccountId?.trim()) {
         focusReviewControl("paymentAccount");
         return;
       }
@@ -700,12 +741,26 @@ export function ExpenseInboxPreviewModal({
   }, [expenseId]);
 
   React.useEffect(() => {
-    if (!open || !inlineReviewWorkspace || !expense) return;
+    if (!open || !expense) return;
+    if (!inlineReviewWorkspace) {
+      if (!focusReviewOnOpen || presentation !== "panel") return;
+      const frame = window.requestAnimationFrame(() =>
+        panelRef.current?.focus({ preventScroll: true })
+      );
+      return () => window.cancelAnimationFrame(frame);
+    }
     if (!focusReviewOnOpen && !focusNextReviewRef.current) return;
     focusNextReviewRef.current = false;
     const frame = window.requestAnimationFrame(() => focusFirstRequiredReviewControl(expense));
     return () => window.cancelAnimationFrame(frame);
-  }, [expense, focusFirstRequiredReviewControl, focusReviewOnOpen, inlineReviewWorkspace, open]);
+  }, [
+    expense,
+    focusFirstRequiredReviewControl,
+    focusReviewOnOpen,
+    inlineReviewWorkspace,
+    open,
+    presentation,
+  ]);
 
   const currentReviewSignature = React.useMemo(
     () =>
@@ -748,6 +803,70 @@ export function ExpenseInboxPreviewModal({
   );
   const reviewDraftDirty =
     reviewBaselineSignature !== "" && currentReviewSignature !== reviewBaselineSignature;
+
+  React.useEffect(() => {
+    if (!navigationGuardRef) return;
+    navigationGuardRef.current = (navigate) => {
+      if (saving || markBusy) return;
+      if (reviewDraftDirty) setPendingDiscardAction(() => navigate);
+      else navigate();
+    };
+    return () => {
+      navigationGuardRef.current = null;
+    };
+  }, [navigationGuardRef, reviewDraftDirty, saving, markBusy]);
+
+  React.useEffect(() => {
+    if (!open || !reviewDraftDirty) return;
+    const protectDraft = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", protectDraft);
+    return () => window.removeEventListener("beforeunload", protectDraft);
+  }, [open, reviewDraftDirty]);
+
+  React.useEffect(() => {
+    if (!open || presentation !== "panel") return;
+    const panel = panelRef.current;
+    if (!panel) return;
+    const media = window.matchMedia("(max-width: 767px)");
+    let restore: Array<() => void> = [];
+    const release = () => {
+      restore.forEach((undo) => undo());
+      restore = [];
+    };
+    const sync = () => {
+      release();
+      setPhoneDetail(media.matches);
+      if (!media.matches) return;
+      // Keep portaled selects, receipts, and discard dialogs available above the detail.
+      let branch: HTMLElement = panel;
+      while (branch.parentElement && branch.parentElement !== document.body) {
+        for (const sibling of Array.from(branch.parentElement.children)) {
+          if (
+            !(sibling instanceof HTMLElement) ||
+            sibling === branch ||
+            sibling.matches("[data-hh-portal-host], script, style")
+          )
+            continue;
+          const previous = sibling.inert;
+          sibling.inert = true;
+          restore.push(() => {
+            sibling.inert = previous;
+          });
+        }
+        branch = branch.parentElement;
+      }
+      panel.focus({ preventScroll: true });
+    };
+    sync();
+    media.addEventListener("change", sync);
+    return () => {
+      media.removeEventListener("change", sync);
+      release();
+    };
+  }, [open, presentation]);
 
   React.useEffect(() => {
     if (!deductFromSubcontractor) return;
@@ -859,17 +978,25 @@ export function ExpenseInboxPreviewModal({
     };
   }, [attachments, expense, open, receiptItems]);
 
+  const secureReceiptsMatchCurrent =
+    secureReceiptItems.length === receiptItems.length &&
+    receiptItems.every(
+      (item, index) =>
+        expenseAttachmentStorageDedupeKey(item.url) ===
+        expenseAttachmentStorageDedupeKey(secureReceiptItems[index]!.url)
+    );
   const receiptItemsRef = React.useRef(
-    secureReceiptItems.length > 0 ? secureReceiptItems : receiptItems
+    secureReceiptsMatchCurrent ? secureReceiptItems : receiptItems
   );
   React.useEffect(() => {
-    receiptItemsRef.current = secureReceiptItems.length > 0 ? secureReceiptItems : receiptItems;
-  }, [receiptItems, secureReceiptItems]);
+    receiptItemsRef.current = secureReceiptsMatchCurrent ? secureReceiptItems : receiptItems;
+  }, [receiptItems, secureReceiptItems, secureReceiptsMatchCurrent]);
 
   const refreshSecureReceiptItems = React.useCallback(async () => {
     const currentExpense = expensePreviewRef.current;
     if (!currentExpense) return [];
     const manifest = await fetchExpenseReceiptManifest(currentExpense.id);
+    if (expensePreviewRef.current?.id !== currentExpense.id) return [];
     const secure = manifest.items.map(receiptApiItemToExpenseReceiptItem);
     receiptItemsRef.current = secure;
     setSecureReceiptItems(secure);
@@ -1089,8 +1216,8 @@ export function ExpenseInboxPreviewModal({
   const handleSave = async (advanceAfterSave = false): Promise<Expense | null> => {
     if (!expense || saving) return null;
     setReviewFeedback(null);
-    const numAmount = parseFloat(amount);
-    if (Number.isNaN(numAmount) || numAmount < 0) {
+    const numAmount = Number(amount);
+    if (!amount.trim() || !Number.isFinite(numAmount) || numAmount < 0) {
       setReviewErrors((current) => ({
         ...current,
         amount: "Enter a valid amount of zero or more.",
@@ -1168,18 +1295,7 @@ export function ExpenseInboxPreviewModal({
           null)
         : null;
       const pm = paymentMethod.trim() || (await defaultPaymentMethodName()) || "Cash";
-      let workflowStatus = preserveConfirmedExpenseStatusOnCompleteSave(
-        expense.status,
-        deriveExpenseWorkflowStatus(projectId, category || "Other", costAllocation)
-      );
-      /* INBOX-UP drafts must stay in the Inbox pool until explicit Approve — DB `reviewed` removes them from Inbox. */
-      if (
-        isInboxUploadExpenseReference(expense.referenceNo) &&
-        workflowStatus === "reviewed" &&
-        expenseNeedsReviewFromDb(expense.status)
-      ) {
-        workflowStatus = "needs_review";
-      }
+      const workflowStatus = expenseStatusAfterSave(expense.status);
       const saved = await onSave({
         expenseId: expense.id,
         date: expenseDate.slice(0, 10),
@@ -1236,7 +1352,7 @@ export function ExpenseInboxPreviewModal({
   const handleMarkReviewed = async (candidate?: Expense) => {
     const expenseToReview = candidate ?? expense;
     if (!expenseToReview || markBusy) return;
-    if (isInboxUploadExpenseReference(expenseToReview.referenceNo)) {
+    if (expenseRequiresReceiptReview(expenseToReview)) {
       const gate = validateApproveInboxUploadDraft(expenseToReview, costAllocation);
       if (gate === "project") {
         setReviewErrors((current) => ({
@@ -1280,7 +1396,7 @@ export function ExpenseInboxPreviewModal({
         toast({
           title: "Choose a payment account first",
           description: inlineReviewWorkspace
-            ? "Choose a payment account in More Details, then approve."
+            ? "Choose a payment account in the review details, then approve."
             : "Tap Edit, set payment account, then save — then you can approve.",
           variant: "default",
         });
@@ -1296,7 +1412,7 @@ export function ExpenseInboxPreviewModal({
         toast({
           title: "Choose a worker first",
           description: inlineReviewWorkspace
-            ? "Choose a worker in More Details, then approve."
+            ? "Choose a worker in the review details, then approve."
             : "Tap Edit, set worker, then save — then you can approve.",
           variant: "default",
         });
@@ -1313,7 +1429,7 @@ export function ExpenseInboxPreviewModal({
         });
         return;
       }
-      if (!inboxUploadPreview) return;
+      if (!inlineReviewWorkspace && !inboxUploadPreview) return;
       if (previewNav?.canNext) {
         focusNextReviewRef.current = true;
         previewNav.onNext();
@@ -1387,7 +1503,7 @@ export function ExpenseInboxPreviewModal({
   const renderEditSurface = mode === "edit" || inlineReviewWorkspace;
   const detailMode = inlineReviewWorkspace ? "review" : mode;
   const showMarkDone = expenseNeedsReviewFromDb(expense.status);
-  const inboxUploadPreview = isInboxUploadExpenseReference(expense.referenceNo);
+  const inboxUploadPreview = expenseRequiresReceiptReview(expense);
   const workerRequiredForApproval = expenseSourceTypeIsWorkerReimbursement(sourceType);
   const showCorePaymentAccount =
     inlineReviewWorkspace && inboxUploadPreview && !workerRequiredForApproval;
@@ -1422,7 +1538,55 @@ export function ExpenseInboxPreviewModal({
       : "divide-y divide-[var(--hh-border)]";
   const handlePanelKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
     if (
-      inlineReviewWorkspace &&
+      !evidenceFirst &&
+      mode === "preview" &&
+      !event.defaultPrevented &&
+      !event.metaKey &&
+      !event.ctrlKey &&
+      !event.altKey &&
+      !event.shiftKey &&
+      (event.key === "ArrowUp" || event.key === "ArrowDown") &&
+      !(event.target as HTMLElement).closest(
+        'input, textarea, select, button, a, summary, [contenteditable], [role="combobox"], [role="listbox"], [role="menu"]'
+      )
+    ) {
+      const backward = event.key === "ArrowUp";
+      if (backward ? previewNav?.canPrev : previewNav?.canNext) {
+        event.preventDefault();
+        event.stopPropagation();
+        if (backward) previewNav?.onPrev();
+        else previewNav?.onNext();
+      }
+      return;
+    }
+
+    if (phoneDetail && event.key === "Tab") {
+      const controls = Array.from(
+        event.currentTarget.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), summary, [tabindex="0"]'
+        )
+      ).filter((node) => node.getClientRects().length > 0);
+      const first = controls[0];
+      const last = controls[controls.length - 1];
+      if (
+        first &&
+        last &&
+        ((!event.shiftKey && event.target === last) ||
+          (event.shiftKey && (event.target === first || event.target === event.currentTarget)))
+      ) {
+        event.preventDefault();
+        (event.shiftKey ? last : first).focus();
+      }
+    }
+    if (event.key === "Escape" && mode === "preview" && !reviewDraftDirty) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (!saving && !markBusy) onOpenChange(false);
+      return;
+    }
+
+    if (
+      (inlineReviewWorkspace || mode === "edit") &&
       (event.metaKey || event.ctrlKey) &&
       !event.altKey &&
       !event.shiftKey
@@ -1433,7 +1597,7 @@ export function ExpenseInboxPreviewModal({
         if (reviewDraftDirty && !saving && !markBusy) void handleSave(false);
         return;
       }
-      if (event.key === "Enter") {
+      if (event.key === "Enter" && inlineReviewWorkspace) {
         event.preventDefault();
         event.stopPropagation();
         if (!saving && !markBusy) void handleInlineReviewComplete();
@@ -1444,24 +1608,49 @@ export function ExpenseInboxPreviewModal({
       return;
     event.preventDefault();
     event.stopPropagation();
-    if (window.confirm("Discard unsaved expense changes?")) cancelEdit();
+    setPendingDiscardAction(() => cancelEdit);
+  };
+  const finishPanelClose = () => {
+    const panel = panelRef.current;
+    if (
+      !panel ||
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches ||
+      typeof panel.animate !== "function"
+    ) {
+      onOpenChange(false);
+      return;
+    }
+    if (closingMotion.current) return;
+    panel.inert = true;
+    const animation = panel.animate(
+      [
+        { opacity: 1, translate: "0px" },
+        { opacity: 0, translate: "6px" },
+      ],
+      { duration: 180, easing: "cubic-bezier(0.16, 1, 0.3, 1)", fill: "forwards" }
+    );
+    closingMotion.current = animation;
+    void animation.finished
+      .then(() => onOpenChange(false))
+      .catch(() => {
+        panel.inert = false;
+      });
   };
   const requestPanelClose = () => {
-    if (
-      (mode === "edit" || (inlineReviewWorkspace && reviewDraftDirty)) &&
-      !window.confirm("Discard unsaved expense changes?")
-    )
+    if (mode === "edit" || (inlineReviewWorkspace && reviewDraftDirty)) {
+      setPendingDiscardAction(() => finishPanelClose);
       return;
-    onOpenChange(false);
+    }
+    finishPanelClose();
   };
   const requestQueueNavigation = (navigate: () => void) => {
-    if (
-      inlineReviewWorkspace &&
-      reviewDraftDirty &&
-      !window.confirm("Discard unsaved expense changes?")
-    )
+    if (inlineReviewWorkspace && reviewDraftDirty) {
+      setPendingDiscardAction(() => () => {
+        cancelEdit();
+        navigate();
+      });
       return;
-    if (inlineReviewWorkspace && reviewDraftDirty) cancelEdit();
+    }
     navigate();
   };
 
@@ -1482,6 +1671,22 @@ export function ExpenseInboxPreviewModal({
     ? receiptItemIsImage(embeddedReceiptItem, embeddedReceiptMatch)
     : false;
 
+  const beginReceiptUpload = () => {
+    setMode("edit");
+    window.requestAnimationFrame(() => {
+      const section = panelRef.current?.querySelector<HTMLElement>(
+        "#expense-inspection-attachments"
+      );
+      const disclosure = section?.closest("details");
+      if (disclosure) disclosure.open = true;
+      section?.scrollIntoView({ block: "nearest" });
+      const upload = Array.from(section?.querySelectorAll<HTMLButtonElement>("button") ?? []).find(
+        (button) => button.textContent?.includes("Upload")
+      );
+      upload?.focus({ preventScroll: true });
+    });
+  };
+
   const receiptReviewStage = (
     <section
       data-expense-receipt-stage
@@ -1491,7 +1696,7 @@ export function ExpenseInboxPreviewModal({
       <div className="flex min-h-0 h-full flex-col">
         <div className="flex shrink-0 items-center justify-between gap-3 px-4 py-2.5">
           <div className="min-w-0">
-            <p className="text-hh-status font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]">
+            <p className="text-hh-status font-semibold uppercase tracking-normal text-[var(--hh-text-secondary)]">
               Receipt preview
             </p>
             <p className="mt-0.5 truncate text-xs text-[var(--hh-text-secondary)]">
@@ -1514,31 +1719,49 @@ export function ExpenseInboxPreviewModal({
           ) : null}
         </div>
         <div className="min-h-0 flex-1 p-3 pt-0">
-          <div className="flex h-full min-h-[280px] items-center justify-center overflow-hidden rounded-lg border border-[var(--hh-border-floating)] bg-white">
+          <div
+            data-receipt-ready={Boolean(
+              embeddedReceiptItem && embeddedReceiptUrl && !embeddedReceiptFailed
+            )}
+            className="expense-receipt-frame flex h-full min-h-[280px] items-center justify-center overflow-hidden rounded-lg border border-[var(--hh-border-floating)] bg-[var(--hh-l2-operational-surface)]"
+          >
             {!embeddedReceiptItem ? (
               <div className="max-w-xs px-6 text-center">
                 <span className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-[var(--hh-warning-soft-fill)] text-[var(--hh-warning)]">
                   <FileText className="h-5 w-5" aria-hidden />
                 </span>
-                <p className="mt-3 text-sm font-semibold text-zinc-900">No receipt attached</p>
-                <p className="mt-1 text-xs leading-relaxed text-zinc-600">
-                  Add evidence from Edit before completing this review.
+                <p className="mt-3 text-sm font-semibold text-[var(--hh-text-primary)]">
+                  No receipt attached
                 </p>
+                <p className="mt-1 text-xs leading-relaxed text-[var(--hh-text-secondary)]">
+                  Upload a receipt in the review details before approving.
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="mt-3"
+                  onClick={beginReceiptUpload}
+                >
+                  Upload receipt
+                </Button>
               </div>
             ) : embeddedReceiptUrl === undefined ? (
-              <Skeleton className="h-full min-h-[280px] w-full rounded-none bg-zinc-100" />
+              <Skeleton className="h-full min-h-[280px] w-full rounded-none bg-[var(--hh-l2-operational-surface)]" />
             ) : embeddedReceiptUrl === null || embeddedReceiptFailed ? (
               <div className="max-w-xs px-6 text-center">
-                <FileText className="mx-auto h-6 w-6 text-zinc-500" aria-hidden />
-                <p className="mt-3 text-sm font-semibold text-zinc-900">Preview unavailable</p>
-                <p className="mt-1 text-xs leading-relaxed text-zinc-600">
+                <FileText className="mx-auto h-6 w-6 text-[var(--hh-text-muted)]" aria-hidden />
+                <p className="mt-3 text-sm font-semibold text-[var(--hh-text-primary)]">
+                  Preview unavailable
+                </p>
+                <p className="mt-1 text-xs leading-relaxed text-[var(--hh-text-secondary)]">
                   Open the protected full preview to retry this attachment.
                 </p>
                 <Button
                   type="button"
                   size="sm"
                   variant="outline"
-                  className="mt-4 bg-white text-zinc-900"
+                  className="mt-4 border-[var(--hh-border)] bg-[var(--hh-l1-workspace)] text-[var(--hh-text-primary)] hover:bg-[var(--hh-l3-hover)]"
                   onClick={() => void openReceiptItemPreview(embeddedReceiptItem)}
                 >
                   Open full preview
@@ -1561,7 +1784,7 @@ export function ExpenseInboxPreviewModal({
               <iframe
                 src={embeddedReceiptUrl}
                 title="Receipt evidence"
-                className="h-full min-h-[420px] w-full border-0 bg-white"
+                className="h-full min-h-[420px] w-full border-0 bg-[var(--hh-l1-workspace)]"
                 onError={() =>
                   setPreviewThumbErrorByKey((current) => ({
                     ...current,
@@ -1573,7 +1796,7 @@ export function ExpenseInboxPreviewModal({
           </div>
         </div>
         {embeddedReceiptItem ? (
-          <div className="shrink-0 px-4 pb-3 text-hh-status text-[var(--hh-text-tertiary)]">
+          <div className="shrink-0 px-4 pb-3 text-hh-status text-[var(--hh-text-secondary)]">
             <p className="truncate" title={embeddedReceiptItem.fileName}>
               {embeddedReceiptItem.fileName}
             </p>
@@ -1599,7 +1822,7 @@ export function ExpenseInboxPreviewModal({
           <p className="mt-0.5 text-hh-status text-[var(--hh-text-secondary)]">
             {receiptItems.length > 0
               ? `${receiptItems.length} attachment${receiptItems.length === 1 ? "" : "s"}`
-              : "No receipt attached"}
+              : "Missing receipt"}
           </p>
         </div>
         <FileText className="h-4 w-4 text-[var(--hh-text-tertiary)]" aria-hidden />
@@ -1611,17 +1834,17 @@ export function ExpenseInboxPreviewModal({
         onClick={() => {
           const firstReceipt = receiptItems[0];
           if (firstReceipt) void openReceiptItemPreview(firstReceipt);
-          else setMode("edit");
+          else beginReceiptUpload();
         }}
       >
         <span className="min-w-0">
           <span className="block text-hh-table-cell font-medium text-[var(--hh-text-primary)]">
-            {receiptItems.length > 0 ? "Open receipt preview" : "Add receipt evidence"}
+            {receiptItems.length > 0 ? "Open receipt preview" : "Upload receipt"}
           </span>
           <span className="mt-1 block text-hh-status leading-4 text-[var(--hh-text-secondary)]">
             {receiptItems.length > 0
               ? "View the secured source document in context."
-              : "Use the existing protected attachment path."}
+              : "Attach a file in Edit Expense."}
           </span>
         </span>
         <span className="shrink-0 text-xs font-medium text-[var(--hh-text-secondary)]">
@@ -1644,6 +1867,62 @@ export function ExpenseInboxPreviewModal({
       </section>
     ) : null;
 
+  const inspectionIssues = (
+    <section aria-label="Expense issues" className="space-y-2">
+      {missingProject || missingCategory || missingWorker ? (
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className={PREVIEW_WARNING_CHIP}>
+            {[
+              missingProject && "Missing project",
+              missingCategory && "Missing category",
+              missingWorker && "Missing worker",
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+          </span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setMode("edit");
+              focusReviewControl(
+                missingProject ? "project" : missingCategory ? "category" : "worker"
+              );
+            }}
+          >
+            Complete details
+          </Button>
+        </div>
+      ) : null}
+      {possibleDuplicate ? (
+        <details key={expense.id} className="space-y-2">
+          <summary className="min-h-11 cursor-pointer text-hh-table-cell font-medium">
+            Possible duplicate · Review duplicate
+          </summary>
+          <p className="text-xs text-[var(--hh-text-secondary)]">
+            Compare the date, merchant, amount and receipt before editing.
+          </p>
+          {duplicateExpenses.map((candidate) => (
+            <Button
+              key={candidate.id}
+              type="button"
+              variant="ghost"
+              className="h-auto w-full justify-between gap-2 whitespace-normal py-2 text-left"
+              onClick={() => onInspectDuplicate?.(candidate)}
+            >
+              <span>
+                {candidate.vendorName?.trim() || "Needs Review"}
+                <span className="block text-xs">{formatDate(candidate.date)}</span>
+              </span>
+              <span className="financial-nums">{formatCurrency(-getExpenseTotal(candidate))}</span>
+            </Button>
+          ))}
+        </details>
+      ) : null}
+    </section>
+  );
+
   const detailSurface = (
     <>
       {presentation === "panel" ? (
@@ -1654,13 +1933,14 @@ export function ExpenseInboxPreviewModal({
               variant="ghost"
               size="icon"
               className="expense-detail-back h-11 w-11 shrink-0 rounded-md text-[var(--hh-text-secondary)] lg:hidden"
-              aria-label={evidenceFirst ? "Back to receipt queue" : "Back to expense queue"}
-              onClick={() => onOpenChange(false)}
+              aria-label={evidenceFirst ? "Close receipt detail" : "Close expense detail"}
+              disabled={saving || markBusy}
+              onClick={requestPanelClose}
             >
-              <ArrowLeft className="h-4 w-4" aria-hidden />
+              <X className="h-4 w-4" aria-hidden />
             </Button>
             <div className="min-w-0 flex-1">
-              <p className="text-hh-status font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]">
+              <p className="text-hh-status font-medium tracking-normal text-[var(--hh-text-secondary)]">
                 {inlineReviewWorkspace
                   ? "Review details"
                   : mode === "preview"
@@ -1706,29 +1986,46 @@ export function ExpenseInboxPreviewModal({
       >
         {!renderEditSurface ? (
           presentation === "panel" ? (
-            <div className="expense-detail-view space-y-6">
+            <div
+              className="expense-detail-view space-y-6"
+              data-expense-inspection={!evidenceFirst || undefined}
+            >
               {evidenceFirst ? receiptEvidenceSurface : null}
               <section data-expense-detail-identity aria-label="Expense identity">
-                <p
-                  data-expense-detail-amount
-                  className="financial-nums text-hh-financial-total font-semibold leading-[1.1] tracking-normal text-[var(--hh-text-primary)] sm:text-hh-financial-total"
-                >
-                  {formatCurrency(-getExpenseTotal(expense))}
-                </p>
-                <h2 className="mt-3 text-xl font-semibold leading-6 tracking-normal text-[var(--hh-text-primary)]">
+                <h2 className="text-xl font-semibold leading-6 tracking-normal text-[var(--hh-text-primary)]">
                   <span data-expense-detail-merchant>
                     {(expense.vendorName ?? "").trim() || "Needs Review"}
                   </span>
                 </h2>
                 <p
+                  data-expense-detail-amount
+                  data-amount-direction={
+                    getExpenseTotal(expense) < 0
+                      ? "positive"
+                      : getExpenseTotal(expense) > 0
+                        ? "negative"
+                        : "neutral"
+                  }
+                  className="mt-2 financial-nums text-hh-financial-total font-semibold leading-[1.1] tracking-normal text-[var(--hh-text-primary)] sm:text-hh-financial-total"
+                >
+                  {formatCurrency(-getExpenseTotal(expense))}
+                </p>
+                <p
                   data-expense-detail-project
                   className="mt-1 text-hh-table-cell font-medium leading-[18px] text-[var(--hh-text-secondary)]"
                 >
+                  <span className={FIELD_LABEL}>Project · </span>
                   {projectLabelFromExpense(expense, projectNameById)}
+                </p>
+                <p className="mt-2 text-hh-status font-medium">
+                  {expenseStatusUiLabel(expense.status)}
                 </p>
               </section>
 
-              {!evidenceFirst ? attentionSurface : null}
+              {!evidenceFirst &&
+              (missingProject || missingCategory || missingWorker || possibleDuplicate)
+                ? inspectionIssues
+                : null}
 
               {!evidenceFirst && headerLineMismatch ? (
                 <HeaderLineMismatchPanel
@@ -1753,14 +2050,45 @@ export function ExpenseInboxPreviewModal({
                 </div>
                 <div>
                   <dt className={FIELD_LABEL}>Category</dt>
-                  <dd className="mt-1 truncate text-hh-table-cell text-[var(--hh-text-primary)]">
-                    {expense.lines[0]?.category?.trim() || "—"}
+                  <dd className="mt-1 break-words text-hh-table-cell text-[var(--hh-text-primary)]">
+                    {Array.from(
+                      new Set(expense.lines.map((line) => line.category?.trim()).filter(Boolean))
+                    ).join(", ") || "—"}
                   </dd>
                 </div>
                 <div>
                   <dt className={FIELD_LABEL}>Payment source</dt>
                   <dd className="mt-1 text-hh-table-cell text-[var(--hh-text-primary)]">
                     {sourceTypeLabel(expense.sourceType)}
+                  </dd>
+                </div>
+                {displayedDescription.items.length > 0 ? (
+                  <div className="col-span-2">
+                    <dt className={FIELD_LABEL}>{EXPENSE_FORM_FIELDS.items.label}</dt>
+                    <dd className="mt-1 text-hh-table-cell">
+                      {displayedDescription.items.join(", ")}
+                    </dd>
+                  </div>
+                ) : null}
+                <div>
+                  <dt className={FIELD_LABEL}>{EXPENSE_FORM_FIELDS.worker.label}</dt>
+                  <dd className="mt-1 text-hh-table-cell">
+                    {expense.workerId
+                      ? (workers.find((worker) => worker.id === expense.workerId)?.name ??
+                        expense.workerId)
+                      : "—"}
+                  </dd>
+                </div>
+                <div>
+                  <dt className={FIELD_LABEL}>{EXPENSE_FORM_FIELDS.paymentMethod.label}</dt>
+                  <dd className="mt-1 text-hh-table-cell">
+                    {paymentMethodLabel(expense.paymentMethod)}
+                  </dd>
+                </div>
+                <div>
+                  <dt className={FIELD_LABEL}>{EXPENSE_FORM_FIELDS.paymentAccount.label}</dt>
+                  <dd className="mt-1 text-hh-table-cell">
+                    {expense.paymentAccountName?.trim() || "—"}
                   </dd>
                 </div>
               </dl>
@@ -1781,50 +2109,27 @@ export function ExpenseInboxPreviewModal({
               {!evidenceFirst ? receiptEvidenceSurface : null}
 
               <section>
-                <h3 className={FIELD_LABEL}>{EXPENSE_FORM_FIELDS.description.label}</h3>
+                <h3 className={FIELD_LABEL}>Notes</h3>
                 <p className="mt-2 text-hh-table-cell leading-5 text-[var(--hh-text-primary)]">
                   {displayedDescription.description || "—"}
                 </p>
               </section>
 
+              <section aria-label="Activity">
+                <h3 className={FIELD_LABEL}>Activity</h3>
+                <p className="mt-1 text-xs text-[var(--hh-text-secondary)]">
+                  Activity history is not available for this record.
+                </p>
+              </section>
               <details className="expense-more-details group pt-1">
                 <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between rounded-md px-1.5 py-2 text-hh-table-cell font-medium text-[var(--hh-text-primary)] outline-none transition-colors duration-120 hover:bg-[var(--hh-l3-hover)] focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)]">
-                  More Details
+                  Record metadata
                   <ChevronDown
                     className="h-4 w-4 transition-transform duration-180 group-open:rotate-180"
                     aria-hidden
                   />
                 </summary>
                 <dl className="expense-progressive-content grid grid-cols-2 gap-x-5 gap-y-4 pb-2 pt-3">
-                  {displayedDescription.items.length > 0 ? (
-                    <div className="col-span-2">
-                      <dt className={FIELD_LABEL}>{EXPENSE_FORM_FIELDS.items.label}</dt>
-                      <dd className="mt-1 text-hh-table-cell">
-                        {displayedDescription.items.join(", ")}
-                      </dd>
-                    </div>
-                  ) : null}
-                  <div>
-                    <dt className={FIELD_LABEL}>{EXPENSE_FORM_FIELDS.worker.label}</dt>
-                    <dd className="mt-1 text-hh-table-cell">
-                      {expense.workerId
-                        ? (workers.find((worker) => worker.id === expense.workerId)?.name ??
-                          expense.workerId)
-                        : "—"}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className={FIELD_LABEL}>{EXPENSE_FORM_FIELDS.paymentMethod.label}</dt>
-                    <dd className="mt-1 text-hh-table-cell">
-                      {paymentMethodLabel(expense.paymentMethod)}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className={FIELD_LABEL}>{EXPENSE_FORM_FIELDS.paymentAccount.label}</dt>
-                    <dd className="mt-1 text-hh-table-cell">
-                      {expense.paymentAccountName?.trim() || "—"}
-                    </dd>
-                  </div>
                   <div>
                     <dt className={FIELD_LABEL}>Record</dt>
                     <dd className="mt-1 truncate hh-fin text-hh-status text-[var(--hh-text-secondary)]">
@@ -2046,6 +2351,13 @@ export function ExpenseInboxPreviewModal({
               <section data-expense-inline-identity aria-label="Editing expense identity">
                 <p
                   data-expense-inline-amount
+                  data-amount-direction={
+                    getExpenseTotal(expense) < 0
+                      ? "positive"
+                      : getExpenseTotal(expense) > 0
+                        ? "negative"
+                        : "neutral"
+                  }
                   className="financial-nums text-hh-financial-total font-semibold leading-[1.1] tracking-normal text-[var(--hh-text-primary)] sm:text-hh-financial-total"
                 >
                   {formatCurrency(-getExpenseTotal(expense))}
@@ -2074,6 +2386,13 @@ export function ExpenseInboxPreviewModal({
               >
                 <div
                   data-expense-detail-amount
+                  data-amount-direction={
+                    getExpenseTotal(expense) < 0
+                      ? "positive"
+                      : getExpenseTotal(expense) > 0
+                        ? "negative"
+                        : "neutral"
+                  }
                   data-expense-review-field="amount"
                   className="space-y-1.5"
                 >
@@ -2096,7 +2415,7 @@ export function ExpenseInboxPreviewModal({
                       INPUT_CLASS,
                       "financial-nums text-base font-semibold tabular-nums"
                     )}
-                    disabled={saving}
+                    disabled={saving || Boolean(expense.workerId)}
                     aria-invalid={Boolean(reviewErrors.amount) || undefined}
                     aria-describedby={reviewErrors.amount ? "edit-expense-amount-error" : undefined}
                   />
@@ -2116,7 +2435,7 @@ export function ExpenseInboxPreviewModal({
                       setReviewFeedback(null);
                     }}
                     className={INPUT_CLASS}
-                    disabled={saving}
+                    disabled={saving || Boolean(expense.workerId)}
                   />
                 </div>
                 <div data-expense-review-field="classification" className="space-y-1.5">
@@ -2244,7 +2563,7 @@ export function ExpenseInboxPreviewModal({
                       setReviewFeedback(null);
                     }}
                     className={INPUT_CLASS}
-                    disabled={saving}
+                    disabled={saving || Boolean(expense.workerId)}
                   />
                 </div>
                 {showCorePaymentAccount ? (
@@ -2337,7 +2656,7 @@ export function ExpenseInboxPreviewModal({
               </div>
             </ModalSection>
 
-            <ProgressiveDisclosure enabled={presentation === "panel"}>
+            <ProgressiveDisclosure enabled={presentation === "panel" && !inlineReviewWorkspace}>
               <ModalSection title="Details">
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <ExpenseItemsField
@@ -2353,8 +2672,11 @@ export function ExpenseInboxPreviewModal({
                     selectTriggerClassName={SELECT_TRIGGER_CLASS}
                   />
                   <div className="space-y-1.5">
-                    <label className={FIELD_LABEL}>{EXPENSE_FORM_FIELDS.description.label}</label>
+                    <label htmlFor="edit-expense-review-notes" className={FIELD_LABEL}>
+                      {EXPENSE_FORM_FIELDS.description.label}
+                    </label>
                     <Textarea
+                      id="edit-expense-review-notes"
                       value={notes}
                       onChange={(event) => {
                         setNotes(event.target.value);
@@ -2470,7 +2792,10 @@ export function ExpenseInboxPreviewModal({
                 </div>
               </ModalSection>
 
-              <ModalSection title={EXPENSE_FORM_FIELDS.attachments.label}>
+              <ModalSection
+                id="expense-inspection-attachments"
+                title={EXPENSE_FORM_FIELDS.attachments.label}
+              >
                 <ExpenseEditAttachmentsSection
                   expense={expense}
                   supabase={supabase}
@@ -2486,8 +2811,11 @@ export function ExpenseInboxPreviewModal({
             </ProgressiveDisclosure>
           </div>
         )}
+        <ExpenseOperationReview
+          expenseId={expense.id}
+          disabled={saving || markBusy || reviewDraftDirty}
+        />
       </div>
-
       {inlineReviewWorkspace ? (
         <div
           data-expense-inline-review-actions
@@ -2532,12 +2860,28 @@ export function ExpenseInboxPreviewModal({
               "min-w-0 flex-1 px-2 text-center text-hh-status leading-4",
               reviewFeedback?.kind === "error"
                 ? "text-[var(--hh-danger)]"
-                : "text-[var(--hh-text-tertiary)]"
+                : "text-[var(--hh-text-secondary)]"
             )}
           >
             {reviewStatusMessage}
           </div>
           <div className="flex flex-wrap items-center justify-end gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={saving || markBusy || reviewDraftDirty}
+              onClick={() => {
+                const compose = panelRef.current?.querySelector<HTMLDetailsElement>(
+                  "[data-expense-operation-compose]"
+                );
+                if (compose) {
+                  compose.open = true;
+                  compose.querySelector<HTMLTextAreaElement>("textarea")?.focus();
+                }
+              }}
+            >
+              Request Info
+            </Button>
             <Button
               type="button"
               variant="outline"
@@ -2555,15 +2899,18 @@ export function ExpenseInboxPreviewModal({
                 type="button"
                 size="sm"
                 data-expense-approval-action
-                className="h-11 min-h-11 min-w-[132px] rounded-md border border-[var(--hh-success-border)] bg-[var(--hh-success-soft-fill)] px-5 text-[var(--hh-success)] shadow-none hover:bg-[var(--hh-success-soft-fill)] hover:brightness-[0.96] focus-visible:ring-[var(--hh-focus-ring)]"
+                className={cn(
+                  PREVIEW_PRIMARY_BUTTON,
+                  "h-11 min-h-11 min-w-[132px] px-5 font-semibold"
+                )}
                 disabled={saving || markBusy}
                 onClick={() => void handleInlineReviewComplete()}
                 aria-keyshortcuts="Meta+Enter Control+Enter"
               >
                 <SubmitSpinner loading={saving || markBusy} className="mr-2" />
-                {inboxUploadPreview && previewNav?.canNext
+                {(inlineReviewWorkspace || inboxUploadPreview) && previewNav?.canNext
                   ? "Approve & Next"
-                  : inboxUploadPreview
+                  : inlineReviewWorkspace || inboxUploadPreview
                     ? "Approve"
                     : "Mark Done"}
               </Button>
@@ -2635,7 +2982,12 @@ export function ExpenseInboxPreviewModal({
               type="button"
               variant="outline"
               size="sm"
-              className={cn(PREVIEW_SECONDARY_BUTTON, "h-11 min-h-11 px-5")}
+              className={cn(
+                presentation === "panel" && !evidenceFirst
+                  ? PREVIEW_PRIMARY_BUTTON
+                  : PREVIEW_SECONDARY_BUTTON,
+                "h-11 min-h-11 px-5"
+              )}
               onClick={() => setMode("edit")}
             >
               {presentation === "panel" ? "Edit Expense" : "Edit"}
@@ -2651,9 +3003,9 @@ export function ExpenseInboxPreviewModal({
                 onClick={() => void handleMarkReviewed()}
               >
                 <SubmitSpinner loading={markBusy} className="mr-2" />
-                {inboxUploadPreview && previewNav?.canNext
+                {(inlineReviewWorkspace || inboxUploadPreview) && previewNav?.canNext
                   ? "Approve & Next"
-                  : inboxUploadPreview
+                  : inlineReviewWorkspace || inboxUploadPreview
                     ? "Approve"
                     : "Mark Done"}
               </Button>
@@ -2704,59 +3056,89 @@ export function ExpenseInboxPreviewModal({
     </>
   );
 
+  const discardDialog = (
+    <ConfirmDialog
+      open={pendingDiscardAction !== null}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) setPendingDiscardAction(null);
+      }}
+      title="Discard unsaved changes?"
+      description="Your unsaved expense changes will be lost."
+      confirmLabel="Discard"
+      destructive
+      onConfirm={() => pendingDiscardAction?.()}
+    />
+  );
+
   if (presentation === "panel") {
     if (!open) return null;
     return (
-      <aside
-        data-expense-detail-panel
-        data-expense-detail-mode={detailMode}
-        aria-label={
-          inlineReviewWorkspace
-            ? "Receipt review"
-            : mode === "preview"
-              ? evidenceFirst
-                ? "Receipt detail"
-                : "Expense detail"
-              : evidenceFirst
-                ? "Edit receipt details"
-                : "Edit expense"
-        }
-        className="expense-detail-panel expenses-ui-dialog flex min-h-0 min-w-0 flex-col overflow-hidden rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)]"
-        onKeyDown={handlePanelKeyDown}
-      >
-        {evidenceFirst ? (
-          <div data-expense-review-workspace className="expense-review-workspace min-h-0 flex-1">
-            {receiptReviewStage}
-            <div
-              data-expense-review-panel
-              className="expense-review-panel flex min-h-0 min-w-0 flex-col overflow-hidden"
-            >
-              {detailSurface}
+      <>
+        <aside
+          ref={panelRef}
+          tabIndex={-1}
+          role={phoneDetail ? "dialog" : undefined}
+          aria-modal={phoneDetail || undefined}
+          data-expense-detail-panel
+          data-expense-detail-mode={detailMode}
+          aria-label={
+            inlineReviewWorkspace
+              ? "Receipt review"
+              : mode === "preview"
+                ? evidenceFirst
+                  ? "Receipt detail"
+                  : "Expense detail"
+                : evidenceFirst
+                  ? "Edit receipt details"
+                  : "Edit expense"
+          }
+          className="expense-detail-panel expenses-ui-dialog flex min-h-0 min-w-0 flex-col overflow-hidden rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)]"
+          onKeyDown={handlePanelKeyDown}
+        >
+          {evidenceFirst ? (
+            <div data-expense-review-workspace className="expense-review-workspace min-h-0 flex-1">
+              {receiptReviewStage}
+              <div
+                data-expense-review-panel
+                className="expense-review-panel flex min-h-0 min-w-0 flex-col overflow-hidden"
+              >
+                {detailSurface}
+              </div>
             </div>
-          </div>
-        ) : (
-          detailSurface
-        )}
-      </aside>
+          ) : (
+            detailSurface
+          )}
+        </aside>
+        {discardDialog}
+      </>
     );
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        data-expense-component-surface="receipt-review"
-        data-hh-context="viewer"
-        data-hh-theme="neo-dark"
-        onPointerDownOutside={(event) => {
-          if (eventTargetsAttachmentPreviewModal(event)) event.preventDefault();
+    <>
+      <Dialog
+        open={open}
+        onOpenChange={(nextOpen) => {
+          if (nextOpen) onOpenChange(true);
+          else requestPanelClose();
         }}
-        onInteractOutside={(event) => {
-          if (eventTargetsAttachmentPreviewModal(event)) event.preventDefault();
-        }}
-        className="expenses-ui-dialog flex max-h-[min(92vh,820px)] w-full max-w-[560px] flex-col gap-0 overflow-hidden rounded-hh-task border-[var(--hh-border-floating)] bg-[var(--hh-l5-task-surface)] p-0 text-[var(--hh-text-primary)] shadow-task"
       >
-        {detailSurface}
-      </DialogContent>
-    </Dialog>
+        <DialogContent
+          data-expense-component-surface="receipt-review"
+          data-hh-context="viewer"
+          data-hh-theme="operational-light"
+          onPointerDownOutside={(event) => {
+            if (eventTargetsAttachmentPreviewModal(event)) event.preventDefault();
+          }}
+          onInteractOutside={(event) => {
+            if (eventTargetsAttachmentPreviewModal(event)) event.preventDefault();
+          }}
+          className="expenses-ui-dialog flex max-h-[min(92vh,820px)] w-full max-w-[560px] flex-col gap-0 overflow-hidden rounded-hh-task border-[var(--hh-border-floating)] bg-[var(--hh-l5-task-surface)] p-0 text-[var(--hh-text-primary)] shadow-task"
+        >
+          {detailSurface}
+        </DialogContent>
+      </Dialog>
+      {discardDialog}
+    </>
   );
 }

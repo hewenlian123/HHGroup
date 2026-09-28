@@ -3,6 +3,8 @@
  * Table: bank_transactions.
  */
 
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { financialDataUnavailable } from "@/lib/financial-availability";
 import { getSupabaseClient } from "@/lib/supabase";
 
 export type BankTransactionStatus = "unmatched" | "reconciled";
@@ -31,8 +33,8 @@ type BankTransactionRow = {
   reconciled_by?: string | null;
 };
 
-function client() {
-  const c = getSupabaseClient();
+function client(explicitClient?: SupabaseClient) {
+  const c = explicitClient ?? getSupabaseClient();
   if (!c) throw new Error("Supabase is not configured.");
   return c;
 }
@@ -58,19 +60,19 @@ function toBankTx(r: BankTransactionRow): BankTransaction {
   };
 }
 
-export async function getBankTransactions(): Promise<BankTransaction[]> {
-  const c = client();
+export async function getBankTransactions(
+  explicitClient?: SupabaseClient
+): Promise<BankTransaction[]> {
+  const c = client(explicitClient);
   const { data: rows, error } = await c
     .from("bank_transactions")
     .select(
       "id, txn_date, description, amount, status, linked_expense_id, created_at, reconciled_at, reconciled_by"
     )
     .order("txn_date", { ascending: false });
-  if (error) {
-    if (isMissingTable(error)) throw new Error(`bank_transactions: table not found. ${HINT}`);
-    throw new Error(error.message ? `${error.message} ${HINT}` : HINT);
-  }
-  return (rows ?? []).map((r) => toBankTx(r as BankTransactionRow));
+  if (error) financialDataUnavailable("bank transactions", error);
+  if (!Array.isArray(rows)) financialDataUnavailable("bank transactions", null);
+  return rows.map((r) => toBankTx(r as BankTransactionRow));
 }
 
 export async function getBankTransactionById(id: string): Promise<BankTransaction | null> {
@@ -140,28 +142,46 @@ export async function updateBankTransaction(
   return toBankTx(row as BankTransactionRow);
 }
 
+export async function reconcileBankTransactionExpenseAtomic(input: {
+  bankTransactionId: string;
+  vendorName: string;
+  paymentMethod: string;
+  lines: Array<{
+    projectId: string | null;
+    category: string;
+    memo?: string | null;
+    amount: number;
+  }>;
+}): Promise<BankTransaction | null> {
+  const c = client();
+  const lines = input.lines.map((line) => {
+    const amount = Number(line.amount);
+    if (!Number.isFinite(amount) || amount < 0) {
+      throw new Error("Bank expense line amount must be a non-negative number.");
+    }
+    return { ...line, amount };
+  });
+  const { error } = await c.rpc("reconcile_bank_transaction_expense_atomic", {
+    p_idempotency_key: `bank-expense:${input.bankTransactionId}`,
+    p_bank_transaction_id: input.bankTransactionId,
+    p_vendor_name: input.vendorName,
+    p_payment_method: input.paymentMethod,
+    p_lines: lines,
+  });
+  if (error) throw new Error(error.message ?? "Failed to reconcile bank transaction atomically.");
+  return getBankTransactionById(input.bankTransactionId);
+}
+
 export async function linkBankTransactionToExpense(
   bankTxId: string,
   expenseId: string
 ): Promise<boolean> {
   const c = client();
-  const { data: tx } = await c
-    .from("bank_transactions")
-    .select("id, linked_expense_id")
-    .eq("id", bankTxId)
-    .maybeSingle();
-  if (!tx || tx.linked_expense_id) return false;
-  const now = new Date().toISOString().slice(0, 10);
-  const { error } = await c
-    .from("bank_transactions")
-    .update({
-      linked_expense_id: expenseId,
-      status: "reconciled",
-      reconciled_at: now,
-      reconciled_by: "owner",
-    })
-    .eq("id", bankTxId);
-  if (error) return false;
+  const { error } = await c.rpc("match_bank_expense_operation", {
+    p_bank_id: bankTxId,
+    p_expense_id: expenseId,
+  });
+  if (error) throw new Error(error.message ?? "Bank match could not be confirmed.");
   return true;
 }
 

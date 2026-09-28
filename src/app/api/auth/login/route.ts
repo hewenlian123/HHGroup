@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { authorizedAppRole } from "@/lib/auth-role";
+import {
+  getActiveOrganizationMemberships,
+  hasCompanyAdministratorMembership,
+  isOrganizationWorkspacePath,
+} from "@/lib/organization-membership";
 import { normalizeAuthRedirect } from "@/lib/auth-redirect";
 import { validateSameOriginMutation } from "@/lib/auth-request-security";
 import { recordSecurityAudit } from "@/lib/security-audit";
@@ -111,9 +116,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     email,
     password,
   });
-  const role = authorizedAppRole(data.user);
+  const role =
+    data.user &&
+    authorizedAppRole(data.user) &&
+    (await hasCompanyAdministratorMembership(supabase, data.user).catch(() => false))
+      ? authorizedAppRole(data.user)
+      : null;
 
-  if (error || !data.user || !role) {
+  const memberships =
+    !error && data.user && !role
+      ? await getActiveOrganizationMemberships(supabase, data.user).catch(() => [])
+      : [];
+  if (error || !data.user || (!role && !memberships.length)) {
     if (data.user) {
       await supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
     }
@@ -127,5 +141,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   attempts.delete(key);
   await auditLogin("login_succeeded", data.user.id);
+  if (!role) {
+    const memberResponse = json(200, {
+      ok: true,
+      redirectTo: isOrganizationWorkspacePath(redirectTo.split("?")[0]) ? redirectTo : "/projects",
+    });
+    for (const cookie of response.cookies.getAll()) memberResponse.cookies.set(cookie);
+    return memberResponse;
+  }
   return response;
 }

@@ -53,9 +53,9 @@ describe("project financial snapshot", () => {
     expect(snapshot.reimbursementCost).toBe(0);
     expect(snapshot.subcontractCost).toBe(750);
     expect(snapshot.apCost).toBe(300);
-    expect(snapshot.actualCost).toBe(3250);
-    expect(snapshot.grossProfit).toBe(8250);
-    expect(snapshot.grossMargin).toBeCloseTo(8250 / 11500, 6);
+    expect(snapshot.actualCost).toBe(3550);
+    expect(snapshot.grossProfit).toBe(7950);
+    expect(snapshot.grossMargin).toBeCloseTo(7950 / 11500, 6);
     expect(snapshot.cashCollected).toBe(2500);
     expect(snapshot.cashOut).toBe(1200);
     expect(snapshot.cashPosition).toBe(1300);
@@ -93,7 +93,7 @@ describe("project financial snapshot", () => {
     expect(snapshot.openAR).toBe(350);
   });
 
-  it("keeps generic AP cost diagnostic-only so it cannot double count actual cost", () => {
+  it("includes unlinked vendor AP in actual cost and keeps cash out on recorded payments", () => {
     const snapshot = calculateProjectFinancialSnapshot({
       projectId: "project-1",
       contractValue: 5000,
@@ -104,8 +104,8 @@ describe("project financial snapshot", () => {
     });
 
     expect(snapshot.apCost).toBe(1200);
-    expect(snapshot.actualCost).toBe(1700);
-    expect(snapshot.grossProfit).toBe(3300);
+    expect(snapshot.actualCost).toBe(2900);
+    expect(snapshot.grossProfit).toBe(2100);
     expect(snapshot.cashOut).toBe(400);
   });
 

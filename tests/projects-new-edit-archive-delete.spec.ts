@@ -6,6 +6,8 @@ import { assertE2ESupabaseUrlSafeForMutations } from "./e2e-supabase-url-guard";
 
 const createdProjectNames = new Set<string>();
 
+test.use({ storageState: "tests/.auth/ui-readonly-owner.json" });
+
 async function cleanupProjectNames(projectNames: Iterable<string>): Promise<void> {
   const names = Array.from(projectNames);
   if (names.length === 0) return;
@@ -252,4 +254,20 @@ test("keeps project actions usable on mobile", async ({ page }) => {
   });
   await expect(page.getByRole("link", { name: "Cancel" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Create Project" })).toBeVisible();
+});
+
+test("opens the project editor directly from the list Edit action", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/projects", { waitUntil: "networkidle" });
+
+  await page.getByTestId("projects-list-search-desktop").fill(E2E_PRESERVED_PROJECT_LABEL);
+  const row = page.locator("tbody tr").filter({ hasText: E2E_PRESERVED_PROJECT_LABEL }).first();
+  await expect(row).toBeVisible({ timeout: 30_000 });
+  await row.getByRole("button", { name: `Actions for ${E2E_PRESERVED_PROJECT_LABEL}` }).click();
+  await page.getByRole("menuitem", { name: "Edit", exact: true }).click();
+
+  const dialog = page.getByRole("dialog", { name: "Edit project" });
+  await expect(dialog).toBeVisible({ timeout: 30_000 });
+  await dialog.getByRole("button", { name: "Cancel" }).click();
+  await expect(page.getByRole("button", { name: "Edit", exact: true })).toBeFocused();
 });

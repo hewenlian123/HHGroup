@@ -15,6 +15,7 @@ import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover"
 import { VirtualScrollList } from "@/components/ui/virtual-scroll-list";
 import { cn } from "@/lib/utils";
 import { workerRateLocalYmd } from "@/lib/worker-rate-date";
+import { overtimePayAmount } from "@/lib/worker-daily-rate";
 import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import { DayPicker, getDefaultClassNames } from "react-day-picker";
 
@@ -34,6 +35,8 @@ const workerGridClass =
   "grid grid-cols-[minmax(8.5rem,1.75fr)_4.4rem_3.35rem_3.35rem_3.45rem_5.6rem_5.7rem] items-center gap-2";
 
 type Props = {
+  initialWorkerId?: string;
+  initialProjectId?: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: (result: DailyEntrySaveResult) => void;
@@ -51,6 +54,7 @@ type LaborWorker = {
   name: string;
   halfDayRate?: number | null;
   dailyRate?: number | null;
+  defaultOtRate?: number | null;
   phone?: string | null;
   nickname?: string | null;
   code?: string | null;
@@ -518,7 +522,10 @@ const AddDailyEntryWorkerRow = React.memo(function AddDailyEntryWorkerRow({
 
   const rate = workerDailyRate(worker) ?? 0;
   const baseTotal = computeRegularPay(rate, morning, afternoon);
-  const total = baseTotal + Math.max(0, Number(otAmount) || 0);
+  const explicitOt = Math.max(0, Number(otAmount) || 0);
+  const otFromHours =
+    explicitOt > 0 ? 0 : overtimePayAmount(rate, Number(otHours) || 0, worker.defaultOtRate);
+  const total = baseTotal + explicitOt + otFromHours;
 
   return (
     <div
@@ -642,8 +649,17 @@ const AddDailyEntryWorkerRow = React.memo(function AddDailyEntryWorkerRow({
   );
 });
 
-export function AddDailyEntryModal({ open, onOpenChange, onSuccess }: Props) {
-  const [projectId, setProjectId] = React.useState("");
+export function AddDailyEntryModal({
+  open,
+  onOpenChange,
+  onSuccess,
+  initialWorkerId,
+  initialProjectId,
+}: Props) {
+  const [projectId, setProjectId] = React.useState(initialProjectId ?? "");
+  React.useEffect(() => {
+    if (open) setProjectId(initialProjectId ?? "");
+  }, [open, initialProjectId]);
   const [workDate, setWorkDate] = React.useState(() => workerRateLocalYmd());
   const [projects, setProjects] = React.useState<LaborProjectOption[]>([]);
   const [workers, setWorkers] = React.useState<LaborWorker[]>([]);
@@ -689,7 +705,9 @@ export function AddDailyEntryModal({ open, onOpenChange, onSuccess }: Props) {
       })
       .then((body) => {
         if (cancelled) return;
-        const nextWorkers = body.workers ?? [];
+        const nextWorkers = initialWorkerId
+          ? (body.workers ?? []).filter((worker) => worker.id === initialWorkerId)
+          : (body.workers ?? []);
         setProjects(body.projects ?? []);
         setWorkers(nextWorkers);
         const nextSelection = defaultSelectionMap(nextWorkers);
@@ -724,7 +742,7 @@ export function AddDailyEntryModal({ open, onOpenChange, onSuccess }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [open, workDate]);
+  }, [open, workDate, initialWorkerId]);
 
   React.useEffect(() => {
     if (!open || !projectId) {

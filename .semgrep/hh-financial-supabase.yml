@@ -1,0 +1,91 @@
+rules:
+  - id: hh-financial-number-fallback-to-zero
+    languages: [typescript, javascript]
+    message: >-
+      A financial value is coerced and then defaulted to zero. Invalid, missing, or
+      unauthorized data must fail closed instead of becoming a valid $0 amount.
+    severity: WARNING
+    metadata:
+      category: financial-integrity
+      confidence: HIGH
+      mode: report-only
+    paths:
+      include:
+        - /src/lib/estimates-db.ts
+        - /src/lib/invoices-db.ts
+        - /src/lib/payments-received-db.ts
+        - /src/lib/deposits-db.ts
+        - /src/lib/expenses-db.ts
+        - /src/lib/worker-reimbursements-db.ts
+        - /src/lib/worker-balances-list.ts
+        - /src/lib/subcontract-payments-db.ts
+        - /src/lib/commission-db.ts
+        - /src/lib/profit-engine.ts
+        - /src/app/labor/payroll/compute-payroll-summary-rows.ts
+        - /src/app/api/labor/workers/**
+        - /src/app/api/worker-reimbursements/**
+    pattern-either:
+      - pattern: Number($VALUE) || 0
+      - pattern: parseFloat($VALUE) || 0
+      - pattern: Number.parseFloat($VALUE) || 0
+
+  - id: hh-financial-query-failure-returned-as-zero-or-empty
+    languages: [typescript, javascript]
+    message: >-
+      A financial query or computation failure is returned as zero or an empty
+      collection. Preserve the error so the UI cannot present failure as financial fact.
+    severity: ERROR
+    metadata:
+      category: financial-integrity
+      confidence: HIGH
+      mode: report-only
+    paths:
+      include:
+        - /src/lib/estimates-db.ts
+        - /src/lib/invoices-db.ts
+        - /src/lib/payments-received-db.ts
+        - /src/lib/deposits-db.ts
+        - /src/lib/expenses-db.ts
+        - /src/lib/worker-reimbursements-db.ts
+        - /src/lib/worker-balances-list.ts
+        - /src/lib/subcontract-payments-db.ts
+        - /src/lib/commission-db.ts
+        - /src/lib/profit-engine.ts
+        - /src/app/api/labor/workers/**
+        - /src/app/api/worker-reimbursements/**
+    pattern-either:
+      - pattern: |
+          try {
+            ...
+          } catch ($ERROR) {
+            ...
+            return 0;
+            ...
+          }
+      - pattern: |
+          try {
+            ...
+          } catch ($ERROR) {
+            ...
+            return [];
+            ...
+          }
+
+  - id: hh-public-service-role-environment-variable
+    languages: [generic]
+    message: >-
+      A service-role environment variable uses the NEXT_PUBLIC_ prefix and could be
+      exposed to browser code. Service-role credentials must remain server-only.
+    severity: ERROR
+    metadata:
+      category: supabase-auth
+      confidence: HIGH
+      mode: report-only
+    paths:
+      include:
+        - /src/**
+      exclude:
+        - /src/**/__tests__/**
+        - /src/**/*.test.*
+        - /src/**/*.spec.*
+    pattern-regex: '(?i)\bNEXT_PUBLIC_[A-Z0-9_]*SERVICE_ROLE[A-Z0-9_]*\b'

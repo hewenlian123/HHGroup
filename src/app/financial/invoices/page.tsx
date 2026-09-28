@@ -1,5 +1,10 @@
 "use client";
 
+import { useFinanceRecordFocus } from "@/hooks/use-finance-query-state";
+import { financePathWithReturn } from "@/lib/finance-navigation";
+
+import { FinanceContextBack } from "@/components/financial/finance-context-back";
+
 import * as React from "react";
 import { startTransition } from "react";
 import Link from "next/link";
@@ -13,12 +18,12 @@ import {
   EmptyState,
   NeoAmount,
   NeoMobileCard,
-  NeoStatus,
   NeoTable,
   NeoToolbar,
+  PageHeader,
   RowActionsMenu,
-  type StatusBadgeVariant,
 } from "@/components/base";
+import { InvoiceStatusBadge } from "@/components/invoice-status-badge";
 import { tableRawTdClass, tableRawThClass } from "@/components/ui/table";
 import { listTableRowClassName } from "@/lib/list-table-interaction";
 import { NEO, OS, TYPO } from "@/lib/typography";
@@ -62,15 +67,6 @@ import { InvoiceDeleteDependenciesDialog } from "./invoice-delete-dependencies-d
 
 const invoicesShell = OS.card;
 
-const kpiTile =
-  "rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)]";
-
-const financePageTitleClass =
-  "text-hh-page-title font-semibold  tracking-normal text-[var(--hh-text-primary)]";
-
-const financeSubtitleClass =
-  "mt-1.5 text-hh-table-cell leading-snug tracking-normal text-[var(--hh-text-secondary)]";
-
 const financeSectionLabelClass = cn(
   TYPO.sectionLabel,
   "text-hh-status font-semibold text-[var(--hh-text-tertiary)]"
@@ -88,16 +84,13 @@ const financePrimaryTextClass = cn(
 
 const financeMetadataClass = "text-hh-metadata  tracking-normal text-[var(--hh-text-secondary)]";
 
-const financeMetadataStrongClass =
-  "text-hh-metadata font-medium tabular-nums tracking-normal text-[var(--hh-text-primary)]";
-
 const financeAmountClass =
-  "min-w-[112px] text-right text-hh-financial font-semibold leading-none tracking-normal tabular-nums";
+  "min-w-[112px] text-right text-hh-financial font-semibold tracking-normal tabular-nums";
 
 const financeSecondaryAmountClass =
   "text-hh-metadata font-medium tabular-nums tracking-normal text-[var(--hh-text-secondary)]";
 
-const financeToolbarButtonTextClass = "text-hh-metadata font-medium tracking-normal";
+const financeToolbarButtonTextClass = cn(TYPO.button, "font-medium tracking-normal");
 
 const invoiceTableThClass = cn(tableRawThClass, "h-10 px-4 text-hh-status font-semibold");
 const invoiceTableTdClass = cn(tableRawTdClass, "h-11 px-4");
@@ -115,59 +108,6 @@ const invoiceActionsMenuContentStyle: React.CSSProperties = {
   filter: "none",
 };
 
-function invoiceStatusMeta(status: InvoiceComputedStatus): {
-  label: string;
-  variant: StatusBadgeVariant;
-} {
-  if (status === "Draft")
-    return {
-      label: "Draft",
-      variant: "muted",
-    };
-  if (status === "Void")
-    return {
-      label: "Void",
-      variant: "danger",
-    };
-  if (status === "Paid")
-    return {
-      label: "Paid",
-      variant: "success",
-    };
-  if (status === "Overdue")
-    return {
-      label: "Overdue",
-      variant: "danger",
-    };
-  if (status === "Partial")
-    return {
-      label: "Partial",
-      variant: "warning",
-    };
-  return {
-    label: status === "Unpaid" ? "Unpaid" : "Sent",
-    variant: "default",
-  };
-}
-
-function InvoiceStatusText({
-  status,
-  className,
-}: {
-  status: InvoiceComputedStatus;
-  className?: string;
-}) {
-  const statusMeta = invoiceStatusMeta(status);
-
-  return (
-    <NeoStatus
-      label={statusMeta.label}
-      variant={statusMeta.variant}
-      className={cn("h-5 px-2 text-hh-status whitespace-nowrap", className)}
-    />
-  );
-}
-
 function InvoiceMiniMetric({
   label,
   value,
@@ -178,11 +118,11 @@ function InvoiceMiniMetric({
   emphasized?: boolean;
 }) {
   return (
-    <div className="rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-2.5 py-1.5">
+    <div className="min-w-max flex-1 px-2.5 py-2">
       <p className={financeSectionLabelClass}>{label}</p>
       <p
         className={cn(
-          "mt-1 text-hh-table-cell font-medium tabular-nums leading-none tracking-normal text-[var(--hh-text-primary)]",
+          "mt-1 truncate text-hh-table-cell font-medium tabular-nums tracking-normal text-[var(--hh-text-primary)]",
           emphasized && "text-hh-body font-semibold"
         )}
       >
@@ -194,9 +134,9 @@ function InvoiceMiniMetric({
 
 function CompactSummaryMetric({ label, value }: { label: string; value: string }) {
   return (
-    <div className={cn(kpiTile, "px-2.5 py-2")}>
+    <div className="min-w-0 px-2.5 py-2">
       <p className={financeSectionLabelClass}>{label}</p>
-      <p className="mt-1 text-hh-table-cell font-semibold tabular-nums leading-none tracking-normal text-[var(--hh-text-primary)]">
+      <p className="mt-1 truncate text-hh-table-cell font-semibold tabular-nums tracking-normal text-[var(--hh-text-primary)]">
         <NeoAmount>{value}</NeoAmount>
       </p>
     </div>
@@ -205,12 +145,12 @@ function CompactSummaryMetric({ label, value }: { label: string; value: string }
 
 function InvoiceListSkeleton() {
   return (
-    <section className={cn(invoicesShell, "overflow-hidden p-0")}>
-      <div className="hidden border-b border-[var(--hh-border)] px-5 py-3 md:flex md:items-center md:justify-between">
+    <section data-invoices-loading className={cn(invoicesShell, "overflow-hidden p-0")}>
+      <div className="hidden border-b border-[var(--hh-border)] px-5 py-3 lg:flex lg:items-center lg:justify-between">
         <Skeleton className="h-3 w-24" />
         <Skeleton className="h-3 w-20" />
       </div>
-      <div className="hidden divide-y divide-[var(--hh-border)] md:block">
+      <div className="hidden divide-y divide-[var(--hh-border)] lg:block">
         {Array.from({ length: 5 }).map((_, index) => (
           <div
             key={`desktop-skeleton-${index}`}
@@ -237,7 +177,7 @@ function InvoiceListSkeleton() {
           </div>
         ))}
       </div>
-      <div className="space-y-3 p-3 md:hidden">
+      <div className="space-y-3 p-3 lg:hidden">
         {Array.from({ length: 4 }).map((_, index) => (
           <NeoMobileCard key={`mobile-skeleton-${index}`} className="p-4">
             <div className="flex items-start justify-between gap-3">
@@ -314,20 +254,38 @@ export default function InvoicesPage() {
 function InvoicesPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const customerId = searchParams.get("customerId") ?? "";
   const [invoices, setInvoices] = React.useState<InvoiceWithDerived[]>([]);
   const [loading, setLoading] = React.useState(true);
+  useFinanceRecordFocus(!loading);
   const [refreshing, setRefreshing] = React.useState(false);
   const [loadError, setLoadError] = React.useState<string | null>(null);
-  const [search, setSearch] = React.useState("");
-  const [statusFilter, setStatusFilter] = React.useState<"" | InvoiceComputedStatus>("");
-  const [projectFilter, setProjectFilter] = React.useState("");
+  const search = searchParams.get("q") ?? "";
+  const statusFilter =
+    STATUS_OPTIONS.find((option) => option.value === searchParams.get("status"))?.value ?? "";
+  const projectFilter = searchParams.get("project") ?? "";
+  const updateFilters = React.useCallback((values: Record<string, string>) => {
+    const params = new URLSearchParams(window.location.search);
+    for (const [key, value] of Object.entries(values)) {
+      if (value) params.set(key, value);
+      else params.delete(key);
+    }
+    params.delete("page");
+    const query = params.toString();
+    window.history.replaceState(null, "", `/financial/invoices${query ? `?${query}` : ""}`);
+  }, []);
+  const invoiceDetailHref = (invoiceId: string) => {
+    const query = searchParams.toString();
+    const returnTo = `/financial/invoices${query ? `?${query}` : ""}`;
+    return financePathWithReturn(`/financial/invoices/${invoiceId}`, returnTo, invoiceId);
+  };
   const [voidBusyId, setVoidBusyId] = React.useState<string | null>(null);
   const [projects, setProjects] = React.useState<Project[]>([]);
   const [filtersOpen, setFiltersOpen] = React.useState(false);
   const [desktopFiltersOpen, setDesktopFiltersOpen] = React.useState(false);
   const [summaryOpen, setSummaryOpen] = React.useState(false);
-  const [dateFrom, setDateFrom] = React.useState("");
-  const [dateTo, setDateTo] = React.useState("");
+  const dateFrom = searchParams.get("dateFrom") ?? "";
+  const dateTo = searchParams.get("dateTo") ?? "";
   const [voidTarget, setVoidTarget] = React.useState<InvoiceWithDerived | null>(null);
   const [deleteTarget, setDeleteTarget] = React.useState<InvoiceWithDerived | null>(null);
   const [deleteDependenciesOpen, setDeleteDependenciesOpen] = React.useState(false);
@@ -371,7 +329,9 @@ function InvoicesPageInner() {
   );
 
   const filtered = React.useMemo(() => {
-    let list = invoices;
+    let list = customerId
+      ? invoices.filter((invoice) => invoice.customerId === customerId)
+      : invoices;
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter(
@@ -395,7 +355,16 @@ function InvoicesPageInner() {
       });
     }
     return list;
-  }, [invoices, search, statusFilter, projectFilter, projectNameById, dateFrom, dateTo]);
+  }, [
+    invoices,
+    search,
+    statusFilter,
+    projectFilter,
+    projectNameById,
+    dateFrom,
+    dateTo,
+    customerId,
+  ]);
 
   const page = Math.max(1, Number(searchParams.get("page") ?? "1") || 1);
   const pageSize = 20;
@@ -634,27 +603,19 @@ function InvoicesPageInner() {
   }, [dateFrom, dateTo, projectFilter, projectNameById, statusFilter]);
 
   const clearAdvancedFilters = React.useCallback(() => {
-    setStatusFilter("");
-    setProjectFilter("");
-    setDateFrom("");
-    setDateTo("");
-  }, []);
+    updateFilters({ status: "", project: "", dateFrom: "", dateTo: "" });
+  }, [updateFilters]);
 
-  const clearFilterChip = React.useCallback((key: "status" | "project" | "date") => {
-    if (key === "status") {
-      setStatusFilter("");
-      return;
-    }
-    if (key === "project") {
-      setProjectFilter("");
-      return;
-    }
-    setDateFrom("");
-    setDateTo("");
-  }, []);
+  const clearFilterChip = React.useCallback(
+    (key: "status" | "project" | "date") => {
+      updateFilters(key === "date" ? { dateFrom: "", dateTo: "" } : { [key]: "" });
+    },
+    [updateFilters]
+  );
 
   return (
     <div
+      data-revenue-ar-v2
       className={cn(
         "hh-fin min-w-0 overflow-x-hidden bg-[var(--hh-l0-canvas)] pb-[max(1rem,env(safe-area-inset-bottom,0px))] pt-[max(0.35rem,env(safe-area-inset-top,0px))] text-[var(--hh-text-secondary)]",
         "flex flex-col"
@@ -662,38 +623,54 @@ function InvoicesPageInner() {
     >
       <div
         className={cn(
-          "page-shell-wide mx-auto flex w-full max-w-[430px] flex-1 flex-col gap-3 px-4 py-2 pb-4 sm:max-w-[460px] md:gap-3 md:px-6 md:pb-5 md:pt-2",
+          "page-container page-shell-wide flex w-full flex-1 flex-col gap-hh-3",
           mobileListPagePaddingClass
         )}
       >
+        {customerId ? (
+          <p className="text-hh-control">
+            Customer:{" "}
+            {invoices.find((invoice) => invoice.customerId === customerId)?.clientName ||
+              "Selected customer"}{" "}
+            ·{" "}
+            <Link
+              href={`/financial/ar?${new URLSearchParams({ customerId })}`}
+              className="underline"
+            >
+              Balances & history
+            </Link>{" "}
+            ·{" "}
+            <Link href="/financial/invoices" className="underline">
+              All customers
+            </Link>
+          </p>
+        ) : null}
+        <FinanceContextBack />
         <div className="hidden md:block">
-          <div className="flex items-center justify-between gap-4 border-b border-white/10 pb-3">
-            <div className="min-w-0">
-              <div className="flex items-center gap-3">
-                <h1 className={financePageTitleClass}>Invoices</h1>
+          <PageHeader
+            title={
+              <span className="inline-flex items-center gap-hh-3">
+                Invoices
                 {refreshing ? (
-                  <span className="text-hh-status font-medium tracking-normal text-[var(--hh-text-tertiary)]">
+                  <span
+                    role="status"
+                    className="text-hh-status font-medium text-[var(--hh-text-tertiary)]"
+                  >
                     Updating...
                   </span>
                 ) : null}
-              </div>
-              <p className={financeSubtitleClass}>Accounts receivable and balances.</p>
-            </div>
-            <Button
-              asChild
-              size="sm"
-              className={cn(
-                OS.primaryButton,
-                "h-[34px] shrink-0 gap-1.5 rounded-hh-standard px-3.5 shadow-none",
-                financeToolbarButtonTextClass
-              )}
-            >
-              <Link href="/financial/invoices/new">
-                <Plus className="h-3.5 w-3.5" aria-hidden />
-                New Invoice
-              </Link>
-            </Button>
-          </div>
+              </span>
+            }
+            description="Invoice status, due dates, and organization-wide receivable balances."
+            actions={
+              <Button asChild size="sm" className="h-hh-control-standard gap-hh-2">
+                <Link href="/financial/invoices/new">
+                  <Plus className="h-4 w-4" aria-hidden />
+                  New Invoice
+                </Link>
+              </Button>
+            }
+          />
         </div>
         <MobileListHeader
           title="Invoices"
@@ -711,7 +688,7 @@ function InvoicesPageInner() {
               <Input
                 placeholder="Invoice #, client, project…"
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => updateFilters({ q: e.target.value })}
                 className="h-11 pl-8 text-hh-table-cell tracking-normal text-[var(--hh-text-primary)] placeholder:text-[var(--hh-text-tertiary)]"
               />
             </div>
@@ -719,10 +696,13 @@ function InvoicesPageInner() {
         />
         <MobileFilterSheet open={filtersOpen} onOpenChange={setFiltersOpen} title="Filters">
           <div className="space-y-2">
-            <p className={financeControlLabelClass}>Status</p>
+            <label htmlFor="invoice-mobile-filter-status" className={financeControlLabelClass}>
+              Status
+            </label>
             <Select
+              id="invoice-mobile-filter-status"
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as "" | InvoiceComputedStatus)}
+              onChange={(e) => updateFilters({ status: e.target.value })}
               className="w-full"
             >
               {STATUS_OPTIONS.map((o) => (
@@ -733,10 +713,13 @@ function InvoicesPageInner() {
             </Select>
           </div>
           <div className="space-y-2">
-            <p className={financeControlLabelClass}>Project</p>
+            <label htmlFor="invoice-mobile-filter-project" className={financeControlLabelClass}>
+              Project
+            </label>
             <Select
+              id="invoice-mobile-filter-project"
               value={projectFilter}
-              onChange={(e) => setProjectFilter(e.target.value)}
+              onChange={(e) => updateFilters({ project: e.target.value })}
               className="w-full"
             >
               <option value="">All projects</option>
@@ -751,16 +734,18 @@ function InvoicesPageInner() {
             <p className={financeControlLabelClass}>Issue date</p>
             <div className="grid grid-cols-2 gap-2">
               <Input
+                aria-label="Issue from"
                 type="date"
                 value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-                className="h-10 tabular-nums"
+                onChange={(e) => updateFilters({ dateFrom: e.target.value })}
+                className="h-11 min-h-11 tabular-nums"
               />
               <Input
+                aria-label="Issue to"
                 type="date"
                 value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-                className="h-10 tabular-nums"
+                onChange={(e) => updateFilters({ dateTo: e.target.value })}
+                className="h-11 min-h-11 tabular-nums"
               />
             </div>
           </div>
@@ -773,8 +758,11 @@ function InvoicesPageInner() {
           </Button>
         </MobileFilterSheet>
 
-        {(isInitialLoading || invoices.length > 0) && !loadError ? (
-          <section className={cn(invoicesShell, "overflow-hidden p-0")}>
+        {!loadError ? (
+          <section
+            className={cn(invoicesShell, "overflow-hidden p-0")}
+            data-testid="invoice-workspace-summary"
+          >
             <button
               type="button"
               className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors duration-150 hover:bg-[var(--hh-l3-hover)]"
@@ -782,7 +770,12 @@ function InvoicesPageInner() {
               onClick={() => setSummaryOpen((open) => !open)}
             >
               <div className="min-w-0">
-                <p className={financeSectionLabelClass}>Summary</p>
+                <p className={financeSectionLabelClass}>Organization-wide summary</p>
+                {!isInitialLoading ? (
+                  <p className={cn(financeMetadataClass, "mt-0.5")}>
+                    Non-void total includes drafts.
+                  </p>
+                ) : null}
                 {isInitialLoading ? (
                   <div className="mt-1 flex flex-wrap gap-2">
                     <Skeleton className="h-4 w-24" />
@@ -792,26 +785,24 @@ function InvoicesPageInner() {
                 ) : (
                   <div className="mt-1.5 flex flex-wrap items-center gap-x-6 gap-y-1.5">
                     <span className="inline-flex items-baseline gap-1">
-                      <span className="text-hh-status leading-none text-[var(--hh-text-secondary)]">
-                        Open
-                      </span>
+                      <span className="text-hh-status text-[var(--hh-text-secondary)]">Open</span>
                       <span className="text-hh-body font-semibold tabular-nums tracking-normal text-[var(--hh-text-primary)]">
                         {formatInteger(summary.openCount)}
                       </span>
                     </span>
                     <span className="inline-flex items-baseline gap-1">
-                      <span className="text-hh-status leading-none text-[var(--hh-text-secondary)]">
+                      <span className="text-hh-status text-[var(--hh-text-secondary)]">
                         Outstanding
                       </span>
-                      <NeoAmount className="text-hh-body font-semibold leading-none">
+                      <NeoAmount className="text-hh-body font-semibold">
                         {formatCurrency(summary.outstanding)}
                       </NeoAmount>
                     </span>
                     <span className="inline-flex items-baseline gap-1">
-                      <span className="text-hh-status leading-none text-[var(--hh-text-secondary)]">
+                      <span className="text-hh-status text-[var(--hh-text-secondary)]">
                         Overdue
                       </span>
-                      <NeoAmount tone="danger" className="text-hh-body font-semibold leading-none">
+                      <NeoAmount tone="danger" className="text-hh-body font-semibold">
                         {formatCurrency(summary.overdue)}
                       </NeoAmount>
                     </span>
@@ -828,10 +819,10 @@ function InvoicesPageInner() {
             </button>
             {summaryOpen ? (
               <div className="border-t border-[var(--hh-border)] p-2.5">
-                <div className="grid grid-cols-2 gap-2 md:grid-cols-6">
+                <div className="grid grid-cols-2 gap-x-2 md:grid-cols-6">
                   {isInitialLoading ? (
                     Array.from({ length: 6 }).map((_, index) => (
-                      <div key={`summary-skeleton-${index}`} className={cn(kpiTile, "px-2.5 py-2")}>
+                      <div key={`summary-skeleton-${index}`} className="min-w-0 px-2.5 py-2">
                         <Skeleton className="h-3 w-16" />
                         <Skeleton className="mt-2 h-5 w-20" />
                       </div>
@@ -839,7 +830,7 @@ function InvoicesPageInner() {
                   ) : (
                     <>
                       <CompactSummaryMetric
-                        label="Total invoiced"
+                        label="Non-void total"
                         value={formatCurrency(summary.totalInvoiced)}
                       />
                       <CompactSummaryMetric
@@ -867,15 +858,15 @@ function InvoicesPageInner() {
           </section>
         ) : null}
 
-        <NeoToolbar className="hidden gap-2 p-2.5 md:flex md:flex-col md:items-stretch">
-          <div className="flex items-center gap-2 rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-1">
+        <NeoToolbar className="hidden gap-hh-2 md:flex md:flex-col md:items-stretch">
+          <div className="flex items-center gap-hh-2">
             <div className="relative min-w-0 flex-1">
               <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--hh-text-tertiary)]" />
               <Input
                 placeholder="Invoice #, client, project…"
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="h-9 border-transparent bg-[var(--hh-l2-operational-surface)] pl-8 text-hh-table-cell tracking-normal text-[var(--hh-text-primary)] placeholder:text-[var(--hh-text-tertiary)] shadow-none transition-colors focus-visible:border-[var(--hh-action-primary)] focus-visible:ring-[var(--hh-focus-ring)]"
+                onChange={(e) => updateFilters({ q: e.target.value })}
+                className="h-hh-control-standard min-h-[var(--hh-control-height-standard)] bg-[var(--hh-input-background)] pl-8 text-hh-table-cell text-[var(--hh-text-primary)] placeholder:text-[var(--hh-text-tertiary)]"
               />
             </div>
             <Button
@@ -884,7 +875,7 @@ function InvoicesPageInner() {
               variant="outline"
               className={cn(
                 OS.secondaryButton,
-                "h-9 shrink-0 gap-1.5 rounded-hh-standard border-transparent px-3.5 shadow-none",
+                "h-hh-control-standard min-h-[var(--hh-control-height-standard)] shrink-0 gap-hh-2 px-hh-3",
                 financeToolbarButtonTextClass
               )}
               aria-expanded={desktopFiltersOpen}
@@ -904,7 +895,7 @@ function InvoicesPageInner() {
               variant="outline"
               className={cn(
                 NEO.buttonGhost,
-                "h-9 shrink-0 rounded-hh-standard px-3.5 shadow-none",
+                "h-hh-control-standard min-h-[var(--hh-control-height-standard)] shrink-0 px-hh-3",
                 financeToolbarButtonTextClass
               )}
               onClick={() => void refresh()}
@@ -939,11 +930,14 @@ function InvoicesPageInner() {
           {desktopFiltersOpen ? (
             <div className="mt-2 grid gap-2 border-t border-[var(--hh-border)] pt-2 md:grid-cols-[168px_208px_156px_156px]">
               <div className="space-y-1">
-                <label className={financeControlLabelClass}>Status</label>
+                <label htmlFor="invoice-filter-status" className={financeControlLabelClass}>
+                  Status
+                </label>
                 <Select
+                  id="invoice-filter-status"
                   value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value as "" | InvoiceComputedStatus)}
-                  className="h-8 w-full bg-[var(--hh-l2-operational-surface)]"
+                  onChange={(e) => updateFilters({ status: e.target.value })}
+                  className="h-hh-control-standard min-h-[var(--hh-control-height-standard)] w-full"
                 >
                   {STATUS_OPTIONS.map((o) => (
                     <option key={o.value || "all"} value={o.value}>
@@ -953,11 +947,14 @@ function InvoicesPageInner() {
                 </Select>
               </div>
               <div className="space-y-1">
-                <label className={financeControlLabelClass}>Project</label>
+                <label htmlFor="invoice-filter-project" className={financeControlLabelClass}>
+                  Project
+                </label>
                 <Select
+                  id="invoice-filter-project"
                   value={projectFilter}
-                  onChange={(e) => setProjectFilter(e.target.value)}
-                  className="h-8 w-full bg-[var(--hh-l2-operational-surface)]"
+                  onChange={(e) => updateFilters({ project: e.target.value })}
+                  className="h-hh-control-standard min-h-[var(--hh-control-height-standard)] w-full"
                 >
                   <option value="">All projects</option>
                   {projects.map((p) => (
@@ -968,21 +965,27 @@ function InvoicesPageInner() {
                 </Select>
               </div>
               <div className="space-y-1">
-                <label className={financeControlLabelClass}>Issue from</label>
+                <label htmlFor="invoice-filter-issue-from" className={financeControlLabelClass}>
+                  Issue from
+                </label>
                 <Input
+                  id="invoice-filter-issue-from"
                   type="date"
                   value={dateFrom}
-                  onChange={(e) => setDateFrom(e.target.value)}
-                  className="h-8 bg-[var(--hh-l2-operational-surface)] tabular-nums"
+                  onChange={(e) => updateFilters({ dateFrom: e.target.value })}
+                  className="h-hh-control-standard min-h-[var(--hh-control-height-standard)] tabular-nums"
                 />
               </div>
               <div className="space-y-1">
-                <label className={financeControlLabelClass}>Issue to</label>
+                <label htmlFor="invoice-filter-issue-to" className={financeControlLabelClass}>
+                  Issue to
+                </label>
                 <Input
+                  id="invoice-filter-issue-to"
                   type="date"
                   value={dateTo}
-                  onChange={(e) => setDateTo(e.target.value)}
-                  className="h-8 bg-[var(--hh-l2-operational-surface)] tabular-nums"
+                  onChange={(e) => updateFilters({ dateTo: e.target.value })}
+                  className="h-hh-control-standard min-h-[var(--hh-control-height-standard)] tabular-nums"
                 />
               </div>
             </div>
@@ -1043,11 +1046,7 @@ function InvoicesPageInner() {
                     financeToolbarButtonTextClass
                   )}
                   onClick={() => {
-                    setSearch("");
-                    setStatusFilter("");
-                    setProjectFilter("");
-                    setDateFrom("");
-                    setDateTo("");
+                    updateFilters({ q: "", status: "", project: "", dateFrom: "", dateTo: "" });
                   }}
                 >
                   Clear filters
@@ -1080,20 +1079,20 @@ function InvoicesPageInner() {
         ) : (
           <>
             <NeoTable
-              className="hidden md:block"
+              className="hidden xl:block"
               tableClassName="min-w-[760px] table-fixed"
               busy={voidBusyId != null || deleteBusyId != null}
               data-testid="invoices-desktop-list"
             >
               <colgroup>
-                <col className="w-[27%]" />
-                <col className="w-[17%]" />
-                <col className="w-[10%]" />
-                <col className="w-[12%]" />
-                <col className="w-[12%]" />
-                <col className="w-[8%]" />
-                <col className="w-[8%]" />
-                <col className="w-[6%]" />
+                <col />
+                <col className="w-[14%]" />
+                <col className="w-24" />
+                <col className="w-32" />
+                <col className="w-40" />
+                <col className="w-36" />
+                <col className="w-36" />
+                <col className="w-20" />
               </colgroup>
               <thead>
                 <tr>
@@ -1127,8 +1126,7 @@ function InvoicesPageInner() {
                   const rowActions = [
                     {
                       label: "View",
-                      onClick: () =>
-                        startTransition(() => router.push(`/financial/invoices/${inv.id}`)),
+                      onClick: () => startTransition(() => router.push(invoiceDetailHref(inv.id))),
                     },
                     ...(canRecordPayment
                       ? [
@@ -1171,14 +1169,13 @@ function InvoicesPageInner() {
                     <tr
                       key={inv.id}
                       data-testid={`invoice-row-${inv.invoiceNo}`}
+                      data-finance-record={inv.id}
                       className={listTableRowClassName}
-                      onClick={() =>
-                        startTransition(() => router.push(`/financial/invoices/${inv.id}`))
-                      }
+                      onClick={() => startTransition(() => router.push(invoiceDetailHref(inv.id)))}
                       onKeyDown={(e) => {
                         if (e.key === "Enter" || e.key === " ") {
                           e.preventDefault();
-                          startTransition(() => router.push(`/financial/invoices/${inv.id}`));
+                          startTransition(() => router.push(invoiceDetailHref(inv.id)));
                         }
                       }}
                       tabIndex={0}
@@ -1192,14 +1189,17 @@ function InvoicesPageInner() {
                           aria-label={`${inv.clientName} ${inv.invoiceNo}`}
                           onClick={(e) => {
                             e.stopPropagation();
-                            startTransition(() => router.push(`/financial/invoices/${inv.id}`));
+                            startTransition(() => router.push(invoiceDetailHref(inv.id)));
                           }}
                         >
-                          <span className={cn(financePrimaryTextClass, "block truncate")}>
-                            {inv.clientName}
-                          </span>
-                          <span className={cn(financeMetadataStrongClass, "mt-1 block")}>
+                          <span
+                            data-invoice-primary-number
+                            className={cn(financePrimaryTextClass, "block truncate")}
+                          >
                             {inv.invoiceNo}
+                          </span>
+                          <span className={cn(financeMetadataClass, "mt-1 block truncate")}>
+                            {inv.clientName}
                           </span>
                         </button>
                       </td>
@@ -1209,7 +1209,10 @@ function InvoicesPageInner() {
                         </span>
                       </td>
                       <td className={invoiceTableTdClass}>
-                        <InvoiceStatusText status={inv.computedStatus} />
+                        <InvoiceStatusBadge
+                          status={inv.computedStatus}
+                          className="h-5 whitespace-nowrap px-2 text-hh-status"
+                        />
                       </td>
                       <td className={invoiceTableTdClass}>
                         <span className="inline-flex items-center gap-1 whitespace-nowrap text-hh-metadata">
@@ -1252,7 +1255,7 @@ function InvoicesPageInner() {
               </tbody>
             </NeoTable>
 
-            <div className="space-y-2 p-2.5 md:hidden">
+            <div className="grid grid-cols-1 gap-2 p-2.5 lg:grid-cols-2 xl:hidden">
               {tableInvoiceRows.map(({ invoice: inv, projectLabel }) => {
                 const isBusy =
                   voidBusyId === inv.id || deleteBusyId === inv.id || deleteCheckBusyId === inv.id;
@@ -1270,7 +1273,11 @@ function InvoicesPageInner() {
                   inv.computedStatus === "Draft"
                     ? {
                         label: "Edit draft",
-                        href: `/financial/invoices/${inv.id}/edit`,
+                        href: financePathWithReturn(
+                          `/financial/invoices/${inv.id}/edit`,
+                          `/financial/invoices?${searchParams.toString()}`,
+                          inv.id
+                        ),
                       }
                     : canRecordPayment
                       ? {
@@ -1284,8 +1291,7 @@ function InvoicesPageInner() {
                 const rowActions = [
                   {
                     label: "View",
-                    onClick: () =>
-                      startTransition(() => router.push(`/financial/invoices/${inv.id}`)),
+                    onClick: () => startTransition(() => router.push(invoiceDetailHref(inv.id))),
                   },
                   ...(canRecordPayment
                     ? [
@@ -1328,6 +1334,8 @@ function InvoicesPageInner() {
                   <NeoMobileCard
                     key={inv.id}
                     data-testid={`invoice-mobile-card-${inv.invoiceNo}`}
+                    data-finance-record={inv.id}
+                    tabIndex={-1}
                     className="p-3"
                   >
                     <div className="flex items-start gap-3">
@@ -1335,20 +1343,26 @@ function InvoicesPageInner() {
                         type="button"
                         className="min-w-0 flex-1 text-left"
                         onClick={() =>
-                          startTransition(() => router.push(`/financial/invoices/${inv.id}`))
+                          startTransition(() => router.push(invoiceDetailHref(inv.id)))
                         }
                       >
-                        <div className={cn(financePrimaryTextClass, "truncate")}>
-                          {inv.clientName}
+                        <div
+                          data-invoice-primary-number
+                          className={cn(financePrimaryTextClass, "truncate")}
+                        >
+                          {inv.invoiceNo}
                         </div>
                         <div className="mt-0.5">
-                          <InvoiceStatusText status={inv.computedStatus} />
+                          <InvoiceStatusBadge
+                            status={inv.computedStatus}
+                            className="h-5 whitespace-nowrap px-2 text-hh-status"
+                          />
                         </div>
                       </button>
                       <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
                         <RowActionsMenu
                           ariaLabel={`Actions for ${inv.invoiceNo}`}
-                          className="h-10 w-10 min-h-10 min-w-10 rounded-hh-standard border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] shadow-none hover:bg-[var(--hh-l3-hover)]"
+                          className="h-11 w-11 min-h-11 min-w-11 rounded-hh-standard border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] shadow-none hover:bg-[var(--hh-l3-hover)]"
                           contentAvoidCollisions={false}
                           contentSide="bottom"
                           contentSideOffset={8}
@@ -1357,9 +1371,9 @@ function InvoicesPageInner() {
                             "w-36 min-w-36 rounded-hh-standard py-1"
                           )}
                           contentStyle={invoiceActionsMenuContentStyle}
-                          itemClassName="relative z-10 h-8 rounded-hh-standard px-3 py-0 text-hh-table-cell font-medium tracking-normal"
+                          itemClassName="relative z-10 min-h-11 rounded-hh-standard px-3 py-2 text-hh-table-cell font-medium tracking-normal"
                           destructiveItemClassName="text-[var(--hh-danger)] focus:bg-[var(--hh-danger-soft-fill)] focus:text-[var(--hh-danger)] hover:bg-[var(--hh-danger-soft-fill)] hover:text-[var(--hh-danger)]"
-                          touchFriendly={false}
+                          touchFriendly
                           actions={rowActions}
                         />
                       </div>
@@ -1372,7 +1386,9 @@ function InvoicesPageInner() {
                           "flex items-center justify-between gap-3"
                         )}
                       >
-                        <span className={financeMetadataStrongClass}>{inv.invoiceNo}</span>
+                        <span className={cn(financeMetadataClass, "truncate")}>
+                          {inv.clientName}
+                        </span>
                         <span className={cn("tabular-nums", dueTone)}>
                           Due {formatDate(inv.dueDate)}
                         </span>
@@ -1380,7 +1396,7 @@ function InvoicesPageInner() {
                       <p className={cn(financeMetadataClass, "truncate")}>{projectLabel}</p>
                     </div>
 
-                    <div className="mt-2.5 grid grid-cols-3 gap-1.5">
+                    <div className="mt-2.5 flex flex-wrap border-y border-[var(--hh-border)]">
                       <InvoiceMiniMetric
                         label="Balance"
                         value={formatCurrency(inv.balanceDue)}
@@ -1397,11 +1413,11 @@ function InvoicesPageInner() {
                         variant="outline"
                         className={cn(
                           OS.secondaryButton,
-                          "h-9 flex-1 rounded-hh-standard shadow-none",
+                          "h-11 min-h-11 flex-1 rounded-hh-standard shadow-none",
                           financeToolbarButtonTextClass
                         )}
                       >
-                        <Link href={`/financial/invoices/${inv.id}`}>Open</Link>
+                        <Link href={invoiceDetailHref(inv.id)}>Open</Link>
                       </Button>
                       <Button
                         asChild
@@ -1409,7 +1425,7 @@ function InvoicesPageInner() {
                         variant="outline"
                         className={cn(
                           OS.secondaryButton,
-                          "h-9 flex-1 rounded-hh-standard shadow-none",
+                          "h-11 min-h-11 flex-1 rounded-hh-standard shadow-none",
                           financeToolbarButtonTextClass
                         )}
                       >

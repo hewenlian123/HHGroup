@@ -1,3 +1,4 @@
+import { financeReturnPath } from "@/lib/finance-navigation";
 import { notFound } from "next/navigation";
 import { ExpenseDetailClient } from "./expense-detail-client";
 
@@ -10,15 +11,6 @@ export default async function ExpenseDetailPage({ params, searchParams }: PagePr
   const { id } = await params;
   const { returnTo } = await searchParams;
   if (!id) notFound();
-  const returnHref =
-    returnTo &&
-    !returnTo.startsWith("//") &&
-    (returnTo.startsWith("/projects/") ||
-      returnTo === "/financial/expenses" ||
-      returnTo.startsWith("/financial/expenses?") ||
-      returnTo === "/financial/inbox" ||
-      returnTo.startsWith("/financial/inbox?"))
-      ? returnTo
-      : "/financial/expenses";
+  const returnHref = financeReturnPath(returnTo, "/financial/expenses");
   return <ExpenseDetailClient id={id} returnHref={returnHref} />;
 }

@@ -1,7 +1,8 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "./estimate-playwright-test";
 import { createClient } from "@supabase/supabase-js";
 
-import { loginAsE2EOwner } from "./e2e-auth-owner";
+import { gotoWithE2EAuth, loginAsE2EOwner } from "./e2e-auth-owner";
+import { deleteLocalEstimateFixtureGraphs } from "./e2e-estimate-fixture-teardown";
 import { assertE2ESupabaseUrlSafeForMutations } from "./e2e-supabase-url-guard";
 
 const createdClientNames = new Set<string>();
@@ -53,11 +54,10 @@ async function cleanupEstimateTestData(
   const ids = Array.from(estimateIds);
   if (ids.length === 0) return;
   await supabase.from("estimate_payment_schedule_items").delete().in("estimate_id", ids);
-  await supabase.from("estimate_snapshots").delete().in("estimate_id", ids);
   await supabase.from("estimate_items").delete().in("estimate_id", ids);
   await supabase.from("estimate_categories").delete().in("estimate_id", ids);
   await supabase.from("estimate_meta").delete().in("estimate_id", ids);
-  await supabase.from("estimates").delete().in("id", ids);
+  await deleteLocalEstimateFixtureGraphs(ids);
 }
 
 function templateRow(page: Page, name: string) {
@@ -86,9 +86,12 @@ async function fillTemplateDialog(
 ): Promise<void> {
   const dialog = page.getByTestId("estimate-template-dialog");
   await expect(dialog).toBeVisible({ timeout: 10_000 });
-  await expect(dialog.locator(".eb-scope-section-header")).toBeVisible();
-  await expect(dialog.locator(".eb-line-item-grid--pricing")).toBeVisible();
-  await expect(dialog.locator(".eb-scope-editor-surface")).toBeVisible();
+  await expect(dialog.getByLabel("Template section 1 title")).toBeVisible();
+  await expect(dialog.getByLabel("Template item 1 title")).toBeVisible();
+  const descriptionSummary = dialog.getByRole("button", {
+    name: "Template item 1 description",
+  });
+  await expect(descriptionSummary).toBeVisible();
   await dialog.getByTestId("estimate-template-name").fill(params.name);
   await dialog
     .getByPlaceholder("Reusable scope for recurring estimate types…")
@@ -99,7 +102,14 @@ async function fillTemplateDialog(
   await dialog.getByLabel("Template item 1 quantity").fill(params.qty);
   await dialog.getByLabel("Template item 1 unit", { exact: true }).fill(params.unit);
   await dialog.getByLabel("Template item 1 unit price").fill(params.unitPrice);
-  await dialog.getByLabel("Template item 1 description").fill(params.itemDescription);
+  await descriptionSummary.click();
+  const descriptionEditor = dialog.getByRole("textbox", {
+    name: "Template item 1 description",
+  });
+  await expect(descriptionEditor).toBeFocused();
+  await descriptionEditor.fill(params.itemDescription);
+  await dialog.getByTestId("estimate-description-done").click();
+  await expect(descriptionSummary).toBeVisible();
 }
 
 async function fillNewEstimateCustomerFields(
@@ -144,8 +154,7 @@ test("estimate templates CRUD, save-as-template, and create estimate from templa
   createdClientNames.add(clientName);
   createdProjectNames.add(projectName);
 
-  await page.goto("/estimate-templates");
-  await page.waitForLoadState("domcontentloaded");
+  await gotoWithE2EAuth(page, "/estimate-templates");
   await expect(page.getByRole("heading", { name: "Estimate Templates" })).toBeVisible({
     timeout: 30_000,
   });
@@ -225,7 +234,7 @@ test("estimate templates CRUD, save-as-template, and create estimate from templa
   await saveAsDialog.getByTestId("save-estimate-as-template-submit").click();
   await expect(saveAsDialog).toBeHidden({ timeout: 15_000 });
 
-  await page.goto("/estimate-templates", { waitUntil: "domcontentloaded" });
+  await gotoWithE2EAuth(page, "/estimate-templates");
   await expect(templateRow(page, savedTemplateName)).toBeVisible({ timeout: 30_000 });
   await expect(templateRow(page, savedTemplateName)).toContainText("1 sections · 1 items");
 });

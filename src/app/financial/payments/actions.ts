@@ -1,8 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireSupabaseOwnerOrAdminServerActionWithClient } from "@/lib/auth-boundary";
-import { createServerSupabaseClient, getServerSupabaseAdmin } from "@/lib/supabase-server";
+import { requireSupabaseOwnerOrAdminServerActionClient } from "@/lib/auth-boundary";
 import {
   createPaymentReceived as createPaymentReceivedData,
   deletePaymentReceived as deletePaymentReceivedData,
@@ -15,6 +14,7 @@ import {
   type PaymentReceivedDeleteDependenciesResult,
   type PaymentReceivedDetail,
   type UpdatePaymentReceivedPayload,
+  type VoidPaymentReceivedAtomicResult,
 } from "@/lib/payments-received-db";
 
 type PaymentReceivedDetailWithPreviewUrls = PaymentReceivedDetail & {
@@ -35,15 +35,13 @@ function safePaymentActionError(error: unknown, fallback: string): string {
 }
 
 async function getPaymentActionClient() {
-  const guard = await requireSupabaseOwnerOrAdminServerActionWithClient(getServerSupabaseAdmin);
+  const guard = await requireSupabaseOwnerOrAdminServerActionClient({ noStore: true });
   if (!guard.ok) return { ok: false as const, error: guard.error };
-  const admin = guard.client;
-  const c = admin ?? (await createServerSupabaseClient());
-  if (!c) return { ok: false as const, error: "Supabase is not configured." };
-  return { ok: true as const, client: c };
+  return { ok: true as const, client: guard.client };
 }
 
 function revalidatePaymentPaths(invoiceId?: string | null, projectId?: string | null) {
+  revalidatePath("/financial/ar");
   revalidatePath("/financial/payments");
   revalidatePath("/financial/payments-received");
   revalidatePath("/financial/invoices");
@@ -92,18 +90,35 @@ export async function getPaymentReceivedForEditAction(
 
 export async function createPaymentReceivedAction(
   payload: CreatePaymentReceivedPayload
-): Promise<{ ok: true; paymentId: string } | { ok: false; error: string }> {
+): Promise<
+  { ok: true; paymentId: string } | { ok: false; error: string; outcome?: "rejected" | "unknown" }
+> {
   try {
     const clientResult = await getPaymentActionClient();
     if (!clientResult.ok) return clientResult;
     const c = clientResult.client;
 
     const payment = await createPaymentReceivedData(payload, c);
-    revalidatePaymentPaths(payment.invoice_id, payment.project_id ?? payload.project_id ?? null);
+    try {
+      revalidatePaymentPaths(payment.invoice_id, payment.project_id ?? null);
+    } catch (error) {
+      console.warn("[payments/actions] payment committed; cache refresh unavailable", error);
+    }
     return { ok: true, paymentId: payment.id };
   } catch (e) {
     console.error("[payments/actions] failed to record payment", e);
-    return { ok: false, error: safePaymentActionError(e, "Failed to record payment.") };
+    return {
+      ok: false,
+      error: safePaymentActionError(e, "Failed to record payment."),
+      outcome:
+        e &&
+        typeof e === "object" &&
+        "code" in e &&
+        typeof e.code === "string" &&
+        /^(22|23|42|P0)/.test(e.code)
+          ? "rejected"
+          : "unknown",
+    };
   }
 }
 
@@ -128,18 +143,14 @@ export async function updatePaymentReceivedAction(
 
 export async function voidPaymentReceivedAction(
   paymentId: string
-): Promise<{ ok: true } | { ok: false; error: string }> {
+): Promise<{ ok: true; result: VoidPaymentReceivedAtomicResult } | { ok: false; error: string }> {
   try {
     const clientResult = await getPaymentActionClient();
     if (!clientResult.ok) return clientResult;
 
-    const pay = await voidPaymentReceivedData(paymentId, clientResult.client);
-    if (!pay) return { ok: false, error: "Payment not found." };
-    revalidatePaymentPaths(
-      (pay as { invoice_id?: string | null }).invoice_id ?? null,
-      (pay as { project_id?: string | null }).project_id ?? null
-    );
-    return { ok: true };
+    const result = await voidPaymentReceivedData(paymentId, clientResult.client);
+    revalidatePaymentPaths(result.invoice_id, result.project_id);
+    return { ok: true, result };
   } catch (e) {
     console.error("[payments/actions] failed to void payment", e);
     return { ok: false, error: safePaymentActionError(e, "Failed to void payment.") };

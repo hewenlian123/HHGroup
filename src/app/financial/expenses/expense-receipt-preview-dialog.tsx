@@ -2,10 +2,10 @@
 
 import * as React from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { motion } from "framer-motion";
 import { Download, X } from "lucide-react";
 import { InlineLoading, Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import { hhNeoFocusRevealOverlay, hhNeoFocusRevealViewer } from "@/lib/motion-system";
 import { cn } from "@/lib/utils";
 import { useHhPortalContainer } from "@/contexts/hh-theme-context";
 
@@ -123,31 +123,26 @@ export function ExpenseReceiptPreviewDialog({
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange} modal>
       <DialogPrimitive.Portal container={portalContainer ?? undefined}>
         <DialogPrimitive.Overlay asChild>
-          <motion.div
+          <div
             data-hh-context="viewer"
-            data-hh-theme="neo-dark"
-            className="fixed inset-0 z-50 bg-black/45 backdrop-blur-sm"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.2 }}
+            data-hh-theme="operational-light"
+            className={cn("fixed inset-0 z-50", hhNeoFocusRevealOverlay)}
           />
         </DialogPrimitive.Overlay>
         <DialogPrimitive.Content asChild>
-          <motion.div
+          <div
             className={cn(
               "expenses-ui-dialog fixed left-1/2 top-1/2 z-[51] flex max-h-[90vh] w-[calc(100%-1.5rem)] max-w-5xl -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] shadow-floating",
-              "focus:outline-none dark:bg-card"
+              "focus:outline-none",
+              hhNeoFocusRevealViewer
             )}
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
           >
             <DialogPrimitive.Title className="sr-only">Receipt preview</DialogPrimitive.Title>
             <DialogPrimitive.Description className="sr-only">
               Preview of expense receipt. Use download or replace from the footer.
             </DialogPrimitive.Description>
 
-            <header className="flex shrink-0 items-center justify-between gap-3 border-b border-border/60 px-4 py-3 pr-12">
+            <header className="flex shrink-0 items-center justify-between gap-3 border-b border-[var(--hh-border)] px-4 py-3 pr-12">
               <span
                 className="min-w-0 truncate text-sm font-medium text-foreground"
                 title={headerTitle}
@@ -170,7 +165,7 @@ export function ExpenseReceiptPreviewDialog({
             <div
               data-hh-context="evidence"
               data-hh-theme="document-light"
-              className="relative min-h-[200px] max-h-[70vh] flex-1 overflow-y-auto bg-muted/20 dark:bg-muted/10"
+              className="relative min-h-[200px] max-h-[70vh] flex-1 overflow-y-auto bg-[var(--hh-l1-workspace)]"
             >
               {!url ? (
                 <div className="flex min-h-[40vh] items-center justify-center px-4 text-sm text-muted-foreground">
@@ -184,7 +179,7 @@ export function ExpenseReceiptPreviewDialog({
                 <>
                   {loadPhase === "loading" ? (
                     <div
-                      className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-background/70 px-6 backdrop-blur-sm dark:bg-background/80"
+                      className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-[var(--hh-l1-workspace)] px-6"
                       aria-busy
                     >
                       <Skeleton className="h-[min(50vh_320px)] w-full max-w-lg rounded-md" />
@@ -216,7 +211,7 @@ export function ExpenseReceiptPreviewDialog({
               )}
             </div>
 
-            <footer className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-border/60 px-4 py-3">
+            <footer className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-[var(--hh-border)] px-4 py-3">
               <div className="flex flex-wrap items-center gap-2">
                 {expenseId ? (
                   <>
@@ -290,7 +285,7 @@ export function ExpenseReceiptPreviewDialog({
                 ) : null}
               </div>
             </footer>
-          </motion.div>
+          </div>
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>
     </DialogPrimitive.Root>

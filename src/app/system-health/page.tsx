@@ -593,8 +593,10 @@ function DataQualityPanel({
     <div className="guardian-panel p-4 sm:p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-sm font-semibold text-foreground">Supabase Data / Number Check</h2>
-          <p className="mt-1 max-w-3xl text-xs leading-5 text-muted-foreground">
+          <h2 className="text-sm font-semibold text-[var(--hh-text-primary)]">
+            Supabase Data / Number Check
+          </h2>
+          <p className="mt-1 max-w-3xl text-xs leading-5 text-[var(--hh-text-secondary)]">
             Read-only checks for obvious amount, contract, invoice, expense, labor, reimbursement,
             and company profile data problems. It never updates records or runs migrations.
           </p>
@@ -613,14 +615,16 @@ function DataQualityPanel({
       {error ? (
         <p className="mt-4 text-sm text-[var(--hh-danger)]">{error}</p>
       ) : loading && !dataQuality ? (
-        <p className="mt-4 text-sm text-muted-foreground">Checking Supabase data safely…</p>
+        <p className="mt-4 text-sm text-[var(--hh-text-secondary)]">
+          Checking Supabase data safely…
+        </p>
       ) : dataQuality && summary ? (
         <div className="mt-4 space-y-5">
           <div className="flex flex-wrap items-center gap-4 text-sm">
             <span className="flex items-center gap-2 font-medium">
               Overall: <DataQualityStatusLabel status={summary.status} />
             </span>
-            <span className="text-xs text-muted-foreground">
+            <span className="text-xs text-[var(--hh-text-secondary)]">
               Checked{" "}
               {new Date(dataQuality.checkedAt).toLocaleTimeString([], {
                 hour: "2-digit",
@@ -694,8 +698,8 @@ function DataQualityPanel({
             </div>
           </div>
 
-          <div className="border-t border-border/60 pt-5">
-            <h3 className="mb-3 text-sm font-medium text-foreground">Top issues</h3>
+          <div className="border-t border-[var(--hh-border)] pt-5">
+            <h3 className="mb-3 text-sm font-medium text-[var(--hh-text-primary)]">Top issues</h3>
             <div className="airtable-table-wrap airtable-table-wrap--ruled">
               <div className="airtable-table-scroll">
                 <table className="w-full min-w-[720px] text-sm">
@@ -718,7 +722,10 @@ function DataQualityPanel({
                   <tbody>
                     {issues.length === 0 ? (
                       <tr>
-                        <td colSpan={4} className="py-6 text-center text-muted-foreground">
+                        <td
+                          colSpan={4}
+                          className="py-6 text-center text-[var(--hh-text-secondary)]"
+                        >
                           No data quality issues found.
                         </td>
                       </tr>
@@ -778,7 +785,7 @@ function DataQualityPanel({
           </div>
         </div>
       ) : (
-        <p className="mt-4 text-sm text-muted-foreground">
+        <p className="mt-4 text-sm text-[var(--hh-text-secondary)]">
           Run the number check to inspect Supabase data safely.
         </p>
       )}
@@ -809,7 +816,7 @@ function SystemQaSectionTable({ section }: { section: SystemQaSection }) {
     <div className="rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-3 sm:p-4">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h3 className="text-sm font-medium text-foreground">{section.name}</h3>
+          <h3 className="text-sm font-medium text-[var(--hh-text-primary)]">{section.name}</h3>
           <p className="mt-1 text-hh-metadata text-[var(--hh-text-tertiary)]">
             {passCount} / {section.checks.length} checks passed
           </p>
@@ -901,8 +908,8 @@ function SystemQaPanel({
     <div className="guardian-panel p-4 sm:p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-sm font-semibold text-foreground">System QA</h2>
-          <p className="mt-1 max-w-3xl text-xs leading-5 text-muted-foreground">
+          <h2 className="text-sm font-semibold text-[var(--hh-text-primary)]">System QA</h2>
+          <p className="mt-1 max-w-3xl text-xs leading-5 text-[var(--hh-text-secondary)]">
             Safe self-check for page availability, auth/RLS blockers, destructive GET protection,
             financial data guardrails, preview readiness, and mobile route coverage. It never runs
             seed, wipe, migration, delete, cleanup, restore, or payment submission actions.
@@ -922,14 +929,14 @@ function SystemQaPanel({
       {error ? (
         <p className="mt-4 text-sm text-[var(--hh-danger)]">{error}</p>
       ) : loading && !qa ? (
-        <p className="mt-4 text-sm text-muted-foreground">Running safe QA checks…</p>
+        <p className="mt-4 text-sm text-[var(--hh-text-secondary)]">Running safe QA checks…</p>
       ) : qa ? (
         <div className="mt-4 space-y-5">
           <div className="flex flex-wrap items-center gap-4 text-sm">
             <span className="flex items-center gap-2 font-medium">
               Overall: <QaStatusLabel status={summary.status} />
             </span>
-            <span className="text-xs text-muted-foreground">
+            <span className="text-xs text-[var(--hh-text-secondary)]">
               Mode: {qa.mode === "production-safe" ? "Production safe" : "Local safe"} · Checked{" "}
               {new Date(qa.checkedAt).toLocaleTimeString([], {
                 hour: "2-digit",
@@ -949,7 +956,9 @@ function SystemQaPanel({
           ))}
         </div>
       ) : (
-        <p className="mt-4 text-sm text-muted-foreground">Run System QA to scan the app safely.</p>
+        <p className="mt-4 text-sm text-[var(--hh-text-secondary)]">
+          Run System QA to scan the app safely.
+        </p>
       )}
     </div>
   );
@@ -2552,20 +2561,6 @@ export default function SystemHealthPage() {
         }
         .system-health-command-center .guardian-command-row {
           background-clip: padding-box;
-        }
-        .system-health-command-center .bg-card,
-        .system-health-command-center .bg-muted {
-          background-color: var(--hh-l2-operational-surface) !important;
-        }
-        .system-health-command-center .text-foreground {
-          color: var(--hh-text-primary) !important;
-        }
-        .system-health-command-center .text-muted-foreground {
-          color: var(--hh-text-secondary) !important;
-        }
-        .system-health-command-center .border-border\\/70,
-        .system-health-command-center .border-border\\/60 {
-          border-color: var(--hh-border) !important;
         }
       `}</style>
 

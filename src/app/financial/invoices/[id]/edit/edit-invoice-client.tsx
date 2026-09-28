@@ -1,8 +1,11 @@
 "use client";
 
+import { financePathWithReturn } from "@/lib/finance-navigation";
+import { computeInvoiceTotals, lineExtension } from "@/lib/money";
+
 import * as React from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import {
   NeoActionFooter,
@@ -107,7 +110,7 @@ function AutoResizeTextarea({
         resize(e.currentTarget);
       }}
       className={[
-        "block min-h-[44px] w-full resize-none overflow-hidden rounded-hh-standard border border-transparent bg-transparent px-2 py-1.5 text-hh-body leading-5 text-[var(--hh-text-secondary)] shadow-none transition-all duration-150 placeholder:text-[var(--hh-text-tertiary)] hover:bg-[var(--hh-l3-hover)] focus:border-[var(--hh-action-primary)] focus:bg-[var(--hh-l3-selected)] focus:outline-none focus:ring-2 focus:ring-[var(--hh-focus-ring)] disabled:cursor-not-allowed disabled:opacity-50",
+        "block min-h-[44px] w-full resize-none overflow-hidden rounded-hh-standard border border-transparent bg-transparent px-2 py-1.5 text-hh-body leading-5 text-[var(--hh-text-secondary)] shadow-none transition-colors duration-150 placeholder:text-[var(--hh-text-tertiary)] hover:bg-[var(--hh-l3-hover)] focus:border-[var(--hh-action-primary)] focus:bg-[var(--hh-l3-selected)] focus:outline-none focus:ring-2 focus:ring-[var(--hh-focus-ring)] disabled:cursor-not-allowed disabled:opacity-50",
         className,
       ].join(" ")}
       {...props}
@@ -121,7 +124,7 @@ const FIELD_CLASS = "neo-input mt-1";
 const ERROR_TEXT_CLASS = "mt-1 text-hh-metadata font-medium text-[var(--hh-danger)]";
 const SKELETON_CLASS = "bg-[var(--hh-l2-operational-surface)]";
 const LINE_CARD_CLASS =
-  "group relative rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-4 py-4 shadow-none transition-all duration-150 hover:border-[var(--hh-border-strong)] hover:bg-[var(--hh-l3-hover)]";
+  "group relative rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-4 py-4 shadow-none transition-colors duration-150 hover:border-[var(--hh-border-strong)] hover:bg-[var(--hh-l3-hover)]";
 const LINE_CARD_INVALID_CLASS = "border-[var(--hh-danger-border)] bg-[var(--hh-danger-soft-fill)]";
 const COMPACT_FIELD_CLASS =
   "neo-input h-8 min-h-8 rounded-hh-standard border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-2 text-right text-hh-body font-normal tabular-nums text-[var(--hh-text-secondary)] hover:bg-[var(--hh-l3-hover)] focus-visible:bg-[var(--hh-l3-selected)]";
@@ -143,7 +146,11 @@ export default function EditInvoiceClient({
 }) {
   const router = useRouter();
   const { toast } = useToast();
-  const detailHref = `/financial/invoices/${invoice.id}`;
+  const searchParams = useSearchParams();
+  const detailHref = financePathWithReturn(
+    `/financial/invoices/${invoice.id}`,
+    searchParams.get("returnTo")
+  );
   const [loading, setLoading] = React.useState(true);
   const [saving, setSaving] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -221,20 +228,10 @@ export default function EditInvoiceClient({
     if (customerId && selected) setClientName(selected);
   }, [customerId, customers]);
 
-  const computedSubtotal = React.useMemo(() => {
-    return lines.reduce(
-      (sum, l) => sum + Math.max(0, safeNumber(l.qty)) * Math.max(0, safeNumber(l.unitPrice)),
-      0
-    );
-  }, [lines]);
-  const computedTax = React.useMemo(
-    () => computedSubtotal * (Math.max(0, safeNumber(taxPct)) / 100),
-    [computedSubtotal, taxPct]
-  );
-  const computedTotal = React.useMemo(
-    () => computedSubtotal + computedTax,
-    [computedSubtotal, computedTax]
-  );
+  const invoiceTotals = React.useMemo(() => computeInvoiceTotals(lines, taxPct), [lines, taxPct]);
+  const computedSubtotal = invoiceTotals.subtotal;
+  const computedTax = invoiceTotals.taxAmount;
+  const computedTotal = invoiceTotals.total;
 
   const validationErrors = React.useMemo(() => {
     const errors: string[] = [];
@@ -308,7 +305,7 @@ export default function EditInvoiceClient({
 
   if (invoice.status !== "Draft") {
     return (
-      <div className={PAGE_CLASS}>
+      <div data-revenue-ar-v2 className={PAGE_CLASS}>
         <Button asChild variant="ghost" size="sm" className={GHOST_BUTTON_CLASS}>
           <Link href={detailHref}>
             <ArrowLeft className="mr-2 h-4 w-4" />
@@ -334,7 +331,7 @@ export default function EditInvoiceClient({
   }
 
   return (
-    <div className={PAGE_CLASS}>
+    <div data-revenue-ar-v2 className={PAGE_CLASS}>
       <Button asChild variant="ghost" size="sm" className={GHOST_BUTTON_CLASS}>
         <Link href={detailHref}>
           <ArrowLeft className="mr-2 h-4 w-4" />
@@ -375,8 +372,11 @@ export default function EditInvoiceClient({
         ) : (
           <NeoFormGrid className="md:grid-cols-2">
             <div>
-              <NeoFieldLabel required>Project</NeoFieldLabel>
+              <NeoFieldLabel htmlFor="invoice-edit-page-project" required>
+                Project
+              </NeoFieldLabel>
               <NeoSelect
+                id="invoice-edit-page-project"
                 data-testid="invoice-edit-project-select"
                 value={projectId}
                 onChange={(e) => setProjectId(e.target.value)}
@@ -399,8 +399,11 @@ export default function EditInvoiceClient({
             </div>
 
             <div>
-              <NeoFieldLabel>Customer (optional)</NeoFieldLabel>
+              <NeoFieldLabel htmlFor="invoice-edit-page-customer">
+                Customer (optional)
+              </NeoFieldLabel>
               <NeoSelect
+                id="invoice-edit-page-customer"
                 value={customerId}
                 onChange={(e) => setCustomerId(e.target.value)}
                 className={FIELD_CLASS}
@@ -415,8 +418,11 @@ export default function EditInvoiceClient({
             </div>
 
             <div>
-              <NeoFieldLabel required>Client name</NeoFieldLabel>
+              <NeoFieldLabel htmlFor="invoice-edit-page-client-name" required>
+                Client name
+              </NeoFieldLabel>
               <NeoInput
+                id="invoice-edit-page-client-name"
                 data-testid="invoice-edit-client-input"
                 value={clientName}
                 onChange={(e) => setClientName(e.target.value)}
@@ -430,8 +436,9 @@ export default function EditInvoiceClient({
             </div>
 
             <div>
-              <NeoFieldLabel>Invoice number</NeoFieldLabel>
+              <NeoFieldLabel htmlFor="invoice-edit-page-number">Invoice number</NeoFieldLabel>
               <NeoInput
+                id="invoice-edit-page-number"
                 data-testid="invoice-edit-number-input"
                 value={invoiceNo}
                 onChange={(e) => setInvoiceNo(e.target.value)}
@@ -442,8 +449,9 @@ export default function EditInvoiceClient({
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <NeoFieldLabel>Issue date</NeoFieldLabel>
+                <NeoFieldLabel htmlFor="invoice-edit-page-issue-date">Issue date</NeoFieldLabel>
                 <NeoInput
+                  id="invoice-edit-page-issue-date"
                   data-testid="invoice-edit-issue-date-input"
                   type="date"
                   value={issueDate}
@@ -453,8 +461,9 @@ export default function EditInvoiceClient({
                 />
               </div>
               <div>
-                <NeoFieldLabel>Due date</NeoFieldLabel>
+                <NeoFieldLabel htmlFor="invoice-edit-page-due-date">Due date</NeoFieldLabel>
                 <NeoInput
+                  id="invoice-edit-page-due-date"
                   data-testid="invoice-edit-due-date-input"
                   type="date"
                   value={dueDate}
@@ -466,8 +475,9 @@ export default function EditInvoiceClient({
             </div>
 
             <div>
-              <NeoFieldLabel>Tax %</NeoFieldLabel>
+              <NeoFieldLabel htmlFor="invoice-edit-page-tax">Tax %</NeoFieldLabel>
               <NeoInput
+                id="invoice-edit-page-tax"
                 data-testid="invoice-edit-tax-input"
                 type="number"
                 min="0"
@@ -479,8 +489,9 @@ export default function EditInvoiceClient({
             </div>
 
             <div>
-              <NeoFieldLabel>Notes (optional)</NeoFieldLabel>
+              <NeoFieldLabel htmlFor="invoice-edit-page-notes">Notes (optional)</NeoFieldLabel>
               <NeoInput
+                id="invoice-edit-page-notes"
                 data-testid="invoice-edit-notes-input"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
@@ -506,8 +517,7 @@ export default function EditInvoiceClient({
         ) : null}
         <div className="space-y-3 px-3 py-3 sm:px-4">
           {lines.map((line, idx) => {
-            const amount =
-              Math.max(0, safeNumber(line.qty)) * Math.max(0, safeNumber(line.unitPrice));
+            const amount = lineExtension(line.qty, line.unitPrice);
             const invalidLine = submitAttempted && !lineHasContent(line);
 
             return (

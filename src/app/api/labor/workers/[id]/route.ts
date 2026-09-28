@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
-import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
+import {
+  requireSupabaseOwnerOrAdmin,
+  requireSupabaseOwnerOrAdminRequestClient,
+} from "@/lib/auth-boundary";
 import { deleteWorker, updateWorker } from "@/lib/data";
 import { getWorkerByIdWithClient, getWorkerUsageWithClient } from "@/lib/labor-db";
 import {
@@ -14,6 +17,11 @@ import {
 export const dynamic = "force-dynamic";
 
 type RouteParams = { params: Promise<{ id: string }> };
+
+function withSessionCookies(response: NextResponse, sessionResponse: NextResponse): NextResponse {
+  for (const cookie of sessionResponse.cookies.getAll()) response.cookies.set(cookie);
+  return response;
+}
 
 export async function GET(req: Request, { params }: RouteParams) {
   const guard = await requireSupabaseOwnerOrAdmin(req);
@@ -33,7 +41,7 @@ export async function GET(req: Request, { params }: RouteParams) {
   try {
     const [worker, usage, rateHistory, currentRate] = await Promise.all([
       getWorkerByIdWithClient(admin, id),
-      getWorkerUsageWithClient(admin, id).catch(() => ({ used: false })),
+      getWorkerUsageWithClient(admin, id),
       getWorkerRateHistoryWithClient(admin, id),
       getWorkerCurrentDailyRateWithClient(admin, id),
     ]);
@@ -104,39 +112,39 @@ export async function PATCH(req: Request, { params }: RouteParams) {
   }
 }
 
-/**
- * DELETE: Remove a worker (uses admin client so it matches list/clear-data).
- */
+/** Remove an eligible worker through the same request-scoped identity that passed Auth. */
 export async function DELETE(req: Request, { params }: RouteParams) {
-  const guard = await requireSupabaseOwnerOrAdmin(req);
+  const guard = await requireSupabaseOwnerOrAdminRequestClient(req, { noStore: true });
   if (!guard.ok) return guard.response;
 
   const { id } = await params;
   if (!id?.trim()) {
-    return NextResponse.json({ ok: false, message: "Worker id is required." }, { status: 400 });
-  }
-  const admin = getServerSupabaseAdmin();
-  if (!admin) {
-    return NextResponse.json(
-      { ok: false, message: SUPABASE_MISSING_SERVER_ADMIN_ENV_MESSAGE },
-      { status: 503 }
+    return withSessionCookies(
+      NextResponse.json({ ok: false, message: "Worker id is required." }, { status: 400 }),
+      guard.sessionResponse
     );
   }
   try {
-    const deleted = await deleteWorker(id, admin);
+    const deleted = await deleteWorker(id, guard.client);
     if (!deleted) {
-      return NextResponse.json(
-        {
-          ok: false,
-          message:
-            "Worker has labor entries or invoices and cannot be deleted. Archive the worker instead.",
-        },
-        { status: 409 }
+      return withSessionCookies(
+        NextResponse.json(
+          {
+            ok: false,
+            message:
+              "Worker has labor entries or invoices and cannot be deleted. Archive the worker instead.",
+          },
+          { status: 409 }
+        ),
+        guard.sessionResponse
       );
     }
-    return NextResponse.json({ ok: true });
+    return withSessionCookies(NextResponse.json({ ok: true }), guard.sessionResponse);
   } catch (e) {
     const message = e instanceof Error ? e.message : "Failed to delete worker.";
-    return NextResponse.json({ ok: false, message }, { status: 500 });
+    return withSessionCookies(
+      NextResponse.json({ ok: false, message }, { status: 500 }),
+      guard.sessionResponse
+    );
   }
 }

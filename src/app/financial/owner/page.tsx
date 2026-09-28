@@ -1,3 +1,4 @@
+import { financePathWithReturn } from "@/lib/finance-navigation";
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -18,9 +19,9 @@ import {
   getFinanceOwnerDashboard,
   type FinanceOwnerProjectRow,
 } from "@/lib/finance-owner-dashboard";
-import { getProjectContractReviewSummary } from "@/lib/financial/project-financial-review";
+import { authorizedAppRole } from "@/lib/auth-role";
+import { FinancialDataUnavailableError } from "@/lib/financial-availability";
 import { cn } from "@/lib/utils";
-import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
 import { FinanceOwnerCashFlowChart } from "./_components/finance-owner-cash-flow-chart";
 import { FinanceOwnerHeaderActions } from "./_components/finance-owner-header-actions";
 import { FinanceOwnerPendingDonut } from "./_components/finance-owner-pending-donut";
@@ -29,34 +30,6 @@ import { formatDate, formatInteger, formatPercent } from "@/lib/formatters";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
-
-const EMPTY_OWNER_DASHBOARD: Awaited<ReturnType<typeof getFinanceOwnerDashboard>> = {
-  kpis: {
-    cashCollectedThisMonth: 0,
-    invoicedThisMonth: 0,
-    expenseThisMonth: 0,
-    profitThisMonth: 0,
-    unpaidInvoices: 0,
-    pendingPayments: 0,
-    pendingPaymentsBreakdown: {
-      apOutstanding: 0,
-      workerOwed: 0,
-      approvedReimbursementsUnpaid: 0,
-    },
-  },
-  cashFlow: [],
-  topProjects: [] as FinanceOwnerProjectRow[],
-  underwaterProjects: [] as FinanceOwnerProjectRow[],
-  contractReview: getProjectContractReviewSummary([]),
-  alerts: {
-    overdueInvoiceAmount: 0,
-    overdueInvoiceCount: 0,
-    unpaidWorkersCount: 0,
-    unpaidWorkersAmount: 0,
-    missingReceiptsCount: 0,
-    projectsInLossCount: 0,
-  },
-};
 
 const pageBg = "text-[var(--hh-text-secondary)]";
 
@@ -168,7 +141,7 @@ function ProfitMarginTrack({ row }: { row: FinanceOwnerProjectRow }) {
       <div className="h-2 overflow-hidden rounded-full bg-[var(--hh-l3-selected)]">
         <div
           className={cn(
-            "h-full max-w-full rounded-full transition-[width] duration-300 ease-out",
+            "h-full max-w-full rounded-full",
             positive
               ? "bg-gradient-to-r from-emerald-500/90 to-emerald-600/80"
               : "bg-gradient-to-r from-rose-500/90 to-rose-600/75"
@@ -188,11 +161,13 @@ const projectHeaderGrid = cn(projectCols, "hidden border-b border-[var(--hh-bord
 const projectRowGridMd = cn(projectCols, "md:items-center md:py-5");
 
 function OwnerProjectList({
+  context,
   testId,
   rows,
   emptyTitle,
   emptyBody,
 }: {
+  context: string;
   testId: string;
   rows: FinanceOwnerProjectRow[];
   emptyTitle: string;
@@ -239,7 +214,7 @@ function OwnerProjectList({
             <div className="min-w-0 md:contents">
               <div className="md:min-w-0">
                 <Link
-                  href={`/projects/${r.projectId}`}
+                  href={financePathWithReturn(`/projects/${r.projectId}?tab=financial`, context)}
                   className="inline-flex min-h-[44px] max-w-full items-center text-base font-semibold leading-snug text-foreground underline-offset-4 transition-colors duration-200 ease-out hover:underline md:min-h-0 md:block md:truncate md:text-sm"
                   title={r.name}
                 >
@@ -311,17 +286,27 @@ function OwnerProjectList({
   );
 }
 
-export default async function FinanceOwnerDashboardPage() {
-  let data = EMPTY_OWNER_DASHBOARD;
-  let dataLoadWarning: string | null = null;
-  try {
-    const supabase = await createServerSupabaseClient({ noStore: true });
-    if (!supabase) throw new Error("Authenticated finance session is not configured.");
-    data = await getFinanceOwnerDashboard(supabase);
-  } catch (e) {
-    logServerPageDataError("financial/owner", e);
-    dataLoadWarning = serverDataLoadWarning(e, "owner finance dashboard");
+export default async function FinanceOwnerDashboardPage({
+  searchParams,
+}: {
+  searchParams?: Record<string, string | undefined>;
+}) {
+  const context = `/financial/owner?${new URLSearchParams(Object.entries(searchParams || {}).filter((entry): entry is [string, string] => entry[1] !== undefined))}`;
+  const supabase = await createServerSupabaseClient({ noStore: true });
+  if (!supabase) throw new FinancialDataUnavailableError("owner finance session", null);
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+  if (authError) throw new FinancialDataUnavailableError("owner finance session", authError);
+  if (!user || !authorizedAppRole(user)) {
+    throw new FinancialDataUnavailableError("owner finance session", {
+      code: "42501",
+      message: "Owner or admin authentication required.",
+    });
   }
+  const data = await getFinanceOwnerDashboard(supabase);
+  const dataLoadWarning = data.reportWarnings?.join(" ") || null;
 
   const reportingMonth = new Date();
   const monthLabel = formatDate(reportingMonth, "month");
@@ -344,41 +329,47 @@ export default async function FinanceOwnerDashboardPage() {
     emphasize?: true;
     sub?: string;
     subTitle?: string;
+    metric?: string;
   }[] = [
     {
-      label: "Cash collected",
+      label: "Collected Cash",
+      metric: "cashCollected",
       value: data.kpis.cashCollectedThisMonth,
       icon: CircleDollarSign,
       iconWrap: "bg-[var(--hh-success-soft-fill)] text-[var(--hh-success)]",
       accent: "neutral",
     },
     {
-      label: "Invoiced",
+      label: "Invoiced Revenue",
+      metric: "invoicedRevenue",
       value: data.kpis.invoicedThisMonth,
       icon: FileText,
       iconWrap: "bg-[var(--hh-l3-selected)] text-[var(--hh-text-secondary)]",
       accent: "neutral",
     },
     {
-      label: "Expense",
+      label: "Expenses",
+      metric: "expenses",
       value: data.kpis.expenseThisMonth,
       icon: Receipt,
       iconWrap: "bg-[var(--hh-danger-soft-fill)] text-[var(--hh-danger)]",
       accent: "expense",
     },
     {
-      label: "Profit",
-      value: data.kpis.profitThisMonth,
+      label: "Labor Cost",
+      metric: "laborCost",
+      value: data.kpis.laborCostThisMonth,
       emphasize: true,
-      icon: data.kpis.profitThisMonth >= 0 ? TrendingUp : TrendingDown,
+      icon: data.kpis.laborCostThisMonth >= 0 ? TrendingUp : TrendingDown,
       iconWrap:
-        data.kpis.profitThisMonth >= 0
+        data.kpis.laborCostThisMonth >= 0
           ? "bg-[var(--hh-success-soft-fill)] text-[var(--hh-success)]"
           : "bg-[var(--hh-danger-soft-fill)] text-[var(--hh-danger)]",
       accent: "profit",
     },
     {
-      label: "Unpaid invoices",
+      label: "Outstanding AR",
+      metric: "outstandingAr",
       value: data.kpis.unpaidInvoices,
       icon: FileWarning,
       iconWrap: "bg-[var(--hh-warning-soft-fill)] text-[var(--hh-warning)]",
@@ -398,7 +389,7 @@ export default async function FinanceOwnerDashboardPage() {
   const accentInset = (a: KpiKey) => {
     if (a === "expense") return "border-[var(--hh-danger-border)]";
     if (a === "profit")
-      return data.kpis.profitThisMonth >= 0
+      return data.kpis.laborCostThisMonth >= 0
         ? "border-[var(--hh-success-border)]"
         : "border-[var(--hh-danger-border)]";
     if (a === "pending") return "border-[var(--hh-success-border)]";
@@ -443,7 +434,7 @@ export default async function FinanceOwnerDashboardPage() {
         data.alerts.overdueInvoiceCount > 0
           ? `${fmtCount(data.alerts.overdueInvoiceCount)} open · ${fmtUsdFull(data.alerts.overdueInvoiceAmount)}`
           : undefined,
-      href: "/financial/ar",
+      href: financePathWithReturn("/financial/ar", context),
       active: data.alerts.overdueInvoiceCount > 0,
       Icon: AlertCircle,
       tone: "rose",
@@ -466,16 +457,16 @@ export default async function FinanceOwnerDashboardPage() {
     },
     {
       key: "receipts",
-      label: "Missing receipts",
+      label: "Inbox Missing Receipts",
       subtitle:
         data.alerts.missingReceiptsCount > 0
-          ? `${fmtCount(data.alerts.missingReceiptsCount)} in last 90 days (no receipt URL)`
+          ? `${fmtCount(data.alerts.missingReceiptsCount)} in current calendar month (no receipt or attachment)`
           : "Nothing missing right now",
       detailTitle:
         data.alerts.missingReceiptsCount > 0
-          ? `${fmtCount(data.alerts.missingReceiptsCount)} expenses in last 90 days (no receipt URL)`
+          ? `${fmtCount(data.alerts.missingReceiptsCount)} expenses in current calendar month (no receipt or attachment)`
           : undefined,
-      href: "/financial/expenses",
+      href: financePathWithReturn("/reports?period=this-month&metric=missingReceipts", context),
       active: data.alerts.missingReceiptsCount > 0,
       Icon: Receipt,
       tone: "slate",
@@ -531,8 +522,8 @@ export default async function FinanceOwnerDashboardPage() {
                 Snapshot for <span className="font-medium text-foreground">{monthLabel}</span>.
               </span>{" "}
               <span className="mt-1 block text-sm leading-relaxed text-muted-foreground sm:mt-0 sm:inline">
-                Profit = cash collected − expense (lines + labor). Pending includes AP + worker
-                balances; reimbursements may overlap.
+                Period metrics use the shared reporting definitions. Pending includes current AP +
+                worker balances; reimbursements may overlap.
               </span>
             </>
           }
@@ -569,7 +560,7 @@ export default async function FinanceOwnerDashboardPage() {
                 k.accent === "expense"
                   ? "text-[var(--hh-danger)]"
                   : k.accent === "profit"
-                    ? data.kpis.profitThisMonth >= 0
+                    ? data.kpis.laborCostThisMonth >= 0
                       ? "text-[var(--hh-success)]"
                       : "text-[var(--hh-danger)]"
                     : k.accent === "pending"
@@ -585,7 +576,7 @@ export default async function FinanceOwnerDashboardPage() {
                       inner: "bg-[var(--hh-danger)]",
                     }
                   : k.accent === "profit"
-                    ? data.kpis.profitThisMonth >= 0
+                    ? data.kpis.laborCostThisMonth >= 0
                       ? {
                           outer: "bg-[var(--hh-success-soft-fill)]",
                           inner: "bg-[var(--hh-success)]",
@@ -651,9 +642,24 @@ export default async function FinanceOwnerDashboardPage() {
                       />
                     </span>
                     <span className="text-hh-status font-medium tracking-normal text-[var(--hh-text-tertiary)]">
-                      {k.sub ? "Breakdown below" : "Month to date"}
+                      {k.sub
+                        ? "Current balances"
+                        : k.metric === "outstandingAr"
+                          ? "Current · all dates"
+                          : "Calendar month"}
                     </span>
                   </div>
+                  {k.metric ? (
+                    <Link
+                      className="mt-2 text-sm underline"
+                      href={financePathWithReturn(
+                        `/reports?period=this-month&metric=${k.metric}`,
+                        context
+                      )}
+                    >
+                      View records
+                    </Link>
+                  ) : null}
                   {k.sub ? (
                     <span
                       className="mt-2 line-clamp-3 text-hh-table-header leading-snug text-muted-foreground"
@@ -677,7 +683,7 @@ export default async function FinanceOwnerDashboardPage() {
                   Liquidity
                 </p>
                 <h2 className="text-xl font-semibold tracking-normal text-[var(--hh-text-primary)] sm:text-2xl">
-                  Cash flow
+                  Collections vs accrued costs
                 </h2>
                 <p className="max-w-xl text-sm leading-relaxed text-muted-foreground">
                   Payments received vs. expense lines + labor — trailing six months.
@@ -689,7 +695,7 @@ export default async function FinanceOwnerDashboardPage() {
             </div>
 
             <div className="mt-8 sm:mt-10">
-              <FinanceOwnerCashFlowChart points={data.cashFlow} />
+              <FinanceOwnerCashFlowChart points={data.cashFlow} context={context} />
             </div>
 
             {data.cashFlow.length > 0 ? (
@@ -745,7 +751,7 @@ export default async function FinanceOwnerDashboardPage() {
                   </h2>
                 </div>
                 <Link
-                  href="/financial/ar"
+                  href={financePathWithReturn("/financial/ar", context)}
                   className="inline-flex min-h-[44px] items-center text-xs font-semibold text-primary hover:underline sm:min-h-0"
                 >
                   View all
@@ -853,6 +859,7 @@ export default async function FinanceOwnerDashboardPage() {
             </p>
             <div className={cn("mt-6 min-w-0 md:overflow-x-auto", cardBase, "p-4 sm:p-8")}>
               <OwnerProjectList
+                context={context}
                 testId="owner-top-projects"
                 rows={data.topProjects}
                 emptyTitle="No projects ranked yet"
@@ -870,6 +877,7 @@ export default async function FinanceOwnerDashboardPage() {
               </p>
               <div className={cn("mt-6 min-w-0 md:overflow-x-auto", cardBase, "p-4 sm:p-8")}>
                 <OwnerProjectList
+                  context={context}
                   testId="owner-underwater-projects"
                   rows={data.underwaterProjects}
                   emptyTitle="No underwater projects"

@@ -53,60 +53,91 @@ describe("estimate to project conversion integrity", () => {
     userId: "33333333-3333-4333-8333-333333333333",
     label: "owner@example.com",
   };
-  const db = { rpc: vi.fn() } as never;
+  const rpcMock = vi.fn();
+  const db = { rpc: rpcMock } as never;
 
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("does not mark the estimate Converted before the project exists", async () => {
-    createProjectMock.mockRejectedValue(new Error("project insert failed"));
+  it("commits project and lifecycle through one transaction with unchanged amounts", async () => {
+    rpcMock.mockResolvedValue({ data: { projectId: "project-1" }, error: null });
     const { convertEstimateToProjectWithSetup } = await import("@/lib/data");
-
-    await expect(
-      convertEstimateToProjectWithSetup("estimate-1", { projectName: "HH Residence" }, actor, db)
-    ).rejects.toThrow("project insert failed");
-
-    expect(setEstimateStatusMock).not.toHaveBeenCalled();
-  });
-
-  it("uses the authenticated server client for every conversion read", async () => {
-    createProjectMock.mockResolvedValue({ id: "project-1" });
-    setEstimateStatusMock.mockResolvedValue(true);
-    const { convertEstimateToProjectWithSetup } = await import("@/lib/data");
-
-    await convertEstimateToProjectWithSetup(
-      "estimate-1",
-      { projectName: "HH Residence" },
-      actor,
-      db
-    );
-
-    expect(getProjectBySourceEstimateIdMock).toHaveBeenCalledWith("estimate-1", db);
-    expect(getEstimateByIdMock).toHaveBeenCalledWith("estimate-1", db);
-    expect(getEstimateMetaMock).toHaveBeenCalledWith("estimate-1", db);
-    expect(getEstimateItemsMock).toHaveBeenCalledWith("estimate-1", db);
-    expect(createProjectMock).toHaveBeenCalledWith(
-      db,
-      expect.objectContaining({ customerId: "44444444-4444-4444-8444-444444444444" })
-    );
-  });
-
-  it("removes the new project when the final status transition fails", async () => {
-    createProjectMock.mockResolvedValue({ id: "project-1" });
-    setEstimateStatusMock.mockResolvedValue(false);
-    deleteProjectMock.mockResolvedValue(true);
-    const { convertEstimateToProjectWithSetup } = await import("@/lib/data");
-
     const result = await convertEstimateToProjectWithSetup(
       "estimate-1",
       { projectName: "HH Residence" },
       actor,
       db
     );
+    expect(result?.projectId).toBe("project-1");
+    expect(rpcMock).toHaveBeenCalledWith("convert_estimate_to_project_atomic", {
+      p_estimate_id: "estimate-1",
+      p_project: expect.objectContaining({
+        name: "HH Residence",
+        budget: 1000,
+        snapshotRevenue: 1000,
+        snapshotBudgetCost: 800,
+        snapshotBreakdown: { materials: 300, labor: 300, vendor: 200, other: 0 },
+      }),
+      p_actor_user_id: actor.userId,
+      p_actor_label: actor.label,
+    });
+    expect(createProjectMock).not.toHaveBeenCalled();
+    expect(setEstimateStatusMock).not.toHaveBeenCalled();
+    expect(deleteProjectMock).not.toHaveBeenCalled();
+    expect(getEstimateByIdMock).toHaveBeenCalledWith("estimate-1", db);
+    expect(getEstimateMetaMock).toHaveBeenCalledWith("estimate-1", db);
+    expect(getEstimateItemsMock).toHaveBeenCalledWith("estimate-1", db);
+  });
 
-    expect(result).toBeNull();
-    expect(createProjectMock).toHaveBeenCalledTimes(1);
-    expect(deleteProjectMock).toHaveBeenCalledWith(db, "project-1");
+  it("reports a transaction failure without attempting a destructive compensation", async () => {
+    rpcMock.mockResolvedValue({ data: null, error: { message: "activity write failed" } });
+    const { convertEstimateToProjectWithSetup } = await import("@/lib/data");
+    await expect(
+      convertEstimateToProjectWithSetup("estimate-1", { projectName: "HH Residence" }, actor, db)
+    ).rejects.toThrow("activity write failed");
+    expect(createProjectMock).not.toHaveBeenCalled();
+    expect(deleteProjectMock).not.toHaveBeenCalled();
+  });
+
+  it("returns the committed project on a duplicate or response-loss retry", async () => {
+    rpcMock.mockResolvedValueOnce({ data: { projectId: "project-1" }, error: null });
+    getProjectBySourceEstimateIdMock.mockResolvedValueOnce({
+      id: "project-1",
+      sourceEstimateId: "estimate-1",
+      budget: 1000,
+      snapshotRevenue: 1000,
+      snapshotBudgetCost: 800,
+    });
+    const { convertEstimateToProjectWithSetup } = await import("@/lib/data");
+    const result = await convertEstimateToProjectWithSetup(
+      "estimate-1",
+      { projectName: "HH Residence" },
+      actor,
+      db
+    );
+    expect(result?.projectId).toBe("project-1");
+    expect(rpcMock).toHaveBeenCalledWith("convert_estimate_to_project_atomic", {
+      p_estimate_id: "estimate-1",
+      p_project: {},
+      p_actor_user_id: actor.userId,
+      p_actor_label: actor.label,
+    });
+    expect(createProjectMock).not.toHaveBeenCalled();
+  });
+  it("does not report a legacy partial conversion as success", async () => {
+    rpcMock.mockResolvedValueOnce({
+      data: null,
+      error: { message: "Estimate requires reconciliation" },
+    });
+    getProjectBySourceEstimateIdMock.mockResolvedValueOnce({
+      id: "project-1",
+      sourceEstimateId: "estimate-1",
+      budget: 1000,
+    });
+    const { convertEstimateToProjectWithSetup } = await import("@/lib/data");
+    await expect(
+      convertEstimateToProjectWithSetup("estimate-1", { projectName: "HH Residence" }, actor, db)
+    ).rejects.toThrow("reconciliation");
   });
 });

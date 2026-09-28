@@ -11,11 +11,11 @@ export type EstimateSurfaceSheetKind =
 
 const SURFACE_WIDTH_CLASS: Record<EstimateSurfaceSheetKind, string> = {
   information: "md:!w-[440px] md:!max-w-[440px]",
-  pricing: "md:!w-[400px] md:!max-w-[400px]",
+  pricing: "md:!w-[360px] md:!max-w-[360px]",
   notes: "md:!w-[480px] md:!max-w-[480px]",
   payment: "md:!w-[700px] md:!max-w-[700px]",
-  revision: "md:!w-[440px] md:!max-w-[440px]",
-  activity: "md:!w-[400px] md:!max-w-[400px]",
+  revision: "md:!w-[360px] md:!max-w-[360px]",
+  activity: "md:!w-[360px] md:!max-w-[360px]",
 };
 
 export function estimateSurfaceSheetClassName(

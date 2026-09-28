@@ -7,7 +7,7 @@ const { loadExpenseReceiptManifestMock, requireStrictAuthMock } = vi.hoisted(() 
 }));
 
 vi.mock("@/lib/auth-boundary", () => ({
-  requireSupabaseOwnerOrAdmin: requireStrictAuthMock,
+  requireSupabaseOwnerOrAdminRequestClient: requireStrictAuthMock,
 }));
 
 vi.mock("@/lib/expense-receipt-server", () => ({
@@ -31,6 +31,7 @@ describe("authenticated expense receipt view route", () => {
   beforeEach(() => {
     requireStrictAuthMock.mockReset().mockResolvedValue({
       ok: true,
+      client: { session: "fixture" },
       context: {
         role: "owner",
         user: { id: "owner-id", app_metadata: { role: "owner" } },
@@ -73,7 +74,7 @@ describe("authenticated expense receipt view route", () => {
 
     expect(response.status).toBe(200);
     expect(response.headers.get("cache-control")).toContain("no-store");
-    expect(loadExpenseReceiptManifestMock).toHaveBeenCalledWith(EXPENSE_ID);
+    expect(loadExpenseReceiptManifestMock).toHaveBeenCalledWith(EXPENSE_ID, { session: "fixture" });
     expect(body).toMatchObject({
       ok: true,
       expenseId: EXPENSE_ID,

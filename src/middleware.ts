@@ -1,7 +1,17 @@
+import {
+  isWorkerFinanceApiWrite,
+  workerFinanceSchemaReady,
+  workerFinanceMaintenanceResponse,
+} from "@/lib/worker-finance-write-pause";
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { authorizedAppRole } from "@/lib/auth-role";
+import {
+  getActiveOrganizationMemberships,
+  hasCompanyAdministratorMembership,
+  isOrganizationWorkspacePath,
+} from "@/lib/organization-membership";
 import {
   DEVICE_UNLOCK_COOKIE,
   readDeviceCookie,
@@ -12,6 +22,8 @@ import {
 import { workerReceiptInboxPath } from "@/lib/expense-operations-routing";
 import { isCompatibilityAccessEnabled } from "@/lib/owner-access-mode";
 import { isLocalAutoLoginEnabled, LOCAL_AUTO_LOGIN_PATH } from "@/lib/local-auto-login";
+import { parseRequestAuthorization } from "@/lib/request-authorization";
+import { attachServerTiming } from "@/lib/performance/server-timing";
 
 const INTERNAL_ADMIN_SECRET_HEADER = "x-internal-admin-secret";
 const PRODUCTION_SAFETY_LOCK_HEADER = "x-hh-production-safety-lock";
@@ -25,7 +37,6 @@ const PUBLIC_APP_PATHS = new Set([
   "/forgot-password",
   "/reset-password",
   "/offline",
-  "/upload-receipt",
 ]);
 
 const PUBLIC_API_PATHS = new Set([
@@ -34,9 +45,6 @@ const PUBLIC_API_PATHS = new Set([
   "/api/auth/forgot-password",
   "/api/auth/recovery/verify",
   "/api/auth/reset-password",
-  "/api/upload-receipt/options",
-  "/api/upload-receipt/upload",
-  "/api/upload-receipt/submit",
 ]);
 
 const STRICT_AUTH_PREFIXES = [
@@ -90,6 +98,21 @@ function isProductionSafetyLocked(request: NextRequest): boolean {
   );
 }
 
+function isProductionRuntime(): boolean {
+  return process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production";
+}
+
+function isProductionRuntimeDisabledPath(pathname: string): boolean {
+  return (
+    pathname === "/api/test" ||
+    pathname.startsWith("/api/test/") ||
+    pathname === "/api/ensure-schema" ||
+    pathname.startsWith("/api/ensure-schema/") ||
+    pathname === "/system-tests" ||
+    pathname.startsWith("/system-tests/")
+  );
+}
+
 function hasInternalAdminSecret(request: NextRequest): boolean {
   const primary = process.env.HH_INTERNAL_ADMIN_SECRET?.trim() ?? "";
   const fallback = process.env.INTERNAL_ADMIN_SECRET?.trim() ?? "";
@@ -134,6 +157,16 @@ function forbiddenMaintenancePageResponse(): NextResponse {
     },
     {
       status: 403,
+      headers: { "Cache-Control": "no-store" },
+    }
+  );
+}
+
+function productionRuntimeNotFoundResponse(): NextResponse {
+  return NextResponse.json(
+    { ok: false, message: "Not found." },
+    {
+      status: 404,
       headers: { "Cache-Control": "no-store" },
     }
   );
@@ -213,6 +246,7 @@ async function hasSupabaseSessionUser(
 ): Promise<{
   authenticated: boolean;
   authorized: boolean;
+  organizationOnly?: boolean;
   sessionId: string | null;
   supabase: SupabaseClient | null;
   userId: string | null;
@@ -229,7 +263,21 @@ async function hasSupabaseSessionUser(
     };
   }
 
+  const authorization = parseRequestAuthorization(request.headers.get("authorization"));
+  if (authorization.kind === "malformed") {
+    return {
+      authenticated: false,
+      authorized: false,
+      sessionId: null,
+      supabase: null,
+      userId: null,
+    };
+  }
+
   const supabase = createServerClient(url, anon, {
+    ...(authorization.kind === "bearer"
+      ? { global: { headers: { Authorization: authorization.authorization } } }
+      : {}),
     cookies: {
       getAll() {
         return request.cookies.getAll();
@@ -242,11 +290,7 @@ async function hasSupabaseSessionUser(
     },
   });
 
-  const authorization =
-    request.headers.get("authorization") ?? request.headers.get("Authorization");
-  const bearer = authorization?.startsWith("Bearer ")
-    ? authorization.slice(7).trim() || null
-    : null;
+  const bearer = authorization.kind === "bearer" ? authorization.token : null;
   const {
     data: { user },
   } = await supabase.auth.getUser(bearer ?? undefined).catch(() => ({ data: { user: null } }));
@@ -256,9 +300,38 @@ async function hasSupabaseSessionUser(
     user && !bearer
       ? await supabase.auth.getSession().catch(() => ({ data: { session: null } }))
       : { data: { session: null } };
+  const globalRole =
+    user &&
+    authorizedAppRole(user) &&
+    (await hasCompanyAdministratorMembership(supabase, user).catch(() => false))
+      ? authorizedAppRole(user)
+      : null;
+  const memberships =
+    user &&
+    !globalRole &&
+    (request.nextUrl.pathname === "/login" || isOrganizationWorkspacePath(request.nextUrl.pathname))
+      ? await getActiveOrganizationMemberships(supabase, user).catch(() => [])
+      : [];
+  // Next read-only Server Actions also use POST; every action still enforces its own DB permissions.
+  const organizationPageAction =
+    request.method === "POST" &&
+    Boolean(request.headers.get("next-action")) &&
+    !request.nextUrl.pathname.startsWith("/api/") &&
+    isOrganizationWorkspacePath(request.nextUrl.pathname);
+  // These two intake handlers independently require live company membership and validated insert-only policies.
+  const companyReceiptSubmission =
+    request.method === "POST" &&
+    ["/api/upload-receipt/upload", "/api/upload-receipt/submit"].includes(request.nextUrl.pathname);
+  const memberAllowed =
+    memberships.length > 0 &&
+    (["GET", "HEAD"].includes(request.method) ||
+      organizationPageAction ||
+      companyReceiptSubmission ||
+      memberships.some((m) => m.role === "owner" || m.role === "admin"));
   return {
     authenticated: Boolean(user),
-    authorized: authorizedAppRole(user) !== null,
+    authorized: globalRole !== null || memberAllowed,
+    organizationOnly: !globalRole && memberAllowed,
     sessionId: bearer
       ? sessionIdFromAccessToken(bearer)
       : session?.access_token
@@ -300,6 +373,9 @@ async function requiresDeviceUnlock(
 /** Default-deny Auth boundary for application pages and Route Handlers. */
 export async function middleware(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
+  if (isWorkerFinanceApiWrite(pathname, request.method) && !(await workerFinanceSchemaReady())) {
+    return workerFinanceMaintenanceResponse();
+  }
 
   if (pathname.startsWith("/_next/static/chunks/")) {
     if (process.env.NODE_ENV !== "development") {
@@ -322,6 +398,26 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  const middlewareStartedAt = performance.now();
+  let authDuration = 0;
+  const finish = (response: NextResponse) =>
+    attachServerTiming(response, {
+      hh_auth: authDuration,
+      hh_middleware: performance.now() - middlewareStartedAt,
+    });
+  const timedSessionUser = async (response: NextResponse) => {
+    const startedAt = performance.now();
+    try {
+      return await hasSupabaseSessionUser(request, response);
+    } finally {
+      authDuration += performance.now() - startedAt;
+    }
+  };
+
+  if (isProductionRuntime() && isProductionRuntimeDisabledPath(pathname)) {
+    return finish(productionRuntimeNotFoundResponse());
+  }
+
   const apiPath = isApiPath(pathname);
   const publicPath = apiPath ? isPublicApiPath(pathname) : isPublicAppPath(pathname);
   let authenticatedResponse: NextResponse | null = null;
@@ -334,25 +430,28 @@ export async function middleware(request: NextRequest) {
     !apiPath && (pathname === "/" || pathname === "/login" || !publicPath);
   if (localAutoLoginNavigation && isLocalAutoLoginEnabled(request.url)) {
     const response = NextResponse.next();
-    const auth = await hasSupabaseSessionUser(request, response);
-    if (!auth.authenticated) return localAutoLoginRedirectResponse(request);
-    if (!auth.authorized) return forbiddenAdminPageResponse();
+    const auth = await timedSessionUser(response);
+    if (!auth.authenticated) return finish(localAutoLoginRedirectResponse(request));
+    if (!auth.authorized) return finish(forbiddenAdminPageResponse());
     authenticatedResponse = response;
     localAutoLoginAuth = auth;
   }
 
   if (pathname === "/login") {
     const response = authenticatedResponse ?? NextResponse.next();
-    const auth = localAutoLoginAuth ?? (await hasSupabaseSessionUser(request, response));
+    const auth = localAutoLoginAuth ?? (await timedSessionUser(response));
     if (auth.authenticated && auth.authorized) {
-      const destination = (await requiresDeviceUnlock(request, auth)) ? "/unlock" : "/dashboard";
-      return copyResponseCookies(
-        response,
-        NextResponse.redirect(new URL(destination, request.url))
+      const destination = (await requiresDeviceUnlock(request, auth))
+        ? "/unlock"
+        : auth.organizationOnly
+          ? "/projects"
+          : "/dashboard";
+      return finish(
+        copyResponseCookies(response, NextResponse.redirect(new URL(destination, request.url)))
       );
     }
     response.headers.set("Cache-Control", "no-store, max-age=0");
-    return response;
+    return finish(response);
   }
 
   if (!publicPath) {
@@ -361,24 +460,24 @@ export async function middleware(request: NextRequest) {
       authenticatedResponse = NextResponse.next();
     } else {
       const response = authenticatedResponse ?? NextResponse.next();
-      const auth = localAutoLoginAuth ?? (await hasSupabaseSessionUser(request, response));
+      const auth = localAutoLoginAuth ?? (await timedSessionUser(response));
       if (!auth.authenticated) {
-        return apiPath ? unauthorizedApiResponse() : loginRedirectResponse(request);
+        return finish(apiPath ? unauthorizedApiResponse() : loginRedirectResponse(request));
       }
       if (!auth.authorized) {
-        return apiPath ? forbiddenApiResponse() : forbiddenAdminPageResponse();
+        return finish(apiPath ? forbiddenApiResponse() : forbiddenAdminPageResponse());
       }
 
       const unlockEndpoint =
         pathname === "/unlock" || pathname === "/api/auth/unlock" || pathname === "/api/auth/lock";
       if (!unlockEndpoint && (await requiresDeviceUnlock(request, auth))) {
-        if (apiPath) return lockedApiResponse();
+        if (apiPath) return finish(lockedApiResponse());
         const target = new URL("/unlock", request.url);
         target.searchParams.set(
           "redirect",
           `${request.nextUrl.pathname}${request.nextUrl.search || ""}`
         );
-        return copyResponseCookies(response, NextResponse.redirect(target));
+        return finish(copyResponseCookies(response, NextResponse.redirect(target)));
       }
 
       if (
@@ -386,11 +485,11 @@ export async function middleware(request: NextRequest) {
         isProductionSafetyLocked(request) &&
         !hasInternalAdminSecret(request)
       ) {
-        return forbiddenMaintenancePageResponse();
+        return finish(forbiddenMaintenancePageResponse());
       }
 
       if (isAdminAppPath(pathname) && !auth.authorized) {
-        return forbiddenAdminPageResponse();
+        return finish(forbiddenAdminPageResponse());
       }
 
       response.headers.set("Cache-Control", "private, no-store, max-age=0");
@@ -406,9 +505,11 @@ export async function middleware(request: NextRequest) {
     const [destinationPathname, destinationSearch = ""] = destination.split("?");
     target.pathname = destinationPathname;
     target.search = destinationSearch;
-    return copyResponseCookies(
-      authenticatedResponse ?? NextResponse.next(),
-      NextResponse.redirect(target)
+    return finish(
+      copyResponseCookies(
+        authenticatedResponse ?? NextResponse.next(),
+        NextResponse.redirect(target)
+      )
     );
   }
 
@@ -422,7 +523,7 @@ export async function middleware(request: NextRequest) {
     target.pathname = "/labor/daily";
     const response = NextResponse.redirect(target);
     response.cookies.delete("hh_worker_mode");
-    return response;
+    return finish(response);
   }
 
   if (isWorkerModePath && mode === "worker") {
@@ -435,7 +536,7 @@ export async function middleware(request: NextRequest) {
       sameSite: "lax",
       httpOnly: false,
     });
-    return response;
+    return finish(response);
   }
 
   if (workerModeCookie && isWorkerModePath) {
@@ -443,11 +544,11 @@ export async function middleware(request: NextRequest) {
     target.pathname = "/labor/daily-entry";
     target.search = "?mode=worker";
     if (pathname !== "/labor/daily-entry" || mode !== "worker") {
-      return NextResponse.redirect(target);
+      return finish(NextResponse.redirect(target));
     }
   }
 
-  return authenticatedResponse ?? NextResponse.next();
+  return finish(authenticatedResponse ?? NextResponse.next());
 }
 
 export const config = {

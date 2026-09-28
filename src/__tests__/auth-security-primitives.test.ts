@@ -1,16 +1,22 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
+  createRouteSupabaseClientMock,
+  createServerSupabaseClientMock,
   getSupabaseUserFromRequestMock,
   getSupabaseUserFromServerSessionMock,
   isValidPinSessionMock,
 } = vi.hoisted(() => ({
+  createRouteSupabaseClientMock: vi.fn(),
+  createServerSupabaseClientMock: vi.fn(),
   getSupabaseUserFromRequestMock: vi.fn(),
   getSupabaseUserFromServerSessionMock: vi.fn(),
   isValidPinSessionMock: vi.fn(),
 }));
 
 vi.mock("@/lib/supabase-server", () => ({
+  createRouteSupabaseClient: createRouteSupabaseClientMock,
+  createServerSupabaseClient: createServerSupabaseClientMock,
   getSupabaseUserFromRequest: getSupabaseUserFromRequestMock,
   getSupabaseUserFromServerSession: getSupabaseUserFromServerSessionMock,
 }));
@@ -22,7 +28,9 @@ vi.mock("@/lib/pin-auth", () => ({
 import { authorizedAppRole, isAuthorizedAppRole } from "@/lib/auth-role";
 import {
   requireSupabaseOwnerOrAdmin,
+  requireSupabaseOwnerOrAdminRequestClient,
   requireSupabaseOwnerOrAdminServerActionWithClient,
+  requireSupabaseOwnerOrAdminServerActionClient,
   requireSupabaseOwnerOrAdminWithClient,
 } from "@/lib/auth-boundary";
 import { normalizeAuthRedirect } from "@/lib/auth-redirect";
@@ -30,6 +38,25 @@ import { validateSameOriginMutation } from "@/lib/auth-request-security";
 import { isCompatibilityAccessEnabled } from "@/lib/owner-access-mode";
 import { validatePassword } from "@/lib/password-policy";
 
+function companyMembershipQuery() {
+  const query = {
+    select: () => query,
+    eq: () => query,
+    not: () => query,
+    then: (resolve: (value: unknown) => unknown) =>
+      Promise.resolve({
+        data: [
+          {
+            role: "owner",
+            status: "active",
+            organizations: { legacy_company_profile_id: "company" },
+          },
+        ],
+        error: null,
+      }).then(resolve),
+  };
+  return query;
+}
 const ORIGINAL_ENV = { ...process.env };
 
 describe("authenticated owner-access security primitives", () => {
@@ -39,6 +66,24 @@ describe("authenticated owner-access security primitives", () => {
     delete process.env.INTERNAL_ADMIN_SECRET;
     delete process.env.HH_ADMIN_EMAILS;
     getSupabaseUserFromRequestMock.mockReset().mockResolvedValue(null);
+    createRouteSupabaseClientMock.mockReset().mockImplementation(() => ({
+      auth: {
+        getUser: async () => ({
+          data: { user: await getSupabaseUserFromRequestMock() },
+          error: null,
+        }),
+      },
+      from: vi.fn(companyMembershipQuery),
+    }));
+    createServerSupabaseClientMock.mockReset().mockImplementation(async () => ({
+      auth: {
+        getUser: async () => ({
+          data: { user: await getSupabaseUserFromServerSessionMock() },
+          error: null,
+        }),
+      },
+      from: vi.fn(companyMembershipQuery),
+    }));
     getSupabaseUserFromServerSessionMock.mockReset().mockResolvedValue(null);
     isValidPinSessionMock.mockReset().mockResolvedValue(true);
   });
@@ -158,6 +203,101 @@ describe("authenticated owner-access security primitives", () => {
     }
   });
 
+  it("verifies and queries through the same request-scoped authenticated client", async () => {
+    const user = {
+      app_metadata: { role: "owner" },
+      email: "owner@example.test",
+      id: "owner-id",
+      user_metadata: {},
+    };
+    const client = {
+      auth: { getUser: vi.fn().mockResolvedValue({ data: { user }, error: null }) },
+      from: vi.fn(companyMembershipQuery),
+    };
+    createRouteSupabaseClientMock.mockReturnValue(client);
+    const request = new Request("http://localhost:3104/api/operations/tasks", {
+      headers: { Authorization: "Bearer owner-token" },
+    });
+
+    const result = await requireSupabaseOwnerOrAdminRequestClient(request, { noStore: true });
+
+    expect(result).toMatchObject({ ok: true, client });
+    expect(client.auth.getUser).toHaveBeenCalledWith("owner-token");
+    expect(getSupabaseUserFromRequestMock).not.toHaveBeenCalled();
+  });
+
+  it("fails closed when a presented bearer token is invalid", async () => {
+    const client = {
+      auth: {
+        getUser: vi.fn().mockResolvedValue({
+          data: { user: null },
+          error: { message: "invalid bearer" },
+        }),
+      },
+      from: vi.fn(companyMembershipQuery),
+    };
+    createRouteSupabaseClientMock.mockReturnValue(client);
+    const request = new Request("http://localhost:3104/api/operations/tasks", {
+      headers: { Authorization: "Bearer invalid-token", Cookie: "sb-session=valid-cookie" },
+    });
+
+    const result = await requireSupabaseOwnerOrAdminRequestClient(request);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.response.status).toBe(401);
+    expect(client.auth.getUser).toHaveBeenCalledTimes(1);
+    expect(client.auth.getUser).toHaveBeenCalledWith("invalid-token");
+  });
+
+  it("treats an alternate-case Bearer as authoritative over a conflicting cookie identity", async () => {
+    const bearerOwner = {
+      app_metadata: { role: "owner" },
+      email: "bearer-owner@example.test",
+      id: "bearer-owner-id",
+      user_metadata: {},
+    };
+    const client = {
+      auth: { getUser: vi.fn().mockResolvedValue({ data: { user: bearerOwner }, error: null }) },
+      from: vi.fn(companyMembershipQuery),
+    };
+    createRouteSupabaseClientMock.mockReturnValue(client);
+
+    const result = await requireSupabaseOwnerOrAdminRequestClient(
+      new Request("http://localhost:3104/api/operations/tasks", {
+        headers: {
+          Authorization: "bearer bearer-owner-token",
+          Cookie: "sb-session=cookie-user-token",
+        },
+      })
+    );
+
+    expect(result).toMatchObject({
+      ok: true,
+      client,
+      context: { user: { id: "bearer-owner-id" } },
+    });
+    expect(client.auth.getUser).toHaveBeenCalledWith("bearer-owner-token");
+  });
+
+  it("does not fall back to a cookie session for a malformed Authorization header", async () => {
+    const client = {
+      auth: { getUser: vi.fn() },
+      from: vi.fn(companyMembershipQuery),
+    };
+    createRouteSupabaseClientMock.mockReturnValue(client);
+
+    const result = await requireSupabaseOwnerOrAdminRequestClient(
+      new Request("http://localhost:3104/api/operations/tasks", {
+        headers: { Authorization: "Basic cookie-user-token", Cookie: "sb-session=owner-cookie" },
+      })
+    );
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.response.status).toBe(401);
+    expect(createRouteSupabaseClientMock).not.toHaveBeenCalled();
+    expect(client.auth.getUser).not.toHaveBeenCalled();
+  });
+
   it("denies compatibility-mode access before a privileged route client is created", async () => {
     process.env.HH_REQUIRE_LOGIN = "false";
     const clientFactory = vi.fn(() => ({ privileged: true }));
@@ -218,6 +358,26 @@ describe("authenticated owner-access security primitives", () => {
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.status).toBe(401);
     expect(clientFactory).not.toHaveBeenCalled();
+  });
+
+  it("verifies and queries through the same cookie-authenticated Server Action client", async () => {
+    const user = {
+      app_metadata: { role: "admin" },
+      email: "admin@example.test",
+      id: "admin-id",
+      user_metadata: {},
+    };
+    const client = {
+      auth: { getUser: vi.fn().mockResolvedValue({ data: { user }, error: null }) },
+      from: vi.fn(companyMembershipQuery),
+    };
+    createServerSupabaseClientMock.mockResolvedValue(client);
+
+    const result = await requireSupabaseOwnerOrAdminServerActionClient({ noStore: true });
+
+    expect(result).toMatchObject({ ok: true, client });
+    expect(client.auth.getUser).toHaveBeenCalledOnce();
+    expect(getSupabaseUserFromServerSessionMock).not.toHaveBeenCalled();
   });
 
   it("allows an admin Server Action and only then creates its privileged client", async () => {

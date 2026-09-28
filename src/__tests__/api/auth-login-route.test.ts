@@ -16,6 +16,12 @@ vi.mock("@/lib/supabase-server", () => ({
   }),
 }));
 
+const companyAccess = vi.hoisted(() => vi.fn(async () => true));
+vi.mock("@/lib/organization-membership", async (original) => ({
+  ...(await original<typeof import("@/lib/organization-membership")>()),
+  hasCompanyAdministratorMembership: companyAccess,
+}));
+
 import { POST } from "@/app/api/auth/login/route";
 
 function loginRequest(
@@ -38,6 +44,7 @@ function loginRequest(
 
 describe("POST /api/auth/login", () => {
   beforeEach(() => {
+    companyAccess.mockReset().mockResolvedValue(true);
     insertAuditMock.mockReset().mockResolvedValue({ error: null });
     signInWithPasswordMock.mockReset();
     signOutMock.mockReset().mockResolvedValue({ error: null });
@@ -173,6 +180,19 @@ describe("POST /api/auth/login", () => {
     );
 
     expect((await response.json()).redirectTo).toBe("/dashboard");
+  });
+
+  it("rejects owner credentials when company membership is absent or revoked", async () => {
+    companyAccess.mockResolvedValue(false);
+    signInWithPasswordMock.mockResolvedValue({
+      data: { user: { id: "foreign-owner", app_metadata: { role: "owner" } } },
+      error: null,
+    });
+    const response = await POST(
+      loginRequest({ email: "foreign@example.test", password: "Valid-Password-2026!" })
+    );
+    expect(response.status).toBe(403);
+    expect(signOutMock).toHaveBeenCalled();
   });
 
   it("does not expose a registration method", async () => {

@@ -57,6 +57,10 @@ test("global typography applies the generated sans, FIN, and responsive text-ent
   );
   assert.match(
     css,
+    /\.hh-type-text-entry\s*\{[^}]*font-weight:\s*var\(--hh-type-body-font-weight\)/s
+  );
+  assert.match(
+    css,
     /@media\s*\(min-width:\s*768px\)[\s\S]*\.hh-type-text-entry\s*\{[^}]*font-size:\s*var\(--hh-type-text-entry-size-desktop\)/s
   );
 });

@@ -29,6 +29,8 @@
 -- Fixed IDs:
 --   Project: 11111111-1111-1111-1111-111111111111
 --   Worker:  22222222-2222-2222-2222-222222222222
+--   Company: aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1 (only when company_profile is empty)
+--   Document: 55555555-5555-4555-8555-555555555551
 -- ═══════════════════════════════════════════════════════════════════════════
 
 BEGIN;
@@ -59,6 +61,8 @@ DECLARE
   v_sql text;
   v_sub_key text;
   v_date_col text;
+  v_org uuid;
+  v_document constant uuid := '55555555-5555-4555-8555-555555555551'::uuid;
 BEGIN
   -- ─── Tear down ───
   IF to_regclass('public.labor_entries') IS NOT NULL THEN
@@ -127,12 +131,12 @@ BEGIN
 
   -- ─── customers (Playwright integration: list + detail link) ───
   IF to_regclass('public.customers') IS NOT NULL AND pg_temp.hh_e2e_col('customers', 'name') THEN
-    EXECUTE $d$DELETE FROM public.customers WHERE id = '33333333-3333-3333-3333-333333333333'::uuid OR name = '[E2E] Test Customer'$d$;
+    EXECUTE $d$DELETE FROM public.customers WHERE id = '33333333-3333-4333-8333-333333333333'::uuid OR name = '[E2E] Test Customer'$d$;
     IF pg_temp.hh_e2e_col('customers', 'id') THEN
       EXECUTE $cust$
         INSERT INTO public.customers (id, name, email)
         VALUES (
-          '33333333-3333-3333-3333-333333333333'::uuid,
+          '33333333-3333-4333-8333-333333333333'::uuid,
           '[E2E] Test Customer',
           'e2e-customer@example.test'
         )
@@ -260,6 +264,30 @@ BEGIN
     );
   END IF;
 
+  -- Organization backfill runs only when a company_profile row already exists.
+  -- A fresh local database has neither, and project/document inserts then fail closed.
+  IF to_regclass('public.company_profile') IS NOT NULL
+     AND to_regclass('public.organizations') IS NOT NULL THEN
+    IF NOT EXISTS (SELECT 1 FROM public.company_profile) THEN
+      INSERT INTO public.company_profile (id, org_name)
+      VALUES ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1'::uuid, 'HH Group');
+    END IF;
+    INSERT INTO public.organizations (id, name, legacy_company_profile_id)
+    SELECT c.id, COALESCE(NULLIF(btrim(c.org_name), ''), 'HH Group'), c.id
+    FROM public.company_profile c
+    WHERE NOT EXISTS (
+      SELECT 1
+      FROM public.organizations o
+      WHERE o.id = c.id OR o.legacy_company_profile_id = c.id
+    );
+    SELECT o.id
+    INTO v_org
+    FROM public.organizations o
+    WHERE o.legacy_company_profile_id IS NOT NULL
+    ORDER BY o.id
+    LIMIT 1;
+  END IF;
+
   -- ─── projects ───
   IF to_regclass('public.projects') IS NOT NULL AND pg_temp.hh_e2e_col('projects', 'name') THEN
     v_sep := '';
@@ -305,13 +333,18 @@ BEGIN
     IF pg_temp.hh_e2e_col('projects', 'notes') THEN
       v_cols := v_cols || v_sep || quote_ident('notes');
       v_vals := v_vals || v_sep || quote_literal('[E2E] SEED — safe to delete; recreated by supabase/seed.sql');
+      v_sep := ', ';
+    END IF;
+    IF v_org IS NOT NULL AND pg_temp.hh_e2e_col('projects', 'organization_id') THEN
+      v_cols := v_cols || v_sep || quote_ident('organization_id');
+      v_vals := v_vals || v_sep || format('%L::uuid', v_org);
     END IF;
     EXECUTE format('INSERT INTO public.projects (%s) VALUES (%s)', v_cols, v_vals);
     -- Link seed project to E2E customer so list/detail resolve Client when only customer_id is set.
     IF pg_temp.hh_e2e_col('projects', 'customer_id') THEN
       EXECUTE format(
         'UPDATE public.projects SET customer_id = %L::uuid WHERE id = %L::uuid',
-        '33333333-3333-3333-3333-333333333333'::uuid,
+        '33333333-3333-4333-8333-333333333333'::uuid,
         v_project
       );
     END IF;
@@ -430,7 +463,14 @@ BEGIN
     v_vals := quote_literal('[E2E] seed-readme.txt');
     v_sep := ', ';
     v_cols := v_cols || v_sep || quote_ident('file_path');
-    v_vals := v_vals || v_sep || quote_literal('e2e-seed/placeholder.txt');
+    IF v_org IS NOT NULL AND pg_temp.hh_e2e_col('documents', 'organization_id') THEN
+      v_vals := v_vals || v_sep || quote_literal(
+        'organizations/' || v_org::text || '/projects/' || v_project::text
+        || '/documents/' || v_document::text || '/seed-readme.txt'
+      );
+    ELSE
+      v_vals := v_vals || v_sep || quote_literal('e2e-seed/placeholder.txt');
+    END IF;
     v_sep := ', ';
     IF pg_temp.hh_e2e_col('documents', 'file_type') THEN
       v_cols := v_cols || v_sep || quote_ident('file_type');
@@ -464,6 +504,14 @@ BEGIN
     IF pg_temp.hh_e2e_col('documents', 'notes') THEN
       v_cols := v_cols || ', ' || quote_ident('notes');
       v_vals := v_vals || ', ' || quote_literal('[E2E] SEED');
+    END IF;
+    IF v_org IS NOT NULL
+       AND pg_temp.hh_e2e_col('documents', 'id')
+       AND pg_temp.hh_e2e_col('documents', 'organization_id') THEN
+      v_cols := v_cols || ', ' || quote_ident('id');
+      v_vals := v_vals || ', ' || format('%L::uuid', v_document);
+      v_cols := v_cols || ', ' || quote_ident('organization_id');
+      v_vals := v_vals || ', ' || format('%L::uuid', v_org);
     END IF;
     EXECUTE format('INSERT INTO public.documents (%s) VALUES (%s)', v_cols, v_vals);
   END IF;
@@ -674,7 +722,7 @@ BEGIN
         '44444444-4444-4444-4444-444444444447'::uuid,
         '[E2E]-INV-SEED-001',
         %L::uuid,
-        '33333333-3333-3333-3333-333333333333'::uuid,
+        '33333333-3333-4333-8333-333333333333'::uuid,
         '[E2E] Test Customer',
         'Sent',
         100,
@@ -715,7 +763,8 @@ BEGIN
   END IF;
 
   IF to_regclass('public.worker_reimbursements') IS NOT NULL
-     AND pg_temp.hh_e2e_col('worker_reimbursements', 'worker_id') THEN
+     AND pg_temp.hh_e2e_col('worker_reimbursements', 'worker_id')
+     AND NOT pg_temp.hh_e2e_col('worker_reimbursements', 'source_worker_receipt_id') THEN
     IF pg_temp.hh_e2e_col('worker_reimbursements', 'notes') THEN
       EXECUTE $d$DELETE FROM public.worker_reimbursements WHERE notes = '[E2E] SEED reimb'$d$;
       EXECUTE format(
@@ -731,6 +780,9 @@ BEGIN
         v_project
       );
     END IF;
+  ELSIF to_regclass('public.worker_reimbursements') IS NOT NULL
+     AND pg_temp.hh_e2e_col('worker_reimbursements', 'source_worker_receipt_id') THEN
+    RAISE NOTICE 'worker_reimbursements: seed row skipped; new obligations require a canonical receipt.';
   END IF;
 
   IF to_regclass('public.worker_invoices') IS NOT NULL

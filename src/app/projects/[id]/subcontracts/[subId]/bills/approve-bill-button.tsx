@@ -36,7 +36,7 @@ export function ApproveBillButton({ projectId, subcontractId, billId }: Props) {
         type="button"
         onClick={handleClick}
         disabled={busy}
-        className="h-8 rounded-hh-standard border border-input bg-transparent px-2.5 text-hh-metadata hover:bg-accent hover:text-accent-foreground disabled:opacity-50"
+        className="min-h-[44px] rounded-hh-standard border border-input bg-transparent px-2.5 text-hh-metadata hover:bg-accent hover:text-accent-foreground disabled:opacity-50 xl:min-h-8"
       >
         {busy ? "…" : "Approve"}
       </button>

@@ -13,16 +13,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  getExpenses,
-  getWorkers,
-  getExpenseTotal,
-  markWorkerExpensesReimbursed,
-  type Expense,
-} from "@/lib/data";
+import { getExpenses, getWorkers, getExpenseTotal, type Expense } from "@/lib/data";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/empty-state";
-import { useToast } from "@/components/toast/toast-provider";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 
 type WorkerRow = { id: string; name: string };
@@ -79,12 +72,10 @@ export default function WorkerReimbursementsPage() {
 }
 
 function WorkerReimbursementsPageInner() {
-  const { toast } = useToast();
   const [expenses, setExpenses] = React.useState<Expense[]>([]);
   const [workers, setWorkers] = React.useState<WorkerRow[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [detailWorker, setDetailWorker] = React.useState<WorkerReimbursementRow | null>(null);
-  const [markingWorkerId, setMarkingWorkerId] = React.useState<string | null>(null);
 
   const load = React.useCallback(async () => {
     const [expList, workerList] = await Promise.all([
@@ -122,33 +113,11 @@ function WorkerReimbursementsPageInner() {
   );
   const hasOwed = rows.some((r) => r.totalOwed > 0);
 
-  const handleMarkReimbursed = async (workerId: string) => {
-    setMarkingWorkerId(workerId);
-    try {
-      const count = await markWorkerExpensesReimbursed(workerId);
-      await load();
-      setDetailWorker((prev) => (prev?.workerId === workerId ? null : prev));
-      toast({
-        title: "Marked as reimbursed",
-        description: count ? `${count} expense(s) updated.` : "No expenses to update.",
-        variant: "success",
-      });
-    } catch (e) {
-      toast({
-        title: "Failed",
-        description: e instanceof Error ? e.message : "Could not update expenses.",
-        variant: "error",
-      });
-    } finally {
-      setMarkingWorkerId(null);
-    }
-  };
-
   return (
     <div className="page-container page-stack py-6">
       <PageHeader
-        title="Worker Reimbursements"
-        description="Expenses grouped by worker. Pending + approved = total owed."
+        title="Worker Expense History"
+        description="Legacy history · Deprecate candidate. Review receipts in Worker Inbox; settle obligations in Labor Reimbursements."
       />
 
       {loading ? (
@@ -175,7 +144,7 @@ function WorkerReimbursementsPageInner() {
                     Approved
                   </TableHead>
                   <TableHead className="text-xs uppercase tracking-normal text-muted-foreground text-right tabular-nums">
-                    Total Owed
+                    Expense Total
                   </TableHead>
                   <TableHead className="text-xs uppercase tracking-normal text-muted-foreground text-right w-[140px]">
                     Actions
@@ -205,14 +174,12 @@ function WorkerReimbursementsPageInner() {
                       {formatCurrency(row.totalOwed)}
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-8"
-                        disabled={row.totalOwed <= 0 || !!markingWorkerId}
-                        onClick={() => handleMarkReimbursed(row.workerId)}
-                      >
-                        {markingWorkerId === row.workerId ? "Updating…" : "Mark as Reimbursed"}
+                      <Button variant="outline" size="sm" className="h-8" asChild>
+                        <Link
+                          href={`/labor/reimbursements?workerId=${encodeURIComponent(row.workerId)}`}
+                        >
+                          Continue to Payment
+                        </Link>
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -282,19 +249,17 @@ function WorkerReimbursementsPageInner() {
                 </div>
                 <div className="border-t border-border/60 px-4 py-3 flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">
-                    Total owed:{" "}
+                    Expense total:{" "}
                     <span className="font-medium text-foreground">
                       {formatCurrency(detailWorker.totalOwed)}
                     </span>
                   </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8"
-                    disabled={detailWorker.totalOwed <= 0 || !!markingWorkerId}
-                    onClick={() => handleMarkReimbursed(detailWorker.workerId)}
-                  >
-                    {markingWorkerId === detailWorker.workerId ? "Updating…" : "Mark as Reimbursed"}
+                  <Button variant="outline" size="sm" className="h-8" asChild>
+                    <Link
+                      href={`/labor/reimbursements?workerId=${encodeURIComponent(detailWorker.workerId)}`}
+                    >
+                      Continue to Payment
+                    </Link>
                   </Button>
                 </div>
               </>

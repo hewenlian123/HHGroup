@@ -4,6 +4,7 @@
  */
 
 import { getSupabaseClient } from "@/lib/supabase";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type ProjectScheduleItem = {
   id: string;
@@ -23,8 +24,8 @@ export type ProjectScheduleItemDraft = {
   status?: string;
 };
 
-function client() {
-  const c = getSupabaseClient();
+function client(explicitClient?: SupabaseClient) {
+  const c = explicitClient ?? getSupabaseClient();
   if (!c) throw new Error("Supabase is not configured.");
   return c;
 }
@@ -44,10 +45,11 @@ function toItem(r: Record<string, unknown>): ProjectScheduleItem {
 }
 
 /** Get all schedule items across all projects (for Operations Schedule page), with project name. */
-export async function getAllScheduleWithProject(): Promise<
-  (ProjectScheduleItem & { project_name: string | null })[]
-> {
-  const c = client();
+export async function getAllScheduleWithProject(
+  explicitClient?: SupabaseClient,
+  projectRows?: PromiseLike<Array<{ id: string; name: string | null }>>
+): Promise<(ProjectScheduleItem & { project_name: string | null })[]> {
+  const c = client(explicitClient);
   const { data: rows, error } = await c
     .from("project_schedule")
     .select(COLS)
@@ -56,16 +58,26 @@ export async function getAllScheduleWithProject(): Promise<
   const items = (rows ?? []).map((r) => toItem(r as Record<string, unknown>));
   const projectIds = Array.from(new Set(items.map((i) => i.project_id)));
   if (projectIds.length === 0) return items.map((i) => ({ ...i, project_name: null }));
-  const { data: projects } = await c.from("projects").select("id, name").in("id", projectIds);
-  const projectNames = new Map<string, string>(
-    ((projects ?? []) as { id: string; name: string }[]).map((p) => [p.id, p.name ?? ""])
-  );
+  const projects = projectRows
+    ? await projectRows
+    : await c
+        .from("projects")
+        .select("id, name")
+        .in("id", projectIds)
+        .then(({ data, error }) => {
+          if (error) throw new Error(error.message ?? "Failed to load schedule projects.");
+          return (data ?? []) as Array<{ id: string; name: string | null }>;
+        });
+  const projectNames = new Map<string, string>(projects.map((p) => [p.id, p.name ?? ""]));
   return items.map((i) => ({ ...i, project_name: projectNames.get(i.project_id) ?? null }));
 }
 
 /** Get all schedule items for a project. */
-export async function getProjectSchedule(projectId: string): Promise<ProjectScheduleItem[]> {
-  const c = client();
+export async function getProjectSchedule(
+  projectId: string,
+  explicitClient?: SupabaseClient
+): Promise<ProjectScheduleItem[]> {
+  const c = client(explicitClient);
   const { data: rows, error } = await c
     .from("project_schedule")
     .select(COLS)
@@ -77,9 +89,10 @@ export async function getProjectSchedule(projectId: string): Promise<ProjectSche
 
 /** Create a schedule item. */
 export async function createProjectScheduleItem(
-  draft: ProjectScheduleItemDraft
+  draft: ProjectScheduleItemDraft,
+  explicitClient?: SupabaseClient
 ): Promise<ProjectScheduleItem> {
-  const c = client();
+  const c = client(explicitClient);
   const { data: row, error } = await c
     .from("project_schedule")
     .insert({
@@ -98,9 +111,10 @@ export async function createProjectScheduleItem(
 /** Update a schedule item. */
 export async function updateProjectScheduleItem(
   id: string,
-  patch: Partial<Pick<ProjectScheduleItem, "title" | "start_date" | "end_date" | "status">>
+  patch: Partial<Pick<ProjectScheduleItem, "title" | "start_date" | "end_date" | "status">>,
+  explicitClient?: SupabaseClient
 ): Promise<ProjectScheduleItem | null> {
-  const c = client();
+  const c = client(explicitClient);
   const updates: Record<string, unknown> = {};
   if (patch.title !== undefined) updates.title = patch.title.trim();
   if (patch.start_date !== undefined) updates.start_date = patch.start_date?.slice(0, 10) ?? null;
@@ -113,13 +127,17 @@ export async function updateProjectScheduleItem(
     .eq("id", id)
     .select(COLS)
     .single();
-  if (error || !row) return null;
+  if (error) throw new Error(error.message ?? "Failed to update schedule item.");
+  if (!row) return null;
   return toItem(row as Record<string, unknown>);
 }
 
 /** Delete a schedule item. */
-export async function deleteProjectScheduleItem(id: string): Promise<void> {
-  const c = client();
+export async function deleteProjectScheduleItem(
+  id: string,
+  explicitClient?: SupabaseClient
+): Promise<void> {
+  const c = client(explicitClient);
   const { error } = await c.from("project_schedule").delete().eq("id", id);
   if (error) throw new Error(error.message ?? "Failed to delete schedule item.");
 }

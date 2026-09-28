@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 import { allowWorkerPaymentMutations } from "./e2e-env-helpers";
+import { loginAsE2EOwner } from "./e2e-auth-owner";
 import { loadE2EProcessEnv } from "./e2e-load-env";
 import { assertE2ESupabaseUrlSafeForMutations } from "./e2e-supabase-url-guard";
 
@@ -78,7 +79,18 @@ async function upsertFirstSuccess(
 
 async function cleanupSeedRows(client: SupabaseClient): Promise<void> {
   await client.from("worker_reimbursements").delete().eq("worker_id", ids.worker);
-  await client.from("worker_payments").delete().eq("worker_id", ids.worker);
+  const { data: payments, error: paymentReadError } = await client
+    .from("worker_payments")
+    .select("id")
+    .eq("worker_id", ids.worker);
+  if (paymentReadError) throw paymentReadError;
+  for (const payment of payments ?? []) {
+    const { error } = await client.rpc("reverse_worker_payment_atomic", {
+      p_payment_id: payment.id,
+      p_idempotency_key: `playwright-cleanup:${payment.id}`,
+    });
+    if (error) throw error;
+  }
   await client.from("labor_entries").delete().eq("worker_id", ids.worker);
   await client.from("labor_workers").delete().eq("id", ids.worker);
   await client.from("workers").delete().eq("id", ids.worker);
@@ -258,7 +270,12 @@ function totalAmount(dialog: Locator) {
 }
 
 async function selectLaborByAmount(page: Page, amountText: string) {
-  const row = page.locator("tr", { hasText: amountText }).first();
+  let row = page.locator("tr", { hasText: amountText }).first();
+  if (!(await row.isVisible().catch(() => false))) {
+    const collapsedMonth = page.getByRole("button").filter({ hasText: amountText }).first();
+    if (await collapsedMonth.isVisible().catch(() => false)) await collapsedMonth.click();
+    row = page.locator("tr", { hasText: amountText }).first();
+  }
   await expect(row).toBeVisible({ timeout: 30_000 });
   await row.locator('input[type="checkbox"]').check();
 }
@@ -297,6 +314,7 @@ test.describe("Worker payment consistency", () => {
       'Pick Playwright project "chromium-payments", use localhost, or set E2E_ALLOW_PAYMENT_MUTATIONS=1.'
     );
     test.skip(!admin, "Supabase service role env is not available.");
+    await loginAsE2EOwner(page);
 
     await page.goto(`${BASE}/labor/workers/${encodeURIComponent(ids.worker)}/balance`);
     await skipIfBackendUnavailable(page);
@@ -354,7 +372,8 @@ test.describe("Worker payment consistency", () => {
     const remainingLink = (laborLinks ?? []).find(
       (r) => r.id === ids.laborRemaining
     )?.worker_payment_id;
-    expect(paidLink).toBeTruthy();
+    const paymentId = String(paidLink ?? "");
+    expect(paymentId).toMatch(/^[0-9a-f-]{36}$/i);
     expect(remainingLink).toBeNull();
 
     const after = await balanceJson(page);
@@ -426,5 +445,40 @@ test.describe("Worker payment consistency", () => {
       .check();
     await expect(totalAmount(afterRefresh)).toHaveText("$105.00");
     await afterRefresh.getByRole("button", { name: "Cancel" }).click();
+
+    const reversalKey = `worker-payment-reversal:${paymentId}`;
+    const firstDelete = await page.request.delete(`/api/labor/worker-payments/${paymentId}`, {
+      headers: { "Idempotency-Key": reversalKey },
+    });
+    expect(firstDelete.ok(), await firstDelete.text()).toBe(true);
+    await expect(firstDelete.json()).resolves.toMatchObject({
+      ok: true,
+      payment_id: paymentId,
+      reused: false,
+    });
+
+    const duplicateDelete = await page.request.delete(`/api/labor/worker-payments/${paymentId}`, {
+      headers: { "Idempotency-Key": reversalKey },
+    });
+    expect(duplicateDelete.ok(), await duplicateDelete.text()).toBe(true);
+    await expect(duplicateDelete.json()).resolves.toMatchObject({
+      ok: true,
+      payment_id: paymentId,
+      reused: true,
+    });
+
+    const { data: restoredLabor, error: restoredLaborError } = await admin!
+      .from("labor_entries")
+      .select("worker_payment_id,status")
+      .eq("id", ids.laborPaid)
+      .single();
+    expect(restoredLaborError).toBeNull();
+    expect(restoredLabor?.worker_payment_id).toBeNull();
+    expect(restoredLabor?.status).toBe("Approved");
+
+    const restored = await balanceJson(page);
+    expectMoney(restored.summary.laborOwed, 125);
+    expectMoney(restored.summary.payments, 0);
+    expectMoney(restored.summary.balance, 155);
   });
 });

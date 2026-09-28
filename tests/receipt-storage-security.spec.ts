@@ -101,10 +101,12 @@ async function removeFixtureData(
 
 test.describe.serial("private expense receipt Storage and Replace", () => {
   test.describe.configure({ timeout: 120_000 });
-  const admin = localAdmin();
-  const database = localDatabase();
+  let admin: SupabaseClient;
+  let database: ReturnType<typeof postgres>;
 
   test.beforeAll(async () => {
+    admin = localAdmin();
+    database = localDatabase();
     await ensureE2EOwner();
     await removeFixtureData(admin, database);
 
@@ -184,6 +186,7 @@ test.describe.serial("private expense receipt Storage and Replace", () => {
   });
 
   test.afterAll(async () => {
+    if (!admin || !database) return;
     await removeFixtureData(admin, database);
     await database.end({ timeout: 5 });
   });

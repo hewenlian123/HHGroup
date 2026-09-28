@@ -132,14 +132,14 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               className={cn(
                 "pointer-events-auto flex min-h-hh-touch items-start gap-hh-2 rounded-hh-standard border px-hh-3 py-hh-2 shadow-floating",
                 presentation.className,
-                toast.exiting ? "animate-toast-out" : "animate-toast-in",
-                "motion-reduce:animate-none"
+                "hh-toast"
               )}
+              data-state={toast.exiting ? "closed" : "open"}
             >
               {toast.onClick ? (
                 <button
                   type="button"
-                  className="hh-focus-ring flex min-w-0 flex-1 items-start gap-hh-2 rounded-hh-compact text-left"
+                  className="hh-focus-ring hh-touch-min flex min-w-0 flex-1 items-start gap-hh-2 rounded-hh-compact text-left"
                   onClick={() => {
                     toast.onClick?.();
                     dismiss(toast.id);

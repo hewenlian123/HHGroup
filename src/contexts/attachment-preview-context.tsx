@@ -1,18 +1,56 @@
 "use client";
 
 import * as React from "react";
-import {
-  AttachmentPreviewModal,
-  inferAttachmentPreviewType,
-  prewarmAttachmentPreviewImages,
-  type AttachmentPreviewFileItem,
-  type AttachmentPreviewFileType,
-} from "@/components/attachment-preview-modal";
+import dynamic from "next/dynamic";
+import type { AttachmentPreviewModalProps } from "@/components/attachment-preview-modal";
 import type { ReceiptViewerPresentation } from "@/components/receipt-viewer/types";
 
-const RESET_DELAY_MS = 160;
+export type AttachmentPreviewFileType = "image" | "pdf";
 
-export type { AttachmentPreviewFileItem };
+export type AttachmentPreviewFileItem = {
+  url: string;
+  fileName?: string;
+  fileType?: AttachmentPreviewFileType;
+  unsupported?: boolean;
+  mimeType?: string;
+  attachmentId?: string;
+  pendingSignedUrl?: boolean;
+  signedUrlResolveFailed?: boolean;
+};
+
+export function inferAttachmentPreviewType(
+  fileName: string,
+  fileUrl: string
+): AttachmentPreviewFileType {
+  const name = (fileName ?? "").toLowerCase();
+  const url = (fileUrl ?? "").toLowerCase();
+  return name.endsWith(".pdf") || /\.pdf(\?|#|$)/i.test(url) ? "pdf" : "image";
+}
+
+function prewarmAttachmentPreviewImages(
+  files: AttachmentPreviewFileItem[],
+  currentIndex: number
+): void {
+  if (typeof window === "undefined") return;
+  for (const rawIndex of [currentIndex, currentIndex + 1, currentIndex - 1]) {
+    if (files.length === 0) return;
+    const index = ((rawIndex % files.length) + files.length) % files.length;
+    const file = files[index];
+    if (!file || file.unsupported || file.pendingSignedUrl) continue;
+    const type = file.fileType ?? inferAttachmentPreviewType(file.fileName ?? "", file.url);
+    if (type !== "image") continue;
+    const image = new Image();
+    image.src = file.url;
+  }
+}
+
+const AttachmentPreviewModal = dynamic<AttachmentPreviewModalProps>(
+  () =>
+    import("@/components/attachment-preview-modal").then((module) => module.AttachmentPreviewModal),
+  { ssr: false }
+);
+
+const RESET_DELAY_MS = 160;
 
 type SessionOptions = {
   isLoading?: boolean;
@@ -195,9 +233,13 @@ export function AttachmentPreviewProvider({ children }: { children: React.ReactN
   const closePreview = React.useCallback(() => {
     clearResetTimer();
     const cb = onClosedRef.current;
+    const returnFocusTarget = returnFocusTargetRef.current;
     onClosedRef.current = undefined;
     setState((s) => ({ ...s, isOpen: false }));
     cb?.();
+    window.requestAnimationFrame(() => {
+      if (returnFocusTarget?.isConnected) returnFocusTarget.focus();
+    });
     resetTimerRef.current = setTimeout(() => {
       setState(emptyModalState());
       resetTimerRef.current = null;

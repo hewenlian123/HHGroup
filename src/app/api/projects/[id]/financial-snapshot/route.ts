@@ -1,6 +1,11 @@
+import { withSessionCookies } from "@/lib/supabase-response";
 import { NextResponse } from "next/server";
-import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
-import { getProjectFinancialSnapshotComparison } from "@/lib/financial/project-financial-snapshot-db";
+import { requireOrganizationRequestClient } from "@/lib/auth-boundary";
+import {
+  getProjectFinancialSnapshot,
+  getProjectFinancialSnapshotComparison,
+} from "@/lib/financial/project-financial-snapshot-db";
+import { attachServerTiming } from "@/lib/performance/server-timing";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -15,22 +20,78 @@ function jsonError(status: number, message: string): NextResponse {
 }
 
 export async function GET(request: Request, ctx: { params: Promise<{ id: string }> }) {
-  const guard = await requireSupabaseOwnerOrAdmin(request);
-  if (!guard.ok) return guard.response;
+  const handlerStartedAt = performance.now();
+  const authStartedAt = performance.now();
+  const guard = await requireOrganizationRequestClient(request, {
+    projectId: (await ctx.params).id,
+    write: request.method !== "GET",
+    requireOwnerAdmin: true,
+    noStore: true,
+  });
+  const authDuration = performance.now() - authStartedAt;
+  let serverDataDuration = 0;
+  const finish = <T extends Response>(response: T) =>
+    attachServerTiming(response, {
+      hh_auth: authDuration,
+      hh_server_data: serverDataDuration,
+      hh_handler_total: performance.now() - handlerStartedAt,
+    });
+  if (!guard.ok) return finish(guard.response);
 
   const { id } = await ctx.params;
   const projectId = id?.trim();
-  if (!projectId) return jsonError(400, "Missing project id.");
+  if (!projectId)
+    return finish(withSessionCookies(jsonError(400, "Missing project id."), guard.sessionResponse));
 
+  const serverDataStartedAt = performance.now();
   try {
-    const comparison = await getProjectFinancialSnapshotComparison(projectId);
-    return NextResponse.json({ ok: true, comparison }, { headers: NO_CACHE_HEADERS });
+    const debugFinancial = new URL(request.url).searchParams.get("debugFinancial") === "1";
+    if (debugFinancial) {
+      const comparison = await getProjectFinancialSnapshotComparison(projectId, guard.client);
+      serverDataDuration = performance.now() - serverDataStartedAt;
+      return finish(
+        withSessionCookies(
+          NextResponse.json({ ok: true, comparison }, { headers: NO_CACHE_HEADERS }),
+          guard.sessionResponse
+        )
+      );
+    } else {
+      const newSnapshot = await getProjectFinancialSnapshot(projectId, guard.client);
+      serverDataDuration = performance.now() - serverDataStartedAt;
+      return finish(
+        withSessionCookies(
+          NextResponse.json(
+            {
+              ok: true,
+              comparison: {
+                projectId,
+                oldCanonicalProfit: null,
+                oldProjectCostDashboard: null,
+                newSnapshot,
+                differences: [],
+                warnings: newSnapshot.warnings,
+                diagnostics: newSnapshot.diagnostics,
+              },
+            },
+            { headers: NO_CACHE_HEADERS }
+          ),
+          guard.sessionResponse
+        )
+      );
+    }
   } catch (error) {
+    serverDataDuration = performance.now() - serverDataStartedAt;
     const message =
       error instanceof Error ? error.message : "Failed to load project financial snapshot.";
     if (message === "Project not found.") {
-      return jsonError(200, message);
+      return finish(withSessionCookies(jsonError(404, message), guard.sessionResponse));
     }
-    return jsonError(500, message);
+    console.error("[project-financial-snapshot] required data load failed", error);
+    return finish(
+      withSessionCookies(
+        jsonError(503, "Project financial data is temporarily unavailable."),
+        guard.sessionResponse
+      )
+    );
   }
 }

@@ -86,7 +86,7 @@ export async function DELETE(req: Request, { params }: RouteParams) {
       const [laborRes, reimbRes, advRes] = await Promise.all([
         c
           .from("labor_entries")
-          .select("worker_payment_id, labor_cost_snapshot, amount_snapshot, cost_amount, total")
+          .select("worker_payment_id, labor_cost_snapshot, amount_snapshot, cost_amount")
           .eq("worker_id", workerId),
         c.from("worker_reimbursements").select("amount, status").eq("worker_id", workerId),
         c.from("worker_advances").select("amount, status").eq("worker_id", workerId),

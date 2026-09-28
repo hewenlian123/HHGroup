@@ -53,9 +53,12 @@ function assertRouteGuards() {
     "src/app/api/upload-receipt/upload/route.ts",
     "src/app/api/upload-receipt/submit/route.ts",
   ]) {
-    const source = requireSource(route, ["getServerSupabase"]);
+    const source = requireSource(route, [
+      "requireCompanyRequestClient",
+      "await requireCompanyRequestClient(req)",
+    ]);
     if (source.includes("getServerSupabaseAdmin") || source.includes("SUPABASE_SERVICE_ROLE")) {
-      fail(`${route} exposes service-role authority to public receipt intake`);
+      fail(`${route} exposes service-role authority to receipt intake`);
     }
   }
 }

@@ -6,11 +6,16 @@ import {
   E2E_PRESERVED_PROJECT_ID,
   E2E_PRESERVED_PROJECT_LABEL,
 } from "./e2e-cleanup-db";
+import { loginAsE2EOwner } from "./e2e-auth-owner";
 import { assertE2ESupabaseUrlSafeForMutations } from "./e2e-supabase-url-guard";
 
 const E2E_CUSTOMER_LABEL = "[E2E] Test Customer";
 const createdInvoiceNos = new Set<string>();
 const createdClientNames = new Set<string>();
+
+test.beforeEach(async ({ page }) => {
+  await loginAsE2EOwner(page, "/financial/invoices");
+});
 
 function db(): SupabaseClient | null {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
@@ -88,7 +93,7 @@ async function createDraftInvoice(page: Page, invoiceNo: string): Promise<string
 
   await selectSeedProjectAndCustomer(page);
   await page.getByTestId("invoice-new-number-input").fill(invoiceNo);
-  await page.getByTestId("invoice-new-due-date-input").fill("2026-06-30");
+  await page.getByTestId("invoice-new-due-date-input").fill("2099-06-30");
   await page.getByTestId("invoice-new-line-1-item-input").fill(`PW Payment item ${invoiceNo}`);
   await page.getByTestId("invoice-new-line-1-qty-input").fill("1");
   await page.getByTestId("invoice-new-line-1-rate-input").fill("225");
@@ -229,7 +234,7 @@ test("invoice project linkage, mark sent, and payment received flow stay in sync
   await expect(dialog.locator("input[readonly]").first()).toHaveValue(E2E_PRESERVED_PROJECT_LABEL);
   await expect(dialog.locator("input[readonly]").first()).not.toHaveValue(E2E_PRESERVED_PROJECT_ID);
   await expect(dialog.getByPlaceholder("Customer name")).toHaveValue(E2E_CUSTOMER_LABEL);
-  await expect(dialog.getByPlaceholder("0")).toHaveValue("225");
+  await expect(dialog.getByPlaceholder("0")).toHaveValue("225.00");
   await dialog.getByPlaceholder("0").fill("100");
   await dialog.getByRole("button", { name: "Receive Payment" }).click();
   await expect(dialog).toBeHidden({ timeout: 30_000 });
@@ -263,7 +268,7 @@ test("invoice project linkage, mark sent, and payment received flow stay in sync
   await expect(secondDialog.locator("input[readonly]").first()).not.toHaveValue(
     E2E_PRESERVED_PROJECT_ID
   );
-  await expect(secondDialog.getByPlaceholder("0")).toHaveValue("125");
+  await expect(secondDialog.getByPlaceholder("0")).toHaveValue("125.00");
   await secondDialog.getByRole("button", { name: "Receive Payment" }).click();
   await expect(secondDialog).toBeHidden({ timeout: 30_000 });
 

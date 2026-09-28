@@ -11,6 +11,6 @@ test.describe("Legacy receipt queue compatibility", () => {
     await page.goto("/financial/receipt-queue", { waitUntil: "domcontentloaded", timeout: 60_000 });
     await page.locator("main").first().waitFor({ state: "visible", timeout: 90_000 });
     await expect(page).toHaveURL(/\/financial\/inbox(?:\?|$)/);
-    await expect(page.getByRole("heading", { name: "Expense Operations" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Review", exact: true })).toBeVisible();
   });
 });

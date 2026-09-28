@@ -46,6 +46,9 @@ export type ProjectFinancialInvoicePaymentInput = ProjectFinancialAmountRow;
 export type ProjectFinancialInvoiceInput = ProjectFinancialAmountRow & {
   payments?: ProjectFinancialInvoicePaymentInput[];
   paidAmount?: number | string | null;
+  subtotal?: number | string | null;
+  taxAmount?: number | string | null;
+  tax_amount?: number | string | null;
 };
 
 export type ProjectFinancialExpenseLineInput = ProjectFinancialAmountRow & {
@@ -77,6 +80,7 @@ export type ProjectFinancialSnapshotInput = {
   subcontractCosts?: ProjectFinancialAmountRow[];
   commissionCosts?: ProjectFinancialAmountRow[];
   apCosts?: ProjectFinancialAmountRow[];
+  changeOrderCost?: number | string | null;
   cashOutPayments?: ProjectFinancialAmountRow[];
 };
 
@@ -95,6 +99,10 @@ export type ProjectFinancialSnapshot = {
   billedAmount: number;
   paidAmount: number;
   openAR: number;
+  /** Contract still not invoiced, excluding sales tax. */
+  remainingToBill: number;
+  invoicedExTax: number;
+  changeOrderCost: number;
   actualCost: number;
   expenseCost: number;
   laborCost: number;
@@ -436,16 +444,26 @@ function calculateLaborCost(laborEntries: ProjectFinancialLaborEntryInput[] | un
   return toMoney(total);
 }
 
+function invoiceExTaxAmount(invoice: ProjectFinancialInvoiceInput): number {
+  if (invoice.subtotal != null && invoice.subtotal !== "")
+    return Math.max(0, toMoney(invoice.subtotal));
+  const tax = invoice.taxAmount ?? invoice.tax_amount;
+  return Math.max(0, toMoney(rowAmount(invoice) - toMoney(tax)));
+}
+
 function calculateInvoiceAmounts(invoices: ProjectFinancialInvoiceInput[] | undefined): {
   billedAmount: number;
   paidAmount: number;
+  invoicedExTax: number;
 } {
   let billedAmount = 0;
   let paidAmount = 0;
+  let invoicedExTax = 0;
 
   for (const invoice of invoices ?? []) {
     if (isVoidStatus(invoice.status) || isDraftInvoiceStatus(invoice.status)) continue;
     billedAmount += rowAmount(invoice);
+    invoicedExTax += invoiceExTaxAmount(invoice);
     if (invoice.payments) {
       paidAmount += sumNonVoidRows(invoice.payments);
     } else {
@@ -453,7 +471,11 @@ function calculateInvoiceAmounts(invoices: ProjectFinancialInvoiceInput[] | unde
     }
   }
 
-  return { billedAmount: toMoney(billedAmount), paidAmount: toMoney(paidAmount) };
+  return {
+    billedAmount: toMoney(billedAmount),
+    paidAmount: toMoney(paidAmount),
+    invoicedExTax: toMoney(invoicedExTax),
+  };
 }
 
 export function calculateProjectFinancialSnapshot(
@@ -463,7 +485,7 @@ export function calculateProjectFinancialSnapshot(
   const contractValue = toMoney(input.contractValue);
   const approvedChangeOrders = toMoney(input.approvedChangeOrders);
   const revisedContractValue = toMoney(contractValue + approvedChangeOrders);
-  const { billedAmount, paidAmount } = calculateInvoiceAmounts(input.invoices);
+  const { billedAmount, paidAmount, invoicedExTax } = calculateInvoiceAmounts(input.invoices);
   const {
     expenseCost,
     reimbursementExpenseIds,
@@ -484,8 +506,15 @@ export function calculateProjectFinancialSnapshot(
   const subcontractCost = sumNonVoidRows(input.subcontractCosts);
   const commissionCost = sumNonVoidRows(input.commissionCosts);
   const apCost = sumNonVoidRows(input.apCosts);
+  const changeOrderCost = toMoney(input.changeOrderCost);
   const actualCost = toMoney(
-    expenseCost + laborCost + reimbursementCost + subcontractCost + commissionCost
+    expenseCost +
+      laborCost +
+      reimbursementCost +
+      subcontractCost +
+      commissionCost +
+      apCost +
+      changeOrderCost
   );
   const grossProfit = toMoney(revisedContractValue - actualCost);
   const grossMargin = revisedContractValue > 0 ? grossProfit / revisedContractValue : 0;
@@ -494,16 +523,6 @@ export function calculateProjectFinancialSnapshot(
     input.cashOutPayments !== undefined
       ? sumNonVoidRows(input.cashOutPayments)
       : toMoney(expenseCost + reimbursementCost + laborCost + subcontractCost + commissionCost);
-
-  if (apCost > 0) {
-    warnings.push(
-      warning(
-        "ap_bills_not_in_actual_cost",
-        "warning",
-        "AP bills are reported as diagnostics only and are not included in project actual cost until duplicate-cost rules are explicit."
-      )
-    );
-  }
 
   if (input.cashOutPayments === undefined) {
     warnings.push(
@@ -535,6 +554,9 @@ export function calculateProjectFinancialSnapshot(
     billedAmount,
     paidAmount,
     openAR: toMoney(Math.max(0, billedAmount - paidAmount)),
+    invoicedExTax,
+    remainingToBill: toMoney(Math.max(0, revisedContractValue - invoicedExTax)),
+    changeOrderCost,
     actualCost,
     expenseCost,
     laborCost,

@@ -10,8 +10,6 @@ export const EB = {
   glassScope: "eb-glass-scope",
   glassSidebar: "eb-glass-sidebar",
   glassSidebarFloat: "eb-glass-sidebar eb-glass-sidebar-float",
-  overviewStickyAside: "eb-estimate-overview-sticky",
-  overviewStickyFloating: "is-floating",
   workbench: "eb-estimate-workbench grid min-w-0 gap-4",
   glassMobileBar: "eb-glass-mobile-bar",
   glassHeader: "eb-glass-header",
@@ -46,6 +44,7 @@ export const EB = {
   lineItemItemCell: "eb-line-item-item-cell",
   lineItemTitleField: "eb-line-item-title-field",
   lineItemPricingWrap: "eb-line-item-pricing-wrap",
+  lineQtyUnitGroup: "eb-line-qty-unit-group",
   lineFieldStack: "flex min-w-0 flex-col gap-1",
   lineFieldStackContents: "eb-line-field-stack-contents flex min-w-0 flex-col gap-1",
   lineTitleLabel: "eb-line-title-label",
@@ -69,7 +68,7 @@ export const EB = {
   lineTotalBlock: "eb-line-total-block",
   lineTotalAmount: "eb-line-total-amount",
   lineItemMoreTrigger:
-    "eb-line-item-more-trigger inline-flex h-7 w-7 min-h-7 min-w-7 shrink-0 items-center justify-center rounded-hh-compact border-0 bg-transparent p-0 text-muted-foreground opacity-70 transition-[opacity,background,color] duration-150 hover:!translate-y-0 hover:bg-muted hover:text-foreground hover:opacity-100 active:!scale-100 active:!duration-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-md:h-11 max-md:w-11 max-md:min-h-11 max-md:min-w-11 max-md:opacity-90",
+    "eb-line-item-more-trigger inline-flex h-9 w-9 min-h-9 min-w-9 shrink-0 items-center justify-center rounded-hh-compact border-0 bg-transparent p-0 text-muted-foreground transition-[background,color] duration-150 hover:!translate-y-0 hover:bg-muted hover:text-foreground active:!scale-100 active:!duration-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-md:h-11 max-md:w-11 max-md:min-h-11 max-md:min-w-11",
   lineItemMoreMenu:
     "eb-line-item-more-menu min-w-[9.5rem] w-[9.5rem] rounded-hh-compact border p-1",
   lineItemMoreMenuItem:
@@ -155,8 +154,7 @@ export const EB = {
     "eb-scope-section-add-line inline-flex min-h-11 items-center gap-1 rounded-hh-compact border border-border bg-background px-2.5 text-hh-control text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:h-8 md:min-h-8",
   scopeSectionItemCount:
     "eb-scope-section-item-count text-hh-metadata hh-fin text-muted-foreground",
-  scopeSectionBody:
-    "eb-scope-section-body grid transition-[grid-template-rows,opacity] duration-150 ease-out",
+  scopeSectionBody: "eb-scope-section-body grid",
   scopeSectionBodyCollapsed: "eb-scope-section-body--collapsed",
   scopeSectionBodyInner: "eb-scope-section-body-inner min-h-0 overflow-hidden",
   scopeSectionMobile: "eb-scope-section-mobile mb-3 last:mb-0",
@@ -199,7 +197,7 @@ export const EB = {
   paymentPercentCol: "w-full shrink-0 sm:w-[5.75rem]",
   paymentPercentHelper: "eb-payment-percent-helper mt-1.5",
   sheetSectionLabel: "eb-sheet-section-label",
-  sheetInput: "eb-sheet-input",
+  sheetInput: "eb-sheet-input h-hh-control-standard hh-touch-min",
   sheetTextarea: "eb-sheet-textarea",
   sheetPrimary: "eb-sheet-primary",
   sheetSecondary: "eb-sheet-secondary",

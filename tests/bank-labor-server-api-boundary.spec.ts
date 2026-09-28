@@ -145,7 +145,7 @@ async function dailyEntryFullFlowCounts(
 
   const workerIds = (workerRows ?? []).map((row) => String(row.id)).filter(Boolean);
   const projectIds = (projectRows ?? []).map((row) => String(row.id)).filter(Boolean);
-  let laborEntryIds = new Set<string>();
+  const laborEntryIds = new Set<string>();
   if (workerIds.length > 0) {
     const { data, error } = await db.from("labor_entries").select("id").in("worker_id", workerIds);
     if (error) throw new Error(`Failed to count daily entry flow worker entries: ${error.message}`);
@@ -909,7 +909,6 @@ test.describe("bank and labor server API boundary", () => {
     const workerA = workers!.find((worker) => worker.name === workerAName)!;
     const workerB = workers!.find((worker) => worker.name === workerBName)!;
     const workerC = workers!.find((worker) => worker.name === workerCName)!;
-    const workerIds = [workerA.id, workerB.id, workerC.id];
     const { error: laborWorkerSyncError } = await db.from("labor_workers").upsert(
       workers!.map((worker) => ({ id: worker.id, name: worker.name })),
       { onConflict: "id" }

@@ -2,6 +2,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const invoiceInsertMock = vi.fn();
 const getEstimateInvoicePrefillMock = vi.fn();
+const createInvoiceAtomicWithClientMock = vi.fn();
+const createEstimateMilestoneInvoiceAtomicWithClientMock = vi.fn();
+const linkEstimateMilestoneInvoiceWithActivityWithClientMock = vi.fn();
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/lib/auth-boundary", () => ({
@@ -28,6 +31,19 @@ vi.mock("@/lib/supabase-server", () => ({
 }));
 vi.mock("@/app/financial/invoices/new/estimate-prefill", () => ({
   getEstimateInvoicePrefill: getEstimateInvoicePrefillMock,
+}));
+vi.mock("@/lib/invoices-db", () => ({
+  createInvoiceAtomicWithClient: (...args: unknown[]) => createInvoiceAtomicWithClientMock(...args),
+  createEstimateMilestoneInvoiceAtomicWithClient: (...args: unknown[]) =>
+    createEstimateMilestoneInvoiceAtomicWithClientMock(...args),
+}));
+vi.mock("@/lib/estimate-activity", () => ({
+  estimateActivityActorFromAuth: () => ({
+    userId: "33333333-3333-4333-8333-333333333333",
+    label: "owner@example.com",
+  }),
+  linkEstimateMilestoneInvoiceWithActivityWithClient: (...args: unknown[]) =>
+    linkEstimateMilestoneInvoiceWithActivityWithClientMock(...args),
 }));
 
 describe("estimate milestone invoice integrity", () => {
@@ -56,6 +72,16 @@ describe("estimate milestone invoice integrity", () => {
         invoiceTotal: 500,
         notes: "",
       },
+    });
+    createInvoiceAtomicWithClientMock.mockResolvedValue({
+      id: "44444444-4444-4444-8444-444444444444",
+    });
+    createEstimateMilestoneInvoiceAtomicWithClientMock.mockResolvedValue({
+      id: "44444444-4444-4444-8444-444444444444",
+    });
+    linkEstimateMilestoneInvoiceWithActivityWithClientMock.mockResolvedValue({
+      linked: true,
+      invoiceId: "44444444-4444-4444-8444-444444444444",
     });
   });
 
@@ -125,6 +151,103 @@ describe("estimate milestone invoice integrity", () => {
     });
 
     expect(result).toEqual({ ok: true, invoiceId: "invoice-existing" });
+    expect(invoiceInsertMock).not.toHaveBeenCalled();
+  });
+
+  it("does not delete the authoritative invoice when a milestone retry reuses the same invoice", async () => {
+    linkEstimateMilestoneInvoiceWithActivityWithClientMock.mockResolvedValueOnce({
+      linked: false,
+      invoiceId: "44444444-4444-4444-8444-444444444444",
+    });
+    const { createInvoiceDraftAction } = await import("@/app/financial/invoices/new/actions");
+
+    const result = await createInvoiceDraftAction({
+      idempotencyKey: "caller-controlled-key-must-not-win",
+      projectId: "project-1",
+      customerId: "customer-1",
+      clientName: "Owner",
+      issueDate: "2026-08-21",
+      dueDate: "2026-09-01",
+      sourceEstimateId: "estimate-1",
+      paymentScheduleItemId: "milestone-1",
+      taxPct: 5,
+      lineItems: [{ description: "Deposit", qty: 1, unitPrice: 476.19 }],
+    });
+
+    expect(result).toEqual({
+      ok: true,
+      invoiceId: "44444444-4444-4444-8444-444444444444",
+    });
+    expect(createEstimateMilestoneInvoiceAtomicWithClientMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        idempotencyKey: "invoice-milestone:estimate-1:milestone-1",
+        estimateId: "estimate-1",
+        scheduleItemId: "milestone-1",
+      }),
+      expect.anything()
+    );
+    expect(createInvoiceAtomicWithClientMock).not.toHaveBeenCalled();
+    expect(linkEstimateMilestoneInvoiceWithActivityWithClientMock).not.toHaveBeenCalled();
+    expect(invoiceInsertMock).not.toHaveBeenCalled();
+  });
+
+  it("does not delete a milestone invoice when linkage committed before the response was lost", async () => {
+    getEstimateInvoicePrefillMock
+      .mockResolvedValueOnce({
+        ok: true,
+        prefill: {
+          sourceEstimateId: "estimate-1",
+          paymentScheduleItemId: "milestone-1",
+          estimateNumber: "EST-0001",
+          projectId: "project-1",
+          projectName: "HH Residence",
+          customerId: "customer-1",
+          customerName: "Owner",
+          dueDate: "2026-09-01",
+          milestoneTitle: "Deposit",
+          milestoneDescription: "",
+          amount: 500,
+          invoiceSubtotal: 476.19,
+          invoiceTaxPct: 5,
+          invoiceTaxAmount: 23.81,
+          invoiceTotal: 500,
+          notes: "",
+        },
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        error: "This payment milestone already has an invoice.",
+        existingInvoiceId: "44444444-4444-4444-8444-444444444444",
+      });
+    createEstimateMilestoneInvoiceAtomicWithClientMock.mockRejectedValueOnce(
+      new Error("atomic response lost")
+    );
+    const { createInvoiceDraftAction } = await import("@/app/financial/invoices/new/actions");
+
+    const input = {
+      projectId: "project-1",
+      customerId: "customer-1",
+      clientName: "Owner",
+      issueDate: "2026-08-21",
+      dueDate: "2026-09-01",
+      sourceEstimateId: "estimate-1",
+      paymentScheduleItemId: "milestone-1",
+      taxPct: 5,
+      lineItems: [{ description: "Deposit", qty: 1, unitPrice: 476.19 }],
+    };
+
+    const ambiguousResult = await createInvoiceDraftAction(input);
+    const retryResult = await createInvoiceDraftAction(input);
+
+    expect(ambiguousResult).toEqual({ ok: false, error: "atomic response lost" });
+    expect(retryResult).toEqual({
+      ok: true,
+      invoiceId: "44444444-4444-4444-8444-444444444444",
+    });
+    expect(getEstimateInvoicePrefillMock).toHaveBeenCalledTimes(2);
+    expect(createEstimateMilestoneInvoiceAtomicWithClientMock).toHaveBeenCalledTimes(1);
+    expect(createInvoiceAtomicWithClientMock).not.toHaveBeenCalled();
+    expect(linkEstimateMilestoneInvoiceWithActivityWithClientMock).not.toHaveBeenCalled();
     expect(invoiceInsertMock).not.toHaveBeenCalled();
   });
 });

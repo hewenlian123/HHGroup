@@ -157,7 +157,12 @@ export function CustomerSelectWithAdd({
       </button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <NeoModal title="Select customer" className="max-w-sm" bodyClassName="space-y-3">
+        <NeoModal
+          title="Select customer"
+          description="Choose an existing customer for this document."
+          className="max-w-sm"
+          bodyClassName="space-y-3"
+        >
           <Input
             placeholder="Search by name or email"
             value={search}
@@ -205,6 +210,7 @@ export function CustomerSelectWithAdd({
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
         <NeoModal
           title="New customer"
+          description="Enter customer details to add a customer and select them for this document."
           className="max-w-md"
           bodyClassName="space-y-3"
           footer={

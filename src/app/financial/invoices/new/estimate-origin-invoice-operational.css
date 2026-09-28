@@ -4,11 +4,11 @@
   color: var(--hh-text-secondary);
 }
 
-.invoice-estimate-origin-workspace [data-neo-page-header="true"] h1 {
+.invoice-estimate-origin-workspace [data-page-header="true"] h1 {
   color: var(--hh-text-primary);
 }
 
-.invoice-estimate-origin-workspace [data-neo-page-header="true"] p {
+.invoice-estimate-origin-workspace [data-page-header="true"] p {
   color: var(--hh-text-secondary);
 }
 

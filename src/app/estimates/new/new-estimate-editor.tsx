@@ -1,48 +1,41 @@
 "use client";
+import { EstimatePaymentInlineRow } from "../_components/estimate-payment-inline-row";
 
 import * as React from "react";
+
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+
 import {
   Sheet,
   SheetContent,
   SheetDescription,
-  SheetFooter,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
 import { createEstimateWithItemsAction } from "./actions";
+import { computeEstimatePricing } from "@/lib/estimate-totals";
 import type { CostCode } from "@/lib/data";
-import { FileText, Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
+import { FileText, MoreHorizontal, Plus } from "lucide-react";
 import { useToast } from "@/components/toast/toast-provider";
 import { cn } from "@/lib/utils";
-import { formatEstimateCurrency } from "../_components/estimate-currency";
+
+import { EstimateBuilderMobileSummary } from "../_components/estimate-builder-summary";
+import { EstimateBuilderSaveStatus } from "../_components/estimate-builder-save-status";
+import { EstimateWorkspace } from "../_components/estimate-workspace";
 import {
-  parsePaymentPercentInput,
-  paymentAmountFromPercent,
-  paymentPercentFromAmount,
-} from "../_components/estimate-payment-percent";
-import {
-  EstimateBuilderCompactSummary,
-  EstimateBuilderMobileSummary,
-} from "../_components/estimate-builder-summary";
-import { EstimateBuilderAdvanced } from "../_components/estimate-builder-advanced";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { EstimateNewCustomerSection } from "../_components/estimate-new-customer-section";
 import { EstimateBuilderShell } from "../_components/estimate-builder-shell";
 import { EstimateLineItemsLocal } from "../_components/estimate-line-items-local";
-import { ProposalScopeEditor } from "../_components/proposal-scope-editor";
-import { ProposalPaymentMilestoneList } from "../_components/proposal-payment-milestone-list";
-import {
-  EB,
-  ebGlassPanel,
-  ebInput,
-  ebSheetGlassNarrow,
-  ebSheetInput,
-} from "../_components/estimate-builder-ui";
+
+import { EB, ebInput, ebSheetGlassNarrow } from "../_components/estimate-builder-ui";
 import type { EditorLineItem } from "../_components/estimate-line-item-model";
 import {
   EstimateNotesClarifications,
@@ -56,10 +49,7 @@ import type { CustomerOption } from "@/components/customers/customer-select-with
 import type { EstimateDocumentStyle } from "@/lib/estimate-document-style";
 import type { EstimateTemplateRecord } from "@/lib/estimate-templates";
 import { createProposalSectionId } from "../_components/estimate-section-templates";
-import {
-  EstimateBuilderSaveStatus,
-  type EstimateSaveStatus,
-} from "../_components/estimate-builder-save-status";
+import { type EstimateSaveStatus } from "../_components/estimate-builder-save-status";
 import { useEstimateUnsavedWarning } from "../_components/use-estimate-unsaved-warning";
 import {
   buildOrderedEstimateCategoryNames,
@@ -69,6 +59,7 @@ import {
 import {
   buildEstimatePreviewHref,
   captureEstimateBuilderReturnContext,
+  reduceEstimateActiveSection,
 } from "../_components/estimate-workflow-continuity";
 import {
   ESTIMATE_HEADER_BUTTON,
@@ -96,6 +87,7 @@ type PaymentMilestoneLocal = {
   description: string;
   amount: number;
   dueDate?: string;
+  paymentTerm?: string | null;
 };
 
 type LineItem = {
@@ -138,56 +130,37 @@ function EstimateTemplateSelector({
   onTemplateChange: (templateId: string) => void;
 }) {
   return (
-    <section className="eb-estimate-template-tool" data-testid="estimate-template-selector">
-      <div className={ebGlassPanel("px-3 py-2 sm:px-4")}>
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex min-w-0 items-center gap-2">
-            <span className="eb-estimate-template-tool-icon flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-[var(--hh-border)] bg-[var(--hh-l3-hover)] text-[var(--hh-text-tertiary)]">
-              <Sparkles className="h-4 w-4" aria-hidden />
-            </span>
-            <div className="min-w-0">
-              <h2 className="whitespace-nowrap text-hh-metadata font-semibold leading-snug text-foreground sm:text-hh-table-cell">
-                Start from template
-              </h2>
-              <p className="hidden truncate text-hh-status leading-snug text-muted-foreground sm:block">
-                Optional reusable scope
-              </p>
-            </div>
-          </div>
-          <div className="flex shrink-0 gap-2">
-            <select
-              value={selectedTemplateId}
-              onChange={(event) => onTemplateChange(event.target.value)}
-              className={ebInput(
-                "min-h-11 w-[7.5rem] min-w-0 shrink-0 px-2 text-sm sm:w-[11rem] sm:px-3 md:h-8 md:min-h-8 md:w-[220px]"
-              )}
-              aria-label="Estimate template"
-              data-testid="estimate-template-select"
-            >
-              <option value="">Blank Estimate</option>
-              {templates.map((template) => (
-                <option key={template.id} value={template.id}>
-                  {template.name}
-                </option>
-              ))}
-            </select>
-            <Button
-              type="button"
-              variant="outline"
-              asChild
-              className={cn(
-                "min-h-11 w-11 shrink-0 px-0 sm:w-auto sm:px-3 md:min-h-8",
-                EB.actionSecondary
-              )}
-            >
-              <Link href="/estimate-templates" aria-label="Estimate templates">
-                <FileText className="h-4 w-4 sm:mr-2" />
-                <span className="sr-only sm:not-sr-only">Templates</span>
-              </Link>
-            </Button>
-          </div>
-        </div>
-      </div>
+    <section className="flex flex-wrap items-center gap-3" data-testid="estimate-template-selector">
+      <select
+        value={selectedTemplateId}
+        onChange={(event) => onTemplateChange(event.target.value)}
+        className={ebInput(
+          "min-h-11 w-[7.5rem] min-w-0 shrink-0 px-2 text-sm sm:w-[11rem] sm:px-3 md:h-8 md:min-h-8 md:w-[220px]"
+        )}
+        aria-label="Estimate template"
+        data-testid="estimate-template-select"
+      >
+        <option value="">Blank Estimate</option>
+        {templates.map((template) => (
+          <option key={template.id} value={template.id}>
+            {template.name}
+          </option>
+        ))}
+      </select>
+      <Button
+        type="button"
+        variant="outline"
+        asChild
+        className={cn(
+          "min-h-11 w-11 shrink-0 px-0 sm:w-auto sm:px-3 md:min-h-8",
+          EB.actionSecondary
+        )}
+      >
+        <Link href="/estimate-templates" aria-label="Estimate templates">
+          <FileText className="h-4 w-4 sm:mr-2" />
+          <span className="sr-only sm:not-sr-only">Templates</span>
+        </Link>
+      </Button>
     </section>
   );
 }
@@ -217,6 +190,9 @@ export function NewEstimateEditor({
   const [validUntil, setValidUntil] = React.useState("");
   const [salesPerson, setSalesPerson] = React.useState("");
   const [tax, setTax] = React.useState(0);
+  const [taxRatePct, setTaxRatePct] = React.useState<number | null>(() =>
+    Number.isFinite(initialDefaultTaxPct) && initialDefaultTaxPct >= 0 ? initialDefaultTaxPct : 0
+  );
   const [taxTouched, setTaxTouched] = React.useState(false);
   const [defaultTaxPct] = React.useState(() =>
     Number.isFinite(initialDefaultTaxPct) && initialDefaultTaxPct >= 0 ? initialDefaultTaxPct : 0
@@ -233,19 +209,17 @@ export function NewEstimateEditor({
   const [saveStatus, setSaveStatus] = React.useState<EstimateSaveStatus>("idle");
   const [submitAttempted, setSubmitAttempted] = React.useState(false);
   const [formError, setFormError] = React.useState<string | null>(null);
+  const [focusPaymentId, setFocusPaymentId] = React.useState<string | null>(null);
   const [paymentMilestones, setPaymentMilestones] = React.useState<PaymentMilestoneLocal[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = React.useState(initialTemplateId ?? "");
-  const [scheduleOpen, setScheduleOpen] = React.useState(false);
+
   const [detailsOpen, setDetailsOpen] = React.useState(false);
-  const [editingPaymentMilestoneId, setEditingPaymentMilestoneId] = React.useState<string | null>(
-    null
-  );
-  const [pmTitle, setPmTitle] = React.useState("");
-  const [pmDescription, setPmDescription] = React.useState("");
-  const [pmAmount, setPmAmount] = React.useState("");
-  const [pmPercent, setPmPercent] = React.useState("");
-  const [pmDueDate, setPmDueDate] = React.useState("");
-  const [pmError, setPmError] = React.useState<string | null>(null);
+  const [templateOpen, setTemplateOpen] = React.useState(false);
+  const [activeSectionState, setActiveSectionState] = React.useState<{
+    id: string | null;
+    explicit: boolean;
+  }>({ id: null, explicit: false });
+
   const initialTemplateAppliedRef = React.useRef<string | null>(null);
   const dirtyTrackingReadyRef = React.useRef(false);
   const saveInFlightRef = React.useRef(false);
@@ -269,6 +243,7 @@ export function NewEstimateEditor({
       validUntil,
       salesPerson,
       tax,
+      taxRatePct,
       taxTouched,
       templateDefaultTaxPct,
       discount,
@@ -298,6 +273,7 @@ export function NewEstimateEditor({
       selectedCustomer,
       selectedTemplateId,
       tax,
+      taxRatePct,
       taxTouched,
       templateDefaultTaxPct,
       validUntil,
@@ -410,6 +386,13 @@ export function NewEstimateEditor({
     setValidUntil(recovered.validUntil);
     setSalesPerson(recovered.salesPerson);
     setTax(recovered.tax);
+    setTaxRatePct(
+      recovered.taxRatePct != null
+        ? recovered.taxRatePct
+        : recovered.taxTouched
+          ? null
+          : (recovered.templateDefaultTaxPct ?? defaultTaxPct)
+    );
     setTaxTouched(recovered.taxTouched);
     setTemplateDefaultTaxPct(recovered.templateDefaultTaxPct);
     setDiscount(recovered.discount);
@@ -425,7 +408,7 @@ export function NewEstimateEditor({
     setDirty(true);
     setSaveStatus("unsaved");
     setRecoveryState("unsaved");
-  }, [recoveryNotice, today]);
+  }, [defaultTaxPct, recoveryNotice, today]);
 
   const discardRecoveredDraft = React.useCallback((): void => {
     clearEstimateNewDraftRecovery();
@@ -469,7 +452,12 @@ export function NewEstimateEditor({
       else if (t === "subcontractor") subcontractorCost += tot;
     });
     const subtotal = lineItems.reduce((s, li) => s + lineTotal(li), 0);
-    const grandTotal = subtotal + tax - discount;
+    const pricing = computeEstimatePricing({
+      subtotal,
+      discount,
+      tax,
+      taxRatePct,
+    });
     return {
       materialCost,
       laborCost,
@@ -477,11 +465,52 @@ export function NewEstimateEditor({
       subtotal,
       overhead: 0,
       profit: 0,
-      tax,
-      discount,
-      grandTotal,
+      tax: pricing.tax,
+      discount: pricing.discount,
+      grandTotal: pricing.total,
     };
-  }, [lineItems, codeToType, tax, discount]);
+  }, [lineItems, codeToType, tax, discount, taxRatePct]);
+
+  const worksheetSections = React.useMemo(() => {
+    const orderedCodes = [
+      ...sectionOrder,
+      ...lineItems.map((lineItem) => lineItem.costCode),
+    ].filter((code, index, codes) => code && codes.indexOf(code) === index);
+    const catalogNameByCode = new Map(costCodes.map((code) => [code.code, code.name]));
+
+    return orderedCodes.map((code) => {
+      const items = lineItems.filter((lineItem) => lineItem.costCode === code);
+      return {
+        id: code,
+        name: categoryNames[code] ?? catalogNameByCode.get(code) ?? code,
+        itemCount: items.length,
+        subtotal: items.reduce((total, item) => total + lineTotal(item), 0),
+        collapsed: false,
+      };
+    });
+  }, [categoryNames, costCodes, lineItems, sectionOrder]);
+
+  const selectedSectionId =
+    activeSectionState.id &&
+    worksheetSections.some((section) => section.id === activeSectionState.id)
+      ? activeSectionState.id
+      : (worksheetSections[0]?.id ?? null);
+  const explicitActiveSectionId = activeSectionState.explicit ? selectedSectionId : null;
+  const handleActiveSectionChange = React.useCallback(
+    (sectionId: string, source: "explicit" | "inferred"): void => {
+      setActiveSectionState((current) => reduceEstimateActiveSection(current, sectionId, source));
+    },
+    []
+  );
+  const activeSectionKey = worksheetSections.map((section) => section.id).join("|");
+  React.useEffect(() => {
+    setActiveSectionState((current) => {
+      if (current.id && worksheetSections.some((section) => section.id === current.id)) {
+        return current;
+      }
+      return { id: worksheetSections[0]?.id ?? null, explicit: false };
+    });
+  }, [activeSectionKey, worksheetSections]);
 
   const hasValidLineItem = React.useMemo(
     () => lineItems.some((li) => li.title.trim().length > 0 || li.description.trim().length > 0),
@@ -533,16 +562,11 @@ export function NewEstimateEditor({
   }, [clientName, hasValidLineItem, projectName]);
 
   React.useEffect(() => {
-    if (taxTouched) return;
-    const pct = Math.max(0, Number(templateDefaultTaxPct ?? defaultTaxPct) || 0);
-    if (!(pct > 0)) {
-      if (tax !== 0) setTax(0);
-      return;
-    }
-    const computed = summary.subtotal * (pct / 100);
-    if (Number.isFinite(computed)) setTax(Number(computed.toFixed(2)));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [defaultTaxPct, summary.subtotal, taxTouched, templateDefaultTaxPct]);
+    if (taxRatePct == null) return;
+    const taxable = Math.max(0, summary.subtotal - Math.max(0, discount));
+    const computed = Number((taxable * (Math.max(0, taxRatePct) / 100)).toFixed(2));
+    if (Number.isFinite(computed)) setTax(computed);
+  }, [discount, summary.subtotal, taxRatePct]);
 
   const applyEstimateTemplate = React.useCallback(
     (template: EstimateTemplateRecord, options: { quiet?: boolean } = {}): void => {
@@ -573,27 +597,22 @@ export function NewEstimateEditor({
       });
 
       const templateNotes = template.templateData.notes ?? [];
-      const notesWithTerms = [...templateNotes];
-      const hasPaymentTerms = notesWithTerms.some((note) => note.type === "payment_terms");
-      if (template.defaultTerms && !hasPaymentTerms) {
-        notesWithTerms.push({
-          id: `note-template-terms-${Date.now()}`,
-          type: "payment_terms",
-          title: "Payment Terms",
-          body: template.defaultTerms,
-        });
-      }
 
       setCategoryNames(nextCategoryNames);
       setSectionOrder(nextSectionOrder);
       setLineItems(nextLineItems);
       setEstimateNotes(
-        notesWithTerms.map((note) => ({
+        templateNotes.map((note) => ({
           ...note,
           id: `note-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
         }))
       );
       setTemplateDefaultTaxPct(template.defaultTaxRate);
+      setTaxRatePct(
+        template.defaultTaxRate != null && Number.isFinite(template.defaultTaxRate)
+          ? Math.max(0, template.defaultTaxRate)
+          : 0
+      );
       setTaxTouched(false);
       setTax(0);
       setDiscount(0);
@@ -614,6 +633,7 @@ export function NewEstimateEditor({
       setSelectedTemplateId(templateId);
       if (!templateId) {
         setTemplateDefaultTaxPct(null);
+        setTaxRatePct(defaultTaxPct);
         setCategoryNames({});
         setSectionOrder([]);
         setLineItems([]);
@@ -625,7 +645,7 @@ export function NewEstimateEditor({
       const template = templates.find((item) => item.id === templateId);
       if (template) applyEstimateTemplate(template);
     },
-    [applyEstimateTemplate, templates]
+    [applyEstimateTemplate, defaultTaxPct, templates]
   );
 
   React.useEffect(() => {
@@ -689,7 +709,8 @@ export function NewEstimateEditor({
         estimateDate: estimateDate || undefined,
         validUntil: validUntil || undefined,
         salesPerson: salesPerson.trim() || undefined,
-        tax,
+        tax: summary.tax,
+        taxRatePct,
         discount,
         overheadPct: 0,
         profitPct: 0,
@@ -699,10 +720,11 @@ export function NewEstimateEditor({
         items: lineItemsForSave()
           .map((li, index) => {
             const title = li.title.trim();
-            const description = li.description.trim();
+            const description = li.description;
             return {
               costCode: li.costCode,
-              desc: description ? `${title || "Line item"}\n${description}` : title,
+              itemName: title,
+              desc: description,
               qty: li.qty,
               unit: li.unit,
               unitCost: li.unitPrice,
@@ -712,13 +734,14 @@ export function NewEstimateEditor({
               sortOrder: index,
             };
           })
-          .filter((li) => li.desc.trim().length > 0),
+          .filter((li) => li.itemName.length > 0 || li.desc.trim().length > 0),
         paymentSchedule: paymentMilestones.length
           ? paymentMilestones.map((m) => ({
               title: m.title,
               description: m.description || null,
               amount: m.amount,
               dueDate: m.dueDate || null,
+              paymentTerm: m.paymentTerm ?? null,
             }))
           : undefined,
       });
@@ -765,7 +788,6 @@ export function NewEstimateEditor({
   }, []);
 
   const totalScheduled = paymentMilestones.reduce((sum, m) => sum + m.amount, 0);
-  const remaining = Math.max(0, summary.grandTotal - totalScheduled);
 
   const paymentHeaderSummary = React.useMemo(() => {
     if (!paymentMilestones.length) return null;
@@ -775,96 +797,12 @@ export function NewEstimateEditor({
     };
   }, [paymentMilestones, totalScheduled]);
 
-  const estimateTotalDollars = summary.grandTotal;
-
-  const resetPaymentDraft = () => {
-    setEditingPaymentMilestoneId(null);
-    setPmTitle("");
-    setPmDescription("");
-    setPmAmount("");
-    setPmPercent("");
-    setPmDueDate("");
-    setPmError(null);
-  };
-  const openPaymentMilestoneDrawer = (milestone?: PaymentMilestoneLocal) => {
-    if (milestone) {
-      setEditingPaymentMilestoneId(milestone.id);
-      setPmTitle(milestone.title);
-      setPmDescription(milestone.description);
-      setPmAmount(String(milestone.amount));
-      setPmPercent(
-        estimateTotalDollars > 0
-          ? paymentPercentFromAmount(milestone.amount, estimateTotalDollars)
-          : ""
-      );
-      setPmDueDate(milestone.dueDate ?? "");
-    } else {
-      resetPaymentDraft();
-    }
-    setScheduleOpen(true);
-  };
-
-  const handlePmAmountChange = (raw: string): void => {
-    setPmAmount(raw);
-    if (estimateTotalDollars <= 0) return;
-    if (raw.trim() === "") {
-      setPmPercent("");
-      return;
-    }
-    const amount = Number(raw);
-    if (!Number.isFinite(amount)) return;
-    setPmPercent(paymentPercentFromAmount(Math.max(0, amount), estimateTotalDollars));
-  };
-
-  const handlePmPercentChange = (raw: string): void => {
-    setPmPercent(raw);
-    if (raw.trim() === "") {
-      setPmAmount("");
-      return;
-    }
-    const parsed = parsePaymentPercentInput(raw);
-    if (parsed === null) return;
-    setPmPercent(String(parsed));
-    if (estimateTotalDollars > 0) {
-      setPmAmount(String(paymentAmountFromPercent(parsed, estimateTotalDollars)));
-    }
-  };
-
-  const pmPercentDisplay = pmPercent.trim() === "" ? null : Number(pmPercent);
-  const pmPercentHelperText =
-    estimateTotalDollars <= 0
-      ? "Add estimate items to calculate by percentage."
-      : pmPercentDisplay !== null && Number.isFinite(pmPercentDisplay)
-        ? pmPercentDisplay > 100
-          ? "Exceeds estimate total."
-          : `${pmPercentDisplay}% of ${formatEstimateCurrency(estimateTotalDollars)}`
-        : null;
-  const savePaymentMilestoneLocal = () => {
-    const title = pmTitle.trim();
-    if (!title) {
-      setPmError("Enter a payment name before saving this milestone.");
-      return;
-    }
-    const amount = Math.max(0, Number(pmAmount) || 0);
-    const next: PaymentMilestoneLocal = {
-      id: editingPaymentMilestoneId ?? `pm-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-      title,
-      description: pmDescription.trim(),
-      amount,
-      dueDate: pmDueDate || undefined,
-    };
-    setPaymentMilestones((prev) =>
-      editingPaymentMilestoneId
-        ? prev.map((item) => (item.id === editingPaymentMilestoneId ? next : item))
-        : [...prev, next]
-    );
-    setScheduleOpen(false);
-    resetPaymentDraft();
-  };
-
   return (
     <EstimateBuilderShell className="estimate-builder-new">
-      <div>
+      <div
+        data-estimate-editor-mode="new"
+        data-estimate-active-section-id={selectedSectionId ?? undefined}
+      >
         <div className="min-w-0 space-y-4 pb-[calc(10rem+env(safe-area-inset-bottom))] lg:pb-0">
           <EstimateWorkspaceCommandHeader
             title="New Estimate"
@@ -875,69 +813,60 @@ export function NewEstimateEditor({
             reserveSaveStatusSpace
             testId="estimate-new-header"
           >
-            <div className="flex w-full shrink-0 flex-wrap items-center justify-start gap-2 sm:w-auto sm:justify-end lg:max-w-[58%] lg:flex-nowrap">
+            <div className="estimate-workspace-header-actions flex items-center gap-2">
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                className={cn(
-                  "min-h-11 whitespace-nowrap px-4 max-md:flex-1 lg:min-h-8",
-                  ESTIMATE_HEADER_BUTTON
-                )}
+                className={ESTIMATE_HEADER_BUTTON}
                 disabled={saving}
-                onClick={() => setDetailsOpen(true)}
-              >
-                <Pencil className="mr-2 h-3.5 w-3.5" aria-hidden />
-                Edit details
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
                 onClick={() => void handleSave("preview")}
-                disabled={saving}
-                className={cn(
-                  "hidden min-h-11 whitespace-nowrap px-4 lg:inline-flex lg:min-h-8",
-                  ESTIMATE_HEADER_BUTTON
-                )}
               >
-                Save &amp; Preview
+                Preview
               </Button>
-              <div className="hidden lg:contents">
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={() => void handleSave("detail")}
-                  disabled={saving}
-                  aria-busy={saving}
-                  aria-label="Save Estimate"
-                  className={cn(
-                    "min-h-11 whitespace-nowrap px-5 font-medium lg:min-h-8",
-                    ESTIMATE_HEADER_PRIMARY_BUTTON
-                  )}
-                >
-                  <SubmitSpinner loading={saving} className="mr-2" />
-                  {saving ? "Saving…" : "Save"}
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  asChild
-                  className={cn(
-                    "min-h-11 whitespace-nowrap px-4 lg:min-h-8",
-                    ESTIMATE_HEADER_BUTTON
-                  )}
-                >
-                  <Link
-                    href="/estimates"
-                    data-ignore-unsaved-warning="true"
-                    onClick={handleCancelNavigation}
+              <Button
+                type="button"
+                size="sm"
+                className={ESTIMATE_HEADER_PRIMARY_BUTTON}
+                disabled={saving}
+                aria-busy={saving}
+                aria-label="Save Estimate"
+                onClick={() => void handleSave("detail")}
+              >
+                <SubmitSpinner loading={saving} className="mr-2" />
+                {saving ? "Saving…" : "Save"}
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className={ESTIMATE_HEADER_BUTTON}
+                    disabled={saving}
+                    aria-label="More estimate actions"
                   >
-                    Cancel
-                  </Link>
-                </Button>
-              </div>
+                    <MoreHorizontal className="h-4 w-4" aria-hidden />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onSelect={() => setDetailsOpen(true)}>
+                    Edit details
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => setTemplateOpen(true)}>
+                    Start from template
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link
+                      href="/estimates"
+                      data-ignore-unsaved-warning="true"
+                      onClick={handleCancelNavigation}
+                    >
+                      Cancel
+                    </Link>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </EstimateWorkspaceCommandHeader>
 
@@ -1002,335 +931,225 @@ export function NewEstimateEditor({
             </p>
           ) : null}
 
-          <div className="space-y-0">
-            <EstimateTemplateSelector
-              templates={templates}
-              selectedTemplateId={selectedTemplateId}
-              onTemplateChange={handleTemplateChange}
-            />
-
-            <EstimateNewCustomerSection
-              clientName={clientName}
-              projectName={projectName}
-              address={address}
-              phone={phone}
-              email={email}
-              estimateDate={estimateDate}
-              validUntil={validUntil}
-              salesPerson={salesPerson}
-              tax={tax}
-              discount={discount}
-              selectedCustomer={selectedCustomer}
-              estimateSubtotal={summary.subtotal}
-              preDiscountTotal={summary.subtotal + summary.tax}
-              submitAttempted={submitAttempted}
-              onClientNameChange={setClientName}
-              onProjectNameChange={setProjectName}
-              onAddressChange={setAddress}
-              onPhoneChange={setPhone}
-              onEmailChange={setEmail}
-              onValidUntilChange={setValidUntil}
-              onSalesPersonChange={setSalesPerson}
-              onTaxChange={setTax}
-              onTaxTouched={() => setTaxTouched(true)}
-              onDiscountChange={setDiscount}
-              onCustomerPickerChange={handleCustomerPickerChange}
-              documentStyle={documentStyle}
-              onDocumentStyleChange={setDocumentStyle}
-              detailsOpen={detailsOpen}
-              onDetailsOpenChange={setDetailsOpen}
-              showSummary={false}
-            />
-
-            <EstimateBuilderCompactSummary
-              summary={{
-                materialCost: summary.materialCost,
-                laborCost: summary.laborCost,
-                subcontractorCost: summary.subcontractorCost,
-                subtotal: summary.subtotal,
-                tax: summary.tax,
-                discount: summary.discount,
-                markup: 0,
-                grandTotal: summary.grandTotal,
-                overheadPct: 0,
-                profitPct: 0,
-                overhead: 0,
-                profit: 0,
-              }}
-              showInternal
-              paymentSummary={paymentHeaderSummary}
-            />
-          </div>
-
-          <EstimateLineItemsLocal
-            costCodes={costCodes}
-            lineItems={
-              lineItems.map((li) => ({
-                ...li,
-                status: li.status ?? DEFAULT_LINE_ITEM_STATUS,
-              })) as EditorLineItem[]
+          <EstimateWorkspace
+            mode="new"
+            empty={lineItems.length === 0}
+            summary={{
+              materialCost: summary.materialCost,
+              laborCost: summary.laborCost,
+              subcontractorCost: summary.subcontractorCost,
+              subtotal: summary.subtotal,
+              tax: summary.tax,
+              discount: summary.discount,
+              markup: 0,
+              grandTotal: summary.grandTotal,
+              overheadPct: 0,
+              profitPct: 0,
+              overhead: 0,
+              profit: 0,
+            }}
+            paymentSummary={paymentHeaderSummary}
+            onOpenDetails={() => setDetailsOpen(true)}
+            onOpenPricing={() => setDetailsOpen(true)}
+            details={
+              <EstimateNewCustomerSection
+                clientName={clientName}
+                projectName={projectName}
+                address={address}
+                phone={phone}
+                email={email}
+                estimateDate={estimateDate}
+                validUntil={validUntil}
+                salesPerson={salesPerson}
+                tax={summary.tax}
+                taxRatePct={taxRatePct}
+                discount={discount}
+                selectedCustomer={selectedCustomer}
+                estimateSubtotal={summary.subtotal}
+                preDiscountTotal={summary.subtotal}
+                submitAttempted={submitAttempted}
+                onClientNameChange={setClientName}
+                onProjectNameChange={setProjectName}
+                onAddressChange={setAddress}
+                onPhoneChange={setPhone}
+                onEmailChange={setEmail}
+                onValidUntilChange={setValidUntil}
+                onSalesPersonChange={setSalesPerson}
+                onTaxChange={setTax}
+                onTaxRateChange={setTaxRatePct}
+                onTaxTouched={() => setTaxTouched(true)}
+                onDiscountChange={setDiscount}
+                onCustomerPickerChange={handleCustomerPickerChange}
+                documentStyle={documentStyle}
+                onDocumentStyleChange={setDocumentStyle}
+                detailsOpen={detailsOpen}
+                onDetailsOpenChange={setDetailsOpen}
+                showSummary={false}
+              />
             }
-            onLineItemsChange={(items) =>
-              setLineItems(
-                items.map((li) => ({
-                  ...li,
-                  status: li.status ?? DEFAULT_LINE_ITEM_STATUS,
-                })) as LineItem[]
-              )
-            }
-            categoryNames={categoryNames}
-            onCategoryNamesChange={setCategoryNames}
-            sectionOrder={sectionOrder}
-            onSectionOrderChange={setSectionOrder}
-            disabled={saving}
-            submitAttempted={submitAttempted}
-            lineItemsError={
-              submitAttempted && !hasValidLineItem ? "At least one line item is required." : null
-            }
-          />
-
-          <EstimateNotesClarifications
-            notes={estimateNotes}
-            onNotesChange={setEstimateNotes}
-            disabled={saving}
-            defaultCollapsed
-          />
-
-          <EstimateBuilderAdvanced title="Payment schedule" defaultOpen>
-            <section className={cn(EB.paymentSchedule, EB.paymentScheduleNested)}>
-              <div className="flex flex-wrap items-start justify-between gap-3 py-2">
-                <div className="min-w-0">
-                  <h3 className={cn(EB.paymentTitle, EB.paymentHeaderDuplicate)}>
-                    Payment schedule
-                  </h3>
-                  <p className={EB.paymentSubtitle}>Client payment milestones</p>
+            payment={
+              <section className="estimate-inline-payments" aria-label="Payment Schedule">
+                <h3>PAYMENT SCHEDULE</h3>
+                <div
+                  className="estimate-payment-entry-fields estimate-payment-columns"
+                  aria-hidden="true"
+                >
+                  <span />
+                  <span>Payment Name</span>
+                  <span>Due</span>
+                  <span>Amount</span>
+                  <span className="sr-only">Actions</span>
                 </div>
+                {paymentMilestones.map((milestone) => (
+                  <EstimatePaymentInlineRow
+                    key={milestone.id}
+                    value={milestone}
+                    onReorder={(sourceId, targetId) =>
+                      setPaymentMilestones((previous) => {
+                        const next = [...previous];
+                        const from = next.findIndex((item) => item.id === sourceId),
+                          to = next.findIndex((item) => item.id === targetId);
+                        if (from < 0 || to < 0) return previous;
+                        next.splice(to, 0, ...next.splice(from, 1));
+                        return next;
+                      })
+                    }
+                    total={summary.grandTotal}
+                    disabled={saving}
+                    autoFocus={milestone.id === focusPaymentId}
+                    onChange={(next) =>
+                      setPaymentMilestones((previous) =>
+                        previous.map((item) =>
+                          item.id === next.id
+                            ? {
+                                ...item,
+                                title: next.title,
+                                amount: next.amount,
+                                description: next.description ?? "",
+                                dueDate: next.dueDate || undefined,
+                                paymentTerm: next.paymentTerm ?? null,
+                              }
+                            : item
+                        )
+                      )
+                    }
+                    actions={
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            disabled={saving}
+                            aria-label={`Actions for ${milestone.title}`}
+                          >
+                            <MoreHorizontal size={16} />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                          <DropdownMenuItem
+                            onSelect={() =>
+                              setPaymentMilestones((previous) => [
+                                ...previous,
+                                { ...milestone, id: crypto.randomUUID() },
+                              ])
+                            }
+                          >
+                            Duplicate
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className={EB.lineItemMoreMenuItemDanger}
+                            onSelect={() =>
+                              setPaymentMilestones((previous) =>
+                                previous.filter((item) => item.id !== milestone.id)
+                              )
+                            }
+                          >
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    }
+                  />
+                ))}
                 <Button
                   type="button"
-                  variant="outline"
-                  size="sm"
-                  className={cn("min-h-11 shrink-0 px-2.5 md:min-h-8", EB.actionSecondary)}
-                  onClick={() => openPaymentMilestoneDrawer()}
+                  variant="ghost"
                   disabled={saving}
+                  onClick={() => {
+                    const id = crypto.randomUUID();
+                    setFocusPaymentId(id);
+                    setPaymentMilestones((previous) => [
+                      ...previous,
+                      { id, title: "Payment", amount: 0, description: "" },
+                    ]);
+                  }}
                 >
-                  <Plus className="h-3.5 w-3.5 mr-1.5" aria-hidden />
-                  Schedule Payment
+                  <Plus size={14} />
+                  Add Payment
                 </Button>
-              </div>
-              <div className="flex flex-wrap items-center gap-x-6 gap-y-2 py-2">
-                <span className={EB.paymentStatLabel}>
-                  Estimate total{" "}
-                  <span className={EB.paymentStatValue}>
-                    {formatEstimateCurrency(summary.grandTotal)}
-                  </span>
-                </span>
-                <span className={EB.paymentStatLabel}>
-                  Scheduled{" "}
-                  <span className={EB.paymentStatValue}>
-                    {formatEstimateCurrency(totalScheduled)}
-                  </span>
-                </span>
-                <span className={EB.paymentStatLabel}>
-                  Remaining{" "}
-                  <span className={EB.paymentStatValue}>{formatEstimateCurrency(remaining)}</span>
-                </span>
-              </div>
-              <ProposalPaymentMilestoneList
-                milestones={paymentMilestones.map((m) => ({
-                  id: m.id,
-                  title: m.title,
-                  amount: m.amount,
-                  description: m.description,
-                  dueDate: m.dueDate,
-                }))}
-                actions={(m) => (
-                  <div className="flex gap-1">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      className={cn(
-                        "min-h-11 min-w-11 md:h-8 md:min-h-8 md:w-8 md:min-w-8",
-                        EB.btnGhost
-                      )}
-                      aria-label={`Edit ${m.title}`}
-                      onClick={() => {
-                        const full = paymentMilestones.find((x) => x.id === m.id);
-                        if (full) openPaymentMilestoneDrawer(full);
-                      }}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      className={cn(
-                        "min-h-11 min-w-11 text-[var(--hh-danger)] hover:bg-[var(--hh-danger-soft-fill)] md:h-8 md:min-h-8 md:w-8 md:min-w-8",
-                        EB.btnGhost
-                      )}
-                      aria-label={`Delete ${m.title}`}
-                      onClick={() =>
-                        setPaymentMilestones((prev) => prev.filter((x) => x.id !== m.id))
-                      }
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                )}
-              />
-              <Sheet
-                open={scheduleOpen}
-                onOpenChange={(open) => {
-                  setScheduleOpen(open);
-                  if (!open) resetPaymentDraft();
-                }}
+              </section>
+            }
+            notes={
+              <section
+                className="eb-v3-continuous-section"
+                tabIndex={-1}
+                aria-label="Customer Notes"
               >
-                <SheetContent side="right" className={ebSheetGlassNarrow(EB.shellNew)}>
-                  <SheetHeader className={EB.sheetHeader}>
-                    <SheetTitle className={EB.sheetTitle}>
-                      {editingPaymentMilestoneId ? "Edit Payment" : "Schedule Payment"}
-                    </SheetTitle>
-                    <SheetDescription className="sr-only">
-                      Add a payment milestone to this estimate.
-                    </SheetDescription>
-                  </SheetHeader>
-                  <div className={EB.sheetContent}>
-                    <div className={cn(EB.sheetContentInner, "max-w-none space-y-[1.125rem]")}>
-                      <div className={EB.sheetField}>
-                        <Label htmlFor="pm-title" className={EB.sheetLabel}>
-                          Payment Name
-                        </Label>
-                        <Input
-                          id="pm-title"
-                          value={pmTitle}
-                          onChange={(e) => {
-                            setPmTitle(e.target.value);
-                            if (e.target.value.trim()) setPmError(null);
-                          }}
-                          placeholder="e.g. Deposit"
-                          className={ebSheetInput("text-sm")}
-                          aria-invalid={Boolean(pmError)}
-                          aria-describedby={pmError ? "pm-title-error" : undefined}
-                        />
-                        {pmError ? (
-                          <p
-                            id="pm-title-error"
-                            role="alert"
-                            className="text-hh-error text-[var(--hh-danger)]"
-                          >
-                            {pmError}
-                          </p>
-                        ) : null}
-                      </div>
-                      <div className={EB.sheetField}>
-                        <div className={EB.paymentAmountRow}>
-                          <div className={EB.paymentAmountCol}>
-                            <Label htmlFor="pm-amount" className={EB.sheetLabel}>
-                              Amount
-                            </Label>
-                            <Input
-                              id="pm-amount"
-                              value={pmAmount}
-                              onChange={(e) => handlePmAmountChange(e.target.value)}
-                              type="number"
-                              step="0.01"
-                              min={0}
-                              inputMode="decimal"
-                              placeholder="0.00"
-                              className={ebSheetInput(
-                                cn("text-hh-financial text-right text-foreground", EB.inputNumeric)
-                              )}
-                              onWheel={(event) => event.currentTarget.blur()}
-                            />
-                          </div>
-                          <div className={EB.paymentPercentCol}>
-                            <Label htmlFor="pm-percent" className={EB.sheetLabel}>
-                              % of estimate
-                            </Label>
-                            <Input
-                              id="pm-percent"
-                              value={pmPercent}
-                              onChange={(e) => handlePmPercentChange(e.target.value)}
-                              type="number"
-                              step="0.01"
-                              min={0}
-                              max={100}
-                              inputMode="decimal"
-                              placeholder="Optional"
-                              className={ebSheetInput(
-                                cn("text-hh-financial text-right text-foreground", EB.inputNumeric)
-                              )}
-                              aria-describedby={
-                                pmPercentHelperText ? "pm-percent-helper" : undefined
-                              }
-                              onWheel={(event) => event.currentTarget.blur()}
-                            />
-                          </div>
-                        </div>
-                        {pmPercentHelperText ? (
-                          <p id="pm-percent-helper" className={EB.paymentPercentHelper}>
-                            {pmPercentHelperText}
-                          </p>
-                        ) : null}
-                      </div>
-                      <div className={EB.sheetField}>
-                        <Label htmlFor="pm-description" className={EB.sheetLabel}>
-                          Description
-                        </Label>
-                        <ProposalScopeEditor
-                          id="pm-description"
-                          value={pmDescription}
-                          onChange={setPmDescription}
-                          density="comfortable"
-                          showHandle={false}
-                          placeholder="What this payment covers…"
-                          ariaLabel="Payment milestone description"
-                          className={cn(EB.sheetTextarea, "rounded-md px-2 py-2")}
-                        />
-                      </div>
-                      <div className={EB.sheetField}>
-                        <Label htmlFor="pm-dueDate" className={EB.sheetLabel}>
-                          Due Date
-                        </Label>
-                        <Input
-                          id="pm-dueDate"
-                          value={pmDueDate}
-                          onChange={(e) => setPmDueDate(e.target.value)}
-                          type="date"
-                          className={ebSheetInput(cn(EB.dateField, "text-sm"))}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                  <SheetFooter className={EB.sheetFooter}>
-                    <div className={EB.sheetFooterActions}>
-                      <Button
-                        type="button"
-                        size="sm"
-                        className={EB.sheetPrimary}
-                        onClick={savePaymentMilestoneLocal}
-                      >
-                        Save
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className={EB.sheetSecondary}
-                        onClick={() => {
-                          setScheduleOpen(false);
-                          resetPaymentDraft();
-                        }}
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                  </SheetFooter>
-                </SheetContent>
-              </Sheet>
-            </section>
-          </EstimateBuilderAdvanced>
+                <EstimateNotesClarifications
+                  notes={estimateNotes}
+                  onNotesChange={setEstimateNotes}
+                  disabled={saving}
+                  defaultCollapsed={false}
+                />
+              </section>
+            }
+          >
+            <EstimateLineItemsLocal
+              costCodes={costCodes}
+              lineItems={
+                lineItems.map((li) => ({
+                  ...li,
+                  status: li.status ?? DEFAULT_LINE_ITEM_STATUS,
+                })) as EditorLineItem[]
+              }
+              onLineItemsChange={(items) =>
+                setLineItems(
+                  items.map((li) => ({
+                    ...li,
+                    status: li.status ?? DEFAULT_LINE_ITEM_STATUS,
+                  })) as LineItem[]
+                )
+              }
+              categoryNames={categoryNames}
+              onCategoryNamesChange={setCategoryNames}
+              sectionOrder={sectionOrder}
+              onSectionOrderChange={setSectionOrder}
+              activeSectionId={selectedSectionId}
+              explicitActiveSectionId={explicitActiveSectionId}
+              onActiveSectionChange={handleActiveSectionChange}
+              disabled={saving}
+              submitAttempted={submitAttempted}
+              lineItemsError={
+                submitAttempted && !hasValidLineItem ? "At least one line item is required." : null
+              }
+            />
+          </EstimateWorkspace>
+          <Sheet open={templateOpen} onOpenChange={setTemplateOpen}>
+            <SheetContent side="right" className={ebSheetGlassNarrow(EB.shellNew)}>
+              <SheetHeader className={EB.sheetHeader}>
+                <SheetTitle>Start from template</SheetTitle>
+                <SheetDescription>Choose a saved estimate template.</SheetDescription>
+              </SheetHeader>
+              <div className={EB.sheetContent}>
+                <EstimateTemplateSelector
+                  templates={templates}
+                  selectedTemplateId={selectedTemplateId}
+                  onTemplateChange={handleTemplateChange}
+                />
+              </div>
+            </SheetContent>
+          </Sheet>
         </div>
       </div>
 

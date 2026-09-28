@@ -1,3 +1,4 @@
+import { safeWorkerReturnPath, workerDetailReturnPath } from "@/lib/worker-return-path";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
@@ -12,7 +13,9 @@ import {
 } from "@/components/base";
 import { Button } from "@/components/ui/button";
 import { SetBreadcrumbEntityTitle } from "@/components/layout/set-breadcrumb-entity-title";
-import { getServerSupabase } from "@/lib/supabase-server";
+import { authorizedAppRole } from "@/lib/auth-role";
+import { FinancialDataUnavailableError } from "@/lib/financial-availability";
+import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { getWorkerMonthlyReport, parseMonthYm } from "@/lib/worker-monthly-report";
 import { MonthReportToolbar } from "./month-report-toolbar";
 import { WorkerPayrollStatementPrint } from "./worker-payroll-statement-print";
@@ -51,7 +54,7 @@ function fmtSignedUsd(n: number): string {
 
 type PageProps = {
   params: Promise<{ workerId: string }>;
-  searchParams: Promise<{ month?: string }>;
+  searchParams: Promise<{ month?: string; returnTo?: string }>;
 };
 
 export default async function WorkerMonthlyReportPage({ params, searchParams }: PageProps) {
@@ -60,18 +63,29 @@ export default async function WorkerMonthlyReportPage({ params, searchParams }: 
   const id = workerId?.trim();
   if (!id) notFound();
 
-  const admin = getServerSupabase();
-  if (admin) {
-    const { data: workerRow, error: wErr } = await admin
-      .from("workers")
-      .select("id")
-      .eq("id", id)
-      .maybeSingle();
-    if (!wErr && !workerRow) notFound();
+  const supabase = await createServerSupabaseClient({ noStore: true });
+  if (!supabase) throw new FinancialDataUnavailableError("worker report session", null);
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+  if (authError) throw new FinancialDataUnavailableError("worker report session", authError);
+  if (!user || !authorizedAppRole(user)) {
+    throw new FinancialDataUnavailableError("worker report session", {
+      code: "42501",
+      message: "Owner or admin authentication required.",
+    });
   }
+  const { data: workerRow, error: workerError } = await supabase
+    .from("workers")
+    .select("id")
+    .eq("id", id)
+    .maybeSingle();
+  if (workerError) throw new FinancialDataUnavailableError("worker report worker", workerError);
+  if (!workerRow) notFound();
 
   const monthYm = parseMonthYm(sp.month);
-  const report = await getWorkerMonthlyReport(id, monthYm);
+  const report = await getWorkerMonthlyReport(id, monthYm, supabase);
   const titleName = report.workerName || "Worker";
   const summaryCards = [
     {
@@ -138,7 +152,9 @@ export default async function WorkerMonthlyReportPage({ params, searchParams }: 
                 currentYm={monthYm}
                 printDocumentTitle={`Payroll Statement — ${titleName}`}
               />
-              <Link href={`/workers/${encodeURIComponent(id)}`}>
+              <Link
+                href={safeWorkerReturnPath(sp.returnTo, workerDetailReturnPath(id, "statements"))}
+              >
                 <Button
                   variant="outline"
                   size="sm"

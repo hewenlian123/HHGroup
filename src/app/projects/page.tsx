@@ -1,7 +1,9 @@
 import { getProjects } from "@/lib/data";
 import { getCanonicalProjectProfitBatch, type CanonicalProjectProfit } from "@/lib/profit-engine";
 import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
-import { createServerSupabaseClient } from "@/lib/supabase-server";
+import { requireOrganizationServerActionClient } from "@/lib/auth-boundary";
+import { authorizedAppRole } from "@/lib/auth-role";
+import { emitRscTiming } from "@/lib/performance/server-timing";
 import {
   ProjectsListClient,
   type ProjectListStatusFilter,
@@ -15,8 +17,12 @@ export default async function ProjectsPage({
 }: {
   searchParams?: Promise<{ status?: string }>;
 }) {
+  const pageStartedAt = performance.now();
   const sp = (await searchParams) ?? {};
-  const statusParam = String(sp.status ?? "all").toLowerCase();
+  const statusParam = String(sp.status ?? "all")
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, "_");
   const initialStatusFilter: ProjectListStatusFilter = [
     "all",
     "active",
@@ -28,39 +34,59 @@ export default async function ProjectsPage({
     : "all";
   let projects: Awaited<ReturnType<typeof getProjects>> = [];
   let dataLoadWarning: string | null = null;
-  let projectSupabase: Awaited<ReturnType<typeof createServerSupabaseClient>> = null;
-  try {
-    projectSupabase = await createServerSupabaseClient({ noStore: true });
-    if (!projectSupabase) throw new Error("Authenticated project session is not configured.");
-    projects = await getProjects(projectSupabase);
-  } catch (e) {
-    logServerPageDataError("projects", e);
-    dataLoadWarning = serverDataLoadWarning(e, "projects");
-  }
+  let financialDataWarning: string | null = null;
+  const authStartedAt = performance.now();
+  const guard = await requireOrganizationServerActionClient({ noStore: true });
+  const authDuration = performance.now() - authStartedAt;
+  const serverDataStartedAt = performance.now();
+  const financeProjectIds = new Set<string>();
+  const managedProjectIds = new Set<string>();
   let profitMap = new Map<string, CanonicalProjectProfit>();
-  if (projectSupabase && projects.length > 0) {
+  if (!guard.ok) {
+    dataLoadWarning = guard.error;
+  } else {
     try {
-      profitMap = await getCanonicalProjectProfitBatch(
-        projects.map((p) => p.id),
-        projectSupabase
-      );
-    } catch (e) {
-      logServerPageDataError("projects/financial", e);
-      dataLoadWarning = serverDataLoadWarning(e, "project financial data");
-      projects = [];
+      projects = await getProjects(guard.client);
+    } catch (error) {
+      logServerPageDataError("projects", error);
+      dataLoadWarning = serverDataLoadWarning(error, "projects");
+    }
+    if (projects.length > 0) {
+      try {
+        const scopes = await guard.client.from("projects").select("id,organization_id");
+        if (scopes.error || !Array.isArray(scopes.data))
+          throw new Error("Project permissions unavailable.");
+        const managedOrganizations = new Set(
+          guard.context.memberships
+            .filter((member) => member.role === "owner" || member.role === "admin")
+            .map((member) => member.organization_id)
+        );
+        for (const scope of scopes.data) {
+          if (managedOrganizations.has(scope.organization_id)) {
+            managedProjectIds.add(scope.id);
+            if (authorizedAppRole(guard.context.user)) financeProjectIds.add(scope.id);
+          }
+        }
+        if (financeProjectIds.size > 0)
+          profitMap = await getCanonicalProjectProfitBatch([...financeProjectIds], guard.client);
+      } catch (error) {
+        logServerPageDataError("projects/financial", error);
+        financialDataWarning = serverDataLoadWarning(error, "project financial data");
+      }
+      if (projects.some((project) => !profitMap.has(project.id)))
+        financialDataWarning ??=
+          "Financial data is unavailable for some projects. Authorized project records remain available.";
     }
   }
+  const serverDataCompletedAt = performance.now();
 
-  const rows: ProjectsListRow[] = projects.map((p) => {
+  const rows: ProjectsListRow[] = projects.map((p): ProjectsListRow => {
     const c = profitMap.get(p.id);
-    const revenue = c?.revenue ?? 0;
-    const laborCost = c?.laborCost ?? 0;
-    const expenseCost = c?.expenseCost ?? 0;
-    const subcontractCost = c?.subcontractCost ?? 0;
-    const commissionCost = c?.commissionCost ?? 0;
-    const totalCost = c?.actualCost ?? laborCost + expenseCost + subcontractCost + commissionCost;
-    /** Canonical profit (revenue − labor − expenses − subcontract − commission); same as profit-engine. */
-    const profit = c?.profit ?? revenue - totalCost;
+    const revenue = c?.revenue ?? null;
+    const laborCost = c?.laborCost ?? null;
+    const expenseCost = c?.expenseCost ?? null;
+    const totalCost = c?.actualCost ?? null;
+    const profit = c?.profit ?? null;
     const updatedRaw = p.updated ?? p.updated_at ?? "";
     const updatedAt =
       typeof updatedRaw === "string" && updatedRaw.length >= 10 ? updatedRaw.slice(0, 10) : "—";
@@ -70,21 +96,30 @@ export default async function ProjectsPage({
       name: p.name,
       clientName: p.client ?? null,
       status: p.status,
-      budget: p.budget ?? 0,
+      budget: financeProjectIds.has(p.id) ? (p.budget ?? null) : null,
       revenue,
       actualCost: totalCost,
       expenseCost,
       laborCost,
-      reimbursementCost: 0,
-      billedAmount: 0,
-      paidAmount: 0,
-      openAR: 0,
+      reimbursementCost: null,
+      billedAmount: null,
+      paidAmount: null,
+      openAR: null,
       profit,
-      marginPct: revenue > 0 ? (profit / revenue) * 100 : 0,
+      marginPct: c ? (c.revenue > 0 ? (c.profit / c.revenue) * 100 : 0) : null,
       profitReadinessWarning: null,
-      financialSource: "legacy" as const,
+      financialSource: c ? "legacy" : "unavailable",
+      canViewFinancials: financeProjectIds.has(p.id),
+      canManage: managedProjectIds.has(p.id),
       updatedAt,
     };
+  });
+  const rscPreparedAt = performance.now();
+  emitRscTiming("projects", {
+    authMs: authDuration,
+    serverDataMs: serverDataCompletedAt - serverDataStartedAt,
+    rscPrepareMs: rscPreparedAt - serverDataCompletedAt,
+    totalMs: rscPreparedAt - pageStartedAt,
   });
 
   return (
@@ -92,6 +127,7 @@ export default async function ProjectsPage({
       <ProjectsListClient
         rows={rows}
         dataLoadWarning={dataLoadWarning}
+        financialDataWarning={financialDataWarning}
         initialStatusFilter={initialStatusFilter}
       />
     </div>

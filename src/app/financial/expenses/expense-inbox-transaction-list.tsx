@@ -49,6 +49,7 @@ type InboxIssue = {
 
 const EXPENSE_INBOX_DISMISSED_ISSUE_PREFIX = "hh.expenseInbox.dismissedIssue";
 const EXPENSE_ISSUE_POPOVER_CLOSE_DELAY_MS = 140;
+const expenseTableThClass = cn(tableRawThClass, "text-[var(--hh-text-secondary)]");
 
 let activeExpenseIssuePopover: { id: symbol; close: () => void } | null = null;
 
@@ -727,7 +728,7 @@ function ExpenseStatusCell({
       <NeoStatus
         label={inboxSt.label}
         variant={inboxSt.variant}
-        className={cn("h-6 max-h-6 px-1.5 text-hh-status", className)}
+        className={cn("expense-status-badge h-6 max-h-6 px-1.5 text-hh-status", className)}
       />
     );
   }
@@ -735,7 +736,7 @@ function ExpenseStatusCell({
   return (
     <span
       className={cn(
-        "inline-flex h-6 items-center whitespace-nowrap text-hh-status font-medium leading-none",
+        "expense-status-inline inline-flex h-6 items-center whitespace-nowrap text-hh-status font-medium leading-none",
         className
       )}
       title={inboxSt.label}
@@ -758,6 +759,7 @@ export type ExpenseInboxApi = {
   listView: "all" | "unreviewed";
   /** localStorage pool for date-section expand preferences */
   dateGroupPool: "inbox" | "expenses";
+  previewOpen?: boolean;
   /** Expand every date group (search / filters active) */
   autoExpandDateGroups: boolean;
   /** Date keys that must stay expanded for a System Health focus target. */
@@ -791,7 +793,7 @@ export type ExpenseListBulkActionsApi = {
   projects: { id: string; name: string | null }[];
   categories: string[];
   paymentAccounts: PaymentAccountRow[];
-  runMarkDone: (ids: string[]) => Promise<void>;
+  runMarkDone: (ids: string[]) => Promise<boolean | void>;
   runSetProject: (ids: string[], projectId: string | null) => Promise<void>;
   runSetCategory: (ids: string[], category: string) => Promise<void>;
   runSetPayment: (ids: string[], paymentAccountId: string | null) => Promise<void>;
@@ -809,7 +811,9 @@ function useDesktopTableLayout(containerRef: React.RefObject<HTMLElement | null>
   React.useEffect(() => {
     const apply = () => {
       const width = containerRef.current?.clientWidth ?? 0;
-      setDesktop(width >= DESKTOP_TABLE_MIN_WIDTH_PX);
+      setDesktop(
+        width >= DESKTOP_TABLE_MIN_WIDTH_PX || window.matchMedia("(min-width: 1024px)").matches
+      );
     };
     apply();
     const node = containerRef.current;
@@ -842,7 +846,7 @@ function RowActionsMenu({ row }: { row: Expense }) {
       appearance="list"
       className="h-11 min-h-11 w-11 min-w-11 opacity-100 md:h-8 md:min-h-0 md:w-8 md:min-w-0 md:opacity-0 md:p-1.5 md:group-focus-within:opacity-100 md:group-hover:opacity-100"
       contentClassName="expenses-ui-dialog w-44"
-      destructiveItemClassName="mt-1 border-t border-[var(--hh-border)] pt-2 text-[var(--hh-danger)] focus:text-[var(--hh-danger)] hover:bg-[var(--hh-danger-soft-fill)] hover:text-white dark:text-[var(--hh-danger)] dark:focus:text-[var(--hh-danger)]"
+      destructiveItemClassName="mt-1 border-t border-[var(--hh-border)] pt-2 text-[var(--hh-danger)] focus:text-[var(--hh-danger)] hover:bg-[var(--hh-danger-soft-fill)] hover:text-[var(--hh-danger)] dark:text-[var(--hh-danger)] dark:focus:text-[var(--hh-danger)]"
       actions={[
         {
           label: "Edit",
@@ -945,12 +949,27 @@ function DateGroupDesktopHeader({
             />
             <span className="font-medium text-[var(--hh-text-primary)]">{chunk.dateLabel}</span>
             <span className="flex min-w-0 flex-wrap items-center gap-x-1.5 text-[var(--hh-text-secondary)]">
-              <span className="tabular-nums">{chunk.itemCount}</span>
+              <span className="tabular-nums">
+                {chunk.itemCount}
+                {ledgerMode ? ` expense${chunk.itemCount === 1 ? "" : "s"}` : ""}
+              </span>
               <span aria-hidden>·</span>
-              <NeoAmount tone={ledgerMode ? "expense" : "neutral"} className="text-hh-metadata">
+              <NeoAmount
+                tone={
+                  chunk.totalAmount < 0 ? "income" : chunk.totalAmount > 0 ? "expense" : "neutral"
+                }
+                className={cn(
+                  "text-hh-metadata",
+                  chunk.totalAmount < 0
+                    ? "!text-[var(--hh-success)]"
+                    : chunk.totalAmount > 0
+                      ? "!text-[var(--hh-danger)]"
+                      : "!text-[var(--hh-text-primary)]"
+                )}
+              >
                 {formatCurrency(-chunk.totalAmount)}
               </NeoAmount>
-              {chunk.missingReceiptCount > 0 ? (
+              {!ledgerMode && chunk.missingReceiptCount > 0 ? (
                 <>
                   <span aria-hidden>·</span>
                   <span className="text-[var(--hh-warning)]">
@@ -1128,6 +1147,7 @@ function DesktopRows({
                         a.setActiveExpenseId(row.id);
                         a.openExpensePreview(row);
                       }}
+                      onFocus={() => a.setActiveExpenseId(row.id)}
                       onKeyDown={(event) => {
                         if (event.target !== event.currentTarget) return;
                         if (event.key !== "Enter" && event.key !== " ") return;
@@ -1165,10 +1185,7 @@ function DesktopRows({
                               }}
                             />
                           )}
-                          <div
-                            data-expense-merchant={ledgerMode ? "" : undefined}
-                            className="min-w-0 flex-1"
-                          >
+                          <div data-expense-merchant="" className="min-w-0 flex-1">
                             <p
                               className={cn(
                                 "min-w-0 max-w-full truncate text-hh-table-cell leading-tight text-[var(--hh-text-primary)]",
@@ -1181,14 +1198,14 @@ function DesktopRows({
                             {triageLayout ? (
                               <p
                                 data-inbox-compact-context
-                                className="mt-0.5 truncate text-hh-status leading-tight text-[var(--hh-text-tertiary)]"
+                                className="mt-0.5 truncate text-hh-status leading-tight text-[var(--hh-text-secondary)]"
                                 title={compactQueueContext}
                               >
                                 {compactQueueContext || "Needs classification"}
                               </p>
                             ) : (
                               <p
-                                className="mt-0.5 truncate text-hh-status leading-tight text-[var(--hh-text-tertiary)]"
+                                className="mt-0.5 truncate text-hh-status leading-tight text-[var(--hh-text-secondary)]"
                                 title={secondaryLine}
                               >
                                 {secondaryLine}
@@ -1273,11 +1290,14 @@ function DesktopRows({
                         <ExpenseStatusCell status={status} />
                       </td>
                       <td
-                        data-expense-amount={ledgerMode ? "" : undefined}
-                        className="w-[90px] shrink-0 whitespace-nowrap text-right tabular-nums"
+                        data-expense-amount=""
+                        data-amount-direction={
+                          rowTotal < 0 ? "positive" : rowTotal > 0 ? "negative" : "neutral"
+                        }
+                        className="w-36 shrink-0 whitespace-nowrap text-right tabular-nums"
                       >
                         <NeoAmount
-                          tone={triageLayout ? "neutral" : "expense"}
+                          tone={rowTotal < 0 ? "income" : rowTotal > 0 ? "expense" : "neutral"}
                           className={cn(
                             triageLayout
                               ? "text-hh-body font-semibold leading-none text-[var(--hh-text-strong)]"
@@ -1371,10 +1391,22 @@ function DateGroupMobileHeader({
             <span className="flex flex-wrap items-center gap-x-1.5 text-xs text-[var(--hh-text-secondary)]">
               <span className="tabular-nums">{chunk.itemCount} items</span>
               <span aria-hidden>·</span>
-              <NeoAmount tone={ledgerMode ? "expense" : "neutral"} className="text-hh-metadata">
+              <NeoAmount
+                tone={
+                  chunk.totalAmount < 0 ? "income" : chunk.totalAmount > 0 ? "expense" : "neutral"
+                }
+                className={cn(
+                  "text-hh-metadata",
+                  chunk.totalAmount < 0
+                    ? "!text-[var(--hh-success)]"
+                    : chunk.totalAmount > 0
+                      ? "!text-[var(--hh-danger)]"
+                      : "!text-[var(--hh-text-primary)]"
+                )}
+              >
                 {formatCurrency(-chunk.totalAmount)}
               </NeoAmount>
-              {chunk.missingReceiptCount > 0 ? (
+              {!ledgerMode && chunk.missingReceiptCount > 0 ? (
                 <>
                   <span aria-hidden>·</span>
                   <span className="text-[var(--hh-warning)]">
@@ -1510,9 +1542,7 @@ function MobileRows({
                         data-expense-has-exception={ledgerMode && hasException ? "true" : undefined}
                         data-system-health-focus={systemHealthFocused ? "true" : undefined}
                         data-inbox-upload-draft={isInboxUploadDraft ? "" : undefined}
-                        data-expense-selected={
-                          ledgerMode && selectionEnabled ? String(rowSelected) : undefined
-                        }
+                        data-expense-selected={selectionEnabled ? String(rowSelected) : undefined}
                         ref={(el) => {
                           a.rowElsRef.current[row.id] = el;
                         }}
@@ -1559,6 +1589,7 @@ function MobileRows({
                           a.setActiveExpenseId(row.id);
                           a.openExpensePreview(row);
                         }}
+                        onFocus={() => a.setActiveExpenseId(row.id)}
                         onKeyDown={(event) => {
                           if (event.target !== event.currentTarget) return;
                           if (event.key !== "Enter" && event.key !== " ") return;
@@ -1594,13 +1625,10 @@ function MobileRows({
                           )}
                           <div className="min-w-0 flex-1">
                             <div
-                              data-expense-row-primary={ledgerMode ? "" : undefined}
+                              data-expense-row-primary=""
                               className="flex items-start justify-between gap-2"
                             >
-                              <div
-                                data-expense-merchant={ledgerMode ? "" : undefined}
-                                className="min-w-0 flex-1"
-                              >
+                              <div data-expense-merchant="" className="min-w-0 flex-1">
                                 <p
                                   className="line-clamp-1 min-w-0 break-words text-sm font-semibold leading-tight text-[var(--hh-text-primary)]"
                                   title={vendorClean || vendorTitle}
@@ -1616,12 +1644,20 @@ function MobileRows({
                                     {secondaryLine}
                                   </p>
                                 ) : null}
+                                {triageLayout ? (
+                                  <p
+                                    data-inbox-item-date
+                                    className="mt-1 text-hh-status text-[var(--hh-text-secondary)]"
+                                  >
+                                    {inboxSubtitleDate(row.date)}
+                                  </p>
+                                ) : null}
                                 <p
                                   data-expense-context={ledgerMode ? "" : undefined}
                                   data-expense-mobile-context
                                   data-inbox-compact-context={triageLayout ? "" : undefined}
                                   data-expense-row-metadata={ledgerMode ? "" : undefined}
-                                  className="mt-1 line-clamp-1 text-hh-status leading-tight text-[var(--hh-text-tertiary)]"
+                                  className="mt-1 line-clamp-1 text-hh-status leading-tight text-[var(--hh-text-secondary)]"
                                   aria-label={`Project ${projLabel}, category ${catLabel}, source ${expensePaymentSourceDisplayLabel(row)}`}
                                   title={`${projLabel} · ${catLabel} · ${expensePaymentSourceDisplayLabel(row)}`}
                                 >
@@ -1640,11 +1676,16 @@ function MobileRows({
                                 </p>
                               </div>
                               <div
-                                data-expense-amount={ledgerMode ? "" : undefined}
+                                data-expense-amount=""
+                                data-amount-direction={
+                                  rowTotal < 0 ? "positive" : rowTotal > 0 ? "negative" : "neutral"
+                                }
                                 className="flex max-w-[42%] shrink-0 flex-col items-end gap-1 whitespace-nowrap text-right tabular-nums"
                               >
                                 <NeoAmount
-                                  tone={triageLayout ? "neutral" : "expense"}
+                                  tone={
+                                    rowTotal < 0 ? "income" : rowTotal > 0 ? "expense" : "neutral"
+                                  }
                                   className={cn(
                                     triageLayout
                                       ? "text-base font-semibold leading-none text-[var(--hh-text-strong)]"
@@ -1857,8 +1898,12 @@ export function ExpenseInboxTransactionList({
   const [expandedByDate, setExpandedByDate] = React.useState<Record<string, boolean>>({});
 
   React.useEffect(() => {
-    clearBulkSelection();
-  }, [dateChunksIdentity, clearBulkSelection]);
+    const visibleIds = new Set(dateChunks.flatMap((chunk) => chunk.rows.map((row) => row.id)));
+    setSelectedIds((previous) => {
+      const retained = [...previous].filter((id) => visibleIds.has(id));
+      return retained.length === previous.size ? previous : new Set(retained);
+    });
+  }, [dateChunksIdentity, dateChunks]);
 
   React.useEffect(() => {
     if (api.autoExpandDateGroups) {
@@ -1910,8 +1955,12 @@ export function ExpenseInboxTransactionList({
       if (!bulkActions) return;
       const ids = [...selectedIds];
       if (ids.length === 0) return;
-      const result = await fn(ids);
-      if (result !== false) clearBulkSelection();
+      try {
+        const result = await fn(ids);
+        if (result !== false) clearBulkSelection();
+      } catch (cause) {
+        throw cause;
+      }
     },
     [bulkActions, selectedIds, clearBulkSelection]
   );
@@ -1921,6 +1970,40 @@ export function ExpenseInboxTransactionList({
       <div
         ref={rootRef}
         data-expense-ledger-content
+        onKeyDown={(event) => {
+          if (
+            api.dateGroupPool !== "expenses" ||
+            event.defaultPrevented ||
+            event.metaKey ||
+            event.ctrlKey ||
+            event.altKey ||
+            event.shiftKey ||
+            (event.key !== "ArrowUp" && event.key !== "ArrowDown") ||
+            !(event.target instanceof HTMLElement) ||
+            !event.target.matches("[data-expense-keyboard-row]")
+          )
+            return;
+          const rows = Array.from(
+            event.currentTarget.querySelectorAll<HTMLElement>("[data-expense-keyboard-row]")
+          ).filter((row) => row.getClientRects().length > 0);
+          const index = rows.findIndex((row) =>
+            api.previewOpen ? row.dataset.expenseId === api.activeExpenseId : row === event.target
+          );
+          const next = rows[index + (event.key === "ArrowDown" ? 1 : -1)];
+          if (index < 0 || !next) return;
+          event.preventDefault();
+          event.stopPropagation();
+          const expense = dateChunks
+            .flatMap((chunk) => chunk.rows)
+            .find((row) => row.id === next.dataset.expenseId);
+          if (!expense) return;
+          if (api.previewOpen) api.openExpensePreview(expense);
+          else {
+            api.setActiveExpenseId(expense.id);
+            next.focus({ preventScroll: true });
+            next.scrollIntoView({ block: "nearest" });
+          }
+        }}
         className="flex min-h-0 min-w-0 flex-1 flex-col pb-[max(0.35rem,env(safe-area-inset-bottom,0px))]"
       >
         {bulkActions && showSelectionUi ? (
@@ -1942,10 +2025,10 @@ export function ExpenseInboxTransactionList({
             onSetPayment={(paymentAccountId) =>
               void runBulk((ids) => bulkActions.runSetPayment(ids, paymentAccountId))
             }
-            onDeleteMany={() => void runBulk(bulkActions.runDeleteMany)}
+            onDeleteMany={() => runBulk(bulkActions.runDeleteMany)}
           />
         ) : null}
-        {desktopLayout ? (
+        {desktopLayout && api.dateGroupPool !== "inbox" ? (
           <NeoTable
             className="rounded-none border-0 shadow-none"
             scrollClassName="expense-compact-table-scroll bg-[var(--hh-l2-operational-surface)]"
@@ -1960,24 +2043,27 @@ export function ExpenseInboxTransactionList({
               <col className="w-[82px]" />
               <col className="w-[190px]" />
               <col className="w-[104px]" />
-              <col className="w-[90px]" />
+              <col className="w-36" />
               <col className="w-10" />
             </colgroup>
             <thead>
               <tr>
-                <th className={cn(tableRawThClass, "w-[82px] shrink-0")}>Date</th>
-                <th className={tableRawThClass}>Merchant</th>
-                <th className={cn(tableRawThClass, "w-36 shrink-0")}>Project</th>
-                <th className={cn(tableRawThClass, "w-24 shrink-0")}>Category</th>
-                <th className={cn(tableRawThClass, "w-24 shrink-0")}>Source</th>
-                <th className={cn(tableRawThClass, "w-[82px] shrink-0")}>Receipt</th>
-                <th className={cn(tableRawThClass, "w-[190px] shrink-0")}>Issues</th>
-                <th className={cn(tableRawThClass, "w-[104px] shrink-0")}>Status</th>
-                <th className={cn(tableRawThClass, "w-[90px] shrink-0 text-right tabular-nums")}>
+                <th className={cn(expenseTableThClass, "w-[82px] shrink-0")}>Date</th>
+                <th className={expenseTableThClass}>Merchant</th>
+                <th className={cn(expenseTableThClass, "w-36 shrink-0")}>Project</th>
+                <th className={cn(expenseTableThClass, "w-24 shrink-0")}>Category</th>
+                <th className={cn(expenseTableThClass, "w-24 shrink-0")}>Source</th>
+                <th className={cn(expenseTableThClass, "w-[82px] shrink-0")}>Receipt</th>
+                <th className={cn(expenseTableThClass, "w-[190px] shrink-0")}>Issues</th>
+                <th className={cn(expenseTableThClass, "w-[104px] shrink-0")}>Status</th>
+                <th className={cn(expenseTableThClass, "w-36 shrink-0 text-right tabular-nums")}>
                   Amount
                 </th>
                 <th
-                  className={cn(tableRawThClass, "w-10 shrink-0 overflow-hidden px-1 text-right")}
+                  className={cn(
+                    expenseTableThClass,
+                    "w-10 shrink-0 overflow-hidden px-1 text-right"
+                  )}
                 >
                   <span className="sr-only">Actions</span>
                 </th>

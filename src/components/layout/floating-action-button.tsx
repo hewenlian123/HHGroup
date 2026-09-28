@@ -16,7 +16,13 @@ import {
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { useLaborAddEntry } from "@/contexts/labor-add-entry-context";
-import { prefetchRoutes, QUICK_ACTION_ROUTES, runWhenIdle } from "@/lib/route-prefetch";
+import {
+  prefetchRoutes,
+  QUICK_ACTION_FAB_VISIBLE_MEDIA_QUERY,
+  QUICK_ACTION_ROUTES,
+  runWhenIdle,
+  shouldBulkPrefetchMobileNav,
+} from "@/lib/route-prefetch";
 import { shouldHideFloatingQuickActionFab } from "@/lib/floating-fab-visibility";
 import { UPLOAD_RECEIPT_ACTION } from "@/lib/navigation/actions";
 
@@ -79,6 +85,7 @@ function QuickActionNavButton({
 
 export function FloatingActionButton() {
   const [open, setOpen] = React.useState(false);
+  const quickActionTriggerRef = React.useRef<HTMLButtonElement | null>(null);
   const router = useRouter();
   const pathname = usePathname();
   const laborAddEntry = useLaborAddEntry();
@@ -86,17 +93,35 @@ export function FloatingActionButton() {
 
   React.useEffect(() => {
     if (hiddenForPage) return;
-    return runWhenIdle(() => prefetchRoutes(router, [...QUICK_ACTION_ROUTES]));
-  }, [hiddenForPage, router]);
+    let cancelPrefetch: (() => void) | undefined;
+    const cancelIdle = runWhenIdle(() => {
+      const mobileNavigationVisible = window.matchMedia(
+        QUICK_ACTION_FAB_VISIBLE_MEDIA_QUERY
+      ).matches;
+      if (!shouldBulkPrefetchMobileNav(pathname, mobileNavigationVisible)) return;
+      cancelPrefetch = prefetchRoutes(router, [...QUICK_ACTION_ROUTES]);
+    });
+    return () => {
+      cancelIdle();
+      cancelPrefetch?.();
+    };
+  }, [hiddenForPage, pathname, router]);
 
   React.useEffect(() => {
     if (!open) return;
-    prefetchRoutes(router, [...QUICK_ACTION_ROUTES, "/labor"]);
+    return prefetchRoutes(router, [...QUICK_ACTION_ROUTES, "/labor"]);
   }, [open, router]);
 
   if (hiddenForPage) {
     return null;
   }
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    setOpen(nextOpen);
+    if (!nextOpen) {
+      window.requestAnimationFrame(() => quickActionTriggerRef.current?.focus());
+    }
+  };
 
   return (
     <>
@@ -104,11 +129,12 @@ export function FloatingActionButton() {
         className={cn(
           "fixed right-3 z-40 lg:hidden sm:right-4",
           /* Keep the quick action clear of the bottom nav, toast stack, and iOS home indicator. */
-          "bottom-[calc(5.5rem+env(safe-area-inset-bottom_0px))] sm:bottom-[calc(5.25rem+env(safe-area-inset-bottom_0px))]"
+          "bottom-[calc(5.5rem+env(safe-area-inset-bottom,0px))] sm:bottom-[calc(5.25rem+env(safe-area-inset-bottom,0px))]"
         )}
         aria-label="Quick actions"
       >
         <button
+          ref={quickActionTriggerRef}
           type="button"
           onClick={() => {
             setOpen(true);
@@ -123,19 +149,19 @@ export function FloatingActionButton() {
         </button>
       </div>
 
-      <Sheet open={open} onOpenChange={setOpen}>
+      <Sheet open={open} onOpenChange={handleOpenChange}>
         <SheetContent
           side="bottom"
           onOpenAutoFocus={(e) => e.preventDefault()}
           className={cn(
-            "rounded-t-xl border-t border-border/60 p-0 max-lg:max-h-[85vh]",
-            "pb-[env(safe-area-inset-bottom_0px)]",
+            "app-shell-overlay rounded-t-xl border-t border-border/60 p-0 max-lg:max-h-[85vh]",
+            "pb-[env(safe-area-inset-bottom,0px)]",
             "[&>button]:max-lg:min-h-[44px] [&>button]:max-lg:min-w-[44px]"
           )}
         >
           <div className="flex max-h-[inherit] flex-col">
             <SheetHeader className="border-b border-border/60 px-4 py-3 text-left">
-              <SheetTitle className="text-base font-medium">Quick actions</SheetTitle>
+              <SheetTitle>Quick actions</SheetTitle>
             </SheetHeader>
             <nav
               className="relative z-[1] flex flex-col py-1.5 touch-manipulation max-lg:py-2"

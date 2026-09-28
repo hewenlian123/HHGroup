@@ -5,8 +5,11 @@ import { addE2EAssistantSession, deleteE2EAssistant, loginAsE2EOwner } from "./e
 const PROTECTED_GETS = [
   "/api/expenses",
   "/api/financial/bank-transactions",
+  "/api/invoices",
   "/api/labor/worker-balances",
+  "/api/projects",
   "/api/settings/security/account",
+  "/api/system/financial-reconciliation",
   "/api/system-health",
 ] as const;
 

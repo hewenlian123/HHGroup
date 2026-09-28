@@ -1,6 +1,7 @@
 import { expect, test, type Locator } from "@playwright/test";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
+import { loginAsE2EOwner } from "./e2e-auth-owner";
 import { assertE2ESupabaseUrlSafeForMutations } from "./e2e-supabase-url-guard";
 
 const createdProjectIds = new Set<string>();
@@ -135,7 +136,7 @@ test("keeps premium invoice rows usable with long client and project names", asy
   const fixture = await createLongNameInvoiceFixture();
 
   await page.setViewportSize({ width: 1100, height: 900 });
-  await page.goto("/financial/invoices");
+  await loginAsE2EOwner(page, "/financial/invoices");
   await page.waitForLoadState("networkidle");
   await expect(page.locator("body")).not.toContainText("Something went wrong");
 

@@ -25,6 +25,12 @@ import {
 } from "@/lib/payment-attachment-upload-browser";
 import { useToast } from "@/components/toast/toast-provider";
 import { formatCurrency } from "@/lib/formatters";
+import { formatMoneyInput, moneyToCents, roundMoney } from "@/lib/money";
+import {
+  getArPaymentIntent,
+  beginArPaymentIntent,
+  clearArPaymentIntent,
+} from "@/lib/ar-payment-intent";
 import { cn } from "@/lib/utils";
 import { createPaymentReceivedAction } from "./actions";
 
@@ -174,6 +180,13 @@ export function ReceivePaymentModal({
   const uploadInputRef = React.useRef<HTMLInputElement | null>(null);
   const dragDepthRef = React.useRef(0);
   const preserveUploadedAttachmentsRef = React.useRef(false);
+  const submissionInFlight = React.useRef(false);
+  const [actorId, setActorId] = React.useState("");
+  const [pendingPayment, setPendingPayment] = React.useState<CreatePaymentReceivedPayload | null>(
+    null
+  );
+  const [submissionError, setSubmissionError] = React.useState<string | null>(null);
+  const [amountError, setAmountError] = React.useState<string | null>(null);
   const [invoices, setInvoices] = React.useState<InvoiceWithDerived[]>([]);
   const [projects, setProjects] = React.useState<Awaited<ReturnType<typeof getProjects>>>([]);
   const [invoiceId, setInvoiceId] = React.useState("");
@@ -181,7 +194,7 @@ export function ReceivePaymentModal({
   const [customerName, setCustomerName] = React.useState("");
   const [paymentDate, setPaymentDate] = React.useState(() => new Date().toISOString().slice(0, 10));
   const [amount, setAmount] = React.useState(
-    remainingBalance != null ? String(remainingBalance) : ""
+    remainingBalance != null ? formatMoneyInput(remainingBalance) : ""
   );
   const [paymentMethod, setPaymentMethod] = React.useState<string>(PAYMENT_METHODS[0]);
   const [depositAccount, setDepositAccount] = React.useState("");
@@ -239,35 +252,83 @@ export function ReceivePaymentModal({
     [cleanupDrafts]
   );
 
+  const restorePendingPayment = React.useCallback((userId: string, id: string) => {
+    const pending = getArPaymentIntent(localStorage, userId, id);
+    setPendingPayment(pending);
+    if (pending) {
+      preserveUploadedAttachmentsRef.current = true;
+      setAmount(formatMoneyInput(pending.amount));
+      setPaymentDate(pending.payment_date);
+      setPaymentMethod(pending.payment_method);
+      setDepositAccount(pending.deposit_account ?? "");
+      setNotes(pending.notes ?? "");
+    }
+    return pending;
+  }, []);
+
+  const [contextLoading, setContextLoading] = React.useState(true);
+  const [contextError, setContextError] = React.useState<string | null>(null);
+  const [contextRetry, setContextRetry] = React.useState(0);
+
   React.useEffect(() => {
     if (!open) return;
     let cancelled = false;
-    Promise.all([getInvoicesWithDerived(), getProjects()]).then(([invList, projList]) => {
-      if (cancelled) return;
-      const receivable = invList.filter(canReceivePayment);
-      setInvoices(receivable);
-      setProjects(projList);
-      if (preselectedInvoiceId) {
-        const inv = receivable.find((i) => i.id === preselectedInvoiceId);
-        if (inv) {
-          setInvoiceId(inv.id);
-          setProjectId(inv.projectId);
-          setCustomerName(inv.clientName);
-          setAmount(remainingBalance != null ? String(remainingBalance) : String(inv.balanceDue));
-          setNotes((prev) => nextPaymentMemo(prev, inv.invoiceNo));
+    setContextLoading(true);
+    setContextError(null);
+    setInvoices([]);
+    setProjects([]);
+    setInvoiceId("");
+    setProjectId("");
+    setCustomerName("");
+    Promise.all([getInvoicesWithDerived(), getProjects(), supabase?.auth.getUser()])
+      .then(([invList, projList, identity]) => {
+        if (cancelled) return;
+        if (identity?.error || !identity?.data.user)
+          throw new Error("Payment session is unavailable.");
+        const userId = identity.data.user.id;
+        setActorId(userId);
+        const pendingInvoiceId =
+          preselectedInvoiceId ??
+          invList.find((inv) => getArPaymentIntent(localStorage, userId, inv.id))?.id;
+        const pending = pendingInvoiceId ? restorePendingPayment(userId, pendingInvoiceId) : null;
+        if (!pending) setPendingPayment(null);
+        const targetInvoiceId = preselectedInvoiceId ?? pending?.invoice_id;
+        const receivable = invList.filter(
+          (inv) => canReceivePayment(inv) || inv.id === pending?.invoice_id
+        );
+        setInvoices(receivable);
+        setProjects(projList);
+        if (targetInvoiceId) {
+          const inv = receivable.find((i) => i.id === targetInvoiceId);
+          if (!inv) throw new Error("The selected invoice is no longer available for payment.");
+          if (inv) {
+            setInvoiceId(inv.id);
+            setProjectId(inv.projectId);
+            setCustomerName(inv.clientName);
+            setAmount(
+              formatMoneyInput(remainingBalance != null ? remainingBalance : inv.balanceDue)
+            );
+            setNotes((prev) => nextPaymentMemo(prev, inv.invoiceNo));
+          }
+        } else {
+          setInvoiceId("");
+          setProjectId("");
+          setCustomerName("");
+          setAmount(remainingBalance != null ? formatMoneyInput(remainingBalance) : "");
+          setNotes("");
         }
-      } else {
-        setInvoiceId("");
-        setProjectId("");
-        setCustomerName("");
-        setAmount(remainingBalance != null ? String(remainingBalance) : "");
-        setNotes("");
-      }
-    });
+        if (pending) restorePendingPayment(userId, pending.invoice_id);
+      })
+      .catch((e) => {
+        if (!cancelled) setContextError(e instanceof Error ? e.message : "Please try again.");
+      })
+      .finally(() => {
+        if (!cancelled) setContextLoading(false);
+      });
     return () => {
       cancelled = true;
     };
-  }, [open, preselectedInvoiceId, remainingBalance]);
+  }, [open, preselectedInvoiceId, remainingBalance, contextRetry, supabase, restorePendingPayment]);
 
   React.useEffect(() => {
     if (!invoiceId || preselectedInvoiceId) return;
@@ -275,7 +336,8 @@ export function ReceivePaymentModal({
     if (inv) {
       setProjectId(inv.projectId);
       setCustomerName(inv.clientName);
-      if (amount === "" || amount === String(remainingBalance)) setAmount(String(inv.balanceDue));
+      if (amount === "" || amount === formatMoneyInput(remainingBalance))
+        setAmount(formatMoneyInput(inv.balanceDue));
       setNotes((prev) => nextPaymentMemo(prev, inv.invoiceNo));
     }
   }, [invoiceId, invoices, preselectedInvoiceId, remainingBalance, amount]);
@@ -335,6 +397,7 @@ export function ReceivePaymentModal({
 
   const handleFiles = React.useCallback(
     (files: FileList | File[] | null) => {
+      if (pendingPayment || submissionInFlight.current) return;
       if (!files?.length) return;
       if (!supabase) {
         toast({ title: "Storage unavailable", variant: "error" });
@@ -385,26 +448,28 @@ export function ReceivePaymentModal({
         if (file) void uploadDraft(draft.id, file, invId);
       }
     },
-    [selectedInvoiceId, supabase, toast, uploadDraft]
+    [selectedInvoiceId, supabase, toast, uploadDraft, pendingPayment]
   );
 
   const handleRemoveAttachment = React.useCallback(
     (draft: PaymentAttachmentDraft) => {
+      if (pendingPayment || submissionInFlight.current) return;
       setAttachmentDrafts((prev) => prev.filter((item) => item.id !== draft.id));
       if (draft.localPreviewUrl) URL.revokeObjectURL(draft.localPreviewUrl);
       if (draft.status === "uploaded" && draft.file_url && supabase) {
         void removeUploadedPaymentAttachment(supabase, draft.file_url);
       }
     },
-    [supabase]
+    [supabase, pendingPayment]
   );
 
   const handleRetryAttachment = React.useCallback(
     (draft: PaymentAttachmentDraft) => {
-      if (!draft.sourceFile || !selectedInvoiceId) return;
+      if (!draft.sourceFile || !selectedInvoiceId || pendingPayment || submissionInFlight.current)
+        return;
       void uploadDraft(draft.id, draft.sourceFile, selectedInvoiceId);
     },
-    [selectedInvoiceId, uploadDraft]
+    [selectedInvoiceId, uploadDraft, pendingPayment]
   );
 
   const handlePreviewAttachment = React.useCallback(
@@ -423,13 +488,19 @@ export function ReceivePaymentModal({
 
   const hasUploadingAttachments = attachmentDrafts.some((draft) => draft.status === "uploading");
   const hasFailedAttachments = attachmentDrafts.some((draft) => draft.status === "failed");
-  const disableSubmit = saving || hasUploadingAttachments || hasFailedAttachments;
+  const disableSubmit =
+    saving ||
+    contextLoading ||
+    !!contextError ||
+    !invoices.some((inv) => inv.id === (preselectedInvoiceId ?? invoiceId)) ||
+    hasUploadingAttachments ||
+    hasFailedAttachments;
 
   const handleSubmit = async (
     e?: React.FormEvent<HTMLFormElement> | React.MouseEvent<HTMLButtonElement>
   ) => {
     e?.preventDefault();
-    if (saving) return;
+    if (disableSubmit || submissionInFlight.current) return;
     const invId = preselectedInvoiceId ?? invoiceId;
     if (!invId) {
       toast({ title: "Select an invoice", variant: "error" });
@@ -443,12 +514,24 @@ export function ReceivePaymentModal({
       toast({ title: "Remove or retry failed attachments", variant: "error" });
       return;
     }
-    const num = parseFloat(amount);
-    if (!Number.isFinite(num) || num <= 0) {
-      toast({ title: "Enter a valid amount", variant: "error" });
+    const parsedAmount = parseFloat(amount);
+    const num = roundMoney(parsedAmount);
+    const selectedInvoice = invoices.find((inv) => inv.id === invId);
+    const balanceCap = roundMoney(
+      remainingBalance != null ? remainingBalance : (selectedInvoice?.balanceDue ?? 0)
+    );
+    if (!Number.isFinite(parsedAmount) || num <= 0) {
+      setAmountError("Enter an amount greater than 0.");
       return;
     }
+    if (moneyToCents(num) > moneyToCents(balanceCap)) {
+      setAmountError(`Amount cannot exceed the balance of ${formatCurrency(balanceCap)}.`);
+      return;
+    }
+    setAmountError(null);
+    submissionInFlight.current = true;
     setSaving(true);
+    setSubmissionError(null);
     try {
       const attachments = attachmentDrafts
         .filter((draft) => draft.status === "uploaded" && draft.file_url)
@@ -459,7 +542,7 @@ export function ReceivePaymentModal({
           size_bytes: draft.size_bytes ?? null,
           file_type: draft.file_type,
         }));
-      const payload: CreatePaymentReceivedPayload = {
+      const payloadWithoutKey: Omit<CreatePaymentReceivedPayload, "idempotency_key"> = {
         invoice_id: invId,
         project_id: projectId || null,
         customer_name:
@@ -471,8 +554,23 @@ export function ReceivePaymentModal({
         notes: notes.trim() || null,
         attachments,
       };
+      if (!actorId) throw new Error("Payment session is unavailable.");
+      const existingPending = pendingPayment ?? getArPaymentIntent(localStorage, actorId, invId);
+      const payload =
+        existingPending ?? beginArPaymentIntent(localStorage, actorId, payloadWithoutKey);
+      setPendingPayment(payload);
+      preserveUploadedAttachmentsRef.current = true;
       const result = await createPaymentReceivedAction(payload);
-      if (!result.ok) throw new Error(result.error);
+      if (!result.ok) {
+        if (result.outcome === "rejected" && !existingPending) {
+          clearArPaymentIntent(localStorage, actorId, invId, payload.idempotency_key);
+          setPendingPayment(null);
+          preserveUploadedAttachmentsRef.current = false;
+        }
+        throw new Error(result.error);
+      }
+      clearArPaymentIntent(localStorage, actorId, invId, payload.idempotency_key);
+      setPendingPayment(null);
       preserveUploadedAttachmentsRef.current = true;
       onSuccess({ paymentId: result.paymentId, invoiceId: invId, projectId: projectId || null });
       onOpenChange(false);
@@ -480,12 +578,18 @@ export function ReceivePaymentModal({
       setAmount("");
       setNotes("");
     } catch (err) {
+      const message = err instanceof Error ? err.message : "Payment outcome is unavailable.";
+      if (/exceeds remaining|invalid payment request|greater than 0/i.test(message)) {
+        setAmountError(message);
+      }
+      setSubmissionError(message);
       toast({
         title: "Failed to record payment",
         description: err instanceof Error ? err.message : undefined,
         variant: "error",
       });
     } finally {
+      submissionInFlight.current = false;
       setSaving(false);
     }
   };
@@ -493,7 +597,7 @@ export function ReceivePaymentModal({
   const onDragEnter = (ev: React.DragEvent) => {
     ev.preventDefault();
     ev.stopPropagation();
-    if (!selectedInvoiceId || saving) return;
+    if (!selectedInvoiceId || saving || pendingPayment || submissionInFlight.current) return;
     dragDepthRef.current += 1;
     setDragActive(true);
   };
@@ -524,22 +628,57 @@ export function ReceivePaymentModal({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-md overflow-y-auto rounded-hh-compact border-border/60">
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!submissionInFlight.current) onOpenChange(next);
+      }}
+    >
+      <DialogContent
+        data-revenue-ar-v2
+        className="max-h-[90vh] max-w-md overflow-y-auto rounded-hh-compact border-border/60"
+      >
         <DialogHeader className="border-b border-border/60 pb-3">
           <DialogTitle className="text-base font-medium">Receive Payment</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4 pt-3">
+        <form noValidate onSubmit={handleSubmit} className="space-y-4 pt-3">
+          {contextLoading && <p role="status">Loading payment context…</p>}
+          {contextError && (
+            <div role="alert">
+              <p>Unable to load payment context. {contextError}</p>
+              <Button type="button" variant="outline" onClick={() => setContextRetry((n) => n + 1)}>
+                Retry
+              </Button>
+            </div>
+          )}
+          {submissionError && <p role="alert">{submissionError}</p>}
+          {pendingPayment && (
+            <p role="status">
+              A previous payment request is awaiting confirmation. Receive Payment retries that same
+              request.
+            </p>
+          )}
           <div className="space-y-2">
             <label className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
               Invoice
             </label>
             <select
               value={invoiceId}
-              onChange={(e) => setInvoiceId(e.target.value)}
+              onChange={(e) => {
+                try {
+                  setInvoiceId(e.target.value);
+                  restorePendingPayment(actorId, e.target.value);
+                } catch (error) {
+                  setContextError(
+                    error instanceof Error ? error.message : "Previous payment is unavailable."
+                  );
+                }
+              }}
               className="flex h-9 w-full rounded-hh-compact border border-input bg-transparent px-3 py-2 text-sm"
               required
-              disabled={!!preselectedInvoiceId || attachmentDrafts.length > 0}
+              disabled={
+                saving || !!pendingPayment || !!preselectedInvoiceId || attachmentDrafts.length > 0
+              }
             >
               <option value="">Select invoice</option>
               {invoices.map((inv) => (
@@ -563,19 +702,20 @@ export function ReceivePaymentModal({
             <label className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
               Customer
             </label>
-            <Input
-              value={customerName}
-              onChange={(e) => setCustomerName(e.target.value)}
-              className="h-9"
-              placeholder="Customer name"
-            />
+            <Input value={customerName} readOnly className="h-9" placeholder="Customer name" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <label className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
                 Payment Date
               </label>
-              <FinanceDatePicker value={paymentDate} onChange={setPaymentDate} size="md" />
+              <FinanceDatePicker
+                value={paymentDate}
+                onChange={(date) => {
+                  if (!saving && !pendingPayment) setPaymentDate(date);
+                }}
+                size="md"
+              />
             </div>
             <div className="space-y-2">
               <label className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
@@ -586,11 +726,20 @@ export function ReceivePaymentModal({
                 min="0"
                 step="0.01"
                 value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder="0"
+                disabled={saving || !!pendingPayment}
+                onChange={(e) => {
+                  setAmount(e.target.value);
+                  setAmountError(null);
+                }}
+                placeholder="0.00"
+                aria-invalid={amountError ? true : undefined}
                 className="h-9 tabular-nums"
-                required
               />
+              {amountError ? (
+                <p role="alert" className="text-xs font-medium text-[var(--hh-danger)]">
+                  {amountError}
+                </p>
+              ) : null}
             </div>
           </div>
           <div className="space-y-2">
@@ -599,6 +748,7 @@ export function ReceivePaymentModal({
             </label>
             <select
               value={paymentMethod}
+              disabled={saving || !!pendingPayment}
               onChange={(e) => setPaymentMethod(e.target.value)}
               className="flex h-9 w-full rounded-hh-compact border border-input bg-transparent px-3 py-2 text-sm"
             >
@@ -615,6 +765,7 @@ export function ReceivePaymentModal({
             </label>
             <Input
               value={depositAccount}
+              disabled={saving || !!pendingPayment}
               onChange={(e) => setDepositAccount(e.target.value)}
               placeholder="e.g. Operating Account"
               className="h-9"
@@ -626,6 +777,7 @@ export function ReceivePaymentModal({
             </label>
             <Input
               value={notes}
+              disabled={saving || !!pendingPayment}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Optional"
               className="h-9"
@@ -644,7 +796,7 @@ export function ReceivePaymentModal({
               className="hidden"
               aria-hidden
               tabIndex={-1}
-              disabled={saving || !selectedInvoiceId}
+              disabled={saving || !!pendingPayment || !selectedInvoiceId}
               onChange={(e) => {
                 handleFiles(e.target.files);
                 e.target.value = "";
@@ -658,7 +810,7 @@ export function ReceivePaymentModal({
               className="hidden"
               aria-hidden
               tabIndex={-1}
-              disabled={saving || !selectedInvoiceId}
+              disabled={saving || !!pendingPayment || !selectedInvoiceId}
               onChange={(e) => {
                 handleFiles(e.target.files);
                 e.target.value = "";
@@ -667,7 +819,7 @@ export function ReceivePaymentModal({
             <div className="grid gap-2 sm:grid-cols-2">
               <button
                 type="button"
-                disabled={saving || !selectedInvoiceId}
+                disabled={saving || !!pendingPayment || !selectedInvoiceId}
                 onClick={() => cameraInputRef.current?.click()}
                 className="group flex min-h-[58px] items-center gap-3 rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 py-3 text-left transition-colors hover:border-[var(--hh-border-strong)] hover:bg-[var(--hh-l3-hover)] disabled:pointer-events-none disabled:opacity-45"
               >
@@ -689,7 +841,7 @@ export function ReceivePaymentModal({
               </button>
               <button
                 type="button"
-                disabled={saving || !selectedInvoiceId}
+                disabled={saving || !!pendingPayment || !selectedInvoiceId}
                 onClick={() => uploadInputRef.current?.click()}
                 className="group flex min-h-[58px] items-center gap-3 rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 py-3 text-left transition-colors hover:border-[var(--hh-border-strong)] hover:bg-[var(--hh-l3-hover)] disabled:pointer-events-none disabled:opacity-45"
               >
@@ -738,7 +890,7 @@ export function ReceivePaymentModal({
                   <PaymentAttachmentRow
                     key={draft.id}
                     attachment={draft}
-                    disabled={saving}
+                    disabled={saving || !!pendingPayment}
                     onPreview={() => handlePreviewAttachment(draft)}
                     onRetry={() => handleRetryAttachment(draft)}
                     onRemove={() => handleRemoveAttachment(draft)}
@@ -754,6 +906,7 @@ export function ReceivePaymentModal({
               variant="outline"
               size="sm"
               className="btn-outline-ghost h-8"
+              disabled={saving}
               onClick={() => onOpenChange(false)}
             >
               Cancel

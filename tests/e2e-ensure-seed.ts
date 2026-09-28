@@ -27,6 +27,10 @@ function isMissingTableError(msg: string): boolean {
 
 type RecordUpsert = Record<string, unknown>;
 
+function omitRecordFields(record: RecordUpsert, fields: readonly string[]): RecordUpsert {
+  return Object.fromEntries(Object.entries(record).filter(([key]) => !fields.includes(key)));
+}
+
 async function upsertFirstSuccess(
   supabase: SupabaseClient,
   table: string,
@@ -138,18 +142,9 @@ export async function ensureE2EPreservedSeed(supabase: SupabaseClient): Promise<
   };
   const projectVariants: RecordUpsert[] = [
     projectFull,
-    (() => {
-      const { client_name: _a, ...r } = projectFull;
-      return r;
-    })(),
-    (() => {
-      const { client_name: _a, customer_id: _b, ...r } = projectFull;
-      return r;
-    })(),
-    (() => {
-      const { client_name: _a, customer_id: _b, address: _c, notes: _d, ...r } = projectFull;
-      return r;
-    })(),
+    omitRecordFields(projectFull, ["client_name"]),
+    omitRecordFields(projectFull, ["client_name", "customer_id"]),
+    omitRecordFields(projectFull, ["client_name", "customer_id", "address", "notes"]),
     {
       id: E2E_PRESERVED_PROJECT_ID,
       name: "[E2E] Seed — HH Unified",

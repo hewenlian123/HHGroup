@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { flushSync } from "react-dom";
 import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
@@ -32,8 +31,7 @@ type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   project: Pick<Project, "id" | "name" | "client" | "address" | "budget" | "customerId">;
-  /** Synchronous: parent applies optimistic UI and closes modal; runs server work in background. */
-  onSave: (patch: ProjectEditSavePatch) => void;
+  onSave: (patch: ProjectEditSavePatch) => Promise<void>;
 };
 
 export function EditProjectModal({ open, onOpenChange, project, onSave }: Props) {
@@ -43,18 +41,20 @@ export function EditProjectModal({ open, onOpenChange, project, onSave }: Props)
   const [budget, setBudget] = React.useState(budgetDigits(String(project.budget ?? "")));
   const [saving, setSaving] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const wasOpenRef = React.useRef(false);
 
   React.useEffect(() => {
-    if (open) {
+    if (open && !wasOpenRef.current) {
       setName(project.name ?? "");
       setClient(project.client ?? "");
       setAddress(project.address ?? "");
       setBudget(budgetDigits(String(project.budget ?? "")));
       setError(null);
     }
+    wasOpenRef.current = open;
   }, [open, project.name, project.client, project.address, project.budget]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (saving) return;
 
@@ -79,20 +79,18 @@ export function EditProjectModal({ open, onOpenChange, project, onSave }: Props)
       return;
     }
 
-    flushSync(() => {
-      setSaving(true);
-      setError(null);
-    });
+    setSaving(true);
+    setError(null);
 
     try {
-      onSave({
+      await onSave({
         name: nameTrim,
         client: clientTrim,
         address: addressTrim,
         budget: budgetNum,
       });
-    } catch {
-      setError("Something went wrong. Try again.");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Something went wrong. Try again.");
     } finally {
       setSaving(false);
     }
@@ -132,7 +130,11 @@ export function EditProjectModal({ open, onOpenChange, project, onSave }: Props)
             onValueChange={setBudget}
             disabled={saving}
           />
-          {error ? <p className={neoFormErrorClassName}>{error}</p> : null}
+          {error ? (
+            <p role="alert" className={neoFormErrorClassName}>
+              {error}
+            </p>
+          ) : null}
           <NeoActionFooter>
             <Button
               type="button"

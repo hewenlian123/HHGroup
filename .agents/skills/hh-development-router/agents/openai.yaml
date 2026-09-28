@@ -1,0 +1,4 @@
+interface:
+  display_name: "HH Development Router"
+  short_description: "Route HH changes to the right Skills and checks"
+  default_prompt: "Use $hh-development-router to classify this HH Group change and select the required Skills and verification tools."

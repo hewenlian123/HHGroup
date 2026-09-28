@@ -7,12 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { FinanceDatePicker } from "@/components/ui/date-picker";
-import {
-  createWorkerPayment,
-  markWorkerReimbursementsPaid,
-  markWorkerInvoicesPaid,
-  getProjects,
-} from "@/lib/data";
+import { createWorkerPayment, markWorkerInvoicesPaid, getProjects } from "@/lib/data";
 import {
   WorkerAdvanceSelector,
   type WorkerAdvanceOption,
@@ -261,48 +256,32 @@ export function PayWorkerModal({
         }
       }
 
-      if (!finalize.payment) {
-        const payment = await createWorkerPayment({
-          workerId: finalize.workerId,
-          projectId: finalize.projectId,
-          paymentDate: finalize.paymentDate,
-          amount: finalize.amount,
-          paymentMethod: finalize.paymentMethod,
-          notes: finalize.notes,
-          idempotencyKey: finalize.idempotencyKey,
-        });
+      const payment = await createWorkerPayment({
+        workerId: finalize.workerId,
+        projectId: finalize.projectId,
+        paymentDate: finalize.paymentDate,
+        amount: finalize.amount,
+        paymentMethod: finalize.paymentMethod,
+        notes: finalize.notes,
+        idempotencyKey: finalize.idempotencyKey,
+        advanceIds: finalize.selectedAdvanceIds,
+        advanceDeductionAmount: finalize.totalSelectedAdvances,
+      });
 
-        finalize = {
-          ...finalize,
-          payment,
-        };
-        pendingFinalizeRef.current = finalize;
-        writePendingFinalize(finalize);
-        if (mountedRef.current && submitRunRef.current === runId) {
-          setPaymentPendingFinalize(true);
-        }
+      finalize = {
+        ...finalize,
+        payment,
+      };
+      pendingFinalizeRef.current = finalize;
+      writePendingFinalize(finalize);
+      if (mountedRef.current && submitRunRef.current === runId) {
+        setPaymentPendingFinalize(true);
       }
 
       if (mountedRef.current && submitRunRef.current === runId) {
         setBusyPhase("finalize");
       }
-      await Promise.all([
-        markWorkerReimbursementsPaid(finalize.workerId, finalize.projectId),
-        markWorkerInvoicesPaid(finalize.workerId, finalize.projectId),
-        ...(finalize.totalSelectedAdvances > 0
-          ? finalize.selectedAdvanceIds.map(async (id) => {
-              const res = await fetch(`/api/labor/advances/${id}`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ status: "deducted" }),
-              });
-              if (!res.ok) {
-                const data = (await res.json().catch(() => ({}))) as { message?: string };
-                throw new Error(data.message ?? "Failed to apply advance.");
-              }
-            })
-          : []),
-      ]);
+      await markWorkerInvoicesPaid(finalize.workerId, finalize.projectId);
 
       pendingFinalizeRef.current = null;
       clearPendingFinalize(finalize.workerId);

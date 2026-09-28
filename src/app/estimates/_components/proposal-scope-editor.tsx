@@ -30,15 +30,14 @@ export type ProposalScopeEditorProps = {
 };
 
 const ROW_MIN_HEIGHT = 44;
-const ROW_MAX_HEIGHT = 360;
 
 function resizeTextarea(el: HTMLTextAreaElement | null): void {
   if (!el) return;
   el.style.height = "auto";
   const scrollHeight = el.scrollHeight;
-  const nextHeight = Math.min(Math.max(scrollHeight, ROW_MIN_HEIGHT), ROW_MAX_HEIGHT);
+  const nextHeight = Math.max(scrollHeight, ROW_MIN_HEIGHT);
   el.style.height = `${nextHeight}px`;
-  el.style.overflowY = scrollHeight > ROW_MAX_HEIGHT ? "auto" : "hidden";
+  el.style.overflowY = "hidden";
 }
 
 export function ProposalScopeEditor({

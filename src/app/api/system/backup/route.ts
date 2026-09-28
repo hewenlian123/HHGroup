@@ -16,6 +16,7 @@
 
 import { NextResponse } from "next/server";
 import { requireInternalAdminAccess, requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
+import { guardDangerousMaintenanceRequest } from "@/lib/production-safety";
 import { getServerSupabaseInternal } from "@/lib/supabase-server";
 import { addSystemLog } from "@/lib/system-log-store";
 import { safeErrorMessage } from "@/lib/system-response-safety";
@@ -77,6 +78,9 @@ function todayStr(): string {
 export async function POST(request: Request): Promise<NextResponse> {
   const strictGuard = await requireSupabaseOwnerOrAdmin(request);
   if (!strictGuard.ok) return strictGuard.response;
+
+  const productionGuard = guardDangerousMaintenanceRequest(request);
+  if (productionGuard) return productionGuard;
 
   const guard = await requireInternalAdminAccess(request);
   if (!guard.ok) return guard.response;

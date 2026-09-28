@@ -14,6 +14,8 @@ import {
 } from "@/lib/labor-overtime-notes";
 import { buildLaborEntryRateSnapshotWithClient } from "@/lib/worker-rate-history-db";
 import { isHiddenLaborEntryStatus } from "@/lib/labor-entry-status";
+import { financialDataUnavailable } from "@/lib/financial-availability";
+import { laborEntryCountsTowardCanonicalCost } from "@/lib/labor-cost-eligibility";
 
 export type LaborEntryStatus = "Draft" | "Submitted" | "Approved" | "Locked";
 
@@ -289,7 +291,7 @@ export async function getLaborEntriesWithJoins(
 
   async function buildQuery(selectCols: string, hasProjectId = true): Promise<QueryResult> {
     if (filters.project_id && !hasProjectId) {
-      return { data: [], error: null };
+      throw new Error("Labor project costs unavailable: project attribution is missing.");
     }
     let q2 = c.from("labor_entries").select(selectCols).order("work_date", { ascending: false });
     if (filters.date_from) q2 = q2.gte("work_date", filters.date_from.slice(0, 10));
@@ -578,8 +580,10 @@ export async function getLaborEntriesWithJoins(
 }
 
 /** List labor_workers for filters/dropdowns. Supabase only. */
-export async function getLaborWorkersList(): Promise<{ id: string; name: string }[]> {
-  const c = client();
+export async function getLaborWorkersList(
+  explicitClient?: SupabaseClient
+): Promise<{ id: string; name: string }[]> {
+  const c = client(explicitClient);
   const { data: rows, error } = await c.from("labor_workers").select("id, name").order("name");
   if (error) throw new Error(error.message ?? "Failed to load labor workers.");
   return (rows ?? []).map((r: { id: string; name: string }) => ({ id: r.id, name: r.name }));
@@ -677,29 +681,18 @@ export async function getWorkerPayableSummary(
   };
 }
 
-/** Total labor cost (sum labor_entries.cost_amount for Approved/Locked). For finance overview. */
-export async function getTotalLaborCost(): Promise<number> {
-  const c = client();
-  const { data: rows, error } = await c
-    .from("labor_entries")
-    .select("cost_amount, status")
-    .in("status", ["Approved", "Locked"]);
+/** Total labor cost. Same eligibility as project profit: every entry except paid and void. */
+export async function getTotalLaborCost(explicitClient?: SupabaseClient): Promise<number> {
+  const c = client(explicitClient);
+  const { data: rows, error } = await c.from("labor_entries").select("cost_amount, status");
   if (error) {
-    if (/column .* does not exist|schema cache/i.test(error.message ?? "")) {
-      const fallback = await c.from("labor_entries").select("cost_amount");
-      if (fallback.error)
-        throw new Error(fallback.error.message ?? "Failed to load total labor cost.");
-      return (fallback.data ?? []).reduce(
-        (s, r) => s + Number((r as { cost_amount?: number }).cost_amount ?? 0),
-        0
-      );
-    }
     throw new Error(error.message ?? "Failed to load total labor cost.");
   }
-  return (rows ?? []).reduce(
-    (s, r) => s + Number((r as { cost_amount?: number }).cost_amount ?? 0),
-    0
-  );
+  return (rows ?? []).reduce((s, r) => {
+    const row = r as { cost_amount?: number; status?: string | null };
+    if (!laborEntryCountsTowardCanonicalCost(row.status)) return s;
+    return s + Number(row.cost_amount ?? 0);
+  }, 0);
 }
 
 export async function getDailyLaborEntriesByDate(workDate: string): Promise<DailyLaborEntryRow[]> {
@@ -989,9 +982,10 @@ export type ProjectLaborBreakdownRow = {
 
 /** Aggregate labor entries for a project by worker. Supabase RPC only. */
 export async function getProjectLaborBreakdown(
-  projectId: string
+  projectId: string,
+  explicitClient?: SupabaseClient
 ): Promise<ProjectLaborBreakdownRow[]> {
-  const c = client();
+  const c = client(explicitClient);
   const { data: rows, error } = await c.rpc("get_project_labor_breakdown", {
     p_project_id: projectId,
   });
@@ -1000,13 +994,13 @@ export async function getProjectLaborBreakdown(
       throw new Error(error.message ?? "Failed to load project labor breakdown.");
 
     // Fallback for environments missing the RPC: aggregate from labor_entries directly.
-    const entries = await getLaborEntriesWithJoins({ project_id: projectId });
+    const entries = await getLaborEntriesWithJoins({ project_id: projectId }, explicitClient);
     const byWorker = new Map<
       string,
       { worker_name: string | null; days: Set<string>; total_labor_cost: number }
     >();
     for (const e of entries) {
-      if (e.status !== "Approved" && e.status !== "Locked") continue;
+      if (!laborEntryCountsTowardCanonicalCost(e.status)) continue;
       const key = e.worker_id;
       if (!key) continue;
       const cur = byWorker.get(key) ?? {
@@ -1064,7 +1058,7 @@ export async function getMonthlyPayrollSummary(
       () => [] as Awaited<ReturnType<typeof getLaborEntriesWithJoins>>
     );
     const filtered = entries.filter(
-      (e) => e.work_date?.startsWith(monthStr) && (e.status === "Approved" || e.status === "Locked")
+      (e) => e.work_date?.startsWith(monthStr) && laborEntryCountsTowardCanonicalCost(e.status)
     );
     const byWorker = new Map<string, { worker_name: string | null; total_labor_cost: number }>();
     for (const e of filtered) {
@@ -1099,7 +1093,7 @@ export type LaborPaymentInsert = {
   note?: string | null;
 };
 
-/** Insert one row into labor_payments. Supabase only. Note is stored as memo. */
+/** Insert one row into labor_payments. Supabase only. */
 export async function insertLaborPayment(payload: LaborPaymentInsert): Promise<void> {
   const c = client();
   const { error } = await c.from("labor_payments").insert({
@@ -1107,7 +1101,7 @@ export async function insertLaborPayment(payload: LaborPaymentInsert): Promise<v
     payment_date: payload.payment_date.slice(0, 10),
     amount: Number(payload.amount) || 0,
     method: payload.method || null,
-    memo: payload.note?.trim() || null,
+    note: payload.note?.trim() || null,
   });
   if (error) throw new Error(error.message ?? "Failed to record payment.");
 }
@@ -1177,8 +1171,11 @@ export type LaborEntryRecentRow = {
 };
 
 /** Recent labor entries for dashboard activity feed. Ordered by created_at desc (fallback work_date), limit. */
-export async function getLaborEntriesRecent(limit: number): Promise<LaborEntryRecentRow[]> {
-  const c = client();
+export async function getLaborEntriesRecent(
+  limit: number,
+  explicitClient?: SupabaseClient
+): Promise<LaborEntryRecentRow[]> {
+  const c = client(explicitClient);
   const limitNum = Math.max(1, Math.min(limit, 100));
   let rows: Array<Record<string, unknown>> | null = null;
   const selWithCreated =
@@ -1188,7 +1185,8 @@ export async function getLaborEntriesRecent(limit: number): Promise<LaborEntryRe
     .select(selWithCreated)
     .order("created_at", { ascending: false })
     .limit(limitNum);
-  if (!errCreated && dataWithCreated?.length) {
+  if (!errCreated) {
+    if (!Array.isArray(dataWithCreated)) financialDataUnavailable("recent labor entries", null);
     rows = dataWithCreated as Array<Record<string, unknown>>;
   }
   if (
@@ -1196,12 +1194,14 @@ export async function getLaborEntriesRecent(limit: number): Promise<LaborEntryRe
     (isMissingColumn(errCreated) ||
       (errCreated?.message ?? "").includes("more than one relationship"))
   ) {
-    const { data: dataFallback } = await c
+    const { data: dataFallback, error: fallbackError } = await c
       .from("labor_entries")
       .select("id, project_id, work_date, cost_amount, notes")
       .order("work_date", { ascending: false })
       .limit(limitNum);
-    rows = (dataFallback ?? []) as Array<Record<string, unknown>>;
+    if (fallbackError) financialDataUnavailable("recent labor entries", fallbackError);
+    if (!Array.isArray(dataFallback)) financialDataUnavailable("recent labor entries", null);
+    rows = dataFallback as Array<Record<string, unknown>>;
     for (const r of rows) {
       r.created_at = (r as { work_date?: string }).work_date ?? new Date().toISOString();
     }
@@ -1209,11 +1209,15 @@ export async function getLaborEntriesRecent(limit: number): Promise<LaborEntryRe
       const projectIds = Array.from(
         new Set(rows.map((r) => (r as { project_id?: string }).project_id).filter(Boolean))
       ) as string[];
-      const { data: projRows } = projectIds.length
+      const projectResult = projectIds.length
         ? await c.from("projects").select("id, name").in("id", projectIds)
-        : { data: [] };
+        : { data: [], error: null };
+      if (projectResult.error)
+        financialDataUnavailable("recent labor projects", projectResult.error);
+      if (!Array.isArray(projectResult.data))
+        financialDataUnavailable("recent labor projects", null);
       const projectNameById = new Map(
-        ((projRows ?? []) as Array<{ id: string; name: string | null }>).map((p) => [
+        (projectResult.data as Array<{ id: string; name: string | null }>).map((p) => [
           p.id,
           p.name ?? null,
         ])
@@ -1225,8 +1229,8 @@ export async function getLaborEntriesRecent(limit: number): Promise<LaborEntryRe
           : null;
       }
     }
-  } else if (!rows?.length && dataWithCreated !== undefined) {
-    rows = (dataWithCreated ?? []) as Array<Record<string, unknown>>;
+  } else if (errCreated) {
+    financialDataUnavailable("recent labor entries", errCreated);
   }
   if (!rows?.length) return [];
   return rows.map((r) => {

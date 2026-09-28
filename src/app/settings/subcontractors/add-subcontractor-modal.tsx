@@ -140,11 +140,11 @@ export function AddSubcontractorModal({ open, onOpenChange, onSuccess }: Props) 
               onClick={() => onOpenChange(false)}
               variant="outline"
               size="sm"
-              className="h-8 rounded-sm"
+              className="h-8 rounded-hh-compact"
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={busy} size="sm" className="h-8 rounded-sm">
+            <Button type="submit" disabled={busy} size="sm" className="h-8 rounded-hh-compact">
               <SubmitSpinner loading={busy} className="mr-2" />
               {busy ? "Saving…" : "Add Subcontractor"}
             </Button>

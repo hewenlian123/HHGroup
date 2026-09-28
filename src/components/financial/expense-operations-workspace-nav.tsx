@@ -5,37 +5,51 @@ import { usePathname, useSearchParams } from "next/navigation";
 
 import { cn } from "@/lib/utils";
 
-type ExpenseOperationsSurface = "expenses" | "inbox" | "reimbursements";
+type ExpenseOperationsSurface = "intake" | "expenses" | "inbox" | "reimbursements";
 
 const SURFACES: Array<{
   id: ExpenseOperationsSurface;
   label: string;
   pathname: string;
 }> = [
-  { id: "expenses", label: "Expenses", pathname: "/financial/expenses" },
-  { id: "inbox", label: "Receipt Inbox", pathname: "/financial/inbox" },
+  { id: "inbox", label: "Review", pathname: "/financial/inbox" },
+  { id: "expenses", label: "Ledger", pathname: "/financial/expenses" },
+  { id: "intake", label: "Intake", pathname: "/financial/expenses/intake" },
   { id: "reimbursements", label: "Reimbursements", pathname: "/labor/reimbursements" },
 ];
 
 function surfaceForPathname(pathname: string): ExpenseOperationsSurface | null {
+  if (
+    pathname.startsWith("/financial/expenses/intake") ||
+    pathname.startsWith("/financial/inbox/worker")
+  )
+    return "intake";
   return SURFACES.find((surface) => pathname.startsWith(surface.pathname))?.id ?? null;
 }
 
 function isExpenseRecordSurface(surface: ExpenseOperationsSurface | null): boolean {
-  return surface === "expenses" || surface === "inbox";
+  return surface === "intake" || surface === "expenses" || surface === "inbox";
 }
 
-export function ExpenseOperationsWorkspaceNav({ className }: { className?: string }) {
+export function ExpenseOperationsWorkspaceNav({
+  className,
+  showHeader = true,
+}: {
+  className?: string;
+  showHeader?: boolean;
+}) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const activeSurface = surfaceForPathname(pathname);
   const workerInboxActive = pathname.startsWith("/financial/inbox/worker");
 
+  const surfaces = SURFACES;
+
   const hrefFor = (target: (typeof SURFACES)[number]) => {
     const next = new URLSearchParams();
     const workerId = searchParams.get("workerId")?.trim();
     const targetUsesWorkerInbox =
-      target.id === "inbox" &&
+      target.id === "intake" &&
       (workerInboxActive || (activeSurface === "reimbursements" && Boolean(workerId)));
     const targetPathname = targetUsesWorkerInbox ? "/financial/inbox/worker" : target.pathname;
 
@@ -78,23 +92,36 @@ export function ExpenseOperationsWorkspaceNav({ className }: { className?: strin
       data-expense-operations-shell
       className={cn("min-w-0 shrink-0 border-b border-[var(--hh-border)] pb-2", className)}
     >
-      <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
-        <div className="min-w-0">
-          <h1 className="text-hh-page-title tracking-normal text-[var(--hh-text-primary)]">
-            Expense Operations
-          </h1>
-          <p className="mt-0.5 text-hh-status leading-snug text-[var(--hh-text-secondary)]">
-            Daily operational workspace
-          </p>
-        </div>
+      <div
+        className={cn(
+          "flex min-w-0",
+          showHeader
+            ? "flex-col gap-2 sm:flex-row sm:items-end sm:justify-between sm:gap-4"
+            : "overflow-hidden"
+        )}
+      >
+        {showHeader ? (
+          <div className="min-w-0">
+            <h1 className="text-hh-page-title tracking-normal text-[var(--hh-text-primary)]">
+              Expenses
+            </h1>
+            <p className="mt-0.5 text-hh-status leading-snug text-[var(--hh-text-secondary)]">
+              Review receipts, complete expenses, and follow expense history.
+            </p>
+          </div>
+        ) : null}
         <nav
           aria-label="Expense Operations workspace"
-          className="-mx-1 flex min-w-0 max-w-full gap-1 overflow-x-auto px-1 pb-px [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className={cn(
+            "-mx-1 flex min-w-0 max-w-full gap-1 overflow-x-auto px-1 pb-px [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+            !showHeader && "w-full"
+          )}
         >
-          {SURFACES.map((surface) => {
+          {surfaces.map((surface) => {
             const active = surface.id === activeSurface;
             return (
               <Link
+                prefetch={false}
                 key={surface.id}
                 href={hrefFor(surface)}
                 aria-current={active ? "page" : undefined}

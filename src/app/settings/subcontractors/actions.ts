@@ -1,6 +1,7 @@
 "use server";
 
 import { insertSubcontractor } from "@/lib/data";
+import { requireSupabaseOwnerOrAdminServerActionClient } from "@/lib/auth-boundary";
 
 export async function addSubcontractorAction(draft: {
   name: string;
@@ -11,5 +12,7 @@ export async function addSubcontractorAction(draft: {
   insurance_expiration_date?: string | null;
   notes?: string | null;
 }) {
-  await insertSubcontractor(draft);
+  const guard = await requireSupabaseOwnerOrAdminServerActionClient({ noStore: true });
+  if (!guard.ok) throw new Error(guard.error);
+  await insertSubcontractor(draft, guard.client);
 }

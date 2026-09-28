@@ -605,10 +605,14 @@ function checkInvoices(
         0
       )
     );
+    const activePayments = payments.filter(
+      (payment) => !isVoidPaymentStatus(normalizeStatus(payment.status))
+    );
     const postedPaymentSum = roundMoney(
-      payments
-        .filter((payment) => !isVoidPaymentStatus(normalizeStatus(payment.status)))
-        .reduce((sum, payment) => sum + (firstNumber(payment, ["amount", "total"]) ?? 0), 0)
+      activePayments.reduce(
+        (sum, payment) => sum + (firstNumber(payment, ["amount", "total"]) ?? 0),
+        0
+      )
     );
     const voidPaymentSum = roundMoney(
       payments
@@ -739,7 +743,15 @@ function checkInvoices(
 
     if (total != null && paidAmount != null && storedBalance != null) {
       const expectedBalance = roundMoney(total - paidAmount);
-      if (!nearlyEqual(storedBalance, expectedBalance)) {
+      // Unissued drafts do not count toward receivables. Legacy drafts can store
+      // zero due; current invoice caches can hold their unpaid face value instead.
+      // This compatibility applies only before any posted payment, never to issued AR.
+      const legacyUnissuedDraftBalance =
+        status === "draft" &&
+        activePayments.length === 0 &&
+        (storedPaid ?? 0) === 0 &&
+        storedBalance === 0;
+      if (!legacyUnissuedDraftBalance && !nearlyEqual(storedBalance, expectedBalance)) {
         pushIssue(issues, {
           severity: "critical",
           module: "invoices",

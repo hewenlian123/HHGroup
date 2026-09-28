@@ -7,13 +7,14 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseClient } from "@/lib/supabase";
+import { financialDataUnavailable } from "@/lib/financial-availability";
 import { workerRateLocalYmd } from "@/lib/worker-rate-date";
 
 export type WorkerReimbursementStatus = "pending" | "approved" | "paid" | "settled";
 
 export type WorkerReimbursement = {
   id: string;
-  workerId: string;
+  workerId: string | null;
   workerName?: string | null;
   projectId: string | null;
   projectName?: string | null;
@@ -21,7 +22,8 @@ export type WorkerReimbursement = {
   amount: number;
   description: string | null;
   receiptUrl: string | null;
-  status: WorkerReimbursementStatus;
+  status: string | null;
+  workflowClass: "canonical" | "LEGACY_UNVERIFIED";
   /** Business date (YYYY-MM-DD); falls back to created_at date when column absent in DB. */
   reimbursementDate: string;
   createdAt: string;
@@ -80,12 +82,24 @@ function isTableMissingError(error: { message?: string; code?: string }): boolea
 }
 
 const COLS =
+  "id, worker_id, project_id, vendor, amount, description, receipt_url, status, reimbursement_date, created_at, paid_at, payment_id, source_worker_receipt_id, source_receipt:worker_receipts!worker_reimbursements_source_worker_receipt_id_fkey(id,canonical_ingested_at,reimbursement_id,worker_id,project_id,amount,status)";
+/** Read-only shape before the canonical intake boundary migrations. */
+const LEGACY_READ_COLS =
   "id, worker_id, project_id, vendor, amount, description, receipt_url, status, reimbursement_date, created_at, paid_at, payment_id";
-/** Oldest PostgREST shapes */
-const COLS_LEGACY =
-  "id, worker_id, project_id, vendor, amount, description, receipt_url, status, created_at, paid_at, payment_id";
-const COLS_LEGACY_NO_PAY =
-  "id, worker_id, project_id, vendor, amount, description, receipt_url, status, created_at, paid_at";
+
+function isMissingCanonicalReadSchema(error: {
+  code?: string;
+  message?: string;
+  details?: string;
+}): boolean {
+  const message = `${error.message ?? ""} ${error.details ?? ""}`;
+  return (
+    ((error.code === "42703" || error.code === "PGRST204") &&
+      /\b(canonical_ingested_at|source_worker_receipt_id)\b/.test(message)) ||
+    (error.code === "PGRST200" &&
+      /worker_reimbursements_source_worker_receipt_id_fkey/.test(message))
+  );
+}
 
 async function enrichNames(
   rows: WorkerReimbursement[],
@@ -98,11 +112,18 @@ async function enrichNames(
   const [workersRes, projectsRes] = await Promise.all([
     workerIds.length
       ? c.from("workers").select("id, name").in("id", workerIds)
-      : Promise.resolve({ data: [] as Array<{ id: string; name: string | null }> }),
+      : Promise.resolve({ data: [] as Array<{ id: string; name: string | null }>, error: null }),
     projectIds.length
       ? c.from("projects").select("id, name").in("id", projectIds)
-      : Promise.resolve({ data: [] as Array<{ id: string; name: string | null }> }),
+      : Promise.resolve({ data: [] as Array<{ id: string; name: string | null }>, error: null }),
   ]);
+
+  if (workersRes.error || projectsRes.error)
+    throw new Error(
+      workersRes.error?.message ??
+        projectsRes.error?.message ??
+        "Failed to load reimbursement names."
+    );
 
   const workerNameById = new Map(
     ((workersRes.data ?? []) as { id: string; name: string | null }[]).map((w) => [
@@ -119,17 +140,9 @@ async function enrichNames(
 
   return rows.map((r) => ({
     ...r,
-    workerName: r.workerName ?? workerNameById.get(r.workerId) ?? null,
+    workerName: r.workerName ?? workerNameById.get(r.workerId ?? "") ?? null,
     projectName: r.projectId ? (r.projectName ?? projectNameById.get(r.projectId) ?? null) : null,
   }));
-}
-
-function normaliseStatus(s: unknown): WorkerReimbursementStatus {
-  const v = String(s ?? "").toLowerCase();
-  if (v === "approved") return "approved";
-  if (v === "paid") return "paid";
-  if (v === "settled") return "settled";
-  return "pending";
 }
 
 function reimbursementDateFromRow(r: Record<string, unknown>): string {
@@ -139,9 +152,22 @@ function reimbursementDateFromRow(r: Record<string, unknown>): string {
 }
 
 function fromRow(r: Record<string, unknown>): WorkerReimbursement {
+  const source = r.source_receipt as Record<string, unknown> | null;
+  const canonical = Boolean(
+    source?.canonical_ingested_at &&
+    source.status === "Approved" &&
+    r.worker_id &&
+    source.id === r.source_worker_receipt_id &&
+    source.reimbursement_id === r.id &&
+    source.worker_id === r.worker_id &&
+    source.project_id === r.project_id &&
+    Number.isFinite(Number(r.amount)) &&
+    Number(r.amount) > 0 &&
+    Number(source.amount) === Number(r.amount)
+  );
   return {
     id: r.id as string,
-    workerId: r.worker_id as string,
+    workerId: (r.worker_id as string | null) ?? null,
     workerName: null,
     projectId: (r.project_id as string | null) ?? null,
     projectName: null,
@@ -149,7 +175,8 @@ function fromRow(r: Record<string, unknown>): WorkerReimbursement {
     amount: Number(r.amount) || 0,
     description: (r.description as string | null) ?? null,
     receiptUrl: (r.receipt_url as string | null) ?? null,
-    status: normaliseStatus(r.status),
+    status: r.status == null ? null : String(r.status),
+    workflowClass: canonical ? "canonical" : "LEGACY_UNVERIFIED",
     reimbursementDate: reimbursementDateFromRow(r),
     createdAt: String(r.created_at ?? ""),
     paidAt: r.paid_at != null ? String(r.paid_at) : null,
@@ -157,28 +184,18 @@ function fromRow(r: Record<string, unknown>): WorkerReimbursement {
   };
 }
 
-function isColumnMissingError(err: { message?: string }): boolean {
-  const m = (err?.message ?? "").toLowerCase();
-  return m.includes("column") && (m.includes("does not exist") || m.includes("schema cache"));
-}
-
 /**
  * Sum of worker reimbursements with status `approved` (approved but not yet marked paid).
- * Safe $0 if table missing or query fails. Overlap with worker balance aggregates is possible when
- * approved rows are also counted as open reimbursements there.
+ * Overlap with worker balance aggregates is possible when approved rows are also counted as open
+ * reimbursements there. Read failures are unavailable, never a financial zero.
  */
-export async function sumUnpaidApprovedWorkerReimbursements(): Promise<number> {
-  try {
-    const c = client();
-    const { data, error } = await c.from(TABLE_NAME).select("amount").eq("status", "approved");
-    if (error) {
-      if (isTableMissingError(error)) return 0;
-      return 0;
-    }
-    return (data ?? []).reduce((s, r) => s + Number((r as { amount?: number }).amount ?? 0), 0);
-  } catch {
-    return 0;
-  }
+export async function sumUnpaidApprovedWorkerReimbursements(
+  explicitClient?: SupabaseClient
+): Promise<number> {
+  const c = client(explicitClient);
+  const { data, error } = await c.from(TABLE_NAME).select("amount").eq("status", "approved");
+  if (error) financialDataUnavailable("approved worker reimbursements", error);
+  return (data ?? []).reduce((s, r) => s + Number((r as { amount?: number }).amount ?? 0), 0);
 }
 
 /** Paid reimbursements allocated to a project. No matching rows contribute $0; failed reads reject. */
@@ -207,22 +224,15 @@ export async function getWorkerReimbursements(
     .select(COLS)
     .order("reimbursement_date", { ascending: false })
     .order("created_at", { ascending: false });
-  if (error && isColumnMissingError(error)) {
+  if (error && isMissingCanonicalReadSchema(error)) {
     const fallback = await c
       .from(TABLE_NAME)
-      .select(COLS_LEGACY)
+      .select(LEGACY_READ_COLS)
       .order("created_at", { ascending: false });
     data = fallback.data as unknown as typeof data;
     error = fallback.error;
   }
-  if (error && isColumnMissingError(error)) {
-    const fallback2 = await c
-      .from(TABLE_NAME)
-      .select(COLS_LEGACY_NO_PAY)
-      .order("created_at", { ascending: false });
-    data = fallback2.data as unknown as typeof data;
-    error = fallback2.error;
-  }
+
   if (error) {
     if (isTableMissingError(error)) throw new Error(TABLE_MISSING_MESSAGE);
     throw new Error(error.message ?? "Failed to load worker reimbursements.");
@@ -242,24 +252,16 @@ export async function getReimbursementById(
     .select(COLS)
     .eq("id", reimbursementId)
     .maybeSingle();
-  if (error && isColumnMissingError(error)) {
+  if (error && isMissingCanonicalReadSchema(error)) {
     const fallback = await c
       .from(TABLE_NAME)
-      .select(COLS_LEGACY)
+      .select(LEGACY_READ_COLS)
       .eq("id", reimbursementId)
       .maybeSingle();
     data = fallback.data as unknown as typeof data;
     error = fallback.error;
   }
-  if (error && isColumnMissingError(error)) {
-    const fallback2 = await c
-      .from(TABLE_NAME)
-      .select(COLS_LEGACY_NO_PAY)
-      .eq("id", reimbursementId)
-      .maybeSingle();
-    data = fallback2.data as unknown as typeof data;
-    error = fallback2.error;
-  }
+
   if (error) {
     if (isTableMissingError(error)) throw new Error(TABLE_MISSING_MESSAGE);
     throw new Error(error.message ?? "Failed to load reimbursement.");
@@ -279,24 +281,16 @@ export async function getWorkerReimbursementsByWorkerId(
     .eq("worker_id", workerId)
     .order("reimbursement_date", { ascending: false })
     .order("created_at", { ascending: false });
-  if (error && isColumnMissingError(error)) {
+  if (error && isMissingCanonicalReadSchema(error)) {
     const fallback = await c
       .from(TABLE_NAME)
-      .select(COLS_LEGACY)
+      .select(LEGACY_READ_COLS)
       .eq("worker_id", workerId)
       .order("created_at", { ascending: false });
     data = fallback.data as unknown as typeof data;
     error = fallback.error;
   }
-  if (error && isColumnMissingError(error)) {
-    const fallback2 = await c
-      .from(TABLE_NAME)
-      .select(COLS_LEGACY_NO_PAY)
-      .eq("worker_id", workerId)
-      .order("created_at", { ascending: false });
-    data = fallback2.data as unknown as typeof data;
-    error = fallback2.error;
-  }
+
   if (error) {
     if (isTableMissingError(error)) throw new Error(TABLE_MISSING_MESSAGE);
     throw new Error(error.message ?? "Failed to load reimbursements.");
@@ -308,32 +302,8 @@ export async function getWorkerReimbursementsByWorkerId(
 export async function insertWorkerReimbursement(
   draft: WorkerReimbursementDraft
 ): Promise<WorkerReimbursement> {
-  const dateStr = draft.reimbursementDate?.trim().slice(0, 10) || workerRateLocalYmd();
-  const baseInsert: Record<string, unknown> = {
-    worker_id: draft.workerId,
-    project_id: draft.projectId ?? null,
-    vendor: draft.vendor?.trim() || null,
-    amount: draft.amount,
-    description: draft.description?.trim() || null,
-    receipt_url: draft.receiptUrl?.trim() || null,
-    status: (draft.status as string) ?? "pending",
-  };
-  let res = await client()
-    .from(TABLE_NAME)
-    .insert({ ...baseInsert, reimbursement_date: dateStr })
-    .select(COLS)
-    .single();
-  if (res.error && isColumnMissingError(res.error)) {
-    res = await client().from(TABLE_NAME).insert(baseInsert).select(COLS_LEGACY).single();
-  }
-  if (res.error && isColumnMissingError(res.error)) {
-    res = await client().from(TABLE_NAME).insert(baseInsert).select(COLS_LEGACY_NO_PAY).single();
-  }
-  if (res.error) {
-    if (isTableMissingError(res.error)) throw new Error(TABLE_MISSING_MESSAGE);
-    throw new Error(res.error.message ?? "Failed to create reimbursement.");
-  }
-  return fromRow(res.data as Record<string, unknown>);
+  void draft;
+  throw new Error("BLOCKED: obligations are created only by canonical Receipt approval.");
 }
 
 export async function updateWorkerReimbursement(
@@ -341,74 +311,23 @@ export async function updateWorkerReimbursement(
   draft: Partial<WorkerReimbursementDraft>,
   explicitClient?: SupabaseClient
 ): Promise<WorkerReimbursement> {
-  const c = client(explicitClient);
-  const payload: Record<string, unknown> = {};
-  if (draft.workerId != null) payload.worker_id = draft.workerId;
-  if (draft.projectId !== undefined) payload.project_id = draft.projectId ?? null;
-  if (draft.vendor !== undefined) payload.vendor = draft.vendor?.trim() || null;
-  if (draft.amount != null) payload.amount = draft.amount;
-  if (draft.description !== undefined) payload.description = draft.description?.trim() || null;
-  if (draft.receiptUrl !== undefined) payload.receipt_url = draft.receiptUrl?.trim() || null;
-  if (draft.status != null) payload.status = draft.status;
-  if (draft.reimbursementDate !== undefined) {
-    const d = draft.reimbursementDate.trim().slice(0, 10);
-    if (/^\d{4}-\d{2}-\d{2}$/.test(d)) payload.reimbursement_date = d;
-  }
-  let res = await c.from(TABLE_NAME).update(payload).eq("id", id).select(COLS).single();
-  if (res.error && isColumnMissingError(res.error)) {
-    res = await c.from(TABLE_NAME).update(payload).eq("id", id).select(COLS_LEGACY).single();
-  }
-  if (res.error && isColumnMissingError(res.error)) {
-    res = await c.from(TABLE_NAME).update(payload).eq("id", id).select(COLS_LEGACY_NO_PAY).single();
-  }
-  if (res.error && isColumnMissingError(res.error) && payload.reimbursement_date !== undefined) {
-    const { reimbursement_date, ...rest } = payload;
-    void reimbursement_date;
-    res = await c.from(TABLE_NAME).update(rest).eq("id", id).select(COLS_LEGACY_NO_PAY).single();
-  }
-  if (res.error) {
-    if (isTableMissingError(res.error)) throw new Error(TABLE_MISSING_MESSAGE);
-    throw new Error(res.error.message ?? "Failed to update reimbursement.");
-  }
-  return fromRow(res.data as Record<string, unknown>);
+  if (draft.status !== undefined)
+    throw new Error("Edit cannot change reimbursement status. Continue to Payment.");
+  void id;
+  void explicitClient;
+  throw new Error("BLOCKED: obligation edits require canonical workflow authority.");
 }
 
 export async function approveWorkerReimbursement(id: string): Promise<WorkerReimbursement> {
-  let res = await client()
-    .from(TABLE_NAME)
-    .update({ status: "approved" })
-    .eq("id", id)
-    .select(COLS)
-    .single();
-  if (res.error && isColumnMissingError(res.error)) {
-    res = await client()
-      .from(TABLE_NAME)
-      .update({ status: "approved" })
-      .eq("id", id)
-      .select(COLS_LEGACY)
-      .single();
-  }
-  if (res.error && isColumnMissingError(res.error)) {
-    res = await client()
-      .from(TABLE_NAME)
-      .update({ status: "approved" })
-      .eq("id", id)
-      .select(COLS_LEGACY_NO_PAY)
-      .single();
-  }
-  if (res.error) {
-    if (isTableMissingError(res.error)) throw new Error(TABLE_MISSING_MESSAGE);
-    throw new Error(res.error.message ?? "Failed to approve reimbursement.");
-  }
-  return fromRow(res.data as Record<string, unknown>);
+  void id;
+  throw new Error(
+    "Use Receipt approval or Continue to Payment; obligation approval is not a standalone action."
+  );
 }
 
 export async function deleteWorkerReimbursement(id: string): Promise<void> {
-  const { error } = await client().from(TABLE_NAME).delete().eq("id", id);
-  if (error) {
-    if (isTableMissingError(error)) throw new Error(TABLE_MISSING_MESSAGE);
-    throw new Error(error.message ?? "Failed to delete reimbursement.");
-  }
+  void id;
+  throw new Error("BLOCKED: obligation deletion requires canonical workflow authority.");
 }
 
 const PAYMENT_COLS = "id, worker_id, amount, method, note, created_at";
@@ -425,16 +344,16 @@ function paymentFromRow(r: Record<string, unknown>): WorkerReimbursementPayment 
 }
 
 export async function getWorkerReimbursementPayments(
-  workerId: string
+  workerId: string,
+  explicitClient?: SupabaseClient
 ): Promise<WorkerReimbursementPayment[]> {
-  const { data, error } = await client()
+  const { data, error } = await client(explicitClient)
     .from(PAYMENTS_TABLE)
     .select(PAYMENT_COLS)
     .eq("worker_id", workerId)
     .order("created_at", { ascending: false });
   if (error) {
-    if (isTableMissingError(error)) return [];
-    throw new Error(error.message ?? "Failed to load payments.");
+    financialDataUnavailable("worker reimbursement payments", error);
   }
   return ((data ?? []) as Record<string, unknown>[]).map(paymentFromRow);
 }
@@ -459,66 +378,14 @@ export async function insertWorkerReimbursementPayment(params: {
   return paymentFromRow(data as Record<string, unknown>);
 }
 
-/**
- * Mark a reimbursement as paid: UPDATE worker_reimbursements SET status='paid', paid_at=now() WHERE id = reimbursementId.
- * Returns the updated row. Use after creating the expense so the workflow is: create expense → update status.
- */
+/** Retained for compatibility; settlement belongs to the atomic payment workflow. */
 export async function markReimbursementPaid(
   reimbursementId: string,
   explicitClient?: SupabaseClient
 ): Promise<WorkerReimbursement> {
-  const c = client(explicitClient);
-  const withPaidAt = { status: "paid" as const, paid_at: new Date().toISOString() };
-  const statusOnly = { status: "paid" as const };
-  let result = await c
-    .from(TABLE_NAME)
-    .update(withPaidAt)
-    .eq("id", reimbursementId)
-    .select(COLS)
-    .maybeSingle();
-  if (result.error && isColumnMissingError(result.error)) {
-    result = await c
-      .from(TABLE_NAME)
-      .update(withPaidAt)
-      .eq("id", reimbursementId)
-      .select(COLS_LEGACY)
-      .maybeSingle();
-  }
-  if (result.error && isColumnMissingError(result.error)) {
-    result = await c
-      .from(TABLE_NAME)
-      .update(withPaidAt)
-      .eq("id", reimbursementId)
-      .select(COLS_LEGACY_NO_PAY)
-      .maybeSingle();
-  }
-  if (result.error && isColumnMissingError(result.error)) {
-    result = await c
-      .from(TABLE_NAME)
-      .update(statusOnly)
-      .eq("id", reimbursementId)
-      .select(COLS_LEGACY_NO_PAY)
-      .maybeSingle();
-  }
-  if (result.error) throw new Error(result.error.message ?? "Failed to update reimbursement.");
-  if (result.data) {
-    return (
-      await enrichNames([fromRow(result.data as Record<string, unknown>)], explicitClient)
-    )[0]!;
-  }
-  const { data: existing, error: fetchErr } = await c
-    .from(TABLE_NAME)
-    .select(COLS_LEGACY)
-    .eq("id", reimbursementId)
-    .maybeSingle();
-  if (fetchErr) throw new Error(fetchErr.message ?? "Failed to load reimbursement.");
-  if (existing) {
-    const row = (
-      await enrichNames([fromRow(existing as Record<string, unknown>)], explicitClient)
-    )[0]!;
-    if (row.status === "paid") return row;
-  }
-  throw new Error("Reimbursement not found.");
+  void reimbursementId;
+  void explicitClient;
+  throw new Error("Continue to Payment in Labor Reimbursements. A payment record is required.");
 }
 
 const WORKER_PAYMENT_COLS = "id, worker_id, total_amount, payment_method, note, created_at";
@@ -573,56 +440,135 @@ export async function recordBatchReimbursementPayment(
   updatedCount: number;
   reimbursements: WorkerReimbursement[];
 }> {
-  if (reimbursementIds.length === 0) throw new Error("No reimbursements selected.");
-  const c = client(explicitClient);
+  void reimbursementIds;
+  void params;
+  void explicitClient;
+  throw new Error(
+    "Non-atomic reimbursement payment path is disabled. Use the atomic reimbursement payment RPC."
+  );
+}
 
-  const { data: rows, error: fetchErr } = await c
+/**
+ * Atomically creates one worker payment, links every reimbursement, and creates
+ * each reimbursement expense + line. The database RPC owns the transaction and
+ * validates idempotent replays before this helper reloads the completed result.
+ */
+export async function recordReimbursementPaymentAtomicWithClient(
+  reimbursementIds: string[],
+  params: {
+    idempotencyKey: string;
+    paymentMethod?: string | null;
+    paymentDate?: string;
+    note?: string | null;
+  },
+  explicitClient: SupabaseClient
+): Promise<{
+  payment: WorkerPayment;
+  updatedCount: number;
+  reimbursements: WorkerReimbursement[];
+  expenseIds: string[];
+  reused: boolean;
+}> {
+  const ids = [...new Set(reimbursementIds.map((id) => id.trim()).filter(Boolean))].sort();
+  if (ids.length === 0) throw new Error("No reimbursements selected.");
+  if (ids.length !== reimbursementIds.length) {
+    throw new Error("Reimbursement ids must be unique and non-empty.");
+  }
+
+  const { data: selection, error: selectionError } = await explicitClient
     .from(TABLE_NAME)
     .select("id, worker_id, amount, status")
-    .in("id", reimbursementIds);
-  if (fetchErr) throw new Error(fetchErr.message ?? "Failed to load reimbursements.");
-  const list = (rows ?? []) as { id: string; worker_id: string; amount: number; status: string }[];
-  if (list.length !== reimbursementIds.length)
-    throw new Error("One or more reimbursements not found.");
-  const workerIds = new Set(list.map((r) => r.worker_id));
-  if (workerIds.size > 1)
-    throw new Error("All selected reimbursements must be for the same worker.");
-  const workerId = list[0].worker_id;
-  const notPending = list.filter((r) => r.status !== "pending");
-  if (notPending.length > 0)
-    throw new Error("All selected reimbursements must have status pending.");
-
-  const totalAmount = list.reduce((s, r) => s + Number(r.amount) || 0, 0);
-  const payment = await createWorkerPayment(
-    {
-      workerId,
-      totalAmount,
-      paymentMethod: params.paymentMethod,
-      note: params.note,
-    },
-    explicitClient
-  );
-
-  const { data: updated, error: updateErr } = await c
-    .from(TABLE_NAME)
-    .update({
-      status: "paid",
-      paid_at: new Date().toISOString(),
-      payment_id: payment.id,
-    })
-    .in("id", reimbursementIds)
-    .select("id");
-  if (updateErr) throw new Error(updateErr.message ?? "Failed to update reimbursements.");
-  const updatedCount = Array.isArray(updated) ? updated.length : 0;
-  if (updatedCount !== reimbursementIds.length) {
-    throw new Error("One or more reimbursements were not updated.");
+    .in("id", ids);
+  if (selectionError) {
+    throw new Error(selectionError.message ?? "Failed to load reimbursements.");
   }
-  const { data: reimbRows } = await c.from(TABLE_NAME).select(COLS).in("id", reimbursementIds);
+  const selectedRows = (selection ?? []) as Array<{
+    id: string;
+    worker_id: string;
+    amount: number;
+    status: string;
+  }>;
+  if (selectedRows.length !== ids.length) throw new Error("One or more reimbursements not found.");
+  const workerIds = new Set(selectedRows.map((row) => row.worker_id));
+  if (workerIds.size !== 1) {
+    throw new Error("All selected reimbursements must be for the same worker.");
+  }
+  const workerId = selectedRows[0]!.worker_id;
+  // Source authorization is enforced under row locks inside the payment RPC.
+  const { data, error } = await explicitClient.rpc("record_worker_reimbursement_payment_atomic", {
+    p_idempotency_key: params.idempotencyKey,
+    p_worker_id: workerId,
+    p_payment_method: params.paymentMethod?.trim() || null,
+    p_payment_date: (params.paymentDate ?? workerRateLocalYmd()).slice(0, 10),
+    p_note: params.note?.trim() || null,
+    p_reimbursement_ids: ids,
+  });
+  if (error) throw new Error(error.message ?? "Failed to record reimbursement payment.");
+
+  const result = (data ?? {}) as {
+    payment_id?: unknown;
+    updated_count?: unknown;
+    reused?: unknown;
+  };
+  const paymentId = String(result.payment_id ?? "");
+  if (!paymentId) throw new Error("Atomic reimbursement payment returned no payment id.");
+
+  const [paymentResult, reimbursementResult, expenseResult] = await Promise.all([
+    explicitClient
+      .from(WORKER_PAYMENTS_TABLE)
+      .select(WORKER_PAYMENT_COLS)
+      .eq("id", paymentId)
+      .single(),
+    explicitClient.from(TABLE_NAME).select(COLS).in("id", ids),
+    explicitClient
+      .from("expenses")
+      .select("id, source_id")
+      .eq("source", "worker_reimbursement")
+      .in("source_id", ids),
+  ]);
+  if (paymentResult.error || !paymentResult.data) {
+    throw new Error(
+      paymentResult.error?.message ??
+        "Atomic reimbursement payment completed but the payment could not be loaded."
+    );
+  }
+  if (reimbursementResult.error) {
+    throw new Error(
+      reimbursementResult.error.message ??
+        "Atomic reimbursement payment completed but reimbursements could not be loaded."
+    );
+  }
+  if (expenseResult.error) {
+    throw new Error(
+      expenseResult.error.message ??
+        "Atomic reimbursement payment completed but expenses could not be loaded."
+    );
+  }
   const reimbursements = await enrichNames(
-    ((reimbRows ?? []) as Record<string, unknown>[]).map(fromRow),
+    ((reimbursementResult.data ?? []) as Record<string, unknown>[]).map(fromRow),
     explicitClient
   );
-  return { payment, updatedCount, reimbursements };
+  if (reimbursements.length !== ids.length) {
+    throw new Error("Atomic reimbursement payment returned an incomplete reimbursement set.");
+  }
+  const expenseIdBySource = new Map(
+    ((expenseResult.data ?? []) as Array<{ id: string; source_id: string }>).map((row) => [
+      row.source_id,
+      row.id,
+    ])
+  );
+  const expenseIds = ids.map((id) => expenseIdBySource.get(id) ?? "");
+  if (expenseIds.some((id) => !id) || expenseIdBySource.size !== ids.length) {
+    throw new Error("Atomic reimbursement payment returned an incomplete expense set.");
+  }
+
+  return {
+    payment: workerPaymentFromRow(paymentResult.data as Record<string, unknown>),
+    updatedCount: Number(result.updated_count ?? ids.length),
+    reimbursements,
+    expenseIds,
+    reused: result.reused === true,
+  };
 }
 
 /**
@@ -652,65 +598,96 @@ export type WorkerBalanceRow = {
 export async function getWorkerReimbursementBalances(
   explicitClient?: SupabaseClient
 ): Promise<WorkerBalanceRow[]> {
-  const [reimbursements, payments, workers] = await Promise.all([
-    getWorkerReimbursements(explicitClient),
-    (async () => {
-      const { data, error } = await client(explicitClient)
-        .from(PAYMENTS_TABLE)
-        .select("worker_id, amount");
-      if (error) return [] as { worker_id: string; amount: number }[];
-      return (data ?? []) as { worker_id: string; amount: number }[];
-    })(),
-    (async () => {
-      const { data } = await client(explicitClient).from("workers").select("id, name");
-      return new Map(((data ?? []) as { id: string; name: string }[]).map((w) => [w.id, w.name]));
-    })(),
+  const c = client(explicitClient);
+  const results = await Promise.all([
+    c
+      .from(TABLE_NAME)
+      .select("id, worker_id, project_id, source_worker_receipt_id, amount, status, payment_id", {
+        count: "exact",
+      }),
+    c.from(WORKER_PAYMENTS_TABLE).select("id, worker_id, total_amount", { count: "exact" }),
+    c
+      .from("worker_receipts")
+      .select(
+        "id, canonical_ingested_at, reimbursement_id, worker_id, project_id, amount, status",
+        { count: "exact" }
+      ),
+    c.from("workers").select("id, name", { count: "exact" }),
   ]);
-
-  const byWorker = new Map<
-    string,
-    { pending: number; paidReimb: number; payments: number; workerName: string | null }
-  >();
-
+  if (results.some((result) => result.error && isMissingCanonicalReadSchema(result.error))) {
+    throw new Error(
+      "Legacy / Unverified: balances are unavailable until canonical evidence can be verified. Historical rows remain available in the reimbursement list."
+    );
+  }
+  for (const result of results) {
+    if (result.error || !Array.isArray(result.data) || result.count !== result.data.length) {
+      financialDataUnavailable(
+        "reimbursement balances",
+        result.error ?? new Error("Incomplete balance data.")
+      );
+    }
+  }
+  const reimbursements = results[0].data!;
+  const payments = results[1].data!;
+  const receipts = results[2].data!;
+  const workers = results[3].data!;
+  const paymentById = new Map(payments.map((p) => [p.id, p]));
+  const workerById = new Map(workers.map((w) => [w.id, w.name]));
+  const receiptById = new Map(receipts.map((r) => [r.id, r]));
+  const byWorker = new Map<string, WorkerBalanceRow>();
+  const allocatedByPayment = new Map<string, number>();
   for (const r of reimbursements) {
-    if (!byWorker.has(r.workerId)) {
-      byWorker.set(r.workerId, {
-        pending: 0,
-        paidReimb: 0,
-        payments: 0,
-        workerName: r.workerName ?? workers.get(r.workerId) ?? null,
-      });
+    const amount = Number(r.amount);
+    if (!Number.isFinite(amount) || amount <= 0)
+      throw new Error("Invalid reimbursement amount; review history before calculating balances.");
+    const receipt = receiptById.get(r.source_worker_receipt_id);
+    if (
+      !r.worker_id ||
+      !receipt?.canonical_ingested_at ||
+      receipt.status !== "Approved" ||
+      receipt.reimbursement_id !== r.id ||
+      receipt.worker_id !== r.worker_id ||
+      receipt.project_id !== r.project_id ||
+      Number(receipt.amount) !== amount
+    ) {
+      throw new Error(
+        "LEGACY_UNVERIFIED: balance unavailable until historical obligation evidence is verified. Review the preserved reimbursement list."
+      );
     }
-    const row = byWorker.get(r.workerId)!;
-    if (r.status === "pending") row.pending += r.amount;
-    else if (r.status === "paid") row.paidReimb += r.amount;
-  }
-
-  for (const p of payments) {
-    const wid = p.worker_id;
-    if (!byWorker.has(wid)) {
-      byWorker.set(wid, {
-        pending: 0,
-        paidReimb: 0,
-        payments: 0,
-        workerName: workers.get(wid) ?? null,
-      });
-    }
-    byWorker.get(wid)!.payments += Number(p.amount) || 0;
-  }
-
-  const result: WorkerBalanceRow[] = [];
-  for (const [workerId, row] of Array.from(byWorker.entries())) {
-    const balance = row.pending - row.payments;
-    result.push({
-      workerId,
-      workerName: row.workerName,
-      pendingAmount: row.pending,
+    const row = byWorker.get(r.worker_id) ?? {
+      workerId: r.worker_id,
+      workerName: workerById.get(r.worker_id) ?? null,
+      pendingAmount: 0,
       approvedAmount: 0,
-      paidAmount: row.payments,
-      balance,
-    });
+      paidAmount: 0,
+      balance: 0,
+    };
+    if (r.status === "pending" || r.status === "approved") {
+      if (r.payment_id || receipt.status !== "Approved") {
+        throw new Error(
+          "Reimbursement approval source is unresolved. Review legacy obligations before calculating balances."
+        );
+      }
+      if (r.status === "pending") row.pendingAmount += amount;
+      else row.approvedAmount += amount;
+      row.balance += amount;
+    } else if (r.status === "paid" || r.status === "settled") {
+      const payment = paymentById.get(r.payment_id);
+      if (
+        !payment ||
+        payment.worker_id !== r.worker_id ||
+        !Number.isFinite(Number(payment.total_amount))
+      )
+        throw new Error("Paid reimbursement has no valid payment record.");
+      const allocated = (allocatedByPayment.get(payment.id) ?? 0) + amount;
+      if (Math.round(allocated * 100) > Math.round(Number(payment.total_amount) * 100))
+        throw new Error("Reimbursements exceed the linked payment.");
+      allocatedByPayment.set(payment.id, allocated);
+      row.paidAmount += amount;
+    } else {
+      throw new Error("Unknown reimbursement status; balance unavailable.");
+    }
+    byWorker.set(row.workerId, row);
   }
-  result.sort((a, b) => Math.abs(b.balance) - Math.abs(a.balance));
-  return result;
+  return [...byWorker.values()].sort((a, b) => b.balance - a.balance);
 }

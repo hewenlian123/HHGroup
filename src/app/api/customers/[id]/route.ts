@@ -173,7 +173,11 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     return apiError(400, "Invalid JSON body.");
   }
   const payload: Record<string, string | null> = {};
-  if (body.name !== undefined) payload.name = body.name.trim();
+  if (body.name !== undefined) {
+    const name = typeof body.name === "string" ? body.name.trim() : "";
+    if (!name) return apiError(400, "Customer name is required.");
+    payload.name = name;
+  }
   if (body.email !== undefined) payload.email = body.email?.trim() || null;
   if (body.phone !== undefined) {
     payload.phone =

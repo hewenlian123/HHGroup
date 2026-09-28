@@ -140,22 +140,23 @@ export function PaymentReceiptPreviewModal({
           className={cn("receipt-preview-overlay fixed inset-0 z-50", hhNeoFocusRevealOverlay)}
         />
         <DialogPrimitive.Content
+          data-revenue-ar-v2
           data-hh-context="viewer"
-          data-hh-theme="neo-dark"
+          data-hh-theme="operational-light"
           onEscapeKeyDown={() => onOpenChange(false)}
           onPointerDownOutside={() => onOpenChange(false)}
           className={cn(
-            "receipt-preview-dialog-root fixed left-1/2 top-1/2 z-50 flex max-h-[min(88vh,880px)] w-[min(900px,96vw)] -translate-x-1/2 -translate-y-1/2 flex-col rounded-[1.5rem] border border-white/10 bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-[0_30px_90px_rgb(0_0_0_/_0.46),inset_0_1px_0_rgb(255_255_255_/_0.05)] outline-none",
+            "receipt-preview-dialog-root fixed left-1/2 top-1/2 z-50 flex max-h-[min(88vh,880px)] w-[min(900px,96vw)] -translate-x-1/2 -translate-y-1/2 flex-col rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-overlay outline-none",
             hhNeoFocusRevealDialog,
-            "max-md:inset-x-2 max-md:bottom-0 max-md:top-auto max-md:max-h-[calc(100dvh-0.75rem)] max-md:w-auto max-md:max-w-none max-md:translate-x-0 max-md:translate-y-0 max-md:rounded-b-none max-md:rounded-t-[1.5rem] max-md:border-b-0",
+            "max-md:inset-x-2 max-md:bottom-0 max-md:top-auto max-md:max-h-[calc(100dvh-0.75rem)] max-md:w-auto max-md:max-w-none max-md:translate-x-0 max-md:translate-y-0 max-md:rounded-b-none max-md:rounded-t-[var(--hh-radius-task)] max-md:border-b-0",
             hhNeoFocusRevealMobileSheet
           )}
         >
           <DialogPrimitive.Description className="sr-only">
             Payment receipt preview. Print from here or download PDF without leaving this page.
           </DialogPrimitive.Description>
-          <div className="modal-header flex shrink-0 items-center justify-between gap-3 border-b border-border/60 px-4 py-3">
-            <DialogPrimitive.Title className="text-sm font-semibold text-foreground">
+          <div className="modal-header flex shrink-0 items-center justify-between gap-3 border-b border-[var(--hh-border)] px-4 py-3">
+            <DialogPrimitive.Title className="text-hh-section-title font-semibold text-[var(--hh-text-primary)]">
               Payment receipt
             </DialogPrimitive.Title>
             <div className="flex flex-wrap items-center justify-end gap-1">
@@ -163,7 +164,7 @@ export function PaymentReceiptPreviewModal({
                 type="button"
                 size="sm"
                 variant="outline"
-                className="h-8 gap-1"
+                className="h-11 min-h-11 gap-1 md:h-8 md:min-h-0"
                 disabled={!data}
                 onClick={() => data && onSendReceipt?.(data)}
               >
@@ -174,7 +175,7 @@ export function PaymentReceiptPreviewModal({
                 type="button"
                 size="sm"
                 variant="outline"
-                className="h-8 gap-1"
+                className="h-11 min-h-11 gap-1 md:h-8 md:min-h-0"
                 disabled={!data}
                 onClick={handlePrint}
               >
@@ -185,7 +186,7 @@ export function PaymentReceiptPreviewModal({
                 type="button"
                 size="sm"
                 variant="outline"
-                className="h-8 gap-1"
+                className="h-11 min-h-11 gap-1 md:h-8 md:min-h-0"
                 disabled={!data?.receiptNo || pdfBusy}
                 onClick={() => void handleDownloadPdf()}
               >
@@ -197,7 +198,7 @@ export function PaymentReceiptPreviewModal({
                   type="button"
                   size="sm"
                   variant="outline"
-                  className="btn-outline-ghost h-8 w-8 shrink-0 p-0"
+                  className="h-11 min-h-11 w-11 min-w-11 shrink-0 p-0 md:h-8 md:min-h-0 md:w-8 md:min-w-0"
                   aria-label="Close"
                 >
                   <X className="h-4 w-4" />
@@ -208,9 +209,11 @@ export function PaymentReceiptPreviewModal({
 
           <div className="receipt-preview-scroll receipt-print-shell mobile-native-scroll min-h-0 flex-1 overflow-y-auto p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
             {loading ? (
-              <p className="py-12 text-center text-sm text-muted-foreground">Loading receipt...</p>
+              <p className="py-12 text-center text-hh-body text-[var(--hh-text-secondary)]">
+                Loading receipt...
+              </p>
             ) : error ? (
-              <p className="py-12 text-center text-sm text-destructive">{error}</p>
+              <p className="py-12 text-center text-hh-body text-[var(--hh-danger)]">{error}</p>
             ) : data ? (
               <div
                 ref={receiptExportRef}

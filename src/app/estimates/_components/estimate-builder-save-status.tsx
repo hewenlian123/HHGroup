@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export type EstimateSaveStatus = "idle" | "unsaved" | "saving" | "saved" | "failed";
@@ -26,7 +27,7 @@ export function EstimateBuilderSaveStatus({
   return (
     <span
       className={cn(
-        "text-xs font-medium tabular-nums",
+        "eb-estimate-save-status inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-xs font-medium tabular-nums",
         status === "unsaved" && "text-[var(--hh-warning)]",
         status === "saving" && "text-muted-foreground",
         status === "saved" && "text-[var(--hh-success)]",
@@ -35,7 +36,9 @@ export function EstimateBuilderSaveStatus({
       )}
       role="status"
       aria-live="polite"
+      data-estimate-save-state={status}
     >
+      {status === "saved" ? <CheckCircle2 size={14} aria-hidden /> : null}
       {label}
     </span>
   );

@@ -85,7 +85,13 @@ export function RowActionsMenu({
   if (visibleActions.length === 0) return null;
 
   return (
-    <DropdownMenu open={open} onOpenChange={setOpen}>
+    <DropdownMenu
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (nextOpen) lastRunRef.current = 0;
+        setOpen(nextOpen);
+      }}
+    >
       <DropdownMenuTrigger asChild>
         <Button
           type="button"

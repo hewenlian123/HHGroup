@@ -1,7 +1,7 @@
-import { expect, test, type Page, type TestInfo } from "@playwright/test";
+import { expect, test, type Page, type TestInfo } from "./estimate-playwright-test";
 import { mkdir } from "node:fs/promises";
 
-import { loginAsE2EOwner } from "./e2e-auth-owner";
+import { gotoWithE2EAuth, loginAsE2EOwner } from "./e2e-auth-owner";
 import { E2E_PRESERVED_ESTIMATE_ID } from "./e2e-cleanup-db";
 
 const VIEWPORTS = [
@@ -68,7 +68,7 @@ test("Builder Preview and Print preserve return context and document identity", 
   expect(printHref).toContain("returnTo=");
   await capture(page, testInfo, "estimate-workflow-preview-desktop");
 
-  await page.goto(printHref!, { waitUntil: "domcontentloaded" });
+  await gotoWithE2EAuth(page, printHref!);
   await expect(page.getByRole("link", { name: "Back to preview" })).toBeVisible({
     timeout: 30_000,
   });
@@ -78,10 +78,8 @@ test("Builder Preview and Print preserve return context and document identity", 
     previewStyle ?? ""
   );
   await expect(page.getByTestId("estimate-line-item-output")).toHaveCount(previewLineCount);
-  await expect(page.getByRole("document", { name: "Estimate print view" })).toHaveCSS(
-    "background-color",
-    "rgb(24, 24, 24)"
-  );
+  await expect(page.getByRole("document", { name: "Estimate print view" })).toBeVisible();
+  await expect(page.locator(".estimate-print-action-bar")).toBeVisible();
   await capture(page, testInfo, "estimate-workflow-print-desktop");
   await page.getByRole("link", { name: "Back to preview" }).click();
   await expect(page).toHaveURL(/\/preview\?origin=builder/, { timeout: 30_000 });
@@ -112,16 +110,16 @@ for (const viewport of VIEWPORTS) {
       const toolbar = node.querySelector<HTMLElement>(".estimate-preview-toolbar");
       const paper = node.querySelector<HTMLElement>(".estimate-a4-page");
       return {
-        shellBackground: window.getComputedStyle(node).backgroundColor,
-        toolbarBackground: toolbar ? window.getComputedStyle(toolbar).backgroundColor : "",
         toolbarHeight: toolbar?.getBoundingClientRect().height ?? 0,
-        paperBackground: paper ? window.getComputedStyle(paper).backgroundColor : "",
         paperTop: paper?.getBoundingClientRect().top ?? Number.POSITIVE_INFINITY,
+        shellMode: node.getAttribute("data-estimate-preview-shell"),
+        hasToolbar: toolbar !== null,
+        hasPaper: paper !== null,
       };
     });
-    expect(previewSurface.shellBackground).toBe("rgb(24, 24, 24)");
-    expect(previewSurface.toolbarBackground).toContain("24, 24, 24");
-    expect(previewSurface.paperBackground).toBe("rgb(255, 255, 255)");
+    expect(previewSurface.shellMode).toBe("light");
+    expect(previewSurface.hasToolbar).toBe(true);
+    expect(previewSurface.hasPaper).toBe(true);
     expect(previewSurface.toolbarHeight).toBeLessThanOrEqual(viewport.width <= 700 ? 72 : 72);
     if (viewport.width <= 700) expect(previewSurface.paperTop).toBeLessThan(210);
     await expect(previewToolbar.getByTestId("estimate-preview-context")).toContainText(
@@ -154,20 +152,22 @@ for (const viewport of VIEWPORTS) {
         const box = await menuItem.boundingBox();
         expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
       }
-      await page.getByRole("menuitem", { name: "Fit page", exact: true }).press("Escape");
+      const fitPageMenuItem = page.getByRole("menuitem", { name: "Fit page", exact: true });
+      await fitPageMenuItem.press("Escape");
+      await expect(fitPageMenuItem).toBeHidden();
       await expect(moreActions).toBeFocused();
-      await page.waitForTimeout(250);
       await expect(page).toHaveURL(/\/estimates\/[^/?#]+\/preview(?:\?|$)/);
-
-      const documentScale = await page.locator(".estimate-preview-zoom-layer").evaluate((node) => {
-        const matrix = new DOMMatrix(window.getComputedStyle(node).transform);
-        return matrix.a;
-      });
-      expect(documentScale).toBeGreaterThanOrEqual(0.58);
 
       const viewportScroll = await page
         .getByTestId("estimate-preview-viewport")
-        .evaluate((node) => ({ clientWidth: node.clientWidth, scrollWidth: node.scrollWidth }));
+        .evaluate((node) => ({
+          clientWidth: node.clientWidth,
+          paperWidth:
+            node.querySelector<HTMLElement>(".estimate-a4-page")?.getBoundingClientRect().width ??
+            0,
+          scrollWidth: node.scrollWidth,
+        }));
+      expect(viewportScroll.paperWidth).toBeGreaterThan(viewportScroll.clientWidth);
       expect(viewportScroll.scrollWidth).toBeGreaterThan(viewportScroll.clientWidth);
     } else {
       for (const control of [

@@ -86,13 +86,17 @@ export function AddSubcontractModal({
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <label className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]">
+            <label
+              htmlFor="add-subcontract-subcontractor"
+              className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]"
+            >
               Subcontractor (required)
             </label>
             <select
+              id="add-subcontract-subcontractor"
               value={subcontractorId}
               onChange={(e) => setSubcontractorId(e.target.value)}
-              className="h-9 w-full rounded-hh-standard border border-input bg-transparent px-3 text-hh-body"
+              className="min-h-[44px] w-full rounded-hh-standard border border-input bg-transparent px-3 text-hh-body"
               required
             >
               <option value="">Select subcontractor</option>
@@ -104,62 +108,82 @@ export function AddSubcontractModal({
             </select>
           </div>
           <div className="space-y-2">
-            <label className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]">
+            <label
+              htmlFor="add-subcontract-cost-code"
+              className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]"
+            >
               Cost Code
             </label>
             <Input
+              id="add-subcontract-cost-code"
               value={costCode}
               onChange={(e) => setCostCode(e.target.value)}
               placeholder="Cost code"
-              className="h-9 text-hh-body"
+              className="min-h-[44px] text-hh-body"
             />
           </div>
           <div className="space-y-2">
-            <label className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]">
+            <label
+              htmlFor="add-subcontract-contract-amount"
+              className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]"
+            >
               Contract Amount (required)
             </label>
             <Input
+              id="add-subcontract-contract-amount"
               type="number"
               step="0.01"
               min="0"
               placeholder="0.00"
               value={contractAmount}
               onChange={(e) => setContractAmount(e.target.value)}
-              className="h-9 text-hh-body tabular-nums"
+              className="min-h-[44px] text-hh-body tabular-nums"
               required
             />
           </div>
           <div className="space-y-2">
-            <label className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]">
+            <label
+              htmlFor="add-subcontract-description"
+              className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]"
+            >
               Description
             </label>
             <Input
+              id="add-subcontract-description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Description"
-              className="h-9 text-hh-body"
+              className="min-h-[44px] text-hh-body"
             />
           </div>
           <div className="space-y-2">
-            <label className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]">
+            <label
+              htmlFor="add-subcontract-start-date"
+              className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]"
+            >
               Start Date
             </label>
             <Input
+              id="add-subcontract-start-date"
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="h-9 text-hh-body"
+              className="min-h-[44px] text-hh-body"
             />
           </div>
           <div className="space-y-2">
-            <label className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]">
+            <label
+              htmlFor="add-subcontract-end-date"
+              className="text-hh-metadata font-medium text-[var(--hh-text-secondary)]"
+            >
               End Date
             </label>
             <Input
+              id="add-subcontract-end-date"
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="h-9 text-hh-body"
+              className="min-h-[44px] text-hh-body"
             />
           </div>
           {error ? <p className="text-hh-body text-[var(--hh-danger)]">{error}</p> : null}
@@ -167,14 +191,14 @@ export function AddSubcontractModal({
             <button
               type="button"
               onClick={() => onOpenChange(false)}
-              className="h-9 rounded-hh-standard border border-input bg-transparent px-3 text-hh-body hover:bg-accent hover:text-accent-foreground"
+              className="min-h-[44px] rounded-hh-standard border border-input bg-transparent px-3 text-hh-body hover:bg-accent hover:text-accent-foreground"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={busy}
-              className="inline-flex h-9 items-center rounded-hh-standard border border-input bg-foreground px-3 text-hh-body text-background hover:bg-foreground/90 disabled:opacity-50"
+              className="inline-flex min-h-[44px] items-center rounded-hh-standard border border-input bg-foreground px-3 text-hh-body text-background hover:bg-foreground/90 disabled:opacity-50"
             >
               <SubmitSpinner loading={busy} className="mr-2" />
               {busy ? "Saving…" : "Add Subcontract"}

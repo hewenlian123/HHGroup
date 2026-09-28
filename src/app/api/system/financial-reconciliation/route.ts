@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
+import { requireSupabaseOwnerOrAdminRequestClient } from "@/lib/auth-boundary";
 import { getFinanceOwnerDashboard } from "@/lib/finance-owner-dashboard";
 import { getProjectFinancialSnapshot } from "@/lib/financial/project-financial-snapshot-db";
 import {
@@ -10,7 +10,6 @@ import {
   buildSystemIntegrityScanReport,
   type SystemIntegrityReadClient,
 } from "@/lib/system-integrity-scan";
-import { getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
 import { safeErrorMessage } from "@/lib/system-response-safety";
 import { fetchWorkerBalances } from "@/lib/worker-balances-list";
 
@@ -23,53 +22,16 @@ const NO_CACHE_HEADERS = {
 };
 
 export async function GET(request: Request) {
-  const guard = await requireSupabaseOwnerOrAdmin(request);
+  const guard = await requireSupabaseOwnerOrAdminRequestClient(request, { noStore: true });
   if (!guard.ok) return guard.response;
-
-  const supabase = getServerSupabaseInternalNoStore();
-  if (!supabase) {
-    return NextResponse.json(
-      {
-        status: "error",
-        generatedAt: new Date().toISOString(),
-        summary: {
-          totalIssues: 1,
-          critical: 1,
-          high: 0,
-          medium: 0,
-          low: 0,
-          info: 0,
-        },
-        sections: [
-          {
-            id: "financial-reconciliation-read-safety",
-            title: "Financial Reconciliation Read Safety",
-            status: "error",
-            issues: [
-              {
-                severity: "critical",
-                category: "project_snapshot",
-                table: "supabase",
-                id: "supabase:not-configured",
-                message: "Supabase server client is not configured.",
-                evidence: {},
-                recommendedAction: "Set server Supabase environment variables.",
-                autoFixAvailable: false,
-              },
-            ],
-          },
-        ],
-      },
-      { status: 500, headers: NO_CACHE_HEADERS }
-    );
-  }
+  const supabase = guard.client;
 
   try {
     const report = await buildSystemFinancialReconciliationReport(
       supabase as unknown as SystemFinancialReconciliationReadClient,
       {
-        projectSnapshotLoader: getProjectFinancialSnapshot,
-        ownerDashboardLoader: getFinanceOwnerDashboard,
+        projectSnapshotLoader: (projectId) => getProjectFinancialSnapshot(projectId, supabase),
+        ownerDashboardLoader: () => getFinanceOwnerDashboard(supabase),
         workerBalanceLoader: () => fetchWorkerBalances(supabase),
         integrityScanLoader: () =>
           buildSystemIntegrityScanReport(supabase as unknown as SystemIntegrityReadClient),

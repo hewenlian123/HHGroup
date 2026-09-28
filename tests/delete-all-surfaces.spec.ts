@@ -17,6 +17,8 @@ import {
 const BASE = process.env.E2E_BASE_URL ?? "http://localhost:3000";
 const LIST_LOAD_MS = 55_000;
 
+test.use({ storageState: "tests/.auth/ui-readonly-owner.json" });
+
 async function waitForListLoaded(page: import("@playwright/test").Page): Promise<void> {
   await expect(page.getByText(/^Loading/i).first())
     .not.toBeVisible({ timeout: LIST_LOAD_MS })
@@ -224,16 +226,32 @@ test.describe("Delete surface catalog (read-only)", () => {
   });
 
   test("labor daily: first row delete (trash) visible", async ({ page }) => {
-    await page.goto(`${BASE}/labor/daily`);
+    await page.goto(`${BASE}/labor`);
     await page.waitForLoadState("domcontentloaded");
     await skipIfSupabaseMissing(page);
     await expect(page.getByText(/Loading/i).first())
       .not.toBeVisible({ timeout: LIST_LOAD_MS })
       .catch(() => undefined);
+    const dateToggle = page
+      .locator("button[aria-expanded]")
+      .filter({ hasText: /\d+\s+entries?/i })
+      .first();
+    if ((await dateToggle.getAttribute("aria-expanded")) === "false") await dateToggle.click();
     const row = page.locator("tbody tr").first();
     await expectVisibleOrSkip(row, "No daily labor rows.", LIST_LOAD_MS);
-    const del = row.getByRole("button", { name: /Delete entry/i });
+    const del = row.locator('button[title="Delete entry"]').first();
     await expectDeleteControlVisibleWithoutHover(page, del, 1500);
+    let nativeDialogs = 0;
+    page.on("dialog", async (dialog) => {
+      nativeDialogs += 1;
+      await dialog.dismiss();
+    });
+    await del.click();
+    const confirm = page.getByRole("dialog", { name: "Delete labor entry?" });
+    await expect(confirm).toBeVisible({ timeout: 5000 });
+    expect(nativeDialogs).toBe(0);
+    await confirm.getByRole("button", { name: "Cancel" }).click();
+    await expect(del).toBeFocused();
   });
 
   test("labor worker invoices: first row Delete visible", async ({ page }) => {

@@ -1,5 +1,6 @@
 "use client";
 
+import { contactMatches } from "@/lib/navigation/contacts-workspace";
 import * as React from "react";
 import Link from "next/link";
 import { Users } from "lucide-react";
@@ -9,6 +10,7 @@ import {
   EmptyState,
   NeoAmount,
   NeoInput,
+  NeoSelect,
   NeoMobileCard,
   NeoStatus,
   NeoTable,
@@ -27,6 +29,9 @@ import { cn } from "@/lib/utils";
 export type SubcontractorSummaryRow = {
   id: string;
   name: string;
+  phone: string | null;
+  email: string | null;
+  active: boolean;
   contractAmount: number;
   scheduledAmount: number;
   billedToDate: number;
@@ -53,15 +58,41 @@ export function SubcontractorsListClient({
   dataLoadWarning: string | null;
 }) {
   const [searchInput, setSearchInput] = React.useState("");
+  const [status, setStatus] = React.useState("all");
   const [filtersOpen, setFiltersOpen] = React.useState(false);
 
   const filtered = React.useMemo(() => {
     const q = searchInput.trim().toLowerCase();
-    if (!q) return rows;
-    return rows.filter((r) => r.name.toLowerCase().includes(q));
-  }, [rows, searchInput]);
+    return rows.filter(
+      (r) =>
+        contactMatches(q, [r.name, r.phone, r.email]) &&
+        (status === "all" || r.active === (status === "active"))
+    );
+  }, [rows, searchInput, status]);
 
-  const activeFilterCount = searchInput.trim() ? 1 : 0;
+  const activeFilterCount = status !== "all" ? 1 : 0;
+  const statusFilter = (
+    <NeoSelect
+      aria-label="Subcontractor status"
+      className="min-h-11"
+      value={status}
+      onChange={(e) => setStatus(e.target.value)}
+    >
+      <option value="all">All statuses</option>
+      <option value="active">Active</option>
+      <option value="inactive">Inactive</option>
+    </NeoSelect>
+  );
+  if (dataLoadWarning)
+    return (
+      <div className="space-y-3">
+        <h1 className="text-lg font-semibold">Subcontractors unavailable</h1>
+        <p role="status">{dataLoadWarning}</p>
+        <Button variant="outline" className="min-h-11" onClick={() => window.location.reload()}>
+          Retry subcontractors
+        </Button>
+      </div>
+    );
 
   return (
     <>
@@ -76,7 +107,11 @@ export function SubcontractorsListClient({
 
       <MobileListHeader
         title="Subcontractors"
-        fab={<span className="inline-block h-10 w-10 shrink-0" aria-hidden />}
+        fab={
+          <Button asChild variant="outline" className="min-h-11">
+            <Link href="/settings/subcontractors">Manage</Link>
+          </Button>
+        }
       />
       <MobileSearchFiltersRow
         filterSheetOpen={filtersOpen}
@@ -88,15 +123,16 @@ export function SubcontractorsListClient({
             <NeoInput
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="Search subcontractor…"
-              className="h-10 pl-8 text-sm"
+              placeholder="Search name, email or phone…"
+              className="min-h-11 pl-8 text-sm"
               aria-label="Search subcontractors"
             />
           </div>
         }
       />
       <MobileFilterSheet open={filtersOpen} onOpenChange={setFiltersOpen} title="Filters">
-        <Button asChild variant="outline" size="sm" className="h-9 w-full rounded-sm">
+        {statusFilter}
+        <Button asChild variant="outline" size="sm" className="min-h-11 w-full rounded-sm">
           <Link href="/settings/subcontractors">Manage in settings</Link>
         </Button>
         <Button type="button" className="w-full rounded-sm" onClick={() => setFiltersOpen(false)}>
@@ -110,12 +146,13 @@ export function SubcontractorsListClient({
           <NeoInput
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
-            placeholder="Search subcontractor…"
-            className="h-9 pl-8 text-sm"
+            placeholder="Search name, email or phone…"
+            className="min-h-11 pl-8 text-sm"
             aria-label="Search subcontractors"
           />
         </div>
-        <Button asChild variant="outline" size="sm" className="h-9 rounded-sm">
+        {statusFilter}
+        <Button asChild variant="outline" size="sm" className="min-h-11 rounded-sm">
           <Link href="/settings/subcontractors">Manage in settings</Link>
         </Button>
       </NeoToolbar>
@@ -126,7 +163,7 @@ export function SubcontractorsListClient({
             icon={<Users className="h-5 w-5" />}
             message="Add subcontractor profiles in Settings to start tracking contracts, bills, and payments."
             action={
-              <Button asChild size="sm" className="h-9 rounded-sm">
+              <Button asChild size="sm" className="min-h-11 rounded-sm">
                 <Link href="/settings/subcontractors">Add subcontractor</Link>
               </Button>
             }
@@ -137,7 +174,7 @@ export function SubcontractorsListClient({
               description="Add subcontractor profiles in Settings to start tracking contracts, bills, and payments."
               icon={<Users className="h-5 w-5" />}
               action={
-                <Button asChild size="sm" className="h-8">
+                <Button asChild size="sm" className="min-h-11">
                   <Link href="/settings/subcontractors">Add subcontractor</Link>
                 </Button>
               }
@@ -160,6 +197,10 @@ export function SubcontractorsListClient({
                     className="flex min-h-[72px] flex-col justify-center gap-1 p-3"
                   >
                     <p className="font-medium text-[var(--hh-text-primary)]">{r.name}</p>
+                    <p className="break-all text-sm text-[var(--hh-text-secondary)]">
+                      {r.phone || r.email || "No contact information"} ·{" "}
+                      {r.active ? "Active" : "Inactive"}
+                    </p>
                     <div>
                       {r.insurance_expiration_date ? (
                         r.insurance_alert ? (
@@ -197,6 +238,14 @@ export function SubcontractorsListClient({
               ))}
             </div>
           )}
+          {filtered.length === 0 && (
+            <div className="hidden md:block">
+              <EmptyState
+                title="No subcontractors match your filters"
+                description="Try another search or status."
+              />
+            </div>
+          )}
           <NeoTable className="hidden md:block" tableClassName="min-w-[1080px] lg:min-w-0">
             <thead>
               <tr>
@@ -216,10 +265,13 @@ export function SubcontractorsListClient({
                   <td className="py-2 px-3">
                     <Link
                       href={`/subcontractors/${r.id}`}
-                      className="font-medium text-[var(--hh-text-primary)] underline-offset-2 hover:underline"
+                      className="inline-flex min-h-11 items-center font-medium text-[var(--hh-text-primary)] underline-offset-2 hover:underline"
                     >
                       {r.name}
                     </Link>
+                    <p className="text-sm text-[var(--hh-text-secondary)]">
+                      {r.phone || r.email || "—"} · {r.active ? "Active" : "Inactive"}
+                    </p>
                   </td>
                   <td className="py-2 px-3">
                     {r.insurance_expiration_date ? (

@@ -3,6 +3,11 @@ import { redirect } from "next/navigation";
 import { AUTH_META_CLASS, AUTH_PAGE_CLASS } from "@/components/auth/auth-ui";
 import { LoginPanel } from "@/components/auth/login-panel";
 import { authorizedAppRole } from "@/lib/auth-role";
+import {
+  getActiveOrganizationMemberships,
+  hasCompanyAdministratorMembership,
+  isOrganizationWorkspacePath,
+} from "@/lib/organization-membership";
 import { normalizeAuthRedirect } from "@/lib/auth-redirect";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 
@@ -33,10 +38,22 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
     ? await supabase.auth.getUser().catch(() => ({ data: { user: null } }))
     : { data: { user: null } };
 
-  if (user && authorizedAppRole(user)) {
+  if (
+    user &&
+    supabase &&
+    authorizedAppRole(user) &&
+    (await hasCompanyAdministratorMembership(supabase, user).catch(() => false))
+  ) {
     redirect(redirectTo);
   }
 
+  if (
+    user &&
+    supabase &&
+    (await getActiveOrganizationMemberships(supabase, user).catch(() => [])).length
+  ) {
+    redirect(isOrganizationWorkspacePath(redirectTo.split("?")[0]) ? redirectTo : "/projects");
+  }
   const errorCode = first(searchParams?.error);
   const messageCode = first(searchParams?.message);
   const initialError =

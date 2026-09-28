@@ -196,6 +196,7 @@ async function run(): Promise<void> {
   // —— Expenses ——
   try {
     const created = await data.createExpense({
+      idempotencyKey: `test-all-features:expense:${projectId ?? "unassigned"}:${today}`,
       date: today,
       vendorName: "Test Vendor",
       paymentMethod: "Card",
@@ -335,6 +336,7 @@ async function run(): Promise<void> {
   try {
     if (!invoiceIdForPayment) throw new Error("No invoice for payment");
     const created = await data.createPaymentReceived({
+      idempotency_key: crypto.randomUUID(),
       invoice_id: invoiceIdForPayment,
       customer_name: "Test Customer",
       payment_date: today,

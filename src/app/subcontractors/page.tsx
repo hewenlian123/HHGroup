@@ -1,15 +1,11 @@
+import { getSubcontractorsWithInsuranceAlerts } from "@/lib/subcontractors-db";
+import { getSubcontractsSummaryAll } from "@/lib/subcontracts-db";
+import { getContactPaymentSchedule } from "./contact-schedule-read";
 import { PageLayout, PageHeader } from "@/components/base";
-import {
-  getApBillsBySubcontractIds,
-  getSubcontractorsWithInsuranceAlerts,
-  getSubcontractsSummaryAll,
-  getBillsSummaryAll,
-  getPaymentScheduleBySubcontractIds,
-  getPaymentsSummaryAll,
-} from "@/lib/data";
+import { getApBillsBySubcontractIds, getBillsSummaryAll, getPaymentsSummaryAll } from "@/lib/data";
 import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
 import { summarizeSubcontractorFinancials } from "@/lib/subcontractor-financials";
-import { getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
+import { requireSupabaseOwnerOrAdminServerActionClient } from "@/lib/auth-boundary";
 import { cn } from "@/lib/utils";
 import { SubcontractorsListClient } from "./subcontractors-list-client";
 
@@ -21,22 +17,24 @@ export default async function SubcontractorsPage() {
   let subcontracts: Awaited<ReturnType<typeof getSubcontractsSummaryAll>> = [];
   let billsSummary: Awaited<ReturnType<typeof getBillsSummaryAll>> = [];
   let paymentsSummary: Awaited<ReturnType<typeof getPaymentsSummaryAll>> = [];
-  let paymentSchedule: Awaited<ReturnType<typeof getPaymentScheduleBySubcontractIds>> = [];
+  let paymentSchedule: Awaited<ReturnType<typeof getContactPaymentSchedule>> = [];
   let linkedApBills: Awaited<ReturnType<typeof getApBillsBySubcontractIds>> = [];
   let dataLoadWarning: string | null = null;
 
   try {
+    const guard = await requireSupabaseOwnerOrAdminServerActionClient({ noStore: true });
+    if (!guard.ok) throw new Error(guard.error);
+    const supabase = guard.client;
     [subcontractors, subcontracts, billsSummary, paymentsSummary] = await Promise.all([
-      getSubcontractorsWithInsuranceAlerts(),
-      getSubcontractsSummaryAll(),
-      getBillsSummaryAll(),
-      getPaymentsSummaryAll(),
+      getSubcontractorsWithInsuranceAlerts(supabase),
+      getSubcontractsSummaryAll(supabase),
+      getBillsSummaryAll(supabase),
+      getPaymentsSummaryAll(supabase),
     ]);
     const subcontractIds = subcontracts.map((subcontract) => subcontract.id);
-    const supabase = getServerSupabaseInternalNoStore();
     [paymentSchedule, linkedApBills] = await Promise.all([
-      getPaymentScheduleBySubcontractIds(subcontractIds, supabase ?? undefined).catch(() => []),
-      getApBillsBySubcontractIds(subcontractIds, supabase ?? undefined).catch(() => []),
+      getContactPaymentSchedule(subcontractIds, supabase ?? undefined),
+      getApBillsBySubcontractIds(subcontractIds, supabase ?? undefined),
     ]);
   } catch (e) {
     logServerPageDataError("subcontractors", e);
@@ -80,6 +78,9 @@ export default async function SubcontractorsPage() {
     return {
       id: sc.id,
       name: sc.name,
+      phone: sc.phone,
+      email: sc.email,
+      active: sc.active,
       contractAmount: summary.contractAmount,
       scheduledAmount: summary.scheduledAmount,
       billedToDate: summary.billedToDate,
@@ -94,7 +95,7 @@ export default async function SubcontractorsPage() {
   return (
     <PageLayout
       divider={false}
-      className={cn("max-md:!py-3", "max-md:!gap-3")}
+      className={cn("max-md:!py-3", "max-md:!gap-3", "[&_button]:min-h-11")}
       header={
         <div className="hidden md:block">
           <PageHeader

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { NeoSelect } from "@/components/base";
 
@@ -35,6 +35,7 @@ export function MonthReportToolbar({
   printDocumentTitle?: string;
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const opts = monthOptions();
 
   return (
@@ -45,9 +46,9 @@ export function MonthReportToolbar({
         value={currentYm}
         onChange={(e) => {
           const v = e.target.value;
-          router.push(
-            `/worker/${encodeURIComponent(workerId)}/monthly-report?month=${encodeURIComponent(v)}`
-          );
+          const context = new URLSearchParams(searchParams.toString());
+          context.set("month", v);
+          router.push(`/worker/${encodeURIComponent(workerId)}/monthly-report?${context}`);
         }}
       >
         {opts.map((o) => (

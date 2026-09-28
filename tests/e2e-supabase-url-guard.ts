@@ -3,10 +3,9 @@ const LOCAL_E2E_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]", "::1"]);
 const LOCAL_SUPABASE_API_PORT = "54321";
 const LOCAL_SUPABASE_DATABASE_PORT = "54322";
 
-const PRODUCTION_READ_ONLY_SPECS = [
-  /(?:^|\/)tests\/production-safety\.spec\.ts$/,
-  /(?:^|\/)tests\/production-add-flows\.spec\.ts$/,
-] as const;
+const PRODUCTION_NEVER_RUN_SPECS = [/(?:^|\/)tests\/production-safety\.spec\.ts$/] as const;
+
+const PRODUCTION_READ_ONLY_SPECS = [/(?:^|\/)tests\/production-add-flows\.spec\.ts$/] as const;
 
 export function productionTestWritesAllowed(): boolean {
   return process.env[PROD_WRITE_OVERRIDE] === "1";
@@ -43,9 +42,22 @@ export function assertPlaywrightProductionRunSafeForWrites(params: {
   baseURL: string | undefined | null;
   argv?: readonly string[];
 }): void {
-  if (!isProductionAppUrl(params.baseURL) || productionTestWritesAllowed()) return;
+  if (!isProductionAppUrl(params.baseURL)) return;
 
   const specArgs = explicitPlaywrightSpecArgs(params.argv ?? []);
+  const localOnlySpecs = specArgs.filter((arg) =>
+    PRODUCTION_NEVER_RUN_SPECS.some((pattern) => pattern.test(arg))
+  );
+  if (localOnlySpecs.length > 0) {
+    throw new Error(
+      `[E2E] Refusing to run ${localOnlySpecs.join(", ")} against production app target ${params.baseURL}. ` +
+        "This destructive-route guard contract is localhost-only and cannot be overridden. " +
+        "Run it against a local production build instead."
+    );
+  }
+
+  if (productionTestWritesAllowed()) return;
+
   const allExplicitSpecsAreReadOnly =
     specArgs.length > 0 &&
     specArgs.every((arg) => PRODUCTION_READ_ONLY_SPECS.some((pattern) => pattern.test(arg)));
@@ -121,15 +133,20 @@ export function assertEstimateCertificationLocalOnly(params: {
     throw new Error("[E2E] Estimate certification requires an explicit local app port.");
   }
 
+  // Explicit release target: never fall back to the ordinary development database.
+  const releaseTarget = process.env.E2E_ESTIMATE_TARGET === "estimate-release-20260911";
+  if (releaseTarget && (app.port !== "3101" || !params.databaseUrl?.trim())) {
+    throw new Error("[E2E] Estimate release requires app :3101 and an explicit RC database URL.");
+  }
+  const apiPort = releaseTarget ? "55321" : LOCAL_SUPABASE_API_PORT;
+  const databasePort = releaseTarget ? "55322" : LOCAL_SUPABASE_DATABASE_PORT;
   const supabase = parseRequiredE2EUrl(params.supabaseUrl, "NEXT_PUBLIC_SUPABASE_URL");
   if (supabase.protocol !== "http:") {
     throw new Error("[E2E] Estimate certification requires the local Supabase API endpoint.");
   }
   assertLocalHost(supabase, "NEXT_PUBLIC_SUPABASE_URL");
-  if (supabase.port !== LOCAL_SUPABASE_API_PORT) {
-    throw new Error(
-      `[E2E] Estimate certification requires local Supabase API port :${LOCAL_SUPABASE_API_PORT}.`
-    );
+  if (supabase.port !== apiPort) {
+    throw new Error(`[E2E] Estimate certification requires local Supabase API port :${apiPort}.`);
   }
 
   let databaseOrigin: string | undefined;
@@ -139,9 +156,9 @@ export function assertEstimateCertificationLocalOnly(params: {
       throw new Error("[E2E] Estimate certification requires a PostgreSQL local database URL.");
     }
     assertLocalHost(database, "SUPABASE_DATABASE_URL");
-    if (database.port !== LOCAL_SUPABASE_DATABASE_PORT) {
+    if (database.port !== databasePort) {
       throw new Error(
-        `[E2E] Estimate certification requires local Supabase database port :${LOCAL_SUPABASE_DATABASE_PORT}.`
+        `[E2E] Estimate certification requires local Supabase database port :${databasePort}.`
       );
     }
     databaseOrigin = `${database.protocol}//${database.host}`;

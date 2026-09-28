@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { financialDataUnavailable } from "@/lib/financial-availability";
 import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
 import {
   SUPABASE_MISSING_SERVER_ENV_MESSAGE,
@@ -79,6 +80,15 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       0
     );
 
+    for (const [source, result] of [
+      ["labor_entries", laborRes],
+      ["worker_reimbursements", reimbRes],
+      ["worker_invoices", invoicesRes],
+      ["worker_payments", paymentsRes],
+    ] as const) {
+      if (result.error) financialDataUnavailable(source, result.error);
+      if (!Array.isArray(result.data)) financialDataUnavailable(source, null);
+    }
     const balance = totalLabor + totalReimbursements + totalWorkerInvoices - totalPayments;
 
     return NextResponse.json({

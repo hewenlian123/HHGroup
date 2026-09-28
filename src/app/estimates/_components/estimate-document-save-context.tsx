@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { createEstimateDraftRetryRegistry } from "./estimate-mutation-coordinator";
 
 import type { EstimateSaveStatus } from "./estimate-builder-save-status";
 import {
@@ -10,8 +11,13 @@ import {
   type EstimateDocumentSaveAction,
   type EstimateDocumentSaveState,
 } from "./estimate-document-save-state";
+import {
+  enforceEstimateMutationResult,
+  estimateMutationFailureFromError,
+  type EstimateMutationResult,
+} from "./estimate-mutation-result";
 
-type SaveResult = void | { ok: boolean; error?: string };
+type SaveResult = EstimateMutationResult;
 
 type EstimateDocumentSaveContextValue = {
   state: EstimateDocumentSaveState;
@@ -21,7 +27,9 @@ type EstimateDocumentSaveContextValue = {
     operationKey: string,
     operation: () => Promise<T>
   ) => Promise<T>;
-  waitForPendingSaves: () => Promise<boolean>;
+  waitForPendingSaves: (retry?: { operationKey: string; revision: number }) => Promise<boolean>;
+  registerSaveRetry: (operationKey: string, retry: () => Promise<boolean>) => () => void;
+  retryFailedSaves: () => Promise<void>;
   resetSaveState: () => void;
 };
 
@@ -37,6 +45,7 @@ export function EstimateDocumentSaveProvider({
   const [state, setState] = React.useState(createEstimateDocumentSaveState);
   const stateRef = React.useRef(state);
   const pendingRef = React.useRef(new Set<Promise<unknown>>());
+  const retryRegistryRef = React.useRef(createEstimateDraftRetryRegistry());
 
   const apply = React.useCallback(
     (action: EstimateDocumentSaveAction): EstimateDocumentSaveState => {
@@ -60,8 +69,9 @@ export function EstimateDocumentSaveProvider({
       const pending = Promise.resolve().then(operation);
       pendingRef.current.add(pending);
       try {
-        const result = await pending;
-        if (result && typeof result === "object" && "ok" in result && !result.ok) {
+        const rawResult = await pending;
+        const result = enforceEstimateMutationResult(rawResult);
+        if (!result.ok) {
           apply({ type: "save-failed", operationKey });
           return result;
         }
@@ -69,7 +79,7 @@ export function EstimateDocumentSaveProvider({
         return result;
       } catch (error) {
         apply({ type: "save-failed", operationKey });
-        throw error;
+        return estimateMutationFailureFromError(error) as T;
       } finally {
         pendingRef.current.delete(pending);
       }
@@ -77,17 +87,29 @@ export function EstimateDocumentSaveProvider({
     [apply]
   );
 
-  const waitForPendingSaves = React.useCallback(async (): Promise<boolean> => {
-    while (pendingRef.current.size > 0) {
-      await Promise.allSettled(Array.from(pendingRef.current));
-    }
-    const current = stateRef.current;
-    return (
-      current.failedOperationKeys.length === 0 &&
-      current.pendingCount === 0 &&
-      current.savedRevision >= current.revision
-    );
-  }, []);
+  const waitForPendingSaves = React.useCallback(
+    async (retry?: { operationKey: string; revision: number }): Promise<boolean> => {
+      while (pendingRef.current.size > 0) {
+        await Promise.allSettled(Array.from(pendingRef.current));
+      }
+      const current = stateRef.current;
+      return (
+        current.failedOperationKeys.every((key) => key === retry?.operationKey) &&
+        current.pendingCount === 0 &&
+        (current.savedRevision >= current.revision ||
+          (retry !== undefined && current.revision === retry.revision))
+      );
+    },
+    []
+  );
+
+  const registerSaveRetry = retryRegistryRef.current.register;
+
+  const retryFailedSaves = React.useCallback(async (): Promise<void> => {
+    await waitForPendingSaves();
+    // Only mounted, explicitly registered draft updates may be retried; never replay actions.
+    await retryRegistryRef.current.retry(stateRef.current.failedOperationKeys);
+  }, [waitForPendingSaves]);
 
   const resetSaveState = React.useCallback((): void => {
     apply({ type: "reset" });
@@ -100,9 +122,19 @@ export function EstimateDocumentSaveProvider({
       markUnsaved,
       trackMutation,
       waitForPendingSaves,
+      registerSaveRetry,
+      retryFailedSaves,
       resetSaveState,
     }),
-    [markUnsaved, resetSaveState, state, trackMutation, waitForPendingSaves]
+    [
+      markUnsaved,
+      resetSaveState,
+      state,
+      trackMutation,
+      waitForPendingSaves,
+      registerSaveRetry,
+      retryFailedSaves,
+    ]
   );
 
   return (

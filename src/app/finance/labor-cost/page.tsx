@@ -1,3 +1,6 @@
+import { FinanceUnavailable } from "@/components/financial/finance-unavailable";
+import { requireSupabaseOwnerOrAdminServerActionClient } from "@/lib/auth-boundary";
+import { PermissionDenied } from "@/components/ui/system-state";
 import { PageLayout, PageHeader, Divider } from "@/components/base";
 import Link from "next/link";
 import { getTotalLaborCost } from "@/lib/data";
@@ -24,7 +27,19 @@ const navItems = [
 ] as const;
 
 export default async function FinanceLaborCostPage() {
-  const totalLaborCost = await getTotalLaborCost().catch(() => 0);
+  const guard = await requireSupabaseOwnerOrAdminServerActionClient({ noStore: true });
+  if (!guard.ok)
+    return (
+      <div className="page-container py-6">
+        <PermissionDenied description={guard.error} />
+      </div>
+    );
+  let totalLaborCost: Awaited<ReturnType<typeof getTotalLaborCost>>;
+  try {
+    totalLaborCost = await getTotalLaborCost(guard.client);
+  } catch {
+    return <FinanceUnavailable title="Labor cost unavailable" />;
+  }
 
   return (
     <PageLayout
@@ -38,6 +53,7 @@ export default async function FinanceLaborCostPage() {
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-border/60 pb-3 text-sm">
         {navItems.map((item) => (
           <Link
+            prefetch={false}
             key={item.href}
             href={item.href}
             className={
@@ -69,6 +85,7 @@ export default async function FinanceLaborCostPage() {
 
       <div className="mt-4">
         <Link
+          prefetch={false}
           href="/labor/entries"
           className="inline-flex min-h-11 items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground md:min-h-8"
         >

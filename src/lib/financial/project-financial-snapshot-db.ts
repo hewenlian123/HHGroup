@@ -1,5 +1,7 @@
 import "server-only";
 
+import type { SupabaseClient } from "@supabase/supabase-js";
+
 import {
   calculateProjectFinancialSnapshot,
   createEmptyProjectFinancialSnapshotDiagnostics,
@@ -48,10 +50,13 @@ type ProjectFinancialChangeOrderRow = ProjectFinancialAmountRow & {
 type ProjectFinancialInvoiceRow = ProjectFinancialAmountRow & {
   project_id?: string | null;
   paid_total?: number | string | null;
+  subtotal?: number | string | null;
+  tax_amount?: number | string | null;
 };
 
 type ProjectFinancialInvoicePaymentRow = ProjectFinancialAmountRow & {
   invoice_id?: string | null;
+  payment_received_id?: string | null;
 };
 
 type ProjectFinancialExpenseRow = ProjectFinancialAmountRow & {
@@ -102,6 +107,7 @@ type ProjectFinancialCommissionPaymentRow = ProjectFinancialAmountRow & {
 type ProjectFinancialApBillRow = ProjectFinancialAmountRow & {
   project_id?: string | null;
   bill_type?: string | null;
+  subcontract_id?: string | null;
   paid_amount?: number | string | null;
   balance_amount?: number | string | null;
 };
@@ -505,6 +511,9 @@ export function buildProjectFinancialSnapshotInput(rows: ProjectFinancialSnapsho
       diagnostics.approvedChangeOrdersCount += 1;
       return sum + changeOrderAmountFromRow(row, mapperWarnings);
     }, 0);
+  const changeOrderCost = rows.changeOrders
+    .filter((row) => isApprovedStatus(row.status))
+    .reduce((sum, row) => sum + toMoney((row as { cost_impact?: unknown }).cost_impact), 0);
   const paymentsByInvoiceId = new Map<string, ProjectFinancialInvoicePaymentRow[]>();
   for (const payment of rows.invoicePayments) {
     const invoiceId = String(payment.invoice_id ?? "").trim();
@@ -520,6 +529,8 @@ export function buildProjectFinancialSnapshotInput(rows: ProjectFinancialSnapsho
     return {
       id,
       total: amountFromRow(invoice),
+      subtotal: invoice.subtotal ?? null,
+      taxAmount: invoice.tax_amount ?? null,
       status: invoice.status ?? null,
       ...(payments ? { payments } : { paidAmount: invoice.paid_total ?? null }),
     };
@@ -577,7 +588,12 @@ export function buildProjectFinancialSnapshotInput(rows: ProjectFinancialSnapsho
     }));
 
   const activeApBills = rows.apBills.filter(isActiveApBillForDiagnostics);
-  const apCosts: ProjectFinancialAmountRow[] = activeApBills.map((bill) => ({
+  const projectApBills = activeApBills.filter((bill) => {
+    if (normalizeStatus(bill.bill_type) === "labor") return false;
+    const linked = (bill as { subcontract_id?: unknown }).subcontract_id;
+    return linked == null || String(linked).trim() === "";
+  });
+  const apCosts: ProjectFinancialAmountRow[] = projectApBills.map((bill) => ({
     id: bill.id,
     amount: amountFromRow(bill),
     status: bill.status,
@@ -589,8 +605,7 @@ export function buildProjectFinancialSnapshotInput(rows: ProjectFinancialSnapsho
   diagnostics.apCashOut = toMoney(
     activeApBills.reduce((sum, bill) => sum + toMoney(bill.paid_amount), 0)
   );
-  if (activeApBills.length > 0) {
-    diagnostics.apDiagnosticsWarnings.push("ap_bills_not_in_actual_cost");
+  if (projectApBills.length > 0 && expenseLines.length > 0) {
     const hasMappedCost =
       expenseLines.length > 0 ||
       laborEntries.length > 0 ||
@@ -600,7 +615,7 @@ export function buildProjectFinancialSnapshotInput(rows: ProjectFinancialSnapsho
     mapperWarnings.push(
       warning(
         "ap_bills_possible_duplicate_cost",
-        "AP bills are shown as diagnostics only because they may duplicate expense, labor, or subcontract costs already mapped into actual cost."
+        "This project has both expense lines and a vendor AP bill. Confirm they are not the same cost."
       )
     );
   }
@@ -613,6 +628,7 @@ export function buildProjectFinancialSnapshotInput(rows: ProjectFinancialSnapsho
       projectId: rows.projectId,
       contractValue: projectBudget || projectContractAmount,
       approvedChangeOrders,
+      changeOrderCost,
       invoices,
       expenseLines,
       laborEntries,
@@ -836,7 +852,10 @@ async function safeSelect<T>(
     }
     throw new Error(error.message ?? `Failed to load ${label}.`);
   }
-  return { data: (Array.isArray(data) ? data : []) as T[], warnings: [] };
+  if (!Array.isArray(data)) {
+    throw new Error(`Project financial data unavailable: ${label}.`);
+  }
+  return { data: data as T[], warnings: [] };
 }
 
 async function safeSelectFallback<T>(
@@ -846,7 +865,12 @@ async function safeSelectFallback<T>(
   let lastMissing: DbErrorLike | null = null;
   for (const attempt of attempts) {
     const { data, error } = await attempt();
-    if (!error) return { data: (Array.isArray(data) ? data : []) as T[], warnings: [] };
+    if (!error) {
+      if (!Array.isArray(data)) {
+        throw new Error(`Project financial data unavailable: ${label}.`);
+      }
+      return { data: data as T[], warnings: [] };
+    }
     if (!missingTableOrColumn(error)) {
       throw new Error(error.message ?? `Failed to load ${label}.`);
     }
@@ -951,7 +975,7 @@ function selectChangeOrdersByProject(
 ) {
   if (!supabase) throw new Error(SUPABASE_MISSING_SERVER_ENV_MESSAGE);
   const cols = [
-    `id,project_id,status,${PROJECT_CHANGE_ORDER_AMOUNT_COLUMNS}`,
+    `id,project_id,status,cost_impact,${PROJECT_CHANGE_ORDER_AMOUNT_COLUMNS}`,
     "id,project_id,status,total",
     "id,project_id,status,total_amount",
     "id,project_id,status",
@@ -970,7 +994,7 @@ function selectApBillsByProject(
 ) {
   if (!supabase) throw new Error(SUPABASE_MISSING_SERVER_ENV_MESSAGE);
   const cols = [
-    "id,project_id,bill_type,amount,paid_amount,balance_amount,status",
+    "id,project_id,bill_type,subcontract_id,amount,paid_amount,balance_amount,status",
     "id,project_id,bill_type,amount,paid_amount,status",
     "id,project_id,amount,paid_amount,status",
     "id,project_id,amount,status",
@@ -1040,9 +1064,10 @@ function mergeById<T extends { id?: string | null }>(...lists: T[][]): T[] {
 }
 
 async function fetchProjectFinancialSnapshotRows(
-  projectId: string
+  projectId: string,
+  explicitClient?: SupabaseClient
 ): Promise<{ rows: ProjectFinancialSnapshotDbRows; warnings: ProjectFinancialWarning[] }> {
-  const supabase = getServerSupabaseInternalNoStore();
+  const supabase = explicitClient ?? getServerSupabaseInternalNoStore();
   if (!supabase) throw new Error(SUPABASE_MISSING_SERVER_ENV_MESSAGE);
 
   const [
@@ -1063,7 +1088,7 @@ async function fetchProjectFinancialSnapshotRows(
       "invoices",
       supabase
         .from("invoices")
-        .select("id,project_id,status,total,paid_total,balance_due")
+        .select("id,project_id,status,total,subtotal,tax_amount,paid_total,balance_due")
         .eq("project_id", projectId)
     ),
     selectExpenseLinesByProject(supabase, projectId),
@@ -1142,10 +1167,43 @@ async function fetchProjectFinancialSnapshotRows(
           "invoice_payments",
           supabase
             .from("invoice_payments")
-            .select("id,invoice_id,amount,status,payment_date,paid_at")
+            .select("id,invoice_id,amount,status,payment_date,paid_at,payment_received_id")
             .in("invoice_id", invoiceIds)
         )
       : { data: [], warnings: [] };
+  const paymentsReceivedRes =
+    invoiceIds.length > 0
+      ? await safeSelect<{
+          id?: string | null;
+          invoice_id?: string | null;
+          amount?: number | string | null;
+          status?: string | null;
+        }>(
+          "payments_received",
+          supabase
+            .from("payments_received")
+            .select("id,invoice_id,amount,status")
+            .in("invoice_id", invoiceIds)
+        )
+      : { data: [], warnings: [] };
+  const linkedReceivedIds = new Set(
+    invoicePaymentsRes.data
+      .map((payment) => String(payment.payment_received_id ?? "").trim())
+      .filter(Boolean)
+  );
+  const unallocatedReceivedPayments: ProjectFinancialInvoicePaymentRow[] =
+    paymentsReceivedRes.data.flatMap((row) => {
+      const id = String(row.id ?? "").trim();
+      const invoiceId = String(row.invoice_id ?? "").trim();
+      const status = String(row.status ?? "")
+        .trim()
+        .toLowerCase();
+      if (!id || !invoiceId || linkedReceivedIds.has(id)) return [];
+      if (["void", "voided", "cancelled", "canceled", "rejected", "deleted"].includes(status)) {
+        return [];
+      }
+      return [{ id, invoice_id: invoiceId, amount: row.amount, status: "Posted" }];
+    });
   const subcontractBillIds = subcontractRes.data
     .map((bill) => String(bill.id ?? "").trim())
     .filter(Boolean);
@@ -1174,7 +1232,7 @@ async function fetchProjectFinancialSnapshotRows(
       project: projectRes.data as ProjectFinancialProjectRow,
       changeOrders,
       invoices: invoicesRes.data,
-      invoicePayments: invoicePaymentsRes.data,
+      invoicePayments: [...invoicePaymentsRes.data, ...unallocatedReceivedPayments],
       expenses,
       expenseLines,
       laborEntries: laborRes.data,
@@ -1199,6 +1257,7 @@ async function fetchProjectFinancialSnapshotRows(
       ...subcontractPaymentsRes.warnings,
       ...apBillsRes.warnings,
       ...invoicePaymentsRes.warnings,
+      ...paymentsReceivedRes.warnings,
       ...extraWarnings,
       ...(apUnavailable
         ? [
@@ -1213,18 +1272,54 @@ async function fetchProjectFinancialSnapshotRows(
 }
 
 export async function getProjectFinancialSnapshot(
-  projectId: string
+  projectId: string,
+  explicitClient?: SupabaseClient
 ): Promise<ProjectFinancialSnapshot> {
-  const { rows, warnings } = await fetchProjectFinancialSnapshotRows(projectId);
+  const { rows, warnings } = await fetchProjectFinancialSnapshotRows(projectId, explicitClient);
+  assertProjectFinancialSnapshotSourcesAvailable(warnings);
   const snapshot = mapProjectFinancialRowsToSnapshot(rows);
   return { ...snapshot, warnings: [...snapshot.warnings, ...warnings] };
 }
 
+const REQUIRED_FINANCIAL_SOURCE_PREFIXES = [
+  "invoices",
+  "invoice_payments",
+  "expense_lines",
+  "expense_lines_by_project",
+  "expenses",
+  "labor_entries",
+  "worker_reimbursements",
+  "subcontract_bills",
+  "subcontract_payments",
+  "commissions",
+  "commission_payments",
+  "project_change_orders",
+  "project_change_order_items",
+] as const;
+
+export function assertProjectFinancialSnapshotSourcesAvailable(
+  warnings: ProjectFinancialWarning[]
+): void {
+  const blocking = warnings.find((item) =>
+    REQUIRED_FINANCIAL_SOURCE_PREFIXES.some(
+      (prefix) =>
+        item.code.startsWith(prefix) &&
+        (item.code.includes("unavailable") ||
+          item.code.includes("schema_detail") ||
+          item.code.includes("missing"))
+    )
+  );
+  if (blocking) {
+    throw new Error(`Project financial data unavailable: ${blocking.code}.`);
+  }
+}
+
 async function safeOldCanonicalProfit(
-  projectId: string
+  projectId: string,
+  explicitClient: SupabaseClient
 ): Promise<{ value: CanonicalProjectProfit | null; warning?: ProjectFinancialWarning }> {
   try {
-    return { value: await getCanonicalProjectProfit(projectId) };
+    return { value: await getCanonicalProjectProfit(projectId, explicitClient) };
   } catch (error) {
     return {
       value: null,
@@ -1236,7 +1331,10 @@ async function safeOldCanonicalProfit(
   }
 }
 
-async function safeOldProjectCostDashboard(projectId: string): Promise<{
+async function safeOldProjectCostDashboard(
+  projectId: string,
+  explicitClient: SupabaseClient
+): Promise<{
   value: Pick<
     ProjectCostDashboardPayload,
     "breakdown" | "spentTotal" | "profit" | "margin" | "revenue"
@@ -1244,7 +1342,7 @@ async function safeOldProjectCostDashboard(projectId: string): Promise<{
   warning?: ProjectFinancialWarning;
 }> {
   try {
-    const value = await getProjectCostDashboard(projectId);
+    const value = await getProjectCostDashboard(projectId, explicitClient);
     return {
       value: {
         breakdown: value.breakdown,
@@ -1266,12 +1364,13 @@ async function safeOldProjectCostDashboard(projectId: string): Promise<{
 }
 
 export async function getProjectFinancialSnapshotComparison(
-  projectId: string
+  projectId: string,
+  explicitClient: SupabaseClient
 ): Promise<ProjectFinancialSnapshotComparison> {
   const [newSnapshot, oldCanonical, oldDashboard] = await Promise.all([
-    getProjectFinancialSnapshot(projectId),
-    safeOldCanonicalProfit(projectId),
-    safeOldProjectCostDashboard(projectId),
+    getProjectFinancialSnapshot(projectId, explicitClient),
+    safeOldCanonicalProfit(projectId, explicitClient),
+    safeOldProjectCostDashboard(projectId, explicitClient),
   ]);
   const warnings = [oldCanonical.warning, oldDashboard.warning].filter(
     (item): item is ProjectFinancialWarning => Boolean(item)

@@ -1,6 +1,13 @@
 "use client";
 
+import { useFinanceQueryState } from "@/hooks/use-finance-query-state";
+
 import * as React from "react";
+import Link from "next/link";
+import { usePathname, useSearchParams } from "next/navigation";
+import { financePathWithReturn } from "@/lib/finance-navigation";
+import { FinanceContextBack } from "@/components/financial/finance-context-back";
+import { BillDetailLink, BillDetailSheet } from "@/components/financial/bill-detail-sheet";
 import { BarChart3, CalendarDays, ClipboardList, Layers } from "lucide-react";
 import {
   FilterToolbar,
@@ -24,6 +31,7 @@ import type {
   ProjectProfitabilityRow,
   ReportsData,
   ReportsTab,
+  ReportsKpiKey,
 } from "@/lib/reports-db";
 import { OS, TYPO } from "@/lib/typography";
 import { cn } from "@/lib/utils";
@@ -47,13 +55,19 @@ function formatSignedPercent(value: number): string {
   return `${sign}${formatPercent(Math.abs(value), { maximumFractionDigits: 1 })}`;
 }
 
-function valueText(kind: "currency" | "percent", value: number): string {
+function valueText(kind: "currency" | "percent" | "count", value: number): string {
+  if (kind === "count") return String(value);
   return kind === "percent"
     ? formatPercent(value, { maximumFractionDigits: 1 })
     : formatCurrency(value);
 }
 
-function deltaText(kind: "currency" | "percent", delta: number, deltaPct: number | null): string {
+function deltaText(
+  kind: "currency" | "percent" | "count",
+  delta: number,
+  deltaPct: number | null
+): string {
+  if (kind === "count") return `Previous period ${delta >= 0 ? "+" : ""}${delta} records`;
   const amount = kind === "percent" ? formatSignedPercent(delta) : formatSignedCurrency(delta);
   const pct = deltaPct == null ? "new period" : formatSignedPercent(deltaPct);
   return `vs previous period ${amount} (${pct})`;
@@ -85,7 +99,83 @@ function EmptyReportState({
   );
 }
 
+function ReportLink({ href, children }: { href: string; children: React.ReactNode }) {
+  const params = useSearchParams();
+  const pathname = usePathname();
+  const target = financePathWithReturn(href, `${pathname}?${params}`);
+  return href.startsWith("/bills/") ? (
+    <BillDetailLink className="underline" href={target}>
+      {children}
+    </BillDetailLink>
+  ) : (
+    <Link className="underline" href={target}>
+      {children}
+    </Link>
+  );
+}
+
+function AgingCustomerLink({ row }: { row: AgingRow }) {
+  const params = new URLSearchParams(useSearchParams().toString());
+  if (!row.customerId) return <>{row.counterparty}</>;
+  params.set("customerId", row.customerId);
+  return <ReportLink href={`/reports?${params}`}>{row.counterparty}</ReportLink>;
+}
+
+function AgingRecordLink({ row }: { row: AgingRow }) {
+  return (
+    <ReportLink
+      href={row.source === "Invoice" ? `/financial/invoices/${row.id}` : `/bills/${row.id}`}
+    >
+      {row.label}
+    </ReportLink>
+  );
+}
+
+function MetricRecords({ data }: { data: ReportsData }) {
+  const [metric, setMetric] = useFinanceQueryState("metric", "");
+  if (!(metric in data.records)) return null;
+  const key = metric as ReportsKpiKey;
+  const records = data.records[key];
+  const kpi = data.monthly.kpis.find((k) => k.key === key)!;
+  return (
+    <NeoPanel
+      title={`${kpi.label} records`}
+      description={data.definitions[key]}
+      bodyClassName="p-4"
+    >
+      <Button variant="outline" onClick={() => setMetric("")}>
+        Close records
+      </Button>
+      {key.startsWith("project") && data.projectReviewWarning && (
+        <p role="status">{data.projectReviewWarning}</p>
+      )}
+      <p className="my-3 text-sm">
+        {key.startsWith("project")
+          ? "Lifetime · contract review scope"
+          : key === "billsAp" || key === "outstandingAr"
+            ? "Current balance · all dates"
+            : formatDateRange(data.range.start, data.range.end)}{" "}
+        · {records.length} records · Total {valueText(kpi.kind, kpi.value)}
+      </p>
+      <ul className="divide-y divide-[var(--hh-border)]" data-testid="metric-records">
+        {records.map((row) => (
+          <li key={row.id} className="py-3" data-finance-record={row.id} tabIndex={-1}>
+            <ReportLink href={row.href}>{row.label}</ReportLink>
+            <p className="text-sm">
+              {valueText(kpi.kind, row.amount)} · {row.date || "No date"} · {row.status} ·{" "}
+              {row.source} · {row.projectId || "Unassigned project"}
+            </p>
+          </li>
+        ))}
+      </ul>
+      {!records.length && <p>No matching records.</p>}
+    </NeoPanel>
+  );
+}
+
 function MonthlyReport({ data }: { data: ReportsData }) {
+  const [, setMetric] = useFinanceQueryState("metric", "");
+  const params = useSearchParams();
   return (
     <div className="flex min-w-0 flex-col gap-4">
       <FilterToolbar className="items-stretch md:items-end">
@@ -94,6 +184,14 @@ function MonthlyReport({ data }: { data: ReportsData }) {
           className="grid w-full min-w-0 gap-3 md:grid-cols-[minmax(0,220px)_minmax(0,150px)_minmax(0,150px)_auto] md:items-end"
         >
           <input type="hidden" name="tab" value="monthly" />
+          {Array.from(params.entries())
+            .filter(
+              ([key]) =>
+                !["tab", "period", "from", "to", "metric", "billDetail", "billPay"].includes(key)
+            )
+            .map(([key, value], index) => (
+              <input key={`${key}-${index}`} type="hidden" name={key} value={value} />
+            ))}
           <label className="flex min-w-0 flex-col gap-1">
             <span className={TYPO.sectionLabel}>Period</span>
             <NativeSelect
@@ -102,6 +200,7 @@ function MonthlyReport({ data }: { data: ReportsData }) {
               aria-label="Report period"
               className="min-h-11 md:min-h-10"
             >
+              <option value="all-time">All Time</option>
               <option value="this-month">This Month</option>
               <option value="last-month">Last Month</option>
               <option value="this-quarter">This Quarter</option>
@@ -138,16 +237,32 @@ function MonthlyReport({ data }: { data: ReportsData }) {
 
       <div className="grid min-w-0 gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {data.monthly.kpis.map((kpi) => (
-          <KpiTile
+          <button
+            type="button"
             key={kpi.key}
-            label={kpi.label}
-            value={valueText(kpi.kind, kpi.value)}
-            meta={deltaText(kpi.kind, kpi.delta, kpi.deltaPct)}
-            tone={kpi.tone}
-          />
+            className="text-left"
+            onClick={() => setMetric(kpi.key)}
+            aria-label={`View ${kpi.label} records`}
+          >
+            <KpiTile
+              label={kpi.label}
+              value={valueText(kpi.kind, kpi.value)}
+              meta={
+                kpi.key.startsWith("project")
+                  ? "Lifetime · independent of period"
+                  : kpi.key === "billsAp" || kpi.key === "outstandingAr"
+                    ? "Current · all dates"
+                    : data.range.period === "all-time"
+                      ? "All time"
+                      : deltaText(kpi.kind, kpi.delta, kpi.deltaPct)
+              }
+              tone={kpi.tone}
+            />
+          </button>
         ))}
       </div>
 
+      <MetricRecords data={data} />
       {!data.monthly.hasActivity ? (
         <EmptyReportState
           testId="monthly-report-empty-state"
@@ -165,7 +280,7 @@ function ProjectMobileCard({ row }: { row: ProjectProfitabilityRow }) {
       <div className="flex min-w-0 items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="break-words text-sm font-semibold text-[var(--hh-text-primary)]">
-            {row.project}
+            <ReportLink href={`/projects/${row.projectId}?tab=financial`}>{row.project}</ReportLink>
           </p>
           <p className="mt-1 truncate text-xs text-[var(--hh-text-secondary)]">{row.customer}</p>
         </div>
@@ -173,11 +288,11 @@ function ProjectMobileCard({ row }: { row: ProjectProfitabilityRow }) {
       </div>
       <div className="mt-4 grid grid-cols-2 gap-3 text-xs">
         {[
-          ["Invoice / Contract", row.invoiceContractAmount],
+          ["Revised Contract", row.invoiceContractAmount],
           ["Collected", row.collected],
           ["Expenses", row.expenses],
           ["Labor", row.labor],
-          ["Bills / Subs", row.billsSubcontractors],
+          ["Subs + Commission", row.billsSubcontractors],
           ["Total Cost", row.totalCost],
           ["Profit", row.profit],
           ["Open AR", row.openAr],
@@ -218,7 +333,7 @@ function ProjectProfitability({ rows }: { rows: ProjectProfitabilityRow[] }) {
                   {[
                     "Project",
                     "Customer",
-                    "Invoice / Contract Amount",
+                    "Revised Contract Amount",
                     "Collected",
                     "Expenses",
                     "Labor",
@@ -249,7 +364,9 @@ function ProjectProfitability({ rows }: { rows: ProjectProfitabilityRow[] }) {
                 {rows.map((row) => (
                   <tr key={row.projectId} className="hover:bg-[var(--hh-l3-hover)]">
                     <td className="max-w-[220px] px-3 py-3 text-sm font-semibold text-[var(--hh-text-primary)]">
-                      <span className="line-clamp-2">{row.project}</span>
+                      <ReportLink href={`/projects/${row.projectId}?tab=financial`}>
+                        {row.project}
+                      </ReportLink>
                     </td>
                     <td className="max-w-[180px] px-3 py-3 text-sm text-[var(--hh-text-secondary)]">
                       <span className="line-clamp-2">{row.customer}</span>
@@ -308,10 +425,13 @@ function AgingBucketGrid({
   buckets: AgingBucket[];
   prefix: "ar-aging-bucket" | "ap-aging-bucket";
 }) {
+  const [, setBucket] = useFinanceQueryState(prefix, "");
   return (
     <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-5">
       {buckets.map((bucket) => (
-        <div
+        <button
+          type="button"
+          onClick={() => setBucket(bucket.bucket)}
           key={bucket.bucket}
           data-testid={bucketTestId(prefix, bucket.bucket)}
           className={cn(OS.card, "min-w-0 px-3 py-3")}
@@ -323,7 +443,7 @@ function AgingBucketGrid({
           <p className={cn(TYPO.kpiSubtitle, "mt-2")}>
             {bucket.count === 1 ? "1 item" : `${bucket.count} items`}
           </p>
-        </div>
+        </button>
       ))}
     </div>
   );
@@ -335,10 +455,10 @@ function AgingMobileCard({ row }: { row: AgingRow }) {
       <div className="flex min-w-0 items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="break-words text-sm font-semibold text-[var(--hh-text-primary)]">
-            {row.label}
+            <AgingRecordLink row={row} />
           </p>
           <p className="mt-1 truncate text-xs text-[var(--hh-text-secondary)]">
-            {row.counterparty} · {row.project}
+            <AgingCustomerLink row={row} /> · {row.project}
           </p>
         </div>
         <NeoStatus label={row.bucket} variant={row.bucket === "Current" ? "success" : "warning"} />
@@ -383,10 +503,10 @@ function AgingTable({ rows }: { rows: AgingRow[] }) {
             {rows.map((row) => (
               <tr key={`${row.source}-${row.id}`} className="hover:bg-[var(--hh-l3-hover)]">
                 <td className="max-w-[220px] px-3 py-3 text-sm font-semibold text-[var(--hh-text-primary)]">
-                  <span className="line-clamp-2">{row.label}</span>
+                  <AgingRecordLink row={row} />
                 </td>
                 <td className="px-3 py-3 text-sm text-[var(--hh-text-secondary)]">
-                  {row.counterparty}
+                  <AgingCustomerLink row={row} />
                 </td>
                 <td className="max-w-[220px] px-3 py-3 text-sm text-[var(--hh-text-secondary)]">
                   <span className="line-clamp-2">{row.project}</span>
@@ -433,6 +553,8 @@ function AgingReport({
   contentTestId: string;
   bucketPrefix: "ar-aging-bucket" | "ap-aging-bucket";
 }) {
+  const [bucket, setBucket] = useFinanceQueryState(bucketPrefix, "");
+  const visibleRows = bucket ? rows.filter((row) => row.bucket === bucket) : rows;
   return (
     <div data-testid={contentTestId} className="flex min-w-0 flex-col gap-4">
       <NeoPanel eyebrow="Aging" title={title} description={description} bodyClassName="p-4">
@@ -444,14 +566,23 @@ function AgingReport({
           body="Aging buckets will populate when existing open AR, AP, subcontractor, or worker payable balances exist."
         />
       ) : (
-        <AgingTable rows={rows} />
+        <>
+          <Button variant="ghost" onClick={() => setBucket("")}>
+            All aging records
+          </Button>
+          <p>
+            {bucket || "All buckets"} ·{" "}
+            {formatCurrency(visibleRows.reduce((n, row) => n + row.amount, 0))}
+          </p>
+          <AgingTable rows={visibleRows} />
+        </>
       )}
     </div>
   );
 }
 
 export function ReportsClient({ data, activeTab }: { data: ReportsData; activeTab: ReportsTab }) {
-  const [tab, setTab] = React.useState<ReportsTab>(activeTab);
+  const [tab, setTab] = useFinanceQueryState<ReportsTab>("tab", activeTab);
 
   return (
     <PageLayout
@@ -468,9 +599,16 @@ export function ReportsClient({ data, activeTab }: { data: ReportsData; activeTa
         />
       }
     >
+      <FinanceContextBack />
+      <BillDetailSheet />
+      <p role="status" className="text-sm text-muted-foreground">
+        Historical AR/AP: Unavailable with current data. Date filters select activity, not an as-of
+        balance. Complete Cash In, Cash Out and Net Cash Flow remain unavailable; Collected Cash and
+        AP Payments are separate recorded-payment subsets.
+      </p>
       {data.warnings.length > 0 ? (
         <div className="rounded-hh-standard border border-[var(--hh-information-border)] bg-[var(--hh-information-soft-fill)] px-4 py-3 text-hh-body text-[var(--hh-information)]">
-          Some report sources were unavailable. Values shown use the sources that loaded.
+          {data.warnings.join(" ")}
         </div>
       ) : null}
 
@@ -489,7 +627,7 @@ export function ReportsClient({ data, activeTab }: { data: ReportsData; activeTa
           <NeoPanel
             eyebrow="Operating report"
             title="Monthly Business Report"
-            description="Revenue, collections, cost, AP, profit, and previous-period movement."
+            description="Period activity and current AR/AP. Select a metric to inspect its definition and exact records."
             bodyClassName="p-4"
             action={
               <ClipboardList className="h-4 w-4 text-[var(--hh-text-tertiary)]" aria-hidden />
@@ -503,9 +641,10 @@ export function ReportsClient({ data, activeTab }: { data: ReportsData; activeTa
           <NeoPanel
             eyebrow="Project analysis"
             title="Project Profitability"
-            description="Read-only project revenue, collections, cost, profit, AR, and AP rollup."
+            description="Lifetime canonical contract profit, independent of the monthly period. Generic AP is excluded from cost; Subs + Commission includes both canonical cost components."
             bodyClassName="p-4"
           >
+            {data.projectReviewWarning && <p role="status">{data.projectReviewWarning}</p>}
             <ProjectProfitability rows={data.projectProfitability.rows} />
           </NeoPanel>
         </TabsContent>
@@ -513,7 +652,7 @@ export function ReportsClient({ data, activeTab }: { data: ReportsData; activeTa
         <TabsContent value="ar-aging">
           <AgingReport
             title="AR Aging"
-            description="Unpaid invoice balances by due-date aging bucket."
+            description="Current invoice balances aged against today; all issue dates. Not a historical period-end balance."
             buckets={data.arAging.buckets}
             rows={data.arAging.rows}
             contentTestId="ar-aging-content"
@@ -524,7 +663,7 @@ export function ReportsClient({ data, activeTab }: { data: ReportsData; activeTa
         <TabsContent value="ap-aging">
           <AgingReport
             title="AP Aging"
-            description="Unpaid bills, subcontractor bills, and worker payable by aging bucket."
+            description="Current Pending / Partially Paid AP bills, aged against today; all issue dates. Worker, subcontract and legacy ledgers excluded."
             buckets={data.apAging.buckets}
             rows={data.apAging.rows}
             contentTestId="ap-aging-content"

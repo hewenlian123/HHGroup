@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { validateSameOriginMutation } from "@/lib/auth-request-security";
-import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
+import { requireSupabaseOwnerOrAdminRequestClient } from "@/lib/auth-boundary";
 import { parseReceiptReferenceId, receiptReferenceVersion } from "@/lib/expense-receipt-reference";
 import { resolveStoredReceiptReference } from "@/lib/expense-receipt-server";
 import { recordSecurityAudit } from "@/lib/security-audit";
@@ -105,7 +105,7 @@ export async function POST(
   request: NextRequest,
   { params }: { params: { id: string; receiptId: string } }
 ): Promise<NextResponse> {
-  const auth = await requireSupabaseOwnerOrAdmin(request);
+  const auth = await requireSupabaseOwnerOrAdminRequestClient(request, { noStore: true });
   if (!auth.ok) return auth.response;
 
   const sameOrigin = validateSameOriginMutation(request);
@@ -186,7 +186,7 @@ export async function POST(
 
   let selected: Awaited<ReturnType<typeof resolveStoredReceiptReference>>;
   try {
-    selected = await resolveStoredReceiptReference({ expenseId, receiptId });
+    selected = await resolveStoredReceiptReference({ expenseId, receiptId }, auth.client);
   } catch {
     return privateJson({ ok: false, message: "Receipt replacement is unavailable." }, 404);
   }

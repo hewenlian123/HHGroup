@@ -2,7 +2,7 @@
 
 import { ReactNode } from "react";
 import { cn } from "@/lib/utils";
-import { NEO, TYPO } from "@/lib/typography";
+import { TYPO } from "@/lib/typography";
 import { ActionGroup, Toolbar } from "@/components/ui/toolbar";
 
 /** Page-level title and optional description. */
@@ -22,7 +22,7 @@ export function PageHeader({
 }) {
   const rightContent = children ?? actions;
   return (
-    <header data-neo-page-header="true" className={cn("flex flex-col gap-1", className)}>
+    <header data-page-header="true" className={cn("flex flex-col gap-1", className)}>
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between lg:gap-4">
         <div className="min-w-0">
           <h1 className={cn(TYPO.pageTitle, "text-[var(--hh-text-primary)]")}>{title}</h1>
@@ -65,8 +65,7 @@ export function ActionBar({
     <Toolbar
       variant="actions"
       className={cn(
-        NEO.toolbar,
-        "flex flex-col gap-2 px-3 py-2 sm:flex-row sm:items-center sm:justify-between",
+        "flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between",
         className
       )}
     >
@@ -82,11 +81,7 @@ export function ActionBar({
 
 /** Main content wrapper for page body (no card, no heavy shadow). */
 export function MainContent({ children, className }: { children: ReactNode; className?: string }) {
-  return (
-    <div data-neo-main-content="true" className={cn("flex flex-1 flex-col gap-4", className)}>
-      {children}
-    </div>
-  );
+  return <div className={cn("flex flex-1 flex-col gap-4", className)}>{children}</div>;
 }
 
 /** Composes PageHeader, optional ActionBar, Divider, and MainContent for a consistent page shell. */
@@ -106,9 +101,8 @@ export function PageLayout({
 }) {
   return (
     <div
-      data-neo-page-layout="true"
       className={cn(
-        "neo-page-on-graphite page-container page-stack flex flex-col bg-canvas pb-[calc(1.5rem+env(safe-area-inset-bottom))]",
+        "page-container page-stack flex flex-col bg-[var(--hh-l0-canvas)] pb-[calc(1.5rem+env(safe-area-inset-bottom))]",
         className
       )}
     >

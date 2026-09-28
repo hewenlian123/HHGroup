@@ -50,6 +50,7 @@ export function ExpensesListSkeleton({
   const ledger = mode === "ledger";
   return (
     <div
+      data-expenses-loading
       data-expenses-loading-ledger={ledger ? "" : undefined}
       className={cn("flex flex-col", ledger ? "gap-0" : "gap-3")}
       aria-hidden
