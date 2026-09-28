@@ -235,6 +235,7 @@ describe("project financial snapshot", () => {
       ],
     });
 
+    expect(snapshot.remainingToBill).toBe(1000);
     expect(snapshot.reimbursementCost).toBe(300);
     expect(snapshot.actualCost).toBe(300);
     expect(snapshot.diagnostics).toEqual(
@@ -249,5 +250,32 @@ describe("project financial snapshot", () => {
         ]),
       })
     );
+  });
+
+  it("sets remaining to bill from the revised contract minus invoiced amounts excluding tax", () => {
+    const snapshot = calculateProjectFinancialSnapshot({
+      projectId: "project-1",
+      contractValue: 1000,
+      approvedChangeOrders: 150,
+      invoices: [
+        { id: "sent", status: "Sent", subtotal: 200, taxAmount: 9.42, total: 209.42 },
+        { id: "draft", status: "Draft", subtotal: 500, total: 500 },
+        { id: "void", status: "Void", subtotal: 80, total: 80 },
+      ],
+    });
+
+    expect(snapshot.invoicedExTax).toBe(200);
+    expect(snapshot.revisedContractValue).toBe(1150);
+    expect(snapshot.remainingToBill).toBe(950);
+  });
+
+  it("keeps a negative remaining to bill when ex-tax invoices exceed the revised contract", () => {
+    const snapshot = calculateProjectFinancialSnapshot({
+      projectId: "project-1",
+      contractValue: 100,
+      invoices: [{ id: "sent", status: "Sent", subtotal: 150, taxAmount: 7, total: 157 }],
+    });
+
+    expect(snapshot.remainingToBill).toBe(-50);
   });
 });
