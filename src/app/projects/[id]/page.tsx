@@ -122,6 +122,13 @@ export default async function ProjectDetailPage({
     switch (workspaceTab) {
       case "overview":
         activityLogs = await getActivityLogsByProject(id, 20, projectSupabase);
+        if (canViewFinancials) {
+          try {
+            changeOrders = await getChangeOrdersByProject(id, projectSupabase);
+          } catch (error) {
+            logServerPageDataError(`projects/${id}/overview/change-orders`, error);
+          }
+        }
         break;
       case "financial":
         if (!canViewFinancials) break;
@@ -245,7 +252,7 @@ export default async function ProjectDetailPage({
       loadedWorkspaceTab={workspaceTab}
       recentExpenseLines={recentExpenseLines}
       expenseLineRows={[]}
-      projectInvoices={workspaceTab === "financial" ? projectInvoices : []}
+      projectInvoices={projectInvoices}
       relatedEstimates={relatedEstimates}
       laborEntries={laborEntries ?? []}
       documents={documents ?? []}

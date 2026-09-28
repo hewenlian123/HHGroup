@@ -5,6 +5,7 @@ import { loginAsE2EOwner } from "./e2e-auth-owner";
 
 type Snapshot = {
   contractValue: number;
+  revisedContractValue?: number;
   actualCost: number;
   expenseCost: number;
   laborCost: number;
@@ -15,10 +16,6 @@ type Snapshot = {
   paidAmount: number;
   openAR: number;
 };
-
-function wholeDollar(value: number): string {
-  return `$${value.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
-}
 
 function exactDollar(value: number): string {
   return new Intl.NumberFormat("en-US", {
@@ -60,35 +57,31 @@ test.describe("Project Overview authoritative financial snapshot", () => {
       "active"
     );
     await expect(page.getByTestId("project-header-contract-value")).toHaveText(
-      wholeDollar(snapshot.contractValue)
+      exactDollar(snapshot.revisedContractValue ?? snapshot.contractValue)
     );
     await expect(page.getByTestId("project-header-actual-cost")).toHaveText(
-      wholeDollar(snapshot.actualCost)
+      exactDollar(snapshot.actualCost)
     );
 
-    const summary = page.locator("section").filter({ hasText: "Financial Summary" }).first();
-    await expect(summary.getByText("Billed", { exact: true }).locator("..")).toContainText(
+    await expect(page.getByTestId("project-overview-billed")).toHaveText(
       exactDollar(snapshot.billedAmount)
     );
-    await expect(summary.getByText("Paid", { exact: true }).locator("..")).toContainText(
+    await expect(page.getByTestId("project-overview-paid")).toHaveText(
       exactDollar(snapshot.paidAmount)
     );
-    await expect(summary.getByText("Open AR", { exact: true }).locator("..")).toContainText(
-      wholeDollar(snapshot.openAR)
+    await expect(page.getByTestId("project-overview-open-ar")).toHaveText(
+      exactDollar(snapshot.openAR)
     );
 
-    const costs = page.locator("section").filter({ hasText: "Cost Breakdown" }).first();
-    for (const [label, value] of [
-      ["Actual cost", snapshot.actualCost],
-      ["Expenses", snapshot.expenseCost],
-      ["Labor", snapshot.laborCost],
-      ["Reimbursements", snapshot.reimbursementCost],
-      ["Subcontracts", snapshot.subcontractCost],
-      ["Commission", snapshot.commissionCost],
+    for (const [testId, value] of [
+      ["project-overview-cost-actual", snapshot.actualCost],
+      ["project-overview-cost-expenses", snapshot.expenseCost],
+      ["project-overview-cost-labor", snapshot.laborCost],
+      ["project-overview-cost-reimbursements", snapshot.reimbursementCost],
+      ["project-overview-cost-subcontracts", snapshot.subcontractCost],
+      ["project-overview-cost-commission", snapshot.commissionCost],
     ] as const) {
-      await expect(costs.getByText(label, { exact: true }).locator("..")).toContainText(
-        wholeDollar(value)
-      );
+      await expect(page.getByTestId(testId)).toHaveText(exactDollar(value));
     }
   });
 
