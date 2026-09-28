@@ -49,15 +49,13 @@ export function AppShell({ children }: AppShellProps) {
       /^\/estimates\/[^/]+\/print(?:\/|$)/.test(pathname) ||
       /^\/estimates\/[^/]+\/payments\/[^/]+\/preview(?:\/|$)/.test(pathname) ||
       /^\/financial\/invoices\/[^/]+\/print(?:\/|$)/.test(pathname) ||
-      /^\/materials\/[^/]+\/print(?:\/|$)/.test(pathname) ||
       /^\/workers\/[^/]+\/statement\/print(?:\/|$)/.test(pathname) ||
       /^\/labor\/payments\/[^/]+\/receipt(?:\/|$)/.test(pathname))
   );
   const viewerRoute = Boolean(
     pathname &&
     (/^\/estimates\/[^/]+\/preview(?:\/|$)/.test(pathname) ||
-      /^\/financial\/invoices\/[^/]+\/preview(?:\/|$)/.test(pathname) ||
-      /^\/materials\/[^/]+\/preview(?:\/|$)/.test(pathname))
+      /^\/financial\/invoices\/[^/]+\/preview(?:\/|$)/.test(pathname))
   );
   const publicWorkerIntake =
     pathname === "/receipt" ||

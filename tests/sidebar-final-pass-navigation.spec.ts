@@ -233,8 +233,6 @@ test.describe("HH Project OS sidebar final pass", () => {
       { path: "/labor/payroll", expectedPath: "/reports/workforce", active: "Workforce" },
       { path: "/subcontractors", active: "Subcontractors" },
       { path: "/documents", active: "Documents" },
-      { path: "/site-photos", active: "Site Photos" },
-      { path: "/inspection-log", active: "Inspection Log" },
       { path: "/settings/company", active: "Company" },
       { path: "/system-health", active: "System Health" },
       { path: "/system-metrics", active: "System Metrics" },

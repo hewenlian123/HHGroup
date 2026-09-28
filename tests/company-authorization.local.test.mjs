@@ -133,7 +133,7 @@ test(
             });
           }
           await t.test(
-            "shared customer and worker references cannot cross company identity",
+            "shared customer references cannot cross company identity",
             async () => {
               await assert.rejects(
                 tx.savepoint(
@@ -142,14 +142,6 @@ test(
                 ),
                 (e) => e.code === "23514"
               );
-              await assert.rejects(
-                tx.savepoint(
-                  (sp) =>
-                    sp`insert into public.project_tasks(project_id,title,assigned_worker_id) values (${foreignProject},'[E2E] foreign worker',${worker})`
-                ),
-                (e) => e.code === "23514"
-              );
-              await tx`insert into public.project_tasks(project_id,title,assigned_worker_id) values (${project},'[E2E] legal company worker',${worker})`;
             }
           );
           throw rollback;

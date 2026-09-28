@@ -1,4 +1,3 @@
-import { verifyProjectOperations } from "./project-operations.local.mjs";
 import assert from "node:assert/strict";
 import { writeFileSync } from "node:fs";
 import { chromium, expect } from "@playwright/test";
@@ -36,7 +35,7 @@ export async function verifyOrganizationWorkflows({
           actor.name === process.env.HH_ORG_AUTH_BROWSER_ACTOR
       )) {
         await t.test(
-          `${actor.name} ${viewport.width}: real local Materials/Attachments session`,
+          `${actor.name} ${viewport.width}: real local documents session`,
           async () => {
             const context = await browser.newContext({
               baseURL,
@@ -58,41 +57,7 @@ export async function verifyOrganizationWorkflows({
                   consoleErrors.push(`${message.text()} ${message.location().url}`);
               });
               page.on("pageerror", (error) => pageErrors.push(error.message));
-              const api = `/api/projects/${projectA}/materials`;
-              const read = await context.request.get(api, { maxRedirects: 0 });
-              assert.equal(read.ok(), actor.read, `${actor.name} HTTP materials read`);
               if (actor.write) {
-                const item = `${workflowMarker} ${actor.name} material`;
-                await page.goto(`/projects/${projectA}?tab=materials`);
-                await expect(page.locator(`[data-project-context="${projectA}"]`)).toBeVisible();
-                await page.getByRole("button", { name: "+ Add Selection", exact: true }).click();
-                const dialog = page.getByRole("dialog");
-                await dialog.getByLabel("Item", { exact: true }).fill(item);
-                await dialog
-                  .getByLabel("Material name", { exact: true })
-                  .fill("Local authorization fixture");
-                await dialog.getByRole("button", { name: "Add", exact: true }).click();
-                await expect(dialog).not.toBeVisible();
-                await page.waitForLoadState("networkidle");
-                await page.reload();
-                await page.getByRole("button", { name: `Edit ${item}`, exact: true }).click();
-                await dialog.getByLabel("Item", { exact: true }).fill(item + " edited");
-                await dialog.getByRole("button", { name: "Save changes", exact: true }).click();
-                await expect(dialog).not.toBeVisible();
-                await page.waitForLoadState("networkidle");
-                await page.reload();
-                await expect(
-                  page.getByRole("button", { name: `Edit ${item} edited`, exact: true })
-                ).toBeVisible();
-                await page.waitForLoadState("networkidle");
-                await expect(page.getByTestId("project-header-profit")).not.toHaveText(/Loading/);
-                const saved =
-                  await sql`select item from public.project_material_selections where project_id=${projectA} and item=${item + " edited"}`;
-                assert.equal(saved.length, 1, "Create/save/refresh/edit/refresh persisted to DB");
-                await page.screenshot({
-                  path: `/tmp/hh-authz-${actor.name}-${viewport.width}-materials.png`,
-                  fullPage: true,
-                });
                 const fileName = `${workflowMarker}-${actor.name}.pdf`;
                 await page.goto(`/projects/${projectA}?tab=documents`);
                 page.on("request", (request) => {
@@ -160,27 +125,8 @@ export async function verifyOrganizationWorkflows({
                   fullPage: true,
                 });
               } else {
-                const deniedWrite = await context.request.post(api, {
-                  headers: { Origin: baseURL },
-                  data: { item: workflowMarker + " forbidden" },
-                  maxRedirects: 0,
-                });
-                assert.ok(!deniedWrite.ok(), "Unauthorized HTTP material save explicitly denied");
-                const deniedEdit = await context.request.patch(api, {
-                  headers: { Origin: baseURL },
-                  data: { id: projectA, item: workflowMarker + " forbidden" },
-                  maxRedirects: 0,
-                });
-                assert.ok(!deniedEdit.ok(), "Unauthorized HTTP material edit explicitly denied");
-                await page.goto(`/projects/${projectA}?tab=materials`);
+                await page.goto(`/projects/${projectA}?tab=documents`);
                 if (actor.read) {
-                  await expect(
-                    page.getByRole("button", {
-                      name: `Edit ${workflowMarker} owner material edited`,
-                      exact: true,
-                    })
-                  ).toBeVisible();
-                  await page.goto(`/projects/${projectA}?tab=documents`);
                   const row = page
                     .getByRole("row")
                     .filter({ hasText: `${workflowMarker}-owner.pdf` });
@@ -247,8 +193,6 @@ export async function verifyOrganizationWorkflows({
               results.push({
                 role: actor.name,
                 viewport,
-                materialsRead: actor.read ? "PASS" : "DENY",
-                materialSaveEditRefresh: actor.write ? "PASS" : "DENY",
                 attachmentUploadReadRefresh: actor.write
                   ? "PASS"
                   : actor.read
@@ -297,23 +241,11 @@ export async function verifyOrganizationWorkflows({
               await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),
               false
             );
-            await verifyProjectOperations({
-              page,
-              context,
-              sql,
-              projectA,
-              projectCompany,
-              remember,
-              storagePaths,
-              marker: workflowMarker,
-              viewport,
-            });
             assert.deepEqual(errors, []);
             results.push({
               role: "owner",
               projectsList: "PASS",
               projectOverview: "PASS",
-              tasksSchedulePunchPhotosInspectionsChangeOrders: "PASS",
               viewport,
             });
           } finally {

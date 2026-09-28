@@ -77,7 +77,6 @@ test("route roots expose explicit contexts and a neutral sibling portal host", (
   for (const routePattern of [
     "/^\\/estimates\\/",
     "/^\\/financial\\/invoices\\/",
-    "/^\\/materials\\/",
     "/^\\/workers\\/",
     "/^\\/labor\\/payments\\/",
   ]) {

@@ -100,6 +100,9 @@ drop policy if exists material_images_no_new_objects on storage.objects;
 drop policy if exists material_images_no_object_replacement on storage.objects;
 drop policy if exists material_images_no_object_removal on storage.objects;
 
+-- Storage rejects direct deletes unless this transaction-local switch is set.
+select set_config('storage.allow_delete_query', 'true', true);
+
 delete from storage.objects
 where bucket_id in ('punch-photos', 'material-images');
 
@@ -159,15 +162,25 @@ drop function if exists private.material_image_reference_matches(text, text);
 drop function if exists private.can_read_legacy_punch_photo(text);
 drop function if exists private.validate_project_photo_reference();
 
+-- squawk-ignore ban-drop-table
 drop table if exists public.material_selection_items;
+-- squawk-ignore ban-drop-table
 drop table if exists public.material_selections;
+-- squawk-ignore ban-drop-table
 drop table if exists public.project_material_selections;
+-- squawk-ignore ban-drop-table
 drop table if exists public.material_catalog;
+-- squawk-ignore ban-drop-table
 drop table if exists public.punch_list;
+-- squawk-ignore ban-drop-table
 drop table if exists public.site_photos;
+-- squawk-ignore ban-drop-table
 drop table if exists public.inspection_log;
+-- squawk-ignore ban-drop-table
 drop table if exists public.inspection_logs;
+-- squawk-ignore ban-drop-table
 drop table if exists public.project_tasks;
+-- squawk-ignore ban-drop-table
 drop table if exists public.project_schedule;
 
 notify pgrst, 'reload schema';

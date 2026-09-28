@@ -70,9 +70,6 @@ test.describe("smoke: main routes", () => {
   test("projects", async ({ page }) => {
     await checkPage(page, "/projects");
   });
-  test("tasks", async ({ page }) => {
-    await checkPage(page, "/tasks");
-  });
   test("documents", async ({ page }) => {
     await checkPage(page, "/documents");
   });
@@ -81,15 +78,6 @@ test.describe("smoke: main routes", () => {
   });
   test("subcontractors", async ({ page }) => {
     await checkPage(page, "/subcontractors");
-  });
-  test("punch-list", async ({ page }) => {
-    await checkPage(page, "/punch-list");
-  });
-  test("site-photos", async ({ page }) => {
-    await checkPage(page, "/site-photos");
-  });
-  test("schedule", async ({ page }) => {
-    await checkPage(page, "/schedule");
   });
   test("estimates", async ({ page }) => {
     await checkPage(page, "/estimates");
