@@ -10,45 +10,6 @@ const VIEWPORTS = [
   { width: 390, height: 844 },
 ] as const;
 
-async function stubSafeReads(page: Page) {
-  await page.route("**/api/operations/tasks**", (route) =>
-    route.fulfill({
-      contentType: "application/json",
-      body: JSON.stringify({ ok: true, tasks: [], projects: [], workers: [] }),
-    })
-  );
-  await page.route("**/api/operations/schedule**", (route) =>
-    route.fulfill({
-      contentType: "application/json",
-      body: JSON.stringify({ ok: true, schedule: [], projects: [] }),
-    })
-  );
-  await page.route("**/api/operations/punch-list**", (route) =>
-    route.fulfill({
-      contentType: "application/json",
-      body: JSON.stringify({
-        ok: true,
-        items: [],
-        projects: [],
-        workers: [],
-        summary: { open: 0, assigned: 0, completed: 0 },
-      }),
-    })
-  );
-  await page.route("**/api/operations/site-photos**", (route) =>
-    route.fulfill({
-      contentType: "application/json",
-      body: JSON.stringify({ ok: true, photos: [], projects: [] }),
-    })
-  );
-  await page.route("**/api/operations/inspection-log", (route) =>
-    route.fulfill({
-      contentType: "application/json",
-      body: JSON.stringify({ ok: true, entries: [], projects: [] }),
-    })
-  );
-}
-
 async function expectNoHorizontalOverflow(page: Page, route: string, width: number) {
   const widths = await page.evaluate(() => ({
     client: document.documentElement.clientWidth,
@@ -71,7 +32,6 @@ test("Batch 4 routes stay error-free and responsive under accessibility media", 
     }
   });
   page.on("pageerror", (error) => pageErrors.push(error.message));
-  await stubSafeReads(page);
 
   type RouteSpec = {
     path: string;
