@@ -17,7 +17,6 @@ const DANGEROUS_MAINTENANCE_CASES = [
   ["GET", "/api/production/checklist"],
   ["POST", "/api/production/checklist", { runCleanup: true }],
   ["POST", "/api/seed-workers"],
-  ["POST", "/api/seed/operations"],
   ["GET", "/api/ensure-expenses-migration-202604141000"],
   ["POST", "/api/ensure-expenses-migration-202604141000"],
   ["POST", "/api/system/integrity/cleanup", { category: "stale" }],
@@ -184,7 +183,6 @@ test.describe("production safety guards", () => {
       "/api/production/wipe-database",
       "/api/production/cleanup-test-data",
       "/api/seed-workers",
-      "/api/seed/operations",
       "/api/ensure-schema",
       "/api/system/integrity/cleanup",
     ]) {

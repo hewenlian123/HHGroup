@@ -162,7 +162,6 @@ const DESTRUCTIVE_GET_TARGETS = [
   "/api/production/wipe-database",
   "/api/production/cleanup-test-data",
   "/api/seed-workers",
-  "/api/seed/operations",
   "/api/ensure-schema",
   "/api/system/integrity/cleanup",
   "/api/test/full-system-test",

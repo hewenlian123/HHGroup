@@ -132,18 +132,15 @@ test(
               }
             });
           }
-          await t.test(
-            "shared customer references cannot cross company identity",
-            async () => {
-              await assert.rejects(
-                tx.savepoint(
-                  (sp) =>
-                    sp`update public.projects set customer_id=${customer} where id=${foreignProject}`
-                ),
-                (e) => e.code === "23514"
-              );
-            }
-          );
+          await t.test("shared customer references cannot cross company identity", async () => {
+            await assert.rejects(
+              tx.savepoint(
+                (sp) =>
+                  sp`update public.projects set customer_id=${customer} where id=${foreignProject}`
+              ),
+              (e) => e.code === "23514"
+            );
+          });
           throw rollback;
         }),
         (error) => error === rollback

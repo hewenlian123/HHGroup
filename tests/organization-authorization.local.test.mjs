@@ -334,46 +334,43 @@ test(
         }
       );
     }
-    await t.test(
-      "owner cannot reparent resources across organizations",
-      async () => {
-        for (const [table, payload, foreign] of [
-          ["projects", { name: marker, organization_id: orgA }, { organization_id: orgB }],
-          [
-            "documents",
-            {
-              project_id: projectA,
-              organization_id: orgA,
-              file_name: marker,
-              file_path: `org-auth/${randomUUID()}`,
-            },
-            { project_id: projectB },
-          ],
-        ]) {
-          const id = remember(table);
-          if (table === "documents")
-            payload.file_path = `organizations/${orgA}/projects/${projectA}/documents/${id}/fixture.txt`;
-          await sql`insert into ${sql(table)} ${sql({ id, ...payload })}`;
-          denied(
-            await owner.client.from(table).update(foreign).eq("id", id).select("id"),
-            `${table} reparent`
-          );
-        }
+    await t.test("owner cannot reparent resources across organizations", async () => {
+      for (const [table, payload, foreign] of [
+        ["projects", { name: marker, organization_id: orgA }, { organization_id: orgB }],
+        [
+          "documents",
+          {
+            project_id: projectA,
+            organization_id: orgA,
+            file_name: marker,
+            file_path: `org-auth/${randomUUID()}`,
+          },
+          { project_id: projectB },
+        ],
+      ]) {
+        const id = remember(table);
+        if (table === "documents")
+          payload.file_path = `organizations/${orgA}/projects/${projectA}/documents/${id}/fixture.txt`;
+        await sql`insert into ${sql(table)} ${sql({ id, ...payload })}`;
         denied(
-          await owner.client
-            .from("documents")
-            .insert({
-              id: remember("documents"),
-              organization_id: orgB,
-              project_id: projectA,
-              file_name: marker,
-              file_path: `org-auth/${randomUUID()}`,
-            })
-            .select("id"),
-          "document project/organization mismatch"
+          await owner.client.from(table).update(foreign).eq("id", id).select("id"),
+          `${table} reparent`
         );
       }
-    );
+      denied(
+        await owner.client
+          .from("documents")
+          .insert({
+            id: remember("documents"),
+            organization_id: orgB,
+            project_id: projectA,
+            file_name: marker,
+            file_path: `org-auth/${randomUUID()}`,
+          })
+          .select("id"),
+        "document project/organization mismatch"
+      );
+    });
     await t.test(
       "organization-level documents are scoped and null-scope documents fail closed",
       async () => {

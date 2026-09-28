@@ -276,5 +276,4 @@ test.describe("Delete surface catalog (read-only)", () => {
     await expect(page.getByRole("menuitem", { name: /^Delete$/ })).toBeVisible({ timeout: 5000 });
     await page.keyboard.press("Escape");
   });
-
 });
