@@ -139,6 +139,13 @@ export default async function ProjectDetailPage({
           getPunchListByProject(id, projectSupabase),
           getActivityLogsByProject(id, 20, projectSupabase),
         ]);
+        if (canViewFinancials) {
+          try {
+            changeOrders = await getChangeOrdersByProject(id, projectSupabase);
+          } catch (error) {
+            logServerPageDataError(`projects/${id}/overview/change-orders`, error);
+          }
+        }
         break;
       case "financial":
         if (!canViewFinancials) break;
@@ -286,7 +293,7 @@ export default async function ProjectDetailPage({
       recentExpenseLines={recentExpenseLines}
       expenseLineRows={[]}
       scheduleItems={scheduleItems ?? []}
-      projectInvoices={workspaceTab === "financial" ? projectInvoices : []}
+      projectInvoices={projectInvoices}
       relatedEstimates={relatedEstimates}
       laborEntries={laborEntries ?? []}
       documents={documents ?? []}
