@@ -5,21 +5,9 @@ import { E2E_PRESERVED_PROJECT_ID as projectId } from "../e2e-cleanup-db";
 
 const sections = [
   ["overview", "Overview"],
-  ["schedule", "Schedule"],
-  ["tasks", "Tasks"],
-  ["punch-list", "Punch"],
-  ["photos", "Photos"],
-  ["inspections", "Inspections"],
-  ["materials", "Materials"],
   ["change-orders", "Change Orders"],
   ["documents", "Documents"],
   ["financial", "Financials"],
-] as const;
-const operations = [
-  ["schedule", "/schedule", /new schedule item/i],
-  ["punch-list", "/punch-list", /add issue/i],
-  ["photos", "/site-photos", /upload photo/i],
-  ["inspections", "/inspection-log", /new inspection/i],
 ] as const;
 
 async function healthy(page: Page) {
@@ -91,29 +79,7 @@ for (const viewport of [
         await expect(page.getByTestId("project-header-actual-cost")).toHaveText(actualCost);
         await expect(page.getByTestId("project-header-contract-value")).toHaveText(contract);
         const panel = page.getByRole("tabpanel");
-        const op = operations.find(([tab]) => tab === key);
-        if (op) {
-          const add = panel
-            .locator("[data-page-header], [data-mobile-list-header]")
-            .getByRole("button", { name: op[2] })
-            .filter({ visible: true });
-          await expect(add).toBeVisible();
-          await add.click();
-          const dialog = page.getByRole("dialog").filter({ visible: true });
-          const projectSelect = dialog.getByRole("combobox", { name: "Project", exact: true });
-          await expect(projectSelect).toHaveValue(projectId);
-          await expect(projectSelect).toBeDisabled();
-          await page.screenshot({ path: testInfo.outputPath(`${key}-form-${viewport.width}.png`) });
-          await page.keyboard.press("Escape");
-          await expect(dialog).not.toBeVisible();
-        } else if (key === "tasks") {
-          await panel.getByRole("button", { name: "+ New Task", exact: true }).click();
-          await expect(page.getByRole("dialog")).toContainText("Add a task to this project.");
-          await expect(
-            page.getByRole("dialog").getByRole("combobox", { name: "Project", exact: true })
-          ).toHaveCount(0);
-          await page.keyboard.press("Escape");
-        } else if (key === "change-orders") {
+        if (key === "change-orders") {
           await expect(panel.getByRole("link", { name: "New change order" })).toHaveAttribute(
             "href",
             `/projects/${projectId}/change-orders/new`
@@ -135,11 +101,11 @@ for (const viewport of [
         await page.screenshot({ path: testInfo.outputPath(`${key}-${viewport.width}.png`) });
       });
     }
-    // Legacy query links remain addressable, including restored Punch and Change Orders.
+    // Retired field tabs land on Overview. Finance and closeout links stay addressable.
     for (const [alias, label] of [
-      ["work", "Tasks"],
+      ["work", "Overview"],
       ["docs", "Documents"],
-      ["punch-list", "Punch"],
+      ["punch-list", "Overview"],
       ["change-orders", "Change Orders"],
       ["financial", "Financials"],
       ["people", "People"],
@@ -157,33 +123,6 @@ for (const viewport of [
         await page.keyboard.press("Escape");
       }
       await healthy(page);
-    }
-    for (const [tab, route, addName] of operations) {
-      await page.goto(`${route}?project_id=${projectId}`);
-      await page
-        .locator("[data-page-header], [data-mobile-list-header]")
-        .getByRole("button", { name: addName })
-        .filter({ visible: true })
-        .click();
-      await expect(
-        page.getByRole("dialog").getByRole("combobox", { name: "Project", exact: true })
-      ).toHaveValue(projectId);
-      await page.keyboard.press("Escape");
-      await page.getByRole("link", { name: "Back to project", exact: true }).click();
-      await expect(page).toHaveURL(new RegExp(`/projects/${projectId}\\?tab=${tab}$`));
-      await page.getByRole("link", { name: /^All projects ·/ }).click();
-      await expect(page).toHaveURL(new RegExp(`${route}$`));
-      await page
-        .locator("[data-page-header], [data-mobile-list-header]")
-        .getByRole("button", { name: addName })
-        .filter({ visible: true })
-        .click();
-      await expect(
-        page.getByRole("dialog").getByRole("combobox", { name: "Project", exact: true })
-      ).toBeEnabled();
-      await page.keyboard.press("Escape");
-      await page.goBack();
-      await expect(context).toContainText(projectName);
     }
     await selectSection(page, "overview", "Overview");
     if (viewport.width < 1024) {

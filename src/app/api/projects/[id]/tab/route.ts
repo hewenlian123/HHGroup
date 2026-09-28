@@ -15,25 +15,17 @@ import {
   getSubcontractsByProject,
   getBillsBySubcontractIds,
   getPaymentsBySubcontractIds,
-  getProjectTasks,
-  getProjectSchedule,
   getActivityLogsByProject,
-  getWorkers,
   getCloseoutPunch,
   getCloseoutWarranty,
   getCloseoutCompletion,
-  getSelectionsByProject,
-  getMaterialCatalog,
   getCommissionsByProject,
-  getPunchListByProject,
 } from "@/lib/data";
 import { getApBillsByProject } from "@/lib/ap-bills-db";
 import { getCanonicalProjectProfit } from "@/lib/profit-engine";
 
 type TabKey =
   | "overview"
-  | "tasks"
-  | "schedule"
   | "financial"
   | "budget"
   | "expenses"
@@ -43,10 +35,8 @@ type TabKey =
   | "bills"
   | "documents"
   | "activity"
-  | "materials"
   | "closeout"
-  | "commission"
-  | "punch-list";
+  | "commission";
 
 function jsonError(message: string, status = 400) {
   return NextResponse.json({ ok: false as const, message }, { status });
@@ -66,15 +56,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
 
   if (!id?.trim())
     return withSessionCookies(jsonError("Missing project id", 400), guard.sessionResponse);
-  const operationalKeys = [
-    "tasks",
-    "schedule",
-    "documents",
-    "activity",
-    "materials",
-    "closeout",
-    "punch-list",
-  ];
+  const operationalKeys = ["documents", "activity", "closeout"];
   if (
     !operationalKeys.includes(key) &&
     (guard.context.organizationRole === "assistant" ||
@@ -109,25 +91,6 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
           transactions,
           expenseLines,
         }),
-        guard.sessionResponse
-      );
-    }
-
-    if (key === "tasks") {
-      const [tasks, workers] = await Promise.all([
-        getProjectTasks(id, supabase),
-        getWorkers(supabase),
-      ]);
-      return withSessionCookies(
-        NextResponse.json({ ok: true as const, key, tasks, workers }),
-        guard.sessionResponse
-      );
-    }
-
-    if (key === "schedule") {
-      const schedule = await getProjectSchedule(id, supabase);
-      return withSessionCookies(
-        NextResponse.json({ ok: true as const, key, schedule }),
         guard.sessionResponse
       );
     }
@@ -221,17 +184,6 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
       );
     }
 
-    if (key === "materials") {
-      const [selections, catalog] = await Promise.all([
-        getSelectionsByProject(id, supabase),
-        getMaterialCatalog(supabase, guard.context.organizationId ?? undefined),
-      ]);
-      return withSessionCookies(
-        NextResponse.json({ ok: true as const, key, selections, catalog }),
-        guard.sessionResponse
-      );
-    }
-
     if (key === "closeout") {
       const [punch, warranty, completion] = await Promise.all([
         getCloseoutPunch(id, supabase),
@@ -252,17 +204,6 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
       );
 
       return response;
-    }
-
-    if (key === "punch-list") {
-      const [punchItems, workers] = await Promise.all([
-        getPunchListByProject(id, supabase),
-        getWorkers(supabase),
-      ]);
-      return withSessionCookies(
-        NextResponse.json({ ok: true as const, key, punchItems, workers }),
-        guard.sessionResponse
-      );
     }
 
     return withSessionCookies(jsonError("Unknown tab key", 400), guard.sessionResponse);

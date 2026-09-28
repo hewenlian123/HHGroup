@@ -138,10 +138,6 @@ test.describe("HH Project OS sidebar final pass", () => {
       "Estimates",
       "Change Orders",
       "Time Entries",
-      "Tasks",
-      "Punch List",
-      "Schedule",
-      "Material Selections",
       "Overview",
       "Owner Dashboard",
       "AR",
@@ -163,8 +159,6 @@ test.describe("HH Project OS sidebar final pass", () => {
       "Vendors",
       "Subcontractors",
       "Documents",
-      "Site Photos",
-      "Inspection Log",
       "Company",
       "Users",
       "Roles",
@@ -217,10 +211,6 @@ test.describe("HH Project OS sidebar final pass", () => {
       { path: "/estimates", active: "Estimates" },
       { path: "/change-orders", active: "Change Orders" },
       { path: "/labor", active: "Time Entries" },
-      { path: "/tasks", active: "Tasks" },
-      { path: "/punch-list", active: "Punch List" },
-      { path: "/schedule", active: "Schedule" },
-      { path: "/materials", active: "Material Selections" },
       { path: "/financial", active: "Overview" },
       { path: "/financial/owner", active: "Owner Dashboard" },
       { path: "/financial/ar", active: "AR" },
@@ -267,8 +257,7 @@ test.describe("HH Project OS sidebar final pass", () => {
     for (const route of [
       { path: "/financial/vendors", bottom: "Directory" },
       { path: "/bills", bottom: "Financial" },
-      { path: "/site-photos", bottom: "Documents" },
-      { path: "/inspection-log", bottom: "Documents" },
+      { path: "/documents", bottom: "Projects" },
       { path: "/estimates", bottom: "Projects" },
       { path: "/labor", bottom: "Projects" },
       { path: "/labor/payroll", expectedPath: "/reports/workforce", bottom: "Reports" },
@@ -293,9 +282,7 @@ test.describe("HH Project OS sidebar final pass", () => {
     await page.getByRole("button", { name: /^Open menu$/i }).click();
     await ensureAllSectionsOpen(page);
     await expect(visibleSidebar(page).getByText("Admin Center", { exact: true })).toBeVisible();
-    await expect(
-      visibleSidebar(page).getByText("Material Selections", { exact: true })
-    ).toBeVisible();
+    await expect(visibleSidebar(page).getByText("Documents", { exact: true })).toBeVisible();
     await expect(visibleSidebar(page).getByText("Worker Receipts", { exact: true })).toHaveCount(0);
     await expect(visibleSidebar(page).getByText("Expense Operations", { exact: true })).toHaveCount(
       1
@@ -317,8 +304,6 @@ test.describe("HH Project OS sidebar final pass", () => {
 
     for (const item of [
       { query: "expense operations", label: "Go to Expense Operations" },
-      { query: "material selections", label: "Go to Material Selections" },
-      { query: "punch list", label: "Go to Punch List" },
       { query: "receipt inbox", label: "Go to Receipt Inbox" },
       { query: "upload receipt", label: "Upload Receipt" },
       { query: "worker summary", label: "Go to Workforce Overview" },
@@ -354,7 +339,7 @@ test.describe("HH Project OS sidebar final pass", () => {
         expectedPath: "/reports/workforce",
         title: "Reports › Workforce",
       },
-      { path: "/materials", title: "Projects › Material Selections" },
+      { path: "/documents", title: "Projects › Documents" },
       { path: "/dashboard/cashflow", title: "Financial › Cash › Cash Flow" },
       { path: "/reports", title: "Reports" },
       { path: "/system-health", title: "Settings › Admin Center › System Health" },

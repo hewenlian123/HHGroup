@@ -241,32 +241,6 @@ export async function cleanupTestData(supabase: SupabaseClient): Promise<Cleanup
     else bump("labor_entries", uLabor.length);
   }
 
-  const photoIds: string[] = [];
-  for (const p of E2E_TEST_SUBSTRINGS) {
-    const { data } = await supabase
-      .from("site_photos")
-      .select("id, project_id")
-      .ilike("description", p);
-    for (const row of data ?? []) {
-      const r = row as { id: string; project_id: string | null };
-      if (r.project_id !== E2E_PRESERVED_PROJECT_ID) photoIds.push(r.id);
-    }
-  }
-  const { data: phE2e } = await supabase
-    .from("site_photos")
-    .select("id, project_id")
-    .like("description", "[E2E]%");
-  for (const row of phE2e ?? []) {
-    const r = row as { id: string; project_id: string | null };
-    if (r.project_id !== E2E_PRESERVED_PROJECT_ID) photoIds.push(r.id);
-  }
-  const uPhoto = uniqueIds(photoIds);
-  if (uPhoto.length > 0) {
-    const { error } = await supabase.from("site_photos").delete().in("id", uPhoto);
-    if (error) warnings.push(`site_photos: ${error.message}`);
-    else bump("site_photos", uPhoto.length);
-  }
-
   const docIds: string[] = [];
   for (const p of E2E_TEST_SUBSTRINGS) {
     const { data } = await supabase

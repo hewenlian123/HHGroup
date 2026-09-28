@@ -62,7 +62,6 @@ test("Phase 6A migrates active legacy shadow consumers before removing aliases",
     ["src/components/pwa-install-prompt.tsx", "floating"],
     ["src/app/labor/advances/worker-advance-actions-menu.tsx", "floating"],
     ["src/app/labor/payments/page.tsx", "floating"],
-    ["src/app/tasks/page.tsx", "floating"],
     ["src/app/estimates/_components/estimate-section-title-menu.tsx", "task"],
   ]) {
     assert.match(source(path), new RegExp(`(?:^|\\s)shadow-${role}(?:\\s|$|["'])`));

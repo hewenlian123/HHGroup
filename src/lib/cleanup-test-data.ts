@@ -114,65 +114,6 @@ export async function cleanupTestData(c: SupabaseClient): Promise<CleanupResult>
     errors.push(`Resolve test ids: ${e instanceof Error ? e.message : String(e)}`);
   }
 
-  // 0. project_tasks — by is_test flag (bulk delete when migration has been applied)
-  await tryDelete("project_tasks", async () => {
-    const { data } = await c.from("project_tasks").select("id").eq("is_test", true);
-    return (data ?? []).map((r: { id: string }) => r.id);
-  });
-
-  // 1. project_tasks — by title pattern
-  await tryDelete("project_tasks", async () => {
-    const ids: string[] = [];
-    for (const pattern of TEST_DATA_PATTERNS) {
-      const { data } = await c.from("project_tasks").select("id").ilike("title", `%${pattern}%`);
-      ids.push(...(data ?? []).map((r: { id: string }) => r.id));
-    }
-    return uniqueStrings(ids);
-  });
-
-  // 2. punch_list — by issue pattern
-  await tryDelete("punch_list", async () => {
-    const ids: string[] = [];
-    for (const pattern of TEST_DATA_PATTERNS) {
-      const { data } = await c.from("punch_list").select("id").ilike("issue", `%${pattern}%`);
-      ids.push(...(data ?? []).map((r: { id: string }) => r.id));
-    }
-    return uniqueStrings(ids);
-  });
-
-  // 3. project_schedule — by title pattern
-  await tryDelete("project_schedule", async () => {
-    const ids: string[] = [];
-    for (const pattern of TEST_DATA_PATTERNS) {
-      const { data } = await c.from("project_schedule").select("id").ilike("title", `%${pattern}%`);
-      ids.push(...(data ?? []).map((r: { id: string }) => r.id));
-    }
-    return uniqueStrings(ids);
-  });
-
-  // 4. site_photos — by description pattern
-  await tryDelete("site_photos", async () => {
-    const ids: string[] = [];
-    for (const pattern of TEST_DATA_PATTERNS) {
-      const { data } = await c
-        .from("site_photos")
-        .select("id")
-        .ilike("description", `%${pattern}%`);
-      ids.push(...(data ?? []).map((r: { id: string }) => r.id));
-    }
-    return uniqueStrings(ids);
-  });
-
-  // 5. inspection_log — by notes pattern
-  await tryDelete("inspection_log", async () => {
-    const ids: string[] = [];
-    for (const pattern of TEST_DATA_PATTERNS) {
-      const { data } = await c.from("inspection_log").select("id").ilike("notes", `%${pattern}%`);
-      ids.push(...(data ?? []).map((r: { id: string }) => r.id));
-    }
-    return uniqueStrings(ids);
-  });
-
   // 6. project_change_orders — by title pattern (or similar column if different)
   await tryDelete("project_change_orders", async () => {
     const ids: string[] = [];
@@ -339,19 +280,6 @@ export async function cleanupTestData(c: SupabaseClient): Promise<CleanupResult>
     const ids: string[] = [];
     for (const pattern of TEST_DATA_PATTERNS) {
       const { data } = await c.from("estimates").select("id").ilike("client", `%${pattern}%`);
-      ids.push(...(data ?? []).map((r: { id: string }) => r.id));
-    }
-    return uniqueStrings(ids);
-  });
-
-  // 19. material_catalog — by material_name pattern
-  await tryDelete("material_catalog", async () => {
-    const ids: string[] = [];
-    for (const pattern of TEST_DATA_PATTERNS) {
-      const { data } = await c
-        .from("material_catalog")
-        .select("id")
-        .ilike("material_name", `%${pattern}%`);
       ids.push(...(data ?? []).map((r: { id: string }) => r.id));
     }
     return uniqueStrings(ids);

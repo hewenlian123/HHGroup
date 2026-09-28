@@ -71,83 +71,23 @@ export async function GET(request: Request): Promise<NextResponse<DataIntegrityR
   try {
     const sql = postgres(url, { max: 1, connect_timeout: 10 });
 
-    // 1. Orphaned tasks — project_id not in projects
-    let orphanedTasks: IntegrityCheck = { ok: true, count: 0 };
-    try {
-      const rows = await sql`
-        SELECT pt.id
-        FROM public.project_tasks pt
-        LEFT JOIN public.projects p ON p.id = pt.project_id
-        WHERE p.id IS NULL
-      `;
-      const ids = (rows as unknown as { id: string }[]).map((r) => r.id);
-      orphanedTasks = { ok: ids.length === 0, count: ids.length, ids };
-    } catch (e) {
-      errors.push(`Orphan: ${safeErrorMessage(e)}`);
-    }
-
-    // 2. Ghost tasks — no title or empty title (project_id is NOT NULL in schema)
-    let ghostTasks: IntegrityCheck = { ok: true, count: 0 };
-    try {
-      const rows = await sql`
-        SELECT id FROM public.project_tasks
-        WHERE trim(coalesce(title, '')) = ''
-      `;
-      const ids = (rows as unknown as { id: string }[]).map((r) => r.id);
-      ghostTasks = { ok: ids.length === 0, count: ids.length, ids };
-    } catch (e) {
-      errors.push(`Ghost: ${safeErrorMessage(e)}`);
-    }
-
-    // 3. Duplicate tasks — same (project_id, title) with count > 1; return IDs to delete (keep one per group)
-    let duplicateTasks: IntegrityCheck = { ok: true, count: 0 };
-    try {
-      const rows = await sql`
-        WITH dupes AS (
-          SELECT id, project_id, title,
-            row_number() OVER (PARTITION BY project_id, trim(coalesce(title,'')) ORDER BY created_at ASC) AS rn
-          FROM public.project_tasks
-        )
-        SELECT id FROM dupes WHERE rn > 1
-      `;
-      const ids = (rows as unknown as { id: string }[]).map((r) => r.id);
-      duplicateTasks = { ok: ids.length === 0, count: ids.length, ids };
-    } catch (e) {
-      errors.push(`Duplicate: ${safeErrorMessage(e)}`);
-    }
-
-    // 4. Overdue not completed — count only
-    let overdueCount = 0;
-    try {
-      const rows = await sql`
-        SELECT count(*)::int AS c
-        FROM public.project_tasks
-        WHERE due_date IS NOT NULL AND due_date < current_date AND status != 'done'
-      `;
-      overdueCount = Number((rows[0] as { c: number })?.c ?? 0);
-    } catch (e) {
-      errors.push(`Overdue: ${safeErrorMessage(e)}`);
-    }
-
-    // 5. Stale test data — word-boundary match so "Test Project" doesn't match "Testing Ground" or "Contest"
-    let staleTaskIds: string[] = [];
+    // Project tasks, punch items, photos, inspections, and material selections are removed.
+    // Task integrity categories stay in the response so System Health keeps its contract.
+    const orphanedTasks: IntegrityCheck = { ok: true, count: 0, ids: [] };
+    const ghostTasks: IntegrityCheck = { ok: true, count: 0, ids: [] };
+    const duplicateTasks: IntegrityCheck = { ok: true, count: 0, ids: [] };
+    const overdueCount = 0;
+    const staleTaskIds: string[] = [];
     let staleProjectIds: string[] = [];
     try {
       for (const kw of TEST_KEYWORDS) {
         const pattern = `\\m${kw}\\M`;
-        const t = await sql`
-          SELECT id FROM public.project_tasks
-          WHERE title ~* ${pattern}
-             OR (description IS NOT NULL AND description ~* ${pattern})
-        `;
-        (t as unknown as { id: string }[]).forEach((r) => staleTaskIds.push(r.id));
         const p = await sql`
           SELECT id FROM public.projects
           WHERE name ~* ${pattern}
         `;
         (p as unknown as { id: string }[]).forEach((r) => staleProjectIds.push(r.id));
       }
-      staleTaskIds = [...new Set(staleTaskIds)];
       staleProjectIds = [...new Set(staleProjectIds)].filter(
         (id) => !WHITELIST_PROJECT_IDS.includes(id)
       );

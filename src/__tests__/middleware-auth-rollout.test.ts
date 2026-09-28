@@ -162,13 +162,10 @@ describe("middleware Auth rollout behavior", () => {
     ["/api/upload-receipt/upload", "POST", 200, false],
     ["/api/upload-receipt/submit", "POST", 200, false],
     ["/api/upload-receipt/sync", "POST", 403, false],
-    ["/api/materials/catalog", "POST", 403, false],
     ["/api/expenses", "GET", 403, false],
     ["/documents", "POST", 200, true],
     ["/projects/project", "POST", 200, true],
-    ["/materials/selection", "POST", 200, true],
     ["/documents", "POST", 403, false],
-    ["/api/materials/catalog", "POST", 403, true],
     ["/financial/invoices", "POST", 403, true],
   ])(
     "limits assistant membership admission for %s %s",

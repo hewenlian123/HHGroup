@@ -31,65 +31,7 @@ $$;
 select set_config('request.jwt.claims','{"role":"service_role"}',true);
 
 
-select plan(63);
-
-select ok(
-  (
-    select bool_and(c.relrowsecurity)
-    from pg_catalog.pg_class c
-    join pg_catalog.pg_namespace n on n.oid = c.relnamespace
-    where n.nspname = 'public'
-      and c.relname = any(array['project_tasks', 'punch_list', 'site_photos', 'inspection_log'])
-  ),
-  'Operations P0 tables keep RLS enabled'
-);
-
-select ok(
-  (
-    select bool_and(not pg_catalog.has_table_privilege('anon', pg_catalog.format('public.%I', table_name), privilege_name))
-    from unnest(array['project_tasks', 'punch_list', 'site_photos', 'inspection_log']) table_name
-    cross join unnest(array['SELECT', 'INSERT', 'UPDATE', 'DELETE']) privilege_name
-  ),
-  'anon has no CRUD privilege on Operations P0 tables'
-);
-
-select ok(
-  not exists (
-    select 1
-    from pg_catalog.pg_policies p
-    where p.schemaname = 'public'
-      and p.tablename = any(array['project_tasks', 'punch_list', 'site_photos', 'inspection_log'])
-      and 'anon' = any(p.roles)
-  ),
-  'Operations P0 tables have no anon policy'
-);
-
-select is(
-  (
-    select count(*)::integer
-    from pg_catalog.pg_policies p
-    where p.schemaname = 'public'
-      and p.tablename = any(array['project_tasks', 'punch_list', 'site_photos', 'inspection_log'])
-      and p.cmd = 'UPDATE'
-      and p.permissive = 'PERMISSIVE'
-      and 'authenticated' = any(p.roles)
-      and p.qual like '%can_manage_project%'
-      and p.with_check like '%can_manage_project%'
-  ),
-  4,
-  'each Operations P0 table requires live project manager membership for updates'
-);
-
-select ok(
-  (
-    select bool_and(
-      pg_catalog.has_table_privilege('authenticated', pg_catalog.format('public.%I', table_name), privilege_name)
-    )
-    from unnest(array['project_tasks', 'punch_list', 'site_photos', 'inspection_log']) table_name
-    cross join unnest(array['SELECT', 'INSERT', 'UPDATE', 'DELETE']) privilege_name
-  ),
-  'authenticated retains only RLS-filtered Operations CRUD capability'
-);
+select plan(58);
 
 select ok(
   pg_catalog.to_regprocedure('public.record_subcontract_payment(uuid,uuid,date,numeric,text,text)') is not null,

@@ -81,37 +81,8 @@ test("Batch 4 routes stay error-free and responsive under accessibility media", 
   };
 
   const routes: readonly RouteSpec[] = [
-    { path: "/tasks", heading: "Tasks", tabletTarget: "+ New Task", mobileTarget: "New task" },
-    {
-      path: "/schedule",
-      heading: "Schedule",
-      tabletTarget: "+ New schedule item",
-      mobileTarget: "New schedule item",
-    },
-    {
-      path: "/punch-list",
-      heading: "Punch List",
-      tabletTarget: "+ Add Issue",
-      mobileTarget: "Add issue",
-    },
-    {
-      path: "/site-photos",
-      heading: "Site Photos",
-      tabletTarget: "+ Upload Photo",
-      mobileTarget: "Upload photo",
-    },
-    {
-      path: "/inspection-log",
-      heading: "Inspection Log",
-      tabletTarget: "+ New Inspection",
-      mobileTarget: "New inspection",
-    },
-    {
-      path: "/materials",
-      heading: "Material Selections",
-      tabletTarget: "New Selection",
-      mobileTarget: "New Selection",
-    },
+    { path: "/change-orders", heading: "Change Orders" },
+    { path: "/documents", heading: "Documents" },
     { path: "/estimating/cost-codes", heading: "Cost Codes" },
     { path: "/procurement/purchase-orders", heading: "Purchase Orders" },
   ];

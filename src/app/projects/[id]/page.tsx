@@ -5,13 +5,8 @@ import { notFound } from "next/navigation";
 import { requireOrganizationServerActionClient } from "@/lib/auth-boundary";
 import {
   getProjectById,
-  getProjectTasks,
-  getWorkers,
   getDocumentsByProject,
   getCommissionsWithPaidByProject,
-  getSelectionsByProject,
-  getMaterialCatalog,
-  getPunchListByProject,
   getSubcontractsByProject,
   getActivityLogsByProject,
   getChangeOrdersByProject,
@@ -19,7 +14,6 @@ import {
   getCloseoutPunch,
   getCloseoutWarranty,
   getCloseoutCompletion,
-  getProjectSchedule,
   getEstimateList,
 } from "@/lib/data";
 import { getApBillsByProject } from "@/lib/ap-bills-db";
@@ -103,14 +97,9 @@ export default async function ProjectDetailPage({
     }
 
   let invoiceModel: Awaited<ReturnType<typeof loadProjectInvoiceReadModel>> | null = null;
-  let tasks: Awaited<ReturnType<typeof getProjectTasks>> = [];
-  let workers: Awaited<ReturnType<typeof getWorkers>> = [];
   let laborEntries: Awaited<ReturnType<typeof getLaborEntriesWithJoins>> = [];
   let documents: Awaited<ReturnType<typeof getDocumentsByProject>> = [];
   let commissions: Awaited<ReturnType<typeof getCommissionsWithPaidByProject>> = [];
-  let materialSelections: Awaited<ReturnType<typeof getSelectionsByProject>> = [];
-  let materialCatalog: Awaited<ReturnType<typeof getMaterialCatalog>> = [];
-  let punchItems: Awaited<ReturnType<typeof getPunchListByProject>> = [];
   let subcontracts: Awaited<ReturnType<typeof getSubcontractsByProject>> = [];
   let bills: Awaited<ReturnType<typeof getApBillsByProject>> = [];
   let activityLogs: Awaited<ReturnType<typeof getActivityLogsByProject>> = [];
@@ -119,7 +108,6 @@ export default async function ProjectDetailPage({
   let closeoutPunch: Awaited<ReturnType<typeof getCloseoutPunch>> = null;
   let closeoutWarranty: Awaited<ReturnType<typeof getCloseoutWarranty>> = null;
   let closeoutCompletion: Awaited<ReturnType<typeof getCloseoutCompletion>> = null;
-  let scheduleItems: Awaited<ReturnType<typeof getProjectSchedule>> = [];
   let estimatesRaw: Awaited<ReturnType<typeof getEstimateList>> = [];
 
   if (canViewFinancials)
@@ -133,12 +121,7 @@ export default async function ProjectDetailPage({
   try {
     switch (workspaceTab) {
       case "overview":
-        [tasks, scheduleItems, punchItems, activityLogs] = await Promise.all([
-          getProjectTasks(id, projectSupabase),
-          getProjectSchedule(id, projectSupabase),
-          getPunchListByProject(id, projectSupabase),
-          getActivityLogsByProject(id, 20, projectSupabase),
-        ]);
+        activityLogs = await getActivityLogsByProject(id, 20, projectSupabase);
         break;
       case "financial":
         if (!canViewFinancials) break;
@@ -148,25 +131,13 @@ export default async function ProjectDetailPage({
           getEstimateList(projectSupabase),
         ]);
         break;
-      case "tasks":
-        [tasks, workers, activityLogs] = await Promise.all([
-          getProjectTasks(id, projectSupabase),
-          canManageProject ? getWorkers(projectSupabase) : Promise.resolve([]),
-          getActivityLogsByProject(id, 20, projectSupabase),
-        ]);
-        break;
       case "change-orders":
         if (!canViewFinancials) break;
         changeOrders = await getChangeOrdersByProject(id, projectSupabase);
         break;
-      case "schedule":
-      case "punch-list":
-        // The existing field workspace loads its scoped operational view.
-        break;
       case "people":
         if (!canViewFinancials) break;
-        [tasks, laborEntries, subcontracts, bills, commissions] = await Promise.all([
-          getProjectTasks(id, projectSupabase),
+        [laborEntries, subcontracts, bills, commissions] = await Promise.all([
           getLaborEntriesWithJoins({ project_id: id }, projectSupabase),
           getSubcontractsByProject(id, projectSupabase),
           getApBillsByProject(id, projectSupabase),
@@ -176,12 +147,6 @@ export default async function ProjectDetailPage({
       case "documents":
         documents = await getDocumentsByProject(id, projectSupabase);
         break;
-      case "materials":
-        [materialSelections, materialCatalog] = await Promise.all([
-          getSelectionsByProject(id, projectSupabase),
-          getMaterialCatalog(projectSupabase),
-        ]);
-        break;
       case "closeout":
         if (!canViewFinancials) break;
         [closeoutPunch, closeoutWarranty, closeoutCompletion] = await Promise.all([
@@ -189,9 +154,6 @@ export default async function ProjectDetailPage({
           getCloseoutWarranty(id, projectSupabase),
           getCloseoutCompletion(id, projectSupabase),
         ]);
-        break;
-      case "photos":
-      case "inspections":
         break;
     }
   } catch (error) {
@@ -281,19 +243,13 @@ export default async function ProjectDetailPage({
       showFinancialSnapshotComparison={showFinancialSnapshotComparison}
       initialTab={workspaceTab}
       loadedWorkspaceTab={workspaceTab}
-      tasks={tasks ?? []}
-      workers={workers ?? []}
       recentExpenseLines={recentExpenseLines}
       expenseLineRows={[]}
-      scheduleItems={scheduleItems ?? []}
       projectInvoices={workspaceTab === "financial" ? projectInvoices : []}
       relatedEstimates={relatedEstimates}
       laborEntries={laborEntries ?? []}
       documents={documents ?? []}
       commissions={commissions ?? []}
-      materialSelections={materialSelections ?? []}
-      materialCatalog={materialCatalog ?? []}
-      punchItems={punchItems ?? []}
       subcontracts={subcontracts ?? []}
       bills={bills ?? []}
       activityLogs={activityLogs ?? []}

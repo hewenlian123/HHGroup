@@ -16,11 +16,14 @@ describe("Project workspace routes and context", () => {
     ["bills", "financial"],
     ["commission", "financial"],
     ["financials", "financial"],
-    ["work", "tasks"],
-    ["activity", "tasks"],
+    ["work", "overview"],
+    ["activity", "overview"],
     ["docs", "documents"],
-    ["punch", "punch-list"],
-    ["PHOTOS", "photos"],
+    ["punch", "overview"],
+    ["PHOTOS", "overview"],
+    ["tasks", "overview"],
+    ["schedule", "overview"],
+    ["materials", "overview"],
     ["unknown", "overview"],
     ["", "overview"],
     ["constructor", "overview"],
@@ -37,23 +40,19 @@ describe("Project workspace routes and context", () => {
   });
 
   it("keeps the requested section order and a bounded mobile navigation", () => {
-    expect(PROJECT_WORKSPACE_TABS.slice(0, 10).map((tab) => tab.label)).toEqual([
+    expect(PROJECT_WORKSPACE_TABS.map((tab) => tab.label)).toEqual([
       "Overview",
-      "Schedule",
-      "Tasks",
-      "Punch",
-      "Photos",
-      "Inspections",
-      "Materials",
       "Change Orders",
       "Documents",
       "Financials",
+      "People",
+      "Closeout",
     ]);
     expect(PROJECT_WORKSPACE_TABS.filter((tab) => tab.mobile).map((tab) => tab.key)).toEqual([
       "overview",
-      "schedule",
-      "tasks",
-      "photos",
+      "change-orders",
+      "documents",
+      "financial",
     ]);
   });
 });
