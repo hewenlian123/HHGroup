@@ -6,6 +6,7 @@ import {
   financeReturnLabel,
 } from "@/lib/finance-navigation";
 import {
+  centsToMoney,
   computeInvoiceTotals,
   invoiceRevenueExTax,
   lineExtension,
@@ -34,7 +35,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
-import { ConfirmDialog } from "@/components/base";
+import { ConfirmDialog, RowActionsMenu, type RowAction } from "@/components/base";
 import {
   type InvoiceWithDerived,
   type InvoicePayment,
@@ -45,12 +46,10 @@ import {
   type Project,
 } from "@/lib/data";
 import {
-  ArrowLeft,
   Send,
   FileText,
   Eye,
   Trash2,
-  ChevronDown,
   Ban,
   CircleDollarSign,
   Pencil,
@@ -58,6 +57,7 @@ import {
   Copy,
   Download,
   Paperclip,
+  MoreHorizontal,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -72,16 +72,22 @@ import {
 } from "../actions";
 import { InvoiceDeleteDependenciesDialog } from "../invoice-delete-dependencies-dialog";
 import { InvoiceStatusBadge } from "@/components/invoice-status-badge";
-import {
-  InvoiceBillingHistory,
-  InvoiceEditorShell,
-} from "@/app/financial/invoices/_components/invoice-editor-shell";
 import { useInvoiceContractBilling } from "@/app/financial/invoices/_components/use-invoice-contract-billing";
-import { contractBillingSummary } from "@/lib/financial/remaining-contract";
+import {
+  contractBillingSummary,
+  invoiceCountsAsAlreadyInvoiced,
+} from "@/lib/financial/remaining-contract";
+import {
+  InvoiceDetailLayout,
+  type InvoiceDetailActivityItem,
+  type InvoiceDetailPaymentRow,
+} from "./invoice-detail-layout";
+import { PaymentReceiptPreviewModal } from "@/components/financial/payment-receipt-preview-modal";
+import { voidPaymentReceivedAction } from "@/app/financial/payments/actions";
 import { buildInvoicePaymentLedger } from "@/lib/financial/invoice-payment-ledger";
 import { isVoidCashStatus } from "@/lib/payment-allocation";
 import { formatOverviewMoney } from "@/lib/financial/project-overview-display";
-import { createBrowserClient } from "@/lib/supabase";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { useBreadcrumbEntityLabel } from "@/contexts/breadcrumb-override-context";
 import { useAttachmentPreview } from "@/contexts/attachment-preview-context";
 import { useToast } from "@/components/toast/toast-provider";
@@ -89,6 +95,12 @@ import { voidInvoiceFromClient } from "@/lib/invoice-void-client";
 import { formatDate } from "@/lib/formatters";
 import { safeEstimateReturnPath } from "@/app/estimates/_components/estimate-workflow-continuity";
 import type { InvoiceDetailData } from "@/lib/invoice-detail-read";
+
+const EditPaymentReceivedModal = React.lazy(() =>
+  import("@/app/financial/payments/edit-payment-received-modal").then((mod) => ({
+    default: mod.EditPaymentReceivedModal,
+  }))
+);
 
 type EditLineDraft = {
   description: string;
@@ -119,6 +131,20 @@ function safeNumber(v: unknown): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+function daysUntilDue(dueDate: string): number | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(dueDate);
+  if (!match) return null;
+  const due = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  if (Number.isNaN(due.getTime())) return null;
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return Math.round((due.getTime() - start.getTime()) / 86_400_000);
+}
+
+function invoiceStatusLabel(status: InvoiceWithDerived["computedStatus"]): string {
+  return status === "Partial" ? "Partially paid" : status;
+}
+
 function recordPaymentPathForInvoice(invoice: InvoiceWithDerived): string {
   const params = new URLSearchParams();
   params.set("invoiceId", invoice.id);
@@ -129,10 +155,6 @@ function recordPaymentPathForInvoice(invoice: InvoiceWithDerived): string {
   return `/financial/payments?${params.toString()}`;
 }
 
-const detailCardClass =
-  "overflow-hidden rounded-card border border-[var(--hh-line)] bg-[var(--hh-surface)] text-[var(--hh-text)] shadow-card";
-const invoiceSectionTitleClass = "text-title-card text-[var(--hh-ink)]";
-const invoiceSectionDescriptionClass = "mt-0.5 text-hh-metadata text-[var(--hh-muted)]";
 const invoiceLabelClass = "text-hh-label font-[650] uppercase text-[var(--hh-muted)]";
 const invoiceInputClass =
   "mt-1.5 h-11 rounded-hh-standard border-[var(--hh-line-input)] bg-[var(--hh-surface)] px-3 text-[var(--hh-ink)]";
@@ -169,6 +191,10 @@ export default function InvoiceDetailClient({
   const [actionBusy, setActionBusy] = React.useState(false);
   const [deletingPaymentId, setDeletingPaymentId] = React.useState<string | null>(null);
   const [paymentDeleteTarget, setPaymentDeleteTarget] = React.useState<InvoicePayment | null>(null);
+  const [editPaymentId, setEditPaymentId] = React.useState<string | null>(null);
+  const [voidPaymentId, setVoidPaymentId] = React.useState<string | null>(null);
+  const [voidingPayment, setVoidingPayment] = React.useState(false);
+  const [receiptPaymentId, setReceiptPaymentId] = React.useState<string | null>(null);
   const [editing, setEditing] = React.useState(false);
   const [editSaving, setEditSaving] = React.useState(false);
   const [editAttempted, setEditAttempted] = React.useState(false);
@@ -224,15 +250,34 @@ export default function InvoiceDetailClient({
 
   useBreadcrumbEntityLabel(invoice?.invoiceNo);
 
-  const billingClient = React.useMemo(() => {
+  const [billingClient, setBillingClient] = React.useState<SupabaseClient | null>(null);
+  const [billingClientPending, setBillingClientPending] = React.useState(true);
+  React.useEffect(() => {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    return url && anon ? createBrowserClient(url, anon) : null;
+    if (!url || !anon) {
+      setBillingClientPending(false);
+      return;
+    }
+    let cancelled = false;
+    void import("@/lib/supabase")
+      .then(({ createBrowserClient }) => {
+        if (cancelled) return;
+        setBillingClient(createBrowserClient(url, anon));
+        setBillingClientPending(false);
+      })
+      .catch(() => {
+        if (!cancelled) setBillingClientPending(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
   const contractBilling = useInvoiceContractBilling(
     billingClient,
     invoice?.projectId ?? "",
-    invoice?.id ?? null
+    invoice?.id ?? null,
+    { clientPending: billingClientPending }
   );
 
   const { toast } = useToast();
@@ -535,6 +580,27 @@ export default function InvoiceDetailClient({
     setPaymentDeleteTarget(target);
   };
 
+  const handleVoidLinkedPayment = async () => {
+    if (!voidPaymentId) return;
+    setVoidingPayment(true);
+    try {
+      const result = await voidPaymentReceivedAction(voidPaymentId);
+      if (!result.ok) {
+        toast({
+          title: "Could not void payment",
+          description: result.error,
+          variant: "error",
+        });
+        return;
+      }
+      toast({ title: "Payment voided", variant: "success" });
+      setVoidPaymentId(null);
+      await refresh();
+    } finally {
+      setVoidingPayment(false);
+    }
+  };
+
   const handleDeletePayment = async () => {
     if (!id || !paymentDeleteTarget) return;
     setDeletingPaymentId(paymentDeleteTarget.id);
@@ -630,9 +696,8 @@ export default function InvoiceDetailClient({
       .filter((paymentId): paymentId is string => Boolean(paymentId))
   );
   const unlinkedReceived = paymentsReceived.filter((row) => !linkedReceivedIds.has(row.id));
-  const paymentLedger = buildInvoicePaymentLedger(
-    displayedTotal,
-    payments.map((payment) => {
+  const ledgerSource = [
+    ...payments.map((payment) => {
       const received = payment.paymentReceivedId
         ? receivedById.get(payment.paymentReceivedId)
         : undefined;
@@ -647,896 +712,670 @@ export default function InvoiceDetailClient({
           received?.deposit_account?.trim() ||
           "",
         voided: payment.status === "Voided",
+        paymentReceivedId: payment.paymentReceivedId ?? null,
+        legacyPaymentId: payment.paymentReceivedId ? null : payment.id,
+        attachments: received?.attachments ?? [],
       };
-    })
+    }),
+    ...unlinkedReceived.map((row) => ({
+      id: `unlinked-${row.id}`,
+      date: row.payment_date,
+      amount: row.amount,
+      method: row.payment_method?.trim() || "—",
+      reference: row.notes?.trim() || row.deposit_account?.trim() || "",
+      voided: isVoidCashStatus(row.status),
+      paymentReceivedId: row.id,
+      legacyPaymentId: null as string | null,
+      attachments: row.attachments ?? [],
+    })),
+  ];
+  const paymentLedger = buildInvoicePaymentLedger(displayedTotal, ledgerSource);
+  const ledgerMeta = new Map(ledgerSource.map((row) => [row.id, row]));
+  const postedPayments = paymentLedger.filter((row) => !row.voided);
+  const postedCents = postedPayments.reduce((sum, row) => sum + moneyToCents(row.amount), 0);
+  const lastPosted = [...postedPayments].sort((left, right) =>
+    right.date.localeCompare(left.date)
+  )[0];
+  const paidCents = moneyToCents(invoice.paidTotal);
+  const totalCents = moneyToCents(displayedTotal);
+  const paidPercent =
+    totalCents > 0 ? Math.min(100, Math.round((paidCents / totalCents) * 100)) : 0;
+  const outstandingPercent = totalCents > 0 ? Math.max(0, 100 - paidPercent) : 0;
+  const taxPctLabel = editing ? editTaxPct : (invoice.taxPct ?? 0);
+  const dueInDays = daysUntilDue(invoice.dueDate);
+  const showDueHint = !isVoid && !isDraft && moneyToCents(displayedBalance) > 0;
+  const dueHint = !showDueHint
+    ? null
+    : invoice.daysOverdue > 0
+      ? `Overdue ${invoice.daysOverdue} day${invoice.daysOverdue === 1 ? "" : "s"}`
+      : dueInDays === 0
+        ? "Due today"
+        : dueInDays != null && dueInDays > 0
+          ? `Due in ${dueInDays} day${dueInDays === 1 ? "" : "s"}`
+          : null;
+  const previewHref = financePathWithReturn(
+    `/financial/invoices/${id}/preview`,
+    invoiceListReturnPath
   );
+  const printHref = financePathWithReturn(`/financial/invoices/${id}/print`, invoiceListReturnPath);
+  const backHref = estimateReturnPath ?? invoiceListReturnPath;
+  const backLabel = estimateReturnPath
+    ? "Back to estimate"
+    : financeReturnLabel(invoiceListReturnPath);
+  const paymentRows: InvoiceDetailPaymentRow[] = [
+    {
+      id: "invoice-issued",
+      dateLabel: formatDate(invoice.issueDate),
+      method: "",
+      reference: "Invoice issued",
+      referenceDetail: "",
+      amountLabel: "—",
+      balanceLabel: formatOverviewMoney(displayedTotal),
+      voided: false,
+      issued: true,
+    },
+    ...paymentLedger.map((row) => ({
+      id: row.id,
+      dateLabel: row.date ? formatDate(row.date) : "—",
+      method: row.method,
+      reference: row.reference,
+      referenceDetail: "",
+      amountLabel: row.voided
+        ? formatOverviewMoney(row.amount)
+        : `−${formatOverviewMoney(row.amount)}`,
+      balanceLabel: formatOverviewMoney(row.runningBalance),
+      voided: row.voided,
+      issued: false,
+    })),
+  ];
+  const activity: InvoiceDetailActivityItem[] = [
+    ...(invoice.issueDate
+      ? [
+          {
+            id: "created",
+            title: "Created",
+            detail: invoice.invoiceNo,
+            dateLabel: formatDate(invoice.issueDate, "compact"),
+            tone: "created" as const,
+            sort: invoice.issueDate,
+          },
+        ]
+      : []),
+    ...(invoice.status === "Sent" || invoice.status === "Void"
+      ? [
+          {
+            id: "status",
+            title: invoice.status === "Void" ? "Voided" : "Sent",
+            detail: "",
+            dateLabel: invoice.status === "Sent" ? formatDate(invoice.issueDate, "compact") : "",
+            tone: "status" as const,
+            sort: invoice.status === "Sent" ? invoice.issueDate : "9999-99-99",
+          },
+        ]
+      : []),
+    ...paymentLedger.map((row) => ({
+      id: `payment-${row.id}`,
+      title: row.voided ? "Payment voided" : "Payment received",
+      detail: [row.method !== "—" ? row.method : "", formatOverviewMoney(row.amount), row.reference]
+        .filter(Boolean)
+        .join(" · "),
+      dateLabel: row.date ? formatDate(row.date, "compact") : "",
+      tone: "payment" as const,
+      sort: row.date || "",
+    })),
+  ]
+    .sort(
+      (left, right) => right.sort.localeCompare(left.sort) || left.title.localeCompare(right.title)
+    )
+    .map((item) => ({
+      id: item.id,
+      title: item.title,
+      detail: item.detail,
+      dateLabel: item.dateLabel,
+      tone: item.tone,
+    }));
+
+  const renderPaymentMenu = (row: InvoiceDetailPaymentRow) => {
+    const meta = ledgerMeta.get(row.id);
+    const actions: RowAction[] = [];
+    if (meta?.paymentReceivedId && !row.voided) {
+      const paymentReceivedId = meta.paymentReceivedId;
+      actions.push(
+        { label: "Edit payment", onClick: () => setEditPaymentId(paymentReceivedId) },
+        { label: "Download receipt", onClick: () => setReceiptPaymentId(paymentReceivedId) },
+        {
+          label: "Void payment",
+          destructive: true,
+          onClick: () => setVoidPaymentId(paymentReceivedId),
+        }
+      );
+    } else if (meta?.legacyPaymentId && !row.voided) {
+      const legacyPaymentId = meta.legacyPaymentId;
+      actions.push({
+        label: "Delete payment",
+        destructive: true,
+        onClick: () => requestDeletePayment(legacyPaymentId),
+      });
+    }
+    const attachments = meta?.attachments ?? [];
+    return (
+      <div className="w-16 px-2 py-2 text-right xl:w-10">
+        <RowActionsMenu
+          ariaLabel="Payment actions"
+          className="h-11 min-h-11 xl:h-8 xl:min-h-8 rounded-hh-standard"
+          actions={actions}
+        />
+        {attachments.length > 0 && meta?.paymentReceivedId ? (
+          <Button
+            type="button"
+            variant="quiet"
+            size="sm"
+            data-testid="invoice-payment-attachment-action"
+            disabled={openingPaymentAttachmentsId === meta.paymentReceivedId}
+            onClick={() => void openPaymentAttachments(meta.paymentReceivedId!, attachments)}
+            className="mt-2 h-11 min-h-11 max-w-full rounded-full border border-[var(--hh-line)] bg-[var(--hh-surface)] px-2.5 text-hh-metadata font-medium text-[var(--hh-muted)] lg:h-7 lg:min-h-0"
+          >
+            <Paperclip className="h-3 w-3 shrink-0" strokeWidth={1.7} />
+            <span className="truncate">
+              {openingPaymentAttachmentsId === meta.paymentReceivedId
+                ? "Opening..."
+                : `${attachments.length} attachment${attachments.length === 1 ? "" : "s"}`}
+            </span>
+          </Button>
+        ) : null}
+      </div>
+    );
+  };
+
+  const revisedCents = contract ? moneyToCents(contract.revisedContract) : 0;
+  const priorWidth =
+    contract && revisedCents > 0
+      ? Math.max(
+          0,
+          Math.min(
+            100,
+            (moneyToCents(contract.previouslyInvoicedExcludingTax) / revisedCents) * 100
+          )
+        )
+      : 0;
+  const thisWidth =
+    contract && revisedCents > 0
+      ? Math.max(
+          0,
+          Math.min(
+            100 - priorWidth,
+            (moneyToCents(contract.thisInvoiceExcludingTax) / revisedCents) * 100
+          )
+        )
+      : 0;
+  const billedCount =
+    contractBilling.status === "ready"
+      ? contractBilling.history.filter((row) => invoiceCountsAsAlreadyInvoiced(row.status)).length
+      : 0;
 
   return (
     <div data-revenue-ar-v2 data-testid="invoice-detail" className="min-h-full min-w-0">
-      <InvoiceEditorShell
-        header={
-          <div className="flex min-w-0 flex-col gap-4">
-            <Link
-              href={estimateReturnPath ?? invoiceListReturnPath}
-              data-testid={estimateReturnPath ? "invoice-detail-return-to-estimate" : undefined}
-              className="inline-flex min-h-[44px] w-fit items-center gap-1.5 rounded-hh-standard text-hh-body font-medium text-[var(--hh-link)]"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              {estimateReturnPath ? "Back to estimate" : financeReturnLabel(invoiceListReturnPath)}
-            </Link>
-            <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className="text-hh-label font-[650] uppercase text-[var(--hh-muted)]">
-                    Invoice
-                  </p>
-                  <span data-testid="invoice-detail-status">
-                    <InvoiceStatusBadge status={invoice.computedStatus} />
-                  </span>
-                </div>
-                <h1 className="mt-1 break-words text-title-page text-[var(--hh-ink)]">
-                  {invoice.invoiceNo}
-                </h1>
-                <p className="mt-1 break-words text-hh-metadata text-[var(--hh-muted)]">
-                  <span className="font-medium text-[var(--hh-ink)]">
-                    {invoice.customerId ? (
-                      <Link
-                        href={`/customers/${invoice.customerId}`}
-                        className="text-[var(--hh-link)]"
-                      >
-                        {invoice.clientName}
-                      </Link>
-                    ) : (
-                      invoice.clientName
-                    )}
-                  </span>
-                  <span> · </span>
-                  {invoice.projectId ? (
-                    <Link href={`/projects/${invoice.projectId}`} className="text-[var(--hh-link)]">
-                      {projectName}
-                    </Link>
-                  ) : (
-                    projectName
-                  )}
-                  <span> · Issued {formatDate(invoice.issueDate)}</span>
-                  <span> · Due {formatDate(invoice.dueDate)}</span>
-                </p>
-              </div>
-              <div className="flex w-full min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap lg:w-auto lg:justify-end">
-                {editing ? (
-                  <>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      className={toolbarButtonClass}
-                      onClick={cancelEditing}
-                      disabled={primaryActionBusy}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      size="sm"
-                      className={primaryToolbarButtonClass}
-                      onClick={handleSaveEdit}
-                      disabled={primaryActionBusy}
-                    >
-                      <SubmitSpinner loading={editSaving} className="mr-2" />
-                      Save
-                    </Button>
-                  </>
-                ) : (
-                  <>
-                    <Button asChild variant="secondary" size="sm" className={toolbarButtonClass}>
-                      <Link
-                        href={financePathWithReturn(
-                          `/financial/invoices/${id}/preview`,
-                          invoiceListReturnPath
-                        )}
-                        prefetch={false}
-                        data-testid="invoice-detail-preview-link"
-                      >
-                        <Eye className="h-4 w-4" />
-                        Preview
-                      </Link>
-                    </Button>
-                    <Button asChild variant="secondary" size="sm" className={toolbarButtonClass}>
-                      <Link
-                        href={financePathWithReturn(
-                          `/financial/invoices/${id}/print`,
-                          invoiceListReturnPath
-                        )}
-                        prefetch={false}
-                      >
-                        <FileText className="h-4 w-4" />
-                        Print
-                      </Link>
-                    </Button>
-                    {isDraft ? (
-                      <Button
-                        size="sm"
-                        className={cn(primaryToolbarButtonClass, "w-full sm:w-auto")}
-                        onClick={startEditing}
-                        disabled={primaryActionBusy}
-                      >
-                        <Pencil className="h-4 w-4" />
-                        Edit Draft
-                      </Button>
-                    ) : null}
-                    {canPay ? (
-                      <Button
-                        asChild
-                        size="sm"
-                        className={cn(primaryToolbarButtonClass, "w-full sm:w-auto")}
-                        disabled={primaryActionBusy}
-                      >
-                        <Link href={recordPaymentHref}>
-                          <CircleDollarSign className="h-4 w-4" />
-                          Receive Payment
-                        </Link>
-                      </Button>
-                    ) : null}
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          className={toolbarButtonClass}
-                          disabled={primaryActionBusy}
-                        >
-                          More
-                          <ChevronDown className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent
-                        align="end"
-                        className="min-w-[220px] rounded-card border-[var(--hh-line)] bg-[var(--hh-surface)] p-1.5 text-[var(--hh-ink)] shadow-card"
-                      >
-                        <DropdownMenuItem
-                          onSelect={(e) => {
-                            e.preventDefault();
-                            void handleDuplicateInvoice();
-                          }}
-                          disabled={primaryActionBusy || isVoid}
-                        >
-                          <Copy className="mr-2 h-4 w-4" />
-                          Duplicate invoice
-                        </DropdownMenuItem>
-                        <DropdownMenuItem asChild>
-                          <Link
-                            href={financePathWithReturn(
-                              `/financial/invoices/${id}/preview?download=1`,
-                              invoiceListReturnPath
-                            )}
-                            prefetch={false}
-                          >
-                            <Download className="mr-2 h-4 w-4" />
-                            Download PDF
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          onSelect={(e) => {
-                            e.preventDefault();
-                            void handleMarkSent();
-                          }}
-                          disabled={!isDraft || primaryActionBusy}
-                        >
-                          <Send className="mr-2 h-4 w-4" />
-                          Mark as sent
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onSelect={(e) => {
-                            e.preventDefault();
-                            void handleBackToEdit();
-                          }}
-                          disabled={!canBackToEdit || primaryActionBusy}
-                        >
-                          <Pencil className="mr-2 h-4 w-4" />
-                          Back to edit
-                        </DropdownMenuItem>
-                        {!isVoid ? (
-                          <DropdownMenuItem
-                            className="text-[var(--hh-danger)] focus:bg-[var(--hh-danger-soft-fill)] focus:text-[var(--hh-danger)]"
-                            onSelect={(e) => {
-                              e.preventDefault();
-                              setVoidConfirmOpen(true);
-                            }}
-                            disabled={primaryActionBusy}
-                          >
-                            <Ban className="mr-2 h-4 w-4" />
-                            Void Invoice
-                          </DropdownMenuItem>
-                        ) : null}
-                        <DropdownMenuItem
-                          className="text-[var(--hh-danger)] focus:bg-[var(--hh-danger-soft-fill)] focus:text-[var(--hh-danger)]"
-                          onSelect={(e) => {
-                            e.preventDefault();
-                            if (isVoid) handleDeleteRequest();
-                            else setDeleteBlockedOpen(true);
-                          }}
-                          disabled={primaryActionBusy || deleteCheckBusy}
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete Invoice
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </>
-                )}
-              </div>
-            </div>
-            <dl className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-3">
-              <div className="min-w-0 rounded-card border border-[var(--hh-line)] bg-[var(--hh-surface)] px-3 py-3 shadow-card">
-                <dt className="text-hh-label font-[650] uppercase text-[var(--hh-muted)]">Total</dt>
-                <dd className="mt-1 truncate text-num-m tabular-nums text-[var(--hh-ink)]">
-                  {formatOverviewMoney(displayedTotal)}
-                </dd>
-              </div>
-              <div className="min-w-0 rounded-card border border-[var(--hh-line)] bg-[var(--hh-surface)] px-3 py-3 shadow-card">
-                <dt className="text-hh-label font-[650] uppercase text-[var(--hh-muted)]">Paid</dt>
-                <dd className="mt-1 truncate text-num-m tabular-nums text-[var(--hh-success)]">
-                  {formatOverviewMoney(invoice.paidTotal)}
-                </dd>
-              </div>
-              <div className="min-w-0 rounded-card border border-[var(--hh-line)] bg-[var(--hh-surface)] px-3 py-3 shadow-card">
-                <dt className="text-hh-label font-[650] uppercase text-[var(--hh-muted)]">
-                  Balance due
-                </dt>
-                <dd className="mt-1 truncate text-num-l tabular-nums text-[var(--hh-ink)]">
-                  {formatOverviewMoney(displayedBalance)}
-                </dd>
-              </div>
-            </dl>
+      {editing ? (
+        <div className="mx-auto grid max-w-[1200px] gap-4 px-4 py-4 md:grid-cols-2">
+          <div>
+            <label htmlFor="invoice-edit-client-name" className={invoiceLabelClass}>
+              Client name
+            </label>
+            <Input
+              id="invoice-edit-client-name"
+              value={editClientName}
+              onChange={(e) => setEditClientName(e.target.value)}
+              placeholder="Client"
+              className={cn("min-h-[44px] sm:min-h-10", invoiceInputClass)}
+              aria-invalid={editAttempted && !editClientName.trim()}
+            />
           </div>
-        }
-        banner={
-          invoice.daysOverdue > 0 && !isVoid && !isDraft ? (
-            <p
-              role="status"
-              className="rounded-hh-standard border border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] px-4 py-3 text-hh-body text-[var(--hh-warning)]"
+          <div>
+            <label htmlFor="invoice-edit-issue-date" className={invoiceLabelClass}>
+              Issue date
+            </label>
+            <Input
+              id="invoice-edit-issue-date"
+              type="date"
+              value={editIssueDate}
+              onChange={(e) => setEditIssueDate((e.target.value || editIssueDate).slice(0, 10))}
+              className={cn("min-h-[44px] sm:min-h-10", invoiceInputClass)}
+            />
+          </div>
+          <div>
+            <label htmlFor="invoice-edit-due-date" className={invoiceLabelClass}>
+              Due date
+            </label>
+            <Input
+              id="invoice-edit-due-date"
+              type="date"
+              value={editDueDate}
+              onChange={(e) => setEditDueDate((e.target.value || editDueDate).slice(0, 10))}
+              className={cn("min-h-[44px] sm:min-h-10", invoiceInputClass)}
+            />
+          </div>
+          <div>
+            <label htmlFor="invoice-edit-tax-pct" className={invoiceLabelClass}>
+              Tax %
+            </label>
+            <Input
+              id="invoice-edit-tax-pct"
+              type="number"
+              min="0"
+              step="0.01"
+              value={editTaxPct}
+              onChange={(e) => setEditTaxPct(safeNumber(e.target.value))}
+              className={cn("min-h-[44px] sm:min-h-10", invoiceInputClass)}
+            />
+          </div>
+          <div>
+            <label htmlFor="invoice-edit-notes" className={invoiceLabelClass}>
+              Notes
+            </label>
+            <Input
+              id="invoice-edit-notes"
+              value={editNotes}
+              onChange={(e) => setEditNotes(e.target.value)}
+              placeholder="Terms / notes"
+              className={cn("min-h-[44px] sm:min-h-10", invoiceInputClass)}
+            />
+          </div>
+          {editError ? (
+            <p className="text-hh-body text-[var(--hh-danger)] md:col-span-2">{editError}</p>
+          ) : null}
+          <div className="flex gap-2 md:col-span-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              className={toolbarButtonClass}
+              onClick={cancelEditing}
+              disabled={primaryActionBusy}
             >
-              <span className="font-semibold">{invoice.invoiceNo}</span> is {invoice.daysOverdue}{" "}
-              days overdue · {formatOverviewMoney(displayedBalance)} balance due
-            </p>
-          ) : null
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              className={primaryToolbarButtonClass}
+              onClick={handleSaveEdit}
+              disabled={primaryActionBusy}
+            >
+              <SubmitSpinner loading={editSaving} className="mr-2" />
+              Save
+            </Button>
+          </div>
+        </div>
+      ) : null}
+      <InvoiceDetailLayout
+        backHref={backHref}
+        backLabel={backLabel}
+        backTestId={estimateReturnPath ? "invoice-detail-return-to-estimate" : undefined}
+        invoiceNo={invoice.invoiceNo}
+        status={
+          <InvoiceStatusBadge
+            status={invoice.computedStatus}
+            label={invoiceStatusLabel(invoice.computedStatus)}
+          />
         }
-        parties={
-          <section className={cn(detailCardClass, "p-4 sm:p-5")} aria-label="Bill to">
-            <h2 className={invoiceSectionTitleClass}>Bill to</h2>
-            <p className={invoiceSectionDescriptionClass}>
-              Customer, project, and dates on this invoice.
-            </p>
-            {editing ? (
-              <div className="mt-4 grid gap-4 md:grid-cols-2">
-                <div>
-                  <label htmlFor="invoice-edit-client-name" className={invoiceLabelClass}>
-                    Client name
-                  </label>
-                  <Input
-                    id="invoice-edit-client-name"
-                    value={editClientName}
-                    onChange={(e) => setEditClientName(e.target.value)}
-                    placeholder="Client"
-                    className={cn("min-h-[44px] sm:min-h-10", invoiceInputClass)}
-                    aria-invalid={editAttempted && !editClientName.trim()}
-                  />
-                  {editAttempted && !editClientName.trim() ? (
-                    <p className="mt-1 text-hh-metadata text-[var(--hh-danger)]">
-                      Client name is required.
-                    </p>
-                  ) : null}
-                </div>
-                <div>
-                  <p className={invoiceLabelClass}>Project</p>
-                  <p className="mt-1.5 rounded-hh-standard border border-[var(--hh-line)] bg-[var(--hh-surface-sunken)] px-3 py-2 text-hh-body text-[var(--hh-ink)]">
-                    {projectName}
-                  </p>
-                </div>
-                <div>
-                  <label htmlFor="invoice-edit-issue-date" className={invoiceLabelClass}>
-                    Issue date
-                  </label>
-                  <Input
-                    id="invoice-edit-issue-date"
-                    type="date"
-                    value={editIssueDate}
-                    onChange={(e) =>
-                      setEditIssueDate((e.target.value || editIssueDate).slice(0, 10))
-                    }
-                    onInput={(e) =>
-                      setEditIssueDate((e.currentTarget.value || editIssueDate).slice(0, 10))
-                    }
-                    className={cn("min-h-[44px] sm:min-h-10", invoiceInputClass)}
-                  />
-                </div>
-                <div>
-                  <label htmlFor="invoice-edit-due-date" className={invoiceLabelClass}>
-                    Due date
-                  </label>
-                  <Input
-                    id="invoice-edit-due-date"
-                    type="date"
-                    value={editDueDate}
-                    onChange={(e) => setEditDueDate((e.target.value || editDueDate).slice(0, 10))}
-                    onInput={(e) =>
-                      setEditDueDate((e.currentTarget.value || editDueDate).slice(0, 10))
-                    }
-                    className={cn("min-h-[44px] sm:min-h-10", invoiceInputClass)}
-                  />
-                </div>
-                <div>
-                  <label htmlFor="invoice-edit-tax-pct" className={invoiceLabelClass}>
-                    Tax %
-                  </label>
-                  <Input
-                    id="invoice-edit-tax-pct"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={editTaxPct}
-                    onChange={(e) => setEditTaxPct(safeNumber(e.target.value))}
-                    className={cn("min-h-[44px] sm:min-h-10", invoiceInputClass)}
-                  />
-                </div>
-                <div>
-                  <label htmlFor="invoice-edit-notes" className={invoiceLabelClass}>
-                    Notes
-                  </label>
-                  <Input
-                    id="invoice-edit-notes"
-                    value={editNotes}
-                    onChange={(e) => setEditNotes(e.target.value)}
-                    placeholder="Terms / notes"
-                    className={cn("min-h-[44px] sm:min-h-10", invoiceInputClass)}
-                  />
-                </div>
-                {editError ? (
-                  <p className="text-hh-body text-[var(--hh-danger)] md:col-span-2">{editError}</p>
-                ) : null}
-              </div>
-            ) : (
-              <dl className="mt-4 grid gap-3 text-hh-body sm:grid-cols-2">
-                <div className="min-w-0">
-                  <dt className="text-hh-metadata text-[var(--hh-muted)]">Customer</dt>
-                  <dd className="mt-0.5 break-words font-medium text-[var(--hh-ink)]">
-                    {invoice.clientName}
-                  </dd>
-                </div>
-                <div className="min-w-0">
-                  <dt className="text-hh-metadata text-[var(--hh-muted)]">Project</dt>
-                  <dd className="mt-0.5 break-words font-medium text-[var(--hh-ink)]">
-                    {projectName}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-hh-metadata text-[var(--hh-muted)]">Issue date</dt>
-                  <dd className="mt-0.5 tabular-nums text-[var(--hh-ink)]">
-                    {formatDate(invoice.issueDate)}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-hh-metadata text-[var(--hh-muted)]">Due date</dt>
-                  <dd className="mt-0.5 tabular-nums text-[var(--hh-ink)]">
-                    {formatDate(invoice.dueDate)}
-                  </dd>
-                </div>
-              </dl>
-            )}
-          </section>
+        customer={
+          invoice.customerId ? (
+            <Link href={`/customers/${invoice.customerId}`} className="text-[var(--hh-link)]">
+              {invoice.clientName}
+            </Link>
+          ) : (
+            invoice.clientName
+          )
         }
-        lines={
+        project={
+          invoice.projectId ? (
+            <Link href={`/projects/${invoice.projectId}`} className="text-[var(--hh-link)]">
+              {projectName}
+            </Link>
+          ) : (
+            projectName
+          )
+        }
+        customerProjectLabel={[invoice.clientName, projectName].filter(Boolean).join(" · ")}
+        issuedLabel={formatDate(invoice.issueDate)}
+        dueLabel={formatDate(invoice.dueDate)}
+        moreMenu={
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="secondary"
+                size="sm"
+                className={cn(
+                  toolbarButtonClass,
+                  "max-xl:text-[var(--hh-sidebar-text-strong)] max-xl:hover:bg-[var(--hh-sidebar-hover)] max-xl:hover:text-[var(--hh-sidebar-text-strong)]"
+                )}
+                disabled={primaryActionBusy}
+                aria-label="More actions"
+              >
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="end"
+              className="min-w-[220px] rounded-card border-[var(--hh-line)] bg-[var(--hh-surface)] p-1.5 text-[var(--hh-ink)] shadow-card"
+            >
+              <DropdownMenuItem
+                onSelect={(e) => {
+                  e.preventDefault();
+                  void handleDuplicateInvoice();
+                }}
+                disabled={primaryActionBusy || isVoid}
+              >
+                <Copy className="mr-2 h-4 w-4" />
+                Duplicate invoice
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link
+                  href={financePathWithReturn(
+                    `/financial/invoices/${id}/preview?download=1`,
+                    invoiceListReturnPath
+                  )}
+                  prefetch={false}
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  Download PDF
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onSelect={(e) => {
+                  e.preventDefault();
+                  void handleMarkSent();
+                }}
+                disabled={!isDraft || primaryActionBusy}
+              >
+                <Send className="mr-2 h-4 w-4" />
+                Mark as sent
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={(e) => {
+                  e.preventDefault();
+                  void handleBackToEdit();
+                }}
+                disabled={!canBackToEdit || primaryActionBusy}
+              >
+                <Pencil className="mr-2 h-4 w-4" />
+                Back to edit
+              </DropdownMenuItem>
+              {!isVoid ? (
+                <DropdownMenuItem
+                  className="text-[var(--hh-danger)] focus:bg-[var(--hh-danger-soft-fill)] focus:text-[var(--hh-danger)]"
+                  onSelect={(e) => {
+                    e.preventDefault();
+                    setVoidConfirmOpen(true);
+                  }}
+                  disabled={primaryActionBusy}
+                >
+                  <Ban className="mr-2 h-4 w-4" />
+                  Void Invoice
+                </DropdownMenuItem>
+              ) : null}
+              <DropdownMenuItem
+                className="text-[var(--hh-danger)] focus:bg-[var(--hh-danger-soft-fill)] focus:text-[var(--hh-danger)]"
+                onSelect={(e) => {
+                  e.preventDefault();
+                  if (isVoid) handleDeleteRequest();
+                  else setDeleteBlockedOpen(true);
+                }}
+                disabled={primaryActionBusy || deleteCheckBusy}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete Invoice
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        }
+        desktopActions={
           <>
-            <section aria-label="Invoice overview line items" className={detailCardClass}>
-              <div className="flex items-center justify-between gap-3 px-4 py-3.5 sm:px-5">
-                <div className="min-w-0">
-                  <h2 className={invoiceSectionTitleClass}>Line items</h2>
-                  <p className={invoiceSectionDescriptionClass}>
-                    Billable work and materials on this invoice.
-                  </p>
-                </div>
-                {editing ? (
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    className="min-h-[44px] sm:min-h-9"
-                    onClick={() =>
-                      setEditLines((prev) => [...prev, { description: "", qty: 1, unitPrice: 0 }])
-                    }
-                    disabled={primaryActionBusy}
-                  >
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add line
-                  </Button>
-                ) : (
-                  <span className="shrink-0 text-hh-metadata tabular-nums text-[var(--hh-muted)]">
-                    {invoice.lineItems.length} item{invoice.lineItems.length === 1 ? "" : "s"}
-                  </span>
-                )}
-              </div>
-              {editing &&
-              editAttempted &&
-              !editLines.some((line) => line.description.trim().length > 0) ? (
-                <p className="px-4 text-hh-metadata text-[var(--hh-danger)] sm:px-5">
-                  At least one line item is required.
-                </p>
-              ) : null}
-              <div className="border-t border-[var(--hh-line-2)]">
-                <div className="hidden grid-cols-[minmax(0,1fr)_4.5rem_6.5rem_6.5rem] gap-3 bg-[var(--hh-surface-sunken)] px-4 py-2 text-hh-label font-[650] uppercase text-[var(--hh-th)] sm:grid sm:px-5">
-                  <span>Description</span>
-                  <span className="text-right">Qty</span>
-                  <span className="text-right">Unit price</span>
-                  <span className="text-right">Amount</span>
-                </div>
-                <ul className="divide-y divide-[var(--hh-line-2)]">
-                  {(editing ? editLines : invoice.lineItems).map((line, idx) => {
-                    const qty = safeNumber(line.qty);
-                    const unitPrice = safeNumber(line.unitPrice);
-                    const amount = lineExtension(qty, unitPrice);
-                    return (
-                      <li
-                        key={`${idx}-${line.description}`}
-                        data-testid={`invoice-detail-line-${idx + 1}`}
-                        className="px-4 py-3 sm:px-5"
-                      >
-                        <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_4.5rem_6.5rem_6.5rem] sm:items-center sm:gap-3">
-                          <div className="min-w-0 whitespace-pre-wrap text-hh-body text-[var(--hh-ink)]">
-                            {editing ? (
-                              <Input
-                                data-testid={`invoice-detail-edit-line-${idx + 1}-description-input`}
-                                value={line.description}
-                                onChange={(e) =>
-                                  setEditLines((prev) =>
-                                    prev.map((current, i) =>
-                                      i === idx
-                                        ? { ...current, description: e.target.value }
-                                        : current
-                                    )
-                                  )
-                                }
-                                placeholder="Description"
-                                aria-label={`Line item ${idx + 1} description`}
-                                aria-invalid={editAttempted && !line.description.trim()}
-                                className={invoiceInputClass}
-                              />
-                            ) : (
-                              <span data-testid={`invoice-detail-line-${idx + 1}-description`}>
-                                {line.description}
-                              </span>
-                            )}
-                          </div>
-                          <div
-                            data-testid={`invoice-detail-line-${idx + 1}-qty`}
-                            className="text-hh-body tabular-nums text-[var(--hh-text)] sm:text-right"
-                          >
-                            <span className="mr-2 text-hh-metadata text-[var(--hh-muted)] sm:hidden">
-                              Qty
-                            </span>
-                            {editing ? (
-                              <Input
-                                data-testid={`invoice-detail-edit-line-${idx + 1}-qty-input`}
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                value={qty}
-                                onChange={(e) =>
-                                  setEditLines((prev) =>
-                                    prev.map((current, i) =>
-                                      i === idx
-                                        ? { ...current, qty: safeNumber(e.target.value) }
-                                        : current
-                                    )
-                                  )
-                                }
-                                className={cn("text-right tabular-nums", invoiceInputClass)}
-                                aria-label={`Line item ${idx + 1} quantity`}
-                              />
-                            ) : (
-                              qty
-                            )}
-                          </div>
-                          <div
-                            data-testid={`invoice-detail-line-${idx + 1}-rate`}
-                            className="text-hh-body tabular-nums text-[var(--hh-text)] sm:text-right"
-                          >
-                            <span className="mr-2 text-hh-metadata text-[var(--hh-muted)] sm:hidden">
-                              Unit price
-                            </span>
-                            {editing ? (
-                              <Input
-                                data-testid={`invoice-detail-edit-line-${idx + 1}-rate-input`}
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                value={unitPrice}
-                                onChange={(e) =>
-                                  setEditLines((prev) =>
-                                    prev.map((current, i) =>
-                                      i === idx
-                                        ? { ...current, unitPrice: safeNumber(e.target.value) }
-                                        : current
-                                    )
-                                  )
-                                }
-                                className={cn("text-right tabular-nums", invoiceInputClass)}
-                                aria-label={`Line item ${idx + 1} unit price`}
-                              />
-                            ) : (
-                              formatOverviewMoney(unitPrice)
-                            )}
-                          </div>
-                          <div
-                            data-testid={`invoice-detail-line-${idx + 1}-amount`}
-                            className="text-hh-body font-semibold tabular-nums text-[var(--hh-ink)] sm:text-right"
-                          >
-                            <span className="mr-2 text-hh-metadata font-normal text-[var(--hh-muted)] sm:hidden">
-                              Amount
-                            </span>
-                            {formatOverviewMoney(amount)}
-                          </div>
-                        </div>
-                        {editing ? (
-                          <div className="mt-2 text-right">
-                            <Button
-                              type="button"
-                              variant="secondary"
-                              size="sm"
-                              className="h-11 min-h-11 rounded-hh-standard text-[var(--hh-danger)] xl:h-8 xl:min-h-8"
-                              aria-label="Remove line item"
-                              title="Remove line item"
-                              onClick={() =>
-                                setEditLines((prev) =>
-                                  prev.length <= 1 ? prev : prev.filter((_, i) => i !== idx)
-                                )
-                              }
-                              disabled={primaryActionBusy || editLines.length <= 1}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        ) : null}
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            </section>
-
-            <section aria-labelledby="invoice-payments-heading" className={detailCardClass}>
-              <div className="px-4 py-3.5 sm:px-5">
-                <h2 id="invoice-payments-heading" className={invoiceSectionTitleClass}>
-                  Payments
-                </h2>
-                <p className={invoiceSectionDescriptionClass}>
-                  Posted customer payments and the balance after each one.
-                </p>
-              </div>
-              {paymentLedger.length === 0 ? (
-                <p className="border-t border-[var(--hh-line-2)] px-4 py-5 text-hh-body text-[var(--hh-muted)] sm:px-5">
-                  No payments recorded.
-                </p>
-              ) : (
-                <div className="border-t border-[var(--hh-line-2)]">
-                  <div className="hidden grid-cols-[minmax(0,0.9fr)_minmax(0,0.7fr)_minmax(0,1fr)_auto_auto_2.5rem] gap-3 bg-[var(--hh-surface-sunken)] px-4 py-2 text-hh-label font-[650] uppercase text-[var(--hh-th)] sm:grid sm:px-5">
-                    <span>Date</span>
-                    <span>Method</span>
-                    <span>Reference</span>
-                    <span className="text-right">Amount</span>
-                    <span className="text-right">Balance</span>
-                    <span className="sr-only">Actions</span>
-                  </div>
-                  <ul className="divide-y divide-[var(--hh-line-2)]">
-                    {paymentLedger.map((row) => {
-                      const received = payments.find((payment) => payment.id === row.id);
-                      const linked = received?.paymentReceivedId
-                        ? receivedById.get(received.paymentReceivedId)
-                        : undefined;
-                      return (
-                        <li key={row.id} className="px-4 py-3 sm:px-5">
-                          <div className="grid gap-2 sm:grid-cols-[minmax(0,0.9fr)_minmax(0,0.7fr)_minmax(0,1fr)_auto_auto_2.5rem] sm:items-center sm:gap-3">
-                            <p className="tabular-nums text-hh-body text-[var(--hh-ink)]">
-                              {row.date ? formatDate(row.date) : "No date"}
-                            </p>
-                            <p className="min-w-0 break-words text-hh-body text-[var(--hh-text)]">
-                              {row.method}
-                              {row.voided ? (
-                                <span className="ml-2 text-hh-metadata font-medium text-[var(--hh-danger)]">
-                                  Voided
-                                </span>
-                              ) : null}
-                            </p>
-                            <p className="min-w-0 break-words text-hh-metadata text-[var(--hh-muted)]">
-                              {row.reference || "—"}
-                            </p>
-                            <p className="text-hh-body font-semibold tabular-nums text-[var(--hh-ink)] sm:text-right">
-                              {formatOverviewMoney(row.amount)}
-                            </p>
-                            <p className="text-hh-body tabular-nums text-[var(--hh-ink)] sm:text-right">
-                              <span className="mr-2 text-hh-metadata text-[var(--hh-muted)] sm:hidden">
-                                Balance
-                              </span>
-                              {formatOverviewMoney(row.runningBalance)}
-                            </p>
-                            <div className="w-16 px-2 py-2 text-right xl:w-10">
-                              <Button
-                                variant="secondary"
-                                size="sm"
-                                className="h-11 min-h-11 xl:h-8 xl:min-h-8 rounded-hh-standard text-[var(--hh-danger)]"
-                                onClick={() => requestDeletePayment(row.id)}
-                                disabled={deletingPaymentId === row.id}
-                                title="Delete payment"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </div>
-                          {linked && (linked.attachments ?? []).length > 0 ? (
-                            <Button
-                              type="button"
-                              variant="quiet"
-                              size="sm"
-                              data-testid="invoice-payment-attachment-action"
-                              disabled={openingPaymentAttachmentsId === linked.id}
-                              onClick={() =>
-                                void openPaymentAttachments(linked.id, linked.attachments)
-                              }
-                              className="mt-2 h-11 min-h-11 max-w-full rounded-full border border-[var(--hh-line)] bg-[var(--hh-surface)] px-2.5 text-hh-metadata font-medium text-[var(--hh-muted)] lg:h-7 lg:min-h-0"
-                            >
-                              <Paperclip className="h-3 w-3 shrink-0" strokeWidth={1.7} />
-                              <span className="truncate">
-                                {openingPaymentAttachmentsId === linked.id
-                                  ? "Opening..."
-                                  : `${linked.attachments.length} attachment${
-                                      linked.attachments.length === 1 ? "" : "s"
-                                    }`}
-                              </span>
-                            </Button>
-                          ) : null}
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </div>
-              )}
-              {unlinkedReceived.length > 0 ? (
-                <div className="border-t border-[var(--hh-line-2)] px-4 py-3 sm:px-5">
-                  <h3 className={invoiceLabelClass}>
-                    Received payments not on the invoice balance
-                  </h3>
-                  <ul className="mt-2 divide-y divide-[var(--hh-line-2)]">
-                    {unlinkedReceived.map((row) => (
-                      <li
-                        key={row.id}
-                        className="flex flex-wrap items-start justify-between gap-3 py-2"
-                      >
-                        <span className="min-w-0">
-                          <span className="block tabular-nums text-hh-body text-[var(--hh-ink)]">
-                            {formatDate(row.payment_date)}
-                          </span>
-                          <span className="block break-words text-hh-metadata text-[var(--hh-muted)]">
-                            {row.payment_method?.trim() || "—"}
-                            {row.notes?.trim() ? ` · ${row.notes.trim()}` : ""}
-                            {isVoidCashStatus(row.status) ? " · Voided" : ""}
-                          </span>
-                        </span>
-                        <span className="shrink-0 tabular-nums text-hh-body font-semibold text-[var(--hh-ink)]">
-                          {formatOverviewMoney(row.amount)}
-                        </span>
-                        {(row.attachments ?? []).length > 0 ? (
-                          <Button
-                            type="button"
-                            variant="quiet"
-                            size="sm"
-                            data-testid="invoice-payment-attachment-action"
-                            disabled={openingPaymentAttachmentsId === row.id}
-                            onClick={() => void openPaymentAttachments(row.id, row.attachments)}
-                            className="h-11 min-h-11 max-w-full rounded-full border border-[var(--hh-line)] bg-[var(--hh-surface)] px-2.5 text-hh-metadata font-medium text-[var(--hh-muted)] lg:h-7 lg:min-h-0"
-                          >
-                            <Paperclip className="h-3 w-3 shrink-0" strokeWidth={1.7} />
-                            <span className="truncate">
-                              {openingPaymentAttachmentsId === row.id
-                                ? "Opening..."
-                                : `${row.attachments.length} attachment${
-                                    row.attachments.length === 1 ? "" : "s"
-                                  }`}
-                            </span>
-                          </Button>
-                        ) : null}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
-              <div className="border-t border-[var(--hh-line-2)] px-4 py-3 sm:px-5">
-                <h3 className={invoiceLabelClass}>Deposits</h3>
-                {deposits.length === 0 ? (
-                  <p className="mt-2 text-hh-metadata text-[var(--hh-muted)]">
-                    No deposits linked.
-                  </p>
-                ) : (
-                  <ul className="mt-2 divide-y divide-[var(--hh-line-2)]">
-                    {deposits.map((deposit) => (
-                      <li key={deposit.id} className="flex items-center justify-between gap-3 py-2">
-                        <span className="min-w-0">
-                          <span className="block tabular-nums text-hh-body text-[var(--hh-ink)]">
-                            {formatDate((deposit as { date?: string }).date)}
-                          </span>
-                          <span className="block truncate text-hh-metadata text-[var(--hh-muted)]">
-                            {(deposit as { account?: string | null }).account ?? "No account"}
-                          </span>
-                        </span>
-                        <span className="shrink-0 tabular-nums text-hh-body font-semibold text-[var(--hh-ink)]">
-                          {formatOverviewMoney(deposit.amount)}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            </section>
+            <Button asChild variant="secondary" size="sm" className={toolbarButtonClass}>
+              <Link href={previewHref} prefetch={false} data-testid="invoice-detail-preview-link">
+                <Eye className="h-4 w-4" />
+                Preview PDF
+              </Link>
+            </Button>
+            <Button asChild variant="secondary" size="sm" className={toolbarButtonClass}>
+              <Link href={printHref} prefetch={false}>
+                <FileText className="h-4 w-4" />
+                Print
+              </Link>
+            </Button>
+            {canPay ? (
+              <Button asChild size="sm" className={primaryToolbarButtonClass}>
+                <Link href={recordPaymentHref}>
+                  <CircleDollarSign className="h-4 w-4" />
+                  Record payment
+                </Link>
+              </Button>
+            ) : isDraft ? (
+              <Button
+                size="sm"
+                className={primaryToolbarButtonClass}
+                onClick={startEditing}
+                disabled={primaryActionBusy}
+              >
+                <Pencil className="h-4 w-4" />
+                Edit Draft
+              </Button>
+            ) : null}
           </>
         }
-        notes={
-          <section className={cn(detailCardClass, "p-4 sm:p-5")} aria-label="Notes to customer">
-            <h2 className={invoiceSectionTitleClass}>Notes to customer</h2>
-            <p className="mt-2 whitespace-pre-wrap text-hh-body text-[var(--hh-text)]">
-              {invoice.notes?.trim() ? invoice.notes : "No notes on this invoice."}
-            </p>
-          </section>
+        mobilePrimary={
+          canPay ? (
+            <Button asChild size="sm" className="h-12 min-h-12 w-full">
+              <Link href={recordPaymentHref}>
+                <Plus className="h-4 w-4" />
+                Record payment
+              </Link>
+            </Button>
+          ) : isDraft ? (
+            <Button
+              size="sm"
+              className="h-12 min-h-12 w-full"
+              onClick={startEditing}
+              disabled={primaryActionBusy}
+            >
+              <Pencil className="h-4 w-4" />
+              Edit Draft
+            </Button>
+          ) : (
+            <span className="sr-only">No payment due</span>
+          )
         }
-        summary={
-          <section className={cn(detailCardClass, "p-4 sm:p-5")} aria-label="Invoice summary">
-            <h2 className={invoiceSectionTitleClass}>Summary</h2>
-            <p className={invoiceSectionDescriptionClass}>
-              Tax is calculated on the subtotal. Amounts are in dollars.
-            </p>
-            <div className="mt-4 space-y-2.5 text-hh-body">
-              <div className="flex items-baseline justify-between gap-3">
-                <span>Subtotal</span>
-                <span
-                  data-testid="invoice-detail-subtotal"
-                  className="tabular-nums text-[var(--hh-ink-2)]"
-                >
-                  {formatOverviewMoney(displayedSubtotal)}
-                </span>
-              </div>
-              {displayedTax > 0 ? (
-                <div className="flex items-baseline justify-between gap-3">
-                  <span>
-                    Tax{" "}
-                    {editing
-                      ? `(${editTaxPct || 0}%)`
-                      : invoice.taxPct != null
-                        ? `(${invoice.taxPct}%)`
-                        : ""}
-                  </span>
-                  <span
-                    data-testid="invoice-detail-tax"
-                    className="tabular-nums text-[var(--hh-ink-2)]"
-                  >
-                    {formatOverviewMoney(displayedTax)}
-                  </span>
-                </div>
-              ) : null}
-              <div className="flex items-end justify-between gap-3 border-t border-[var(--hh-line)] pt-3">
-                <span className="text-hh-label font-[650] uppercase text-[var(--hh-muted)]">
-                  Total due
-                </span>
-                <span
-                  data-testid="invoice-detail-total"
-                  className="text-num-xl tabular-nums text-[var(--hh-ink)]"
-                >
-                  {formatOverviewMoney(displayedTotal)}
-                </span>
-              </div>
-              <div className="flex items-baseline justify-between gap-3">
-                <span>Paid</span>
-                <span className="tabular-nums font-medium text-[var(--hh-success)]">
-                  {formatOverviewMoney(invoice.paidTotal)}
-                </span>
-              </div>
-              <div className="flex items-end justify-between gap-3">
-                <span className="text-hh-label font-[650] uppercase text-[var(--hh-muted)]">
-                  Balance due
-                </span>
-                <span
-                  data-testid="invoice-detail-balance"
-                  className="text-num-l tabular-nums text-[var(--hh-ink)]"
-                >
-                  {formatOverviewMoney(displayedBalance)}
-                </span>
-              </div>
-            </div>
-
-            <div className="mt-4 rounded-hh-standard bg-[var(--hh-surface-sunken)] p-3">
-              <p className="text-hh-label font-[650] uppercase text-[var(--hh-muted)]">
-                Contract billing
-              </p>
-              {contractBilling.status === "loading" ? (
-                <p className="mt-2 text-hh-metadata text-[var(--hh-muted)]">
-                  Loading contract billing…
-                </p>
-              ) : null}
-              {contractBilling.status === "idle" ? (
-                <p className="mt-2 text-hh-metadata text-[var(--hh-muted)]">
-                  This invoice is not linked to a project.
-                </p>
-              ) : null}
-              {contractBilling.status === "unavailable" ? (
-                <p className="mt-2 text-hh-metadata font-medium text-[var(--hh-danger)]">
-                  Contract billing is unavailable.
-                </p>
-              ) : null}
-              {contract ? (
-                <div className="mt-3 space-y-2 text-hh-body">
-                  <div className="flex items-baseline justify-between gap-3">
-                    <span>Previously billed</span>
-                    <span className="tabular-nums text-[var(--hh-ink-2)]">
-                      {formatOverviewMoney(contract.previouslyInvoicedExcludingTax)}
-                    </span>
-                  </div>
-                  <div className="flex items-baseline justify-between gap-3">
-                    <span>This invoice</span>
-                    <span className="tabular-nums text-[var(--hh-ink-2)]">
-                      {formatOverviewMoney(contract.thisInvoiceExcludingTax)}
-                    </span>
-                  </div>
-                  <div className="flex items-baseline justify-between gap-3">
-                    <span className="font-medium text-[var(--hh-ink)]">
-                      Billed to date
-                      {contract.billedToDatePercent != null
-                        ? ` · ${contract.billedToDatePercent}%`
-                        : ""}
-                    </span>
-                    <span className="tabular-nums font-medium text-[var(--hh-ink)]">
-                      {formatOverviewMoney(contract.billedToDateExcludingTax)}
-                    </span>
-                  </div>
-                  {contract.billedToDatePercent != null ? (
-                    <div
-                      className="h-1.5 overflow-hidden rounded-full bg-[var(--hh-track)]"
-                      role="meter"
-                      aria-valuemin={0}
-                      aria-valuemax={100}
-                      aria-valuenow={Math.min(100, Math.max(0, contract.billedToDatePercent))}
-                      aria-label={`Billed to date ${contract.billedToDatePercent} percent of the revised contract, excluding tax`}
-                    >
-                      <div
-                        className="h-full rounded-full bg-[var(--hh-navy)]"
-                        style={{
-                          width: `${Math.min(100, Math.max(0, contract.billedToDatePercent))}%`,
-                        }}
-                      />
-                    </div>
-                  ) : null}
-                  <div className="flex items-baseline justify-between gap-3 border-t border-[var(--hh-line)] pt-2">
-                    <span className="font-medium text-[var(--hh-ink)]">Remaining contract</span>
-                    <span
-                      data-testid="invoice-remaining-contract"
-                      className={cn(
-                        "text-num-m tabular-nums",
-                        contract.remainingContract < 0
-                          ? "text-[var(--hh-danger)]"
-                          : "text-[var(--hh-ink)]"
-                      )}
-                    >
-                      {formatOverviewMoney(contract.remainingContract)}
-                    </span>
-                  </div>
-                  <p className="text-hh-metadata leading-5 text-[var(--hh-muted)]">
-                    Revised contract {formatOverviewMoney(contract.revisedContract)} · incl.{" "}
-                    {formatOverviewMoney(
-                      contractBilling.status === "ready" ? contractBilling.approvedChangeOrders : 0,
-                      { sign: "always" }
-                    )}{" "}
-                    approved change orders. Excludes tax.
-                  </p>
-                </div>
-              ) : null}
-            </div>
-          </section>
+        previewHref={previewHref}
+        totalLabel={formatOverviewMoney(displayedTotal)}
+        totalDetail={
+          displayedTax > 0
+            ? `Subtotal ${formatOverviewMoney(displayedSubtotal)} + Tax ${formatOverviewMoney(displayedTax)}`
+            : null
         }
-        history={<InvoiceBillingHistory billing={contractBilling} currentInvoiceId={invoice.id} />}
+        paidLabel={formatOverviewMoney(invoice.paidTotal)}
+        paidDetail={
+          postedPayments.length === 0
+            ? "No payments yet"
+            : `${postedPayments.length} payment${postedPayments.length === 1 ? "" : "s"}${
+                lastPosted?.date ? ` · last ${formatDate(lastPosted.date, "compact")}` : ""
+              }`
+        }
+        balanceLabel={formatOverviewMoney(displayedBalance)}
+        outstandingLabel={totalCents > 0 ? `${outstandingPercent}% of invoice outstanding` : null}
+        dueValue={formatDate(invoice.dueDate)}
+        dueHint={dueHint}
+        dueHintWarn={Boolean(dueHint)}
+        paidPercent={paidPercent}
+        paidProgressLabel={`Paid ${paidPercent}% · ${formatOverviewMoney(invoice.paidTotal)} of ${formatOverviewMoney(displayedTotal)}`}
+        lineCountLabel={`${invoice.lineItems.length} line${invoice.lineItems.length === 1 ? "" : "s"} · read-only`}
+        editInvoice={
+          isDraft ? (
+            <Button
+              type="button"
+              variant="quiet"
+              size="sm"
+              className="min-h-[44px] text-[var(--hh-link)] xl:min-h-9"
+              onClick={startEditing}
+            >
+              <Pencil className="h-4 w-4" />
+              Edit invoice
+            </Button>
+          ) : canBackToEdit ? (
+            <Button
+              type="button"
+              variant="quiet"
+              size="sm"
+              className="min-h-[44px] text-[var(--hh-link)] xl:min-h-9"
+              onClick={() => void handleBackToEdit()}
+              disabled={primaryActionBusy}
+            >
+              <Pencil className="h-4 w-4" />
+              Edit invoice
+            </Button>
+          ) : null
+        }
+        lines={(editing ? editLines : invoice.lineItems).map((line, index) => {
+          const qty = safeNumber(line.qty);
+          const unitPrice = safeNumber(line.unitPrice);
+          return {
+            key: `${index}-${line.description}`,
+            description: line.description,
+            qtyLabel: String(qty),
+            rateLabel: formatOverviewMoney(unitPrice),
+            amountLabel: formatOverviewMoney(lineExtension(qty, unitPrice)),
+          };
+        })}
+        lineFooter={
+          <div className="text-hh-body">
+            <div className="flex items-baseline justify-between gap-3 py-1.5">
+              <span>Subtotal</span>
+              <span
+                data-testid="invoice-detail-subtotal"
+                className="tabular-nums font-semibold text-[var(--hh-ink)]"
+              >
+                {formatOverviewMoney(displayedSubtotal)}
+              </span>
+            </div>
+            {displayedTax > 0 ? (
+              <div className="flex items-baseline justify-between gap-3 py-1.5">
+                <span>Tax {taxPctLabel}%</span>
+                <span
+                  data-testid="invoice-detail-tax"
+                  className="tabular-nums font-semibold text-[var(--hh-ink)]"
+                >
+                  {formatOverviewMoney(displayedTax)}
+                </span>
+              </div>
+            ) : null}
+            <div className="flex items-baseline justify-between gap-3 border-t border-[var(--hh-ink)] py-2">
+              <span className="font-semibold text-[var(--hh-ink)]">Invoice total</span>
+              <span className="text-num-m tabular-nums text-[var(--hh-ink)]">
+                {formatOverviewMoney(displayedTotal)}
+              </span>
+            </div>
+          </div>
+        }
+        paymentSummary={
+          postedPayments.length === 0
+            ? "No payments recorded"
+            : `${postedPayments.length} payment${postedPayments.length === 1 ? "" : "s"} · ${formatOverviewMoney(centsToMoney(postedCents))} received`
+        }
+        recordPayment={
+          canPay ? (
+            <Button
+              asChild
+              variant="quiet"
+              size="sm"
+              className="min-h-[44px] text-[var(--hh-link)] xl:min-h-9"
+            >
+              <Link href={recordPaymentHref}>
+                <Plus className="h-4 w-4" />
+                Record payment
+              </Link>
+            </Button>
+          ) : null
+        }
+        paymentRows={paymentRows}
+        paymentFooterAmount={
+          postedCents > 0
+            ? `−${formatOverviewMoney(centsToMoney(postedCents))}`
+            : formatOverviewMoney(0)
+        }
+        paymentFooterBalance={formatOverviewMoney(displayedBalance)}
+        renderPaymentMenu={renderPaymentMenu}
+        deposits={deposits.map((deposit) => ({
+          id: deposit.id,
+          dateLabel: formatDate(deposit.date),
+          account: deposit.account?.trim() || "No account",
+          amountLabel: formatOverviewMoney(deposit.amount),
+        }))}
+        notes={invoice.notes ?? ""}
+        editNotes={
+          isDraft ? (
+            <Button
+              type="button"
+              variant="quiet"
+              size="sm"
+              className="min-h-[44px] text-[var(--hh-link)] xl:min-h-9"
+              onClick={startEditing}
+            >
+              <Pencil className="h-4 w-4" />
+              Edit
+            </Button>
+          ) : null
+        }
+        contract={
+          contract
+            ? {
+                status: "ready",
+                percentLabel:
+                  contract.billedToDatePercent != null ? `${contract.billedToDatePercent}%` : null,
+                priorWidth,
+                thisWidth,
+                originalLabel: formatOverviewMoney(
+                  contractBilling.status === "ready" ? contractBilling.originalContract : 0
+                ),
+                approvedLabel: formatOverviewMoney(
+                  contractBilling.status === "ready" ? contractBilling.approvedChangeOrders : 0,
+                  { sign: "always" }
+                ),
+                approvedCount:
+                  contractBilling.status === "ready" ? contractBilling.approvedChangeOrderCount : 0,
+                revisedLabel: formatOverviewMoney(contract.revisedContract),
+                billedLabel: formatOverviewMoney(contract.billedToDateExcludingTax),
+                billedCount,
+                thisInvoiceLabel: formatOverviewMoney(contract.thisInvoiceExcludingTax),
+                remainingLabel: formatOverviewMoney(contract.remainingContract),
+                remainingNegative: contract.remainingContract < 0,
+              }
+            : {
+                status:
+                  contractBilling.status === "loading" || contractBilling.status === "idle"
+                    ? contractBilling.status
+                    : "unavailable",
+              }
+        }
+        billTo={{
+          customerName: invoice.clientName || "Customer",
+          customerHref: invoice.customerId ? `/customers/${invoice.customerId}` : null,
+          projectName,
+          projectHref: invoice.projectId ? `/projects/${invoice.projectId}` : null,
+          projectDetail: project?.projectManager ? `PM ${project.projectManager}` : null,
+          address: project?.address?.trim() || null,
+          viewHref: invoice.customerId
+            ? `/customers/${invoice.customerId}`
+            : invoice.projectId
+              ? `/projects/${invoice.projectId}`
+              : null,
+        }}
+        activityTitle={`Billing history for ${invoice.invoiceNo}`}
+        nextActivity={
+          showDueHint
+            ? invoice.daysOverdue > 0
+              ? `Overdue: ${formatOverviewMoney(displayedBalance)} · ${invoice.daysOverdue} day${invoice.daysOverdue === 1 ? "" : "s"}`
+              : `Next: ${formatOverviewMoney(displayedBalance)} due ${formatDate(invoice.dueDate)}`
+            : null
+        }
+        activity={activity}
       />
 
       <ConfirmDialog
@@ -1613,6 +1452,42 @@ export default function InvoiceDetailClient({
         onRefresh={() => void runDeleteDependencyCheck()}
         onUnlinkScheduleItem={handleUnlinkScheduleItem}
         unlinkingId={unlinkingScheduleItemId}
+      />
+
+      {editPaymentId ? (
+        <React.Suspense fallback={null}>
+          <EditPaymentReceivedModal
+            open
+            paymentId={editPaymentId}
+            onOpenChange={(open) => {
+              if (!open) setEditPaymentId(null);
+            }}
+            onSuccess={() => {
+              setEditPaymentId(null);
+              void refresh();
+            }}
+          />
+        </React.Suspense>
+      ) : null}
+      <PaymentReceiptPreviewModal
+        open={Boolean(receiptPaymentId)}
+        paymentId={receiptPaymentId}
+        onOpenChange={(open) => {
+          if (!open) setReceiptPaymentId(null);
+        }}
+      />
+      <ConfirmDialog
+        open={Boolean(voidPaymentId)}
+        onOpenChange={(open) => {
+          if (!open) setVoidPaymentId(null);
+        }}
+        title="Void payment?"
+        description="Void this payment? The invoice balance will be restored and the cash record will stay in the audit trail."
+        confirmLabel="Void payment"
+        destructive
+        loading={voidingPayment}
+        dismissBeforeAsync={false}
+        onConfirm={handleVoidLinkedPayment}
       />
     </div>
   );

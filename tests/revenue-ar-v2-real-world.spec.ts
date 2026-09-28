@@ -313,7 +313,7 @@ test("Revenue & AR V2 dense local workflow preserves literal ledger values acros
             "Invoice payment attachment"
           );
           await assertVisibleTouchTarget(
-            page.getByRole("link", { name: "Receive Payment" }).first(),
+            page.getByRole("link", { name: "Record payment" }).first(),
             "Invoice receive payment"
           );
         } else if (route === "/financial/payments") {
@@ -369,7 +369,7 @@ test("Revenue & AR V2 dense local workflow preserves literal ledger values acros
 
   await gotoWithE2EAuth(page, `/financial/invoices/${state.partialId}`);
   await expect(page.getByTestId("invoice-detail-balance")).toContainText("$864,197.54");
-  await page.getByRole("link", { name: "Receive Payment" }).click();
+  await page.getByRole("link", { name: "Record payment" }).first().click();
   const dialog = page.getByRole("dialog", { name: "Receive Payment" });
   await expect(dialog).toBeVisible();
   await dialog.getByPlaceholder("0").fill(String(SECOND_PAYMENT));
