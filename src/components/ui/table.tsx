@@ -6,7 +6,7 @@ import { OS, TYPO } from "@/lib/typography";
 
 const tableShellClass = cn(
   OS.tableShell,
-  "rounded-hh-panel bg-[var(--hh-l1-workspace)] shadow-none"
+  "hh-table rounded-hh-panel bg-[var(--hh-l1-workspace)] shadow-none"
 );
 
 /** Legacy raw table cell borders — light row dividers only (prefer `Table` primitives). */

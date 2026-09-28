@@ -1,5 +1,6 @@
 @import "../styles/design-tokens.generated.css";
 @import "../styles/hh-design-system-v2.css";
+@import "../styles/tokens.css";
 
 @tailwind base;
 @tailwind components;

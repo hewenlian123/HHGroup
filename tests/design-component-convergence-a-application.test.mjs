@@ -41,7 +41,7 @@ function compileBatchAStyles() {
   }
 }
 
-test("Batch A focus and touch contracts compute in Certified V2 light across responsive widths", async (t) => {
+test("Batch A focus and touch contracts compute in navy-brass light across responsive widths", async (t) => {
   const css = compileBatchAStyles();
   const browser = await chromium.launch({ headless: true });
   t.after(() => browser.close());
@@ -70,11 +70,17 @@ test("Batch A focus and touch contracts compute in Certified V2 light across res
       const computed = getComputedStyle(element);
       const reference = document.createElement("span");
       reference.style.color = "var(--hh-focus-ring)";
+      reference.style.boxShadow = "var(--hh-ring-focus)";
       document.body.append(reference);
-      const focusRing = getComputedStyle(reference).color;
+      const referenceStyles = getComputedStyle(reference);
+      const focusRing = referenceStyles.color;
+      const focusShadow = referenceStyles.boxShadow;
       reference.remove();
       return {
+        boxShadow: computed.boxShadow,
         focusRing,
+        focusShadow,
+        focused: document.activeElement === element,
         height: element.getBoundingClientRect().height,
         outlineColor: computed.outlineColor,
         outlineOffset: computed.outlineOffset,
@@ -83,11 +89,18 @@ test("Batch A focus and touch contracts compute in Certified V2 light across res
       };
     });
 
+    assert.equal(styles.focused, true, `${viewport.name} keyboard focus`);
     assert.ok(styles.height >= 44, `${viewport.name} touch target`);
+    assert.equal(styles.focusRing, "rgb(31, 63, 102)", `${viewport.name} navy focus token`);
     assert.equal(styles.outlineWidth, "2px", `${viewport.name} focus width`);
     assert.equal(styles.outlineOffset, "2px", `${viewport.name} focus offset`);
     assert.equal(styles.outlineStyle, "solid", `${viewport.name} focus style`);
-    assert.equal(styles.outlineColor, styles.focusRing, `${viewport.name} focus token`);
-    assert.equal(styles.outlineColor, "rgb(37, 99, 235)", `${viewport.name} certified blue`);
+    assert.equal(
+      styles.outlineColor,
+      "rgba(0, 0, 0, 0)",
+      `${viewport.name} outline yields to the ring`
+    );
+    assert.notEqual(styles.boxShadow, "none", `${viewport.name} visible focus ring`);
+    assert.equal(styles.boxShadow, styles.focusShadow, `${viewport.name} navy focus ring`);
   }
 });

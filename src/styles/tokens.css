@@ -1,0 +1,742 @@
+/**
+ * Navy + brass v3 tokens.
+ * This is the only file allowed to contain hex, rgb(), or hsl() color literals.
+ * Canonical selector: :root[data-hh-theme="navy-brass"].
+ * Operational light and dark both resolve here so the approved shell is what the app paints.
+ * The route theme boundary repeats data-hh-theme and redeclares the v2 aliases, so the
+ * alias block also matches that element (data-hh-context plus the doubled theme) and wins.
+ */
+
+:root,
+:root[data-hh-theme="navy-brass"] {
+  --hh-ink: #0b1526;
+  --hh-ink-2: #1e2a3d;
+  --hh-text: #334155;
+  --hh-muted: #5b6678;
+  --hh-faint: #8a93a3;
+  --hh-placeholder: #9aa3b1;
+  --hh-icon: #7a8494;
+  --hh-th: #3f4a5c;
+  --hh-line: #dce1e8;
+  --hh-line-2: #e9edf2;
+  --hh-line-input: #d3d9e1;
+  --hh-line-cell: #e1e6ec;
+  --hh-page: #f6f7f9;
+  --hh-surface: #ffffff;
+  --hh-surface-sunken: #f7f8fa;
+  --hh-surface-footer: #fafbfc;
+  --hh-hover: #f8f9fb;
+  --hh-track: #e6eaf0;
+  --hh-track-soft: #edf0f4;
+  --hh-track-ring: #dfe4ea;
+  --hh-chip: #eef1f5;
+  --hh-chip-strong: #e9edf2;
+
+  --hh-navy: #13233a;
+  --hh-navy-deep: #0c1726;
+  --hh-navy-edge: #0a1320;
+  --hh-navy-raised-hi: #172a45;
+  --hh-navy-raised-lo: #0e1b2e;
+  --hh-navy-glow: #22395a;
+  --hh-navy-mid: #3e5578;
+  --hh-navy-mid-2: #5b7196;
+  --hh-link: #1f3f66;
+  --hh-link-underline: #b9c4d3;
+  --hh-series-2: #8fa3bf;
+  --hh-series-2-soft: #afbcce;
+
+  --hh-sidebar-text-strong: #f4f6fa;
+  --hh-sidebar-text-item: #c3ccd8;
+  --hh-sidebar-text-pin: #aeb9c8;
+  --hh-sidebar-text-meta: #8391a5;
+  --hh-sidebar-text-icon: #7f8da2;
+  --hh-sidebar-text-label: #728196;
+  --hh-sidebar-line: rgba(255, 255, 255, 0.07);
+  --hh-sidebar-raised: rgba(255, 255, 255, 0.05);
+  --hh-sidebar-hover: rgba(255, 255, 255, 0.08);
+  --hh-sidebar-search: rgba(255, 255, 255, 0.05);
+  --hh-sidebar-search-line: rgba(255, 255, 255, 0.09);
+
+  --hh-brass-hi: #c49a4a;
+  --hh-brass: #b8893a;
+  --hh-brass-lo: #a87a2e;
+  --hh-brass-edge: #8e6624;
+  --hh-brass-light: #e2c48a;
+  --hh-brass-light-2: #e3c37f;
+  --hh-brass-light-3: #d9b878;
+  --hh-brass-hover-hi: #bb9143;
+  --hh-brass-hover-lo: #9e722a;
+  --hh-on-brass: #ffffff;
+  --hh-brass-text-shadow: rgba(90, 60, 15, 0.35);
+
+  --hh-success-bg: #ecfdf3;
+  --hh-success-fg: #067647;
+  --hh-success-solid: #12a15e;
+  --hh-success-ring: rgba(6, 118, 71, 0.2);
+  --hh-warning-bg: #fff4e5;
+  --hh-warning-fg: #b54708;
+  --hh-warning-solid: #d97706;
+  --hh-warning-ring: rgba(217, 119, 6, 0.28);
+  --hh-danger-bg: #fef1f0;
+  --hh-danger-fg: #b42318;
+  --hh-danger-solid: #dc2626;
+  --hh-danger-bar: #d0453a;
+  --hh-danger-bar-hi: #e0584c;
+  --hh-danger-ring: rgba(180, 35, 24, 0.2);
+  --hh-danger-input: #e0584c;
+  --hh-danger-input-bg: #fffbfa;
+  --hh-info-bg: #eef4ff;
+  --hh-info-fg: #1d4ed8;
+  --hh-info-solid: #2563eb;
+  --hh-info-ring: rgba(29, 78, 216, 0.18);
+  --hh-neutral-bg: #eef1f5;
+  --hh-neutral-fg: #3f4a5c;
+  --hh-neutral-solid: #8a93a3;
+  --hh-neutral-ring: #dce1e8;
+  --hh-on-dark-success-fg: #6ee7b7;
+  --hh-on-dark-success-bg: rgba(16, 185, 129, 0.14);
+  --hh-on-dark-danger-fg: #fca5a5;
+  --hh-on-dark-danger-bg: rgba(248, 113, 113, 0.13);
+
+  --hh-shadow-card: 0 1px 2px rgba(15, 27, 45, 0.06), 0 4px 12px rgba(15, 27, 45, 0.04);
+  --hh-shadow-hero:
+    0 1px 2px rgba(15, 27, 45, 0.2), 0 8px 24px rgba(15, 27, 45, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  --hh-shadow-btn-secondary:
+    0 1px 2px rgba(15, 27, 45, 0.06), inset 0 -1px 0 rgba(15, 27, 45, 0.03);
+  --hh-shadow-btn-primary:
+    inset 0 1px 0 rgba(255, 240, 210, 0.45), 0 1px 2px rgba(15, 27, 45, 0.12),
+    0 2px 6px rgba(140, 100, 35, 0.18);
+  --hh-shadow-seg-on: 0 1px 2px rgba(15, 27, 45, 0.1), 0 0 0 1px rgba(15, 27, 45, 0.05);
+  --hh-shadow-nav-shell:
+    inset -1px 0 0 rgba(255, 255, 255, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  --hh-shadow-nav-active: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  --hh-shadow-indicator: 0 0 8px rgba(196, 154, 74, 0.45);
+  --hh-shadow-sheet: -12px 0 32px rgba(15, 27, 45, 0.12);
+  --hh-ring-focus: 0 0 0 3px rgba(31, 63, 102, 0.22);
+  --hh-ring-error: 0 0 0 3px rgba(224, 88, 76, 0.14);
+  --hh-scrim: rgba(11, 21, 38, 0.32);
+  --hh-input-inset: inset 0 1px 1px rgba(15, 27, 45, 0.03);
+
+  --hh-grad-sidebar: linear-gradient(180deg, #13233a, #0c1726);
+  --hh-grad-hero:
+    radial-gradient(120% 140% at 100% 0%, #22395a 0%, rgba(34, 57, 90, 0) 55%),
+    linear-gradient(180deg, #172a45, #0e1b2e);
+  --hh-grad-mobile-header:
+    radial-gradient(120% 90% at 100% 0%, #22395a 0%, transparent 60%),
+    linear-gradient(180deg, #13233a, #0c1726);
+  --hh-grad-brass: linear-gradient(180deg, #c49a4a, #a87a2e);
+  --hh-grad-brass-hover: linear-gradient(180deg, #bb9143, #9e722a);
+  --hh-grad-nav-active: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.1),
+    rgba(255, 255, 255, 0.045)
+  );
+  --hh-grad-bar-navy: linear-gradient(180deg, #22395a, #13233a);
+  --hh-grad-hero-bar: linear-gradient(90deg, #9fb3ce, #e8eef6);
+  --hh-grad-btn-secondary: linear-gradient(180deg, #ffffff, #fbfcfd);
+  --hh-grad-avatar: linear-gradient(180deg, #e3c37f, #a87a2e);
+
+  --hh-radius-xs: 4px;
+  --hh-radius-sm: 6px;
+  --hh-radius-md: 8px;
+  --hh-radius-lg: 10px;
+  --hh-radius-xl: 12px;
+  --hh-radius-2xl: 14px;
+  --hh-radius-full: 999px;
+
+  --hh-font-wordmark: var(--font-cormorant, "Iowan Old Style"), Palatino, Georgia, serif;
+  --hh-duration-hover: 120ms;
+  --hh-duration-sheet: 180ms;
+  --hh-duration-shimmer: 1.2s;
+}
+
+html[data-hh-theme="operational-dark"][data-hh-theme="operational-dark"],
+html[data-hh-theme="operational-light"][data-hh-theme="operational-light"],
+[data-hh-context][data-hh-theme="operational-dark"][data-hh-theme="operational-dark"],
+[data-hh-context][data-hh-theme="operational-light"][data-hh-theme="operational-light"] {
+  color-scheme: light;
+  font-family: var(--font-inter, Inter), ui-sans-serif, system-ui, sans-serif;
+  --hh-font-family-sans: var(--font-inter, Inter), ui-sans-serif, system-ui, sans-serif;
+  --hh-sidebar-inset: 0px;
+  --hh-sidebar-width-expanded: 240px;
+  --hh-sidebar-width-collapsed: 72px;
+  --hh-topbar-height-desktop: 56px;
+  --hh-topbar-height-mobile: 56px;
+  --hh-surface-canvas: var(--hh-page);
+  --hh-surface-workspace: var(--hh-surface);
+  --hh-surface-section: var(--hh-surface-sunken);
+  --hh-surface-subtle: var(--hh-hover);
+  --hh-surface-hover: var(--hh-hover);
+  --hh-surface-selected: var(--hh-chip);
+  --hh-l0-canvas: var(--hh-page);
+  --hh-l1-workspace: var(--hh-surface);
+  --hh-l2-operational-surface: var(--hh-surface);
+  --hh-l3-hover: var(--hh-hover);
+  --hh-l3-selected: var(--hh-chip);
+  --hh-l3-pressed: var(--hh-line-2);
+  --hh-l4-floating-surface: var(--hh-surface);
+  --hh-l5-task-surface: var(--hh-surface);
+  --hh-shadow-operational: var(--hh-shadow-card);
+  --hh-shadow-floating: var(--hh-shadow-card);
+  --hh-shadow-task: var(--hh-shadow-sheet);
+  --hh-shadow-overlay: var(--hh-shadow-sheet);
+  --hh-shadow-sidebar: var(--hh-shadow-nav-shell);
+  --hh-text-strong: var(--hh-ink);
+  --hh-text-primary: var(--hh-ink);
+  --hh-text-secondary: var(--hh-muted);
+  --hh-text-tertiary: var(--hh-faint);
+  --hh-text-dim: var(--hh-faint);
+  --hh-text-muted: var(--hh-faint);
+  --hh-border-subtle: var(--hh-line-2);
+  --hh-border: var(--hh-line);
+  --hh-border-default: var(--hh-line);
+  --hh-border-input: var(--hh-line-input);
+  --hh-border-emphasis: var(--hh-line-input);
+  --hh-border-floating: var(--hh-line);
+  --hh-border-strong: var(--hh-line-input);
+  --hh-gold: var(--hh-brass);
+  --hh-gold-hover: var(--hh-brass-hover-lo);
+  --hh-gold-muted: var(--hh-chip);
+  --hh-gold-border: var(--hh-brass-edge);
+  --hh-input: var(--hh-line-input);
+  --hh-input-background: var(--hh-surface);
+  --hh-action-primary: var(--hh-brass);
+  --hh-action-primary-hover: var(--hh-brass-lo);
+  --hh-action-primary-foreground: var(--hh-on-brass);
+  --hh-accent-primary: var(--hh-ink);
+  --hh-accent-hover: var(--hh-ink-2);
+  --hh-accent-soft: var(--hh-chip);
+  --hh-focus-ring: var(--hh-link);
+  --hh-ring: var(--hh-link);
+  --hh-overlay-scrim: var(--hh-scrim);
+  --hh-success: var(--hh-success-fg);
+  --hh-warning: var(--hh-warning-fg);
+  --hh-information: var(--hh-info-fg);
+  --hh-danger: var(--hh-danger-fg);
+  --hh-success-soft-fill: var(--hh-success-bg);
+  --hh-success-border: var(--hh-success-ring);
+  --hh-warning-soft-fill: var(--hh-warning-bg);
+  --hh-warning-border: var(--hh-warning-ring);
+  --hh-information-soft-fill: var(--hh-info-bg);
+  --hh-information-border: var(--hh-info-ring);
+  --hh-danger-soft-fill: var(--hh-danger-bg);
+  --hh-danger-border: var(--hh-danger-ring);
+  --background: 220 14% 97%;
+  --foreground: 218 56% 10%;
+  --card: 0 0% 100%;
+  --card-foreground: 218 56% 10%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 218 56% 10%;
+  --primary: 215 51% 15%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 220 20% 97%;
+  --secondary-foreground: 218 56% 10%;
+  --muted: 220 14% 96%;
+  --muted-foreground: 218 14% 41%;
+  --accent: 216 22% 94%;
+  --accent-foreground: 218 56% 10%;
+  --destructive: 4 76% 40%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 214 22% 89%;
+  --input: 216 18% 85%;
+  --ring: 213 53% 26%;
+  font-feature-settings: "cv11", "ss01";
+  -webkit-font-smoothing: antialiased;
+}
+
+.hh-btn-primary {
+  border-color: var(--hh-brass-edge);
+  background-color: var(--hh-brass);
+  background-image: var(--hh-grad-brass);
+  color: var(--hh-on-brass);
+  box-shadow: var(--hh-shadow-btn-primary);
+  text-shadow: 0 1px 0 var(--hh-brass-text-shadow);
+}
+
+.hh-btn-primary:hover {
+  background-image: var(--hh-grad-brass-hover);
+  opacity: 1;
+}
+
+.hh-btn-primary:active {
+  transform: translateY(0.5px);
+  box-shadow: none;
+}
+
+.hh-btn-primary:disabled {
+  opacity: 0.45;
+  box-shadow: none;
+}
+
+.hh-btn-secondary {
+  border-color: var(--hh-line-input);
+  background-color: var(--hh-surface);
+  background-image: var(--hh-grad-btn-secondary);
+  color: var(--hh-ink);
+  box-shadow: var(--hh-shadow-btn-secondary);
+}
+
+.hh-btn-secondary:hover {
+  background-image: none;
+  background-color: var(--hh-hover);
+}
+
+.hh-btn-secondary:active {
+  transform: translateY(0.5px);
+  box-shadow: none;
+}
+
+.hh-btn-ghost {
+  background-color: transparent;
+  background-image: none;
+  box-shadow: none;
+  color: var(--hh-link);
+}
+
+.hh-card {
+  border-color: var(--hh-line);
+  border-radius: var(--hh-radius-xl);
+  background-color: var(--hh-surface);
+  box-shadow: var(--hh-shadow-card);
+}
+
+.hh-badge {
+  height: 22px;
+  border-radius: var(--hh-radius-full);
+  padding-inline: 8px;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.hh-field {
+  box-shadow: var(--hh-input-inset);
+}
+
+:is(
+    html[data-hh-theme="operational-dark"],
+    html[data-hh-theme="operational-light"],
+    [data-hh-theme="operational-dark"],
+    [data-hh-theme="operational-light"]
+  )
+  .hh-field::placeholder,
+:is(
+    html[data-hh-theme="operational-dark"],
+    html[data-hh-theme="operational-light"],
+    [data-hh-theme="operational-dark"],
+    [data-hh-theme="operational-light"]
+  )
+  .neo-input::placeholder {
+  color: var(--hh-placeholder);
+}
+
+:is(
+    html[data-hh-theme="operational-dark"],
+    html[data-hh-theme="operational-light"],
+    [data-hh-theme="operational-dark"],
+    [data-hh-theme="operational-light"]
+  )
+  .neo-input:focus-visible,
+:is(
+    html[data-hh-theme="operational-dark"],
+    html[data-hh-theme="operational-light"],
+    [data-hh-theme="operational-dark"],
+    [data-hh-theme="operational-light"]
+  )
+  .hh-field:focus-visible {
+  border-color: var(--hh-link);
+  box-shadow: var(--hh-ring-focus);
+  outline-color: transparent;
+}
+
+:is(
+    html[data-hh-theme="operational-dark"],
+    html[data-hh-theme="operational-light"],
+    [data-hh-theme="operational-dark"],
+    [data-hh-theme="operational-light"]
+  )
+  .neo-input[aria-invalid="true"],
+:is(
+    html[data-hh-theme="operational-dark"],
+    html[data-hh-theme="operational-light"],
+    [data-hh-theme="operational-dark"],
+    [data-hh-theme="operational-light"]
+  )
+  .hh-field[aria-invalid="true"] {
+  border-color: var(--hh-danger-input);
+  background-color: var(--hh-danger-input-bg);
+}
+
+:is(
+    html[data-hh-theme="operational-dark"],
+    html[data-hh-theme="operational-light"],
+    [data-hh-theme="operational-dark"],
+    [data-hh-theme="operational-light"]
+  )
+  .neo-input[aria-invalid="true"]:focus-visible,
+:is(
+    html[data-hh-theme="operational-dark"],
+    html[data-hh-theme="operational-light"],
+    [data-hh-theme="operational-dark"],
+    [data-hh-theme="operational-light"]
+  )
+  .hh-field[aria-invalid="true"]:focus-visible {
+  border-color: var(--hh-danger-input);
+  box-shadow: var(--hh-ring-error);
+}
+
+:is(
+    html[data-hh-theme="operational-dark"],
+    html[data-hh-theme="operational-light"],
+    [data-hh-theme="operational-dark"],
+    [data-hh-theme="operational-light"]
+  )
+  .hh-focus-ring:focus-visible {
+  outline-color: transparent;
+  box-shadow: var(--hh-ring-focus);
+}
+
+.hh-table thead th {
+  background-color: var(--hh-surface-sunken);
+  color: var(--hh-th);
+}
+
+.hh-table tbody > tr {
+  border-color: var(--hh-line-2);
+}
+
+.hh-tabs-list {
+  border-radius: 0;
+  background-color: transparent;
+}
+
+.hh-tabs-list [role="tab"][data-state="active"] {
+  border-radius: 0;
+  background-color: transparent;
+  color: var(--hh-ink);
+  font-weight: 600;
+}
+
+:is([data-hh-theme="operational-dark"], [data-hh-theme="operational-light"]) .hh-overlay {
+  background: var(--hh-scrim);
+}
+
+.hh-toast {
+  border-radius: var(--hh-radius-lg);
+  background-color: var(--hh-surface);
+  box-shadow: var(--hh-shadow-card);
+}
+
+.hh-toast[data-toast-tone="success"] {
+  box-shadow:
+    inset 3px 0 0 var(--hh-success-solid),
+    var(--hh-shadow-card);
+}
+
+.hh-toast[data-toast-tone="warning"] {
+  box-shadow:
+    inset 3px 0 0 var(--hh-warning-solid),
+    var(--hh-shadow-card);
+}
+
+.hh-toast[data-toast-tone="danger"] {
+  box-shadow:
+    inset 3px 0 0 var(--hh-danger-bar),
+    var(--hh-shadow-card);
+}
+
+.hh-toast[data-toast-tone="information"] {
+  box-shadow:
+    inset 3px 0 0 var(--hh-info-solid),
+    var(--hh-shadow-card);
+}
+
+/*
+ * The shell stylesheet paints a light sidebar after this file. Doubling the
+ * theme attribute keeps the navy gradient, readable labels, and brass mark
+ * above that shorthand and above the v2 light aliases.
+ */
+:is(
+    html[data-hh-theme="operational-dark"][data-hh-theme="operational-dark"],
+    html[data-hh-theme="operational-light"][data-hh-theme="operational-light"]
+  )
+  .hh-app-shell {
+  background: var(--hh-page);
+  color: var(--hh-ink);
+  font-family: var(--font-inter, Inter), ui-sans-serif, system-ui, sans-serif;
+  --shell-font: var(--font-inter, Inter), ui-sans-serif, system-ui, sans-serif;
+  --shell-background: var(--hh-page);
+  --shell-surface: var(--hh-surface);
+  --shell-subtle: var(--hh-hover);
+  --shell-hover: var(--hh-hover);
+  --shell-border: var(--hh-line);
+  --shell-text: var(--hh-ink);
+  --shell-muted: var(--hh-muted);
+  --shell-sidebar-expanded: var(--hh-sidebar-width-expanded);
+  --shell-sidebar-collapsed: var(--hh-sidebar-width-collapsed);
+}
+
+:is(
+    html[data-hh-theme="operational-dark"][data-hh-theme="operational-dark"],
+    html[data-hh-theme="operational-light"][data-hh-theme="operational-light"]
+  )
+  .neo-sidebar {
+  width: var(--hh-sidebar-width-expanded);
+  border-width: 0 1px 0 0;
+  border-color: var(--hh-navy-edge);
+  border-radius: 0;
+  background-color: var(--hh-navy);
+  background-image: var(--hh-grad-sidebar);
+  background-repeat: no-repeat;
+  box-shadow: var(--hh-shadow-nav-shell);
+  color: var(--hh-sidebar-text-item);
+  font-family: var(--font-inter, Inter), ui-sans-serif, system-ui, sans-serif;
+  --hh-font-family-sans: var(--font-inter, Inter), ui-sans-serif, system-ui, sans-serif;
+  --hh-surface-workspace: transparent;
+  --hh-surface-section: var(--hh-sidebar-raised);
+  --hh-surface-subtle: var(--hh-sidebar-raised);
+  --hh-surface-hover: var(--hh-sidebar-hover);
+  --hh-surface-selected: transparent;
+  --hh-text-primary: var(--hh-sidebar-text-strong);
+  --hh-text-secondary: var(--hh-sidebar-text-item);
+  --hh-text-tertiary: var(--hh-sidebar-text-meta);
+  --hh-text-muted: var(--hh-sidebar-text-icon);
+  --hh-text-strong: var(--hh-sidebar-text-strong);
+  --hh-border: var(--hh-sidebar-line);
+  --hh-border-subtle: var(--hh-sidebar-line);
+  --hh-border-default: var(--hh-sidebar-line);
+  --hh-border-strong: var(--hh-sidebar-line);
+  --hh-l1-workspace: transparent;
+  --hh-l2-operational-surface: var(--hh-sidebar-raised);
+  --hh-l3-hover: var(--hh-sidebar-hover);
+  --hh-l3-selected: transparent;
+  --hh-l3-pressed: var(--hh-sidebar-hover);
+  --hh-accent-primary: var(--hh-brass-light);
+  --hh-accent-hover: var(--hh-sidebar-text-strong);
+  --hh-accent-soft: var(--hh-sidebar-hover);
+  --hh-focus-ring: var(--hh-sidebar-text-strong);
+  --hh-action-primary: transparent;
+  --hh-action-primary-foreground: var(--hh-sidebar-text-strong);
+  --shell-surface: transparent;
+  --shell-selected: transparent;
+  --shell-selected-text: var(--hh-sidebar-text-strong);
+  --shell-accent: var(--hh-brass-light);
+  --shell-font: var(--font-inter, Inter), ui-sans-serif, system-ui, sans-serif;
+}
+
+:is(
+    html[data-hh-theme="operational-dark"][data-hh-theme="operational-dark"],
+    html[data-hh-theme="operational-light"][data-hh-theme="operational-light"]
+  )
+  .neo-sidebar[data-collapsed="true"] {
+  width: var(--hh-sidebar-width-collapsed);
+}
+
+:is(
+    html[data-hh-theme="operational-dark"][data-hh-theme="operational-dark"],
+    html[data-hh-theme="operational-light"][data-hh-theme="operational-light"]
+  )
+  .neo-sidebar
+  [data-sidebar-navigation]
+  a[aria-current="page"] {
+  background-color: transparent;
+  background-image: var(--hh-grad-nav-active);
+  box-shadow: var(--hh-shadow-nav-active);
+  color: var(--hh-sidebar-text-strong);
+  font-weight: 600;
+}
+
+:is(
+    html[data-hh-theme="operational-dark"][data-hh-theme="operational-dark"],
+    html[data-hh-theme="operational-light"][data-hh-theme="operational-light"]
+  )
+  .neo-sidebar
+  [data-sidebar-navigation]
+  a[aria-current="page"]::before {
+  content: "";
+  display: block;
+  position: absolute;
+  top: 7px;
+  bottom: 7px;
+  left: 0;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background-color: var(--hh-brass);
+  background-image: var(--hh-grad-brass);
+  box-shadow: var(--hh-shadow-indicator);
+}
+
+:is(
+    html[data-hh-theme="operational-dark"][data-hh-theme="operational-dark"],
+    html[data-hh-theme="operational-light"][data-hh-theme="operational-light"]
+  )
+  .neo-sidebar
+  [data-sidebar-navigation]
+  a[aria-current="page"]
+  svg {
+  color: var(--hh-brass-light);
+}
+
+.hh-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 68px;
+  border-bottom: 1px solid var(--hh-sidebar-line);
+  background: transparent;
+}
+
+.hh-logo-mark {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  flex: none;
+  place-items: center;
+  background: var(--hh-navy-deep);
+  color: var(--hh-brass);
+  clip-path: polygon(50% 0, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);
+  box-shadow: inset 0 0 0 1.5px var(--hh-brass);
+  font-family: var(--hh-font-wordmark);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+
+.hh-logo-mark img {
+  width: 70%;
+  height: 70%;
+  object-fit: contain;
+}
+
+.hh-wordmark {
+  color: var(--hh-sidebar-text-strong);
+  font-family: var(--hh-font-wordmark);
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+}
+
+.hh-wordmark span {
+  color: var(--hh-brass-light);
+}
+
+.hh-logo-caption {
+  margin-top: 2px;
+  color: var(--hh-sidebar-text-label);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.hh-user-avatar {
+  background-image: var(--hh-grad-avatar);
+  color: var(--hh-navy-deep);
+}
+
+:is(
+    html[data-hh-theme="operational-dark"][data-hh-theme="operational-dark"],
+    html[data-hh-theme="operational-light"][data-hh-theme="operational-light"]
+  )
+  .hh-app-shell
+  [data-app-topbar] {
+  border-radius: 0;
+  border-bottom: 1px solid var(--hh-line);
+  background-color: color-mix(in srgb, var(--hh-surface) 92%, transparent);
+  box-shadow: none;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: var(--hh-muted);
+  font-family: var(--font-inter, Inter), ui-sans-serif, system-ui, sans-serif;
+}
+
+:is(
+    html[data-hh-theme="operational-dark"][data-hh-theme="operational-dark"],
+    html[data-hh-theme="operational-light"][data-hh-theme="operational-light"]
+  )
+  .hh-app-shell
+  [aria-label="Open quick actions"].hh-btn-primary {
+  background-color: var(--hh-brass);
+  background-image: var(--hh-grad-brass);
+  color: var(--hh-on-brass);
+  border-color: var(--hh-brass-edge);
+}
+
+:is(
+    html[data-hh-theme="operational-dark"][data-hh-theme="operational-dark"],
+    html[data-hh-theme="operational-light"][data-hh-theme="operational-light"]
+  )
+  nav[aria-label="Bottom navigation"]
+  a[aria-current="page"] {
+  position: relative;
+  background-color: transparent;
+  background-image: none;
+  box-shadow: none;
+  color: var(--hh-ink);
+}
+
+:is(
+    html[data-hh-theme="operational-dark"][data-hh-theme="operational-dark"],
+    html[data-hh-theme="operational-light"][data-hh-theme="operational-light"]
+  )
+  nav[aria-label="Bottom navigation"]
+  a[aria-current="page"]::before {
+  content: "";
+  display: block;
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 28px;
+  height: 3px;
+  transform: translateX(-50%);
+  border-radius: 0 0 3px 3px;
+  background-color: var(--hh-brass);
+  background-image: var(--hh-grad-brass);
+  box-shadow: var(--hh-shadow-indicator);
+}
+
+:is(
+    html[data-hh-theme="operational-dark"],
+    html[data-hh-theme="operational-light"],
+    [data-hh-theme="operational-dark"],
+    [data-hh-theme="operational-light"]
+  )
+  input[type="checkbox"],
+:is(
+    html[data-hh-theme="operational-dark"],
+    html[data-hh-theme="operational-light"],
+    [data-hh-theme="operational-dark"],
+    [data-hh-theme="operational-light"]
+  )
+  input[type="radio"] {
+  accent-color: var(--hh-link);
+}
+
+.hh-skeleton {
+  background-color: var(--hh-chip);
+  border-radius: var(--hh-radius-sm);
+}
+
+@keyframes hh-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .hh-skeleton {
+    background-image: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
+    background-size: 200% 100%;
+    animation: hh-shimmer var(--hh-duration-shimmer) linear infinite;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hh-skeleton {
+    animation: none;
+  }
+}

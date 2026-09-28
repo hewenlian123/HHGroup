@@ -11,7 +11,7 @@ import {
 } from "@/lib/motion-system";
 
 const primaryActionClass =
-  "border-[var(--hh-action-primary)] bg-[var(--hh-action-primary)] text-[var(--hh-action-primary-foreground)] hover:border-[var(--hh-action-primary-hover)] hover:bg-[var(--hh-action-primary-hover)] active:border-[var(--hh-action-primary-hover)] active:bg-[var(--hh-action-primary-hover)]";
+  "hh-btn-primary border-[var(--hh-action-primary)] bg-[var(--hh-action-primary)] text-[var(--hh-action-primary-foreground)] hover:border-[var(--hh-action-primary-hover)] hover:bg-[var(--hh-action-primary-hover)] active:border-[var(--hh-action-primary-hover)] active:bg-[var(--hh-action-primary-hover)]";
 
 /**
  * Canonical operational action primitive. Workflow components compose this
@@ -31,10 +31,10 @@ const buttonVariants = cva(
       variant: {
         default: cn("border shadow-none", primaryActionClass),
         primary: cn("border shadow-none", primaryActionClass),
-        secondary: cn("border shadow-none", NEO.buttonSecondary),
-        outline: cn("border shadow-none", NEO.buttonSecondary),
-        quiet: cn("shadow-none", NEO.buttonGhost),
-        ghost: cn("shadow-none", NEO.buttonGhost),
+        secondary: cn("hh-btn-secondary border shadow-none", NEO.buttonSecondary),
+        outline: cn("hh-btn-secondary border shadow-none", NEO.buttonSecondary),
+        quiet: cn("hh-btn-ghost shadow-none", NEO.buttonGhost),
+        ghost: cn("hh-btn-ghost shadow-none", NEO.buttonGhost),
         destructive:
           "border border-transparent bg-[var(--hh-danger)] text-white shadow-none hover:opacity-90 active:bg-[var(--hh-danger)]",
       },

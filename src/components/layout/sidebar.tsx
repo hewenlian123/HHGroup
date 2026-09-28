@@ -241,7 +241,7 @@ export function Sidebar({
       data-app-sidebar
       data-collapsed={collapsed ? "true" : "false"}
       className={cn(
-        "relative flex h-full shrink-0 flex-col overflow-hidden border-r border-[var(--hh-border-subtle)] bg-[var(--hh-surface-workspace)] text-[var(--hh-text-primary)] shadow-none",
+        "neo-sidebar relative flex h-full shrink-0 flex-col overflow-hidden border-r border-[var(--hh-border-subtle)] bg-[var(--hh-surface-workspace)] text-[var(--hh-text-primary)] shadow-none",
         collapsed ? "w-hh-sidebar-collapsed" : "w-hh-sidebar-expanded",
         className
       )}
@@ -249,28 +249,28 @@ export function Sidebar({
       <div
         data-sidebar-brand
         className={cn(
-          "relative z-[1] flex h-14 min-h-14 items-center gap-2 border-b border-[var(--hh-border-subtle)] bg-[var(--hh-surface-workspace)]",
-          collapsed ? "px-3" : "px-3"
+          "hh-brand relative z-[1] border-b border-[var(--hh-border-subtle)] bg-[var(--hh-surface-workspace)]",
+          collapsed ? "justify-center px-2" : "px-3"
         )}
       >
         <div data-sidebar-standard-brand className="contents">
-          <Avatar className="h-8 w-8 rounded-md ring-1 ring-inset ring-[var(--hh-border-default)]">
+          <Avatar className="hh-logo-mark h-[34px] w-[34px] rounded-none">
             {logoUrl ? (
               <AvatarImage src={logoUrl} alt={orgName} className="object-contain" />
             ) : null}
-            <AvatarFallback
-              className={cn(
-                "rounded-md bg-[var(--hh-surface-subtle)] text-[var(--hh-text-primary)]",
-                TYPO.tableHeader
-              )}
-            >
+            <AvatarFallback className="rounded-none bg-transparent text-[var(--hh-brass)]">
               {getCompanyInitials(orgName)}
             </AvatarFallback>
           </Avatar>
           {!collapsed && (
             <div className="min-w-0">
-              <p className={cn("truncate", TYPO.tableHeader)}>HH Unified</p>
-              <p className={cn("truncate", TYPO.primaryName)}>{orgName}</p>
+              <p className="hh-wordmark truncate">
+                {orgName.split(" ")[0]}
+                {orgName.includes(" ") ? (
+                  <span> {orgName.split(" ").slice(1).join(" ")}</span>
+                ) : null}
+              </p>
+              <p className="hh-logo-caption truncate">Logo placeholder</p>
             </div>
           )}
         </div>
@@ -309,10 +309,10 @@ export function Sidebar({
           className="relative z-[1] border-t border-[var(--hh-border-subtle)] px-3 py-3"
         >
           <div className="flex min-h-11 items-center gap-2.5 rounded-hh-standard bg-[var(--hh-surface-section)] px-2.5 py-2">
-            <Avatar className="h-8 w-8 shrink-0 rounded-md ring-1 ring-inset ring-[var(--hh-border-default)]">
+            <Avatar className="h-8 w-8 shrink-0 rounded-full ring-1 ring-inset ring-[var(--hh-brass-light)]">
               <AvatarFallback
                 className={cn(
-                  "rounded-md bg-[var(--hh-surface-workspace)] text-[var(--hh-text-secondary)]",
+                  "hh-user-avatar rounded-full text-[var(--hh-navy-deep)]",
                   TYPO.tableHeader
                 )}
               >

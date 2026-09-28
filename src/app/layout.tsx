@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
-import { Inter } from "next/font/google";
+import { Cormorant_Garamond, Inter } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
 import "./estimates/estimate-tokens.css";
@@ -26,6 +26,11 @@ const geistMono = localFont({
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-inter",
+});
+const cormorant = Cormorant_Garamond({
+  subsets: ["latin"],
+  weight: "600",
+  variable: "--font-cormorant",
 });
 
 export const metadata: Metadata = {
@@ -59,7 +64,7 @@ export default async function RootLayout(
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} ${inter.variable}`}
+      className={`${geistSans.variable} ${geistMono.variable} ${inter.variable} ${cormorant.variable}`}
       suppressHydrationWarning
     >
       <head>

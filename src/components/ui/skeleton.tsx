@@ -6,7 +6,7 @@ export function Skeleton({ className, ...props }: React.HTMLAttributes<HTMLDivEl
     <div
       aria-hidden={props["aria-hidden"] ?? true}
       className={cn(
-        "animate-pulse rounded-hh-standard bg-[var(--hh-l3-hover)] motion-reduce:animate-none",
+        "hh-skeleton animate-pulse rounded-hh-standard bg-[var(--hh-l3-hover)] motion-reduce:animate-none",
         className
       )}
       {...props}

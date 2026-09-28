@@ -140,7 +140,7 @@ export function FloatingActionButton() {
             setOpen(true);
           }}
           className={cn(
-            "hh-focus-ring flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-[var(--hh-border-floating)] bg-[var(--hh-action-primary)] text-[var(--hh-action-primary-foreground)] shadow-floating",
+            "hh-btn-primary hh-focus-ring flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-[var(--hh-border-floating)] bg-[var(--hh-action-primary)] text-[var(--hh-action-primary-foreground)] shadow-floating",
             "cursor-pointer touch-manipulation transition-opacity duration-100 hover:opacity-90 active:opacity-80 sm:h-14 sm:w-14"
           )}
           aria-label="Open quick actions"

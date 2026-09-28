@@ -22,7 +22,7 @@ const SelectTrigger = React.forwardRef<
   <SelectPrimitive.Trigger
     ref={ref}
     className={cn(
-      "hh-type-text-entry hh-touch-min hh-focus-ring flex h-hh-control-standard w-full items-center justify-between whitespace-nowrap rounded-hh-standard border px-hh-3 py-hh-2 shadow-none transition-[background-color,border-color,box-shadow,color] duration-150 ease-out data-[placeholder]:text-[var(--hh-text-tertiary)] hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)] aria-[invalid=true]:border-[var(--hh-danger)] aria-[invalid=true]:focus-visible:border-[var(--hh-danger)] disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
+      "hh-field hh-type-text-entry hh-touch-min hh-focus-ring flex h-hh-control-standard w-full items-center justify-between whitespace-nowrap rounded-hh-standard border px-hh-3 py-hh-2 shadow-none transition-[background-color,border-color,box-shadow,color] duration-150 ease-out data-[placeholder]:text-[var(--hh-text-tertiary)] hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)] aria-[invalid=true]:border-[var(--hh-danger)] aria-[invalid=true]:focus-visible:border-[var(--hh-danger)] disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
       NEO.input,
       className
     )}
