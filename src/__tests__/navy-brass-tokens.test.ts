@@ -40,6 +40,22 @@ describe("navy + brass v3 tokens", () => {
     expect(tailwind).toContain('brass: "var(--hh-grad-brass)"');
   });
 
+  it("wins on the route theme boundary without turning accent or sidebar width blue", () => {
+    const aliasStart = tokens.indexOf('html[data-hh-theme="operational-dark"]');
+    const aliasBlock = tokens.slice(aliasStart, tokens.indexOf(".hh-btn-primary"));
+    expect(aliasBlock).toContain(
+      '[data-hh-context][data-hh-theme="operational-light"][data-hh-theme="operational-light"]'
+    );
+    expect(aliasBlock).toContain(
+      '[data-hh-context][data-hh-theme="operational-dark"][data-hh-theme="operational-dark"]'
+    );
+    expect(aliasBlock).toContain("--hh-accent-primary: var(--hh-ink)");
+    expect(aliasBlock).toContain("--hh-action-primary: var(--hh-brass)");
+    expect(aliasBlock).toContain("--hh-sidebar-width-expanded: 240px");
+    expect(aliasBlock).not.toContain("216px");
+    expect(aliasBlock).not.toContain("--hh-v2-accent");
+  });
+
   it("keeps brass on the primary button and the sidebar mark", () => {
     expect(button).toContain("hh-btn-primary");
     expect(button).toContain("bg-[var(--hh-action-primary)]");
