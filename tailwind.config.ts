@@ -412,6 +412,7 @@ const config: Config = {
         sidebar: "var(--hh-shadow-sidebar)",
         card: "var(--hh-shadow-card)",
         hero: "var(--hh-shadow-hero)",
+        seg: "var(--hh-shadow-seg-on)",
         "btn-primary": "var(--hh-shadow-btn-primary)",
         "btn-secondary": "var(--hh-shadow-btn-secondary)",
       },
