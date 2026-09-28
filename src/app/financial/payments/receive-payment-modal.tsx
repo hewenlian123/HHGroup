@@ -223,6 +223,7 @@ export function ReceivePaymentModal({
 
   const selectedInvoiceId = preselectedInvoiceId ?? invoiceId;
   const appliedInvoiceAmountRef = React.useRef("");
+  const amountTouchedRef = React.useRef(false);
 
   const cleanupDrafts = React.useCallback(
     async (drafts: PaymentAttachmentDraft[], removeStorage: boolean) => {
@@ -246,6 +247,7 @@ export function ReceivePaymentModal({
       return;
     }
     appliedInvoiceAmountRef.current = "";
+    amountTouchedRef.current = false;
     const drafts = attachmentDraftsRef.current;
     setAttachmentDrafts([]);
     setDragActive(false);
@@ -266,7 +268,7 @@ export function ReceivePaymentModal({
     setPendingPayment(pending);
     if (pending) {
       preserveUploadedAttachmentsRef.current = true;
-      setAmount(formatMoneyInput(pending.amount));
+      if (!amountTouchedRef.current) setAmount(formatMoneyInput(pending.amount));
       setPaymentDate(pending.payment_date);
       setPaymentMethod(pending.payment_method);
       setDepositAccount(pending.deposit_account ?? "");
@@ -314,16 +316,20 @@ export function ReceivePaymentModal({
             setInvoiceId(inv.id);
             setProjectId(inv.projectId);
             setCustomerName(inv.clientName);
-            setAmount(
-              formatMoneyInput(remainingBalance != null ? remainingBalance : inv.balanceDue)
-            );
+            if (!amountTouchedRef.current) {
+              setAmount(
+                formatMoneyInput(remainingBalance != null ? remainingBalance : inv.balanceDue)
+              );
+            }
             setNotes((prev) => nextPaymentMemo(prev, inv.invoiceNo));
           }
         } else {
           setInvoiceId("");
           setProjectId("");
           setCustomerName("");
-          setAmount(remainingBalance != null ? formatMoneyInput(remainingBalance) : "");
+          if (!amountTouchedRef.current) {
+            setAmount(remainingBalance != null ? formatMoneyInput(remainingBalance) : "");
+          }
           setNotes("");
         }
         if (pending) restorePendingPayment(userId, pending.invoice_id);
@@ -348,7 +354,7 @@ export function ReceivePaymentModal({
     if (appliedInvoiceAmountRef.current !== invoiceId) {
       appliedInvoiceAmountRef.current = invoiceId;
       if (actorId && getArPaymentIntent(localStorage, actorId, invoiceId)) return;
-      setAmount(formatMoneyInput(inv.balanceDue));
+      if (!amountTouchedRef.current) setAmount(formatMoneyInput(inv.balanceDue));
       setNotes((prev) => nextPaymentMemo(prev, inv.invoiceNo));
     }
   }, [actorId, invoiceId, invoices, preselectedInvoiceId]);
@@ -674,6 +680,7 @@ export function ReceivePaymentModal({
               value={invoiceId}
               onChange={(e) => {
                 try {
+                  amountTouchedRef.current = false;
                   setInvoiceId(e.target.value);
                   restorePendingPayment(actorId, e.target.value);
                 } catch (error) {
@@ -733,6 +740,7 @@ export function ReceivePaymentModal({
                 value={amount}
                 disabled={saving || !!pendingPayment}
                 onChange={(e) => {
+                  amountTouchedRef.current = true;
                   setAmount((current) => nextDecimalDraft(current, e.target.value));
                   setAmountError(null);
                 }}
