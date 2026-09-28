@@ -68,25 +68,10 @@ test(
             remember("documents", doc.id);
             storagePaths.add(doc.file_path);
           }
-          const projects =
-            await sql`select id from public.projects where organization_id in ${sql(organizations)}`;
-          if (projects.length) {
-            const selections =
-              await sql`select id from public.project_material_selections where project_id in ${sql(projects.map((p) => p.id))}`;
-            for (const row of selections) remember("project_material_selections", row.id);
-          }
         }
         // Discover children only under this run's exact project IDs, including its canonical-company fixture.
         const fixtureProjects = owned.get("projects") ?? [];
-        for (const table of [
-          "project_tasks",
-          "project_schedule",
-          "punch_list",
-          "inspection_log",
-          "site_photos",
-          "project_change_orders",
-          "documents",
-        ]) {
+        for (const table of ["project_change_orders", "documents"]) {
           const rows =
             await sql`select id from ${sql(table)} where project_id in ${sql(fixtureProjects)}`;
           for (const row of rows) remember(table, row.id);
@@ -101,22 +86,12 @@ test(
         }
         for (const table of [
           "project_change_orders",
-          "project_tasks",
-          "project_schedule",
-          "punch_list",
-          "inspection_logs",
-          "inspection_log",
-          "site_photos",
           "activity_logs",
           "final_punch_list_items",
           "final_punch_lists",
           "completion_certificates",
           "warranties",
-          "material_selection_items",
-          "material_selections",
-          "project_material_selections",
           "documents",
-          "material_catalog",
           "projects",
         ]) {
           if (owned.has(table))
@@ -193,11 +168,6 @@ test(
           file_path: `organizations/${legacyOrg}/projects/${project}/documents/${initialDocument}/fixture.txt`,
         },
       ],
-      ["material_catalog", { id: remember("material_catalog"), material_name: marker }],
-      [
-        "project_material_selections",
-        { id: remember("project_material_selections"), project_id: project, item: marker },
-      ],
     ];
     for (const [table, row] of fixtures) {
       await sql`insert into ${sql(table)} ${sql(row)}`;
@@ -258,18 +228,6 @@ test(
       { id: projectA, name: marker + " A", organization_id: orgA },
       { id: projectB, name: marker + " B", organization_id: orgB },
     ])}`;
-    const catalogA = remember("material_catalog");
-    const catalogB = remember("material_catalog");
-    await sql`insert into public.material_catalog ${sql([
-      { id: catalogA, material_name: marker + " A", organization_id: orgA },
-      { id: catalogB, material_name: marker + " B", organization_id: orgB },
-    ])}`;
-    const sheetA = remember("material_selections");
-    const sheetB = remember("material_selections");
-    await sql`insert into public.material_selections ${sql([
-      { id: sheetA, title: marker + " A", project_id: projectA, organization_id: orgA },
-      { id: sheetB, title: marker + " B", project_id: projectB, organization_id: orgB },
-    ])}`;
     const denied = (result, label) => {
       if (result.error)
         assert.ok(
@@ -285,11 +243,6 @@ test(
     const resources = [
       ["projects", () => ({ name: marker, organization_id: orgA }), { name: marker + " changed" }],
       [
-        "material_catalog",
-        () => ({ material_name: marker, organization_id: orgA }),
-        { material_name: marker + " changed" },
-      ],
-      [
         "documents",
         (id) => ({
           project_id: projectA,
@@ -297,21 +250,6 @@ test(
           file_name: marker,
           file_path: `organizations/${orgA}/projects/${projectA}/documents/${id}/fixture.txt`,
         }),
-        { notes: marker + " changed" },
-      ],
-      [
-        "project_material_selections",
-        () => ({ project_id: projectA, material_id: catalogA, item: marker }),
-        { notes: marker + " changed" },
-      ],
-      [
-        "material_selections",
-        () => ({ project_id: projectA, organization_id: orgA, title: marker }),
-        { notes: marker + " changed" },
-      ],
-      [
-        "material_selection_items",
-        () => ({ selection_id: sheetA, item_name: marker }),
         { notes: marker + " changed" },
       ],
     ];
@@ -396,73 +334,43 @@ test(
         }
       );
     }
-    await t.test(
-      "owner cannot link a foreign catalog or reparent resources across organizations",
-      async () => {
+    await t.test("owner cannot reparent resources across organizations", async () => {
+      for (const [table, payload, foreign] of [
+        ["projects", { name: marker, organization_id: orgA }, { organization_id: orgB }],
+        [
+          "documents",
+          {
+            project_id: projectA,
+            organization_id: orgA,
+            file_name: marker,
+            file_path: `org-auth/${randomUUID()}`,
+          },
+          { project_id: projectB },
+        ],
+      ]) {
+        const id = remember(table);
+        if (table === "documents")
+          payload.file_path = `organizations/${orgA}/projects/${projectA}/documents/${id}/fixture.txt`;
+        await sql`insert into ${sql(table)} ${sql({ id, ...payload })}`;
         denied(
-          await owner.client
-            .from("project_material_selections")
-            .insert({
-              id: remember("project_material_selections"),
-              project_id: projectA,
-              material_id: catalogB,
-              item: marker,
-            })
-            .select("id"),
-          "foreign catalog linkage"
-        );
-        for (const [table, payload, foreign] of [
-          ["projects", { name: marker, organization_id: orgA }, { organization_id: orgB }],
-          [
-            "project_material_selections",
-            { project_id: projectA, material_id: catalogA, item: marker },
-            { project_id: projectB },
-          ],
-          [
-            "documents",
-            {
-              project_id: projectA,
-              organization_id: orgA,
-              file_name: marker,
-              file_path: `org-auth/${randomUUID()}`,
-            },
-            { project_id: projectB },
-          ],
-          [
-            "material_selections",
-            { project_id: projectA, organization_id: orgA, title: marker },
-            { project_id: projectB },
-          ],
-          [
-            "material_selection_items",
-            { selection_id: sheetA, item_name: marker },
-            { selection_id: sheetB },
-          ],
-        ]) {
-          const id = remember(table);
-          if (table === "documents")
-            payload.file_path = `organizations/${orgA}/projects/${projectA}/documents/${id}/fixture.txt`;
-          await sql`insert into ${sql(table)} ${sql({ id, ...payload })}`;
-          denied(
-            await owner.client.from(table).update(foreign).eq("id", id).select("id"),
-            `${table} reparent`
-          );
-        }
-        denied(
-          await owner.client
-            .from("documents")
-            .insert({
-              id: remember("documents"),
-              organization_id: orgB,
-              project_id: projectA,
-              file_name: marker,
-              file_path: `org-auth/${randomUUID()}`,
-            })
-            .select("id"),
-          "document project/organization mismatch"
+          await owner.client.from(table).update(foreign).eq("id", id).select("id"),
+          `${table} reparent`
         );
       }
-    );
+      denied(
+        await owner.client
+          .from("documents")
+          .insert({
+            id: remember("documents"),
+            organization_id: orgB,
+            project_id: projectA,
+            file_name: marker,
+            file_path: `org-auth/${randomUUID()}`,
+          })
+          .select("id"),
+        "document project/organization mismatch"
+      );
+    });
     await t.test(
       "organization-level documents are scoped and null-scope documents fail closed",
       async () => {
@@ -554,24 +462,28 @@ test(
         try {
           for (const [table, payload, changes] of [
             [
-              "project_material_selections",
-              { project_id: projectA, material_id: null, item: marker },
+              "documents",
+              {
+                project_id: projectA,
+                organization_id: orgA,
+                file_name: marker,
+                file_path: `organizations/${orgA}/projects/${projectA}/documents/pending/fixture.txt`,
+              },
               { project_id: projectB },
             ],
             [
-              "material_selection_items",
-              { selection_id: sheetA, item_name: marker },
-              { selection_id: sheetB },
-            ],
-            [
-              "project_tasks",
-              { project_id: projectA, title: marker, is_test: true },
+              "activity_logs",
+              { project_id: projectA, type: "test", description: marker },
               { project_id: projectB },
             ],
           ]) {
             await nested.test(`${table}: tenant ownership survives dual membership`, async () => {
               const id = remember(table);
-              await sql`insert into ${sql(table)} ${sql({ id, ...payload })}`;
+              const row = { id, ...payload };
+              if (table === "documents") {
+                row.file_path = `organizations/${orgA}/projects/${projectA}/documents/${id}/fixture.txt`;
+              }
+              await sql`insert into ${sql(table)} ${sql(row)}`;
               denied(
                 await owner.client.from(table).update(changes).eq("id", id).select("id"),
                 `${table} dual-org reparent`
@@ -586,15 +498,6 @@ test(
     const finalList = remember("final_punch_lists");
     await sql`insert into public.final_punch_lists(id,project_id) values (${finalList},${projectA})`;
     for (const [table, payload] of [
-      ["project_tasks", { project_id: projectA, title: marker, is_test: true }],
-      ["project_schedule", { project_id: projectA, title: marker }],
-      ["punch_list", { project_id: projectA, issue: marker }],
-      ["inspection_logs", { project_id: projectA }],
-      ["inspection_log", { project_id: projectA, inspection_type: marker }],
-      [
-        "site_photos",
-        { project_id: projectA, photo_url: `https://example.invalid/${randomUUID()}` },
-      ],
       ["activity_logs", { project_id: projectA, type: "test", description: marker }],
       ["final_punch_lists", null],
       ["final_punch_list_items", { punch_list_id: finalList, position: 0 }],
@@ -822,39 +725,6 @@ test(
     );
     if (process.env.HH_ORG_AUTH_HTTP === "1") {
       await t.test(
-        "real Bearer sessions propagate through middleware and project APIs",
-        async () => {
-          const baseURL = localUrl(process.env.E2E_BASE_URL || "http://localhost:3000");
-          for (const actor of [...actors.slice(0, 4), actors.at(-1)]) {
-            const session = await actor.client.auth.getSession();
-            const token = session.data.session?.access_token;
-            const headers = {
-              ...(token ? { Authorization: `Bearer ${token}` } : {}),
-              Origin: baseURL,
-              "Content-Type": "application/json",
-            };
-            const read = await fetch(`${baseURL}/api/projects/${projectA}/materials`, {
-              headers,
-              redirect: "manual",
-            });
-            assert.equal(read.ok, actor.read, `${actor.name}: actual Bearer API read`);
-            const item = `${marker} Bearer ${actor.name}`;
-            const write = await fetch(`${baseURL}/api/projects/${projectA}/materials`, {
-              method: "POST",
-              headers,
-              body: JSON.stringify({ item }),
-              redirect: "manual",
-            });
-            assert.equal(write.ok, actor.write, `${actor.name}: actual Bearer API write`);
-            const [{ n }] =
-              await sql`select count(*)::int as n from public.project_material_selections where project_id=${projectA} and item=${item}`;
-            assert.equal(n, actor.write ? 1 : 0, "Bearer write result matches persisted data");
-          }
-        }
-      );
-    }
-    if (process.env.HH_ORG_AUTH_HTTP === "1") {
-      await t.test(
         "company assistant receipt intake succeeds; foreign and anonymous fail before storage",
         async () => {
           const baseURL = localUrl(process.env.E2E_BASE_URL || "http://localhost:3000");
@@ -1027,9 +897,7 @@ test(
     }
     if (process.env.HH_ORG_AUTH_E2E === "1") {
       const { verifyOrganizationWorkflows } = await import("./organization-workflows.local.mjs");
-      // Remove exact synthetic external photo rows before rendering the real upload workflow.
-      await sql`delete from public.site_photos where id in ${sql(owned.get("site_photos") ?? [])}`;
-      // Canonical-company authority is introduced only for browser CO coverage; project-only tests above remain independent.
+      // Canonical-company authority is introduced only for browser coverage; project-only tests above remain independent.
       await sql`insert into public.organization_memberships(organization_id,user_id,role,status) values (${legacyOrg},${owner.id},'owner','active')`;
       try {
         await verifyOrganizationWorkflows({
@@ -1060,16 +928,18 @@ test(
             "revoked project read"
           );
           denied(
-            await owner.client.from("material_selections").select("id").eq("id", sheetA),
+            await owner.client.from("documents").select("id").eq("project_id", projectA),
             "revoked child read"
           );
           denied(
             await owner.client
-              .from("material_catalog")
+              .from("documents")
               .insert({
-                id: remember("material_catalog"),
+                id: remember("documents"),
                 organization_id: orgA,
-                material_name: marker,
+                project_id: projectA,
+                file_name: marker,
+                file_path: `organizations/${orgA}/projects/${projectA}/documents/${randomUUID()}/fixture.txt`,
               })
               .select("id"),
             "revoked INSERT"

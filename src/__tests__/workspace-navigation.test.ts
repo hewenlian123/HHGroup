@@ -23,8 +23,8 @@ describe("workspace navigation", () => {
 
   it.each([
     ["/projects/abc?tab=tasks", "/projects"],
-    ["/tasks?project_id=abc", "/projects"],
-    ["/site-photos", "/projects"],
+    ["/tasks?project_id=abc", null],
+    ["/site-photos", null],
     ["/documents", "/projects"],
     ["/estimate-templates/abc", "/estimates"],
     ["/estimates/abc", "/estimates"],

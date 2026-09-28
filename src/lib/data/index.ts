@@ -26,14 +26,7 @@ import * as subcontractPaymentsDb from "../subcontract-payments-db";
 import * as subcontractDeductionsDb from "../subcontract-deductions-db";
 import * as subcontractPaymentScheduleDb from "../subcontract-payment-schedule-db";
 import * as documentsDb from "../documents-db";
-import * as projectTasksDb from "../project-tasks-db";
-import * as projectScheduleDb from "../project-schedule-db";
 import * as activityLogsDb from "../activity-logs-db";
-import * as punchListDb from "../punch-list-db";
-import * as sitePhotosDb from "../site-photos-db";
-import * as inspectionLogDb from "../inspection-log-db";
-import * as materialCatalogDb from "../material-catalog-db";
-import * as materialSelectionsDb from "../material-selections-db";
 import * as projectCloseoutDb from "../project-closeout-db";
 import * as apBillsDb from "../ap-bills-db";
 import { getCommissionCostByProject } from "../commission-db";
@@ -178,30 +171,7 @@ export type {
   DocumentDraft,
   DocumentFileType,
 } from "../documents-db";
-export type {
-  ProjectTask,
-  ProjectTaskWithWorker,
-  ProjectTaskDraft,
-  ProjectTaskStatus,
-  ProjectTaskPriority,
-} from "../project-tasks-db";
-export type { ProjectScheduleItem, ProjectScheduleItemDraft } from "../project-schedule-db";
 export type { ActivityLog } from "../activity-logs-db";
-export type { PunchListItem, PunchListItemWithJoins, PunchListDraft } from "../punch-list-db";
-export type { SitePhoto, SitePhotoWithProject, SitePhotoDraft } from "../site-photos-db";
-export type {
-  InspectionLogEntry,
-  InspectionLogEntryWithProject,
-  InspectionLogDraft,
-  InspectionLogStatus,
-} from "../inspection-log-db";
-export type { MaterialCatalogRow, MaterialCatalogDraft } from "../material-catalog-db";
-export type {
-  ProjectMaterialSelection,
-  ProjectMaterialSelectionWithMaterial,
-  ProjectMaterialSelectionDraft,
-  MaterialSelectionStatus,
-} from "../material-selections-db";
 export type {
   CloseoutPunch,
   CloseoutWarranty,
@@ -1001,62 +971,6 @@ export async function getDocumentSignedUrl(
   return documentsDb.getDocumentSignedUrl(filePath, expiresIn, explicitClient);
 }
 export { DOCUMENT_FILE_TYPES, isPreviewableMime } from "../documents-db";
-export async function getAllTasksWithProject(explicitClient?: SupabaseClient) {
-  return projectTasksDb.getAllTasksWithProject(explicitClient);
-}
-export async function getProjectTasks(projectId: string, explicitClient?: SupabaseClient) {
-  return projectTasksDb.getProjectTasks(projectId, explicitClient);
-}
-export async function getProjectTaskById(taskId: string, explicitClient?: SupabaseClient) {
-  return projectTasksDb.getProjectTaskById(taskId, explicitClient);
-}
-export async function createProjectTask(
-  draft: import("../project-tasks-db").ProjectTaskDraft,
-  explicitClient?: SupabaseClient
-) {
-  return projectTasksDb.createProjectTask(draft, explicitClient);
-}
-export async function updateProjectTask(
-  taskId: string,
-  patch: Parameters<typeof projectTasksDb.updateProjectTask>[1],
-  explicitClient?: SupabaseClient
-) {
-  return projectTasksDb.updateProjectTask(taskId, patch, explicitClient);
-}
-export async function deleteProjectTask(taskId: string, explicitClient?: SupabaseClient) {
-  return projectTasksDb.deleteProjectTask(taskId, explicitClient);
-}
-export async function deleteProjectTaskWithClient(
-  c: import("@supabase/supabase-js").SupabaseClient,
-  taskId: string
-) {
-  return projectTasksDb.deleteProjectTaskWithClient(c, taskId);
-}
-export async function getAllScheduleWithProject(
-  explicitClient?: SupabaseClient,
-  projectRows?: Parameters<typeof projectScheduleDb.getAllScheduleWithProject>[1]
-) {
-  return projectScheduleDb.getAllScheduleWithProject(explicitClient, projectRows);
-}
-export async function getProjectSchedule(projectId: string, explicitClient?: SupabaseClient) {
-  return projectScheduleDb.getProjectSchedule(projectId, explicitClient);
-}
-export async function createProjectScheduleItem(
-  draft: import("../project-schedule-db").ProjectScheduleItemDraft,
-  explicitClient?: SupabaseClient
-) {
-  return projectScheduleDb.createProjectScheduleItem(draft, explicitClient);
-}
-export async function updateProjectScheduleItem(
-  id: string,
-  patch: Parameters<typeof projectScheduleDb.updateProjectScheduleItem>[1],
-  explicitClient?: SupabaseClient
-) {
-  return projectScheduleDb.updateProjectScheduleItem(id, patch, explicitClient);
-}
-export async function deleteProjectScheduleItem(id: string, explicitClient?: SupabaseClient) {
-  return projectScheduleDb.deleteProjectScheduleItem(id, explicitClient);
-}
 export async function getActivityLogsByProject(
   projectId: string,
   limit?: number,
@@ -1066,105 +980,6 @@ export async function getActivityLogsByProject(
 }
 export async function insertActivityLog(projectId: string, type: string, description: string) {
   return activityLogsDb.insertActivityLog(projectId, type, description);
-}
-export async function getPunchListAll(explicitClient?: SupabaseClient) {
-  return punchListDb.getPunchListAll(explicitClient);
-}
-export async function getPunchListByProject(projectId: string, explicitClient?: SupabaseClient) {
-  return punchListDb.getPunchListByProject(projectId, explicitClient);
-}
-export async function getPunchListSummary(explicitClient?: SupabaseClient) {
-  return punchListDb.getPunchListSummary(explicitClient);
-}
-export async function createPunchListItem(
-  draft: import("../punch-list-db").PunchListDraft,
-  explicitClient?: SupabaseClient
-) {
-  return punchListDb.createPunchListItem(draft, explicitClient);
-}
-export async function updatePunchListItem(
-  id: string,
-  patch: Parameters<typeof punchListDb.updatePunchListItem>[1],
-  explicitClient?: SupabaseClient
-) {
-  return punchListDb.updatePunchListItem(id, patch, explicitClient);
-}
-export async function deletePunchListItem(id: string, explicitClient?: SupabaseClient) {
-  return punchListDb.deletePunchListItem(id, explicitClient);
-}
-export async function getSitePhotos(projectId?: string | null, explicitClient?: SupabaseClient) {
-  return sitePhotosDb.getSitePhotos(projectId, explicitClient);
-}
-export async function getSitePhotoById(id: string, explicitClient?: SupabaseClient) {
-  return sitePhotosDb.getSitePhotoById(id, explicitClient);
-}
-export async function createSitePhoto(
-  draft: import("../site-photos-db").SitePhotoDraft,
-  explicitClient?: SupabaseClient
-) {
-  return sitePhotosDb.createSitePhoto(draft, explicitClient);
-}
-export async function updateSitePhoto(
-  id: string,
-  patch: Parameters<typeof sitePhotosDb.updateSitePhoto>[1],
-  explicitClient?: SupabaseClient
-) {
-  return sitePhotosDb.updateSitePhoto(id, patch, explicitClient);
-}
-export async function deleteSitePhoto(id: string, explicitClient?: SupabaseClient) {
-  return sitePhotosDb.deleteSitePhoto(id, explicitClient);
-}
-export async function getInspectionLogs(explicitClient?: SupabaseClient) {
-  return inspectionLogDb.getInspectionLogs(explicitClient);
-}
-export async function getInspectionLogById(id: string, explicitClient?: SupabaseClient) {
-  return inspectionLogDb.getInspectionLogById(id, explicitClient);
-}
-export async function createInspectionLog(
-  draft: import("../inspection-log-db").InspectionLogDraft,
-  explicitClient?: SupabaseClient
-) {
-  return inspectionLogDb.createInspectionLog(draft, explicitClient);
-}
-export async function updateInspectionLog(
-  id: string,
-  patch: Parameters<typeof inspectionLogDb.updateInspectionLog>[1],
-  explicitClient?: SupabaseClient
-) {
-  return inspectionLogDb.updateInspectionLog(id, patch, explicitClient);
-}
-export async function deleteInspectionLog(id: string, explicitClient?: SupabaseClient) {
-  return inspectionLogDb.deleteInspectionLog(id, explicitClient);
-}
-export async function getMaterialCatalog(explicitClient?: SupabaseClient, organizationId?: string) {
-  return materialCatalogDb.getMaterialCatalog(explicitClient, organizationId);
-}
-export async function createMaterial(draft: import("../material-catalog-db").MaterialCatalogDraft) {
-  return materialCatalogDb.createMaterial(draft);
-}
-export async function updateMaterial(
-  id: string,
-  patch: Parameters<typeof materialCatalogDb.updateMaterial>[1]
-) {
-  return materialCatalogDb.updateMaterial(id, patch);
-}
-export async function getSelectionsByProject(projectId: string, explicitClient?: SupabaseClient) {
-  return materialSelectionsDb.getSelectionsByProject(projectId, explicitClient);
-}
-export async function createMaterialSelection(
-  draft: import("../material-selections-db").ProjectMaterialSelectionDraft,
-  explicitClient?: SupabaseClient
-) {
-  return materialSelectionsDb.createSelection(draft, explicitClient);
-}
-export async function updateMaterialSelection(
-  id: string,
-  patch: Parameters<typeof materialSelectionsDb.updateSelection>[1]
-) {
-  return materialSelectionsDb.updateSelection(id, patch);
-}
-export async function deleteMaterialSelection(id: string) {
-  return materialSelectionsDb.deleteSelection(id);
 }
 export async function getCloseoutPunch(projectId: string, explicitClient?: SupabaseClient) {
   return projectCloseoutDb.getCloseoutPunch(projectId, explicitClient);

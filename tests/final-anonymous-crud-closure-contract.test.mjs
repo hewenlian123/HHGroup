@@ -97,44 +97,25 @@ test("removes every known permissive policy and fails closed on unclassified pol
   assert.match(sql, /notify\s+pgrst,\s*'reload schema'/i);
 });
 
-test("keeps material-selection reads and writes behind organization session boundaries", () => {
-  const materialDb = source(resolve(ROOT, "src/lib/material-selection-sheets-db.ts"));
-  assert.match(materialDb, /const c = explicitClient;/);
-  assert.doesNotMatch(materialDb, /getServerSupabaseAdmin/);
-  assert.doesNotMatch(materialDb, /getServerSupabaseInternalNoStore/);
-
+test("removes material-selection application code and drops those tables", () => {
   for (const relativePath of [
+    "src/lib/material-selection-sheets-db.ts",
     "src/app/materials/page.tsx",
-    "src/app/materials/new/page.tsx",
-    "src/app/materials/[id]/page.tsx",
-    "src/app/materials/[id]/preview/page.tsx",
-    "src/app/materials/[id]/print/page.tsx",
-    "src/app/materials/actions.ts",
     "src/app/api/materials/[id]/items/route.ts",
-    "src/app/api/materials/[id]/pdf/route.ts",
+    "tests/material-selections.spec.ts",
   ]) {
-    assert.match(
-      source(resolve(ROOT, relativePath)),
-      /requireOrganization(?:ServerAction|Request)Client/,
-      `${relativePath} must establish the organization session boundary before material data access`
-    );
+    assert.equal(existsSync(resolve(ROOT, relativePath)), false, `${relativePath} is removed`);
   }
 
-  for (const relativePath of [
-    "src/app/api/materials/[id]/items/route.ts",
-    "src/app/api/materials/[id]/pdf/route.ts",
-  ]) {
-    assert.match(source(resolve(ROOT, relativePath)), /guard\.client/);
-    assert.doesNotMatch(source(resolve(ROOT, relativePath)), /getServerSupabaseAdmin/);
-  }
-
-  const materialWorkflow = source(resolve(ROOT, "tests/material-selections.spec.ts"));
-  assert.match(materialWorkflow, /loginAsE2EOwner/);
-
-  const materialNewPage = source(resolve(ROOT, "src/app/materials/new/page.tsx"));
-  assert.match(materialNewPage, /const supabase = guard\.client/);
-  assert.doesNotMatch(materialNewPage, /getServerSupabaseAdmin/);
-  assert.match(materialNewPage, /getProjects\(supabase\)/);
+  const drop = readdirSync(MIGRATIONS)
+    .filter((name) => name.endsWith("_drop_non_finance_project_features.sql"))
+    .sort()
+    .at(-1);
+  assert.ok(drop, "drop migration exists");
+  const sql = source(resolve(MIGRATIONS, drop));
+  assert.match(sql, /drop table if exists public\.material_selections/i);
+  assert.match(sql, /drop table if exists public\.material_selection_items/i);
+  assert.match(sql, /drop table if exists public\.material_catalog/i);
 });
 
 test("ships a confirmation-guarded rollback, read-only production preflight, and executable access matrix", () => {

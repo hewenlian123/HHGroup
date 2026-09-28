@@ -81,19 +81,6 @@ test.describe("Delete surface catalog (read-only)", () => {
     await expect(del.first()).toBeVisible({ timeout: 5000 });
   });
 
-  test("tasks (desktop table): overflow has Delete", async ({ page }) => {
-    await page.goto(`${BASE}/tasks`);
-    await page.waitForLoadState("domcontentloaded");
-    await skipIfBackendError(page, /Failed to load tasks/i);
-    await expect(page.getByText(/Loading/i).first())
-      .not.toBeVisible({ timeout: LIST_LOAD_MS })
-      .catch(() => undefined);
-    const row = page.locator("table tbody tr").first();
-    await expectVisibleOrSkip(row, "No task rows.", LIST_LOAD_MS);
-    await clickFirstRowOverflowMenu(page);
-    await expectDeleteMenuItemThenClose(page);
-  });
-
   test("estimates: overflow menu has Delete", async ({ page }) => {
     await page.goto(`${BASE}/estimates`);
     await page.waitForLoadState("domcontentloaded");
@@ -286,20 +273,6 @@ test.describe("Delete surface catalog (read-only)", () => {
     const actions = row.getByRole("button", { name: /Actions for payment/i });
     await expectDeleteControlVisibleWithoutHover(page, actions, 4000);
     await actions.click();
-    await expect(page.getByRole("menuitem", { name: /^Delete$/ })).toBeVisible({ timeout: 5000 });
-    await page.keyboard.press("Escape");
-  });
-
-  test("site-photos: first card overflow has Delete", async ({ page }) => {
-    await page.goto(`${BASE}/site-photos`);
-    await page.waitForLoadState("domcontentloaded");
-    await skipIfSupabaseMissing(page);
-    await expect(page.getByText(/Loading/i).first())
-      .not.toBeVisible({ timeout: LIST_LOAD_MS })
-      .catch(() => undefined);
-    const menuBtn = page.getByRole("button", { name: /^Actions for photo$/ }).first();
-    await expectVisibleOrSkip(menuBtn, "No site photos.", LIST_LOAD_MS);
-    await menuBtn.click();
     await expect(page.getByRole("menuitem", { name: /^Delete$/ })).toBeVisible({ timeout: 5000 });
     await page.keyboard.press("Escape");
   });

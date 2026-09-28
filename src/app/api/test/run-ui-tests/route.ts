@@ -29,12 +29,6 @@ const TEST_NAMES: UiTestRow["name"][] = [
   "projects",
   "estimates",
   "change_orders",
-  "tasks",
-  "punch_list",
-  "schedule",
-  "site_photos",
-  "inspection_log",
-  "material_catalog",
   "labor_receipts",
 ];
 

@@ -14,7 +14,6 @@ const primary = [
 ];
 const routes = [
   ["/projects", "Projects"],
-  ["/tasks", "Projects"],
   ["/estimates", "Estimates"],
   ["/financial", "Finance"],
   ["/finance", "Finance"],

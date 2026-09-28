@@ -190,10 +190,12 @@ test("does not server-render labor worker data through a service-role client for
     /guardNonProductionOnlyRequest\(req\)[\s\S]*?requireSupabaseOwnerOrAdmin\(req\)[\s\S]*?getServerSupabaseAdmin\(\)/
   );
 
-  for (const relativePath of [
-    "src/app/api/seed-workers/route.ts",
-    "src/app/api/seed/operations/route.ts",
-  ]) {
+  assert.equal(
+    existsSync(resolve(ROOT, "src/app/api/seed/operations/route.ts")),
+    false,
+    "retired operations seed route is removed"
+  );
+  for (const relativePath of ["src/app/api/seed-workers/route.ts"]) {
     const route = source(resolve(ROOT, relativePath));
     assert.match(
       route,

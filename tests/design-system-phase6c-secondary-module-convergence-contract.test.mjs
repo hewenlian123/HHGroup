@@ -135,21 +135,17 @@ test("Phase 6C bounded lower-use Finance surfaces compose canonical visual autho
   );
 });
 
-test("Phase 6C bounded Materials and Worker detail surfaces compose canonical visual authority", () => {
+test("Phase 6C bounded Worker detail surfaces compose canonical visual authority", () => {
   assertCanonicalOperationalVisuals(
-    "Materials and Worker detail",
+    "Worker detail",
     operationalSources(
-      ["src/app/materials", "src/app/workers", "src/app/worker"],
+      ["src/app/workers", "src/app/worker"],
       /(?:\/preview\/|\/print\/|document|statement|receipt)/
     )
   );
 });
 
 test("Phase 6C preserves protected document typography roots", () => {
-  assert.match(
-    source("src/app/materials/[id]/material-selection-document.tsx"),
-    /material-selection-a4-page/
-  );
   assert.match(
     source("src/app/workers/[id]/statement/print/page.tsx"),
     /payroll-statement-print-root/

@@ -32,13 +32,6 @@ const SEGMENT_LABELS: Record<string, string> = {
   project: "Project",
   estimates: "Estimates",
   estimate: "Estimate",
-  tasks: "Tasks",
-  "punch-list": "Punch List",
-  schedule: "Schedule",
-  "site-photos": "Site Photos",
-  "inspection-log": "Inspection Log",
-  materials: "Material Selections",
-  catalog: "Material Selections",
   financial: "Finance",
   finance: "Finance",
   people: "Contacts",
@@ -109,11 +102,6 @@ const LOGICAL_BREADCRUMB_RULES = [
   { prefix: "/labor/subcontractors", labels: ["Contacts", "Subcontractors"] },
   { prefix: "/vendors", labels: ["Contacts", "Vendors"] },
   { prefix: "/people/vendors", labels: ["Contacts", "Vendors"] },
-  { prefix: "/tasks", labels: ["Projects", "Tasks"] },
-  { prefix: "/schedule", labels: ["Projects", "Schedule"] },
-  { prefix: "/punch-list", labels: ["Projects", "Punch List"] },
-  { prefix: "/site-photos", labels: ["Projects", "Photos"] },
-  { prefix: "/inspection-log", labels: ["Projects", "Inspections"] },
   { prefix: "/documents", labels: ["Projects", "Documents"] },
   { prefix: "/change-orders", labels: ["Projects", "Change Orders"] },
   { prefix: "/estimate-templates", labels: ["Estimates", "Templates"] },
@@ -154,7 +142,6 @@ const LOGICAL_BREADCRUMB_RULES = [
   { prefix: "/labor/worker-balances", labels: ["Labor", "Workforce", "Balances"] },
   { prefix: "/labor/worker-invoices", labels: ["Labor", "Workforce", "Statements"] },
   { prefix: "/labor/receipts", labels: ["Inbox"] },
-  { prefix: "/materials", labels: ["Projects", "Material Selections"] },
   { prefix: "/system/backups", labels: ["Settings", "Admin Center", "Backups"] },
   { prefix: "/settings/system-health", labels: ["Settings", "Admin Center", "System Health"] },
   { prefix: "/system-health", labels: ["Settings", "Admin Center", "System Health"] },
@@ -358,17 +345,6 @@ export function Topbar({
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link href="/estimates/new">New Estimate</Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuLabel className={TYPO.tableHeader}>Work</DropdownMenuLabel>
-              <DropdownMenuItem asChild>
-                <Link href="/tasks/new">New Task</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/punch-list/new">New Punch Issue</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/site-photos/upload">Upload Site Photo</Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuLabel className={TYPO.tableHeader}>Finance</DropdownMenuLabel>

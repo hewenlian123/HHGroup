@@ -32,7 +32,6 @@ describe("modern Supabase key consumer contract", () => {
       "tests/global-setup.ts",
       "tests/global-teardown.ts",
       "tests/e2e-supabase-env-diagnostic.ts",
-      "scripts/debug-delete.ts",
     ];
 
     for (const path of consumers) {
@@ -41,9 +40,6 @@ describe("modern Supabase key consumer contract", () => {
 
     expect(source("tests/e2e-supabase-env-diagnostic.ts")).not.toMatch(
       /keyPrefix|KeyPrefix|slice\(\s*0|substring\(\s*0/i
-    );
-    expect(source("scripts/debug-delete.ts")).not.toMatch(
-      /key prefix|slice\(\s*0|substring\(\s*0/i
     );
   });
 

@@ -5,11 +5,8 @@ import { E2E_PRESERVED_PROJECT_ID } from "./e2e-cleanup-db";
 import { getE2EOwnerCredentials, gotoWithE2EAuth, loginAsE2EOwner } from "./e2e-auth-owner";
 
 const ENDPOINTS = [
-  "/api/operations/schedule",
-  "/api/operations/punch-list",
-  "/api/operations/site-photos",
-  "/api/operations/inspection-log",
-  "/api/operations/tasks",
+  `/api/projects/${E2E_PRESERVED_PROJECT_ID}/tab?key=documents`,
+  `/api/projects/${E2E_PRESERVED_PROJECT_ID}/tab?key=activity`,
 ] as const;
 
 async function expectNoHorizontalOverflow(page: Page, width: number) {
@@ -25,7 +22,7 @@ test.describe("Production repair request-session access", () => {
   test("serves authenticated operations reads and rejects anonymous requests", async ({
     page,
   }, testInfo) => {
-    await loginAsE2EOwner(page, "/schedule");
+    await loginAsE2EOwner(page, "/projects");
 
     const authenticatedResults = await page.evaluate(async (paths) => {
       return Promise.all(
@@ -99,9 +96,9 @@ test.describe("Production repair request-session access", () => {
 
     const pages = [
       { path: `/projects/${E2E_PRESERVED_PROJECT_ID}/profit`, heading: "Profit" },
-      { path: "/schedule", heading: "Schedule" },
-      { path: "/punch-list", heading: "Punch List" },
-      { path: "/site-photos", heading: "Site Photos" },
+      { path: "/projects", heading: "Projects" },
+      { path: "/change-orders", heading: "Change Orders" },
+      { path: "/documents", heading: "Documents" },
     ] as const;
 
     await loginAsE2EOwner(page, pages[0].path);

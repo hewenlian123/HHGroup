@@ -42,11 +42,8 @@ import type {
 import { getProjectFinancialSnapshotProfitReadinessWarning } from "@/lib/financial/project-financial-display";
 import type { ProjectCostDashboardPayload } from "@/lib/project-cost-dashboard";
 import { ProjectCostLinesTable } from "./project-cost-lines-table";
-import { ProjectTasksTab } from "./project-tasks-tab";
 import { ProjectCloseoutTab } from "./project-closeout-tab";
-import { ProjectMaterialsTab } from "./project-materials-tab";
 import { ProjectCommissionTab } from "./project-commission-tab";
-import { ProjectWorkspaceContext } from "@/components/projects/project-workspace-context";
 import {
   PROJECT_WORKSPACE_TABS,
   normalizeWorkspaceTab,
@@ -54,19 +51,10 @@ import {
   type WorkspaceTabKey,
 } from "@/lib/navigation/project-workspace";
 
-const ScheduleWorkspace = dynamic(() => import("@/app/schedule/page"));
-const PunchWorkspace = dynamic(() => import("@/app/punch-list/page"));
-const PhotosWorkspace = dynamic(() => import("@/app/site-photos/page"));
-const InspectionsWorkspace = dynamic(() => import("@/app/inspection-log/page"));
 import { ProjectFinancialSnapshotComparisonPanel } from "./project-financial-snapshot-comparison-panel";
 import { RecentExpenseLines } from "./recent-expense-lines";
 import { InvoiceStatusBadge } from "@/components/invoice-status-badge";
-import {
-  archiveProjectAction,
-  deleteProjectAction,
-  updateProjectAction,
-  updateProjectTaskAction,
-} from "../actions";
+import { archiveProjectAction, deleteProjectAction, updateProjectAction } from "../actions";
 import { EditProjectModal, type ProjectEditSavePatch } from "./edit-project-modal";
 import { useBreadcrumbEntityLabel } from "@/contexts/breadcrumb-override-context";
 import {
@@ -387,20 +375,14 @@ export interface ProjectDetailTabsClientProps {
   canonicalProfit: CanonicalProjectProfit | null;
   initialTab: TabKey;
   loadedWorkspaceTab: WorkspaceTabKey;
-  tasks: import("@/lib/data").ProjectTaskWithWorker[];
-  workers: import("@/lib/labor-db").Worker[];
   recentExpenseLines: import("./recent-expense-lines").RecentExpenseLineRow[];
   /** Legacy-only view; never used by a reachable workspace tab. */
   expenseLineRows: import("./recent-expense-lines").RecentExpenseLineRow[];
-  scheduleItems: import("@/lib/data").ProjectScheduleItem[];
   projectInvoices: import("@/lib/data").InvoiceWithDerived[];
   relatedEstimates: EstimateListItem[];
   laborEntries: import("@/lib/daily-labor-db").LaborEntryWithJoins[];
   documents: import("@/lib/data").DocumentRow[];
   commissions: import("@/lib/data").CommissionWithPaid[];
-  materialSelections: import("@/lib/data").ProjectMaterialSelectionWithMaterial[];
-  materialCatalog: import("@/lib/data").MaterialCatalogRow[];
-  punchItems: import("@/lib/punch-list-db").PunchListItemWithJoins[];
   subcontracts: import("@/lib/subcontracts-db").SubcontractWithSubcontractor[];
   bills: import("@/lib/ap-bills-db").ApBillWithProject[];
   activityLogs: import("@/lib/activity-logs-db").ActivityLog[];
@@ -424,18 +406,13 @@ export function ProjectDetailTabsClient({
   canonicalProfit,
   initialTab,
   loadedWorkspaceTab,
-  tasks,
-  workers,
   recentExpenseLines,
   expenseLineRows,
-  scheduleItems,
   projectInvoices,
   relatedEstimates,
   laborEntries,
   documents,
   commissions,
-  materialSelections,
-  materialCatalog,
   subcontracts,
   bills,
   activityLogs,
@@ -700,20 +677,12 @@ export function ProjectDetailTabsClient({
     : (financialSummary?.collected ?? billingSummary?.paidTotal ?? Number.NaN);
   const topNeedCollectValue = snapshotCostSummary.openAR;
   const topMarginDisplay = headerMarginValue == null ? "—" : `${headerMarginValue.toFixed(1)}%`;
-  const openTaskCount = tasks.filter((task) => {
-    const status = String(task.status ?? "").toLowerCase();
-    return status !== "done" && status !== "completed" && status !== "complete";
-  }).length;
   const recentCostActivity = recentExpenseLines.slice(0, 4);
   const projectClientName =
     displayProject.client ?? (displayProject as { client_name?: string }).client_name ?? null;
   const projectWorkerNames = React.useMemo(
-    () =>
-      uniqueText([
-        ...tasks.map((task) => task.worker_name),
-        ...laborEntries.map((entry) => entry.worker_name),
-      ]),
-    [laborEntries, tasks]
+    () => uniqueText(laborEntries.map((entry) => entry.worker_name)),
+    [laborEntries]
   );
   const subcontractorNames = React.useMemo(
     () => uniqueText(subcontracts.map((subcontract) => subcontract.subcontractor_name)),
@@ -790,25 +759,6 @@ export function ProjectDetailTabsClient({
     selectWorkspaceTab("financial");
   }, [selectWorkspaceTab]);
 
-  const handleToggleTask = React.useCallback(
-    async (taskId: string, done: boolean) => {
-      if (!canManageProject) {
-        toast({ title: "You can't update tasks on this project.", variant: "error" });
-        return;
-      }
-      const result = await updateProjectTaskAction(projectId, taskId, {
-        status: done ? "done" : "todo",
-      });
-      if (result?.error) {
-        toast({ title: "Couldn't update task", description: result.error, variant: "error" });
-        return;
-      }
-      toast({ title: done ? "Task completed" : "Task reopened", variant: "success" });
-      router.refresh();
-    },
-    [canManageProject, projectId, router, toast]
-  );
-
   const overdueInvoice = mostUrgentOverdueInvoice(projectInvoices);
   const profitText =
     headerProfitValue == null
@@ -822,12 +772,6 @@ export function ProjectDetailTabsClient({
   const actualText = formatOverviewMoney(headerActualCost);
   const backHref = financeReturnPath(searchParams.get("returnTo"), "/projects");
   const backLabel = searchParams.get("returnTo") ? financeReturnLabel(backHref) : "Projects";
-  const doneScheduleCount = scheduleItems.filter((item) => {
-    const status = String(item.status ?? "").toLowerCase();
-    return status === "done" || status === "completed" || status === "complete";
-  }).length;
-  const scheduleProgressLabel =
-    scheduleItems.length > 0 ? `${doneScheduleCount} of ${scheduleItems.length}` : null;
   const changeOrderCount = changeOrders.length;
 
   const tabIsLoading = loadedWorkspaceTab !== tab;
@@ -898,7 +842,6 @@ export function ProjectDetailTabsClient({
               name={displayProject.name}
               status={<ProjectDetailStatusPill status={displayProject.status} />}
               address={displayProject.address ?? null}
-              scheduleProgress={scheduleProgressLabel}
             />
             <div className="lg:flex lg:items-end lg:justify-between lg:gap-4">
               <div className="hidden min-w-0 space-y-2 lg:block">
@@ -1067,12 +1010,7 @@ export function ProjectDetailTabsClient({
                 {PROJECT_WORKSPACE_TABS.filter(
                   (t) => t.key !== "people" && t.key !== "closeout"
                 ).map((t) => {
-                  const count =
-                    t.key === "change-orders"
-                      ? changeOrderCount
-                      : t.key === "tasks"
-                        ? openTaskCount
-                        : 0;
+                  const count = t.key === "change-orders" ? changeOrderCount : 0;
                   return (
                     <TabsTrigger
                       key={t.key}
@@ -1161,8 +1099,6 @@ export function ProjectDetailTabsClient({
                     cashPosition={snapshotCostSummary.cashPosition}
                     invoices={projectInvoices}
                     changeOrders={changeOrders}
-                    scheduleItems={scheduleItems}
-                    tasks={tasks}
                     activityLogs={activityLogs}
                     recentExpenses={recentCostActivity}
                     clientName={projectClientName}
@@ -1176,57 +1112,7 @@ export function ProjectDetailTabsClient({
                     missingReceiptCount={projectCost?.alerts.missingReceiptCount ?? null}
                     onOpenFinancial={() => selectWorkspaceTab("financial")}
                     onOpenChangeOrders={() => selectWorkspaceTab("change-orders")}
-                    onOpenTasks={() => selectWorkspaceTab("tasks")}
-                    onOpenPunch={() => selectWorkspaceTab("punch-list")}
-                    onOpenSchedule={() => selectWorkspaceTab("schedule")}
-                    onOpenPhotos={() => selectWorkspaceTab("photos")}
-                    onToggleTask={(taskId, done) => {
-                      void handleToggleTask(taskId, done);
-                    }}
                   />
-                </TabsContent>
-
-                <TabsContent value="tasks" className="mt-4 space-y-4">
-                  <ExecutiveCard title="Tasks">
-                    <ProjectTasksTab
-                      projectId={projectId}
-                      tasks={tasks}
-                      workers={workers}
-                      onTaskCreated={() =>
-                        syncClientsThenRefreshInBackground(router, "project-task-created")
-                      }
-                      onTaskUpdated={() =>
-                        syncClientsThenRefreshInBackground(router, "project-task-updated")
-                      }
-                    />
-                  </ExecutiveCard>
-
-                  <ExecutiveCard title="Activity">
-                    {activityLogs.length === 0 ? (
-                      <p className="py-6 text-hh-body text-[var(--hh-text-secondary)]">
-                        No activity for this project.
-                      </p>
-                    ) : (
-                      <ul className="divide-y divide-[var(--hh-border)]">
-                        {activityLogs.map((log) => (
-                          <li key={log.id} className="flex gap-3 py-2.5 text-hh-table-cell">
-                            <span className="w-[9rem] shrink-0 hh-fin tabular-nums text-[var(--hh-text-secondary)]">
-                              {log.created_at?.slice(0, 19).replace("T", " ") ?? "—"}
-                            </span>
-                            <span className="min-w-0 text-[var(--hh-text-primary)]">
-                              {log.description ?? log.type}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </ExecutiveCard>
-                </TabsContent>
-
-                <TabsContent value="schedule" className="mt-4">
-                  <ProjectWorkspaceContext.Provider key={projectId} value={projectId}>
-                    <ScheduleWorkspace />
-                  </ProjectWorkspaceContext.Provider>
                 </TabsContent>
 
                 <TabsContent value="financial" className="mt-4 space-y-4">
@@ -1719,18 +1605,6 @@ export function ProjectDetailTabsClient({
                   </ExecutiveCard>
                 </TabsContent>
 
-                <TabsContent value="photos" className="mt-4">
-                  <ProjectWorkspaceContext.Provider key={projectId} value={projectId}>
-                    <PhotosWorkspace />
-                  </ProjectWorkspaceContext.Provider>
-                </TabsContent>
-
-                <TabsContent value="inspections" className="mt-4">
-                  <ProjectWorkspaceContext.Provider key={projectId} value={projectId}>
-                    <InspectionsWorkspace />
-                  </ProjectWorkspaceContext.Provider>
-                </TabsContent>
-
                 <TabsContent value="expenses" className={TAB_PANEL}>
                   <SectionHeader
                     label="Expenses"
@@ -1883,22 +1757,6 @@ export function ProjectDetailTabsClient({
                     </div>
                   )}
                 </TabsContent>
-                <TabsContent value="materials" className={TAB_PANEL}>
-                  <ProjectMaterialsTab
-                    projectId={projectId}
-                    projectName={displayProject.name}
-                    clientName={
-                      displayProject.client ??
-                      (displayProject as { client_name?: string }).client_name ??
-                      undefined
-                    }
-                    selections={materialSelections}
-                    catalog={materialCatalog}
-                    onRefresh={() =>
-                      syncClientsThenRefreshInBackground(router, "project-materials-mutated")
-                    }
-                  />
-                </TabsContent>
                 <TabsContent value="closeout" className={TAB_PANEL}>
                   {billingSummary && canonicalProfit ? (
                     <ProjectCloseoutTab
@@ -1930,11 +1788,6 @@ export function ProjectDetailTabsClient({
                       }
                     />
                   </div>
-                </TabsContent>
-                <TabsContent value="punch-list" className="mt-4">
-                  <ProjectWorkspaceContext.Provider key={projectId} value={projectId}>
-                    <PunchWorkspace />
-                  </ProjectWorkspaceContext.Provider>
                 </TabsContent>
                 <TabsContent value="subcontracts" className={TAB_PANEL}>
                   <SectionHeader

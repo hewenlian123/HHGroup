@@ -29,8 +29,6 @@ const ROUTES = [
   "/financial/vendors",
   "/financial/commissions",
   "/financial/payments",
-  "/materials",
-  "/materials/new",
   "/workers",
   `/workers/${E2E_PRESERVED_WORKER_ID}`,
   `/worker/${E2E_PRESERVED_WORKER_ID}/monthly-report`,
@@ -45,7 +43,6 @@ const REPRESENTATIVE_ROUTES = [
   "/settings/company",
   "/finance",
   "/financial/accounts",
-  "/materials",
   "/workers",
   `/workers/${E2E_PRESERVED_WORKER_ID}`,
 ] as const;

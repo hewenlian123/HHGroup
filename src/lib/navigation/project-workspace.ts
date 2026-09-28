@@ -1,14 +1,8 @@
 export const PROJECT_WORKSPACE_TABS = [
   { key: "overview", label: "Overview", mobile: true },
-  { key: "schedule", label: "Schedule", mobile: true },
-  { key: "tasks", label: "Tasks", mobile: true },
-  { key: "punch-list", label: "Punch", mobile: false },
-  { key: "photos", label: "Photos", mobile: true },
-  { key: "inspections", label: "Inspections", mobile: false },
-  { key: "materials", label: "Materials", mobile: false },
-  { key: "change-orders", label: "Change Orders", mobile: false },
-  { key: "documents", label: "Documents", mobile: false },
-  { key: "financial", label: "Financials", mobile: false },
+  { key: "change-orders", label: "Change Orders", mobile: true },
+  { key: "documents", label: "Documents", mobile: true },
+  { key: "financial", label: "Financials", mobile: true },
   { key: "people", label: "People", mobile: false },
   { key: "closeout", label: "Closeout", mobile: false },
 ] as const;
@@ -25,7 +19,14 @@ export type TabKey =
   | "commission"
   | "work"
   | "activity"
-  | "docs";
+  | "docs"
+  | "tasks"
+  | "schedule"
+  | "punch"
+  | "punch-list"
+  | "photos"
+  | "inspections"
+  | "materials";
 
 const aliases: Record<string, WorkspaceTabKey> = {
   cost: "financial",
@@ -36,10 +37,16 @@ const aliases: Record<string, WorkspaceTabKey> = {
   bills: "financial",
   commission: "financial",
   financials: "financial",
-  work: "tasks",
-  activity: "tasks",
   docs: "documents",
-  punch: "punch-list",
+  work: "overview",
+  activity: "overview",
+  tasks: "overview",
+  schedule: "overview",
+  punch: "overview",
+  "punch-list": "overview",
+  photos: "overview",
+  inspections: "overview",
+  materials: "overview",
 };
 
 export function normalizeWorkspaceTab(value: string): WorkspaceTabKey {

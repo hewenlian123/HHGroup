@@ -49,10 +49,6 @@ describe("Project Detail production schema contract", () => {
 
     expect(route).toContain("getDocumentsByProject(id, supabase)");
     expect(route).toContain("getActivityLogsByProject(id, 100, supabase)");
-    expect(route).toContain("getSelectionsByProject(id, supabase)");
-    expect(route).toContain(
-      "getMaterialCatalog(supabase, guard.context.organizationId ?? undefined)"
-    );
     expect(route).toContain("getCloseoutPunch(id, supabase)");
     expect(route).toContain("getCloseoutWarranty(id, supabase)");
     expect(route).toContain("getCloseoutCompletion(id, supabase)");

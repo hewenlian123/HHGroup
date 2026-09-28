@@ -5,9 +5,9 @@ import Link from "next/link";
 import {
   ArrowLeft,
   ArrowUpRight,
-  Camera,
-  Check,
+  ClipboardList,
   Clock,
+  FileText,
   Navigation,
   Receipt,
   TriangleAlert,
@@ -25,8 +25,6 @@ import {
 } from "@/lib/financial/project-overview-display";
 import type { InvoiceWithDerived } from "@/lib/invoices-db";
 import type { ChangeOrder } from "@/lib/change-orders-db";
-import type { ProjectScheduleItem } from "@/lib/project-schedule-db";
-import type { ProjectTaskWithWorker } from "@/lib/project-tasks-db";
 import type { ActivityLog } from "@/lib/activity-logs-db";
 
 const cardClass =
@@ -44,20 +42,6 @@ function displayDate(value: string | null | undefined): string {
   const year = Number(value.slice(0, 4));
   if (!Number.isFinite(year) || year === new Date().getFullYear()) return formatted;
   return `${formatted}, ${year}`;
-}
-
-function schedulePhase(status: string): "done" | "current" | "next" {
-  const normalized = status.toLowerCase().replace(/\s+/g, "_");
-  if (normalized === "done" || normalized === "completed" || normalized === "complete")
-    return "done";
-  if (normalized === "in_progress" || normalized === "active" || normalized === "current")
-    return "current";
-  return "next";
-}
-
-function taskOpen(status: string | null | undefined): boolean {
-  const normalized = String(status ?? "").toLowerCase();
-  return normalized !== "done" && normalized !== "completed" && normalized !== "complete";
 }
 
 function OverviewCard({
@@ -293,8 +277,6 @@ export function ProjectOverviewPanels({
   cashPosition,
   invoices,
   changeOrders,
-  scheduleItems,
-  tasks,
   activityLogs,
   recentExpenses,
   clientName,
@@ -308,11 +290,6 @@ export function ProjectOverviewPanels({
   missingReceiptCount,
   onOpenFinancial,
   onOpenChangeOrders,
-  onOpenTasks,
-  onOpenPunch,
-  onOpenSchedule,
-  onOpenPhotos,
-  onToggleTask,
 }: {
   projectId: string;
   revisedContract: number;
@@ -334,8 +311,6 @@ export function ProjectOverviewPanels({
   cashPosition: number;
   invoices: InvoiceWithDerived[];
   changeOrders: ChangeOrder[];
-  scheduleItems: ProjectScheduleItem[];
-  tasks: ProjectTaskWithWorker[];
   activityLogs: ActivityLog[];
   recentExpenses: Array<{
     id: string;
@@ -355,11 +330,6 @@ export function ProjectOverviewPanels({
   missingReceiptCount: number | null;
   onOpenFinancial: () => void;
   onOpenChangeOrders: () => void;
-  onOpenTasks: () => void;
-  onOpenPunch: () => void;
-  onOpenSchedule: () => void;
-  onOpenPhotos: () => void;
-  onToggleTask: (taskId: string, done: boolean) => void;
 }) {
   const lines = overviewCostLines(
     {
@@ -373,17 +343,6 @@ export function ProjectOverviewPanels({
       actualCost,
     },
     laborBudget
-  );
-  const openTasks = tasks.filter((task) => taskOpen(task.status));
-  const doneSchedule = scheduleItems.filter((item) => schedulePhase(item.status) === "done").length;
-  const scheduleProgress =
-    scheduleItems.length > 0 ? (doneSchedule / scheduleItems.length) * 100 : null;
-  const crew = Array.from(
-    new Map(
-      openTasks
-        .filter((task) => task.worker_name?.trim())
-        .map((task) => [task.worker_name!.trim(), task.worker_name!.trim()])
-    ).values()
   );
   const activity = activityLogs.slice(0, 4);
   const invoiceRows = invoices.slice(0, 3);
@@ -404,8 +363,18 @@ export function ProjectOverviewPanels({
       href: `/financial/expenses?project_id=${encodeURIComponent(projectId)}`,
       icon: Receipt,
     },
-    { label: "Photo", meta: "Site photos", onClick: onOpenPhotos, icon: Camera },
-    { label: "Punch item", meta: "Open punch list", onClick: onOpenPunch, icon: Check },
+    {
+      label: "Documents",
+      meta: "Project files",
+      href: `/projects/${projectId}?tab=documents`,
+      icon: FileText,
+    },
+    {
+      label: "Change orders",
+      meta: "Contract changes",
+      href: `/projects/${projectId}?tab=change-orders`,
+      icon: ClipboardList,
+    },
   ];
 
   return (
@@ -431,121 +400,14 @@ export function ProjectOverviewPanels({
               </>
             );
             const className = cn(cardClass, "min-h-[112px] rounded-card-m p-4 text-left");
-            return action.href ? (
+            return (
               <Link key={action.label} href={action.href} className={className}>
                 {body}
               </Link>
-            ) : (
-              <button
-                key={action.label}
-                type="button"
-                onClick={action.onClick}
-                className={className}
-              >
-                {body}
-              </button>
             );
           })}
         </div>
 
-        <OverviewCard
-          title="Today's tasks"
-          meta={
-            tasks.length > 0
-              ? `${tasks.length - openTasks.length} of ${tasks.length} done · ${openTasks.length} open`
-              : undefined
-          }
-        >
-          {tasks.length === 0 ? (
-            <EmptyCopy title="No tasks yet" body="Tasks for this project will show up here." />
-          ) : (
-            <ul>
-              {tasks.slice(0, 6).map((task, index) => {
-                const done = !taskOpen(task.status);
-                const overdue =
-                  taskOpen(task.status) &&
-                  task.due_date &&
-                  task.due_date < new Date().toISOString().slice(0, 10);
-                return (
-                  <li key={task.id} className="border-t border-[var(--hh-line-2)] first:border-t-0">
-                    <div className="flex min-h-14 items-start gap-3 px-5 py-3">
-                      <button
-                        type="button"
-                        aria-pressed={done}
-                        aria-label={done ? `Mark ${task.title} open` : `Mark ${task.title} done`}
-                        onClick={() => onToggleTask(task.id, !done)}
-                        className={cn(
-                          "mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-hh-compact border",
-                          done
-                            ? "border-[var(--hh-success-solid)] bg-[var(--hh-success-bg)] text-[var(--hh-success-fg)]"
-                            : "border-[var(--hh-line-input)] bg-[var(--hh-surface)]"
-                        )}
-                      >
-                        {done ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : null}
-                      </button>
-                      <div className="min-w-0 flex-1">
-                        <p
-                          className={cn(
-                            "text-hh-body-strong leading-5 text-[var(--hh-ink)]",
-                            done && "line-through"
-                          )}
-                        >
-                          {task.title}
-                        </p>
-                        <p className="mt-0.5 text-hh-metadata text-[var(--hh-muted)]">
-                          {[task.worker_name, task.due_date ? displayDate(task.due_date) : null]
-                            .filter(Boolean)
-                            .join(" · ") || "No due date"}
-                          {overdue ? (
-                            <span className="ml-1 font-[650] text-[var(--hh-danger-fg)]">
-                              Overdue
-                            </span>
-                          ) : null}
-                        </p>
-                      </div>
-                      {!done && index === tasks.findIndex((item) => taskOpen(item.status)) ? (
-                        <span className="rounded-full bg-[var(--hh-chip-strong)] px-2 py-0.5 text-hh-label font-[650] text-[var(--hh-th)]">
-                          Next
-                        </span>
-                      ) : null}
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-          <CardFooterLink label="View tasks" onClick={onOpenTasks} />
-        </OverviewCard>
-
-        <OverviewCard title="Crew on site">
-          {crew.length === 0 ? (
-            <EmptyCopy
-              title="No assigned crew"
-              body="Workers named on open tasks will show up here."
-            />
-          ) : (
-            <ul>
-              {crew.map((name) => (
-                <li
-                  key={name}
-                  className="flex min-h-14 items-center gap-3 border-t border-[var(--hh-line-2)] px-5 py-3 first:border-t-0"
-                >
-                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--hh-chip)] text-hh-metadata font-[650] text-[var(--hh-ink)]">
-                    {name.slice(0, 1).toUpperCase()}
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block truncate text-hh-body-strong font-[650] text-[var(--hh-ink)]">
-                      {name}
-                    </span>
-                    <span className="block text-hh-metadata text-[var(--hh-muted)]">
-                      Assigned on an open task
-                    </span>
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </OverviewCard>
         {mapsHref ? (
           <Button asChild variant="secondary" className="w-full">
             <a href={mapsHref} target="_blank" rel="noreferrer">
@@ -763,17 +625,6 @@ export function ProjectOverviewPanels({
               </DetailItem>
               {notes ? <DetailItem label="Notes">{notes}</DetailItem> : null}
             </div>
-            <div className="flex flex-wrap gap-2 px-5 pb-4">
-              <Button type="button" variant="secondary" size="sm" onClick={onOpenTasks}>
-                Open tasks · {openTasks.length}
-              </Button>
-              <Button type="button" variant="secondary" size="sm" onClick={onOpenPunch}>
-                Open punch
-              </Button>
-              <Button type="button" variant="secondary" size="sm" onClick={onOpenSchedule}>
-                View schedule
-              </Button>
-            </div>
             <div className="space-y-2 border-t border-[var(--hh-line-2)] px-5 py-3 text-hh-body">
               <p>
                 <Link
@@ -792,70 +643,6 @@ export function ProjectOverviewPanels({
                 </Link>
               </p>
             </div>
-          </OverviewCard>
-
-          <OverviewCard
-            title="Schedule"
-            action={<TextLink onClick={onOpenSchedule}>Open</TextLink>}
-          >
-            {scheduleItems.length === 0 ? (
-              <EmptyCopy
-                title="No schedule items"
-                body="Schedule items for this project will show up here."
-              />
-            ) : (
-              <div className="px-5 pb-4">
-                <div className="mb-3 text-hh-metadata text-[var(--hh-muted)]">
-                  <span>
-                    {doneSchedule} of {scheduleItems.length} complete
-                  </span>
-                </div>
-                <div className="mb-4 h-1.5 overflow-hidden rounded-full bg-[var(--hh-track)]">
-                  <div
-                    className="h-full rounded-full"
-                    style={{
-                      width: `${Math.max(0, Math.min(100, scheduleProgress ?? 0))}%`,
-                      backgroundImage: "var(--hh-grad-bar-navy)",
-                    }}
-                  />
-                </div>
-                <ol className="space-y-3">
-                  {scheduleItems.slice(0, 5).map((item) => {
-                    const phase = schedulePhase(item.status);
-                    return (
-                      <li key={item.id} className="flex gap-3">
-                        <span
-                          className={cn(
-                            "mt-0.5 flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full",
-                            phase === "done" &&
-                              "bg-[var(--hh-success-solid)] text-[var(--hh-surface)]",
-                            phase === "current" && "bg-[var(--hh-navy)] text-[var(--hh-surface)]",
-                            phase === "next" &&
-                              "border border-[var(--hh-line-input)] bg-[var(--hh-surface)]"
-                          )}
-                          aria-hidden="true"
-                        >
-                          {phase === "done" ? <Check className="h-3 w-3" /> : null}
-                          {phase === "current" ? (
-                            <span className="h-1.5 w-1.5 rounded-full bg-[var(--hh-surface)]" />
-                          ) : null}
-                        </span>
-                        <span className="min-w-0">
-                          <span className="block truncate text-hh-body font-[650] text-[var(--hh-ink)]">
-                            {item.title}
-                          </span>
-                          <span className="block text-hh-helper text-[var(--hh-muted)]">
-                            {[displayDate(item.start_date), item.status]
-                              .filter(Boolean)
-                              .join(" · ")}
-                          </span>
-                        </span>
-                      </li>
-                    );
-                  })}
-                </ol>
-              </div>
-            )}
           </OverviewCard>
 
           <OverviewCard title="Activity" className="lg:flex-1">
@@ -1103,14 +890,12 @@ export function ProjectMobileIntro({
   name,
   status,
   address,
-  scheduleProgress,
 }: {
   backHref: string;
   backLabel: string;
   name: string;
   status: React.ReactNode;
   address: string | null;
-  scheduleProgress: string | null;
 }) {
   return (
     <div
@@ -1133,11 +918,6 @@ export function ProjectMobileIntro({
       <h1 className="mt-1 text-title-page">{name}</h1>
       {address ? (
         <p className="mt-1 text-hh-body text-[var(--hh-sidebar-text-item)]">{address}</p>
-      ) : null}
-      {scheduleProgress ? (
-        <p className="mt-3 text-hh-body text-[var(--hh-sidebar-text-pin)]">
-          Schedule items {scheduleProgress}
-        </p>
       ) : null}
     </div>
   );

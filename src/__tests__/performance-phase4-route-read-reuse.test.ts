@@ -51,11 +51,8 @@ describe("Phase 4 route read reuse", () => {
   it("covers the remaining Phase 4 routes with duration-only server diagnostics", () => {
     const projects = source("src/app/projects/page.tsx");
     const estimate = source("src/app/estimates/[id]/page.tsx");
-    const schedule = source("src/app/api/operations/schedule/route.ts");
 
     expect(projects).toContain('emitRscTiming("projects"');
     expect(estimate).toContain('emitRscTiming("estimates/[id]"');
-    expect(schedule).toContain("attachServerTiming(response");
-    expect(schedule).toContain("hh_handler_total");
   });
 });

@@ -425,14 +425,6 @@ export function VendorDetail() {
             ),
           },
           {
-            label: "Materials",
-            content: workflow(
-              "Open materials catalog",
-              "/materials/catalog",
-              "Supplier names are recorded on materials. A vendor-specific materials list is unavailable."
-            ),
-          },
-          {
             label: "Bills",
             content: workflow(
               "Browse all bills",

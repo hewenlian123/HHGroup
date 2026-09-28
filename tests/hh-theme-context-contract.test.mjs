@@ -77,7 +77,6 @@ test("route roots expose explicit contexts and a neutral sibling portal host", (
   for (const routePattern of [
     "/^\\/estimates\\/",
     "/^\\/financial\\/invoices\\/",
-    "/^\\/materials\\/",
     "/^\\/workers\\/",
     "/^\\/labor\\/payments\\/",
   ]) {
@@ -173,11 +172,6 @@ test("protected document, paper, viewer, and evidence roots are explicit", () =>
       'data-hh-context="paper"',
     ],
     ["src/app/financial/invoices/[id]/print/page.tsx", 'data-hh-context="document-route"'],
-    [
-      "src/app/materials/[id]/preview/material-selection-preview-shell.tsx",
-      'data-hh-context="paper"',
-    ],
-    ["src/app/materials/[id]/print/page.tsx", 'data-hh-context="document-route"'],
     ["src/components/financial/payment-receipt-body.tsx", 'data-hh-context="paper"'],
     ["src/components/labor/worker-payment-receipt-body.tsx", 'data-hh-context="paper"'],
     ["src/app/receipt/print/[id]/page.tsx", 'data-hh-context="document-route"'],

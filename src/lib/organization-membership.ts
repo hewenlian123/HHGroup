@@ -24,9 +24,6 @@ export async function getActiveOrganizationMemberships(
 /** Assistant admission is limited to organization workspaces; other product boundaries retain their roles. */
 export function isOrganizationWorkspacePath(pathname: string): boolean {
   return (
-    ["/tasks", "/schedule", "/punch-list", "/inspection-log", "/site-photos"].includes(pathname) ||
-    pathname.startsWith("/api/operations/") ||
-    /^\/api\/tasks\/[^/]+$/.test(pathname) ||
     /^\/api\/projects\/[^/]+\/closeout\/(punch|warranty|completion|generate-punch-pdf|generate-completion-pdf)$/.test(
       pathname
     ) ||
@@ -34,10 +31,8 @@ export function isOrganizationWorkspacePath(pathname: string): boolean {
     /^\/projects\/[^/]+$/.test(pathname) ||
     pathname === "/projects/documents" ||
     pathname === "/documents" ||
-    pathname.startsWith("/materials") ||
     pathname === "/api/projects" ||
-    /^\/api\/projects\/[^/]+\/(tab|materials)$/.test(pathname) ||
-    pathname.startsWith("/api/materials/") ||
+    /^\/api\/projects\/[^/]+\/tab$/.test(pathname) ||
     pathname.startsWith("/api/attachments/") ||
     pathname === "/upload-receipt" ||
     [

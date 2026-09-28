@@ -3,12 +3,12 @@ import { expect, test, type Page } from "@playwright/test";
 import { E2E_PRESERVED_PROJECT_ID } from "./e2e-cleanup-db";
 
 const TAB_ALIAS_SMOKE: Array<{ query: string; tab: string }> = [
-  { query: "financial", tab: "Financial" },
-  { query: "schedule", tab: "Schedule" },
-  { query: "tasks", tab: "Tasks" },
+  { query: "financial", tab: "Financials" },
+  { query: "schedule", tab: "Overview" },
+  { query: "tasks", tab: "Overview" },
   { query: "documents", tab: "Documents" },
-  { query: "materials", tab: "Materials" },
-  { query: "closeout", tab: "Closeout" },
+  { query: "materials", tab: "Overview" },
+  { query: "change-orders", tab: "Change Orders" },
 ];
 
 async function expectNoAppError(page: Page) {
@@ -48,18 +48,7 @@ async function firstProjectPath(page: Page): Promise<string> {
 async function expectWorkspaceTabs(page: Page) {
   const tabList = page.getByRole("tablist", { name: "Project workspace sections" });
   await expect(tabList).toBeVisible({ timeout: 30_000 });
-  for (const label of [
-    "Overview",
-    "Financial",
-    "Schedule",
-    "Tasks",
-    "People",
-    "Documents",
-    "Photos",
-    "Materials",
-    "Inspections",
-    "Closeout",
-  ]) {
+  for (const label of ["Overview", "Change Orders", "Documents", "Financials"]) {
     await expect(page.getByRole("tab", { name: label })).toHaveCount(1);
   }
 }
@@ -104,6 +93,6 @@ test.describe("Project Workspace V3 shell", () => {
     await tabList.evaluate((element) => {
       element.scrollLeft = element.scrollWidth;
     });
-    await expect(page.getByRole("tab", { name: "Closeout" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Financials" })).toBeVisible();
   });
 });

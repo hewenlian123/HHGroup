@@ -56,12 +56,11 @@ async function main() {
   // Helpers
   const markName = (base: string) => `${base} (Integration Test)`;
 
-  // 1. CUSTOMER → PROJECT → TASK
+  // 1. CUSTOMER → PROJECT
   {
     const steps: string[] = [];
     let customerId: string | null = null;
     let projectId: string | null = null;
-    let taskId: string | null = null;
     try {
       const customerName = markName("Flow1 Customer");
       const [cRow] = await sql<{ id: string }[]>`
@@ -81,14 +80,6 @@ async function main() {
       projectId = pRow.id;
       steps.push("project created and linked to customer");
 
-      const [tRow] = await sql<{ id: string }[]>`
-        insert into project_tasks (project_id, title, status, is_test)
-        values (${projectId}::uuid, 'Flow1 Task', 'todo', true)
-        returning id
-      `;
-      taskId = tRow.id;
-      steps.push("task created");
-
       const [pCheck] = await sql<{ customer_id: string | null }[]>`
         select customer_id from projects where id = ${projectId}::uuid
       `;
@@ -97,20 +88,17 @@ async function main() {
       }
       steps.push("project shows correct customer_id");
 
-      await sql`delete from project_tasks where id = ${taskId}::uuid`;
-      steps.push("task deleted");
       await sql`delete from projects where id = ${projectId}::uuid`;
       steps.push("project deleted");
       await sql`delete from customers where id = ${customerId}::uuid`;
       steps.push("customer deleted");
 
-      results.push({ name: "Flow1 CUSTOMER → PROJECT → TASK", ok: true, steps });
+      results.push({ name: "Flow1 CUSTOMER → PROJECT", ok: true, steps });
     } catch (e) {
-      if (taskId) await sql`delete from project_tasks where id = ${taskId}::uuid`;
       if (projectId) await sql`delete from projects where id = ${projectId}::uuid`;
       if (customerId) await sql`delete from customers where id = ${customerId}::uuid`;
       steps.push(`ERROR: ${toError(e)}`);
-      results.push({ name: "Flow1 CUSTOMER → PROJECT → TASK", ok: false, steps });
+      results.push({ name: "Flow1 CUSTOMER → PROJECT", ok: false, steps });
     }
   }
 

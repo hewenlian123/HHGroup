@@ -370,8 +370,66 @@ async function requiresDeviceUnlock(
   );
 }
 
+const RETIRED_FEATURE_TAB = new Set([
+  "tasks",
+  "schedule",
+  "punch-list",
+  "punch",
+  "photos",
+  "inspections",
+  "materials",
+  "work",
+  "activity",
+]);
+const PROJECT_ID_PARAM =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+/** Retired Schedule, Tasks, Punch List, Photos, Inspections, and Material Selections routes. */
+function retiredFeatureRedirect(request: NextRequest): NextResponse | null {
+  const { pathname, searchParams } = request.nextUrl;
+  if (pathname.startsWith("/api/")) return null;
+
+  const projectChild = pathname.match(
+    /^\/projects\/([^/]+)\/(schedule|tasks|punch-list|photos|inspections|materials)(?:\/.*)?$/
+  );
+  if (projectChild && projectChild[1] !== "new") {
+    const url = request.nextUrl.clone();
+    url.pathname = `/projects/${projectChild[1]}`;
+    url.search = "";
+    return NextResponse.redirect(url, 307);
+  }
+
+  if (
+    /^\/(?:tasks|schedule|punch-list|site-photos|inspection-log|materials)(?:\/.*)?$/.test(
+      pathname
+    ) ||
+    /^\/projects\/schedule(?:\/.*)?$/.test(pathname)
+  ) {
+    const projectId = searchParams.get("project_id") ?? searchParams.get("projectId");
+    const url = request.nextUrl.clone();
+    url.pathname =
+      projectId && PROJECT_ID_PARAM.test(projectId) ? `/projects/${projectId}` : "/projects";
+    url.search = "";
+    return NextResponse.redirect(url, 307);
+  }
+
+  if (/^\/projects\/[^/]+$/.test(pathname)) {
+    const tab = (searchParams.get("tab") ?? "").toLowerCase();
+    if (RETIRED_FEATURE_TAB.has(tab)) {
+      const url = request.nextUrl.clone();
+      url.searchParams.delete("tab");
+      return NextResponse.redirect(url, 307);
+    }
+  }
+
+  return null;
+}
+
 /** Default-deny Auth boundary for application pages and Route Handlers. */
 export async function middleware(request: NextRequest) {
+  const retired = retiredFeatureRedirect(request);
+  if (retired) return retired;
+
   const { pathname, searchParams } = request.nextUrl;
   if (isWorkerFinanceApiWrite(pathname, request.method) && !(await workerFinanceSchemaReady())) {
     return workerFinanceMaintenanceResponse();
