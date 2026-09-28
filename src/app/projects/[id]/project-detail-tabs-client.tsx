@@ -694,7 +694,10 @@ export function ProjectDetailTabsClient({
       : profitReadinessWarning != null
         ? profitReadinessWarning
         : null);
-  const topCollectedValue = financialSummary?.collected ?? billingSummary?.paidTotal ?? Number.NaN;
+  const snapshotPaid = snapshotCostSummary.paidAmount;
+  const topCollectedValue = Number.isFinite(snapshotPaid)
+    ? snapshotPaid
+    : (financialSummary?.collected ?? billingSummary?.paidTotal ?? Number.NaN);
   const topNeedCollectValue = snapshotCostSummary.openAR;
   const topMarginDisplay = headerMarginValue == null ? "—" : `${headerMarginValue.toFixed(1)}%`;
   const openTaskCount = tasks.filter((task) => {
@@ -968,21 +971,23 @@ export function ProjectDetailTabsClient({
                 </Button>
               </div>
             </div>
-            <ProjectKpiRow
-              profitText={profitText}
-              marginText={topMarginDisplay}
-              marginValue={headerMarginValue}
-              collected={topCollectedValue}
-              openAr={topNeedCollectValue}
-              collectedUnavailable={!canViewFinancials}
-              revisedContract={budgetVal}
-              approvedChangeOrders={snapshotCostSummary.approvedChangeOrders}
-              billed={snapshotCostSummary.billedAmount}
-              remainingToBill={snapshotCostSummary.remainingToBill}
-              actualText={actualText}
-              contractText={contractText}
-              onActualCost={goToCostTab}
-            />
+            <div className="hidden lg:block">
+              <ProjectKpiRow
+                profitText={profitText}
+                marginText={topMarginDisplay}
+                marginValue={headerMarginValue}
+                collected={topCollectedValue}
+                openAr={topNeedCollectValue}
+                collectedUnavailable={!canViewFinancials}
+                revisedContract={budgetVal}
+                approvedChangeOrders={snapshotCostSummary.approvedChangeOrders}
+                billed={snapshotCostSummary.billedAmount}
+                remainingToBill={snapshotCostSummary.remainingToBill}
+                actualText={actualText}
+                contractText={contractText}
+                onActualCost={goToCostTab}
+              />
+            </div>
             {headerFinancialWarning ? (
               <p
                 data-testid="project-header-financial-warning"
