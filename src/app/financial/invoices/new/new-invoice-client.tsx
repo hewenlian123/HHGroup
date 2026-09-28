@@ -363,14 +363,12 @@ export default function NewInvoiceClient({
             <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <p className="text-hh-label font-[650] uppercase tracking-[0.08em] text-[var(--hh-muted)]">
+                  <p className="text-hh-label font-[650] uppercase text-[var(--hh-muted)]">
                     Invoice
                   </p>
                   <Badge variant="neutral">Draft</Badge>
                 </div>
-                <h1 className="mt-1 text-[26px] font-[650] leading-8 tracking-[-0.022em] text-[var(--hh-ink)] lg:text-title-page">
-                  New Invoice
-                </h1>
+                <h1 className="mt-1 text-title-page text-[var(--hh-ink)]">New Invoice</h1>
                 <p className="mt-1 text-hh-metadata text-[var(--hh-muted)]">
                   {prefill
                     ? `Invoice for ${prefill.milestoneTitle} from Estimate ${prefill.estimateNumber}.`
@@ -438,7 +436,7 @@ export default function NewInvoiceClient({
               ) : null}
               {error ? (
                 <NeoPanel bodyClassName="p-4">
-                  <p className="invoice-new-error-text text-[13px] font-medium text-[var(--hh-danger)]">
+                  <p className="invoice-new-error-text text-hh-body font-medium text-[var(--hh-danger)]">
                     {error}
                   </p>
                   {estimatePrefill && !estimatePrefill.ok && estimatePrefill.existingInvoiceId ? (
@@ -457,7 +455,7 @@ export default function NewInvoiceClient({
               ) : null}
               {projectContextPrefill && !projectContextPrefill.customerId ? (
                 <NeoPanel bodyClassName="p-4">
-                  <p className="text-[13px] font-medium text-[var(--hh-ink)]">
+                  <p className="text-hh-body font-medium text-[var(--hh-ink)]">
                     Project context loaded
                   </p>
                   <p className="mt-1 text-hh-metadata text-[var(--hh-muted)]">
@@ -615,7 +613,7 @@ export default function NewInvoiceClient({
                 onChange={(event) => setNotes(event.target.value)}
                 placeholder="Terms / notes"
                 rows={4}
-                className="mt-1.5 min-h-[88px] w-full rounded-hh-standard border border-[var(--hh-line-input)] bg-[var(--hh-surface)] px-3 py-2 text-[13px] text-[var(--hh-ink)] placeholder:text-[var(--hh-placeholder)] focus:border-[var(--hh-link)] focus:outline-none"
+                className="mt-1.5 min-h-[88px] w-full rounded-hh-standard border border-[var(--hh-line-input)] bg-[var(--hh-surface)] px-3 py-2 text-hh-body text-[var(--hh-ink)] placeholder:text-[var(--hh-placeholder)] focus:border-[var(--hh-link)] focus:outline-none"
               />
             </section>
           }

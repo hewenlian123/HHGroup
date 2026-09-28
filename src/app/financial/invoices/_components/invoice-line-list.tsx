@@ -14,7 +14,7 @@ import {
 } from "@/app/financial/invoices/_components/invoice-line-draft";
 
 const compactFieldClass =
-  "h-11 rounded-hh-standard border-[var(--hh-line-cell)] bg-[var(--hh-surface)] px-2 text-right text-[13px] tabular-nums text-[var(--hh-ink)] xl:h-9";
+  "h-11 rounded-hh-standard border-[var(--hh-line-cell)] bg-[var(--hh-surface)] px-2 text-right text-hh-body tabular-nums text-[var(--hh-ink)] xl:h-9";
 
 export function DecimalDraftField({
   value,
@@ -73,7 +73,7 @@ function AutoResizeTextarea({
         resize(event.currentTarget);
       }}
       className={cn(
-        "block min-h-11 w-full resize-none overflow-hidden bg-transparent px-0 py-1 text-[13px] leading-5 text-[var(--hh-text)] placeholder:text-[var(--hh-placeholder)] focus:outline-none",
+        "block min-h-11 w-full resize-none overflow-hidden bg-transparent px-0 py-1 text-hh-body leading-5 text-[var(--hh-text)] placeholder:text-[var(--hh-placeholder)] focus:outline-none",
         className
       )}
       {...props}
@@ -160,7 +160,7 @@ export function InvoiceLineList({
                   placeholder="Item name"
                   aria-label={`Line item ${lineNumber} item name`}
                   aria-invalid={invalidLine}
-                  className="h-11 border-transparent bg-transparent px-0 text-[13px] font-medium text-[var(--hh-ink)] placeholder:text-[var(--hh-placeholder)] xl:h-8"
+                  className="h-11 border-transparent bg-transparent px-0 text-hh-body font-medium text-[var(--hh-ink)] placeholder:text-[var(--hh-placeholder)] xl:h-8"
                 />
                 <AutoResizeTextarea
                   data-testid={`${idPrefix}-line-${lineNumber}-description-input`}
@@ -226,7 +226,7 @@ export function InvoiceLineList({
           type="button"
           onClick={onAdd}
           disabled={saving}
-          className="inline-flex min-h-11 items-center gap-2 text-left text-[13px] font-semibold text-[var(--hh-link)] disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex min-h-11 items-center gap-2 text-left text-hh-body font-semibold text-[var(--hh-link)] disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Plus className="h-4 w-4" />
           Add another item

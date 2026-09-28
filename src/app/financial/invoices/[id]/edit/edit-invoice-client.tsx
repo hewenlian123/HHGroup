@@ -248,12 +248,10 @@ export default function EditInvoiceClient({
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <p className="text-hh-label font-[650] uppercase tracking-[0.08em] text-[var(--hh-muted)]">
-                  Invoice
-                </p>
+                <p className="text-hh-label font-[650] uppercase text-[var(--hh-muted)]">Invoice</p>
                 <InvoiceStatusBadge status={invoice.computedStatus} />
               </div>
-              <h1 className="mt-1 break-words text-[26px] font-[650] leading-8 tracking-[-0.022em] text-[var(--hh-ink)] lg:text-title-page">
+              <h1 className="mt-1 break-words text-title-page text-[var(--hh-ink)]">
                 {invoice.invoiceNo || "Invoice"}
               </h1>
               <p className="mt-1 text-hh-metadata text-[var(--hh-muted)]">
@@ -276,7 +274,7 @@ export default function EditInvoiceClient({
         }
         banner={
           error ? (
-            <p className="rounded-card border border-[var(--hh-danger-border)] bg-[var(--hh-danger-soft-fill)] px-4 py-3 text-[13px] font-medium text-[var(--hh-danger)]">
+            <p className="rounded-card border border-[var(--hh-danger-border)] bg-[var(--hh-danger-soft-fill)] px-4 py-3 text-hh-body font-medium text-[var(--hh-danger)]">
               {error}
             </p>
           ) : null
@@ -469,7 +467,7 @@ export default function EditInvoiceClient({
               onChange={(event) => setNotes(event.target.value)}
               placeholder="Terms / notes"
               rows={4}
-              className="mt-1.5 min-h-[88px] w-full rounded-hh-standard border border-[var(--hh-line-input)] bg-[var(--hh-surface)] px-3 py-2 text-[13px] text-[var(--hh-ink)] placeholder:text-[var(--hh-placeholder)] focus:border-[var(--hh-link)] focus:outline-none"
+              className="mt-1.5 min-h-[88px] w-full rounded-hh-standard border border-[var(--hh-line-input)] bg-[var(--hh-surface)] px-3 py-2 text-hh-body text-[var(--hh-ink)] placeholder:text-[var(--hh-placeholder)] focus:border-[var(--hh-link)] focus:outline-none"
             />
           </section>
         }

@@ -119,7 +119,7 @@ export function InvoiceEditorSummary({
         Tax is calculated on the subtotal. Discount is not stored on invoices.
       </p>
 
-      <div className="mt-4 space-y-2.5 text-[13px]">
+      <div className="mt-4 space-y-2.5 text-hh-body">
         <MoneyRow label="Subtotal" value={formatOverviewMoney(subtotal)} />
         <div className="flex items-center justify-between gap-3 text-[var(--hh-muted)]">
           <span>Discount</span>
@@ -145,7 +145,7 @@ export function InvoiceEditorSummary({
         </div>
       </div>
 
-      <div className="mt-4 rounded-[10px] bg-[var(--hh-surface-sunken)] p-3">
+      <div className="mt-4 rounded-hh-standard bg-[var(--hh-surface-sunken)] p-3">
         <p className="text-hh-label font-[650] uppercase text-[var(--hh-muted)]">
           Contract billing
         </p>
@@ -167,7 +167,7 @@ export function InvoiceEditorSummary({
           </p>
         ) : null}
         {contract ? (
-          <div className="mt-3 space-y-2 text-[13px]">
+          <div className="mt-3 space-y-2 text-hh-body">
             <MoneyRow
               label="Previously billed"
               value={formatOverviewMoney(contract.previouslyInvoicedExcludingTax)}
@@ -298,7 +298,7 @@ export function InvoiceBillingHistory({
                   className="flex min-h-14 items-center justify-between gap-3 px-4 py-2.5 sm:px-5"
                 >
                   <span className="min-w-0">
-                    <span className="block truncate text-[13px] font-semibold text-[var(--hh-ink)]">
+                    <span className="block truncate text-hh-body font-semibold text-[var(--hh-ink)]">
                       {row.invoiceNo}
                       {current ? " · this invoice" : ""}
                     </span>
@@ -309,7 +309,7 @@ export function InvoiceBillingHistory({
                       <Badge variant={historyVariant(row.status)}>{row.status}</Badge>
                     </span>
                   </span>
-                  <span className="shrink-0 tabular-nums text-[13px] font-medium text-[var(--hh-ink)]">
+                  <span className="shrink-0 tabular-nums text-hh-body font-medium text-[var(--hh-ink)]">
                     {formatOverviewMoney(row.total)}
                   </span>
                 </Link>
