@@ -44,6 +44,7 @@ function loadPage(path: string) {
     },
     "@/lib/project-cost-dashboard": { getProjectCostDashboard: mocked.cost },
     "@/lib/financial/invoice-read-model": { loadProjectInvoiceReadModel: mocked.invoices },
+    "@/lib/payments-received-db": { listUnappliedPaymentsForProject: async () => [] },
     "@/lib/data": emptyReads,
     "@/lib/ap-bills-db": { getApBillsByProject: async () => [] },
     "@/lib/daily-labor-db": { getLaborEntriesWithJoins: async () => [] },

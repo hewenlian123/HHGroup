@@ -1171,39 +1171,6 @@ async function fetchProjectFinancialSnapshotRows(
             .in("invoice_id", invoiceIds)
         )
       : { data: [], warnings: [] };
-  const paymentsReceivedRes =
-    invoiceIds.length > 0
-      ? await safeSelect<{
-          id?: string | null;
-          invoice_id?: string | null;
-          amount?: number | string | null;
-          status?: string | null;
-        }>(
-          "payments_received",
-          supabase
-            .from("payments_received")
-            .select("id,invoice_id,amount,status")
-            .in("invoice_id", invoiceIds)
-        )
-      : { data: [], warnings: [] };
-  const linkedReceivedIds = new Set(
-    invoicePaymentsRes.data
-      .map((payment) => String(payment.payment_received_id ?? "").trim())
-      .filter(Boolean)
-  );
-  const unallocatedReceivedPayments: ProjectFinancialInvoicePaymentRow[] =
-    paymentsReceivedRes.data.flatMap((row) => {
-      const id = String(row.id ?? "").trim();
-      const invoiceId = String(row.invoice_id ?? "").trim();
-      const status = String(row.status ?? "")
-        .trim()
-        .toLowerCase();
-      if (!id || !invoiceId || linkedReceivedIds.has(id)) return [];
-      if (["void", "voided", "cancelled", "canceled", "rejected", "deleted"].includes(status)) {
-        return [];
-      }
-      return [{ id, invoice_id: invoiceId, amount: row.amount, status: "Posted" }];
-    });
   const subcontractBillIds = subcontractRes.data
     .map((bill) => String(bill.id ?? "").trim())
     .filter(Boolean);
@@ -1232,7 +1199,7 @@ async function fetchProjectFinancialSnapshotRows(
       project: projectRes.data as ProjectFinancialProjectRow,
       changeOrders,
       invoices: invoicesRes.data,
-      invoicePayments: [...invoicePaymentsRes.data, ...unallocatedReceivedPayments],
+      invoicePayments: invoicePaymentsRes.data,
       expenses,
       expenseLines,
       laborEntries: laborRes.data,
@@ -1257,7 +1224,6 @@ async function fetchProjectFinancialSnapshotRows(
       ...subcontractPaymentsRes.warnings,
       ...apBillsRes.warnings,
       ...invoicePaymentsRes.warnings,
-      ...paymentsReceivedRes.warnings,
       ...extraWarnings,
       ...(apUnavailable
         ? [

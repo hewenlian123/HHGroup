@@ -50,17 +50,17 @@ describe("invoice cent rounding", () => {
     expect(paymentCollectedExTax(54, invoice)).toBe(50);
   });
 
-  it("counts a received payment that was not copied onto the invoice ledger once", () => {
+  it("counts only invoice allocations, so an unapplied receipt stays off the invoice", () => {
     expect(
-      collectedAllocationCents(
-        [{ amount: 25, status: "Posted", paymentReceivedId: "linked" }],
-        [
-          { id: "linked", amount: 25, status: "completed" },
-          { id: "orphan", amount: 25, status: "completed" },
-        ]
-      )
-    ).toBe(5000);
-    expect(collectedAllocationCents([], [{ id: "neg", amount: -100, status: "void" }])).toBe(0);
+      collectedAllocationCents([{ amount: 40, status: "Posted", paymentReceivedId: "linked" }])
+    ).toBe(4000);
+    expect(
+      collectedAllocationCents([
+        { amount: 40, status: "Posted", paymentReceivedId: "linked" },
+        { amount: 25, status: "Posted", paymentReceivedId: "unapplied" },
+      ])
+    ).toBe(6500);
+    expect(collectedAllocationCents([{ amount: -100, status: "void" }])).toBe(0);
   });
 });
 

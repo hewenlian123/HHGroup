@@ -24,7 +24,7 @@ import { getSupabaseClient } from "@/lib/supabase";
 import { getPaymentsReceived } from "@/lib/payments-received-db";
 import {
   getInvoices,
-  getInvoicePayments,
+  getInvoicePaymentsForReceiptIds,
   type Invoice,
   type InvoicePayment,
 } from "@/lib/invoices-db";
@@ -54,6 +54,12 @@ import {
 import { EmptyState } from "@/components/empty-state";
 import { ReceivePaymentModal } from "./receive-payment-modal";
 import { EditPaymentReceivedModal } from "./edit-payment-received-modal";
+import { Badge } from "@/components/ui/badge";
+import { appliedReceiptIds } from "@/lib/payment-allocation";
+import {
+  LinkUnappliedPaymentDialog,
+  type LinkUnappliedPaymentTarget,
+} from "@/components/financial/link-unapplied-payment-dialog";
 import { useToast } from "@/components/toast/toast-provider";
 import { useAttachmentPreview } from "@/contexts/attachment-preview-context";
 import {
@@ -166,6 +172,8 @@ function PaymentsReceivedPageInner() {
   );
   const [sendReceiptOpen, setSendReceiptOpen] = React.useState(false);
   const [receiptActionBusyId, setReceiptActionBusyId] = React.useState<string | null>(null);
+  const [linkTarget, setLinkTarget] = React.useState<LinkUnappliedPaymentTarget | null>(null);
+  const appliedIds = React.useMemo(() => appliedReceiptIds(ledgerPayments), [ledgerPayments]);
   const [paymentReturnContext, setPaymentReturnContext] = React.useState<{
     paymentId: string;
     invoiceId: string;
@@ -216,11 +224,14 @@ function PaymentsReceivedPageInner() {
     try {
       const client = getSupabaseClient();
       if (!client) throw new Error("A signed-in session is required.");
-      const [list, invoiceRows, ledger] = await Promise.all([
+      const [list, invoiceRows] = await Promise.all([
         getPaymentsReceived({ includeVoided: true }, client),
         getInvoices(client),
-        getInvoicePayments(client),
       ]);
+      const ledger = await getInvoicePaymentsForReceiptIds(
+        list.map((payment) => payment.id),
+        client
+      );
       if (request !== loadRequest.current) return;
       setPayments(list);
       setInvoices(invoiceRows);
@@ -439,12 +450,10 @@ function PaymentsReceivedPageInner() {
     const thisMonthTotal = activePayments
       .filter((p) => String(p.payment_date ?? "").startsWith(ym))
       .reduce((s, p) => s + (Number(p.amount) || 0), 0);
-    const linkedInvoices = activePayments.filter((p) => Boolean(p.invoice_no)).length;
-    const unknownOrUnapplied = activePayments.filter(
-      (p) => !p.invoice_no || !(p.customer_name ?? "").trim()
-    ).length;
+    const linkedInvoices = activePayments.filter((payment) => appliedIds.has(payment.id)).length;
+    const unknownOrUnapplied = activePayments.length - linkedInvoices;
     return { totalReceived, paymentsCount, thisMonthTotal, linkedInvoices, unknownOrUnapplied };
-  }, [payments]);
+  }, [appliedIds, payments]);
 
   const voidPayment = React.useCallback(
     async (row: PaymentReceivedWithMeta) => {
@@ -886,6 +895,7 @@ function PaymentsReceivedPageInner() {
             <div className="flex flex-col divide-y divide-[var(--hh-line-2)]">
               {filteredPayments.map((row) => {
                 const paymentVoided = isVoidedPaymentStatus(row.status);
+                const paymentUnapplied = !paymentVoided && !appliedIds.has(row.id);
                 const highlighted = highlightPaymentId === row.id;
                 return (
                   <div
@@ -910,10 +920,15 @@ function PaymentsReceivedPageInner() {
                           <span className="shrink-0 rounded-full border border-[var(--hh-line)] bg-[var(--hh-chip)] px-2 py-0.5 text-hh-table-header font-medium uppercase tracking-normal text-[var(--hh-muted)]">
                             Voided
                           </span>
+                        ) : paymentUnapplied ? (
+                          <Badge variant="warning" data-testid="unapplied-payment-badge">
+                            Unapplied
+                          </Badge>
                         ) : null}
                       </div>
                       <div className="mt-0.5 truncate text-xs text-[var(--hh-muted)] lg:hidden">
-                        {row.project_name ?? "—"} · Inv {row.invoice_no ?? "—"}
+                        {row.project_name ?? "—"}
+                        {paymentUnapplied ? " · Unapplied" : ` · Inv ${row.invoice_no ?? "—"}`}
                       </div>
                       <p className="break-words text-hh-metadata text-[var(--hh-text-secondary)]">
                         Reference / memo: {paymentReference.get(row.id) || "—"}
@@ -927,7 +942,7 @@ function PaymentsReceivedPageInner() {
                     </div>
 
                     <div className="hidden lg:block text-sm text-[var(--hh-muted)] hh-fin tabular-nums">
-                      {row.invoice_no ?? "—"}
+                      {paymentUnapplied ? "—" : (row.invoice_no ?? "—")}
                     </div>
 
                     <div className="mt-2 flex items-center justify-between gap-3 lg:mt-0 lg:block lg:text-right">
@@ -998,6 +1013,26 @@ function PaymentsReceivedPageInner() {
                         ) : null}
                       </div>
                       <div className="flex flex-wrap items-center justify-end gap-1.5">
+                        {paymentUnapplied ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            data-testid="link-to-invoice-action"
+                            className="h-11 min-h-[44px] lg:h-8 lg:min-h-0 rounded-hh-compact px-2 text-xs shadow-none"
+                            onClick={() =>
+                              setLinkTarget({
+                                id: row.id,
+                                amount: row.amount,
+                                customerName: row.customer_name,
+                                date: row.payment_date,
+                                method: row.payment_method,
+                                reference: row.notes,
+                              })
+                            }
+                          >
+                            Link to invoice
+                          </Button>
+                        ) : null}
                         <Button
                           variant="outline"
                           size="sm"
@@ -1123,6 +1158,14 @@ function PaymentsReceivedPageInner() {
           onConfirm={deleteVoidedPayment}
         />
 
+        <LinkUnappliedPaymentDialog
+          payment={linkTarget}
+          open={linkTarget != null}
+          onOpenChange={(next) => {
+            if (!next) setLinkTarget(null);
+          }}
+          onLinked={() => void load()}
+        />
         <ReceivePaymentModal
           open={modalOpen}
           onOpenChange={handleReceivePaymentOpenChange}
