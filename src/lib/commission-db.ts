@@ -138,12 +138,22 @@ export async function getCommissionCostByProjectBatch(
   if (ids.length === 0) return byProject;
 
   const c = client(explicitClient);
-  const { data: canonicalRows, error } = await readCompleteRows(() =>
-    c
-      .from(TABLE_COMMISSIONS)
-      .select("id, project_id, commission_amount", { count: "exact" })
-      .in("project_id", ids)
-  );
+  const [canonicalResult, legacyResult] = await Promise.allSettled([
+    readCompleteRows(() =>
+      c
+        .from(TABLE_COMMISSIONS)
+        .select("id, project_id, commission_amount", { count: "exact" })
+        .in("project_id", ids)
+    ),
+    readCompleteRows(() =>
+      c
+        .from(LEGACY_COMMISSIONS)
+        .select("id, project_id, commission_amount, status", { count: "exact" })
+        .in("project_id", ids)
+    ),
+  ]);
+  if (canonicalResult.status === "rejected") throw canonicalResult.reason;
+  const { data: canonicalRows, error } = canonicalResult.value;
   if (error) financialDataUnavailable(LEGACY_COMMISSIONS, error);
 
   const canonicalIds = new Set<string>();
@@ -155,12 +165,8 @@ export async function getCommissionCostByProjectBatch(
     byProject.set(projectId, (byProject.get(projectId) ?? 0) + commissionCostFromRow(row));
   }
 
-  const { data: legacyRows, error: legacyError } = await readCompleteRows(() =>
-    c
-      .from(LEGACY_COMMISSIONS)
-      .select("id, project_id, commission_amount, status", { count: "exact" })
-      .in("project_id", ids)
-  );
+  if (legacyResult.status === "rejected") throw legacyResult.reason;
+  const { data: legacyRows, error: legacyError } = legacyResult.value;
   if (legacyError) throw new Error(humanizeSupabaseRequestError(legacyError));
   for (const row of (legacyRows ?? []) as CommissionCostRow[]) {
     const id = String(row.id ?? "").trim();

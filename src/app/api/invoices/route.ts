@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireSupabaseOwnerOrAdminRequestClient } from "@/lib/auth-boundary";
+import { loadDefaultInvoiceList } from "@/lib/financial/invoice-list-read";
 import {
   getInvoices,
   getInvoicesWithDerived,
@@ -52,6 +53,17 @@ export async function GET(req: Request) {
       const search = url.searchParams.get("search") || undefined;
       const includeProjects = url.searchParams.get("includeProjects") === "1";
       if (url.searchParams.get("all") === "1") {
+        if (!status && !projectId && !search && includeProjects) {
+          const loaded = await loadDefaultInvoiceList(supabase);
+          return NextResponse.json({
+            ok: true,
+            invoices: loaded.invoices,
+            total: loaded.invoices.length,
+            page: 1,
+            pageSize: loaded.invoices.length,
+            projects: loaded.projects,
+          });
+        }
         const [invoices, projects] = await Promise.all([
           getInvoicesWithDerived(
             {

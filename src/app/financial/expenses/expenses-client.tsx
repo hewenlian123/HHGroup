@@ -39,7 +39,7 @@ import {
   getExpenseTotal,
   isDefaultExpenseListSort,
 } from "@/lib/expense-domain";
-import type { Expense } from "@/lib/expenses-db";
+import { EXPENSE_LIST_PAGE_SIZE, type Expense } from "@/lib/expenses-db";
 import type { PaymentAccountRow } from "@/lib/payment-accounts-db";
 import type { SubcontractDeductionOption } from "@/lib/subcontract-deductions-db";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -638,6 +638,7 @@ export function ExpensesPageClient({
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const inboxMode = pool === "inbox";
+  const expenseListScope = inboxMode ? "inbox" : "ledger";
   const archiveMode = pool !== "inbox";
   const operationsQuery = useQuery({
     queryKey: ["expense-operations"],
@@ -724,7 +725,7 @@ export function ExpensesPageClient({
   );
   const [expenses, setExpenses] = React.useState<Expense[]>(
     () =>
-      queryClient.getQueryData<Expense[]>(buildExpensesQueryKey(expenseSort)) ??
+      queryClient.getQueryData<Expense[]>(buildExpensesQueryKey(expenseSort, expenseListScope)) ??
       (initialSortMatches ? initialData?.expenses : undefined) ??
       []
   );
@@ -739,8 +740,9 @@ export function ExpensesPageClient({
     isError: expensesQueryError,
     status: expensesQueryStatus,
   } = useQuery({
-    queryKey: buildExpensesQueryKey(expenseSort),
-    queryFn: async () => fetchExpenses(expenseSort, await loadBrowserSupabase()),
+    queryKey: buildExpensesQueryKey(expenseSort, expenseListScope),
+    queryFn: async () =>
+      fetchExpenses(expenseSort, await loadBrowserSupabase(), { pool: expenseListScope }),
     placeholderData: keepPreviousData,
     staleTime: expenseListQueryStaleMs,
     refetchOnMount: false,
@@ -1325,33 +1327,39 @@ export function ExpensesPageClient({
   const [refreshError, setRefreshError] = React.useState(false);
   const [refreshPending, setRefreshPending] = React.useState(false);
   const manualRefreshGenRef = React.useRef(0);
-  const refresh = React.useCallback(async () => {
-    const gen = ++manualRefreshGenRef.current;
-    setRefreshPending(true);
-    setRefreshError(false);
-    try {
-      const client = await loadBrowserSupabase();
-      const [ex, cat, w] = await Promise.all([
-        fetchExpenses(expenseSort, client),
-        fetchExpenseCategories(client),
-        fetchWorkers(client),
-      ]);
-      if (gen !== manualRefreshGenRef.current) return;
-      setExpenses(ex);
-      setCategoriesList(cat);
-      setWorkers(w as WorkerRow[]);
-      queryClient.setQueryData(buildExpensesQueryKey(expenseSort), ex);
-      queryClient.setQueryData(expenseCategoriesQueryKey, cat);
-      queryClient.setQueryData(workersQueryKey, w);
-    } catch (e) {
-      if (gen !== manualRefreshGenRef.current) return;
-      const msg = e instanceof Error ? e.message : "Could not refresh.";
-      setRefreshError(true);
-      toast({ title: "Refresh failed", description: msg, variant: "error" });
-    } finally {
-      if (gen === manualRefreshGenRef.current) setRefreshPending(false);
-    }
-  }, [queryClient, expenseSort, toast, loadBrowserSupabase]);
+  const refresh = React.useCallback(
+    async (options?: { quiet?: boolean }) => {
+      const quiet = options?.quiet === true;
+      const gen = ++manualRefreshGenRef.current;
+      if (!quiet) {
+        setRefreshPending(true);
+        setRefreshError(false);
+      }
+      try {
+        const client = await loadBrowserSupabase();
+        const [ex, cat, w] = await Promise.all([
+          fetchExpenses(expenseSort, client, { pool: expenseListScope }),
+          fetchExpenseCategories(client),
+          fetchWorkers(client),
+        ]);
+        if (gen !== manualRefreshGenRef.current) return;
+        setExpenses(ex);
+        setCategoriesList(cat);
+        setWorkers(w as WorkerRow[]);
+        queryClient.setQueryData(buildExpensesQueryKey(expenseSort, expenseListScope), ex);
+        queryClient.setQueryData(expenseCategoriesQueryKey, cat);
+        queryClient.setQueryData(workersQueryKey, w);
+      } catch (e) {
+        if (gen !== manualRefreshGenRef.current || quiet) return;
+        const msg = e instanceof Error ? e.message : "Could not refresh.";
+        setRefreshError(true);
+        toast({ title: "Refresh failed", description: msg, variant: "error" });
+      } finally {
+        if (!quiet && gen === manualRefreshGenRef.current) setRefreshPending(false);
+      }
+    },
+    [queryClient, expenseSort, expenseListScope, toast, loadBrowserSupabase]
+  );
 
   React.useEffect(() => {
     if (!inboxMode) return;
@@ -1380,16 +1388,28 @@ export function ExpensesPageClient({
   React.useEffect(() => {
     if (!inboxOcrPending) return;
     let stopped = false;
+    let inFlight = false;
     const drain = async () => {
-      if (stopped) return;
+      if (stopped || inFlight) return;
+      inFlight = true;
       try {
-        await fetch("/api/financial/expenses/ocr-worker", {
+        const response = await fetch("/api/financial/expenses/ocr-worker", {
           method: "POST",
           credentials: "same-origin",
         });
-        if (!stopped) await refresh();
+        const body = (await response.json().catch(() => null)) as {
+          processed?: number;
+          remaining?: number;
+        } | null;
+        const processed = Number(body?.processed ?? 0);
+        const remaining = Number(body?.remaining ?? 0);
+        // The worker chains the next receipt in the background. Refresh only when this hop
+        // changed a row or the queue is empty, so list clicks are not stuck behind a full reload.
+        if (!stopped && (processed > 0 || remaining === 0)) await refresh({ quiet: true });
       } catch {
         /* The next poll retries a failed OCR batch. */
+      } finally {
+        inFlight = false;
       }
     };
     void drain();
@@ -1678,7 +1698,7 @@ export function ExpensesPageClient({
         });
         uiActionLog("expense-preview-save-ui", t0, 100);
         queryClient.setQueryData(
-          buildExpensesQueryKey(expenseSortRef.current),
+          buildExpensesQueryKey(expenseSortRef.current, expenseListScope),
           (old: Expense[] | undefined) =>
             old ? old.map((e) => (e.id === payload.expenseId ? final : e)) : old
         );
@@ -1698,7 +1718,7 @@ export function ExpensesPageClient({
         return null;
       }
     },
-    [queryClient]
+    [queryClient, expenseListScope]
   );
 
   const handlePreviewAttachmentsUpdated = React.useCallback(
@@ -1708,7 +1728,7 @@ export function ExpensesPageClient({
         setPreviewExpense(expense);
       });
       queryClient.setQueryData(
-        buildExpensesQueryKey(expenseSortRef.current),
+        buildExpensesQueryKey(expenseSortRef.current, expenseListScope),
         (old: Expense[] | undefined) =>
           old ? old.map((e) => (e.id === expense.id ? expense : e)) : old
       );
@@ -1717,7 +1737,7 @@ export function ExpensesPageClient({
         refetchType: "active",
       });
     },
-    [queryClient]
+    [queryClient, expenseListScope]
   );
 
   const handlePreviewMarkReviewed = React.useCallback(
@@ -1757,7 +1777,7 @@ export function ExpensesPageClient({
           setExpenses((list) => list.map((e) => (e.id === expense.id ? final : e)));
         });
         queryClient.setQueryData(
-          buildExpensesQueryKey(expenseSortRef.current),
+          buildExpensesQueryKey(expenseSortRef.current, expenseListScope),
           (old: Expense[] | undefined) =>
             old ? old.map((e) => (e.id === expense.id ? final : e)) : old
         );
@@ -1773,7 +1793,7 @@ export function ExpensesPageClient({
         return false;
       }
     },
-    [queryClient]
+    [queryClient, expenseListScope]
   );
 
   const openExpensePreview = React.useCallback(
@@ -2065,7 +2085,7 @@ export function ExpensesPageClient({
           const saved = await approveInboxDraftViaApi(expense.id);
           setExpenses((list) => list.map((e) => (e.id === expense.id ? saved : e)));
           queryClient.setQueryData(
-            buildExpensesQueryKey(expenseSortRef.current),
+            buildExpensesQueryKey(expenseSortRef.current, expenseListScope),
             (old: Expense[] | undefined) => old?.map((e) => (e.id === expense.id ? saved : e))
           );
           void queryClient.invalidateQueries({
@@ -2082,7 +2102,7 @@ export function ExpensesPageClient({
         }
       })();
     },
-    [toast, queryClient, openExpensePreview]
+    [toast, queryClient, openExpensePreview, expenseListScope]
   );
 
   const [paymentAccountsForBulk, setPaymentAccountsForBulk] = React.useState<PaymentAccountRow[]>(
@@ -2117,12 +2137,12 @@ export function ExpensesPageClient({
     (saved: Expense) => {
       setExpenses((list) => list.map((e) => (e.id === saved.id ? saved : e)));
       queryClient.setQueryData(
-        buildExpensesQueryKey(expenseSortRef.current),
+        buildExpensesQueryKey(expenseSortRef.current, expenseListScope),
         (old: Expense[] | undefined) =>
           old ? old.map((e) => (e.id === saved.id ? saved : e)) : old
       );
     },
-    [queryClient]
+    [queryClient, expenseListScope]
   );
 
   const bulkRunMarkDone = React.useCallback(
@@ -2515,6 +2535,7 @@ export function ExpensesPageClient({
     <p className="py-2 text-sm text-[var(--hh-text-secondary)]" aria-live="polite">
       {total} {inboxMode ? "transactions to review" : "canonical transactions"}
       {inboxMode && openIssueIds.size > 0 ? ` · ${openIssueIds.size} with open issues` : ""}
+      {expenses.length >= EXPENSE_LIST_PAGE_SIZE ? ` · first ${EXPENSE_LIST_PAGE_SIZE} loaded` : ""}
     </p>
   );
   const mobileReviewToolbar = (

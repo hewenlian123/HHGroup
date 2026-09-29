@@ -7,12 +7,14 @@ type QueryError = { message?: string } | null;
 type QueryResult = { data: Array<Record<string, unknown>> | null; error: QueryError };
 type QueryFilter =
   | { kind: "eq"; column: string; value: unknown }
-  | { kind: "in"; column: string; values: unknown[] };
+  | { kind: "in"; column: string; values: unknown[] }
+  | { kind: "or"; expression: string };
 
 type ExecutedQuery = {
   table: string;
   columns: string;
   filters: QueryFilter[];
+  limit: number | null;
 };
 
 function createListSupabase(params: {
@@ -24,6 +26,7 @@ function createListSupabase(params: {
   const supabase = {
     from(table: string) {
       let columns = "";
+      let limit: number | null = null;
       const filters: QueryFilter[] = [];
       const builder: Record<string, unknown> = {};
 
@@ -39,12 +42,21 @@ function createListSupabase(params: {
         filters.push({ kind: "in", column, values: [...values] });
         return builder;
       };
+      builder.or = (expression: string) => {
+        filters.push({ kind: "or", expression });
+        return builder;
+      };
       builder.order = () => builder;
+      builder.limit = (count: number) => {
+        limit = count;
+        return builder;
+      };
 
       const execute = async (): Promise<QueryResult> => {
         queries.push({
           table,
           columns,
+          limit,
           filters: filters.map((filter) =>
             filter.kind === "in" ? { ...filter, values: [...filter.values] } : { ...filter }
           ),
@@ -52,12 +64,19 @@ function createListSupabase(params: {
         const error = params.errors?.[table] ?? null;
         if (error) return { data: null, error };
 
-        const data = (params.rows[table] ?? []).filter((row) =>
+        let data = (params.rows[table] ?? []).filter((row) =>
           filters.every((filter) => {
             if (filter.kind === "eq") return row[filter.column] === filter.value;
+            if (filter.kind === "or") {
+              if (filter.expression.includes("status.neq.draft")) {
+                return row.status == null || row.status !== "draft";
+              }
+              return row.status == null || row.status !== "reviewed";
+            }
             return filter.values.includes(row[filter.column]);
           })
         );
+        if (limit != null) data = data.slice(0, limit);
         return { data, error: null };
       };
 
@@ -96,7 +115,8 @@ function expenseHeader(id: string): Record<string, unknown> {
 }
 
 function attachmentInValues(query: ExecutedQuery): unknown[] {
-  return query.filters.find((filter) => filter.kind === "in")?.values ?? [];
+  const filter = query.filters.find((item) => item.kind === "in");
+  return filter?.kind === "in" ? filter.values : [];
 }
 
 describe("getExpenses attachment list hydration", () => {
@@ -301,6 +321,42 @@ describe("getExpenses attachment list hydration", () => {
     const expenses = await getExpenses(undefined, supabase, { includeLinkedBankTx: false });
 
     expect(expenses.map((expense) => expense.attachments)).toEqual([[], []]);
+  });
+
+  it("caps the default list read and still returns OCR rows outside that page", async () => {
+    const { supabase, queries } = createListSupabase({
+      rows: {
+        expenses: [
+          expenseHeader("expense-new"),
+          expenseHeader("expense-older"),
+          {
+            ...expenseHeader("expense-ocr"),
+            expense_date: "2026-01-01",
+            status: "draft",
+            ocr_status: "pending",
+          },
+        ],
+        expense_lines: [],
+        bank_transactions: [],
+        subcontract_deductions: [],
+        attachments: [],
+        expense_attachments: [],
+      },
+    });
+
+    const expenses = await getExpenses(undefined, supabase, {
+      includeLinkedBankTx: false,
+      limit: 1,
+      pool: "ledger",
+    });
+
+    expect(expenses.map((expense) => expense.id)).toEqual(["expense-new", "expense-ocr"]);
+    expect(expenses.find((expense) => expense.id === "expense-ocr")?.ocrStatus).toBe("pending");
+    const headerQueries = queries.filter((query) => query.table === "expenses");
+    expect(headerQueries[0]?.columns).not.toContain("*");
+    expect(headerQueries[0]?.limit).toBe(1);
+    expect(headerQueries[0]?.columns).toContain("ocr_status");
+    expect(headerQueries.some((query) => query.columns === "*")).toBe(false);
   });
 });
 

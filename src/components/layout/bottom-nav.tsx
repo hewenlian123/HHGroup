@@ -20,6 +20,7 @@ import { createBrowserClient } from "@/lib/supabase";
 import {
   BOTTOM_NAV_ROUTES,
   BOTTOM_NAV_VISIBLE_MEDIA_QUERY,
+  isPrimaryNavPrefetchHref,
   prefetchRoutes,
   runWhenIdle,
   shouldBulkPrefetchMobileNav,
@@ -94,7 +95,7 @@ const BottomNavItem = React.memo(function BottomNavItem({
   return (
     <Link
       href={href}
-      prefetch={false}
+      prefetch={isPrimaryNavPrefetchHref(href)}
       onPointerDown={() => {
         onPointerEnterNav?.();
         router.prefetch(href);

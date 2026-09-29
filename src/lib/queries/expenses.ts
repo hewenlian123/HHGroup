@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Expense } from "@/lib/expenses-db";
+import { EXPENSE_LIST_PAGE_SIZE, type Expense, type ExpenseListPool } from "@/lib/expenses-db";
 import type { SubcontractDeductionOption } from "@/lib/subcontract-deductions-db";
 import { defaultExpenseListSort, type ExpenseListSort } from "@/lib/expense-domain";
 import type { PaymentAccountRow } from "@/lib/payment-accounts-db";
@@ -25,16 +25,26 @@ export const expensesQueryKeyRoot = ["expenses"] as const;
 /** @deprecated Prefer expensesQueryKeyRoot for invalidation; kept for older imports. */
 export const expensesQueryKey = expensesQueryKeyRoot;
 
-export function buildExpensesQueryKey(sort: ExpenseListSort) {
-  return [...expensesQueryKeyRoot, sort.field, sort.order] as const;
+export function buildExpensesQueryKey(sort: ExpenseListSort, pool?: ExpenseListPool) {
+  return pool
+    ? ([...expensesQueryKeyRoot, sort.field, sort.order, pool] as const)
+    : ([...expensesQueryKeyRoot, sort.field, sort.order] as const);
 }
 
 export async function fetchExpenses(
   sort: ExpenseListSort = defaultExpenseListSort,
-  client?: SupabaseClient
+  client?: SupabaseClient,
+  options?: { pool?: ExpenseListPool }
 ): Promise<Expense[]> {
   const { getExpenses } = await import("@/lib/data");
-  return getExpenses(sort, { includeLinkedBankTx: false }, client);
+  return getExpenses(
+    sort,
+    {
+      includeLinkedBankTx: false,
+      ...(options?.pool ? { limit: EXPENSE_LIST_PAGE_SIZE, pool: options.pool } : {}),
+    },
+    client
+  );
 }
 
 export const expenseCategoriesQueryKey = ["expense_categories"] as const;

@@ -340,10 +340,12 @@ async function getExpenseCostForProject(
 
   // Fast path: already know the schema
   if (expenseLinesHasProjectId === true) {
-    const { data, error } = await c
-      .from("expense_lines")
-      .select("amount, expense_id")
-      .eq("project_id", projectId);
+    const [lineResult, headerOnlyResult] = await Promise.allSettled([
+      c.from("expense_lines").select("amount, expense_id").eq("project_id", projectId),
+      getExpenseCostHeaderOnlyLines(projectId, explicitClient),
+    ]);
+    if (lineResult.status === "rejected") throw lineResult.reason;
+    const { data, error } = lineResult.value;
     if (!error && Array.isArray(data)) {
       const lineRows = data as Array<{ amount?: unknown; expense_id?: string }>;
       const eids = [
@@ -357,8 +359,8 @@ async function getExpenseCostForProject(
         if (!eid || !allow.has(eid)) return s;
         return s + toNum(row.amount);
       }, 0);
-      const headerOnly = await getExpenseCostHeaderOnlyLines(projectId, explicitClient);
-      return direct + headerOnly;
+      if (headerOnlyResult.status === "rejected") throw headerOnlyResult.reason;
+      return direct + headerOnlyResult.value;
     }
     failFinancialRead("expense_lines (direct)", error);
   }
@@ -376,10 +378,12 @@ async function getExpenseCostForProject(
 
   if (!error) {
     expenseLinesHasProjectId = true;
-    const full = await c
-      .from("expense_lines")
-      .select("amount, expense_id")
-      .eq("project_id", projectId);
+    const [fullResult, headerOnlyResult] = await Promise.allSettled([
+      c.from("expense_lines").select("amount, expense_id").eq("project_id", projectId),
+      getExpenseCostHeaderOnlyLines(projectId, explicitClient),
+    ]);
+    if (fullResult.status === "rejected") throw fullResult.reason;
+    const full = fullResult.value;
     if (full.error) failFinancialRead("expense_lines (full)", full.error);
     const lineRows = (full.data ?? []) as Array<{ amount?: unknown; expense_id?: string }>;
     const eids = [
@@ -393,8 +397,8 @@ async function getExpenseCostForProject(
       if (!eid || !allow.has(eid)) return s;
       return s + toNum(row.amount);
     }, 0);
-    const headerOnly = await getExpenseCostHeaderOnlyLines(projectId, explicitClient);
-    return direct + headerOnly;
+    if (headerOnlyResult.status === "rejected") throw headerOnlyResult.reason;
+    return direct + headerOnlyResult.value;
   }
 
   if (isMissingColumn(error)) {
@@ -560,7 +564,16 @@ export async function getCanonicalProjectProfit(
 ): Promise<CanonicalProjectProfit> {
   const c = client(explicitClient);
 
-  const [projectRes, approvedChangeOrdersRes, subcontractBillsRes] = await Promise.all([
+  const [
+    projectRes,
+    approvedChangeOrdersRes,
+    subcontractBillsRes,
+    laborCost,
+    expenseCost,
+    commissionCost,
+    changeOrderCost,
+    apBillCost,
+  ] = await Promise.all([
     c.from("projects").select("budget").eq("id", projectId).single(),
     c
       .from("project_change_orders")
@@ -572,6 +585,11 @@ export async function getCanonicalProjectProfit(
       .select("amount")
       .eq("project_id", projectId)
       .eq("status", "Approved"),
+    fetchLaborCostForProject(projectId, explicitClient),
+    getExpenseCostForProject(projectId, explicitClient),
+    getCommissionCostByProject(projectId, explicitClient),
+    sumApprovedChangeOrderCost(c, projectId),
+    sumProjectApCost(c, projectId),
   ]);
 
   // Base contract
@@ -590,15 +608,6 @@ export async function getCanonicalProjectProfit(
         }>
       ).reduce((sum, co) => sum + toNum(changeOrderAmountValue(co)), 0)
     : 0;
-
-  const laborCost = await fetchLaborCostForProject(projectId, explicitClient);
-
-  // Expense cost via schema-aware helper (caches detection)
-  const expenseCost = await getExpenseCostForProject(projectId, explicitClient);
-
-  const commissionCost = await getCommissionCostByProject(projectId, explicitClient);
-  const changeOrderCost = await sumApprovedChangeOrderCost(c, projectId);
-  const apBillCost = await sumProjectApCost(c, projectId);
 
   // Subcontract cost
   if (subcontractBillsRes.error) {

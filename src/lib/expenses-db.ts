@@ -115,8 +115,17 @@ export {
   type ExpenseSortOrder,
 } from "@/lib/expense-domain";
 
+/** Default page for the expense ledger and receipt inbox. OCR pending rows are merged in addition to this cap. */
+export const EXPENSE_LIST_PAGE_SIZE = 50;
+
+export type ExpenseListPool = "inbox" | "ledger";
+
 export type ExpenseListFetchOptions = {
   includeLinkedBankTx?: boolean;
+  /** When set, the ordered header query is capped. Pending and processing OCR rows are still included. */
+  limit?: number;
+  /** inbox: incomplete review statuses. ledger: every status except draft. Omit for a full read. */
+  pool?: ExpenseListPool;
 };
 
 export type ExpenseHeaderAmountLineInput = {
@@ -316,10 +325,14 @@ async function fetchExpenseLinesGroupedByExpenseId(
 
   for (let i = 0; i < expenseIds.length; i += EXPENSE_LINES_IN_CHUNK) {
     const slice = expenseIds.slice(i, i + EXPENSE_LINES_IN_CHUNK);
-    const { data: lineRows, error: lineErr } = await c
+    let lineQuery = await c
       .from("expense_lines")
-      .select("*")
+      .select(EXPENSE_LINE_LIST_COLUMNS)
       .in("expense_id", slice);
+    if (lineQuery.error && isMissingColumn(lineQuery.error)) {
+      lineQuery = await c.from("expense_lines").select("*").in("expense_id", slice);
+    }
+    const { data: lineRows, error: lineErr } = lineQuery;
     if (lineErr && !isMissingTable(lineErr)) {
       throw new Error(lineErr.message ?? "Failed to load expense lines.");
     }
@@ -734,6 +747,27 @@ const EXPENSE_COLS_NO_TOTAL =
 const EXPENSE_COLS_NO_TOTAL_LEGACY =
   "id,expense_date,vendor,notes,status,payment_account_id,created_at";
 
+/** Columns the expense list and inbox actually render. Replaces `select("*")` on the default read. */
+const EXPENSE_LIST_COLUMNS =
+  "id,expense_date,created_at,vendor,vendor_name,notes,payment_method,reference_no,total,receipt_url,status,worker_id,card_name,account_id,payment_account_id,project_id,source,source_type,ocr_status,ocr_error,ocr_confidence,due_date,subtotal,tax_amount,vendor_id,vendor_suggestion,payment_status,paid_on,duplicate_expense_id,duplicate_reason,duplicate_dismissed_at,inbox_capture,file_sha256";
+
+const EXPENSE_LIST_COLUMN_ATTEMPTS: readonly string[] = [
+  EXPENSE_LIST_COLUMNS,
+  EXPENSE_COLS_FULL_LEGACY_META,
+  EXPENSE_COLS_FULL_NO_PAYMENT_METHOD,
+  EXPENSE_COLS_LEGACY,
+  EXPENSE_COLS_MINIMAL,
+  EXPENSE_COLS_MINIMAL_LEGACY,
+  EXPENSE_COLS_NO_TOTAL,
+  EXPENSE_COLS_NO_TOTAL_LEGACY,
+];
+
+const EXPENSE_LINE_LIST_COLUMNS =
+  "id,expense_id,project_id,category,cost_code,description,memo,amount,total,client_reimbursable,client_reimbursement_status";
+
+const INBOX_LIST_STATUS_FILTER = "status.is.null,status.in.(needs_review,pending,unreviewed,draft)";
+const LEDGER_LIST_STATUS_FILTER = "status.is.null,status.neq.draft";
+
 function isMissingColumn(err: { message?: string } | null): boolean {
   const m = err?.message ?? "";
   return (
@@ -866,6 +900,24 @@ function sortExpenseRowsInPlace(rows: ExpenseRow[], sort: ExpenseListSort): void
 
 /** Chain `.order` for list fetch; always ends with `created_at` desc for stability. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Supabase builder
+function applyExpenseListScope(q: any, options: ExpenseListFetchOptions): any {
+  if (options.pool === "inbox") return q.or(INBOX_LIST_STATUS_FILTER);
+  if (options.pool === "ledger") return q.or(LEDGER_LIST_STATUS_FILTER);
+  return q;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Supabase builder
+function finishExpenseListQuery(
+  q: any,
+  sort: ExpenseListSort,
+  options: ExpenseListFetchOptions
+): any {
+  const ordered = applyExpenseOrderToQuery(applyExpenseListScope(q, options), sort);
+  if (options.limit && options.limit > 0) return ordered.limit(options.limit);
+  return ordered;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Supabase builder
 function applyExpenseOrderToQuery(q: any, sort: ExpenseListSort): any {
   const asc = sort.order === "asc";
   let x = q;
@@ -886,85 +938,40 @@ export async function getExpenses(
 ): Promise<Expense[]> {
   const c = client(explicitClient);
   let rows: unknown[] = [];
+  let resolvedColumns: string | null = null;
   /** Flat select only: embedded `payment_accounts` can omit or skew columns in some PostgREST responses; names come from `fetchPaymentAccountNameMap`. */
-  const res = await applyExpenseOrderToQuery(c.from("expenses").select("*"), sort);
+  for (const columns of EXPENSE_LIST_COLUMN_ATTEMPTS) {
+    const res = await finishExpenseListQuery(c.from("expenses").select(columns), sort, options);
+    if (!res.error) {
+      rows = res.data ?? [];
+      resolvedColumns = columns;
+      break;
+    }
+    if (!isMissingColumn(res.error)) {
+      if (isMissingTable(res.error)) throw new Error(`Expenses table not found. ${HINT}`);
+      throw new Error(res.error.message ? `${res.error.message} ${HINT}` : HINT);
+    }
+  }
+  if (!resolvedColumns) throw new Error(HINT);
 
-  if (!res.error) {
-    rows = res.data ?? [];
-  } else if (!isMissingColumn(res.error)) {
-    if (isMissingTable(res.error)) throw new Error(`Expenses table not found. ${HINT}`);
-    throw new Error(res.error.message ? `${res.error.message} ${HINT}` : HINT);
-  } else {
-    const core = await applyExpenseOrderToQuery(
-      c.from("expenses").select(EXPENSE_COLS_FULL_LEGACY_META),
+  const rowModels = rows as ExpenseRow[];
+  if (options.limit && options.limit > 0 && resolvedColumns.includes("ocr_status")) {
+    const pending = await applyExpenseOrderToQuery(
+      c.from("expenses").select(resolvedColumns).in("ocr_status", ["pending", "processing"]),
       sort
     );
-    if (!core.error) {
-      rows = core.data ?? [];
-    } else if (!isMissingColumn(core.error)) {
-      if (isMissingTable(core.error)) throw new Error(`Expenses table not found. ${HINT}`);
-      throw new Error(core.error.message ? `${core.error.message} ${HINT}` : HINT);
-    } else {
-      const fallback = await applyExpenseOrderToQuery(
-        c.from("expenses").select(EXPENSE_COLS_FULL_NO_PAYMENT_METHOD),
-        sort
-      );
-      if (fallback.error && isMissingColumn(fallback.error)) {
-        const legacy = await applyExpenseOrderToQuery(
-          c.from("expenses").select(EXPENSE_COLS_LEGACY),
-          sort
-        );
-        if (legacy.error && isMissingColumn(legacy.error)) {
-          const minimal = await applyExpenseOrderToQuery(
-            c.from("expenses").select(EXPENSE_COLS_MINIMAL),
-            sort
-          );
-          if (minimal.error && isMissingColumn(minimal.error)) {
-            const minimalLegacy = await applyExpenseOrderToQuery(
-              c.from("expenses").select(EXPENSE_COLS_MINIMAL_LEGACY),
-              sort
-            );
-            if (minimalLegacy.error && isMissingColumn(minimalLegacy.error)) {
-              const noTotal = await applyExpenseOrderToQuery(
-                c.from("expenses").select(EXPENSE_COLS_NO_TOTAL),
-                sort
-              );
-              if (noTotal.error && isMissingColumn(noTotal.error)) {
-                const noTotalLegacy = await applyExpenseOrderToQuery(
-                  c.from("expenses").select(EXPENSE_COLS_NO_TOTAL_LEGACY),
-                  sort
-                );
-                if (noTotalLegacy.error) throw new Error(noTotalLegacy.error.message ?? HINT);
-                rows = noTotalLegacy.data ?? [];
-              } else if (noTotal.error) {
-                throw new Error(noTotal.error.message ?? HINT);
-              } else {
-                rows = noTotal.data ?? [];
-              }
-            } else if (minimalLegacy.error) {
-              throw new Error(minimalLegacy.error.message ?? HINT);
-            } else {
-              rows = minimalLegacy.data ?? [];
-            }
-          } else if (minimal.error) {
-            throw new Error(minimal.error.message ?? HINT);
-          } else {
-            rows = minimal.data ?? [];
-          }
-        } else if (legacy.error) {
-          throw new Error(legacy.error.message ?? HINT);
-        } else {
-          rows = legacy.data ?? [];
-        }
-      } else if (fallback.error) {
-        throw new Error(fallback.error.message ?? HINT);
-      } else {
-        rows = fallback.data ?? [];
+    if (pending.error && !isMissingColumn(pending.error)) {
+      throw new Error(pending.error.message ? `${pending.error.message} ${HINT}` : HINT);
+    }
+    if (!pending.error && Array.isArray(pending.data)) {
+      const seen = new Set(rowModels.map((row) => row.id));
+      for (const raw of pending.data as ExpenseRow[]) {
+        if (!raw?.id || seen.has(raw.id)) continue;
+        seen.add(raw.id);
+        rowModels.push(raw);
       }
     }
   }
-
-  const rowModels = rows as ExpenseRow[];
   await hydrateExpenseListPaymentMethods(c, rowModels);
   sortExpenseRowsInPlace(rowModels, sort);
 

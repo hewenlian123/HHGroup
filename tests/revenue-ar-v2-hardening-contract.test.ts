@@ -12,7 +12,7 @@ test("Revenue and AR form controls keep visible labels programmatically associat
   const [detail, edit, list, receipt] = await Promise.all([
     source("src/app/financial/invoices/[id]/invoice-detail-client.tsx"),
     source("src/app/financial/invoices/[id]/edit/edit-invoice-client.tsx"),
-    source("src/app/financial/invoices/page.tsx"),
+    source("src/app/financial/invoices/invoices-list-client.tsx"),
     source("src/components/financial/send-payment-receipt-modal.tsx"),
   ]);
 

@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
+  PRIMARY_NAV_PREFETCH_HREFS,
+  isPrimaryNavPrefetchHref,
   prefetchRoutes,
   shouldBulkPrefetchMobileNav,
   shouldBulkPrefetchOwnerNav,
@@ -8,6 +10,36 @@ import {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+});
+
+describe("primary navigation viewport prefetch", () => {
+  it("covers only the five primary destinations", () => {
+    expect([...PRIMARY_NAV_PREFETCH_HREFS]).toEqual([
+      "/dashboard",
+      "/projects",
+      "/financial",
+      "/labor",
+      "/financial/inbox",
+    ]);
+  });
+
+  it("does not treat IA aliases as primary prefetch targets", () => {
+    for (const href of [
+      "/change-orders",
+      "/documents",
+      "/financial/invoices",
+      "/financial/expenses",
+      "/financial/ar",
+      "/workers",
+      "/estimates",
+      "/reports",
+      "/settings/company",
+    ]) {
+      expect(isPrimaryNavPrefetchHref(href)).toBe(false);
+    }
+    expect(isPrimaryNavPrefetchHref("/financial/inbox?highlight=1")).toBe(true);
+    expect(isPrimaryNavPrefetchHref("/projects/")).toBe(true);
+  });
 });
 
 describe("owner navigation bulk prefetch policy", () => {
