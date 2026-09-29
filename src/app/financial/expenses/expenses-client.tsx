@@ -3080,6 +3080,36 @@ export function ExpensesPageClient({
                       openExpensePreview,
                       handleDelete,
                       onMarkPaid: (expense) => setMarkPaidExpense(expense),
+                      onToggleClientReimbursable: (expense) => {
+                        const reimbursable = !expense.lines.some((line) => line.clientReimbursable);
+                        void fetch(
+                          `/api/financial/expenses/${encodeURIComponent(expense.id)}/client-reimbursable`,
+                          {
+                            method: "POST",
+                            credentials: "same-origin",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ reimbursable }),
+                          }
+                        )
+                          .then(async (response) => {
+                            const body = (await response.json().catch(() => null)) as {
+                              expense?: Expense;
+                              message?: string;
+                            } | null;
+                            if (!response.ok || !body?.expense) {
+                              window.alert(
+                                body?.message || "Could not update client reimbursement."
+                              );
+                              return;
+                            }
+                            setExpenses((list) =>
+                              list.map((item) =>
+                                item.id === body.expense!.id ? body.expense! : item
+                              )
+                            );
+                          })
+                          .catch(() => window.alert("Could not update client reimbursement."));
+                      },
                     }}
                   />
                 </div>

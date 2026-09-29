@@ -18,6 +18,7 @@ import {
   getWorkers,
 } from "@/lib/data";
 import { getCanonicalProjectProfit } from "@/lib/profit-engine";
+import { loadClientReimbursements } from "@/lib/client-reimbursement-db";
 import { SetBreadcrumbEntityTitle } from "@/components/layout/set-breadcrumb-entity-title";
 import { cn } from "@/lib/utils";
 import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
@@ -84,6 +85,14 @@ export default async function ProjectProfitPage({ params }: Props) {
   ]);
 
   if (!project) notFound();
+
+  let reimbursableOutstanding: number | null = null;
+  try {
+    reimbursableOutstanding = (await loadClientReimbursements(projectSupabase, { projectId: id }))
+      .outstanding;
+  } catch {
+    reimbursableOutstanding = null;
+  }
 
   // Canonical formula: revenue = projects.budget + approved change orders; actual cost = labor + expense + approved subcontract bills + accrued commission.
   const revenue = canonical.revenue;
@@ -233,6 +242,15 @@ export default async function ProjectProfitPage({ params }: Props) {
         >
           ${fmtUsd(profit)}
         </span>
+        <span className="text-hh-body text-[var(--hh-text-secondary)]">
+          Reimbursable outstanding
+        </span>
+        <Link
+          href={`/financial/client-reimbursements?project_id=${id}`}
+          className="text-hh-section-title font-medium tabular-nums text-[var(--hh-text-primary)]"
+        >
+          {reimbursableOutstanding == null ? "Unavailable" : `$${fmtUsd(reimbursableOutstanding)}`}
+        </Link>
         <span className="text-hh-body text-[var(--hh-text-secondary)]">Margin</span>
         <span
           className={`text-hh-section-title font-medium tabular-nums ${marginPct >= 0 ? "text-[var(--hh-text-primary)]" : "text-destructive"}`}

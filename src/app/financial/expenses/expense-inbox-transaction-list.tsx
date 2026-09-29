@@ -800,6 +800,7 @@ export type ExpenseInboxApi = {
   ) => void;
   handleDelete: (expense: Expense) => void;
   onMarkPaid?: (expense: Expense) => void;
+  onToggleClientReimbursable?: (expense: Expense) => void;
   /** `INBOX-UP-*` `referenceNo` values to flash after upload deep-link. */
   highlightReferenceNos?: ReadonlySet<string> | null;
 };
@@ -890,6 +891,16 @@ function RowActionsMenu({ row }: { row: Expense }) {
                 },
               ]
             : []),
+        ...(a.onToggleClientReimbursable
+          ? [
+              {
+                label: row.lines.some((line) => line.clientReimbursable)
+                  ? "Stop client reimbursement"
+                  : "Reimbursable by client",
+                onClick: () => a.onToggleClientReimbursable?.(row),
+              },
+            ]
+          : []),
         {
           label: (
             <span className="inline-flex items-center gap-2">

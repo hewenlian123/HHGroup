@@ -15,6 +15,7 @@ type LineInput = {
   projectId?: unknown;
   category?: unknown;
   amount?: unknown;
+  clientReimbursable?: unknown;
 };
 
 function text(value: unknown): string | null {
@@ -166,6 +167,24 @@ export async function POST(
     const extraWrite = await guard.client.from("expenses").update(extras).eq("id", expenseId);
     if (extraWrite.error && !/column|schema cache/i.test(extraWrite.error.message)) {
       return NextResponse.json({ ok: false, message: extraWrite.error.message }, { status: 500 });
+    }
+  }
+
+  const savedLines = await getExpenseById(expenseId, guard.client);
+  if (savedLines && savedLines.lines.length === lines.length) {
+    for (const [index, line] of lines.entries()) {
+      const saved = savedLines.lines[index];
+      if (!saved) continue;
+      const wanted = line.clientReimbursable === true;
+      if (wanted === (saved.clientReimbursable === true)) continue;
+      const flag = await guard.client.rpc("set_expense_line_client_reimbursable", {
+        p_expense_id: expenseId,
+        p_line_id: saved.id,
+        p_reimbursable: wanted,
+      });
+      if (flag.error && wanted) {
+        return NextResponse.json({ ok: false, message: flag.error.message }, { status: 409 });
+      }
     }
   }
 

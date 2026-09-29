@@ -205,6 +205,8 @@ describe("getExpenses attachment list hydration", () => {
           costCode: undefined,
           memo: "Lumber",
           amount: 10,
+          clientReimbursable: false,
+          clientReimbursementStatus: null,
         },
       ],
       linkedBankTxId: undefined,

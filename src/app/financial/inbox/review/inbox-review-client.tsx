@@ -23,6 +23,7 @@ type DraftLine = {
   projectId: string;
   category: string;
   amount: string;
+  clientReimbursable: boolean;
 };
 
 type Draft = {
@@ -86,6 +87,7 @@ function lineFromExpense(line: ExpenseLine, index: number): DraftLine {
     projectId: line.projectId ?? "",
     category: line.category ?? "",
     amount: line.amount > 0.011 ? moneyText(line.amount) : "",
+    clientReimbursable: line.clientReimbursable === true,
   };
 }
 
@@ -202,6 +204,7 @@ export function InboxReviewClient({ initialData }: { initialData: ExpensesInitia
       projectId: line.projectId,
       category: line.category.trim(),
       amount: Number(line.amount),
+      clientReimbursable: line.clientReimbursable,
     }));
     if (lines.some((line) => !line.projectId)) {
       setError("Choose a project on every line before approving.");
@@ -568,6 +571,7 @@ export function InboxReviewClient({ initialData }: { initialData: ExpensesInitia
                           projectId: "",
                           category: "",
                           amount: "",
+                          clientReimbursable: false,
                         },
                       ],
                     })
@@ -577,56 +581,66 @@ export function InboxReviewClient({ initialData }: { initialData: ExpensesInitia
                 </Button>
               </div>
               {draft.lines.map((line) => (
-                <div
-                  key={line.key}
-                  className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_1fr_7rem_auto]"
-                >
-                  <select
-                    aria-label="Project"
-                    required
-                    value={line.projectId}
-                    onChange={(event) => patchLine(line.key, { projectId: event.target.value })}
-                    className={fieldClass}
-                  >
-                    <option value="">Project</option>
-                    {initialData.projects.map((project) => (
-                      <option key={project.id} value={project.id}>
-                        {project.name || project.id}
-                      </option>
-                    ))}
-                  </select>
-                  <select
-                    aria-label="Category"
-                    required
-                    value={line.category}
-                    onChange={(event) => patchLine(line.key, { category: event.target.value })}
-                    className={fieldClass}
-                  >
-                    <option value="">Category</option>
-                    {initialData.categories.map((category) => (
-                      <option key={category} value={category}>
-                        {category}
-                      </option>
-                    ))}
-                  </select>
-                  <Input
-                    aria-label="Amount"
-                    inputMode="decimal"
-                    value={line.amount}
-                    onChange={(event) => patchLine(line.key, { amount: event.target.value })}
-                    className={attention.includes("total") ? attentionClass : undefined}
-                  />
-                  {draft.lines.length > 1 ? (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      onClick={() =>
-                        patchDraft({ lines: draft.lines.filter((item) => item.key !== line.key) })
-                      }
+                <div key={line.key} className="space-y-2">
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_1fr_7rem_auto]">
+                    <select
+                      aria-label="Project"
+                      required
+                      value={line.projectId}
+                      onChange={(event) => patchLine(line.key, { projectId: event.target.value })}
+                      className={fieldClass}
                     >
-                      Remove
-                    </Button>
-                  ) : null}
+                      <option value="">Project</option>
+                      {initialData.projects.map((project) => (
+                        <option key={project.id} value={project.id}>
+                          {project.name || project.id}
+                        </option>
+                      ))}
+                    </select>
+                    <select
+                      aria-label="Category"
+                      required
+                      value={line.category}
+                      onChange={(event) => patchLine(line.key, { category: event.target.value })}
+                      className={fieldClass}
+                    >
+                      <option value="">Category</option>
+                      {initialData.categories.map((category) => (
+                        <option key={category} value={category}>
+                          {category}
+                        </option>
+                      ))}
+                    </select>
+                    <Input
+                      aria-label="Amount"
+                      inputMode="decimal"
+                      value={line.amount}
+                      onChange={(event) => patchLine(line.key, { amount: event.target.value })}
+                      className={attention.includes("total") ? attentionClass : undefined}
+                    />
+                    {draft.lines.length > 1 ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() =>
+                          patchDraft({ lines: draft.lines.filter((item) => item.key !== line.key) })
+                        }
+                      >
+                        Remove
+                      </Button>
+                    ) : null}
+                  </div>
+                  <label className="flex items-center gap-2 text-sm text-[var(--hh-text-primary)]">
+                    <input
+                      type="checkbox"
+                      data-testid="inbox-review-reimbursable"
+                      checked={line.clientReimbursable}
+                      onChange={(event) =>
+                        patchLine(line.key, { clientReimbursable: event.target.checked })
+                      }
+                    />
+                    Reimbursable by client
+                  </label>
                 </div>
               ))}
               <p className="text-sm text-[var(--hh-text-secondary)]">

@@ -91,6 +91,9 @@ function isMissingColumn(err: { message?: string } | null): boolean {
  *     the fact that Add Entry has no approval step.
  *   - Expense cost = sum(expense_lines.amount) for this project (expense_lines.project_id),
  *     plus lines with null project_id on expenses whose header project_id matches (legacy rows).
+ *     Client-reimbursable lines stay in this sum after they are requested or reimbursed.
+ *     "Reimbursable outstanding" is a separate receivable memo. It is not subtracted here
+ *     and is not added to revenue, so a customer payment is not counted twice.
  *   - Subcontract cost = sum(subcontract_bills.amount) for this project where status = 'Approved'.
  *   - Change-order cost = sum(project_change_orders.cost_impact) where status = 'Approved'.
  *   - Project AP = ap_bills on this project that are not Draft/Void, not bill_type labor,

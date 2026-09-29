@@ -47,6 +47,8 @@ export type ExpenseLine = {
   costCode?: string | null;
   memo?: string | null;
   amount: number;
+  clientReimbursable?: boolean;
+  clientReimbursementStatus?: "not_requested" | "requested" | "reimbursed" | null;
 };
 
 export type Expense = {
@@ -176,6 +178,8 @@ type ExpenseLineRow = {
   memo?: string | null;
   amount?: number;
   total?: number;
+  client_reimbursable?: boolean | null;
+  client_reimbursement_status?: string | null;
 };
 
 const WORKER_REIMBURSEMENT_SOURCE = "worker_reimbursement";
@@ -536,6 +540,13 @@ function toExpenseLine(r: ExpenseLineRow): ExpenseLine {
     costCode: r.cost_code ?? undefined,
     memo: r.description ?? r.memo ?? undefined,
     amount: Number(r.amount ?? r.total) || 0,
+    clientReimbursable: r.client_reimbursable === true,
+    clientReimbursementStatus:
+      r.client_reimbursement_status === "requested" ||
+      r.client_reimbursement_status === "reimbursed" ||
+      r.client_reimbursement_status === "not_requested"
+        ? r.client_reimbursement_status
+        : null,
   };
 }
 
