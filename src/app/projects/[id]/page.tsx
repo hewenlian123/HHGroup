@@ -59,21 +59,20 @@ export default async function ProjectDetailPage({
   const projectSupabase = guard.client;
   const canManageProject =
     guard.context.organizationRole === "owner" || guard.context.organizationRole === "admin";
-  const canViewFinancials =
-    canManageProject &&
-    authorizedAppRole(guard.context.user) !== null &&
-    (await hasCompanyAdministratorMembership(guard.client, guard.context.user).catch(() => false));
-  let financialDataWarning: string | null = canViewFinancials
-    ? null
-    : "Financial and billing data is unavailable for this membership.";
-  const sp = (await searchParams) ?? {};
-  const rawTab = (firstSearchParam(sp.tab) ?? "overview").toString().toLowerCase();
-  const showFinancialSnapshotComparison = firstSearchParam(sp.debugFinancial) === "1";
-  const tab = rawTab;
-  const workspaceTab = normalizeWorkspaceTab(tab);
   let project: Awaited<ReturnType<typeof getProjectById>> | undefined;
+  let isCompanyAdmin = false;
+  let sp: ProjectDetailSearchParams = {};
   try {
-    project = await getProjectById(id, projectSupabase);
+    const [loadedProject, admin, resolvedSearch] = await Promise.all([
+      getProjectById(id, projectSupabase),
+      canManageProject
+        ? hasCompanyAdministratorMembership(guard.client, guard.context.user).catch(() => false)
+        : Promise.resolve(false),
+      searchParams ?? Promise.resolve({} as ProjectDetailSearchParams),
+    ]);
+    project = loadedProject;
+    isCompanyAdmin = admin;
+    sp = resolvedSearch ?? {};
   } catch (e) {
     logServerPageDataError(`projects/${id}`, e);
     return (
@@ -85,112 +84,186 @@ export default async function ProjectDetailPage({
     );
   }
   if (!project) notFound();
+  const canViewFinancials =
+    canManageProject && authorizedAppRole(guard.context.user) !== null && isCompanyAdmin;
+  let financialDataWarning: string | null = canViewFinancials
+    ? null
+    : "Financial and billing data is unavailable for this membership.";
+  const rawTab = (firstSearchParam(sp.tab) ?? "overview").toString().toLowerCase();
+  const showFinancialSnapshotComparison = firstSearchParam(sp.debugFinancial) === "1";
+  const tab = rawTab;
+  const workspaceTab = normalizeWorkspaceTab(tab);
 
-  let canonical: Awaited<ReturnType<typeof getCanonicalProjectProfit>> | null = null;
-  let costDashboard: Awaited<ReturnType<typeof getProjectCostDashboard>> | null = null;
-  if (canViewFinancials)
-    try {
-      const canonicalPromise = getCanonicalProjectProfit(id, projectSupabase);
-      [canonical, costDashboard] = await Promise.all([
-        canonicalPromise,
-        getProjectCostDashboard(id, projectSupabase, canonicalPromise),
-      ]);
-    } catch (e) {
-      logServerPageDataError(`projects/${id}/financial`, e);
-      financialDataWarning = serverDataLoadWarning(e, "project financial data");
-    }
-
-  let invoiceModel: Awaited<ReturnType<typeof loadProjectInvoiceReadModel>> | null = null;
-  let unappliedPayments: UnappliedPaymentListItem[] = [];
-  let unappliedPaymentsError: string | null = null;
-  let laborEntries: Awaited<ReturnType<typeof getLaborEntriesWithJoins>> = [];
-  let documents: Awaited<ReturnType<typeof getDocumentsByProject>> = [];
-  let commissions: Awaited<ReturnType<typeof getCommissionsWithPaidByProject>> = [];
-  let subcontracts: Awaited<ReturnType<typeof getSubcontractsByProject>> = [];
-  let bills: Awaited<ReturnType<typeof getApBillsByProject>> = [];
-  let activityLogs: Awaited<ReturnType<typeof getActivityLogsByProject>> = [];
-  let changeOrders: Awaited<ReturnType<typeof getChangeOrdersByProject>> = [];
-  const budgetItems: Awaited<ReturnType<typeof getProjectBudgetItems>> = [];
-  let closeoutPunch: Awaited<ReturnType<typeof getCloseoutPunch>> = null;
-  let closeoutWarranty: Awaited<ReturnType<typeof getCloseoutWarranty>> = null;
-  let closeoutCompletion: Awaited<ReturnType<typeof getCloseoutCompletion>> = null;
-  let estimatesRaw: Awaited<ReturnType<typeof getEstimateList>> = [];
-
-  if (canViewFinancials)
-    try {
-      invoiceModel = await loadProjectInvoiceReadModel(id, projectSupabase);
-    } catch (error) {
-      logServerPageDataError(`projects/${id}/billing`, error);
-      financialDataWarning = serverDataLoadWarning(error, "project billing data");
-    }
-
-  if (canViewFinancials && workspaceTab === "financial")
-    try {
-      unappliedPayments = await listUnappliedPaymentsForProject(id, projectSupabase);
-    } catch (error) {
-      logServerPageDataError(`projects/${id}/unapplied-payments`, error);
-      unappliedPaymentsError = serverDataLoadWarning(error, "unapplied payments");
-    }
-
-  try {
-    switch (workspaceTab) {
-      case "overview":
-        activityLogs = await getActivityLogsByProject(id, 20, projectSupabase);
-        if (canViewFinancials) {
+  const [profitRead, invoiceRead, unappliedRead, workspaceRead] = await Promise.all([
+    canViewFinancials
+      ? (async () => {
           try {
-            changeOrders = await getChangeOrdersByProject(id, projectSupabase);
+            const canonicalPromise = getCanonicalProjectProfit(id, projectSupabase);
+            const [canonical, costDashboard] = await Promise.all([
+              canonicalPromise,
+              getProjectCostDashboard(id, projectSupabase, canonicalPromise),
+            ]);
+            return { canonical, costDashboard, warning: null as string | null };
           } catch (error) {
-            logServerPageDataError(`projects/${id}/overview/change-orders`, error);
+            logServerPageDataError(`projects/${id}/financial`, error);
+            return {
+              canonical: null,
+              costDashboard: null,
+              warning: serverDataLoadWarning(error, "project financial data"),
+            };
           }
+        })()
+      : Promise.resolve({
+          canonical: null,
+          costDashboard: null,
+          warning: null as string | null,
+        }),
+    canViewFinancials
+      ? loadProjectInvoiceReadModel(id, projectSupabase)
+          .then((invoiceModel) => ({ invoiceModel, warning: null as string | null }))
+          .catch((error: unknown) => {
+            logServerPageDataError(`projects/${id}/billing`, error);
+            return {
+              invoiceModel: null,
+              warning: serverDataLoadWarning(error, "project billing data"),
+            };
+          })
+      : Promise.resolve({ invoiceModel: null, warning: null as string | null }),
+    canViewFinancials && workspaceTab === "financial"
+      ? listUnappliedPaymentsForProject(id, projectSupabase)
+          .then((unappliedPayments) => ({
+            unappliedPayments,
+            error: null as string | null,
+          }))
+          .catch((error: unknown) => {
+            logServerPageDataError(`projects/${id}/unapplied-payments`, error);
+            return {
+              unappliedPayments: [] as UnappliedPaymentListItem[],
+              error: serverDataLoadWarning(error, "unapplied payments"),
+            };
+          })
+      : Promise.resolve({
+          unappliedPayments: [] as UnappliedPaymentListItem[],
+          error: null as string | null,
+        }),
+    (async () => {
+      let laborEntries: Awaited<ReturnType<typeof getLaborEntriesWithJoins>> = [];
+      let documents: Awaited<ReturnType<typeof getDocumentsByProject>> = [];
+      let commissions: Awaited<ReturnType<typeof getCommissionsWithPaidByProject>> = [];
+      let subcontracts: Awaited<ReturnType<typeof getSubcontractsByProject>> = [];
+      let bills: Awaited<ReturnType<typeof getApBillsByProject>> = [];
+      let activityLogs: Awaited<ReturnType<typeof getActivityLogsByProject>> = [];
+      let changeOrders: Awaited<ReturnType<typeof getChangeOrdersByProject>> = [];
+      let closeoutPunch: Awaited<ReturnType<typeof getCloseoutPunch>> = null;
+      let closeoutWarranty: Awaited<ReturnType<typeof getCloseoutWarranty>> = null;
+      let closeoutCompletion: Awaited<ReturnType<typeof getCloseoutCompletion>> = null;
+      let estimatesRaw: Awaited<ReturnType<typeof getEstimateList>> = [];
+      const snapshot = () => ({
+        laborEntries,
+        documents,
+        commissions,
+        subcontracts,
+        bills,
+        activityLogs,
+        changeOrders,
+        closeoutPunch,
+        closeoutWarranty,
+        closeoutCompletion,
+        estimatesRaw,
+      });
+      try {
+        switch (workspaceTab) {
+          case "overview": {
+            const [logs, orders] = await Promise.all([
+              getActivityLogsByProject(id, 20, projectSupabase),
+              canViewFinancials
+                ? getChangeOrdersByProject(id, projectSupabase).catch((error: unknown) => {
+                    logServerPageDataError(`projects/${id}/overview/change-orders`, error);
+                    return [] as Awaited<ReturnType<typeof getChangeOrdersByProject>>;
+                  })
+                : Promise.resolve([] as Awaited<ReturnType<typeof getChangeOrdersByProject>>),
+            ]);
+            activityLogs = logs;
+            changeOrders = orders;
+            break;
+          }
+          case "financial":
+            if (!canViewFinancials) break;
+            [commissions, bills, estimatesRaw] = await Promise.all([
+              getCommissionsWithPaidByProject(id, projectSupabase),
+              getApBillsByProject(id, projectSupabase),
+              getEstimateList(projectSupabase),
+            ]);
+            break;
+          case "change-orders":
+            if (!canViewFinancials) break;
+            changeOrders = await getChangeOrdersByProject(id, projectSupabase);
+            break;
+          case "people":
+            if (!canViewFinancials) break;
+            [laborEntries, subcontracts, bills, commissions] = await Promise.all([
+              getLaborEntriesWithJoins({ project_id: id }, projectSupabase),
+              getSubcontractsByProject(id, projectSupabase),
+              getApBillsByProject(id, projectSupabase),
+              getCommissionsWithPaidByProject(id, projectSupabase),
+            ]);
+            break;
+          case "documents":
+            documents = await getDocumentsByProject(id, projectSupabase);
+            break;
+          case "closeout":
+            if (!canViewFinancials) break;
+            [closeoutPunch, closeoutWarranty, closeoutCompletion] = await Promise.all([
+              getCloseoutPunch(id, projectSupabase),
+              getCloseoutWarranty(id, projectSupabase),
+              getCloseoutCompletion(id, projectSupabase),
+            ]);
+            break;
         }
-        break;
-      case "financial":
-        if (!canViewFinancials) break;
-        [commissions, bills, estimatesRaw] = await Promise.all([
-          getCommissionsWithPaidByProject(id, projectSupabase),
-          getApBillsByProject(id, projectSupabase),
-          getEstimateList(projectSupabase),
-        ]);
-        break;
-      case "change-orders":
-        if (!canViewFinancials) break;
-        changeOrders = await getChangeOrdersByProject(id, projectSupabase);
-        break;
-      case "people":
-        if (!canViewFinancials) break;
-        [laborEntries, subcontracts, bills, commissions] = await Promise.all([
-          getLaborEntriesWithJoins({ project_id: id }, projectSupabase),
-          getSubcontractsByProject(id, projectSupabase),
-          getApBillsByProject(id, projectSupabase),
-          getCommissionsWithPaidByProject(id, projectSupabase),
-        ]);
-        break;
-      case "documents":
-        documents = await getDocumentsByProject(id, projectSupabase);
-        break;
-      case "closeout":
-        if (!canViewFinancials) break;
-        [closeoutPunch, closeoutWarranty, closeoutCompletion] = await Promise.all([
-          getCloseoutPunch(id, projectSupabase),
-          getCloseoutWarranty(id, projectSupabase),
-          getCloseoutCompletion(id, projectSupabase),
-        ]);
-        break;
-    }
-  } catch (error) {
-    logServerPageDataError(`projects/${id}/workspace/${workspaceTab}`, error);
-    if (["financial", "people", "change-orders", "closeout"].includes(workspaceTab)) {
-      financialDataWarning = serverDataLoadWarning(error, "project workspace financial data");
-    } else {
-      return (
-        <ServerDataLoadFallback
-          message={serverDataLoadWarning(error, "project workspace data")}
-          backHref="/projects"
-          backLabel="Back to projects"
-        />
-      );
-    }
+        return { ...snapshot(), warning: null as string | null, fatal: null as unknown };
+      } catch (error) {
+        logServerPageDataError(`projects/${id}/workspace/${workspaceTab}`, error);
+        if (["financial", "people", "change-orders", "closeout"].includes(workspaceTab)) {
+          return {
+            ...snapshot(),
+            warning: serverDataLoadWarning(error, "project workspace financial data"),
+            fatal: null as unknown,
+          };
+        }
+        return { ...snapshot(), warning: null as string | null, fatal: error };
+      }
+    })(),
+  ]);
+  if (workspaceRead.fatal) {
+    return (
+      <ServerDataLoadFallback
+        message={serverDataLoadWarning(workspaceRead.fatal, "project workspace data")}
+        backHref="/projects"
+        backLabel="Back to projects"
+      />
+    );
   }
+  financialDataWarning =
+    workspaceRead.warning ?? invoiceRead.warning ?? profitRead.warning ?? financialDataWarning;
+  const canonical = profitRead.canonical;
+  const costDashboard = profitRead.costDashboard;
+  const invoiceModel = invoiceRead.invoiceModel;
+  const unappliedPayments = unappliedRead.unappliedPayments;
+  const unappliedPaymentsError = unappliedRead.error;
+  const {
+    laborEntries,
+    documents,
+    commissions,
+    subcontracts,
+    bills,
+    activityLogs,
+    changeOrders,
+    closeoutPunch,
+    closeoutWarranty,
+    closeoutCompletion,
+    estimatesRaw,
+  } = workspaceRead;
+  const budgetItems: Awaited<ReturnType<typeof getProjectBudgetItems>> = [];
   const serverDataCompletedAt = performance.now();
 
   const billingSummary = invoiceModel?.billingSummary ?? null;

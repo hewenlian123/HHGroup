@@ -41,7 +41,7 @@ describe("Phase 4 Expenses initial read", () => {
 
     expect(dataMocks.getExpenses).toHaveBeenCalledWith(
       defaultExpenseListSort,
-      { includeLinkedBankTx: false },
+      { includeLinkedBankTx: false, limit: 50, pool: "ledger" },
       client
     );
     expect(dataMocks.getExpenseCategories).toHaveBeenCalledWith(false, client);

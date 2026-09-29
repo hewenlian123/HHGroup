@@ -6,6 +6,23 @@ import { UPLOAD_RECEIPT_ACTION } from "@/lib/navigation/actions";
 
 export const BOTTOM_NAV_ROUTES = HH_PROJECT_OS_MOBILE_NAV_ITEMS.map((item) => item.href);
 
+/**
+ * Viewport prefetch is limited to the five primary sidebar and bottom-nav destinations.
+ * Nested IA aliases stay cold so a single shell does not fan out every workspace route.
+ */
+export const PRIMARY_NAV_PREFETCH_HREFS = [
+  "/dashboard",
+  "/projects",
+  "/financial",
+  "/labor",
+  "/financial/inbox",
+] as const;
+
+export function isPrimaryNavPrefetchHref(href: string): boolean {
+  const path = href.split("?")[0]?.split("#")[0]?.replace(/\/+$/, "") || "/";
+  return (PRIMARY_NAV_PREFETCH_HREFS as readonly string[]).includes(path);
+}
+
 export const QUICK_ACTION_ROUTES = [
   UPLOAD_RECEIPT_ACTION.href,
   "/projects/new",

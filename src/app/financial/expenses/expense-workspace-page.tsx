@@ -22,7 +22,7 @@ export async function ExpenseWorkspacePage({ pool }: { pool: "expenses" | "inbox
     );
 
   const serverDataStartedAt = performance.now();
-  const initial = await loadExpensesInitialData(guard.client)
+  const initial = await loadExpensesInitialData(guard.client, pool)
     .then((data) => ({ data }))
     .catch((error: unknown) => ({ error }));
 

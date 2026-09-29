@@ -9,15 +9,25 @@ import {
   getSubcontractDeductionOptions,
   getWorkers,
 } from "@/lib/data";
-import { defaultExpenseListSort } from "@/lib/expenses-db";
+import { EXPENSE_LIST_PAGE_SIZE, defaultExpenseListSort } from "@/lib/expenses-db";
 import type { ExpensesInitialData } from "@/lib/queries/expenses";
 
 export async function loadExpensesInitialData(
-  client: SupabaseClient
+  client: SupabaseClient,
+  pool: "expenses" | "inbox" | "overview" = "expenses"
 ): Promise<ExpensesInitialData> {
+  const listPool = pool === "inbox" ? "inbox" : "ledger";
   const [expenses, categories, workers, subcontractDeductionOptions, projects, paymentAccounts] =
     await Promise.all([
-      getExpenses(defaultExpenseListSort, { includeLinkedBankTx: false }, client),
+      getExpenses(
+        defaultExpenseListSort,
+        {
+          includeLinkedBankTx: false,
+          limit: EXPENSE_LIST_PAGE_SIZE,
+          pool: listPool,
+        },
+        client
+      ),
       getExpenseCategories(false, client),
       getWorkers(client),
       getSubcontractDeductionOptions(client),

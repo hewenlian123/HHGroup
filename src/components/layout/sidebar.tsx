@@ -46,6 +46,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { prefetchFinancialRoute } from "@/lib/financial-nav-prefetch";
 import {
   OWNER_NAV_PREFETCH_ROUTES,
+  isPrimaryNavPrefetchHref,
   prefetchRoutes,
   runWhenIdle,
   shouldBulkPrefetchOwnerNav,
@@ -222,7 +223,7 @@ export function Sidebar({
       <Link
         key={item.href}
         href={item.href}
-        prefetch={false}
+        prefetch={isPrimaryNavPrefetchHref(item.href)}
         onClick={onNavigate}
         {...navIntentPrefetchProps(item.href, prefetchNavRoute)}
         title={iconOnly ? item.label : undefined}

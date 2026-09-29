@@ -42,7 +42,7 @@ test("AR workspace keeps the Figma command hierarchy, grouped queue, and read-on
 });
 
 test("invoice queue remains dense on desktop and stacked on mobile without changing actions", () => {
-  const invoices = source("src/app/financial/invoices/page.tsx");
+  const invoices = source("src/app/financial/invoices/invoices-list-client.tsx");
 
   assert.match(invoices, /data-testid="invoice-workspace-summary"/);
   assert.match(invoices, /data-testid={`invoice-row-\$\{inv\.invoiceNo\}`}/);

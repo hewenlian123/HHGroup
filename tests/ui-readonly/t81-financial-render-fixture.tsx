@@ -6,7 +6,7 @@ import {
 } from "../../src/app/estimates/_components/estimate-builder-summary";
 import { estimateSources, estimateDomain, dashboardDomain } from "./t81-financial-source-fixture";
 import { DashboardCommandHud } from "../../src/app/dashboard/dashboard-command-hud";
-import InvoicePage from "../../src/app/financial/invoices/page";
+import { InvoicesPageClient as InvoicePage } from "../../src/app/financial/invoices/invoices-list-client";
 import PayrollPage from "../../src/app/labor/payroll/page";
 import { ProjectsListClient } from "../../src/app/projects/projects-list-client";
 import { AppRouterContext } from "next/dist/shared/lib/app-router-context.shared-runtime";
