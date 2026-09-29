@@ -23,6 +23,7 @@ import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { sectionCardClass } from "@/components/ui/section-card";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -274,7 +275,7 @@ function SnapshotMetricCard({
     "px-3 py-3 text-left transition-colors",
     onClick &&
       (active
-        ? "border-[var(--hh-action-primary)] bg-[var(--hh-l3-selected)] ring-1 ring-[var(--hh-focus-ring)]"
+        ? "border-[var(--hh-link)] bg-[var(--hh-l3-selected)] ring-1 ring-[var(--hh-focus-ring)]"
         : "hover:bg-[var(--hh-l2-operational-surface)]")
   );
 
@@ -1237,7 +1238,7 @@ export function ProjectDetailTabsClient({
                       className="mt-2 space-y-1 text-hh-metadata text-[var(--hh-text-secondary)]"
                     >
                       {snapshotState.status === "error" ? (
-                        <p className="rounded-hh-standard border border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] px-3 py-2 text-[var(--hh-action-primary)]">
+                        <p className="rounded-hh-standard border border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] px-3 py-2 text-[var(--hh-warning)]">
                           Project financial data is unavailable.
                         </p>
                       ) : null}
@@ -1254,7 +1255,7 @@ export function ProjectDetailTabsClient({
                           {snapshotNotes.slice(0, 4).map((note) => (
                             <li
                               key={note}
-                              className="rounded-full border border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] px-2 py-1 text-hh-status font-medium text-[var(--hh-action-primary)]"
+                              className="rounded-full border border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] px-2 py-1 text-hh-status font-medium text-[var(--hh-warning)]"
                             >
                               {note}
                             </li>
@@ -1262,7 +1263,7 @@ export function ProjectDetailTabsClient({
                         </ul>
                       ) : null}
                       {pendingCostReviewNote ? (
-                        <p className="rounded-hh-standard border border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] px-3 py-2 text-[var(--hh-action-primary)]">
+                        <p className="rounded-hh-standard border border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] px-3 py-2 text-[var(--hh-warning)]">
                           <span className="font-medium">
                             Pending review costs are not included.
                           </span>{" "}
@@ -1301,7 +1302,7 @@ export function ProjectDetailTabsClient({
                             </p>
                           </>
                         ) : (
-                          <p className="rounded-hh-standard border border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] px-3 py-2 text-hh-metadata font-medium text-[var(--hh-action-primary)]">
+                          <p className="rounded-hh-standard border border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] px-3 py-2 text-hh-metadata font-medium text-[var(--hh-warning)]">
                             {profitReadinessWarning}
                           </p>
                         )}
@@ -1309,7 +1310,7 @@ export function ProjectDetailTabsClient({
                     ) : (
                       <p
                         role="status"
-                        className="rounded-hh-standard border border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] px-3 py-2 text-hh-metadata font-medium text-[var(--hh-action-primary)]"
+                        className="rounded-hh-standard border border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] px-3 py-2 text-hh-metadata font-medium text-[var(--hh-warning)]"
                       >
                         {snapshotState.status === "loading"
                           ? "Loading project financial snapshot…"
@@ -1401,7 +1402,7 @@ export function ProjectDetailTabsClient({
                         {commissions.length > 5 ? (
                           <Link
                             href="/financial/commissions"
-                            className="mt-2 inline-flex min-h-8 items-center text-hh-metadata font-medium text-[var(--hh-action-primary)] underline-offset-4 hover:underline"
+                            className="mt-2 inline-flex min-h-8 items-center text-hh-metadata font-semibold text-[var(--hh-link)] underline decoration-[var(--hh-link-underline)] underline-offset-4"
                           >
                             View all commissions
                           </Link>
@@ -1505,10 +1506,10 @@ export function ProjectDetailTabsClient({
                                     <InvoiceStatusBadge status={inv.computedStatus} />
                                   </td>
                                   <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums">
-                                    ${inv.total.toLocaleString()}
+                                    {formatOverviewMoney(inv.total)}
                                   </td>
                                   <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums">
-                                    ${inv.balanceDue.toLocaleString()}
+                                    {formatOverviewMoney(inv.balanceDue)}
                                   </td>
                                 </tr>
                               ))}
@@ -1520,7 +1521,7 @@ export function ProjectDetailTabsClient({
                     <div className="mt-3">
                       <Link
                         href="/financial/invoices"
-                        className="inline-flex min-h-11 items-center text-hh-metadata font-medium text-[var(--hh-action-primary)] hover:underline lg:min-h-0"
+                        className="inline-flex min-h-11 items-center text-hh-metadata font-semibold text-[var(--hh-link)] underline decoration-[var(--hh-link-underline)] underline-offset-4 lg:min-h-0"
                       >
                         View all invoices →
                       </Link>
@@ -1564,7 +1565,7 @@ export function ProjectDetailTabsClient({
                                     {b.bill_no ?? "—"}
                                   </td>
                                   <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums">
-                                    ${Number(b.amount ?? 0).toLocaleString()}
+                                    {formatOverviewMoney(Number(b.amount ?? 0))}
                                   </td>
                                 </tr>
                               ))}
@@ -1595,7 +1596,7 @@ export function ProjectDetailTabsClient({
                             </div>
                             <Link
                               href={section.href}
-                              className="shrink-0 text-hh-metadata font-medium text-[var(--hh-action-primary)] underline-offset-4 hover:underline"
+                              className="shrink-0 text-hh-metadata font-semibold text-[var(--hh-link)] underline decoration-[var(--hh-link-underline)] underline-offset-4"
                             >
                               Open
                             </Link>
@@ -1644,7 +1645,7 @@ export function ProjectDetailTabsClient({
                       No budget items for this project.
                     </p>
                   ) : (
-                    <div className="airtable-table-wrap airtable-table-wrap--ruled mt-2">
+                    <div className={cn(sectionCardClass, "mt-2")}>
                       <div className="airtable-table-scroll">
                         <table className="w-full text-hh-body">
                           <thead>
@@ -1664,7 +1665,7 @@ export function ProjectDetailTabsClient({
                                   {b.costCode ?? "—"}
                                 </td>
                                 <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums">
-                                  ${Number(b.total || 0).toLocaleString()}
+                                  {formatOverviewMoney(Number(b.total || 0))}
                                 </td>
                               </tr>
                             ))}
@@ -1719,7 +1720,7 @@ export function ProjectDetailTabsClient({
                       No change orders for this project.
                     </p>
                   ) : (
-                    <div className="airtable-table-wrap airtable-table-wrap--ruled mt-2">
+                    <div className={cn(sectionCardClass, "mt-2")}>
                       <div className="airtable-table-scroll">
                         <table className="w-full text-hh-body">
                           <thead>
@@ -1742,7 +1743,7 @@ export function ProjectDetailTabsClient({
                                   <div className="flex min-w-0 flex-col py-1.5">
                                     <Link
                                       href={`/projects/${projectId}/change-orders/${co.id}`}
-                                      className="underline-offset-2 hover:underline"
+                                      className="font-semibold text-[var(--hh-link)] underline decoration-[var(--hh-link-underline)] underline-offset-4"
                                     >
                                       {co.number ?? "—"}
                                     </Link>
@@ -1757,7 +1758,7 @@ export function ProjectDetailTabsClient({
                                   {co.status ?? "—"}
                                 </td>
                                 <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums">
-                                  ${Number(co.total ?? co.amount ?? 0).toLocaleString()}
+                                  {formatOverviewMoney(Number(co.total ?? co.amount ?? 0))}
                                 </td>
                               </tr>
                             ))}
@@ -1810,7 +1811,7 @@ export function ProjectDetailTabsClient({
                       No subcontracts for this project.
                     </p>
                   ) : (
-                    <div className="airtable-table-wrap airtable-table-wrap--ruled mt-2">
+                    <div className={cn(sectionCardClass, "mt-2")}>
                       <div className="airtable-table-scroll">
                         <table className="w-full text-hh-body">
                           <thead>
@@ -1830,7 +1831,7 @@ export function ProjectDetailTabsClient({
                                   {s.subcontractor_name ?? "—"}
                                 </td>
                                 <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums">
-                                  ${Number(s.contract_amount ?? 0).toLocaleString()}
+                                  {formatOverviewMoney(Number(s.contract_amount ?? 0))}
                                 </td>
                               </tr>
                             ))}
@@ -1851,7 +1852,7 @@ export function ProjectDetailTabsClient({
                       No bills for this project.
                     </p>
                   ) : (
-                    <div className="airtable-table-wrap airtable-table-wrap--ruled mt-2">
+                    <div className={cn(sectionCardClass, "mt-2")}>
                       <div className="airtable-table-scroll">
                         <table className="w-full text-hh-body">
                           <thead>
@@ -1877,7 +1878,7 @@ export function ProjectDetailTabsClient({
                                   {b.bill_no ?? "—"}
                                 </td>
                                 <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums">
-                                  ${Number(b.amount ?? 0).toLocaleString()}
+                                  {formatOverviewMoney(Number(b.amount ?? 0))}
                                 </td>
                               </tr>
                             ))}
@@ -1899,7 +1900,7 @@ export function ProjectDetailTabsClient({
                     </p>
                   ) : (
                     <>
-                      <div className="airtable-table-wrap airtable-table-wrap--ruled mt-2">
+                      <div className={cn(sectionCardClass, "mt-2")}>
                         <div className="airtable-table-scroll">
                           <table className="w-full text-hh-body">
                             <thead>
@@ -1925,7 +1926,7 @@ export function ProjectDetailTabsClient({
                                     {e.work_date?.slice(0, 10)}
                                   </td>
                                   <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums">
-                                    ${Number(e.cost_amount ?? 0).toLocaleString()}
+                                    {formatOverviewMoney(Number(e.cost_amount ?? 0))}
                                   </td>
                                 </tr>
                               ))}

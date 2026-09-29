@@ -7,6 +7,8 @@ import {
   getChangeOrderAttachments,
 } from "@/lib/data";
 import { PageLayout, PageHeader, Divider, SectionHeader } from "@/components/base";
+import { SectionCard } from "@/components/ui/section-card";
+import { formatOverviewMoney } from "@/lib/financial/project-overview-display";
 import { Button } from "@/components/ui/button";
 import { Pencil } from "lucide-react";
 import { ChangeOrderStatusDropdown } from "./change-order-header-actions";
@@ -16,10 +18,6 @@ import { ServerDataLoadFallback } from "@/components/server-data-load-fallback";
 import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
 import { SetBreadcrumbEntityTitle } from "@/components/layout/set-breadcrumb-entity-title";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
-
-function fmtUsd(n: number): string {
-  return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
 
 export default async function ChangeOrderDetailPage({
   params,
@@ -86,7 +84,7 @@ export default async function ChangeOrderDetailPage({
   const coBreadcrumbLabel = co.title?.trim() || co.number.trim() || null;
 
   return (
-    <div className="page-container py-6">
+    <>
       <SetBreadcrumbEntityTitle label={coBreadcrumbLabel} />
       {dataLoadWarning ? (
         <p
@@ -99,14 +97,16 @@ export default async function ChangeOrderDetailPage({
       <div className="mb-3">
         <Link
           href={`/projects/${projectId}?tab=change-orders`}
-          className="inline-flex min-h-[44px] items-center text-hh-metadata text-[var(--hh-text-secondary)] hover:text-[var(--hh-text-primary)]"
+          className="inline-flex min-h-[44px] items-center text-hh-metadata font-semibold text-[var(--hh-link)] underline decoration-[var(--hh-link-underline)] underline-offset-4"
         >
           ← Change orders
         </Link>
       </div>
       <PageLayout
+        frame="list"
         header={
           <PageHeader
+            variant="workspace"
             title={co.title || co.number}
             description={
               co.approvedAt
@@ -136,41 +136,43 @@ export default async function ChangeOrderDetailPage({
           </PageHeader>
         }
       >
-        <SectionHeader label="Summary" />
-        <div className="grid gap-4 text-hh-body sm:grid-cols-2 lg:grid-cols-4">
-          {(co.title || co.description) && (
-            <>
-              {co.title && (
-                <div>
-                  <span className="text-[var(--hh-text-secondary)]">Title</span>
-                  <p className="font-medium">{co.title}</p>
-                </div>
-              )}
-              {co.description && (
-                <div className="sm:col-span-2">
-                  <span className="text-[var(--hh-text-secondary)]">Description</span>
-                  <p className="font-medium">{co.description}</p>
-                </div>
-              )}
-            </>
-          )}
-          <div>
-            <span className="text-[var(--hh-text-secondary)]">Revenue impact (amount)</span>
-            <p className="font-medium tabular-nums">${fmtUsd(revenueAmount)}</p>
+        <SectionCard className="p-4">
+          <SectionHeader label="Summary" />
+          <div className="grid gap-4 text-hh-body sm:grid-cols-2 lg:grid-cols-4">
+            {(co.title || co.description) && (
+              <>
+                {co.title && (
+                  <div>
+                    <span className="text-[var(--hh-text-secondary)]">Title</span>
+                    <p className="font-medium">{co.title}</p>
+                  </div>
+                )}
+                {co.description && (
+                  <div className="sm:col-span-2">
+                    <span className="text-[var(--hh-text-secondary)]">Description</span>
+                    <p className="font-medium">{co.description}</p>
+                  </div>
+                )}
+              </>
+            )}
+            <div>
+              <span className="text-[var(--hh-text-secondary)]">Revenue impact (amount)</span>
+              <p className="font-medium tabular-nums">{formatOverviewMoney(revenueAmount)}</p>
+            </div>
+            {co.costImpact != null && (
+              <div>
+                <span className="text-[var(--hh-text-secondary)]">Cost impact</span>
+                <p className="font-medium tabular-nums">{formatOverviewMoney(co.costImpact)}</p>
+              </div>
+            )}
+            {co.scheduleImpactDays != null && (
+              <div>
+                <span className="text-[var(--hh-text-secondary)]">Schedule impact</span>
+                <p className="font-medium tabular-nums">{co.scheduleImpactDays} days</p>
+              </div>
+            )}
           </div>
-          {co.costImpact != null && (
-            <div>
-              <span className="text-[var(--hh-text-secondary)]">Cost impact</span>
-              <p className="font-medium tabular-nums">${fmtUsd(co.costImpact)}</p>
-            </div>
-          )}
-          {co.scheduleImpactDays != null && (
-            <div>
-              <span className="text-[var(--hh-text-secondary)]">Schedule impact</span>
-              <p className="font-medium tabular-nums">{co.scheduleImpactDays} days</p>
-            </div>
-          )}
-        </div>
+        </SectionCard>
         <Divider />
         <SectionHeader label="Line items" />
         <Divider />
@@ -182,11 +184,11 @@ export default async function ChangeOrderDetailPage({
         <div className="mt-6 flex flex-col items-end gap-1 text-hh-body">
           <div className="flex gap-8">
             <span className="text-[var(--hh-text-secondary)]">Subtotal</span>
-            <span className="num">${fmtUsd(subtotal)}</span>
+            <span className="num">{formatOverviewMoney(subtotal)}</span>
           </div>
           <div className="flex gap-8 font-medium">
             <span className="text-[var(--hh-text-secondary)]">Total</span>
-            <span className="num">${fmtUsd(co.total)}</span>
+            <span className="num">{formatOverviewMoney(co.total)}</span>
           </div>
         </div>
         <Divider />
@@ -197,6 +199,6 @@ export default async function ChangeOrderDetailPage({
           readOnly={isLocked}
         />
       </PageLayout>
-    </div>
+    </>
   );
 }

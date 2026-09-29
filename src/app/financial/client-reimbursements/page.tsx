@@ -17,7 +17,7 @@ export default async function ClientReimbursementsPage({
   const guard = await requireSupabaseOwnerOrAdminServerActionClient({ noStore: true });
   if (!guard.ok) {
     return (
-      <div className="page-container py-6">
+      <div className="hh-list-frame py-6">
         <PermissionDenied description={guard.error} />
       </div>
     );

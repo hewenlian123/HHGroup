@@ -8,6 +8,7 @@ import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { useRouter } from "next/navigation";
 import { useTransition, useState, useCallback, type FormEvent } from "react";
 import { SectionHeader, Divider, DataTable, type DataTableColumn } from "@/components/base";
+import { formatOverviewMoney } from "@/lib/financial/project-overview-display";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -64,13 +65,13 @@ export function ChangeOrderEditClient({
       key: "unitPrice",
       header: "Unit Price",
       numeric: true,
-      cell: (r) => `$${r.unitPrice.toLocaleString()}`,
+      cell: (r) => formatOverviewMoney(r.unitPrice),
     },
     {
       key: "total",
       header: "Total",
       numeric: true,
-      cell: (r) => `$${r.total.toLocaleString()}`,
+      cell: (r) => formatOverviewMoney(r.total),
     },
   ];
 
@@ -285,11 +286,11 @@ export function ChangeOrderEditClient({
       <div className="mt-6 flex flex-col items-end gap-1 text-hh-body">
         <div className="flex gap-8">
           <span className="text-[var(--hh-text-secondary)]">Subtotal</span>
-          <span className="num">${subtotal.toLocaleString()}</span>
+          <span className="num">{formatOverviewMoney(subtotal)}</span>
         </div>
         <div className="flex gap-8 font-medium">
           <span className="text-[var(--hh-text-secondary)]">Total</span>
-          <span className="num">${total.toLocaleString()}</span>
+          <span className="num">{formatOverviewMoney(total)}</span>
         </div>
       </div>
     </>

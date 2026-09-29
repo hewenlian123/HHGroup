@@ -33,7 +33,7 @@ export default async function NewChangeOrderPage({ params }: { params: Promise<{
   }
   if (!project) redirect("/projects");
   return (
-    <div className="page-container py-6">
+    <div className="hh-list-frame bg-[var(--hh-l0-canvas)] py-3 md:py-6">
       <SetBreadcrumbEntityTitle label={project.name} />
       <NewChangeOrderForm projectId={projectId} projectName={project.name} />
     </div>
