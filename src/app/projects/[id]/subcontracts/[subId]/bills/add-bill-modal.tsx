@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { addSubcontractBillAction } from "./actions";
@@ -63,7 +64,7 @@ export function AddBillModal({ open, onOpenChange, onSuccess, projectId, subcont
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm border-border/60 p-5 rounded-hh-standard gap-4">
+      <DialogContent className="max-w-sm gap-4 rounded-card border-[var(--hh-line)] bg-[var(--hh-surface)] p-5 shadow-card">
         <DialogHeader>
           <DialogTitle className="text-hh-body font-semibold">Add Bill</DialogTitle>
         </DialogHeader>
@@ -134,22 +135,19 @@ export function AddBillModal({ open, onOpenChange, onSuccess, projectId, subcont
             />
           </div>
           {error ? <p className="text-hh-body text-[var(--hh-danger)]">{error}</p> : null}
-          <div className="flex justify-end gap-2 pt-2 border-t border-border/40">
-            <button
+          <div className="flex justify-end gap-2 border-t border-[var(--hh-line)] pt-2">
+            <Button
               type="button"
+              variant="outline"
+              className="min-h-[44px]"
               onClick={() => onOpenChange(false)}
-              className="min-h-[44px] rounded-hh-standard border border-input bg-transparent px-3 text-hh-body hover:bg-accent hover:text-accent-foreground"
             >
               Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={busy}
-              className="inline-flex min-h-[44px] items-center rounded-hh-standard border border-input bg-foreground px-3 text-hh-body text-background hover:bg-foreground/90 disabled:opacity-50"
-            >
+            </Button>
+            <Button type="submit" className="min-h-[44px]" disabled={busy}>
               <SubmitSpinner loading={busy} className="mr-2" />
               {busy ? "Saving…" : "Add Bill"}
-            </button>
+            </Button>
           </div>
         </form>
       </DialogContent>

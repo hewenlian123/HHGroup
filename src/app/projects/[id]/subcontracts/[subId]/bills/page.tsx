@@ -2,6 +2,9 @@ import { requireOrganizationServerActionClient } from "@/lib/auth-boundary";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageLayout, PageHeader, Divider, SectionHeader } from "@/components/base";
+import { formatOverviewMoney } from "@/lib/financial/project-overview-display";
+import { sectionCardClass } from "@/components/ui/section-card";
+import { cn } from "@/lib/utils";
 import {
   getSubcontractById,
   getBillsBySubcontract,
@@ -20,10 +23,6 @@ import {
   ProjectFinancialTableHead,
   ProjectFinancialTableHeader,
 } from "../../../_components/project-financial-responsive-table";
-
-function fmtUsd(n: number): string {
-  return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
 
 type Props = { params: Promise<{ id: string; subId: string }> };
 
@@ -56,14 +55,16 @@ export default async function SubcontractBillsPage({ params }: Props) {
 
   return (
     <PageLayout
+      frame="list"
       header={
         <PageHeader
+          variant="workspace"
           title="Subcontract Bills"
           description={`Bills for ${subcontract.subcontractor_name}.`}
           actions={
             <Link
               href={`/projects/${projectId}/subcontracts`}
-              className="inline-flex min-h-[44px] items-center text-hh-body text-[var(--hh-text-secondary)] hover:text-[var(--hh-text-primary)]"
+              className="inline-flex min-h-[44px] items-center text-hh-body font-semibold text-[var(--hh-link)] underline decoration-[var(--hh-link-underline)] underline-offset-4"
             >
               Subcontracts
             </Link>
@@ -78,8 +79,8 @@ export default async function SubcontractBillsPage({ params }: Props) {
       />
       <Divider />
 
-      <div className="airtable-table-wrap airtable-table-wrap--ruled">
-        <div className="airtable-table-scroll">
+      <div className={cn(sectionCardClass, "overflow-x-auto")}>
+        <div>
           <ProjectFinancialTable aria-label="Subcontract bills">
             <ProjectFinancialTableHead>
               <tr>
@@ -187,7 +188,7 @@ export default async function SubcontractBillsPage({ params }: Props) {
                           label="Amount"
                           className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums"
                         >
-                          ${fmtUsd(r.amount)}
+                          {formatOverviewMoney(r.amount)}
                         </ProjectFinancialTableCell>
                         <ProjectFinancialTableCell
                           headerId="subcontract-bill-status"

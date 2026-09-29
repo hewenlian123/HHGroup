@@ -6,11 +6,10 @@ import { Button } from "@/components/ui/button";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { Input } from "@/components/ui/input";
 import type { CloseoutPunch, CloseoutWarranty, CloseoutCompletion } from "@/lib/data";
+import { formatOverviewMoney } from "@/lib/financial/project-overview-display";
+import { sectionCardClass } from "@/components/ui/section-card";
 import { cn } from "@/lib/utils";
 import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
-
-const fmtUsd = (n: number) =>
-  n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export function ProjectCloseoutTab({
   projectId,
@@ -318,8 +317,8 @@ export function ProjectCloseoutTab({
                 + Add item
               </Button>
             </div>
-            <div className="airtable-table-wrap airtable-table-wrap--ruled mt-2">
-              <div className="airtable-table-scroll">
+            <div className={cn(sectionCardClass, "mt-2 overflow-x-auto")}>
+              <div>
                 <table className="w-full text-hh-body">
                   <thead>
                     <tr>
@@ -421,7 +420,7 @@ export function ProjectCloseoutTab({
             </Button>
             <Button
               size="sm"
-              className="rounded-hh-compact bg-[var(--hh-action-primary)] text-[var(--hh-action-primary-foreground)] hover:bg-[var(--hh-action-primary)]/90"
+              className="rounded-hh-compact"
               onClick={generatePunchPdf}
               disabled={!!generating}
             >
@@ -432,7 +431,7 @@ export function ProjectCloseoutTab({
       </div>
 
       {/* 2. Warranty Information */}
-      <div className="rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] shadow-sm overflow-hidden">
+      <div className={sectionCardClass}>
         <div className="px-4 py-3 border-b border-[var(--hh-border)]">
           <SectionHeader label="Warranty Information" />
         </div>
@@ -499,29 +498,33 @@ export function ProjectCloseoutTab({
       </div>
 
       {/* 3. Final Invoice */}
-      <div className="rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] shadow-sm overflow-hidden">
+      <div className={sectionCardClass}>
         <div className="px-4 py-3 border-b border-[var(--hh-border)]">
           <SectionHeader label="Final Invoice" />
         </div>
         <div className="p-4 space-y-3">
           <div className="flex justify-between text-hh-body">
             <span className="text-[var(--hh-text-secondary)]">Contract value</span>
-            <span className="font-medium tabular-nums">${fmtUsd(contractValue)}</span>
+            <span className="font-medium tabular-nums">{formatOverviewMoney(contractValue)}</span>
           </div>
           <Divider />
           <div className="flex justify-between text-hh-body">
             <span className="text-[var(--hh-text-secondary)]">Payments received</span>
-            <span className="font-medium tabular-nums">${fmtUsd(billingSummary.paidTotal)}</span>
+            <span className="font-medium tabular-nums">
+              {formatOverviewMoney(billingSummary.paidTotal)}
+            </span>
           </div>
           <Divider />
           <div className="flex justify-between text-hh-body">
             <span className="text-[var(--hh-text-secondary)]">Remaining balance</span>
-            <span className="font-medium tabular-nums">${fmtUsd(remainingBalance)}</span>
+            <span className="font-medium tabular-nums">
+              {formatOverviewMoney(remainingBalance)}
+            </span>
           </div>
           <div className="pt-2">
             <Button
               size="sm"
-              className="rounded-hh-standard bg-[var(--hh-action-primary)] text-[var(--hh-action-primary-foreground)] hover:bg-[var(--hh-l3-pressed)]"
+              className="rounded-hh-standard"
               onClick={createFinalInvoicePdf}
               disabled={!!generating}
             >
@@ -532,7 +535,7 @@ export function ProjectCloseoutTab({
       </div>
 
       {/* 4. Completion Certificate */}
-      <div className="rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] shadow-sm overflow-hidden">
+      <div className={sectionCardClass}>
         <div className="px-4 py-3 border-b border-[var(--hh-border)]">
           <SectionHeader label="Completion Certificate" />
         </div>
@@ -625,7 +628,7 @@ export function ProjectCloseoutTab({
             </Button>
             <Button
               size="sm"
-              className="rounded-hh-standard bg-[var(--hh-action-primary)] text-[var(--hh-action-primary-foreground)] hover:bg-[var(--hh-l3-pressed)]"
+              className="rounded-hh-standard"
               onClick={generateCompletionPdf}
               disabled={!!generating}
             >

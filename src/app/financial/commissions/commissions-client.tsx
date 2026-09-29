@@ -54,13 +54,15 @@ import {
 import { useAttachmentPreview } from "@/contexts/attachment-preview-context";
 import { useToast } from "@/components/toast/toast-provider";
 import { RowActionsMenu } from "@/components/base/row-actions-menu";
-import { formatCurrency, formatDate } from "@/lib/formatters";
+import { formatDate } from "@/lib/formatters";
+import { formatOverviewMoney } from "@/lib/financial/project-overview-display";
+import { sectionCardClass } from "@/components/ui/section-card";
 
 const PAYMENT_METHODS = ["Check", "Bank Transfer", "Cash", "Zelle", "Other"] as const;
 
 const COMMISSION_ROLES = ["Designer", "Sales", "Referral", "Agent", "Other"] as const;
 
-const fmtUsd = (n: number) => formatCurrency(n);
+const fmtUsd = (n: number) => formatOverviewMoney(n);
 
 async function postCommissionReceiptWithProgress(
   uploadUrl: string,
@@ -89,28 +91,25 @@ async function postCommissionReceiptWithProgress(
 
 const COMMISSION_PAGE_BG = "text-[var(--hh-text-secondary)]";
 const COMMISSION_MODAL =
-  "max-w-[480px] w-full gap-0 rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-6 text-[var(--hh-text-primary)] shadow-operational sm:max-w-[480px] md:p-8";
+  "max-w-[480px] w-full gap-0 rounded-card border border-[var(--hh-line)] bg-[var(--hh-surface)] p-6 text-[var(--hh-text)] shadow-card sm:max-w-[480px] md:p-8";
 const COMMISSION_LABEL =
   "mb-1.5 block text-hh-metadata font-medium text-[var(--hh-text-secondary)]";
 const COMMISSION_FIELD =
   "hh-focus-ring h-10 rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-hh-body text-[var(--hh-text-primary)]";
 
-const commissionsShell =
-  "rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-operational md:rounded-hh-task";
+const commissionsShell = sectionCardClass;
 
-const kpiTile =
-  "rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-operational";
+const kpiTile = cn(sectionCardClass, "p-4");
 
 const kpiIcon =
   "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[var(--hh-border)] bg-[var(--hh-l3-selected)] text-[var(--hh-text-secondary)]";
 
 const RECEIPT_UPLOAD_MODAL =
-  "max-w-[480px] w-full gap-0 rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-6 text-[var(--hh-text-primary)] shadow-operational sm:max-w-[480px] md:p-8";
+  "max-w-[480px] w-full gap-0 rounded-card border border-[var(--hh-line)] bg-[var(--hh-surface)] p-6 text-[var(--hh-text)] shadow-card sm:max-w-[480px] md:p-8";
 const COMMISSION_DIALOG_FOOTER = "mt-6 border-t border-[var(--hh-border)] bg-transparent pt-4";
 const COMMISSION_SECONDARY_BUTTON =
   "h-10 rounded-hh-standard border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-hh-body font-medium text-[var(--hh-text-secondary)] hover:bg-[var(--hh-l3-selected)] hover:text-[var(--hh-text-primary)]";
-const COMMISSION_PRIMARY_BUTTON =
-  "h-10 rounded-hh-standard bg-[var(--hh-action-primary)] text-hh-control text-[var(--hh-action-primary-foreground)] hover:opacity-90";
+const COMMISSION_PRIMARY_BUTTON = "hh-btn-primary h-10 rounded-hh-standard text-hh-control";
 const COMMISSION_DANGER_BUTTON =
   "h-10 rounded-hh-standard bg-[var(--hh-danger)] text-hh-control text-white hover:opacity-90";
 function PaymentStatusPill({ status }: { status: CommissionPaymentStatus }) {
@@ -1147,14 +1146,11 @@ export function CommissionsClient({
         "flex flex-col"
       )}
     >
-      <div
-        className={cn(
-          "page-shell-wide mx-auto flex w-full max-w-[430px] flex-1 flex-col gap-3 px-4 py-2 pb-4 sm:max-w-[460px] md:gap-4 md:px-6 md:pb-6 md:pt-3"
-        )}
-      >
+      <div className={cn("hh-list-frame flex w-full flex-1 flex-col gap-3 py-3 md:gap-4 md:py-6")}>
         <div className="hidden md:block">
           <PageHeader
-            className="gap-1 border-b border-[var(--hh-border)] pb-2 lg:items-baseline lg:gap-x-4 [&_h1]:text-[var(--hh-text-primary)] [&_p]:mt-0 [&_p]:text-[var(--hh-text-secondary)]"
+            variant="workspace"
+            className="gap-1 border-b border-[var(--hh-line)] pb-2 lg:items-baseline lg:gap-x-4 [&_p]:mt-0"
             title="Commission Payments"
             subtitle="Commission tracking and payout history by project, person, and role."
             actions={
@@ -1171,11 +1167,12 @@ export function CommissionsClient({
           />
         </div>
         <MobileListHeader
+          variant="workspace"
           title="Commissions"
           fab={
             <button
               type="button"
-              className="flex h-11 w-11 shrink-0 touch-manipulation items-center justify-center rounded-full border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-operational"
+              className="hh-btn-primary flex h-11 w-11 shrink-0 touch-manipulation items-center justify-center rounded-full"
               data-testid="financial-commission-add-mobile"
               aria-label="Add Commission"
               onClick={openCreateModal}

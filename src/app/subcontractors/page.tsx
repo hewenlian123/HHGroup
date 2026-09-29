@@ -94,11 +94,13 @@ export default async function SubcontractorsPage() {
 
   return (
     <PageLayout
+      frame="list"
       divider={false}
       className={cn("max-md:!py-3", "max-md:!gap-3", "[&_button]:min-h-11")}
       header={
         <div className="hidden md:block">
           <PageHeader
+            variant="workspace"
             title="Subcontractors"
             description="Committed contracts, billed-to-date, paid-to-date, and AP outstanding. Contract amount is committed cost only."
           />

@@ -23,6 +23,7 @@ import {
   MobileListHeader,
   MobileSearchFiltersRow,
 } from "@/components/mobile/mobile-list-chrome";
+import { formatOverviewMoney } from "@/lib/financial/project-overview-display";
 import { TYPO } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 
@@ -41,10 +42,6 @@ export type SubcontractorSummaryRow = {
   insurance_alert: boolean;
   insurance_expiration_date: string | null;
 };
-
-function fmtUsd(n: number): string {
-  return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
 
 const tableHeadClass = cn("h-8 px-3 text-left", TYPO.tableHeader);
 const numericHeadClass = cn(tableHeadClass, "text-right tabular-nums");
@@ -106,6 +103,7 @@ export function SubcontractorsListClient({
       ) : null}
 
       <MobileListHeader
+        variant="workspace"
         title="Subcontractors"
         fab={
           <Button asChild variant="outline" className="min-h-11">
@@ -140,7 +138,7 @@ export function SubcontractorsListClient({
         </Button>
       </MobileFilterSheet>
 
-      <NeoToolbar className="hidden justify-between md:flex">
+      <NeoToolbar className="hh-filters-bar hidden justify-between md:flex">
         <div className="relative w-full max-w-md">
           <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--hh-text-tertiary)]" />
           <NeoInput
@@ -221,14 +219,14 @@ export function SubcontractorsListClient({
                       <div>
                         <dt className="inline text-hh-table-header uppercase">Contracts</dt>{" "}
                         <dd className="inline">
-                          <NeoAmount>${fmtUsd(r.contractAmount)}</NeoAmount>
+                          <NeoAmount>{formatOverviewMoney(r.contractAmount)}</NeoAmount>
                         </dd>
                       </div>
                       <div>
                         <dt className="inline text-hh-table-header uppercase">AP Outstanding</dt>{" "}
                         <dd className="inline">
                           <NeoAmount tone={r.apOutstanding > 0 ? "expense" : "neutral"}>
-                            ${fmtUsd(r.apOutstanding)}
+                            {formatOverviewMoney(r.apOutstanding)}
                           </NeoAmount>
                         </dd>
                       </div>
@@ -265,7 +263,7 @@ export function SubcontractorsListClient({
                   <td className="py-2 px-3">
                     <Link
                       href={`/subcontractors/${r.id}`}
-                      className="inline-flex min-h-11 items-center font-medium text-[var(--hh-text-primary)] underline-offset-2 hover:underline"
+                      className="inline-flex min-h-11 items-center font-medium text-[var(--hh-link)] underline decoration-[var(--hh-link-underline)] underline-offset-4"
                     >
                       {r.name}
                     </Link>
@@ -290,25 +288,25 @@ export function SubcontractorsListClient({
                     )}
                   </td>
                   <td className={amountCellClass}>
-                    <NeoAmount>${fmtUsd(r.contractAmount)}</NeoAmount>
+                    <NeoAmount>{formatOverviewMoney(r.contractAmount)}</NeoAmount>
                   </td>
                   <td className={amountCellClass}>
-                    <NeoAmount>${fmtUsd(r.scheduledAmount)}</NeoAmount>
+                    <NeoAmount>{formatOverviewMoney(r.scheduledAmount)}</NeoAmount>
                   </td>
                   <td className={amountCellClass}>
-                    <NeoAmount>${fmtUsd(r.billedToDate)}</NeoAmount>
+                    <NeoAmount>{formatOverviewMoney(r.billedToDate)}</NeoAmount>
                   </td>
                   <td className={amountCellClass}>
-                    <NeoAmount tone="income">${fmtUsd(r.paidToDate)}</NeoAmount>
+                    <NeoAmount tone="income">{formatOverviewMoney(r.paidToDate)}</NeoAmount>
                   </td>
                   <td className={amountCellClass}>
                     <NeoAmount tone={r.apOutstanding > 0 ? "expense" : "neutral"}>
-                      ${fmtUsd(r.apOutstanding)}
+                      {formatOverviewMoney(r.apOutstanding)}
                     </NeoAmount>
                   </td>
                   <td className={amountCellClass}>
                     <NeoAmount tone={r.remainingContract < 0 ? "expense" : "neutral"}>
-                      ${fmtUsd(r.remainingContract)}
+                      {formatOverviewMoney(r.remainingContract)}
                     </NeoAmount>
                   </td>
                 </tr>
