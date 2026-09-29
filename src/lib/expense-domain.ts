@@ -7,6 +7,9 @@ export const defaultExpenseListSort: ExpenseListSort = {
   order: "desc",
 };
 
+/** Default page for the expense ledger and receipt inbox. OCR pending rows are merged in addition to this cap. */
+export const EXPENSE_LIST_PAGE_SIZE = 50;
+
 export function isDefaultExpenseListSort(sort: ExpenseListSort): boolean {
   return sort.field === "date" && sort.order === "desc";
 }

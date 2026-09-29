@@ -109,14 +109,12 @@ export type Expense = {
 /** List sort for `/financial/expenses` (Supabase + stable in-memory pass). */
 export {
   defaultExpenseListSort,
+  EXPENSE_LIST_PAGE_SIZE,
   isDefaultExpenseListSort,
   type ExpenseListSort,
   type ExpenseSortField,
   type ExpenseSortOrder,
 } from "@/lib/expense-domain";
-
-/** Default page for the expense ledger and receipt inbox. OCR pending rows are merged in addition to this cap. */
-export const EXPENSE_LIST_PAGE_SIZE = 50;
 
 export type ExpenseListPool = "inbox" | "ledger";
 
@@ -906,7 +904,7 @@ function applyExpenseListScope(q: any, options: ExpenseListFetchOptions): any {
   return q;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Supabase builder
+/* eslint-disable @typescript-eslint/no-explicit-any -- Supabase builder */
 function finishExpenseListQuery(
   q: any,
   sort: ExpenseListSort,
@@ -916,6 +914,7 @@ function finishExpenseListQuery(
   if (options.limit && options.limit > 0) return ordered.limit(options.limit);
   return ordered;
 }
+/* eslint-enable @typescript-eslint/no-explicit-any */
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Supabase builder
 function applyExpenseOrderToQuery(q: any, sort: ExpenseListSort): any {

@@ -36,10 +36,11 @@ import {
 } from "@/components/financial/filter-select";
 import {
   defaultExpenseListSort,
+  EXPENSE_LIST_PAGE_SIZE,
   getExpenseTotal,
   isDefaultExpenseListSort,
 } from "@/lib/expense-domain";
-import { EXPENSE_LIST_PAGE_SIZE, type Expense } from "@/lib/expenses-db";
+import type { Expense } from "@/lib/expenses-db";
 import type { PaymentAccountRow } from "@/lib/payment-accounts-db";
 import type { SubcontractDeductionOption } from "@/lib/subcontract-deductions-db";
 import type { SupabaseClient } from "@supabase/supabase-js";

@@ -1,7 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { EXPENSE_LIST_PAGE_SIZE, type Expense, type ExpenseListPool } from "@/lib/expenses-db";
+import type { Expense, ExpenseListPool } from "@/lib/expenses-db";
 import type { SubcontractDeductionOption } from "@/lib/subcontract-deductions-db";
-import { defaultExpenseListSort, type ExpenseListSort } from "@/lib/expense-domain";
+import {
+  defaultExpenseListSort,
+  EXPENSE_LIST_PAGE_SIZE,
+  type ExpenseListSort,
+} from "@/lib/expense-domain";
 import type { PaymentAccountRow } from "@/lib/payment-accounts-db";
 
 export type { ExpenseListSort };

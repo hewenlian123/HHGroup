@@ -35,7 +35,7 @@ describe("Project workspace routes and context", () => {
   it("loads Change Orders from the verified project client instead of an empty placeholder", () => {
     const source = readFileSync("src/app/projects/[id]/page.tsx", "utf8");
     expect(source).toMatch(
-      /case "change-orders":\s*if \(!canViewFinancials\) break;\s*changeOrders = await getChangeOrdersByProject\(id, projectSupabase\)/
+      /case "change-orders":\s*if \(canViewFinancials\) \{\s*changeOrders = await getChangeOrdersByProject\(id, projectSupabase\);\s*\}/
     );
   });
 
