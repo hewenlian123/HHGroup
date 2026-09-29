@@ -85,7 +85,6 @@ import {
 import { PaymentReceiptPreviewModal } from "@/components/financial/payment-receipt-preview-modal";
 import { voidPaymentReceivedAction } from "@/app/financial/payments/actions";
 import { buildInvoicePaymentLedger } from "@/lib/financial/invoice-payment-ledger";
-import { isVoidCashStatus } from "@/lib/payment-allocation";
 import { formatOverviewMoney } from "@/lib/financial/project-overview-display";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { useBreadcrumbEntityLabel } from "@/contexts/breadcrumb-override-context";
@@ -690,45 +689,23 @@ export default function InvoiceDetailClient({
         })
       : null;
   const receivedById = new Map(paymentsReceived.map((row) => [row.id, row]));
-  const linkedReceivedIds = new Set(
-    payments
-      .map((payment) => payment.paymentReceivedId)
-      .filter((paymentId): paymentId is string => Boolean(paymentId))
-  );
-  const unlinkedReceived = paymentsReceived.filter((row) => !linkedReceivedIds.has(row.id));
-  const ledgerSource = [
-    ...payments.map((payment) => {
-      const received = payment.paymentReceivedId
-        ? receivedById.get(payment.paymentReceivedId)
-        : undefined;
-      return {
-        id: payment.id,
-        date: payment.date,
-        amount: payment.amount,
-        method: payment.method.trim() || received?.payment_method?.trim() || "—",
-        reference:
-          payment.memo?.trim() ||
-          received?.notes?.trim() ||
-          received?.deposit_account?.trim() ||
-          "",
-        voided: payment.status === "Voided",
-        paymentReceivedId: payment.paymentReceivedId ?? null,
-        legacyPaymentId: payment.paymentReceivedId ? null : payment.id,
-        attachments: received?.attachments ?? [],
-      };
-    }),
-    ...unlinkedReceived.map((row) => ({
-      id: `unlinked-${row.id}`,
-      date: row.payment_date,
-      amount: row.amount,
-      method: row.payment_method?.trim() || "—",
-      reference: row.notes?.trim() || row.deposit_account?.trim() || "",
-      voided: isVoidCashStatus(row.status),
-      paymentReceivedId: row.id,
-      legacyPaymentId: null as string | null,
-      attachments: row.attachments ?? [],
-    })),
-  ];
+  const ledgerSource = payments.map((payment) => {
+    const received = payment.paymentReceivedId
+      ? receivedById.get(payment.paymentReceivedId)
+      : undefined;
+    return {
+      id: payment.id,
+      date: payment.date,
+      amount: payment.amount,
+      method: payment.method.trim() || received?.payment_method?.trim() || "—",
+      reference:
+        payment.memo?.trim() || received?.notes?.trim() || received?.deposit_account?.trim() || "",
+      voided: payment.status === "Voided",
+      paymentReceivedId: payment.paymentReceivedId ?? null,
+      legacyPaymentId: payment.paymentReceivedId ? null : payment.id,
+      attachments: received?.attachments ?? [],
+    };
+  });
   const paymentLedger = buildInvoicePaymentLedger(displayedTotal, ledgerSource);
   const ledgerMeta = new Map(ledgerSource.map((row) => [row.id, row]));
   const postedPayments = paymentLedger.filter((row) => !row.voided);

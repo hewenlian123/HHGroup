@@ -23,6 +23,10 @@ import { getProjectCostDashboard } from "@/lib/project-cost-dashboard";
 import { ServerDataLoadFallback } from "@/components/server-data-load-fallback";
 import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
 import { loadProjectInvoiceReadModel } from "@/lib/financial/invoice-read-model";
+import {
+  listUnappliedPaymentsForProject,
+  type UnappliedPaymentListItem,
+} from "@/lib/payments-received-db";
 import { emitRscTiming } from "@/lib/performance/server-timing";
 import { ProjectDetailTabsClient } from "./project-detail-tabs-client";
 import type { RecentExpenseLineRow } from "./recent-expense-lines";
@@ -97,6 +101,8 @@ export default async function ProjectDetailPage({
     }
 
   let invoiceModel: Awaited<ReturnType<typeof loadProjectInvoiceReadModel>> | null = null;
+  let unappliedPayments: UnappliedPaymentListItem[] = [];
+  let unappliedPaymentsError: string | null = null;
   let laborEntries: Awaited<ReturnType<typeof getLaborEntriesWithJoins>> = [];
   let documents: Awaited<ReturnType<typeof getDocumentsByProject>> = [];
   let commissions: Awaited<ReturnType<typeof getCommissionsWithPaidByProject>> = [];
@@ -116,6 +122,14 @@ export default async function ProjectDetailPage({
     } catch (error) {
       logServerPageDataError(`projects/${id}/billing`, error);
       financialDataWarning = serverDataLoadWarning(error, "project billing data");
+    }
+
+  if (canViewFinancials && workspaceTab === "financial")
+    try {
+      unappliedPayments = await listUnappliedPaymentsForProject(id, projectSupabase);
+    } catch (error) {
+      logServerPageDataError(`projects/${id}/unapplied-payments`, error);
+      unappliedPaymentsError = serverDataLoadWarning(error, "unapplied payments");
     }
 
   try {
@@ -253,6 +267,8 @@ export default async function ProjectDetailPage({
       recentExpenseLines={recentExpenseLines}
       expenseLineRows={[]}
       projectInvoices={projectInvoices}
+      unappliedPayments={unappliedPayments}
+      unappliedPaymentsError={unappliedPaymentsError}
       relatedEstimates={relatedEstimates}
       laborEntries={laborEntries ?? []}
       documents={documents ?? []}

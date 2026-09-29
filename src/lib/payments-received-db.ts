@@ -5,6 +5,13 @@
  */
 
 import { financialDataUnavailable } from "@/lib/financial-availability";
+import { roundMoney } from "@/lib/money";
+import {
+  paymentLinkDecision,
+  unappliedCustomerReceipts,
+  type PaymentLinkInvoice,
+  type PaymentLinkReceipt,
+} from "@/lib/payment-allocation";
 import { getSupabaseClient } from "@/lib/supabase";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -1203,4 +1210,373 @@ export async function updatePaymentReceived(
   const updated = await getPaymentReceivedById(paymentId, c);
   if (!updated) throw new Error("Payment updated, but could not be reloaded.");
   return updated;
+}
+
+export type UnappliedPaymentListItem = {
+  id: string;
+  paymentDate: string;
+  customerName: string;
+  projectId: string | null;
+  projectName: string | null;
+  method: string | null;
+  reference: string | null;
+  amount: number;
+  customerId: string | null;
+};
+
+export type LinkableInvoiceOption = {
+  id: string;
+  invoiceNo: string;
+  clientName: string;
+  balanceDue: number;
+  status: string;
+};
+
+export type LinkedUnappliedPaymentResult = {
+  paymentId: string;
+  invoiceId: string;
+  projectId: string | null;
+  paidTotal: number;
+  balanceDue: number;
+  alreadyApplied: boolean;
+};
+
+type InvoiceLinkRow = {
+  id: string;
+  invoice_no?: string | null;
+  project_id?: string | null;
+  customer_id?: string | null;
+  client_name?: string | null;
+  status?: string | null;
+  total?: number | string | null;
+  balance_due?: number | string | null;
+  paid_total?: number | string | null;
+};
+
+function requiredMoney(value: unknown, label: string): number {
+  if (value == null || value === "") throw new Error(`${label} is unavailable.`);
+  const number = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(number)) throw new Error(`${label} is unavailable.`);
+  return roundMoney(number);
+}
+
+function receiptForLink(
+  payment: PaymentReceivedDbRow,
+  customerId: string | null
+): PaymentLinkReceipt {
+  return {
+    id: payment.id,
+    projectId: payment.project_id,
+    customerId,
+    customerName: payment.customer_name,
+    amount: requiredMoney(payment.amount, "Payment amount"),
+    status: payment.status,
+  };
+}
+
+function invoiceForLink(invoice: InvoiceLinkRow): PaymentLinkInvoice {
+  return {
+    id: invoice.id,
+    projectId: invoice.project_id,
+    customerId: invoice.customer_id,
+    clientName: invoice.client_name,
+    status: invoice.status,
+    balanceDue: requiredMoney(invoice.balance_due, "Invoice balance"),
+  };
+}
+
+async function readPaymentCustomerId(
+  c: ReturnType<typeof client>,
+  paymentId: string
+): Promise<string | null> {
+  const res = await c
+    .from("payments_received")
+    .select("customer_id")
+    .eq("id", paymentId)
+    .maybeSingle();
+  if (res.error) {
+    if (isMissingColumn(res.error)) return null;
+    throw new Error(res.error.message ?? "Failed to load the payment customer.");
+  }
+  const customerId = (res.data as { customer_id?: string | null } | null)?.customer_id;
+  return customerId ? String(customerId) : null;
+}
+
+async function readInvoiceForLink(
+  c: ReturnType<typeof client>,
+  invoiceId: string
+): Promise<InvoiceLinkRow> {
+  const res = await c
+    .from("invoices")
+    .select(
+      "id, invoice_no, project_id, customer_id, client_name, status, total, balance_due, paid_total"
+    )
+    .eq("id", invoiceId)
+    .maybeSingle();
+  if (res.error) throw new Error(res.error.message ?? "Failed to load the invoice.");
+  if (!res.data) throw new Error("Invoice not found.");
+  return res.data as InvoiceLinkRow;
+}
+
+async function readAppliedInvoiceId(
+  c: ReturnType<typeof client>,
+  paymentId: string
+): Promise<string | null> {
+  const res = await c
+    .from("invoice_payments")
+    .select("invoice_id, status, payment_received_id")
+    .eq("payment_received_id", paymentId);
+  if (res.error) throw new Error(res.error.message ?? "Failed to load payment allocations.");
+  const applied = unappliedCustomerReceipts(
+    [{ id: paymentId, status: "completed" }],
+    (res.data ?? []) as Array<{
+      invoice_id?: string | null;
+      status?: string | null;
+      payment_received_id?: string | null;
+    }>
+  );
+  if (applied.length === 1) return null;
+  const row = (
+    (res.data ?? []) as Array<{ invoice_id?: string | null; status?: string | null }>
+  ).find((allocation) => !isVoidPaymentStatus(allocation.status));
+  const invoiceId = String(row?.invoice_id ?? "").trim();
+  if (!invoiceId) throw new Error("This payment is already applied, but its invoice is missing.");
+  return invoiceId;
+}
+
+async function alignReceiptWithInvoice(
+  c: ReturnType<typeof client>,
+  paymentId: string,
+  invoice: InvoiceLinkRow
+): Promise<void> {
+  const patch: Record<string, string | null> = {
+    invoice_id: invoice.id,
+    project_id: invoice.project_id ?? null,
+    customer_name: invoice.client_name ?? "",
+  };
+  if (invoice.customer_id) patch.customer_id = invoice.customer_id;
+  let res = await c
+    .from("payments_received")
+    .update(patch)
+    .eq("id", paymentId)
+    .select("id")
+    .maybeSingle();
+  if (res.error && isMissingColumn(res.error) && patch.customer_id) {
+    delete patch.customer_id;
+    res = await c
+      .from("payments_received")
+      .update(patch)
+      .eq("id", paymentId)
+      .select("id")
+      .maybeSingle();
+  }
+  if (res.error)
+    throw new Error(res.error.message ?? "Failed to attach the payment to the invoice.");
+  if (!res.data) throw new Error("Payment not found.");
+}
+
+function linkedResult(
+  paymentId: string,
+  invoice: InvoiceLinkRow,
+  alreadyApplied: boolean
+): LinkedUnappliedPaymentResult {
+  return {
+    paymentId,
+    invoiceId: invoice.id,
+    projectId: invoice.project_id ?? null,
+    paidTotal: requiredMoney(invoice.paid_total, "Invoice paid total"),
+    balanceDue: requiredMoney(invoice.balance_due, "Invoice balance"),
+    alreadyApplied,
+  };
+}
+
+/**
+ * Allocate an existing unapplied receipt onto an open invoice. The invoice
+ * paid and balance come back from the allocation trigger, the same path used
+ * when a payment is recorded.
+ */
+export async function linkUnappliedPaymentToInvoice(
+  paymentId: string,
+  invoiceId: string,
+  explicitClient?: SupabaseClient
+): Promise<LinkedUnappliedPaymentResult> {
+  const c = client(explicitClient);
+  const trimmedPaymentId = paymentId.trim();
+  const trimmedInvoiceId = invoiceId.trim();
+  if (!trimmedPaymentId || !trimmedInvoiceId)
+    throw new Error("Choose an invoice for this payment.");
+
+  const [payment, customerId, invoice, appliedInvoiceId] = await Promise.all([
+    fetchPaymentReceivedDbRow(c, trimmedPaymentId),
+    readPaymentCustomerId(c, trimmedPaymentId),
+    readInvoiceForLink(c, trimmedInvoiceId),
+    readAppliedInvoiceId(c, trimmedPaymentId),
+  ]);
+  if (!payment) throw new Error("Payment not found.");
+
+  const decision = paymentLinkDecision({
+    receipt: receiptForLink(payment, customerId),
+    invoice: invoiceForLink(invoice),
+    appliedInvoiceId,
+  });
+  if (!decision.ok) throw new Error(decision.error);
+
+  if (!decision.alreadyApplied) {
+    const paidAt = normalizeDate(payment.payment_date);
+    if (!paidAt) throw new Error("Payment date is required.");
+    const inserted = await c
+      .from("invoice_payments")
+      .insert({
+        invoice_id: invoice.id,
+        paid_at: paidAt,
+        amount: requiredMoney(payment.amount, "Payment amount"),
+        method: payment.payment_method,
+        memo: normalizeMemo(payment.notes) || null,
+        status: "Posted",
+        payment_received_id: payment.id,
+      })
+      .select("id")
+      .maybeSingle();
+    if (inserted.error) {
+      const duplicate =
+        inserted.error.code === "23505" || /duplicate|unique/i.test(inserted.error.message ?? "");
+      if (!duplicate) throw new Error(inserted.error.message ?? "Failed to link the payment.");
+      const raced = await readAppliedInvoiceId(c, payment.id);
+      if (raced && raced !== invoice.id) {
+        throw new Error("This payment is already applied to another invoice.");
+      }
+    }
+  }
+
+  await alignReceiptWithInvoice(c, payment.id, invoice);
+  return linkedResult(payment.id, await readInvoiceForLink(c, invoice.id), decision.alreadyApplied);
+}
+
+export async function listOpenInvoicesForUnappliedPayment(
+  paymentId: string,
+  explicitClient?: SupabaseClient
+): Promise<LinkableInvoiceOption[]> {
+  const c = client(explicitClient);
+  const trimmedPaymentId = paymentId.trim();
+  if (!trimmedPaymentId) throw new Error("Payment not found.");
+  const [payment, customerId, appliedInvoiceId] = await Promise.all([
+    fetchPaymentReceivedDbRow(c, trimmedPaymentId),
+    readPaymentCustomerId(c, trimmedPaymentId),
+    readAppliedInvoiceId(c, trimmedPaymentId),
+  ]);
+  if (!payment) throw new Error("Payment not found.");
+  if (appliedInvoiceId) throw new Error("This payment is already applied to an invoice.");
+  const projectId = String(payment.project_id ?? "").trim();
+  if (!projectId) throw new Error("This payment has no project, so it cannot be linked.");
+
+  const res = await c
+    .from("invoices")
+    .select(
+      "id, invoice_no, project_id, customer_id, client_name, status, total, balance_due, paid_total"
+    )
+    .eq("project_id", projectId);
+  if (res.error) throw new Error(res.error.message ?? "Failed to load open invoices.");
+  if (!Array.isArray(res.data)) throw new Error("Failed to load open invoices.");
+
+  const receipt = receiptForLink(payment, customerId);
+  const options: LinkableInvoiceOption[] = [];
+  for (const row of res.data as InvoiceLinkRow[]) {
+    let invoice: PaymentLinkInvoice;
+    try {
+      invoice = invoiceForLink(row);
+    } catch {
+      throw new Error("Invoice balance is unavailable.");
+    }
+    const decision = paymentLinkDecision({ receipt, invoice, appliedInvoiceId: null });
+    if (!decision.ok) continue;
+    options.push({
+      id: row.id,
+      invoiceNo: String(row.invoice_no ?? row.id).trim() || row.id,
+      clientName: String(row.client_name ?? "").trim(),
+      balanceDue: invoice.balanceDue,
+      status: String(row.status ?? ""),
+    });
+  }
+  options.sort((left, right) => left.invoiceNo.localeCompare(right.invoiceNo));
+  return options;
+}
+
+export async function listUnappliedPaymentsForProject(
+  projectId: string,
+  explicitClient?: SupabaseClient
+): Promise<UnappliedPaymentListItem[]> {
+  const c = client(explicitClient);
+  const trimmedProjectId = projectId.trim();
+  if (!trimmedProjectId) return [];
+  const schema = await getPaymentOptionalSchema();
+  const paymentRes = schema.paymentsReceivedStatus
+    ? await c
+        .from("payments_received")
+        .select(
+          "id, invoice_id, project_id, customer_name, payment_date, amount, payment_method, notes, status"
+        )
+        .eq("project_id", trimmedProjectId)
+        .order("payment_date", { ascending: false })
+    : await c
+        .from("payments_received")
+        .select(
+          "id, invoice_id, project_id, customer_name, payment_date, amount, payment_method, notes"
+        )
+        .eq("project_id", trimmedProjectId)
+        .order("payment_date", { ascending: false });
+  if (paymentRes.error) financialDataUnavailable("unapplied payments", paymentRes.error);
+  if (!Array.isArray(paymentRes.data)) financialDataUnavailable("unapplied payments", null);
+  const receipts = paymentRes.data as Array<{
+    id: string;
+    project_id?: string | null;
+    customer_name?: string | null;
+    payment_date?: string | null;
+    amount?: number | string | null;
+    payment_method?: string | null;
+    notes?: string | null;
+    status?: string | null;
+  }>;
+  if (receipts.length === 0) return [];
+
+  const allocationRes = await c
+    .from("invoice_payments")
+    .select("payment_received_id, status")
+    .in(
+      "payment_received_id",
+      receipts.map((row) => row.id)
+    );
+  if (allocationRes.error)
+    financialDataUnavailable("unapplied payment allocations", allocationRes.error);
+  if (!Array.isArray(allocationRes.data)) {
+    financialDataUnavailable("unapplied payment allocations", null);
+  }
+
+  const unapplied = unappliedCustomerReceipts(
+    receipts,
+    (allocationRes.data ?? []) as Array<{
+      payment_received_id?: string | null;
+      status?: string | null;
+    }>
+  );
+  if (unapplied.length === 0) return [];
+
+  const projectRes = await c
+    .from("projects")
+    .select("id, name")
+    .eq("id", trimmedProjectId)
+    .maybeSingle();
+  if (projectRes.error) financialDataUnavailable("unapplied payment project", projectRes.error);
+  const projectName = (projectRes.data as { name?: string | null } | null)?.name?.trim() || null;
+
+  return unapplied.map((row) => ({
+    id: row.id,
+    paymentDate: String(row.payment_date ?? "").slice(0, 10),
+    customerName: String(row.customer_name ?? "").trim(),
+    projectId: row.project_id ?? trimmedProjectId,
+    projectName,
+    method: row.payment_method ?? null,
+    reference: String(row.notes ?? "").trim() || null,
+    amount: requiredMoney(row.amount, "Unapplied payment amount"),
+    customerId: null,
+  }));
 }

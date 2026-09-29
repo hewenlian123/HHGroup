@@ -277,6 +277,32 @@ describe("Invoice Detail initial load", () => {
     );
   });
 
+  it("does not add an unapplied payments_received row to invoice paid or balance", async () => {
+    const { client } = createQueryClient({});
+    mocks.requireRequestClient.mockResolvedValue({ ok: true, client });
+    mocks.getPaymentsReceivedByInvoiceId.mockResolvedValue([
+      ...paymentsReceived,
+      {
+        ...paymentsReceived[0],
+        id: "payment-received-unapplied",
+        amount: 25,
+        notes: "Unapplied seed",
+        attachments: [],
+      },
+    ]);
+
+    const response = await getInvoiceDetail();
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.invoice.paidTotal).toBe(60);
+    expect(body.invoice.balanceDue).toBe(200);
+    expect(body.payments.map((payment: { id: string }) => payment.id)).toEqual([
+      "invoice-payment-1",
+      "invoice-payment-void",
+    ]);
+  });
+
   it("starts all invoice-dependent reads before a slow item read completes", async () => {
     const items = deferred<DbResult>();
     const { client, starts } = createQueryClient({ items: items.promise });

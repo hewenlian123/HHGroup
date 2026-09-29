@@ -8,9 +8,13 @@ import {
   getPaymentAttachmentPreviewUrl as getPaymentAttachmentPreviewUrlData,
   getPaymentReceivedDeleteDependencies,
   getPaymentReceivedById as getPaymentReceivedByIdData,
+  linkUnappliedPaymentToInvoice as linkUnappliedPaymentToInvoiceData,
+  listOpenInvoicesForUnappliedPayment as listOpenInvoicesForUnappliedPaymentData,
   updatePaymentReceived as updatePaymentReceivedData,
   voidPaymentReceived as voidPaymentReceivedData,
   type CreatePaymentReceivedPayload,
+  type LinkableInvoiceOption,
+  type LinkedUnappliedPaymentResult,
   type PaymentReceivedDeleteDependenciesResult,
   type PaymentReceivedDetail,
   type UpdatePaymentReceivedPayload,
@@ -208,5 +212,39 @@ export async function deletePaymentReceivedAction(
   } catch (e) {
     console.error("[payments/actions] failed to permanently delete payment", e);
     return { ok: false, error: safePaymentActionError(e, "Failed to delete payment.") };
+  }
+}
+
+export async function listOpenInvoicesForUnappliedPaymentAction(
+  paymentId: string
+): Promise<{ ok: true; invoices: LinkableInvoiceOption[] } | { ok: false; error: string }> {
+  try {
+    const clientResult = await getPaymentActionClient();
+    if (!clientResult.ok) return clientResult;
+    const invoices = await listOpenInvoicesForUnappliedPaymentData(paymentId, clientResult.client);
+    return { ok: true, invoices };
+  } catch (e) {
+    console.error("[payments/actions] failed to list invoices for an unapplied payment", e);
+    return { ok: false, error: safePaymentActionError(e, "Failed to load open invoices.") };
+  }
+}
+
+export async function linkUnappliedPaymentToInvoiceAction(
+  paymentId: string,
+  invoiceId: string
+): Promise<{ ok: true; result: LinkedUnappliedPaymentResult } | { ok: false; error: string }> {
+  try {
+    const clientResult = await getPaymentActionClient();
+    if (!clientResult.ok) return clientResult;
+    const result = await linkUnappliedPaymentToInvoiceData(
+      paymentId,
+      invoiceId,
+      clientResult.client
+    );
+    revalidatePaymentPaths(result.invoiceId, result.projectId);
+    return { ok: true, result };
+  } catch (e) {
+    console.error("[payments/actions] failed to link an unapplied payment", e);
+    return { ok: false, error: safePaymentActionError(e, "Failed to link the payment.") };
   }
 }
