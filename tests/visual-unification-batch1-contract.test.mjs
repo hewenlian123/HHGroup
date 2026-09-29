@@ -33,6 +33,29 @@ test("status badge and bottom nav leave active chrome to tokens.css", () => {
   assert.doesNotMatch(shell, /\[data-app-bottom-nav\] a\[aria-current="page"\]/);
 });
 
+test("expense pages do not repaint the shell or mark tabs and focus with brass", () => {
+  const v2 = source("src/styles/hh-design-system-v2.css");
+  const expenses = source("src/app/financial/expenses/expenses-ui-theme.css");
+  const review = source("src/components/financial/finance-review-page-shell.css");
+  const filters = source("src/components/financial/filter-select.css");
+  const client = source("src/app/financial/expenses/expenses-client.tsx");
+  const intake = source("src/app/financial/expenses/intake/page.tsx");
+  assert.doesNotMatch(v2, /body:has\(\.expenses-ui\)/);
+  assert.doesNotMatch(v2, /--hh-focus-ring:\s*var\(--gold-8\)/);
+  assert.doesNotMatch(expenses, /border-bottom:[^;]*var\(--hh-brass\)/);
+  assert.doesNotMatch(
+    expenses,
+    /body:has\(\.expenses-ui\) \[data-(?:workspace-navigation|sidebar-navigation)\]/
+  );
+  assert.match(expenses, /a\[aria-current="page"\][\s\S]*border-bottom-color:\s*var\(--hh-ink\)/);
+  assert.match(review, /border-bottom:\s*2px solid var\(--hh-ink\)/);
+  assert.doesNotMatch(filters, /var\(--gold-/);
+  assert.match(client, /focus-visible:border-\[var\(--hh-link\)\]/);
+  assert.doesNotMatch(client, /focus-visible:border-\[var\(--hh-action-primary\)\]/);
+  assert.match(intake, /hh-list-frame/);
+  assert.match(intake, /text-title-page text-\[var\(--hh-ink\)\]/);
+});
+
 test("finance lists use the shared frame, workspace title, and U+2212 money", () => {
   const invoices = source("src/app/financial/invoices/invoices-list-client.tsx");
   const payments = source("src/app/financial/payments/page.tsx");

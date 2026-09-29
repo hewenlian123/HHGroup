@@ -47,7 +47,7 @@
   .finance-review-page-shell
   nav[aria-label="Receipt Inbox sources"]
   a[aria-current="page"] {
-  border-bottom: 2px solid var(--hh-brand-gold);
+  border-bottom: 2px solid var(--hh-ink);
   color: var(--hh-text-primary);
   font-weight: 600;
 }

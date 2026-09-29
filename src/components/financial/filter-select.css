@@ -1,4 +1,4 @@
-/* Shared compact filter presentation; colors inherit the official Expenses Radix roles. */
+/* Shared compact filter presentation. Open and checked states use the live navy and ink tokens. */
 .hh-filter-select-trigger.hh-filter-select-trigger {
   height: 36px !important;
   min-height: 36px !important;
@@ -18,8 +18,8 @@
   background: var(--hh-l3-hover) !important;
 }
 .hh-filter-select-trigger.hh-filter-select-trigger[data-state="open"] {
-  border-color: var(--gold-7) !important;
-  outline: 1px solid var(--gold-7);
+  border-color: var(--hh-link) !important;
+  outline: 1px solid var(--hh-link);
   outline-offset: 1px;
 }
 .hh-filter-select-trigger:focus-visible {
@@ -52,14 +52,14 @@
   background: var(--hh-surface-primary);
 }
 .hh-filter-select-content .hh-filter-select-item[data-state="checked"] {
-  background: var(--gold-2) !important;
+  background: var(--hh-chip) !important;
 }
 .hh-filter-select-content .hh-filter-select-item[data-highlighted] {
   background: var(--hh-l3-hover) !important;
   outline: none;
 }
 .hh-filter-select-item[data-state="checked"] svg {
-  color: var(--gold-11);
+  color: var(--hh-ink);
 }
 .hh-filter-select-content .hh-filter-select-item[data-disabled] {
   color: var(--hh-text-muted) !important;

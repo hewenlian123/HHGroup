@@ -266,12 +266,9 @@ html.dark.dark,
   }
 }
 
-/* Expenses: official Radix scales are the only palette; existing HH names are role aliases.
-   Other Finance modules retain their existing appearance. White is the explicit surface/CTA contrast. */
+/* Expense module surface aliases. Do not retarget the app shell: focus, selection,
+   and tab color inherit tokens.css (navy ring, ink accent). */
 :is(
-  body:has(:is(.expenses-ui, [data-hh-appearance="radix-expenses"])),
-  body:has(:is(.expenses-ui, [data-hh-appearance="radix-expenses"]))
-    [data-hh-theme]:not([data-hh-theme="document-light"]),
   [data-hh-appearance="radix-expenses"][data-hh-appearance="radix-expenses"][data-hh-appearance="radix-expenses"],
   .expenses-ui.expenses-ui.expenses-ui.expenses-ui.expenses-ui,
   .expenses-ui-dialog.expenses-ui-dialog.expenses-ui-dialog.expenses-ui-dialog.expenses-ui-dialog
@@ -316,20 +313,14 @@ html.dark.dark,
   --hh-surface-workspace: var(--hh-surface-primary);
   --hh-l2-operational-surface: var(--hh-surface-primary);
   --hh-l3-hover: var(--gray-3);
-  --hh-l3-selected: var(--hh-brand-gold-soft);
   --hh-l3-pressed: var(--gray-4);
   --hh-l4-floating-surface: var(--hh-surface-primary);
   --hh-l5-task-surface: var(--hh-surface-primary);
-  --hh-surface-selected: var(--hh-brand-gold-soft);
   --hh-brand-action: var(--hh-text-primary);
   --hh-brand-action-foreground: var(--hh-surface-primary);
   --hh-action-primary: var(--hh-text-primary);
   --hh-action-primary-hover: var(--gray-11);
   --hh-action-primary-foreground: var(--hh-surface-primary);
-  --hh-accent-primary: var(--hh-brand-gold);
-  --hh-accent-hover: var(--hh-brand-gold-strong);
-  --hh-accent-soft: var(--hh-brand-gold-soft);
-  --hh-focus-ring: var(--gold-8);
   --hh-information: var(--hh-text-secondary);
   --hh-information-soft-fill: var(--hh-surface-subtle);
   --hh-information-border: var(--hh-border-subtle);
@@ -337,7 +328,6 @@ html.dark.dark,
 
   --hh-border-strong: var(--gray-8);
   --hh-border-input: var(--gray-7);
-  --hh-border-emphasis: var(--gold-8);
   --hh-input-background: var(--hh-surface-primary);
   --hh-surface-hover: var(--hh-surface-subtle);
   --hh-surface-section: var(--hh-surface-subtle);
@@ -357,14 +347,12 @@ html.dark.dark,
   --accent-foreground: from var(--gold-12) h s l;
   --border: from var(--gray-6) h s l;
   --input: from var(--gray-7) h s l;
-  --ring: from var(--gold-8) h s l;
   --destructive: from var(--ruby-9) h s l;
   --destructive-foreground: from white h s l;
   --hh-gold: var(--gold-9);
   --hh-gold-hover: var(--gold-10);
   --hh-gold-muted: var(--gold-3);
   --hh-gold-border: var(--gold-7);
-  --hh-ring: var(--gold-8);
   --hh-chart-history: var(--gray-8);
   --hh-chart-current: var(--gold-9);
   --hh-chart-negative: var(--ruby-9);
@@ -378,68 +366,9 @@ html.dark.dark,
   --hh-shadow-task: 0 8px 24px var(--gray-a3);
   --hh-shadow-selected: inset 0 0 0 1px var(--gray-a3);
 }
-body:has(:is(.expenses-ui, [data-hh-appearance="radix-expenses"])):has(
-    [data-workspace-navigation][aria-label="Finance workspace"]
-  )
-  [data-sidebar-navigation]
-  a[aria-current="page"] {
-  background-color: var(--gold-2);
-}
 
 .expenses-ui,
 .expenses-ui-dialog {
   --hh-radius-control: 6px;
   --hh-radius-standard: 8px;
-}
-:is(body:has(.expenses-ui), body:has(.expenses-ui))
-  :is([data-sidebar-navigation], [data-app-bottom-nav], [data-workspace-navigation]) {
-  --shell-selected: var(--hh-brand-selected);
-  --shell-selected-text: var(--hh-brand-accent-text);
-  --shell-accent: var(--hh-brand-gold);
-  --hh-surface-selected: var(--hh-brand-selected);
-  --hh-l3-selected: var(--hh-brand-selected);
-  --hh-accent-soft: var(--hh-brand-selected);
-  --hh-accent-primary: var(--hh-brand-accent);
-  --hh-accent-hover: var(--hh-brand-accent-text);
-  --hh-focus-ring: var(--hh-brand-gold-strong);
-}
-
-/* Finance navigation uses one brand family, with filled selection only at module level. */
-body:has(.expenses-ui) :is([data-workspace-navigation], [data-finance-section]) {
-  background-color: var(--hh-surface-primary);
-  --hh-l3-selected: var(--hh-surface-primary);
-  --hh-surface-selected: var(--hh-surface-primary);
-}
-body:has(.expenses-ui)
-  :is([data-workspace-navigation], [data-finance-section])
-  :is(a[aria-current="page"], button[class~="bg-[var(--hh-l3-selected)]"]) {
-  background-color: var(--hh-surface-primary);
-  color: var(--hh-text-primary);
-  box-shadow: inset 0 -2px 0 var(--hh-brand-gold);
-}
-body:has(.expenses-ui) [data-sidebar-navigation] a[aria-current="page"] {
-  background-color: var(--hh-surface-primary);
-  color: var(--hh-text-primary);
-  box-shadow: inset 2px 0 0 var(--hh-brand-gold);
-}
-body:has(.expenses-ui) [data-sidebar-navigation] a[aria-current="page"] svg {
-  color: var(--hh-brand-gold);
-}
-
-/* Keep Finance shell controls on the same semantic palette as its workspace. */
-body:has(.expenses-ui) :is(.hh-app-shell, .app-shell-overlay.app-shell-overlay.app-shell-overlay) {
-  --shell-background: var(--hh-surface-canvas);
-  --shell-surface: var(--hh-surface-primary);
-  --shell-subtle: var(--hh-surface-subtle);
-  --shell-hover: var(--hh-surface-subtle);
-  --shell-border: var(--hh-border);
-  --shell-text: var(--hh-text-primary);
-  --shell-muted: var(--hh-text-secondary);
-  --shell-selected: var(--hh-brand-gold-soft);
-  --shell-selected-text: var(--hh-text-primary);
-  --shell-accent: var(--hh-brand-gold);
-  --shell-accent-hover: var(--hh-brand-gold-strong);
-  --shell-action: var(--hh-action-primary);
-  --shell-action-hover: var(--hh-action-primary-hover);
-  --shell-action-text: var(--hh-action-primary-foreground);
 }

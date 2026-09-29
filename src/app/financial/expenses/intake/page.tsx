@@ -29,11 +29,11 @@ export default async function ExpenseIntakePage({
   const href = (nextPage: number, nextSource = source, nextSize = size) =>
     `/financial/expenses/intake?source=${nextSource}&size=${nextSize}&page=${nextPage}`;
   return (
-    <main className="page-container space-y-5 py-5">
+    <main className="hh-list-frame space-y-5 py-5">
       <ExpenseOperationsWorkspaceNav />
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h2 className="text-hh-page-title">Intake</h2>
+          <h2 className="text-title-page text-[var(--hh-ink)]">Intake</h2>
           <p className="mt-1 text-sm text-[var(--hh-text-secondary)]">
             Incoming evidence and financial sources.
           </p>

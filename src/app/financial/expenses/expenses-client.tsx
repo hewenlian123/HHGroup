@@ -2555,7 +2555,7 @@ export function ExpensesPageClient({
           placeholder="Merchant, description, project…"
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
-          className="h-11 min-h-11 w-full rounded-lg border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] pl-9 pr-11 text-base text-[var(--hh-text-primary)] shadow-none placeholder:text-[var(--hh-text-tertiary)] focus-visible:border-[var(--hh-action-primary)] focus-visible:ring-[var(--hh-focus-ring)]"
+          className="h-11 min-h-11 w-full rounded-lg border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] pl-9 pr-11 text-base text-[var(--hh-text-primary)] shadow-none placeholder:text-[var(--hh-text-tertiary)] focus-visible:border-[var(--hh-link)] focus-visible:ring-[var(--hh-focus-ring)]"
         />
         {searchInput ? (
           <button
@@ -2610,7 +2610,7 @@ export function ExpensesPageClient({
             placeholder="Merchant, description, project…"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
-            className="h-9 rounded-lg border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] py-1 pl-8 pr-14 text-sm text-[var(--hh-text-primary)] shadow-none placeholder:text-[var(--hh-text-tertiary)] transition-[border-color] duration-150 focus-visible:border-[var(--hh-action-primary)] focus-visible:ring-[var(--hh-focus-ring)]"
+            className="h-9 rounded-lg border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] py-1 pl-8 pr-14 text-sm text-[var(--hh-text-primary)] shadow-none placeholder:text-[var(--hh-text-tertiary)] transition-[border-color] duration-150 focus-visible:border-[var(--hh-link)] focus-visible:ring-[var(--hh-focus-ring)]"
           />
           {searchInput ? (
             <button

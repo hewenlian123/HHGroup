@@ -121,7 +121,7 @@
 }
 
 .expenses-ui .expense-row-continuity:has(:focus-visible) {
-  box-shadow: inset 1px 0 0 var(--hh-brass);
+  box-shadow: inset 1px 0 0 var(--hh-ink);
 }
 
 /* Completed-expense ledger only: keep normal rows quiet and anchor attention to exceptions/focus. */
@@ -156,12 +156,12 @@
 .expenses-ui[data-expenses-list-page="expenses"] .exp-row[aria-selected="true"],
 .expenses-ui[data-expenses-list-page="expenses"] .exp-row[data-expense-selected="true"] {
   background-color: var(--hh-l3-selected);
-  box-shadow: inset 1px 0 0 var(--hh-brass);
+  box-shadow: inset 1px 0 0 var(--hh-ink);
 }
 
 .expenses-ui[data-expenses-list-page="expenses"] .exp-row.expense-ledger-row-active {
   background-color: var(--hh-l3-selected);
-  box-shadow: inset 1px 0 0 var(--hh-brass);
+  box-shadow: inset 1px 0 0 var(--hh-ink);
 }
 
 .expenses-ui[data-expenses-list-page="expenses"] .exp-row:focus-within {
@@ -170,7 +170,7 @@
 }
 
 .expenses-ui[data-expenses-list-page="expenses"] .exp-row:has(:focus-visible) {
-  box-shadow: inset 1px 0 0 var(--hh-brass);
+  box-shadow: inset 1px 0 0 var(--hh-ink);
 }
 
 .expenses-ui[data-expenses-list-page="expenses"]
@@ -182,7 +182,7 @@
   .exp-row.expense-ledger-row-active:not([aria-selected="true"]):not(
     [data-expense-selected="true"]
   ) {
-  box-shadow: inset 1px 0 0 var(--hh-brass);
+  box-shadow: inset 1px 0 0 var(--hh-ink);
 }
 
 .expenses-ui[data-expenses-list-page="expenses"] .exp-row:active {
@@ -308,11 +308,11 @@
 
 .expenses-ui[data-expenses-list-page="inbox"] .exp-row[data-expense-active="true"] {
   background-color: var(--hh-l3-selected);
-  box-shadow: inset 1px 0 0 var(--hh-brass) !important;
+  box-shadow: inset 1px 0 0 var(--hh-ink) !important;
 }
 
 .expenses-ui[data-expenses-list-page="inbox"] .exp-row:has(:focus-visible) {
-  box-shadow: inset 1px 0 0 var(--hh-brass) !important;
+  box-shadow: inset 1px 0 0 var(--hh-ink) !important;
 }
 
 .expenses-ui[data-expenses-list-page="inbox"] .exp-row:active {
@@ -1541,8 +1541,8 @@ body:has([data-hh-theme="neo-dark"] .expense-new-dialog[data-state="open"])
 }
 
 .expenses-ui [aria-current="page"] {
-  color: var(--hh-brand-accent-text);
-  border-bottom: 1px solid var(--hh-brass);
+  color: var(--hh-ink);
+  border-bottom: 1px solid var(--hh-ink);
 }
 .expenses-ui :is(button, a, input, select, textarea):focus-visible,
 .expenses-ui-dialog :is(button, a, input, select, textarea, summary):focus-visible,
@@ -2318,7 +2318,7 @@ body:has([data-hh-theme="neo-dark"] .expense-new-dialog[data-state="open"])
 }
 .expenses-ui[data-expenses-list-page="inbox"] .exp-row[data-expense-selected="true"] {
   background: var(--hh-l3-selected);
-  box-shadow: inset 1px 0 0 var(--hh-brass) !important;
+  box-shadow: inset 1px 0 0 var(--hh-ink) !important;
 }
 .expenses-ui[data-expenses-list-page="inbox"] [data-expense-row-primary] {
   align-items: flex-start;
@@ -2439,22 +2439,13 @@ body:has([data-hh-theme="neo-dark"] .expense-new-dialog[data-state="open"])
   button[class~="bg-[var(--hh-l1-workspace)]"]:is(:hover, :active):not(:disabled) {
   background-color: var(--hh-l3-hover);
 }
-body:has(.expenses-ui) [data-workspace-navigation] a[aria-current="page"] {
-  background-color: var(--hh-surface-primary);
-  color: var(--hh-brand-accent-text);
-  border-bottom-color: var(--hh-brass);
-}
-body:has(.expenses-ui) [data-sidebar-navigation] a[aria-current="page"] svg {
-  color: var(--hh-brand-accent);
-}
-
-.expenses-ui [data-expense-operations-shell],
-.expenses-ui [data-expense-operations-shell] a[aria-current="page"] {
+.expenses-ui [data-expense-operations-shell] {
   background-color: var(--hh-surface-primary);
 }
 .expenses-ui [data-expense-operations-shell] a[aria-current="page"] {
-  color: var(--hh-text-primary);
-  border-bottom-color: var(--hh-brass);
+  background-color: transparent;
+  color: var(--hh-ink);
+  border-bottom-color: var(--hh-ink);
 }
 .expenses-ui .expense-status-inline [data-testid="expense-status-inline-dot"] {
   color: var(--hh-success);
@@ -2497,13 +2488,13 @@ body:has(.expenses-ui) [data-sidebar-navigation] a[aria-current="page"] svg {
   font-size: 11px;
 }
 .expenses-ui[data-expenses-list-page="expenses"] [data-expense-keyboard-row]:focus-visible {
-  outline: 2px solid var(--gold-9);
+  outline: 2px solid var(--hh-link);
   outline-offset: -2px;
 }
 .expenses-ui[data-expenses-list-page="expenses"]
   [data-expense-keyboard-row][data-expense-active="true"] {
-  background-color: var(--gold-1) !important;
-  box-shadow: inset 1px 0 0 var(--hh-brass);
+  background-color: var(--hh-chip) !important;
+  box-shadow: inset 1px 0 0 var(--hh-ink);
 }
 .expenses-ui[data-expenses-list-page="expenses"]
   .expense-ledger-date-group
@@ -2744,13 +2735,13 @@ body:has(.expenses-ui) [data-sidebar-navigation] a[aria-current="page"] svg {
 .expenses-ui[data-expenses-list-page="expenses"]
   [data-expenses-list-toolbar="desktop"]
   :is(input, select, button):focus-visible {
-  outline: 2px solid var(--gold-9);
+  outline: 2px solid var(--hh-link);
   outline-offset: 2px;
 }
 .expenses-ui[data-expenses-list-page="expenses"]
   [data-expenses-list-toolbar="desktop"]
   :is([data-filter-active="true"], button:has([data-expenses-active-filter-count])) {
-  border-color: var(--hh-brass);
+  border-color: var(--hh-link);
   font-weight: 500;
 }
 .expenses-ui[data-expenses-list-page="expenses"]
@@ -2837,7 +2828,7 @@ body:has(.expenses-ui) [data-sidebar-navigation] a[aria-current="page"] svg {
   nav[aria-label="Receipt Inbox sources"]
   a[aria-current="page"] {
   color: var(--hh-text-primary);
-  border-bottom: 2px solid var(--hh-brass);
+  border-bottom: 2px solid var(--hh-ink);
   font-weight: 600;
 }
 .expenses-ui[data-expenses-list-page="inbox"] [data-inbox-decision-brief] {
@@ -2868,8 +2859,8 @@ body:has(.expenses-ui) [data-sidebar-navigation] a[aria-current="page"] svg {
 }
 .expenses-ui[data-expenses-list-page="inbox"]
   [data-expense-keyboard-row][data-expense-active="true"] {
-  background: var(--gold-1) !important;
-  box-shadow: inset 1px 0 0 var(--hh-brass);
+  background: var(--hh-chip) !important;
+  box-shadow: inset 1px 0 0 var(--hh-ink);
 }
 .expenses-ui[data-expenses-list-page="inbox"] [data-expense-merchant] > p:first-child {
   font-size: 13px;
@@ -2970,7 +2961,7 @@ body:has(.expenses-ui) [data-sidebar-navigation] a[aria-current="page"] svg {
 }
 .expenses-ui[data-expenses-list-page="inbox"]
   :is(button, input, select, textarea, a, [tabindex]):focus-visible {
-  outline: 2px solid var(--gold-9);
+  outline: 2px solid var(--hh-link);
   outline-offset: -2px;
 }
 .expenses-ui[data-expenses-list-page="inbox"] [class~="bg-[var(--hh-warning-soft-fill)]"] {
