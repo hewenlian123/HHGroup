@@ -33,14 +33,12 @@ import {
   summarizeSubcontractorFinancials,
 } from "@/lib/subcontractor-financials";
 import { requireSupabaseOwnerOrAdminServerActionClient } from "@/lib/auth-boundary";
+import { formatOverviewMoney } from "@/lib/financial/project-overview-display";
+import { sectionCardClass } from "@/components/ui/section-card";
 import { SetBreadcrumbEntityTitle } from "@/components/layout/set-breadcrumb-entity-title";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
-
-function fmtUsd(n: number): string {
-  return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -183,17 +181,19 @@ export default async function SubcontractorDetailPage({ params }: Props) {
 
   return (
     <PageLayout
+      frame="list"
       className="[&_button]:min-h-11"
       divider={false}
       header={
         <PageHeader
+          variant="workspace"
           title={subcontractor.name}
           description="Profile, contracts, progress payments, and payment history."
           actions={
             <div className="flex flex-wrap items-center gap-3">
               <Link
                 href="/subcontractors"
-                className="inline-flex min-h-11 items-center text-sm underline"
+                className="inline-flex min-h-11 items-center text-sm font-semibold text-[var(--hh-link)] underline decoration-[var(--hh-link-underline)] underline-offset-4"
               >
                 Back to Subcontractors
               </Link>
@@ -232,7 +232,7 @@ export default async function SubcontractorDetailPage({ params }: Props) {
             label: "Overview",
             content: (
               <>
-                <NeoPanel title="Profile" bodyClassName="p-4">
+                <NeoPanel className={sectionCardClass} title="Profile" bodyClassName="p-4">
                   <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
                     {[
                       ["Phone", subcontractor.phone ?? "—"],
@@ -260,7 +260,10 @@ export default async function SubcontractorDetailPage({ params }: Props) {
                   </div>
                 </NeoPanel>
                 {financial(
-                  <NeoPanel bodyClassName="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-7">
+                  <NeoPanel
+                    className={sectionCardClass}
+                    bodyClassName="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-7"
+                  >
                     {[
                       {
                         label: "Contract Amount",
@@ -302,7 +305,7 @@ export default async function SubcontractorDetailPage({ params }: Props) {
                           {item.label}
                         </p>
                         <p className="mt-1 text-lg">
-                          <NeoAmount tone={item.tone}>${fmtUsd(item.value)}</NeoAmount>
+                          <NeoAmount tone={item.tone}>{formatOverviewMoney(item.value)}</NeoAmount>
                         </p>
                       </div>
                     ))}
@@ -330,13 +333,13 @@ export default async function SubcontractorDetailPage({ params }: Props) {
           {
             label: "Contracts",
             content: financial(
-              <NeoPanel title="Contracts" bodyClassName="p-0">
+              <NeoPanel className={sectionCardClass} title="Contracts" bodyClassName="p-0">
                 <div className="divide-y divide-[var(--hh-border-subtle)] px-3 md:hidden">
                   {contractRows.length === 0 && <p className="py-3">No contracts.</p>}
                   {contractRows.map((c) => (
                     <div key={c.id} className="space-y-2 py-3">
                       <Link
-                        className="inline-flex min-h-11 items-center font-medium underline"
+                        className="inline-flex min-h-11 items-center font-semibold text-[var(--hh-link)] underline decoration-[var(--hh-link-underline)] underline-offset-4"
                         href={`/projects/${c.project_id}/subcontracts/${c.id}`}
                       >
                         {c.project_name} · Contract
@@ -350,7 +353,7 @@ export default async function SubcontractorDetailPage({ params }: Props) {
                           <div key={label}>
                             <dt className="text-[var(--hh-text-secondary)]">{label}</dt>
                             <dd>
-                              <NeoAmount>${fmtUsd(Number(value))}</NeoAmount>
+                              <NeoAmount>{formatOverviewMoney(Number(value))}</NeoAmount>
                             </dd>
                           </div>
                         ))}
@@ -420,7 +423,7 @@ export default async function SubcontractorDetailPage({ params }: Props) {
                           >
                             <td className="py-1.5 px-3">
                               <Link
-                                className="inline-flex min-h-11 items-center underline"
+                                className="inline-flex min-h-11 items-center font-semibold text-[var(--hh-link)] underline decoration-[var(--hh-link-underline)] underline-offset-4"
                                 href={`/projects/${c.project_id}/subcontracts/${c.id}`}
                               >
                                 {c.project_name}
@@ -428,34 +431,38 @@ export default async function SubcontractorDetailPage({ params }: Props) {
                             </td>
                             <td className="py-1.5 px-3">{c.cost_code ?? "—"}</td>
                             <td className="py-1.5 px-3 text-right tabular-nums">
-                              <NeoAmount>${fmtUsd(c.contract_amount)}</NeoAmount>
+                              <NeoAmount>{formatOverviewMoney(c.contract_amount)}</NeoAmount>
                             </td>
                             <td className="py-1.5 px-3 text-right tabular-nums">
-                              <NeoAmount>${fmtUsd(c.summary.scheduledAmount)}</NeoAmount>
+                              <NeoAmount>
+                                {formatOverviewMoney(c.summary.scheduledAmount)}
+                              </NeoAmount>
                             </td>
                             <td className="py-1.5 px-3 text-right tabular-nums">
-                              <NeoAmount>${fmtUsd(c.summary.billedToDate)}</NeoAmount>
+                              <NeoAmount>{formatOverviewMoney(c.summary.billedToDate)}</NeoAmount>
                             </td>
                             <td className="py-1.5 px-3 text-right tabular-nums">
-                              <NeoAmount tone="income">${fmtUsd(c.summary.paidToDate)}</NeoAmount>
+                              <NeoAmount tone="income">
+                                {formatOverviewMoney(c.summary.paidToDate)}
+                              </NeoAmount>
                             </td>
                             <td className="py-1.5 px-3 text-right tabular-nums">
                               <NeoAmount
                                 tone={c.summary.materialDeductions > 0 ? "expense" : "neutral"}
                               >
-                                ${fmtUsd(c.summary.materialDeductions)}
+                                {formatOverviewMoney(c.summary.materialDeductions)}
                               </NeoAmount>
                             </td>
                             <td className="py-1.5 px-3 text-right tabular-nums">
                               <NeoAmount tone={c.summary.netPayable > 0 ? "expense" : "neutral"}>
-                                ${fmtUsd(c.summary.netPayable)}
+                                {formatOverviewMoney(c.summary.netPayable)}
                               </NeoAmount>
                             </td>
                             <td className="py-1.5 px-3 text-right tabular-nums">
                               <NeoAmount
                                 tone={c.summary.remainingContract < 0 ? "expense" : "neutral"}
                               >
-                                ${fmtUsd(c.summary.remainingContract)}
+                                {formatOverviewMoney(c.summary.remainingContract)}
                               </NeoAmount>
                             </td>
                           </tr>
@@ -470,7 +477,7 @@ export default async function SubcontractorDetailPage({ params }: Props) {
           {
             label: "Bills",
             content: financial(
-              <NeoPanel title="Progress bills" bodyClassName="p-0">
+              <NeoPanel className={sectionCardClass} title="Progress bills" bodyClassName="p-0">
                 <div className="divide-y divide-[var(--hh-border-subtle)] px-3 md:hidden">
                   {bills.length === 0 && <p className="py-3">No bills.</p>}
                   {bills.map((record) => (
@@ -480,7 +487,7 @@ export default async function SubcontractorDetailPage({ params }: Props) {
                       </p>
                       <div className="flex flex-wrap justify-between gap-2 text-sm">
                         <time>{record.bill_date}</time>
-                        <NeoAmount>${fmtUsd(record.amount)}</NeoAmount>
+                        <NeoAmount>{formatOverviewMoney(record.amount)}</NeoAmount>
                         <span>{record.status}</span>
                       </div>
                       {contracts
@@ -488,7 +495,7 @@ export default async function SubcontractorDetailPage({ params }: Props) {
                         .map((c) => (
                           <Link
                             key={c.id}
-                            className="inline-flex min-h-11 items-center underline text-sm"
+                            className="inline-flex min-h-11 items-center text-sm font-semibold text-[var(--hh-link)] underline decoration-[var(--hh-link-underline)] underline-offset-4"
                             href={`/projects/${c.project_id}/subcontracts/${c.id}`}
                           >
                             Open contract
@@ -545,7 +552,7 @@ export default async function SubcontractorDetailPage({ params }: Props) {
                           </td>
                           <td className="py-1.5 px-3">{b.bill_date}</td>
                           <td className="py-1.5 px-3 text-right tabular-nums">
-                            <NeoAmount>${fmtUsd(b.amount)}</NeoAmount>
+                            <NeoAmount>{formatOverviewMoney(b.amount)}</NeoAmount>
                           </td>
                           <td className="py-1.5 px-3">
                             <NeoStatus
@@ -564,10 +571,14 @@ export default async function SubcontractorDetailPage({ params }: Props) {
           {
             label: "Payments",
             content: financial(
-              <NeoPanel title="Legacy subcontract payment history" bodyClassName="p-0">
+              <NeoPanel
+                className={sectionCardClass}
+                title="Legacy subcontract payment history"
+                bodyClassName="p-0"
+              >
                 <Link
                   href="/financial/payables/payments"
-                  className="inline-flex min-h-11 items-center px-3 underline"
+                  className="inline-flex min-h-11 items-center px-3 font-semibold text-[var(--hh-link)] underline decoration-[var(--hh-link-underline)] underline-offset-4"
                 >
                   View AP payment history
                 </Link>
@@ -584,7 +595,7 @@ export default async function SubcontractorDetailPage({ params }: Props) {
                       </p>
                       <div className="flex flex-wrap justify-between gap-2 text-sm">
                         <time>{record.payment_date}</time>
-                        <NeoAmount>${fmtUsd(record.amount)}</NeoAmount>
+                        <NeoAmount>{formatOverviewMoney(record.amount)}</NeoAmount>
                         <span>{record.method ?? "—"}</span>
                       </div>
                       {contracts
@@ -592,7 +603,7 @@ export default async function SubcontractorDetailPage({ params }: Props) {
                         .map((c) => (
                           <Link
                             key={c.id}
-                            className="inline-flex min-h-11 items-center underline text-sm"
+                            className="inline-flex min-h-11 items-center text-sm font-semibold text-[var(--hh-link)] underline decoration-[var(--hh-link-underline)] underline-offset-4"
                             href={`/projects/${c.project_id}/subcontracts/${c.id}`}
                           >
                             Open contract
@@ -639,7 +650,7 @@ export default async function SubcontractorDetailPage({ params }: Props) {
                           </td>
                           <td className="py-1.5 px-3">{p.payment_date}</td>
                           <td className="py-1.5 px-3 text-right tabular-nums">
-                            <NeoAmount tone="income">${fmtUsd(p.amount)}</NeoAmount>
+                            <NeoAmount tone="income">{formatOverviewMoney(p.amount)}</NeoAmount>
                           </td>
                           <td className="py-1.5 px-3">{p.method ?? "—"}</td>
                         </tr>
@@ -653,7 +664,11 @@ export default async function SubcontractorDetailPage({ params }: Props) {
           {
             label: "Documents",
             content: (
-              <NeoPanel title="Documents" bodyClassName="space-y-3 p-4">
+              <NeoPanel
+                className={sectionCardClass}
+                title="Documents"
+                bodyClassName="space-y-3 p-4"
+              >
                 <SubcontractorW9
                   subcontractorId={id}
                   w9StoragePath={subcontractor.w9_storage_path}

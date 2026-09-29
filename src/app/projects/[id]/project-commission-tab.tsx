@@ -13,6 +13,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import type { CommissionPaymentStatus, CommissionWithPaid } from "@/lib/data";
+import { formatOverviewMoney } from "@/lib/financial/project-overview-display";
+import { sectionCardClass } from "@/components/ui/section-card";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/components/toast/toast-provider";
 
@@ -20,14 +22,11 @@ const ROLES = ["Designer", "Sales", "Referral", "Agent", "Other"] as const;
 const CALC_MODES = ["Auto", "Manual"] as const;
 
 const COMMISSION_MODAL =
-  "max-w-[480px] w-full gap-0 border-0 p-8 shadow-task rounded-hh-task sm:rounded-hh-task sm:max-w-[480px]";
+  "max-w-[480px] w-full gap-0 rounded-card border border-[var(--hh-line)] bg-[var(--hh-surface)] p-8 text-[var(--hh-text)] shadow-card sm:max-w-[480px]";
 const COMMISSION_LABEL =
   "mb-1.5 block text-hh-metadata font-medium text-[var(--hh-text-secondary)]";
 const COMMISSION_FIELD =
-  "h-10 rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-hh-body focus-visible:border-[var(--hh-action-primary)] focus-visible:ring-1 focus-visible:ring-[var(--hh-focus-ring)]";
-
-const fmtUsd = (n: number) =>
-  n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  "h-10 rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-surface)] text-hh-body focus-visible:border-[var(--hh-link)] focus-visible:ring-1 focus-visible:ring-[var(--hh-focus-ring)]";
 
 function ProjectPaymentStatus({ status }: { status: CommissionPaymentStatus }) {
   const cfg =
@@ -202,7 +201,7 @@ export function ProjectCommissionTab({
         <Button
           type="button"
           size="sm"
-          className="h-9 rounded-hh-standard bg-[var(--hh-action-primary)] px-4 text-hh-body font-medium text-[var(--hh-action-primary-foreground)] hover:bg-[var(--hh-l3-pressed)]"
+          className="h-9 px-4"
           onClick={handleOpen}
           data-testid="project-commission-add"
         >
@@ -210,8 +209,8 @@ export function ProjectCommissionTab({
         </Button>
       </div>
 
-      <div className="airtable-table-wrap airtable-table-wrap--ruled bg-[var(--hh-l2-operational-surface)]">
-        <div className="airtable-table-scroll">
+      <div className={cn(sectionCardClass, "overflow-x-auto")}>
+        <div>
           <table className="w-full text-hh-body">
             <thead>
               <tr>
@@ -273,16 +272,16 @@ export function ProjectCommissionTab({
                       {c.rate > 0 ? `${(c.rate * 100).toFixed(1)}%` : "—"}
                     </td>
                     <td className="px-3 py-3.5 text-right hh-fin tabular-nums text-[var(--hh-text-secondary)]">
-                      ${fmtUsd(c.base_amount)}
+                      {formatOverviewMoney(c.base_amount)}
                     </td>
                     <td className="px-3 py-3.5 text-right hh-fin tabular-nums font-medium text-[var(--hh-text-primary)]">
-                      ${fmtUsd(c.commission_amount)}
+                      {formatOverviewMoney(c.commission_amount)}
                     </td>
                     <td className="px-3 py-3.5 text-right hh-fin tabular-nums text-[var(--hh-text-secondary)]">
-                      ${fmtUsd(c.paid_amount)}
+                      {formatOverviewMoney(c.paid_amount)}
                     </td>
                     <td className="px-3 py-3.5 text-right hh-fin tabular-nums font-medium text-[var(--hh-text-primary)]">
-                      ${fmtUsd(c.outstanding_amount)}
+                      {formatOverviewMoney(c.outstanding_amount)}
                     </td>
                     <td className="px-3 py-3.5">
                       <ProjectPaymentStatus status={c.payment_status} />
@@ -433,7 +432,7 @@ export function ProjectCommissionTab({
               <label className={COMMISSION_LABEL}>
                 Commission Amount{" "}
                 {form.calculation_mode === "Auto" && computedCommission != null
-                  ? `(auto: $${fmtUsd(computedCommission)})`
+                  ? `(auto: ${formatOverviewMoney(computedCommission)})`
                   : ""}
               </label>
               <Input
@@ -476,7 +475,7 @@ export function ProjectCommissionTab({
             <Button
               type="submit"
               form="commission-form"
-              className="h-10 rounded-hh-standard bg-[var(--hh-action-primary)] text-hh-body font-medium text-[var(--hh-action-primary-foreground)] hover:bg-[var(--hh-l3-pressed)]"
+              className="h-10"
               disabled={submitting}
               data-testid="project-commission-save"
             >

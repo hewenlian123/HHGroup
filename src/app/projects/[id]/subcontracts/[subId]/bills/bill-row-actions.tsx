@@ -15,6 +15,9 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import type { SubcontractBillRow } from "@/lib/data";
+import { formatOverviewMoney } from "@/lib/financial/project-overview-display";
+import { sectionCardClass } from "@/components/ui/section-card";
+import { cn } from "@/lib/utils";
 import {
   deleteSubcontractBillDraftAction,
   recordSubcontractPaymentAction,
@@ -64,11 +67,6 @@ export function BillRowActions({
 
   const isDraft = bill.status === "Pending";
   const isApproved = bill.status === "Approved";
-  const fmtUsd = React.useCallback(
-    (n: number) =>
-      n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
-    []
-  );
 
   const handleEditSave = async () => {
     if (busy) return;
@@ -128,7 +126,7 @@ export function BillRowActions({
       return;
     }
     if (num - netPayable > 0.009) {
-      setError(`Payment exceeds net payable ($${fmtUsd(netPayable)}).`);
+      setError(`Payment exceeds net payable (${formatOverviewMoney(netPayable)}).`);
       return;
     }
     setBusy(true);
@@ -202,7 +200,7 @@ export function BillRowActions({
       ) : null}
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-sm rounded-card border-[var(--hh-line)] bg-[var(--hh-surface)] shadow-card">
           <DialogHeader>
             <DialogTitle>Edit bill</DialogTitle>
           </DialogHeader>
@@ -318,27 +316,29 @@ export function BillRowActions({
       />
 
       <Dialog open={payOpen} onOpenChange={setPayOpen}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-sm rounded-card border-[var(--hh-line)] bg-[var(--hh-surface)] shadow-card">
           <DialogHeader>
             <DialogTitle>Record payment</DialogTitle>
           </DialogHeader>
           <div className="grid gap-3 py-2">
-            <div className="grid grid-cols-2 gap-2 rounded-hh-standard border border-border/60 bg-muted/20 p-3 text-hh-metadata">
+            <div className={cn(sectionCardClass, "grid grid-cols-2 gap-2 p-3 text-hh-metadata")}>
               <div>
-                <p className="text-[var(--hh-text-secondary)]">Bill amount</p>
-                <p className="hh-fin tabular-nums">${fmtUsd(bill.amount)}</p>
+                <p className="text-[var(--hh-muted)]">Bill amount</p>
+                <p className="hh-fin tabular-nums">{formatOverviewMoney(bill.amount)}</p>
               </div>
               <div>
-                <p className="text-[var(--hh-text-secondary)]">Material deductions</p>
-                <p className="hh-fin tabular-nums">${fmtUsd(materialDeductions)}</p>
+                <p className="text-[var(--hh-muted)]">Material deductions</p>
+                <p className="hh-fin tabular-nums">{formatOverviewMoney(materialDeductions)}</p>
               </div>
               <div>
-                <p className="text-[var(--hh-text-secondary)]">Payments made</p>
-                <p className="hh-fin tabular-nums">${fmtUsd(paymentsMade)}</p>
+                <p className="text-[var(--hh-muted)]">Payments made</p>
+                <p className="hh-fin tabular-nums">{formatOverviewMoney(paymentsMade)}</p>
               </div>
               <div>
-                <p className="text-[var(--hh-text-secondary)]">Net payable</p>
-                <p className="hh-fin font-semibold tabular-nums">${fmtUsd(netPayable)}</p>
+                <p className="text-[var(--hh-muted)]">Net payable</p>
+                <p className="hh-fin font-semibold tabular-nums">
+                  {formatOverviewMoney(netPayable)}
+                </p>
               </div>
             </div>
             <div>

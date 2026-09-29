@@ -3,6 +3,7 @@
 import { syncRouterNonBlocking } from "@/components/perf/sync-router-non-blocking";
 import * as React from "react";
 import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
 import { AddBillModal } from "./add-bill-modal";
 
 type Props = { projectId: string; subcontractId: string };
@@ -15,13 +16,9 @@ export function AddBillButton({ projectId, subcontractId }: Props) {
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setModalOpen(true)}
-        className="inline-flex min-h-[44px] items-center rounded-hh-standard border border-input bg-transparent px-3 text-hh-body hover:bg-accent hover:text-accent-foreground xl:min-h-9"
-      >
-        + Add Bill
-      </button>
+      <Button type="button" className="min-h-[44px]" onClick={() => setModalOpen(true)}>
+        Add Bill
+      </Button>
       <AddBillModal
         open={modalOpen}
         onOpenChange={setModalOpen}

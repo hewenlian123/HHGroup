@@ -10,7 +10,7 @@ import { EstimateBuilderSaveStatus, type EstimateSaveStatus } from "./estimate-b
 export const ESTIMATE_HEADER_BUTTON =
   "rounded-[var(--hh-radius-control)] border border-transparent bg-[var(--hh-surface-workspace)] text-[var(--hh-text-primary)] shadow-none hover:border-[var(--hh-border-input)] hover:bg-[var(--hh-surface-hover)] focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)]";
 export const ESTIMATE_HEADER_PRIMARY_BUTTON =
-  "rounded-[var(--hh-radius-control)] !border-[var(--hh-accent-primary)] !bg-[var(--hh-accent-primary)] !text-[var(--hh-action-primary-foreground)] shadow-none hover:!border-[var(--hh-accent-hover)] hover:!bg-[var(--hh-accent-hover)] focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)]";
+  "hh-btn-primary rounded-[var(--hh-radius-control)] !border-[var(--hh-brass-edge)] !bg-[var(--hh-brass)] !text-[var(--hh-on-brass)] shadow-none hover:!border-[var(--hh-brass-lo)] hover:!bg-[var(--hh-brass-lo)] focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)]";
 
 function estimateStatusMeta(status: string): { label: string; variant: StatusBadgeVariant } {
   if (status === "Draft") return { label: "Draft", variant: "muted" };
@@ -92,7 +92,7 @@ export function EstimateWorkspaceCommandHeader({
               <Link
                 href="/estimates"
                 aria-label="Back to Estimates"
-                className="eb-estimate-command-backlink inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center text-[var(--hh-text-muted)] hover:text-[var(--hh-accent-hover)]"
+                className="eb-estimate-command-backlink inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center font-semibold text-[var(--hh-link)] underline decoration-[var(--hh-link-underline)] underline-offset-4"
               >
                 <ArrowLeft className="h-4 w-4" aria-hidden />
                 <span>Estimates</span>
