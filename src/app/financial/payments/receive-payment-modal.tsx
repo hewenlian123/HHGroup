@@ -25,6 +25,7 @@ import {
 } from "@/lib/payment-attachment-upload-browser";
 import { useToast } from "@/components/toast/toast-provider";
 import { formatCurrency } from "@/lib/formatters";
+import { nextDecimalDraft, parseDecimalDraft } from "@/lib/decimal-draft";
 import { formatMoneyInput, moneyToCents, roundMoney } from "@/lib/money";
 import {
   getArPaymentIntent,
@@ -78,6 +79,12 @@ function nextPaymentMemo(previous: string, invoiceNo: string): string {
   return !trimmed || trimmed.startsWith("Payment for ") ? `Payment for ${invoiceNo}` : previous;
 }
 
+const paymentFieldLabelClass = "text-hh-label font-[650] uppercase text-[var(--hh-muted)]";
+const paymentFieldClass =
+  "h-11 rounded-hh-standard border-[var(--hh-line-input)] bg-[var(--hh-surface)] text-[var(--hh-ink)] shadow-none";
+const paymentSelectClass =
+  "flex h-11 w-full rounded-hh-standard border border-[var(--hh-line-input)] bg-[var(--hh-surface)] px-3 text-hh-body text-[var(--hh-ink)]";
+
 function canReceivePayment(inv: InvoiceWithDerived): boolean {
   return (
     inv.status !== "Draft" &&
@@ -115,7 +122,7 @@ function PaymentAttachmentRow({
         type="button"
         disabled={!canPreview}
         onClick={onPreview}
-        className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-hh-standard bg-background text-muted-foreground ring-offset-background transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none"
+        className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-hh-standard bg-[var(--hh-surface)] text-[var(--hh-muted)] ring-offset-background transition-colors hover:text-[var(--hh-ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none"
         aria-label={`Preview ${attachment.file_name}`}
       >
         {isImage && attachment.localPreviewUrl ? (
@@ -126,12 +133,12 @@ function PaymentAttachmentRow({
         )}
       </button>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-hh-table-cell font-medium text-foreground">
+        <p className="truncate text-hh-table-cell font-medium text-[var(--hh-ink)]">
           {attachment.file_name}
         </p>
         <p
           className={cn(
-            "mt-0.5 truncate text-hh-status text-muted-foreground",
+            "mt-0.5 truncate text-hh-status text-[var(--hh-muted)]",
             attachment.status === "failed" && "text-[var(--hh-danger)]"
           )}
         >
@@ -149,7 +156,7 @@ function PaymentAttachmentRow({
           type="button"
           disabled={disabled}
           onClick={onRetry}
-          className="shrink-0 rounded-hh-compact px-2 py-1.5 text-hh-metadata font-medium text-foreground transition-colors hover:bg-muted/80 disabled:pointer-events-none disabled:opacity-40"
+          className="shrink-0 rounded-hh-compact px-2 py-1.5 text-hh-metadata font-medium text-[var(--hh-ink)] transition-colors hover:bg-[var(--hh-surface-sunken)] disabled:pointer-events-none disabled:opacity-40"
         >
           Retry
         </button>
@@ -158,7 +165,7 @@ function PaymentAttachmentRow({
         type="button"
         disabled={disabled}
         onClick={onRemove}
-        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted/80 hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[var(--hh-muted)] transition-colors hover:bg-[var(--hh-surface-sunken)] hover:text-[var(--hh-ink)] disabled:pointer-events-none disabled:opacity-40"
         aria-label="Remove attachment"
       >
         <X className="h-4 w-4" strokeWidth={1.8} />
@@ -215,6 +222,8 @@ export function ReceivePaymentModal({
   }, []);
 
   const selectedInvoiceId = preselectedInvoiceId ?? invoiceId;
+  const appliedInvoiceAmountRef = React.useRef("");
+  const amountTouchedRef = React.useRef(false);
 
   const cleanupDrafts = React.useCallback(
     async (drafts: PaymentAttachmentDraft[], removeStorage: boolean) => {
@@ -237,6 +246,8 @@ export function ReceivePaymentModal({
       preserveUploadedAttachmentsRef.current = false;
       return;
     }
+    appliedInvoiceAmountRef.current = "";
+    amountTouchedRef.current = false;
     const drafts = attachmentDraftsRef.current;
     setAttachmentDrafts([]);
     setDragActive(false);
@@ -257,7 +268,7 @@ export function ReceivePaymentModal({
     setPendingPayment(pending);
     if (pending) {
       preserveUploadedAttachmentsRef.current = true;
-      setAmount(formatMoneyInput(pending.amount));
+      if (!amountTouchedRef.current) setAmount(formatMoneyInput(pending.amount));
       setPaymentDate(pending.payment_date);
       setPaymentMethod(pending.payment_method);
       setDepositAccount(pending.deposit_account ?? "");
@@ -305,16 +316,20 @@ export function ReceivePaymentModal({
             setInvoiceId(inv.id);
             setProjectId(inv.projectId);
             setCustomerName(inv.clientName);
-            setAmount(
-              formatMoneyInput(remainingBalance != null ? remainingBalance : inv.balanceDue)
-            );
+            if (!amountTouchedRef.current) {
+              setAmount(
+                formatMoneyInput(remainingBalance != null ? remainingBalance : inv.balanceDue)
+              );
+            }
             setNotes((prev) => nextPaymentMemo(prev, inv.invoiceNo));
           }
         } else {
           setInvoiceId("");
           setProjectId("");
           setCustomerName("");
-          setAmount(remainingBalance != null ? formatMoneyInput(remainingBalance) : "");
+          if (!amountTouchedRef.current) {
+            setAmount(remainingBalance != null ? formatMoneyInput(remainingBalance) : "");
+          }
           setNotes("");
         }
         if (pending) restorePendingPayment(userId, pending.invoice_id);
@@ -333,14 +348,16 @@ export function ReceivePaymentModal({
   React.useEffect(() => {
     if (!invoiceId || preselectedInvoiceId) return;
     const inv = invoices.find((i) => i.id === invoiceId);
-    if (inv) {
-      setProjectId(inv.projectId);
-      setCustomerName(inv.clientName);
-      if (amount === "" || amount === formatMoneyInput(remainingBalance))
-        setAmount(formatMoneyInput(inv.balanceDue));
+    if (!inv) return;
+    setProjectId(inv.projectId);
+    setCustomerName(inv.clientName);
+    if (appliedInvoiceAmountRef.current !== invoiceId) {
+      appliedInvoiceAmountRef.current = invoiceId;
+      if (actorId && getArPaymentIntent(localStorage, actorId, invoiceId)) return;
+      if (!amountTouchedRef.current) setAmount(formatMoneyInput(inv.balanceDue));
       setNotes((prev) => nextPaymentMemo(prev, inv.invoiceNo));
     }
-  }, [invoiceId, invoices, preselectedInvoiceId, remainingBalance, amount]);
+  }, [actorId, invoiceId, invoices, preselectedInvoiceId]);
 
   const projectNameById = React.useMemo(
     () => new Map(projects.map((p) => [p.id, p.name])),
@@ -514,7 +531,7 @@ export function ReceivePaymentModal({
       toast({ title: "Remove or retry failed attachments", variant: "error" });
       return;
     }
-    const parsedAmount = parseFloat(amount);
+    const parsedAmount = parseDecimalDraft(amount);
     const num = roundMoney(parsedAmount);
     const selectedInvoice = invoices.find((inv) => inv.id === invId);
     const balanceCap = roundMoney(
@@ -634,12 +651,11 @@ export function ReceivePaymentModal({
         if (!submissionInFlight.current) onOpenChange(next);
       }}
     >
-      <DialogContent
-        data-revenue-ar-v2
-        className="max-h-[90vh] max-w-md overflow-y-auto rounded-hh-compact border-border/60"
-      >
-        <DialogHeader className="border-b border-border/60 pb-3">
-          <DialogTitle className="text-base font-medium">Receive Payment</DialogTitle>
+      <DialogContent data-revenue-ar-v2 className="text-[var(--hh-text)]">
+        <DialogHeader className="border-b border-[var(--hh-line)] pb-3">
+          <DialogTitle className="text-title-card text-[var(--hh-ink)]">
+            Receive Payment
+          </DialogTitle>
         </DialogHeader>
         <form noValidate onSubmit={handleSubmit} className="space-y-4 pt-3">
           {contextLoading && <p role="status">Loading payment context…</p>}
@@ -659,13 +675,12 @@ export function ReceivePaymentModal({
             </p>
           )}
           <div className="space-y-2">
-            <label className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
-              Invoice
-            </label>
+            <label className={paymentFieldLabelClass}>Invoice</label>
             <select
               value={invoiceId}
               onChange={(e) => {
                 try {
+                  amountTouchedRef.current = false;
                   setInvoiceId(e.target.value);
                   restorePendingPayment(actorId, e.target.value);
                 } catch (error) {
@@ -674,7 +689,7 @@ export function ReceivePaymentModal({
                   );
                 }
               }}
-              className="flex h-9 w-full rounded-hh-compact border border-input bg-transparent px-3 py-2 text-sm"
+              className={paymentSelectClass}
               required
               disabled={
                 saving || !!pendingPayment || !!preselectedInvoiceId || attachmentDrafts.length > 0
@@ -689,26 +704,25 @@ export function ReceivePaymentModal({
             </select>
           </div>
           <div className="space-y-2">
-            <label className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
-              Project
-            </label>
+            <label className={paymentFieldLabelClass}>Project</label>
             <Input
               value={projectId ? (projectNameById.get(projectId) ?? "") : ""}
               readOnly
-              className="h-9 bg-muted/50"
+              className={cn(paymentFieldClass, "bg-[var(--hh-surface-sunken)]")}
             />
           </div>
           <div className="space-y-2">
-            <label className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
-              Customer
-            </label>
-            <Input value={customerName} readOnly className="h-9" placeholder="Customer name" />
+            <label className={paymentFieldLabelClass}>Customer</label>
+            <Input
+              value={customerName}
+              readOnly
+              className={paymentFieldClass}
+              placeholder="Customer name"
+            />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <label className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
-                Payment Date
-              </label>
+              <label className={paymentFieldLabelClass}>Payment Date</label>
               <FinanceDatePicker
                 value={paymentDate}
                 onChange={(date) => {
@@ -718,39 +732,46 @@ export function ReceivePaymentModal({
               />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
-                Amount Received
-              </label>
+              <label className={paymentFieldLabelClass}>Amount Received</label>
               <Input
-                type="number"
-                min="0"
-                step="0.01"
+                type="text"
+                inputMode="decimal"
+                autoComplete="off"
                 value={amount}
                 disabled={saving || !!pendingPayment}
                 onChange={(e) => {
-                  setAmount(e.target.value);
+                  amountTouchedRef.current = true;
+                  setAmount((current) => nextDecimalDraft(current, e.target.value));
                   setAmountError(null);
+                }}
+                onBlur={() => {
+                  const trimmed = amount.trim();
+                  if (trimmed === "" || trimmed === ".") return;
+                  setAmount(formatMoneyInput(parseDecimalDraft(trimmed)));
                 }}
                 placeholder="0.00"
                 aria-invalid={amountError ? true : undefined}
-                className="h-9 tabular-nums"
+                aria-describedby={amountError ? "receive-payment-amount-error" : undefined}
+                className={cn(paymentFieldClass, "tabular-nums")}
               />
               {amountError ? (
-                <p role="alert" className="text-xs font-medium text-[var(--hh-danger)]">
+                <p
+                  id="receive-payment-amount-error"
+                  role="alert"
+                  className="text-hh-metadata font-medium text-[var(--hh-danger)]"
+                >
                   {amountError}
                 </p>
               ) : null}
             </div>
           </div>
           <div className="space-y-2">
-            <label className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
-              Payment Method
-            </label>
+            <label className={paymentFieldLabelClass}>Payment Method</label>
             <select
               value={paymentMethod}
               disabled={saving || !!pendingPayment}
               onChange={(e) => setPaymentMethod(e.target.value)}
-              className="flex h-9 w-full rounded-hh-compact border border-input bg-transparent px-3 py-2 text-sm"
+              className={paymentSelectClass}
             >
               {PAYMENT_METHODS.map((m) => (
                 <option key={m} value={m}>
@@ -760,34 +781,28 @@ export function ReceivePaymentModal({
             </select>
           </div>
           <div className="space-y-2">
-            <label className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
-              Deposit Account
-            </label>
+            <label className={paymentFieldLabelClass}>Deposit Account</label>
             <Input
               value={depositAccount}
               disabled={saving || !!pendingPayment}
               onChange={(e) => setDepositAccount(e.target.value)}
               placeholder="e.g. Operating Account"
-              className="h-9"
+              className={paymentFieldClass}
             />
           </div>
           <div className="space-y-2">
-            <label className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
-              Notes
-            </label>
+            <label className={paymentFieldLabelClass}>Notes</label>
             <Input
               value={notes}
               disabled={saving || !!pendingPayment}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Optional"
-              className="h-9"
+              className={paymentFieldClass}
             />
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
-              Attachments
-            </label>
+            <label className={paymentFieldLabelClass}>Attachments</label>
             <input
               ref={cameraInputRef}
               type="file"
@@ -823,19 +838,19 @@ export function ReceivePaymentModal({
                 onClick={() => cameraInputRef.current?.click()}
                 className="group flex min-h-[58px] items-center gap-3 rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 py-3 text-left transition-colors hover:border-[var(--hh-border-strong)] hover:bg-[var(--hh-l3-hover)] disabled:pointer-events-none disabled:opacity-45"
               >
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted/55">
-                  <Camera className="h-[18px] w-[18px] text-foreground/80" strokeWidth={1.6} />
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--hh-chip)]">
+                  <Camera className="h-[18px] w-[18px] text-[var(--hh-ink)]" strokeWidth={1.6} />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block text-hh-table-cell font-medium text-foreground">
+                  <span className="block text-hh-table-cell font-medium text-[var(--hh-ink)]">
                     Take photo
                   </span>
-                  <span className="block truncate text-hh-status text-muted-foreground">
+                  <span className="block truncate text-hh-status text-[var(--hh-muted)]">
                     Camera upload
                   </span>
                 </span>
                 <ChevronRight
-                  className="h-4 w-4 shrink-0 text-muted-foreground/70"
+                  className="h-4 w-4 shrink-0 text-[var(--hh-muted)]/70"
                   strokeWidth={1.5}
                 />
               </button>
@@ -845,19 +860,19 @@ export function ReceivePaymentModal({
                 onClick={() => uploadInputRef.current?.click()}
                 className="group flex min-h-[58px] items-center gap-3 rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 py-3 text-left transition-colors hover:border-[var(--hh-border-strong)] hover:bg-[var(--hh-l3-hover)] disabled:pointer-events-none disabled:opacity-45"
               >
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted/55">
-                  <Upload className="h-[18px] w-[18px] text-foreground/80" strokeWidth={1.6} />
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--hh-chip)]">
+                  <Upload className="h-[18px] w-[18px] text-[var(--hh-ink)]" strokeWidth={1.6} />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block text-hh-table-cell font-medium text-foreground">
+                  <span className="block text-hh-table-cell font-medium text-[var(--hh-ink)]">
                     Upload files
                   </span>
-                  <span className="block truncate text-hh-status text-muted-foreground">
+                  <span className="block truncate text-hh-status text-[var(--hh-muted)]">
                     Images or PDFs
                   </span>
                 </span>
                 <ChevronRight
-                  className="h-4 w-4 shrink-0 text-muted-foreground/70"
+                  className="h-4 w-4 shrink-0 text-[var(--hh-muted)]/70"
                   strokeWidth={1.5}
                 />
               </button>
@@ -872,15 +887,15 @@ export function ReceivePaymentModal({
               className={cn(
                 "rounded-hh-standard border border-dashed px-3 py-3 transition-[border-color,background-color,box-shadow]",
                 "border-[var(--hh-border-strong)] bg-[var(--hh-l3-selected)]",
-                selectedInvoiceId && !saving && "hover:bg-muted/[0.34]",
+                selectedInvoiceId && !saving && "hover:bg-[var(--hh-surface-sunken)]",
                 dragActive && "border-[var(--hh-border-strong)] bg-[var(--hh-l3-selected)]",
                 (!selectedInvoiceId || saving) && "opacity-55"
               )}
             >
-              <p className="text-center text-hh-metadata font-medium text-foreground/85">
+              <p className="text-center text-hh-metadata font-medium text-[var(--hh-ink)]">
                 Drop payment attachments here
               </p>
-              <p className="mt-0.5 text-center text-hh-status text-muted-foreground">
+              <p className="mt-0.5 text-center text-hh-status text-[var(--hh-muted)]">
                 Photos or PDFs
               </p>
             </div>
@@ -900,12 +915,11 @@ export function ReceivePaymentModal({
             ) : null}
           </div>
 
-          <div className="flex justify-end gap-2 border-t border-border/60 pt-2">
+          <div className="flex flex-col-reverse gap-2 border-t border-[var(--hh-line)] pt-3 sm:flex-row sm:justify-end">
             <Button
               type="button"
-              variant="outline"
-              size="sm"
-              className="btn-outline-ghost h-8"
+              variant="secondary"
+              className="min-h-11"
               disabled={saving}
               onClick={() => onOpenChange(false)}
             >
@@ -913,8 +927,7 @@ export function ReceivePaymentModal({
             </Button>
             <Button
               type="button"
-              size="sm"
-              className="h-8"
+              className="min-h-11"
               disabled={disableSubmit}
               onClick={(e) => void handleSubmit(e)}
             >

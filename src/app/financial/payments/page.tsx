@@ -76,13 +76,13 @@ import { TYPO } from "@/lib/typography";
 import type { PaymentReceiptPreviewDto } from "@/lib/payment-receipt-preview-dto";
 
 const paymentsShell =
-  "rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-operational md:rounded-hh-task";
+  "rounded-card border border-[var(--hh-line)] bg-[var(--hh-surface)] text-[var(--hh-text)] shadow-card";
 
 const kpiTile =
-  "rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-operational";
+  "rounded-card border border-[var(--hh-line)] bg-[var(--hh-surface)] text-[var(--hh-ink)] shadow-card";
 
 const kpiIcon =
-  "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[var(--hh-border)] bg-[var(--hh-l3-selected)] text-[var(--hh-text-secondary)]";
+  "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[var(--hh-line)] bg-[var(--hh-chip)] text-[var(--hh-muted)]";
 
 function isVoidedPaymentStatus(status: string | null | undefined): boolean {
   return ["void", "voided", "cancelled", "canceled"].includes(
@@ -543,7 +543,7 @@ function PaymentsReceivedPageInner() {
   return (
     <div
       data-revenue-ar-v2
-      className={cn("min-w-0 overflow-x-hidden text-[var(--hh-text-secondary)]", "flex flex-col")}
+      className="flex min-w-0 flex-col overflow-x-hidden text-[var(--hh-text)]"
     >
       <div
         className={cn(
@@ -553,13 +553,13 @@ function PaymentsReceivedPageInner() {
       >
         <div className="hidden md:block">
           <PageHeader
-            className="gap-1 border-b border-[var(--hh-border)] pb-2 lg:items-baseline lg:gap-x-4 [&_h1]:text-[var(--hh-text-primary)] [&_p]:mt-0 [&_p]:text-[var(--hh-text-secondary)]"
+            className="gap-1 border-b border-[var(--hh-line)] pb-2 lg:items-baseline lg:gap-x-4 [&_h1]:text-title-page [&_h1]:text-[var(--hh-ink)] [&_p]:mt-0 [&_p]:text-hh-metadata [&_p]:text-[var(--hh-muted)]"
             title="Payments Received"
             subtitle="Cash collection and payment history across customers and invoices."
             actions={
               <Button
                 size="sm"
-                className="h-9 shrink-0 gap-1.5 shadow-none"
+                className="min-h-11 w-full shrink-0 gap-1.5 shadow-none sm:w-auto"
                 onClick={openReceivePayment}
               >
                 <Plus className="h-3.5 w-3.5" aria-hidden />
@@ -654,8 +654,8 @@ function PaymentsReceivedPageInner() {
         ) : null}
 
         {/* KPI summary */}
-        <section className="border-b border-border/60 pb-4">
-          <p className="mb-3 text-hh-table-header font-medium uppercase tracking-normal text-text-secondary/75">
+        <section className="border-b border-[var(--hh-line)] pb-4">
+          <p className="mb-3 text-hh-table-header font-medium uppercase tracking-normal text-[var(--hh-muted)]">
             Summary
           </p>
           <div className="grid grid-cols-2 gap-2 lg:grid-cols-5">
@@ -664,10 +664,10 @@ function PaymentsReceivedPageInner() {
                 <Wallet className="h-4 w-4" aria-hidden />
               </span>
               <div className="min-w-0">
-                <div className="text-hh-table-header font-medium uppercase tracking-normal text-muted-foreground">
+                <div className="text-hh-table-header font-medium uppercase tracking-normal text-[var(--hh-muted)]">
                   Total received
                 </div>
-                <div className="mt-0.5 text-xl font-medium tabular-nums text-foreground">
+                <div className="mt-0.5 text-num-l tabular-nums text-[var(--hh-ink)]">
                   {formatCurrency(summary.totalReceived)}
                 </div>
               </div>
@@ -677,10 +677,10 @@ function PaymentsReceivedPageInner() {
                 <Banknote className="h-4 w-4" aria-hidden />
               </span>
               <div className="min-w-0">
-                <div className="text-hh-table-header font-medium uppercase tracking-normal text-muted-foreground">
+                <div className="text-hh-table-header font-medium uppercase tracking-normal text-[var(--hh-muted)]">
                   Payments
                 </div>
-                <div className="mt-0.5 text-xl font-medium tabular-nums text-foreground">
+                <div className="mt-0.5 text-num-l tabular-nums text-[var(--hh-ink)]">
                   {formatInteger(summary.paymentsCount)}
                 </div>
               </div>
@@ -690,10 +690,10 @@ function PaymentsReceivedPageInner() {
                 <CalendarDays className="h-4 w-4" aria-hidden />
               </span>
               <div className="min-w-0">
-                <div className="text-hh-table-header font-medium uppercase tracking-normal text-muted-foreground">
+                <div className="text-hh-table-header font-medium uppercase tracking-normal text-[var(--hh-muted)]">
                   This month
                 </div>
-                <div className="mt-0.5 text-xl font-medium tabular-nums text-foreground">
+                <div className="mt-0.5 text-num-l tabular-nums text-[var(--hh-ink)]">
                   {formatCurrency(summary.thisMonthTotal)}
                 </div>
               </div>
@@ -703,10 +703,10 @@ function PaymentsReceivedPageInner() {
                 <Link2 className="h-4 w-4" aria-hidden />
               </span>
               <div className="min-w-0">
-                <div className="text-hh-table-header font-medium uppercase tracking-normal text-muted-foreground">
+                <div className="text-hh-table-header font-medium uppercase tracking-normal text-[var(--hh-muted)]">
                   Linked invoices
                 </div>
-                <div className="mt-0.5 text-xl font-medium tabular-nums text-foreground">
+                <div className="mt-0.5 text-num-l tabular-nums text-[var(--hh-ink)]">
                   {formatInteger(summary.linkedInvoices)}
                 </div>
               </div>
@@ -716,10 +716,10 @@ function PaymentsReceivedPageInner() {
                 <Search className="h-4 w-4" aria-hidden />
               </span>
               <div className="min-w-0">
-                <div className="text-hh-table-header font-medium uppercase tracking-normal text-muted-foreground">
+                <div className="text-hh-table-header font-medium uppercase tracking-normal text-[var(--hh-muted)]">
                   Unapplied/unknown
                 </div>
-                <div className="mt-0.5 text-xl font-medium tabular-nums text-foreground">
+                <div className="mt-0.5 text-num-l tabular-nums text-[var(--hh-ink)]">
                   {formatInteger(summary.unknownOrUnapplied)}
                 </div>
               </div>
@@ -731,11 +731,11 @@ function PaymentsReceivedPageInner() {
         <div className={cn(paymentsShell, "p-3")}>
           <div className="flex w-full flex-wrap items-end gap-3 md:flex-nowrap">
             <div className="flex min-w-[240px] flex-1 flex-col gap-1">
-              <label className="text-hh-table-header font-medium uppercase tracking-normal text-text-secondary/75">
+              <label className="text-hh-table-header font-medium uppercase tracking-normal text-[var(--hh-muted)]">
                 Search
               </label>
               <div className="relative w-full">
-                <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--hh-muted)]" />
                 <Input
                   placeholder="Customer, project, invoice…"
                   value={searchQuery}
@@ -747,7 +747,7 @@ function PaymentsReceivedPageInner() {
             </div>
 
             <div className="flex min-w-[180px] flex-1 flex-col gap-1 sm:flex-initial">
-              <label className="text-hh-table-header font-medium uppercase tracking-normal text-text-secondary/75">
+              <label className="text-hh-table-header font-medium uppercase tracking-normal text-[var(--hh-muted)]">
                 Method
               </label>
               <Select
@@ -766,7 +766,7 @@ function PaymentsReceivedPageInner() {
             </div>
 
             <div className="flex min-w-[180px] flex-1 flex-col gap-1 sm:flex-initial">
-              <label className="text-hh-table-header font-medium uppercase tracking-normal text-text-secondary/75">
+              <label className="text-hh-table-header font-medium uppercase tracking-normal text-[var(--hh-muted)]">
                 Account
               </label>
               <Select
@@ -787,7 +787,7 @@ function PaymentsReceivedPageInner() {
 
           <div className="mt-3 flex flex-wrap items-end gap-3 border-t border-[var(--hh-border)] pt-3">
             <div className="flex flex-1 flex-col gap-1 sm:flex-initial">
-              <label className="text-hh-table-header font-medium uppercase tracking-normal text-text-secondary/75">
+              <label className="text-hh-table-header font-medium uppercase tracking-normal text-[var(--hh-muted)]">
                 Date from
               </label>
               <Input
@@ -799,7 +799,7 @@ function PaymentsReceivedPageInner() {
               />
             </div>
             <div className="flex flex-1 flex-col gap-1 sm:flex-initial">
-              <label className="text-hh-table-header font-medium uppercase tracking-normal text-text-secondary/75">
+              <label className="text-hh-table-header font-medium uppercase tracking-normal text-[var(--hh-muted)]">
                 Date to
               </label>
               <Input
@@ -827,15 +827,15 @@ function PaymentsReceivedPageInner() {
 
         {loading ? (
           <div className={cn(paymentsShell, "px-4 py-10 text-center")}>
-            <p className="text-sm text-muted-foreground">Loading payments…</p>
+            <p className="text-sm text-[var(--hh-muted)]">Loading payments…</p>
           </div>
         ) : payments.length === 0 ? (
           <div className={cn(paymentsShell, "px-4 py-10 text-center")}>
             <span className="mx-auto mb-3 inline-flex h-10 w-10 items-center justify-center rounded-full border border-[var(--hh-border)] bg-[var(--hh-l3-selected)] text-[var(--hh-text-secondary)]">
               <Wallet className="h-5 w-5" aria-hidden />
             </span>
-            <p className="text-sm font-medium text-foreground">No payments yet</p>
-            <p className="mt-1 text-xs text-muted-foreground">
+            <p className="text-sm font-medium text-[var(--hh-ink)]">No payments yet</p>
+            <p className="mt-1 text-xs text-[var(--hh-muted)]">
               Record a payment to start tracking cash collection and invoice history.
             </p>
             <Button
@@ -872,7 +872,7 @@ function PaymentsReceivedPageInner() {
         ) : (
           <section className={cn(paymentsShell, "overflow-hidden p-0")}>
             {/* Desktop header row */}
-            <div className="hidden lg:grid grid-cols-[minmax(170px,1.1fr)_minmax(150px,1fr)_minmax(72px,0.45fr)_minmax(110px,0.55fr)_minmax(90px,0.45fr)_minmax(110px,0.55fr)_minmax(102px,0.5fr)_minmax(184px,0.75fr)] gap-3 border-b border-border/60 px-3 py-2.5 text-hh-status font-medium uppercase tracking-normal text-muted-foreground/70">
+            <div className="hidden lg:grid grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,0.7fr)_minmax(0,0.6fr)_minmax(0,0.6fr)_minmax(0,0.7fr)_minmax(0,0.6fr)_minmax(0,0.8fr)] gap-3 border-b border-[var(--hh-line)] bg-[var(--hh-surface-sunken)] px-3 py-2.5 text-hh-label font-[650] uppercase text-[var(--hh-th)]">
               <div>Customer</div>
               <div>Project</div>
               <div>Invoice #</div>
@@ -883,7 +883,7 @@ function PaymentsReceivedPageInner() {
               <div className="text-right">Actions</div>
             </div>
 
-            <div className="flex flex-col divide-y divide-border/60">
+            <div className="flex flex-col divide-y divide-[var(--hh-line-2)]">
               {filteredPayments.map((row) => {
                 const paymentVoided = isVoidedPaymentStatus(row.status);
                 const highlighted = highlightPaymentId === row.id;
@@ -891,8 +891,8 @@ function PaymentsReceivedPageInner() {
                   <div
                     key={row.id}
                     className={cn(
-                      "group px-3 py-3 transition-colors hover:bg-muted/25 lg:grid lg:grid-cols-[minmax(170px,1.1fr)_minmax(150px,1fr)_minmax(72px,0.45fr)_minmax(110px,0.55fr)_minmax(90px,0.45fr)_minmax(110px,0.55fr)_minmax(102px,0.5fr)_minmax(184px,0.75fr)] lg:items-center lg:gap-3",
-                      paymentVoided && "bg-muted/20 opacity-80",
+                      "group px-3 py-3 transition-colors hover:bg-[var(--hh-surface-sunken)] lg:grid lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,0.7fr)_minmax(0,0.6fr)_minmax(0,0.6fr)_minmax(0,0.7fr)_minmax(0,0.6fr)_minmax(0,0.8fr)] lg:items-center lg:gap-3",
+                      paymentVoided && "bg-[var(--hh-surface-sunken)] opacity-80",
                       highlighted && "ring-2 ring-[var(--hh-border-strong)] ring-inset"
                     )}
                   >
@@ -900,19 +900,19 @@ function PaymentsReceivedPageInner() {
                       <div className="flex min-w-0 items-center gap-2">
                         <button
                           type="button"
-                          className="hh-focus-ring truncate text-left text-sm font-semibold text-foreground underline"
+                          className="hh-focus-ring truncate text-left text-sm font-semibold text-[var(--hh-ink)] underline"
                           onClick={() => openPaymentDetail(row.id)}
                           aria-label={`View payment ${row.invoice_no || row.id}`}
                         >
                           {row.customer_name || "—"}
                         </button>
                         {paymentVoided ? (
-                          <span className="shrink-0 rounded-full border border-border bg-muted px-2 py-0.5 text-hh-table-header font-medium uppercase tracking-normal text-muted-foreground">
+                          <span className="shrink-0 rounded-full border border-[var(--hh-line)] bg-[var(--hh-chip)] px-2 py-0.5 text-hh-table-header font-medium uppercase tracking-normal text-[var(--hh-muted)]">
                             Voided
                           </span>
                         ) : null}
                       </div>
-                      <div className="mt-0.5 truncate text-xs text-muted-foreground lg:hidden">
+                      <div className="mt-0.5 truncate text-xs text-[var(--hh-muted)] lg:hidden">
                         {row.project_name ?? "—"} · Inv {row.invoice_no ?? "—"}
                       </div>
                       <p className="break-words text-hh-metadata text-[var(--hh-text-secondary)]">
@@ -921,17 +921,17 @@ function PaymentsReceivedPageInner() {
                     </div>
 
                     <div className="hidden min-w-0 lg:block">
-                      <div className="truncate text-sm text-foreground">
+                      <div className="truncate text-sm text-[var(--hh-ink)]">
                         {row.project_name ?? "—"}
                       </div>
                     </div>
 
-                    <div className="hidden lg:block text-sm text-muted-foreground hh-fin tabular-nums">
+                    <div className="hidden lg:block text-sm text-[var(--hh-muted)] hh-fin tabular-nums">
                       {row.invoice_no ?? "—"}
                     </div>
 
                     <div className="mt-2 flex items-center justify-between gap-3 lg:mt-0 lg:block lg:text-right">
-                      <div className="lg:hidden text-xs text-muted-foreground">
+                      <div className="lg:hidden text-xs text-[var(--hh-muted)]">
                         {formatDate(row.payment_date)}
                       </div>
                       <div className={cn(TYPO.amount, "text-sm text-[var(--hh-success)]")}>
@@ -940,7 +940,7 @@ function PaymentsReceivedPageInner() {
                     </div>
 
                     <div className="hidden min-w-0 lg:block">
-                      <div className="text-sm text-muted-foreground">
+                      <div className="text-sm text-[var(--hh-muted)]">
                         {row.payment_method ?? "—"}
                       </div>
                       {(row.attachments ?? []).length > 0 ? (
@@ -963,16 +963,16 @@ function PaymentsReceivedPageInner() {
                       ) : null}
                     </div>
 
-                    <div className="hidden lg:block min-w-0 text-sm text-muted-foreground truncate">
+                    <div className="hidden lg:block min-w-0 text-sm text-[var(--hh-muted)] truncate">
                       {row.deposit_account ?? "—"}
                     </div>
 
-                    <div className="hidden lg:block text-sm hh-fin tabular-nums text-muted-foreground">
+                    <div className="hidden lg:block text-sm hh-fin tabular-nums text-[var(--hh-muted)]">
                       {formatDate(row.payment_date)}
                     </div>
 
                     <div className="mt-2 flex items-center justify-between gap-2 lg:mt-0 lg:flex lg:justify-end">
-                      <div className="lg:hidden text-xs text-muted-foreground">
+                      <div className="lg:hidden text-xs text-[var(--hh-muted)]">
                         <div>
                           {(row.payment_method ?? "—") + " · " + (row.deposit_account ?? "—")}
                         </div>
@@ -1056,7 +1056,7 @@ function PaymentsReceivedPageInner() {
                     </div>
 
                     {row.notes ? (
-                      <div className="mt-2 text-xs text-muted-foreground line-clamp-2 lg:hidden">
+                      <div className="mt-2 text-xs text-[var(--hh-muted)] line-clamp-2 lg:hidden">
                         {row.notes}
                       </div>
                     ) : null}

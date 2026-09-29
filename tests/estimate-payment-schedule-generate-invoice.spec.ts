@@ -578,7 +578,7 @@ test("creates one draft invoice from an estimate payment schedule item and syncs
 
   const receivePaymentLink = page
     .locator(`a[href^="/financial/payments?invoiceId=${invoiceId}"]`)
-    .filter({ hasText: "Receive Payment" })
+    .filter({ hasText: "Record payment" })
     .first();
   await expect(receivePaymentLink).toBeVisible({ timeout: 30_000 });
   const paymentHref = await receivePaymentLink.getAttribute("href");

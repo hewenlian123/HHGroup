@@ -5,7 +5,13 @@ import {
   financeReturnPath,
   financeReturnLabel,
 } from "@/lib/finance-navigation";
-import { computeInvoiceTotals, lineExtension, moneyToCents } from "@/lib/money";
+import {
+  centsToMoney,
+  computeInvoiceTotals,
+  invoiceRevenueExTax,
+  lineExtension,
+  moneyToCents,
+} from "@/lib/money";
 
 import * as React from "react";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
@@ -29,7 +35,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
-import { ConfirmDialog, KpiTile } from "@/components/base";
+import { ConfirmDialog, RowActionsMenu, type RowAction } from "@/components/base";
 import {
   type InvoiceWithDerived,
   type InvoicePayment,
@@ -40,21 +46,18 @@ import {
   type Project,
 } from "@/lib/data";
 import {
-  ArrowLeft,
   Send,
   FileText,
   Eye,
   Trash2,
-  ChevronDown,
   Ban,
   CircleDollarSign,
-  CalendarDays,
-  Building2,
   Pencil,
   Plus,
   Copy,
   Download,
   Paperclip,
+  MoreHorizontal,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -68,15 +71,36 @@ import {
   updateInvoiceAction,
 } from "../actions";
 import { InvoiceDeleteDependenciesDialog } from "../invoice-delete-dependencies-dialog";
-import { InvoiceDetailPresentation } from "./invoice-detail-presentation";
 import { InvoiceStatusBadge } from "@/components/invoice-status-badge";
+import { useInvoiceContractBilling } from "@/app/financial/invoices/_components/use-invoice-contract-billing";
+import {
+  contractBillingSummary,
+  invoiceCountsAsAlreadyInvoiced,
+} from "@/lib/financial/remaining-contract";
+import {
+  InvoiceDetailLayout,
+  type InvoiceDetailActivityItem,
+  type InvoiceDetailPaymentRow,
+} from "./invoice-detail-layout";
+import { PaymentReceiptPreviewModal } from "@/components/financial/payment-receipt-preview-modal";
+import { voidPaymentReceivedAction } from "@/app/financial/payments/actions";
+import { buildInvoicePaymentLedger } from "@/lib/financial/invoice-payment-ledger";
+import { isVoidCashStatus } from "@/lib/payment-allocation";
+import { formatOverviewMoney } from "@/lib/financial/project-overview-display";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { useBreadcrumbEntityLabel } from "@/contexts/breadcrumb-override-context";
 import { useAttachmentPreview } from "@/contexts/attachment-preview-context";
 import { useToast } from "@/components/toast/toast-provider";
 import { voidInvoiceFromClient } from "@/lib/invoice-void-client";
-import { formatCurrency, formatDate } from "@/lib/formatters";
+import { formatDate } from "@/lib/formatters";
 import { safeEstimateReturnPath } from "@/app/estimates/_components/estimate-workflow-continuity";
 import type { InvoiceDetailData } from "@/lib/invoice-detail-read";
+
+const EditPaymentReceivedModal = React.lazy(() =>
+  import("@/app/financial/payments/edit-payment-received-modal").then((mod) => ({
+    default: mod.EditPaymentReceivedModal,
+  }))
+);
 
 type EditLineDraft = {
   description: string;
@@ -107,6 +131,20 @@ function safeNumber(v: unknown): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+function daysUntilDue(dueDate: string): number | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(dueDate);
+  if (!match) return null;
+  const due = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  if (Number.isNaN(due.getTime())) return null;
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return Math.round((due.getTime() - start.getTime()) / 86_400_000);
+}
+
+function invoiceStatusLabel(status: InvoiceWithDerived["computedStatus"]): string {
+  return status === "Partial" ? "Partially paid" : status;
+}
+
 function recordPaymentPathForInvoice(invoice: InvoiceWithDerived): string {
   const params = new URLSearchParams();
   params.set("invoiceId", invoice.id);
@@ -117,51 +155,9 @@ function recordPaymentPathForInvoice(invoice: InvoiceWithDerived): string {
   return `/financial/payments?${params.toString()}`;
 }
 
-function DetailMetric({
-  label,
-  value,
-  tone = "default",
-}: {
-  label: string;
-  value: string;
-  tone?: "default" | "muted" | "positive" | "danger";
-}) {
-  const kpiTone = tone === "positive" ? "positive" : tone === "danger" ? "negative" : "neutral";
-  return (
-    <KpiTile
-      label={label}
-      value={value}
-      tone={kpiTone}
-      className="min-h-[92px] rounded-hh-task px-3.5 py-3.5"
-      valueClassName={cn(
-        "truncate text-hh-financial-total",
-        tone === "muted" && "text-[var(--hh-text-secondary)]"
-      )}
-    />
-  );
-}
-
-function EmptyLedgerState({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="rounded-hh-task border border-dashed border-[var(--hh-border-strong)] bg-[var(--hh-l2-operational-surface)] px-4 py-5 text-hh-body text-[var(--hh-text-secondary)] shadow-none">
-      {children}
-    </div>
-  );
-}
-
-const invoicePanelClass =
-  "rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-operational";
-const invoicePanelHeaderClass = "border-b border-[var(--hh-border)] px-4 py-3";
-const invoiceSectionTitleClass = "text-hh-body font-semibold text-[var(--hh-text-primary)]";
-const invoiceSectionDescriptionClass = "mt-0.5 text-hh-metadata text-[var(--hh-text-secondary)]";
-const invoiceLabelClass =
-  "text-hh-status font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]";
+const invoiceLabelClass = "text-hh-label font-[650] uppercase text-[var(--hh-muted)]";
 const invoiceInputClass =
-  "rounded-hh-standard border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-none placeholder:text-[var(--hh-text-tertiary)] hover:bg-[var(--hh-l3-hover)] focus-visible:border-[var(--hh-action-primary)] focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)]";
-const invoiceTableShellClass =
-  "overflow-hidden rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)]";
-const invoiceTableRowClass =
-  "border-b border-[var(--hh-border)] transition-colors last:border-0 hover:bg-[var(--hh-l3-hover)]";
+  "mt-1.5 h-11 rounded-hh-standard border-[var(--hh-line-input)] bg-[var(--hh-surface)] px-3 text-[var(--hh-ink)]";
 
 export default function InvoiceDetailClient({
   invoiceId,
@@ -195,6 +191,10 @@ export default function InvoiceDetailClient({
   const [actionBusy, setActionBusy] = React.useState(false);
   const [deletingPaymentId, setDeletingPaymentId] = React.useState<string | null>(null);
   const [paymentDeleteTarget, setPaymentDeleteTarget] = React.useState<InvoicePayment | null>(null);
+  const [editPaymentId, setEditPaymentId] = React.useState<string | null>(null);
+  const [voidPaymentId, setVoidPaymentId] = React.useState<string | null>(null);
+  const [voidingPayment, setVoidingPayment] = React.useState(false);
+  const [receiptPaymentId, setReceiptPaymentId] = React.useState<string | null>(null);
   const [editing, setEditing] = React.useState(false);
   const [editSaving, setEditSaving] = React.useState(false);
   const [editAttempted, setEditAttempted] = React.useState(false);
@@ -249,6 +249,36 @@ export default function InvoiceDetailClient({
   );
 
   useBreadcrumbEntityLabel(invoice?.invoiceNo);
+
+  const [billingClient, setBillingClient] = React.useState<SupabaseClient | null>(null);
+  const [billingClientPending, setBillingClientPending] = React.useState(true);
+  React.useEffect(() => {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!url || !anon) {
+      setBillingClientPending(false);
+      return;
+    }
+    let cancelled = false;
+    void import("@/lib/supabase")
+      .then(({ createBrowserClient }) => {
+        if (cancelled) return;
+        setBillingClient(createBrowserClient(url, anon));
+        setBillingClientPending(false);
+      })
+      .catch(() => {
+        if (!cancelled) setBillingClientPending(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  const contractBilling = useInvoiceContractBilling(
+    billingClient,
+    invoice?.projectId ?? "",
+    invoice?.id ?? null,
+    { clientPending: billingClientPending }
+  );
 
   const { toast } = useToast();
   const { openPreview } = useAttachmentPreview();
@@ -550,6 +580,27 @@ export default function InvoiceDetailClient({
     setPaymentDeleteTarget(target);
   };
 
+  const handleVoidLinkedPayment = async () => {
+    if (!voidPaymentId) return;
+    setVoidingPayment(true);
+    try {
+      const result = await voidPaymentReceivedAction(voidPaymentId);
+      if (!result.ok) {
+        toast({
+          title: "Could not void payment",
+          description: result.error,
+          variant: "error",
+        });
+        return;
+      }
+      toast({ title: "Payment voided", variant: "success" });
+      setVoidPaymentId(null);
+      await refresh();
+    } finally {
+      setVoidingPayment(false);
+    }
+  };
+
   const handleDeletePayment = async () => {
     if (!id || !paymentDeleteTarget) return;
     setDeletingPaymentId(paymentDeleteTarget.id);
@@ -614,9 +665,9 @@ export default function InvoiceDetailClient({
   const primaryActionBusy = actionBusy || editSaving;
   const projectName = project?.name ?? invoice.projectId;
   const toolbarButtonClass =
-    "h-9 min-h-[44px] rounded-hh-standard border-0 bg-transparent px-3 text-hh-table-cell font-medium text-[var(--hh-text-secondary)] shadow-none hover:!translate-y-0 hover:bg-[var(--hh-l3-hover)] hover:text-[var(--hh-text-primary)] hover:shadow-none focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)] xl:min-h-9";
+    "h-9 min-h-[44px] rounded-hh-standard border-0 bg-transparent px-3 text-hh-body font-medium text-[var(--hh-muted)] shadow-none hover:!translate-y-0 hover:bg-[var(--hh-surface-sunken)] hover:text-[var(--hh-ink)] hover:shadow-none focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)] xl:min-h-9";
   const primaryToolbarButtonClass =
-    "h-9 min-h-[44px] rounded-hh-standard border border-[var(--hh-border-strong)] bg-[var(--hh-action-primary)] px-3.5 text-hh-table-cell font-semibold text-[var(--hh-action-primary-foreground)] shadow-none hover:bg-[var(--hh-action-primary)] hover:opacity-100 focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)] xl:min-h-9";
+    "h-9 min-h-[44px] rounded-hh-standard px-3.5 text-hh-body font-semibold shadow-none hover:opacity-100 focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)] xl:min-h-9";
   const displayedSubtotal = editing ? editSubtotal : invoice.subtotal;
   const displayedTax = editing ? editTaxAmount : (invoice.taxAmount ?? 0);
   const displayedTotal = editing ? editTotal : invoice.total;
@@ -628,748 +679,704 @@ export default function InvoiceDetailClient({
     financePathWithReturn(`/financial/invoices/${id}`, listReturnTo)
   );
 
-  return (
-    <div
-      data-revenue-ar-v2
-      data-testid="invoice-detail"
-      className="hh-fin bg-[var(--hh-l0-canvas)] page-container page-shell-wide page-stack flex w-full flex-col gap-4 py-4 text-[var(--hh-text-secondary)] sm:gap-5 lg:py-6"
-    >
-      <div className="flex flex-col gap-4 border-b border-[var(--hh-border)] pb-4 lg:flex-row lg:items-start lg:justify-between">
-        <div className="min-w-0">
-          <Link
-            href={estimateReturnPath ?? invoiceListReturnPath}
-            data-testid={estimateReturnPath ? "invoice-detail-return-to-estimate" : undefined}
-            className="mb-3 inline-flex min-h-[44px] items-center gap-1.5 rounded-hh-standard text-hh-body font-medium text-[var(--hh-text-secondary)] transition-colors hover:text-[var(--hh-text-primary)]"
+  const thisInvoiceExTax = isVoid ? 0 : editing ? editSubtotal : invoiceRevenueExTax(invoice);
+  const contract =
+    contractBilling.status === "ready"
+      ? contractBillingSummary({
+          originalContract: contractBilling.originalContract,
+          approvedChangeOrders: contractBilling.approvedChangeOrders,
+          previouslyInvoicedExcludingTax: contractBilling.previouslyInvoicedExcludingTax,
+          thisInvoiceExcludingTax: thisInvoiceExTax,
+        })
+      : null;
+  const receivedById = new Map(paymentsReceived.map((row) => [row.id, row]));
+  const linkedReceivedIds = new Set(
+    payments
+      .map((payment) => payment.paymentReceivedId)
+      .filter((paymentId): paymentId is string => Boolean(paymentId))
+  );
+  const unlinkedReceived = paymentsReceived.filter((row) => !linkedReceivedIds.has(row.id));
+  const ledgerSource = [
+    ...payments.map((payment) => {
+      const received = payment.paymentReceivedId
+        ? receivedById.get(payment.paymentReceivedId)
+        : undefined;
+      return {
+        id: payment.id,
+        date: payment.date,
+        amount: payment.amount,
+        method: payment.method.trim() || received?.payment_method?.trim() || "—",
+        reference:
+          payment.memo?.trim() ||
+          received?.notes?.trim() ||
+          received?.deposit_account?.trim() ||
+          "",
+        voided: payment.status === "Voided",
+        paymentReceivedId: payment.paymentReceivedId ?? null,
+        legacyPaymentId: payment.paymentReceivedId ? null : payment.id,
+        attachments: received?.attachments ?? [],
+      };
+    }),
+    ...unlinkedReceived.map((row) => ({
+      id: `unlinked-${row.id}`,
+      date: row.payment_date,
+      amount: row.amount,
+      method: row.payment_method?.trim() || "—",
+      reference: row.notes?.trim() || row.deposit_account?.trim() || "",
+      voided: isVoidCashStatus(row.status),
+      paymentReceivedId: row.id,
+      legacyPaymentId: null as string | null,
+      attachments: row.attachments ?? [],
+    })),
+  ];
+  const paymentLedger = buildInvoicePaymentLedger(displayedTotal, ledgerSource);
+  const ledgerMeta = new Map(ledgerSource.map((row) => [row.id, row]));
+  const postedPayments = paymentLedger.filter((row) => !row.voided);
+  const postedCents = postedPayments.reduce((sum, row) => sum + moneyToCents(row.amount), 0);
+  const lastPosted = [...postedPayments].sort((left, right) =>
+    right.date.localeCompare(left.date)
+  )[0];
+  const paidCents = moneyToCents(invoice.paidTotal);
+  const totalCents = moneyToCents(displayedTotal);
+  const paidPercent =
+    totalCents > 0 ? Math.min(100, Math.round((paidCents / totalCents) * 100)) : 0;
+  const outstandingPercent = totalCents > 0 ? Math.max(0, 100 - paidPercent) : 0;
+  const taxPctLabel = editing ? editTaxPct : (invoice.taxPct ?? 0);
+  const dueInDays = daysUntilDue(invoice.dueDate);
+  const showDueHint = !isVoid && !isDraft && moneyToCents(displayedBalance) > 0;
+  const dueHint = !showDueHint
+    ? null
+    : invoice.daysOverdue > 0
+      ? `Overdue ${invoice.daysOverdue} day${invoice.daysOverdue === 1 ? "" : "s"}`
+      : dueInDays === 0
+        ? "Due today"
+        : dueInDays != null && dueInDays > 0
+          ? `Due in ${dueInDays} day${dueInDays === 1 ? "" : "s"}`
+          : null;
+  const previewHref = financePathWithReturn(
+    `/financial/invoices/${id}/preview`,
+    invoiceListReturnPath
+  );
+  const printHref = financePathWithReturn(`/financial/invoices/${id}/print`, invoiceListReturnPath);
+  const backHref = estimateReturnPath ?? invoiceListReturnPath;
+  const backLabel = estimateReturnPath
+    ? "Back to estimate"
+    : financeReturnLabel(invoiceListReturnPath);
+  const paymentRows: InvoiceDetailPaymentRow[] = [
+    {
+      id: "invoice-issued",
+      dateLabel: formatDate(invoice.issueDate),
+      method: "",
+      reference: "Invoice issued",
+      referenceDetail: "",
+      amountLabel: "—",
+      balanceLabel: formatOverviewMoney(displayedTotal),
+      voided: false,
+      issued: true,
+    },
+    ...paymentLedger.map((row) => ({
+      id: row.id,
+      dateLabel: row.date ? formatDate(row.date) : "—",
+      method: row.method,
+      reference: row.reference,
+      referenceDetail: "",
+      amountLabel: row.voided
+        ? formatOverviewMoney(row.amount)
+        : `−${formatOverviewMoney(row.amount)}`,
+      balanceLabel: formatOverviewMoney(row.runningBalance),
+      voided: row.voided,
+      issued: false,
+    })),
+  ];
+  const activity: InvoiceDetailActivityItem[] = [
+    ...(invoice.issueDate
+      ? [
+          {
+            id: "created",
+            title: "Created",
+            detail: invoice.invoiceNo,
+            dateLabel: formatDate(invoice.issueDate, "compact"),
+            tone: "created" as const,
+            sort: invoice.issueDate,
+          },
+        ]
+      : []),
+    ...(invoice.status === "Sent" || invoice.status === "Void"
+      ? [
+          {
+            id: "status",
+            title: invoice.status === "Void" ? "Voided" : "Sent",
+            detail: "",
+            dateLabel: invoice.status === "Sent" ? formatDate(invoice.issueDate, "compact") : "",
+            tone: "status" as const,
+            sort: invoice.status === "Sent" ? invoice.issueDate : "9999-99-99",
+          },
+        ]
+      : []),
+    ...paymentLedger.map((row) => ({
+      id: `payment-${row.id}`,
+      title: row.voided ? "Payment voided" : "Payment received",
+      detail: [row.method !== "—" ? row.method : "", formatOverviewMoney(row.amount), row.reference]
+        .filter(Boolean)
+        .join(" · "),
+      dateLabel: row.date ? formatDate(row.date, "compact") : "",
+      tone: "payment" as const,
+      sort: row.date || "",
+    })),
+  ]
+    .sort(
+      (left, right) => right.sort.localeCompare(left.sort) || left.title.localeCompare(right.title)
+    )
+    .map((item) => ({
+      id: item.id,
+      title: item.title,
+      detail: item.detail,
+      dateLabel: item.dateLabel,
+      tone: item.tone,
+    }));
+
+  const renderPaymentMenu = (row: InvoiceDetailPaymentRow) => {
+    const meta = ledgerMeta.get(row.id);
+    const actions: RowAction[] = [];
+    if (meta?.paymentReceivedId && !row.voided) {
+      const paymentReceivedId = meta.paymentReceivedId;
+      actions.push(
+        { label: "Edit payment", onClick: () => setEditPaymentId(paymentReceivedId) },
+        { label: "Download receipt", onClick: () => setReceiptPaymentId(paymentReceivedId) },
+        {
+          label: "Void payment",
+          destructive: true,
+          onClick: () => setVoidPaymentId(paymentReceivedId),
+        }
+      );
+    } else if (meta?.legacyPaymentId && !row.voided) {
+      const legacyPaymentId = meta.legacyPaymentId;
+      actions.push({
+        label: "Delete payment",
+        destructive: true,
+        onClick: () => requestDeletePayment(legacyPaymentId),
+      });
+    }
+    const attachments = meta?.attachments ?? [];
+    return (
+      <div className="w-16 px-2 py-2 text-right xl:w-10">
+        <RowActionsMenu
+          ariaLabel="Payment actions"
+          className="h-11 min-h-11 xl:h-8 xl:min-h-8 rounded-hh-standard"
+          actions={actions}
+        />
+        {attachments.length > 0 && meta?.paymentReceivedId ? (
+          <Button
+            type="button"
+            variant="quiet"
+            size="sm"
+            data-testid="invoice-payment-attachment-action"
+            disabled={openingPaymentAttachmentsId === meta.paymentReceivedId}
+            onClick={() => void openPaymentAttachments(meta.paymentReceivedId!, attachments)}
+            className="mt-2 h-11 min-h-11 max-w-full rounded-full border border-[var(--hh-line)] bg-[var(--hh-surface)] px-2.5 text-hh-metadata font-medium text-[var(--hh-muted)] lg:h-7 lg:min-h-0"
           >
-            <ArrowLeft className="h-4 w-4" />
-            {estimateReturnPath ? "Back to estimate" : financeReturnLabel(invoiceListReturnPath)}
-          </Link>
-          <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-hh-page-title font-semibold leading-tight tracking-normal text-[var(--hh-text-primary)] md:text-hh-page-title">
-              {invoice.invoiceNo}
-            </h1>
-            <span data-testid="invoice-detail-status">
-              <InvoiceStatusBadge status={invoice.computedStatus} />
+            <Paperclip className="h-3 w-3 shrink-0" strokeWidth={1.7} />
+            <span className="truncate">
+              {openingPaymentAttachmentsId === meta.paymentReceivedId
+                ? "Opening..."
+                : `${attachments.length} attachment${attachments.length === 1 ? "" : "s"}`}
             </span>
-          </div>
-          <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-hh-body text-[var(--hh-text-secondary)]">
-            <span className="inline-flex min-w-0 items-center gap-2">
-              <Building2 className="h-4 w-4 shrink-0" />
-              <span className="truncate">
-                <span className="font-medium text-[var(--hh-text-primary)]">
-                  {invoice.customerId ? (
-                    <Link
-                      href={`/customers/${invoice.customerId}`}
-                      className="inline-flex min-h-11 items-center rounded-hh-standard underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)]"
-                    >
-                      {invoice.clientName}
-                    </Link>
-                  ) : (
-                    invoice.clientName
-                  )}
-                </span>
-                <span className="mx-1 text-[var(--hh-text-tertiary)]">/</span>
-                {invoice.projectId ? (
-                  <Link
-                    href={`/projects/${invoice.projectId}`}
-                    className="inline-flex min-h-11 items-center rounded-hh-standard underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)]"
-                  >
-                    {projectName}
-                  </Link>
-                ) : (
-                  projectName
-                )}
-              </span>
-            </span>
-            <span className="inline-flex items-center gap-2">
-              <CalendarDays className="h-4 w-4" />
-              Issued {formatDate(invoice.issueDate)}
-            </span>
-          </div>
-        </div>
-
-        <div className="flex w-full justify-start lg:w-auto lg:justify-end">
-          <div className="flex max-w-full flex-wrap items-center gap-2 lg:justify-end">
-            {editing ? (
-              <div className="inline-flex items-center gap-1 rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-1 shadow-operational">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className={toolbarButtonClass}
-                  onClick={cancelEditing}
-                  disabled={primaryActionBusy}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  size="sm"
-                  className={primaryToolbarButtonClass}
-                  onClick={handleSaveEdit}
-                  disabled={primaryActionBusy}
-                >
-                  <SubmitSpinner loading={editSaving} className="mr-2" />
-                  Save
-                </Button>
-              </div>
-            ) : (
-              <>
-                <div className="inline-flex min-h-[44px] items-center gap-1 rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-1 shadow-operational xl:min-h-0">
-                  <Button asChild variant="ghost" size="sm" className={toolbarButtonClass}>
-                    <Link
-                      href={financePathWithReturn(
-                        `/financial/invoices/${id}/preview`,
-                        invoiceListReturnPath
-                      )}
-                      prefetch={false}
-                      data-testid="invoice-detail-preview-link"
-                    >
-                      <Eye className="h-4 w-4" />
-                      Preview
-                    </Link>
-                  </Button>
-                  <Button asChild variant="ghost" size="sm" className={toolbarButtonClass}>
-                    <Link
-                      href={financePathWithReturn(
-                        `/financial/invoices/${id}/print`,
-                        invoiceListReturnPath
-                      )}
-                      prefetch={false}
-                    >
-                      <FileText className="h-4 w-4" />
-                      Print
-                    </Link>
-                  </Button>
-                </div>
-
-                {isDraft ? (
-                  <Button
-                    size="sm"
-                    className={primaryToolbarButtonClass}
-                    onClick={startEditing}
-                    disabled={primaryActionBusy}
-                  >
-                    <Pencil className="h-4 w-4" />
-                    Edit Draft
-                  </Button>
-                ) : null}
-                {canPay ? (
-                  <Button
-                    asChild
-                    size="sm"
-                    className={primaryToolbarButtonClass}
-                    disabled={primaryActionBusy}
-                  >
-                    <Link href={recordPaymentHref}>
-                      <CircleDollarSign className="h-4 w-4" />
-                      Receive Payment
-                    </Link>
-                  </Button>
-                ) : null}
-
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className={toolbarButtonClass}
-                      disabled={primaryActionBusy}
-                    >
-                      More
-                      <ChevronDown className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent
-                    align="end"
-                    className="min-w-[220px] rounded-hh-task border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-1.5 text-[var(--hh-text-primary)] shadow-operational"
-                  >
-                    <DropdownMenuItem
-                      onSelect={(e) => {
-                        e.preventDefault();
-                        void handleDuplicateInvoice();
-                      }}
-                      disabled={primaryActionBusy || isVoid}
-                    >
-                      <Copy className="h-4 w-4 mr-2" />
-                      Duplicate invoice
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link
-                        href={financePathWithReturn(
-                          `/financial/invoices/${id}/preview?download=1`,
-                          invoiceListReturnPath
-                        )}
-                        prefetch={false}
-                      >
-                        <Download className="h-4 w-4 mr-2" />
-                        Download PDF
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      onSelect={(e) => {
-                        e.preventDefault();
-                        void handleMarkSent();
-                      }}
-                      disabled={!isDraft || primaryActionBusy}
-                    >
-                      <Send className="h-4 w-4 mr-2" />
-                      Mark as sent
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onSelect={(e) => {
-                        e.preventDefault();
-                        void handleBackToEdit();
-                      }}
-                      disabled={!canBackToEdit || primaryActionBusy}
-                    >
-                      <Pencil className="h-4 w-4 mr-2" />
-                      Back to edit
-                    </DropdownMenuItem>
-                    {!isVoid ? (
-                      <DropdownMenuItem
-                        className="text-[var(--hh-danger)] focus:bg-[var(--hh-danger-soft-fill)] focus:text-[var(--hh-danger)]"
-                        onSelect={(e) => {
-                          e.preventDefault();
-                          setVoidConfirmOpen(true);
-                        }}
-                        disabled={primaryActionBusy}
-                      >
-                        <Ban className="h-4 w-4 mr-2" />
-                        Void Invoice
-                      </DropdownMenuItem>
-                    ) : null}
-                    <DropdownMenuItem
-                      className="text-[var(--hh-danger)] focus:bg-[var(--hh-danger-soft-fill)] focus:text-[var(--hh-danger)]"
-                      onSelect={(e) => {
-                        e.preventDefault();
-                        if (isVoid) handleDeleteRequest();
-                        else setDeleteBlockedOpen(true);
-                      }}
-                      disabled={primaryActionBusy || deleteCheckBusy}
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Delete Invoice
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </>
-            )}
-          </div>
-        </div>
+          </Button>
+        ) : null}
       </div>
+    );
+  };
 
+  const revisedCents = contract ? moneyToCents(contract.revisedContract) : 0;
+  const priorWidth =
+    contract && revisedCents > 0
+      ? Math.max(
+          0,
+          Math.min(
+            100,
+            (moneyToCents(contract.previouslyInvoicedExcludingTax) / revisedCents) * 100
+          )
+        )
+      : 0;
+  const thisWidth =
+    contract && revisedCents > 0
+      ? Math.max(
+          0,
+          Math.min(
+            100 - priorWidth,
+            (moneyToCents(contract.thisInvoiceExcludingTax) / revisedCents) * 100
+          )
+        )
+      : 0;
+  const billedCount =
+    contractBilling.status === "ready"
+      ? contractBilling.history.filter((row) => invoiceCountsAsAlreadyInvoiced(row.status)).length
+      : 0;
+
+  return (
+    <div data-revenue-ar-v2 data-testid="invoice-detail" className="min-h-full min-w-0">
       {editing ? (
-        <section className={cn(invoicePanelClass, "p-4")}>
-          <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <label htmlFor="invoice-edit-client-name" className={invoiceLabelClass}>
-                Client name
-              </label>
-              <Input
-                id="invoice-edit-client-name"
-                value={editClientName}
-                onChange={(e) => setEditClientName(e.target.value)}
-                placeholder="Client"
-                className={cn("mt-1 min-h-[44px] sm:min-h-10", invoiceInputClass)}
-                aria-invalid={editAttempted && !editClientName.trim()}
-              />
-              {editAttempted && !editClientName.trim() ? (
-                <p className="mt-1 text-hh-metadata text-[var(--hh-danger)]">
-                  Client name is required.
-                </p>
-              ) : null}
-            </div>
-            <div>
-              <p className={invoiceLabelClass}>Project</p>
-              <p className="mt-1 rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 py-2 text-hh-body text-[var(--hh-text-primary)]">
-                {projectName}
-              </p>
-            </div>
-            <div>
-              <label htmlFor="invoice-edit-issue-date" className={invoiceLabelClass}>
-                Issue date
-              </label>
-              <Input
-                id="invoice-edit-issue-date"
-                type="date"
-                value={editIssueDate}
-                onChange={(e) => setEditIssueDate((e.target.value || editIssueDate).slice(0, 10))}
-                onInput={(e) =>
-                  setEditIssueDate((e.currentTarget.value || editIssueDate).slice(0, 10))
-                }
-                className={cn("mt-1 min-h-[44px] sm:min-h-10", invoiceInputClass)}
-              />
-            </div>
-            <div>
-              <label htmlFor="invoice-edit-due-date" className={invoiceLabelClass}>
-                Due date
-              </label>
-              <Input
-                id="invoice-edit-due-date"
-                type="date"
-                value={editDueDate}
-                onChange={(e) => setEditDueDate((e.target.value || editDueDate).slice(0, 10))}
-                onInput={(e) => setEditDueDate((e.currentTarget.value || editDueDate).slice(0, 10))}
-                className={cn("mt-1 min-h-[44px] sm:min-h-10", invoiceInputClass)}
-              />
-            </div>
-            <div>
-              <label htmlFor="invoice-edit-tax-pct" className={invoiceLabelClass}>
-                Tax %
-              </label>
-              <Input
-                id="invoice-edit-tax-pct"
-                type="number"
-                min="0"
-                step="0.01"
-                value={editTaxPct}
-                onChange={(e) => setEditTaxPct(safeNumber(e.target.value))}
-                className={cn("mt-1 min-h-[44px] sm:min-h-10", invoiceInputClass)}
-              />
-            </div>
-            <div>
-              <label htmlFor="invoice-edit-notes" className={invoiceLabelClass}>
-                Notes
-              </label>
-              <Input
-                id="invoice-edit-notes"
-                value={editNotes}
-                onChange={(e) => setEditNotes(e.target.value)}
-                placeholder="Terms / notes"
-                className={cn("mt-1 min-h-[44px] sm:min-h-10", invoiceInputClass)}
-              />
-            </div>
-            {editError ? (
-              <p className="text-hh-body text-[var(--hh-danger)] md:col-span-2">{editError}</p>
-            ) : null}
+        <div className="mx-auto grid max-w-[1200px] gap-4 px-4 py-4 md:grid-cols-2">
+          <div>
+            <label htmlFor="invoice-edit-client-name" className={invoiceLabelClass}>
+              Client name
+            </label>
+            <Input
+              id="invoice-edit-client-name"
+              value={editClientName}
+              onChange={(e) => setEditClientName(e.target.value)}
+              placeholder="Client"
+              className={cn("min-h-[44px] sm:min-h-10", invoiceInputClass)}
+              aria-invalid={editAttempted && !editClientName.trim()}
+            />
           </div>
-        </section>
-      ) : null}
-
-      <section aria-labelledby="invoice-overview-heading">
-        <h2
-          id="invoice-overview-heading"
-          className="mb-3 text-hh-section-title font-semibold text-[var(--hh-text-primary)]"
-        >
-          Overview
-        </h2>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <DetailMetric label="Balance due" value={formatCurrency(displayedBalance)} />
-          <DetailMetric label="Total" value={formatCurrency(displayedTotal)} />
-          <DetailMetric label="Paid" value={formatCurrency(invoice.paidTotal)} tone="positive" />
-          <DetailMetric
-            label={invoice.daysOverdue > 0 ? "Overdue" : "Due date"}
-            value={
-              invoice.daysOverdue > 0 ? `${invoice.daysOverdue} days` : formatDate(invoice.dueDate)
-            }
-            tone={invoice.daysOverdue > 0 ? "danger" : "muted"}
-          />
+          <div>
+            <label htmlFor="invoice-edit-issue-date" className={invoiceLabelClass}>
+              Issue date
+            </label>
+            <Input
+              id="invoice-edit-issue-date"
+              type="date"
+              value={editIssueDate}
+              onChange={(e) => setEditIssueDate((e.target.value || editIssueDate).slice(0, 10))}
+              className={cn("min-h-[44px] sm:min-h-10", invoiceInputClass)}
+            />
+          </div>
+          <div>
+            <label htmlFor="invoice-edit-due-date" className={invoiceLabelClass}>
+              Due date
+            </label>
+            <Input
+              id="invoice-edit-due-date"
+              type="date"
+              value={editDueDate}
+              onChange={(e) => setEditDueDate((e.target.value || editDueDate).slice(0, 10))}
+              className={cn("min-h-[44px] sm:min-h-10", invoiceInputClass)}
+            />
+          </div>
+          <div>
+            <label htmlFor="invoice-edit-tax-pct" className={invoiceLabelClass}>
+              Tax %
+            </label>
+            <Input
+              id="invoice-edit-tax-pct"
+              type="number"
+              min="0"
+              step="0.01"
+              value={editTaxPct}
+              onChange={(e) => setEditTaxPct(safeNumber(e.target.value))}
+              className={cn("min-h-[44px] sm:min-h-10", invoiceInputClass)}
+            />
+          </div>
+          <div>
+            <label htmlFor="invoice-edit-notes" className={invoiceLabelClass}>
+              Notes
+            </label>
+            <Input
+              id="invoice-edit-notes"
+              value={editNotes}
+              onChange={(e) => setEditNotes(e.target.value)}
+              placeholder="Terms / notes"
+              className={cn("min-h-[44px] sm:min-h-10", invoiceInputClass)}
+            />
+          </div>
+          {editError ? (
+            <p className="text-hh-body text-[var(--hh-danger)] md:col-span-2">{editError}</p>
+          ) : null}
+          <div className="flex gap-2 md:col-span-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              className={toolbarButtonClass}
+              onClick={cancelEditing}
+              disabled={primaryActionBusy}
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              className={primaryToolbarButtonClass}
+              onClick={handleSaveEdit}
+              disabled={primaryActionBusy}
+            >
+              <SubmitSpinner loading={editSaving} className="mr-2" />
+              Save
+            </Button>
+          </div>
         </div>
-      </section>
-
-      <InvoiceDetailPresentation>
-        <main className="min-w-0 space-y-5" aria-label="Invoice overview and activity">
-          <section
-            aria-label="Invoice overview line items"
-            className={cn(invoicePanelClass, "overflow-hidden")}
-          >
-            <div className={cn(invoicePanelHeaderClass, "flex items-center justify-between gap-3")}>
-              <div>
-                <h2 className={invoiceSectionTitleClass}>Line items</h2>
-                <p className={invoiceSectionDescriptionClass}>
-                  Billable work and materials on this invoice.
-                </p>
-              </div>
-              {editing ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="min-h-[44px] rounded-hh-standard border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] hover:bg-[var(--hh-l3-hover)] sm:min-h-9"
-                  onClick={() =>
-                    setEditLines((prev) => [...prev, { description: "", qty: 1, unitPrice: 0 }])
-                  }
+      ) : null}
+      <InvoiceDetailLayout
+        backHref={backHref}
+        backLabel={backLabel}
+        backTestId={estimateReturnPath ? "invoice-detail-return-to-estimate" : undefined}
+        invoiceNo={invoice.invoiceNo}
+        status={
+          <InvoiceStatusBadge
+            status={invoice.computedStatus}
+            label={invoiceStatusLabel(invoice.computedStatus)}
+          />
+        }
+        customer={
+          invoice.customerId ? (
+            <Link href={`/customers/${invoice.customerId}`} className="text-[var(--hh-link)]">
+              {invoice.clientName}
+            </Link>
+          ) : (
+            invoice.clientName
+          )
+        }
+        project={
+          invoice.projectId ? (
+            <Link href={`/projects/${invoice.projectId}`} className="text-[var(--hh-link)]">
+              {projectName}
+            </Link>
+          ) : (
+            projectName
+          )
+        }
+        customerProjectLabel={[invoice.clientName, projectName].filter(Boolean).join(" · ")}
+        issuedLabel={formatDate(invoice.issueDate)}
+        dueLabel={formatDate(invoice.dueDate)}
+        moreMenu={
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="secondary"
+                size="sm"
+                className={cn(
+                  toolbarButtonClass,
+                  "max-xl:text-[var(--hh-sidebar-text-strong)] max-xl:hover:bg-[var(--hh-sidebar-hover)] max-xl:hover:text-[var(--hh-sidebar-text-strong)]"
+                )}
+                disabled={primaryActionBusy}
+                aria-label="More actions"
+              >
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="end"
+              className="min-w-[220px] rounded-card border-[var(--hh-line)] bg-[var(--hh-surface)] p-1.5 text-[var(--hh-ink)] shadow-card"
+            >
+              <DropdownMenuItem
+                onSelect={(e) => {
+                  e.preventDefault();
+                  void handleDuplicateInvoice();
+                }}
+                disabled={primaryActionBusy || isVoid}
+              >
+                <Copy className="mr-2 h-4 w-4" />
+                Duplicate invoice
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link
+                  href={financePathWithReturn(
+                    `/financial/invoices/${id}/preview?download=1`,
+                    invoiceListReturnPath
+                  )}
+                  prefetch={false}
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  Download PDF
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onSelect={(e) => {
+                  e.preventDefault();
+                  void handleMarkSent();
+                }}
+                disabled={!isDraft || primaryActionBusy}
+              >
+                <Send className="mr-2 h-4 w-4" />
+                Mark as sent
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={(e) => {
+                  e.preventDefault();
+                  void handleBackToEdit();
+                }}
+                disabled={!canBackToEdit || primaryActionBusy}
+              >
+                <Pencil className="mr-2 h-4 w-4" />
+                Back to edit
+              </DropdownMenuItem>
+              {!isVoid ? (
+                <DropdownMenuItem
+                  className="text-[var(--hh-danger)] focus:bg-[var(--hh-danger-soft-fill)] focus:text-[var(--hh-danger)]"
+                  onSelect={(e) => {
+                    e.preventDefault();
+                    setVoidConfirmOpen(true);
+                  }}
                   disabled={primaryActionBusy}
                 >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add line
-                </Button>
-              ) : (
-                <span className="text-hh-metadata tabular-nums text-[var(--hh-text-tertiary)]">
-                  {invoice.lineItems.length} item{invoice.lineItems.length === 1 ? "" : "s"}
-                </span>
-              )}
-            </div>
-            {editing &&
-            editAttempted &&
-            !editLines.some((line) => line.description.trim().length > 0) ? (
-              <p className="px-4 pt-3 text-hh-metadata text-[var(--hh-danger)]">
-                At least one line item is required.
-              </p>
-            ) : null}
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[720px] text-hh-body text-[var(--hh-text-primary)]">
-                <thead>
-                  <tr className="border-b border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)]">
-                    <th className="px-4 py-3 text-left text-hh-status font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
-                      Description
-                    </th>
-                    <th className="px-4 py-3 text-right text-hh-status font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
-                      Qty
-                    </th>
-                    <th className="px-4 py-3 text-right text-hh-status font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
-                      Unit price
-                    </th>
-                    <th className="px-4 py-3 text-right text-hh-status font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] tabular-nums">
-                      Amount
-                    </th>
-                    {editing ? <th className="py-3 px-2 w-[52px]" /> : null}
-                  </tr>
-                </thead>
-                <tbody>
-                  {(editing ? editLines : invoice.lineItems).map((line, idx) => {
-                    const qty = safeNumber(line.qty);
-                    const unitPrice = safeNumber(line.unitPrice);
-                    const amount = lineExtension(qty, unitPrice);
-                    return (
-                      <tr
-                        key={idx}
-                        data-testid={`invoice-detail-line-${idx + 1}`}
-                        className="border-b border-[var(--hh-border)] transition-colors last:border-0 hover:bg-[var(--hh-l3-hover)]"
-                      >
-                        <td className="whitespace-pre-wrap px-4 py-3 text-[var(--hh-text-primary)]">
-                          {editing ? (
-                            <Input
-                              data-testid={`invoice-detail-edit-line-${idx + 1}-description-input`}
-                              value={line.description}
-                              onChange={(e) =>
-                                setEditLines((prev) =>
-                                  prev.map((current, i) =>
-                                    i === idx
-                                      ? { ...current, description: e.target.value }
-                                      : current
-                                  )
-                                )
-                              }
-                              placeholder="Description"
-                              aria-label={`Line item ${idx + 1} description`}
-                              aria-invalid={editAttempted && !line.description.trim()}
-                              className={invoiceInputClass}
-                            />
-                          ) : (
-                            <span data-testid={`invoice-detail-line-${idx + 1}-description`}>
-                              {line.description}
-                            </span>
-                          )}
-                        </td>
-                        <td
-                          data-testid={`invoice-detail-line-${idx + 1}-qty`}
-                          className="px-4 py-3 text-right tabular-nums text-[var(--hh-text-secondary)]"
-                        >
-                          {editing ? (
-                            <Input
-                              data-testid={`invoice-detail-edit-line-${idx + 1}-qty-input`}
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              value={qty}
-                              onChange={(e) =>
-                                setEditLines((prev) =>
-                                  prev.map((current, i) =>
-                                    i === idx
-                                      ? { ...current, qty: safeNumber(e.target.value) }
-                                      : current
-                                  )
-                                )
-                              }
-                              className={cn("text-right tabular-nums", invoiceInputClass)}
-                              aria-label={`Line item ${idx + 1} quantity`}
-                            />
-                          ) : (
-                            qty
-                          )}
-                        </td>
-                        <td
-                          data-testid={`invoice-detail-line-${idx + 1}-rate`}
-                          className="px-4 py-3 text-right tabular-nums text-[var(--hh-text-secondary)]"
-                        >
-                          {editing ? (
-                            <Input
-                              data-testid={`invoice-detail-edit-line-${idx + 1}-rate-input`}
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              value={unitPrice}
-                              onChange={(e) =>
-                                setEditLines((prev) =>
-                                  prev.map((current, i) =>
-                                    i === idx
-                                      ? { ...current, unitPrice: safeNumber(e.target.value) }
-                                      : current
-                                  )
-                                )
-                              }
-                              className={cn("text-right tabular-nums", invoiceInputClass)}
-                              aria-label={`Line item ${idx + 1} unit price`}
-                            />
-                          ) : (
-                            formatCurrency(unitPrice)
-                          )}
-                        </td>
-                        <td
-                          data-testid={`invoice-detail-line-${idx + 1}-amount`}
-                          className="px-4 py-3 text-right font-semibold tabular-nums text-[var(--hh-text-primary)]"
-                        >
-                          {formatCurrency(amount)}
-                        </td>
-                        {editing ? (
-                          <td className="py-3 px-2 text-right">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              className="h-8 rounded-hh-standard border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-danger)] hover:bg-[var(--hh-danger-soft-fill)] hover:text-[var(--hh-danger)]"
-                              aria-label="Remove line item"
-                              title="Remove line item"
-                              onClick={() =>
-                                setEditLines((prev) =>
-                                  prev.length <= 1 ? prev : prev.filter((_, i) => i !== idx)
-                                )
-                              }
-                              disabled={primaryActionBusy || editLines.length <= 1}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </td>
-                        ) : null}
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </section>
-
-          <section
-            aria-labelledby="invoice-activity-heading"
-            className={cn(invoicePanelClass, "p-4")}
-          >
-            <div className="mb-4 flex items-center justify-between">
-              <div>
-                <h2 id="invoice-activity-heading" className={invoiceSectionTitleClass}>
-                  Activity
-                </h2>
-                <p className={invoiceSectionDescriptionClass}>
-                  Payments, deposits, and receipt records tied to this invoice.
-                </p>
-              </div>
-            </div>
-
-            <h3 className={cn(invoiceLabelClass, "mb-2")}>Payments</h3>
-            <div className="grid gap-3 lg:grid-cols-3">
-              <div>
-                <h3 className={cn(invoiceLabelClass, "mb-2")}>Payments history</h3>
-                {payments.length === 0 ? (
-                  <EmptyLedgerState>No payments recorded.</EmptyLedgerState>
-                ) : (
-                  <div className={invoiceTableShellClass}>
-                    <table className="w-full text-hh-body text-[var(--hh-text-primary)]">
-                      <tbody>
-                        {payments.map((p) => (
-                          <tr key={p.id} className={invoiceTableRowClass}>
-                            <td className="px-3 py-2">
-                              <p className="tabular-nums text-[var(--hh-text-primary)]">
-                                {formatDate(p.date)}
-                              </p>
-                              <p className="text-hh-metadata text-[var(--hh-text-secondary)]">
-                                {p.method}
-                              </p>
-                            </td>
-                            <td className="px-3 py-2 text-right font-semibold tabular-nums text-[var(--hh-success)]">
-                              {formatCurrency(p.amount)}
-                            </td>
-                            <td className="w-16 px-2 py-2 text-right xl:w-10">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-11 min-h-11 xl:h-8 xl:min-h-8 rounded-hh-standard border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-danger)] hover:bg-[var(--hh-danger-soft-fill)] hover:text-[var(--hh-danger)]"
-                                onClick={() => requestDeletePayment(p.id)}
-                                disabled={deletingPaymentId === p.id}
-                                title="Delete payment"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <h3 className={cn(invoiceLabelClass, "mb-2")}>Payments</h3>
-                {paymentsReceived.length === 0 ? (
-                  <EmptyLedgerState>No payments received yet.</EmptyLedgerState>
-                ) : (
-                  <div className={invoiceTableShellClass}>
-                    <table className="w-full text-hh-body text-[var(--hh-text-primary)]">
-                      <tbody>
-                        {paymentsReceived.map((p) => (
-                          <tr key={p.id} className={invoiceTableRowClass}>
-                            <td className="px-3 py-2">
-                              <p className="tabular-nums text-[var(--hh-text-primary)]">
-                                {formatDate(p.payment_date)}
-                              </p>
-                              <p className="truncate text-hh-metadata text-[var(--hh-text-secondary)]">
-                                {p.payment_method ?? "No method"}
-                              </p>
-                              {(p.attachments ?? []).length > 0 ? (
-                                <Button
-                                  type="button"
-                                  variant="quiet"
-                                  size="sm"
-                                  data-testid="invoice-payment-attachment-action"
-                                  disabled={openingPaymentAttachmentsId === p.id}
-                                  onClick={() => void openPaymentAttachments(p.id, p.attachments)}
-                                  className="mt-1 h-11 min-h-11 max-w-full rounded-full border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-2.5 text-hh-status font-medium text-[var(--hh-text-secondary)] lg:h-7 lg:min-h-0"
-                                >
-                                  <Paperclip className="h-3 w-3 shrink-0" strokeWidth={1.7} />
-                                  <span className="truncate">
-                                    {openingPaymentAttachmentsId === p.id
-                                      ? "Opening..."
-                                      : `${p.attachments.length} attachment${
-                                          p.attachments.length === 1 ? "" : "s"
-                                        }`}
-                                  </span>
-                                </Button>
-                              ) : null}
-                            </td>
-                            <td className="px-3 py-2 text-right font-semibold tabular-nums text-[var(--hh-success)]">
-                              {formatCurrency(p.amount)}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <h3 className={cn(invoiceLabelClass, "mb-2")}>Deposits</h3>
-                {deposits.length === 0 ? (
-                  <EmptyLedgerState>No deposits linked.</EmptyLedgerState>
-                ) : (
-                  <div className={invoiceTableShellClass}>
-                    <table className="w-full text-hh-body text-[var(--hh-text-primary)]">
-                      <tbody>
-                        {deposits.map((d) => (
-                          <tr key={d.id} className={invoiceTableRowClass}>
-                            <td className="px-3 py-2">
-                              <p className="tabular-nums text-[var(--hh-text-primary)]">
-                                {formatDate((d as { date?: string }).date)}
-                              </p>
-                              <p className="truncate text-hh-metadata text-[var(--hh-text-secondary)]">
-                                {(d as { account?: string | null }).account ?? "No account"}
-                              </p>
-                            </td>
-                            <td className="px-3 py-2 text-right font-semibold tabular-nums text-[var(--hh-success)]">
-                              {formatCurrency(d.amount)}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-            </div>
-          </section>
-        </main>
-
-        <aside aria-label="Invoice context" className="space-y-4">
-          <section className={cn(invoicePanelClass, "p-4")}>
-            <h2 className={invoiceSectionTitleClass}>Invoice summary</h2>
-            <div className="mt-4 space-y-2 text-hh-body">
-              <div className="flex justify-between gap-4">
-                <span className="text-[var(--hh-text-secondary)]">Subtotal</span>
-                <span
-                  data-testid="invoice-detail-subtotal"
-                  className="tabular-nums text-[var(--hh-text-primary)]"
-                >
-                  {formatCurrency(displayedSubtotal)}
-                </span>
-              </div>
-              {displayedTax > 0 ? (
-                <div className="flex justify-between gap-4">
-                  <span className="text-[var(--hh-text-secondary)]">
-                    Tax{" "}
-                    {editing
-                      ? `(${editTaxPct || 0}%)`
-                      : invoice.taxPct != null
-                        ? `(${invoice.taxPct}%)`
-                        : ""}
-                  </span>
-                  <span
-                    data-testid="invoice-detail-tax"
-                    className="tabular-nums text-[var(--hh-text-primary)]"
-                  >
-                    {formatCurrency(displayedTax)}
-                  </span>
-                </div>
+                  <Ban className="mr-2 h-4 w-4" />
+                  Void Invoice
+                </DropdownMenuItem>
               ) : null}
-              <div className="flex justify-between gap-4 border-t border-[var(--hh-border)] pt-3 font-semibold text-[var(--hh-text-primary)]">
-                <span>Total</span>
-                <span data-testid="invoice-detail-total" className="tabular-nums">
-                  {formatCurrency(displayedTotal)}
+              <DropdownMenuItem
+                className="text-[var(--hh-danger)] focus:bg-[var(--hh-danger-soft-fill)] focus:text-[var(--hh-danger)]"
+                onSelect={(e) => {
+                  e.preventDefault();
+                  if (isVoid) handleDeleteRequest();
+                  else setDeleteBlockedOpen(true);
+                }}
+                disabled={primaryActionBusy || deleteCheckBusy}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete Invoice
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        }
+        desktopActions={
+          <>
+            <Button asChild variant="secondary" size="sm" className={toolbarButtonClass}>
+              <Link href={previewHref} prefetch={false} data-testid="invoice-detail-preview-link">
+                <Eye className="h-4 w-4" />
+                Preview PDF
+              </Link>
+            </Button>
+            <Button asChild variant="secondary" size="sm" className={toolbarButtonClass}>
+              <Link href={printHref} prefetch={false}>
+                <FileText className="h-4 w-4" />
+                Print
+              </Link>
+            </Button>
+            {canPay ? (
+              <Button asChild size="sm" className={primaryToolbarButtonClass}>
+                <Link href={recordPaymentHref}>
+                  <CircleDollarSign className="h-4 w-4" />
+                  Record payment
+                </Link>
+              </Button>
+            ) : isDraft ? (
+              <Button
+                size="sm"
+                className={primaryToolbarButtonClass}
+                onClick={startEditing}
+                disabled={primaryActionBusy}
+              >
+                <Pencil className="h-4 w-4" />
+                Edit Draft
+              </Button>
+            ) : null}
+          </>
+        }
+        mobilePrimary={
+          canPay ? (
+            <Button asChild size="sm" className="h-12 min-h-12 w-full">
+              <Link href={recordPaymentHref}>
+                <Plus className="h-4 w-4" />
+                Record payment
+              </Link>
+            </Button>
+          ) : isDraft ? (
+            <Button
+              size="sm"
+              className="h-12 min-h-12 w-full"
+              onClick={startEditing}
+              disabled={primaryActionBusy}
+            >
+              <Pencil className="h-4 w-4" />
+              Edit Draft
+            </Button>
+          ) : (
+            <span className="sr-only">No payment due</span>
+          )
+        }
+        previewHref={previewHref}
+        totalLabel={formatOverviewMoney(displayedTotal)}
+        totalDetail={
+          displayedTax > 0
+            ? `Subtotal ${formatOverviewMoney(displayedSubtotal)} + Tax ${formatOverviewMoney(displayedTax)}`
+            : null
+        }
+        paidLabel={formatOverviewMoney(invoice.paidTotal)}
+        paidDetail={
+          postedPayments.length === 0
+            ? "No payments yet"
+            : `${postedPayments.length} payment${postedPayments.length === 1 ? "" : "s"}${
+                lastPosted?.date ? ` · last ${formatDate(lastPosted.date, "compact")}` : ""
+              }`
+        }
+        balanceLabel={formatOverviewMoney(displayedBalance)}
+        outstandingLabel={totalCents > 0 ? `${outstandingPercent}% of invoice outstanding` : null}
+        dueValue={formatDate(invoice.dueDate)}
+        dueHint={dueHint}
+        dueHintWarn={Boolean(dueHint)}
+        paidPercent={paidPercent}
+        paidProgressLabel={`Paid ${paidPercent}% · ${formatOverviewMoney(invoice.paidTotal)} of ${formatOverviewMoney(displayedTotal)}`}
+        lineCountLabel={`${invoice.lineItems.length} line${invoice.lineItems.length === 1 ? "" : "s"} · read-only`}
+        editInvoice={
+          isDraft ? (
+            <Button
+              type="button"
+              variant="quiet"
+              size="sm"
+              className="min-h-[44px] text-[var(--hh-link)] xl:min-h-9"
+              onClick={startEditing}
+            >
+              <Pencil className="h-4 w-4" />
+              Edit invoice
+            </Button>
+          ) : canBackToEdit ? (
+            <Button
+              type="button"
+              variant="quiet"
+              size="sm"
+              className="min-h-[44px] text-[var(--hh-link)] xl:min-h-9"
+              onClick={() => void handleBackToEdit()}
+              disabled={primaryActionBusy}
+            >
+              <Pencil className="h-4 w-4" />
+              Edit invoice
+            </Button>
+          ) : null
+        }
+        lines={(editing ? editLines : invoice.lineItems).map((line, index) => {
+          const qty = safeNumber(line.qty);
+          const unitPrice = safeNumber(line.unitPrice);
+          return {
+            key: `${index}-${line.description}`,
+            description: line.description,
+            qtyLabel: String(qty),
+            rateLabel: formatOverviewMoney(unitPrice),
+            amountLabel: formatOverviewMoney(lineExtension(qty, unitPrice)),
+          };
+        })}
+        lineFooter={
+          <div className="text-hh-body">
+            <div className="flex items-baseline justify-between gap-3 py-1.5">
+              <span>Subtotal</span>
+              <span
+                data-testid="invoice-detail-subtotal"
+                className="tabular-nums font-semibold text-[var(--hh-ink)]"
+              >
+                {formatOverviewMoney(displayedSubtotal)}
+              </span>
+            </div>
+            {displayedTax > 0 ? (
+              <div className="flex items-baseline justify-between gap-3 py-1.5">
+                <span>Tax {taxPctLabel}%</span>
+                <span
+                  data-testid="invoice-detail-tax"
+                  className="tabular-nums font-semibold text-[var(--hh-ink)]"
+                >
+                  {formatOverviewMoney(displayedTax)}
                 </span>
               </div>
-              <div className="flex justify-between gap-4 text-[var(--hh-success)]">
-                <span>Paid</span>
-                <span className="tabular-nums">{formatCurrency(invoice.paidTotal)}</span>
-              </div>
-              <div className="flex justify-between gap-4 pt-1 text-hh-financial font-semibold text-[var(--hh-text-primary)]">
-                <span>Balance due</span>
-                <span data-testid="invoice-detail-balance" className="tabular-nums">
-                  {formatCurrency(displayedBalance)}
-                </span>
-              </div>
+            ) : null}
+            <div className="flex items-baseline justify-between gap-3 border-t border-[var(--hh-ink)] py-2">
+              <span className="font-semibold text-[var(--hh-ink)]">Invoice total</span>
+              <span className="text-num-m tabular-nums text-[var(--hh-ink)]">
+                {formatOverviewMoney(displayedTotal)}
+              </span>
             </div>
-          </section>
-
-          <section className={cn(invoicePanelClass, "p-4")}>
-            <h2 className={invoiceSectionTitleClass}>Invoice context</h2>
-            <div className="mt-4 space-y-3 text-hh-body">
-              <div>
-                <p className={invoiceLabelClass}>Client</p>
-                <p className="mt-1 font-medium text-[var(--hh-text-primary)]">
-                  {invoice.clientName}
-                </p>
-              </div>
-              <div>
-                <p className={invoiceLabelClass}>Project</p>
-                <p className="mt-1 text-[var(--hh-text-primary)]">{projectName}</p>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <p className={invoiceLabelClass}>Issue</p>
-                  <p className="mt-1 tabular-nums text-[var(--hh-text-primary)]">
-                    {formatDate(invoice.issueDate)}
-                  </p>
-                </div>
-                <div>
-                  <p className={invoiceLabelClass}>Due</p>
-                  <p className="mt-1 tabular-nums text-[var(--hh-text-primary)]">
-                    {formatDate(invoice.dueDate)}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </section>
-        </aside>
-      </InvoiceDetailPresentation>
+          </div>
+        }
+        paymentSummary={
+          postedPayments.length === 0
+            ? "No payments recorded"
+            : `${postedPayments.length} payment${postedPayments.length === 1 ? "" : "s"} · ${formatOverviewMoney(centsToMoney(postedCents))} received`
+        }
+        recordPayment={
+          canPay ? (
+            <Button
+              asChild
+              variant="quiet"
+              size="sm"
+              className="min-h-[44px] text-[var(--hh-link)] xl:min-h-9"
+            >
+              <Link href={recordPaymentHref}>
+                <Plus className="h-4 w-4" />
+                Record payment
+              </Link>
+            </Button>
+          ) : null
+        }
+        paymentRows={paymentRows}
+        paymentFooterAmount={
+          postedCents > 0
+            ? `−${formatOverviewMoney(centsToMoney(postedCents))}`
+            : formatOverviewMoney(0)
+        }
+        paymentFooterBalance={formatOverviewMoney(displayedBalance)}
+        renderPaymentMenu={renderPaymentMenu}
+        deposits={deposits.map((deposit) => ({
+          id: deposit.id,
+          dateLabel: formatDate(deposit.date),
+          account: deposit.account?.trim() || "No account",
+          amountLabel: formatOverviewMoney(deposit.amount),
+        }))}
+        notes={invoice.notes ?? ""}
+        editNotes={
+          isDraft ? (
+            <Button
+              type="button"
+              variant="quiet"
+              size="sm"
+              className="min-h-[44px] text-[var(--hh-link)] xl:min-h-9"
+              onClick={startEditing}
+            >
+              <Pencil className="h-4 w-4" />
+              Edit
+            </Button>
+          ) : null
+        }
+        contract={
+          contract
+            ? {
+                status: "ready",
+                percentLabel:
+                  contract.billedToDatePercent != null ? `${contract.billedToDatePercent}%` : null,
+                priorWidth,
+                thisWidth,
+                originalLabel: formatOverviewMoney(
+                  contractBilling.status === "ready" ? contractBilling.originalContract : 0
+                ),
+                approvedLabel: formatOverviewMoney(
+                  contractBilling.status === "ready" ? contractBilling.approvedChangeOrders : 0,
+                  { sign: "always" }
+                ),
+                approvedCount:
+                  contractBilling.status === "ready" ? contractBilling.approvedChangeOrderCount : 0,
+                revisedLabel: formatOverviewMoney(contract.revisedContract),
+                billedLabel: formatOverviewMoney(contract.billedToDateExcludingTax),
+                billedCount,
+                thisInvoiceLabel: formatOverviewMoney(contract.thisInvoiceExcludingTax),
+                remainingLabel: formatOverviewMoney(contract.remainingContract),
+                remainingNegative: contract.remainingContract < 0,
+              }
+            : {
+                status:
+                  contractBilling.status === "loading" || contractBilling.status === "idle"
+                    ? contractBilling.status
+                    : "unavailable",
+              }
+        }
+        billTo={{
+          customerName: invoice.clientName || "Customer",
+          customerHref: invoice.customerId ? `/customers/${invoice.customerId}` : null,
+          projectName,
+          projectHref: invoice.projectId ? `/projects/${invoice.projectId}` : null,
+          projectDetail: project?.projectManager ? `PM ${project.projectManager}` : null,
+          address: project?.address?.trim() || null,
+          viewHref: invoice.customerId
+            ? `/customers/${invoice.customerId}`
+            : invoice.projectId
+              ? `/projects/${invoice.projectId}`
+              : null,
+        }}
+        activityTitle={`Billing history for ${invoice.invoiceNo}`}
+        nextActivity={
+          showDueHint
+            ? invoice.daysOverdue > 0
+              ? `Overdue: ${formatOverviewMoney(displayedBalance)} · ${invoice.daysOverdue} day${invoice.daysOverdue === 1 ? "" : "s"}`
+              : `Next: ${formatOverviewMoney(displayedBalance)} due ${formatDate(invoice.dueDate)}`
+            : null
+        }
+        activity={activity}
+      />
 
       <ConfirmDialog
         open={!!paymentDeleteTarget}
@@ -1445,6 +1452,42 @@ export default function InvoiceDetailClient({
         onRefresh={() => void runDeleteDependencyCheck()}
         onUnlinkScheduleItem={handleUnlinkScheduleItem}
         unlinkingId={unlinkingScheduleItemId}
+      />
+
+      {editPaymentId ? (
+        <React.Suspense fallback={null}>
+          <EditPaymentReceivedModal
+            open
+            paymentId={editPaymentId}
+            onOpenChange={(open) => {
+              if (!open) setEditPaymentId(null);
+            }}
+            onSuccess={() => {
+              setEditPaymentId(null);
+              void refresh();
+            }}
+          />
+        </React.Suspense>
+      ) : null}
+      <PaymentReceiptPreviewModal
+        open={Boolean(receiptPaymentId)}
+        paymentId={receiptPaymentId}
+        onOpenChange={(open) => {
+          if (!open) setReceiptPaymentId(null);
+        }}
+      />
+      <ConfirmDialog
+        open={Boolean(voidPaymentId)}
+        onOpenChange={(open) => {
+          if (!open) setVoidPaymentId(null);
+        }}
+        title="Void payment?"
+        description="Void this payment? The invoice balance will be restored and the cash record will stay in the audit trail."
+        confirmLabel="Void payment"
+        destructive
+        loading={voidingPayment}
+        dismissBeforeAsync={false}
+        onConfirm={handleVoidLinkedPayment}
       />
     </div>
   );

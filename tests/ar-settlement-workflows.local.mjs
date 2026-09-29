@@ -79,7 +79,7 @@ export async function verifyARSettlementWorkflows({ actor, invoices, sql, t, mar
             await screenshot("invoice-unpaid");
 
             for (const [step, amount] of [3000, 7000].entries()) {
-              await page.getByRole("link", { name: "Receive Payment", exact: true }).click();
+              await page.getByRole("link", { name: "Record payment", exact: true }).first().click();
               const dialog = page.getByRole("dialog", { name: "Receive Payment" });
               await expect(dialog).toBeVisible();
               await expect(dialog.locator("select").first()).toHaveValue(invoice.id);

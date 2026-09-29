@@ -25,6 +25,7 @@ export type InvoiceContractBilling =
       status: "ready";
       originalContract: number;
       approvedChangeOrders: number;
+      approvedChangeOrderCount: number;
       previouslyInvoicedExcludingTax: number;
       history: InvoiceBillingHistoryRow[];
     };
@@ -47,8 +48,10 @@ function isClosedHistoryStatus(status: string): boolean {
 export function useInvoiceContractBilling(
   supabase: SupabaseClient | null,
   projectId: string,
-  excludeInvoiceId?: string | null
+  excludeInvoiceId?: string | null,
+  options?: { clientPending?: boolean }
 ): InvoiceContractBilling {
+  const clientPending = options?.clientPending === true;
   const [state, setState] = React.useState<InvoiceContractBilling>({ status: "idle" });
   const [refreshKey, setRefreshKey] = React.useState(0);
 
@@ -58,6 +61,10 @@ export function useInvoiceContractBilling(
   useOnAppSync(refreshBilling, [refreshBilling]);
 
   React.useEffect(() => {
+    if (clientPending) {
+      setState({ status: "loading" });
+      return;
+    }
     if (!projectId) {
       setState({ status: "idle" });
       return;
@@ -120,6 +127,7 @@ export function useInvoiceContractBilling(
       setState({
         status: "ready",
         ...assembled,
+        approvedChangeOrderCount: (changeOrderRes.data ?? []).length,
         history,
       });
     })();
@@ -127,7 +135,7 @@ export function useInvoiceContractBilling(
     return () => {
       cancelled = true;
     };
-  }, [excludeInvoiceId, projectId, refreshKey, supabase]);
+  }, [clientPending, excludeInvoiceId, projectId, refreshKey, supabase]);
 
   return state;
 }

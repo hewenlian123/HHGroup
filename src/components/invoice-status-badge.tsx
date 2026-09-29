@@ -14,10 +14,18 @@ const invoiceStatusVariant: Record<InvoiceComputedStatus, StatusBadgeVariant> = 
 
 export function InvoiceStatusBadge({
   status,
+  label,
   className,
 }: {
   status: InvoiceComputedStatus;
+  label?: string;
   className?: string;
 }) {
-  return <NeoStatus label={status} variant={invoiceStatusVariant[status]} className={className} />;
+  return (
+    <NeoStatus
+      label={label ?? status}
+      variant={invoiceStatusVariant[status]}
+      className={className}
+    />
+  );
 }

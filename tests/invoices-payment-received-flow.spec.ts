@@ -220,7 +220,7 @@ test("invoice project linkage, mark sent, and payment received flow stay in sync
   });
   expect(await projectOutstandingForInvoice(supabase, invoiceId)).toBe(225);
 
-  await page.getByRole("link", { name: "Receive Payment" }).click();
+  await page.getByRole("link", { name: "Record payment" }).first().click();
   await expect(page).toHaveURL(/\/financial\/payments\?/, { timeout: 30_000 });
   const url = new URL(page.url());
   expect(url.searchParams.get("invoiceId")).toBe(invoiceId);
@@ -258,7 +258,7 @@ test("invoice project linkage, mark sent, and payment received flow stay in sync
   });
   expect(await projectOutstandingForInvoice(supabase, invoiceId)).toBe(125);
 
-  await page.getByRole("link", { name: "Receive Payment" }).click();
+  await page.getByRole("link", { name: "Record payment" }).first().click();
   await expect(page).toHaveURL(/\/financial\/payments\?/, { timeout: 30_000 });
   const secondDialog = page.getByRole("dialog", { name: "Receive Payment" });
   await expect(secondDialog).toBeVisible({ timeout: 30_000 });
