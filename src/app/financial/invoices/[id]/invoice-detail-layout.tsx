@@ -4,10 +4,9 @@ import * as React from "react";
 import Link from "next/link";
 import { ArrowLeft, CircleDollarSign, Clock, Eye, Folder, MapPin, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { sectionCardClass as cardClass } from "@/components/ui/section-card";
+import { StickyActionBar } from "@/components/ui/sticky-action-bar";
 import { cn } from "@/lib/utils";
-
-const cardClass =
-  "overflow-hidden rounded-card border border-[var(--hh-line)] bg-[var(--hh-surface)] text-[var(--hh-text)] shadow-card";
 const titleClass = "text-title-card text-[var(--hh-ink)]";
 const metaClass = "mt-0.5 text-hh-metadata text-[var(--hh-muted)]";
 
@@ -862,14 +861,14 @@ export function InvoiceDetailLayout(props: InvoiceDetailLayoutProps) {
         </details>
       </div>
 
-      <div className="fixed inset-x-0 z-20 flex items-center gap-2.5 border-t border-[var(--hh-line)] bg-[var(--hh-surface)] px-4 py-3 xl:hidden bottom-[calc(3.5rem+env(safe-area-inset-bottom))]">
+      <StickyActionBar>
         <Button asChild variant="secondary" size="sm" className="h-12 min-h-12 w-12 shrink-0 px-0">
           <Link href={props.previewHref} aria-label="Preview PDF" prefetch={false}>
             <Eye className="h-5 w-5" />
           </Link>
         </Button>
         <div className="min-w-0 flex-1">{props.mobilePrimary}</div>
-      </div>
+      </StickyActionBar>
     </div>
   );
 }

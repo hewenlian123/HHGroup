@@ -44,9 +44,7 @@ export function FinanceReviewPageShell({
         <ExpenseOperationsWorkspaceNav showHeader={false} />
         <header className="finance-review-header" data-review-region="header">
           <div className="min-w-0">
-            <h1 className="text-hh-page-title tracking-normal text-[var(--hh-text-primary)]">
-              {title}
-            </h1>
+            <h1 className="text-title-page text-[var(--hh-ink)]">{title}</h1>
             <p className="text-sm text-[var(--hh-text-secondary)]">{description}</p>
           </div>
           <div className="finance-review-header-actions">{actions}</div>

@@ -38,7 +38,8 @@ import {
   type ExpenseIssueFocus,
 } from "@/lib/expense-header-line-mismatch";
 import { ExpenseBulkActionBar } from "./expense-bulk-action-bar";
-import { formatCurrency, formatDate } from "@/lib/formatters";
+import { formatDate } from "@/lib/formatters";
+import { formatOverviewMoney } from "@/lib/financial/project-overview-display";
 
 type InboxIssueId = "receipt" | "project" | "category" | "worker" | "duplicate";
 
@@ -206,7 +207,7 @@ function buildInboxIssues({
     issues.push({
       id: "duplicate",
       label: "Possible duplicate amount",
-      detail: `Possible duplicate amount: ${formatCurrency(rowTotal)}. Another loaded expense has a similar vendor, date, and amount.`,
+      detail: `Possible duplicate amount: ${formatOverviewMoney(rowTotal)}. Another loaded expense has a similar vendor, date, and amount.`,
     });
   }
   return issues;
@@ -557,10 +558,10 @@ function ExpenseHeaderLineMismatchIssueCell({
     >
       <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-hh-status leading-snug text-[var(--hh-text-secondary)]">
         <span className="font-semibold text-[var(--hh-warning)]">
-          Header: <span className="tabular-nums">{formatCurrency(mismatch.headerTotal)}</span>
+          Header: <span className="tabular-nums">{formatOverviewMoney(mismatch.headerTotal)}</span>
         </span>
-        <span className="tabular-nums">Lines: {formatCurrency(mismatch.linesTotal)}</span>
-        <span className="tabular-nums">Diff: {formatCurrency(mismatch.absDifference)}</span>
+        <span className="tabular-nums">Lines: {formatOverviewMoney(mismatch.linesTotal)}</span>
+        <span className="tabular-nums">Diff: {formatOverviewMoney(mismatch.absDifference)}</span>
       </div>
       <button
         type="button"
@@ -1008,7 +1009,7 @@ function DateGroupDesktopHeader({
                       : "!text-[var(--hh-text-primary)]"
                 )}
               >
-                {formatCurrency(-chunk.totalAmount)}
+                {formatOverviewMoney(-chunk.totalAmount)}
               </NeoAmount>
               {!ledgerMode && chunk.missingReceiptCount > 0 ? (
                 <>
@@ -1353,7 +1354,7 @@ function DesktopRows({
                               : "text-hh-body font-semibold leading-none"
                           )}
                         >
-                          {formatCurrency(-rowTotal)}
+                          {formatOverviewMoney(-rowTotal)}
                         </NeoAmount>
                       </td>
                       <td className="w-10 shrink-0 !px-1 text-right">
@@ -1453,7 +1454,7 @@ function DateGroupMobileHeader({
                       : "!text-[var(--hh-text-primary)]"
                 )}
               >
-                {formatCurrency(-chunk.totalAmount)}
+                {formatOverviewMoney(-chunk.totalAmount)}
               </NeoAmount>
               {!ledgerMode && chunk.missingReceiptCount > 0 ? (
                 <>
@@ -1749,7 +1750,7 @@ function MobileRows({
                                       : "text-sm"
                                   )}
                                 >
-                                  {formatCurrency(-rowTotal)}
+                                  {formatOverviewMoney(-rowTotal)}
                                 </NeoAmount>
                               </div>
                               {ledgerMode ? (

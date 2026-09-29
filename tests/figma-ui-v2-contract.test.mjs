@@ -172,7 +172,8 @@ test("Status badge and portrait line-item density use the Figma v2 contract", ()
     css.indexOf("@media (min-width: 1200px)", portraitStart)
   );
 
-  assert.match(statusBadge, /h-\[26px\].*rounded-hh-pill.*text-hh-status/s);
+  assert.match(statusBadge, /text-hh-status/);
+  assert.doesNotMatch(statusBadge, /h-\[26px\]/);
   assert.match(tokens, /--hh-radius-pill: 999px/);
   assert.doesNotMatch(header, /className="h-\[26px\]/);
   assert.match(header, /if \(status === "Sent"\) return \{ label: "Sent", variant: "info" \}/);

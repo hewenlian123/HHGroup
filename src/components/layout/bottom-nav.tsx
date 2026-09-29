@@ -105,7 +105,7 @@ const BottomNavItem = React.memo(function BottomNavItem({
         "flex min-h-[44px] min-w-[40px] flex-1 touch-manipulation cursor-pointer flex-col items-center justify-center gap-0.5 rounded-hh-standard text-xs",
         "transition-[background-color,color,opacity] duration-100 active:bg-[var(--hh-l3-pressed)] active:opacity-80",
         active
-          ? "bg-[var(--hh-surface-selected)] font-medium text-[var(--hh-accent-primary)]"
+          ? "font-medium"
           : "text-sm text-[var(--hh-text-muted)] hover:bg-[var(--hh-surface-hover)] hover:text-[var(--hh-text-secondary)]"
       )}
       aria-current={active ? "page" : undefined}

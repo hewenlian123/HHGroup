@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { formatDate } from "@/lib/formatters";
 import { formatOverviewMoney } from "@/lib/financial/project-overview-display";
 import { contractBillingSummary } from "@/lib/financial/remaining-contract";
+import { sectionCardClass as cardClass } from "@/components/ui/section-card";
 import { cn } from "@/lib/utils";
 import type { InvoiceContractBilling } from "@/app/financial/invoices/_components/use-invoice-contract-billing";
 
@@ -14,9 +15,6 @@ export const invoiceEditorFieldClass =
   "mt-1.5 h-11 rounded-hh-standard border-[var(--hh-line-input)] bg-[var(--hh-surface)] px-3 text-[var(--hh-ink)]";
 
 export const invoiceEditorLabelClass = "text-hh-label font-[650] uppercase text-[var(--hh-muted)]";
-
-const cardClass =
-  "overflow-hidden rounded-card border border-[var(--hh-line)] bg-[var(--hh-surface)] shadow-card";
 
 export function InvoiceEditorShell({
   header,

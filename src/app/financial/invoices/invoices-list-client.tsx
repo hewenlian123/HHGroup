@@ -56,7 +56,10 @@ import {
   MobileSearchFiltersRow,
   mobileListPagePaddingClass,
 } from "@/components/mobile/mobile-list-chrome";
-import { formatCurrency, formatDate, formatInteger } from "@/lib/formatters";
+import { formatDate, formatInteger } from "@/lib/formatters";
+import { formatOverviewMoney } from "@/lib/financial/project-overview-display";
+import { Money } from "@/components/ui/money";
+import { sectionCardClass } from "@/components/ui/section-card";
 import {
   checkInvoiceDeleteDependenciesAction,
   deleteInvoiceAction,
@@ -65,7 +68,7 @@ import {
 } from "./actions";
 import { InvoiceDeleteDependenciesDialog } from "./invoice-delete-dependencies-dialog";
 
-const invoicesShell = OS.card;
+const invoicesShell = sectionCardClass;
 
 const financeSectionLabelClass = cn(
   TYPO.sectionLabel,
@@ -645,7 +648,7 @@ function InvoicesPageInner({
     >
       <div
         className={cn(
-          "page-container page-shell-wide flex w-full flex-1 flex-col gap-hh-3",
+          "hh-list-frame flex w-full flex-1 flex-col gap-hh-3 py-3 md:py-6",
           mobileListPagePaddingClass
         )}
       >
@@ -657,12 +660,15 @@ function InvoicesPageInner({
             ·{" "}
             <Link
               href={`/financial/ar?${new URLSearchParams({ customerId })}`}
-              className="underline"
+              className="font-semibold text-[var(--hh-link)] underline decoration-[var(--hh-link-underline)] underline-offset-4"
             >
               Balances & history
             </Link>{" "}
             ·{" "}
-            <Link href="/financial/invoices" className="underline">
+            <Link
+              href="/financial/invoices"
+              className="font-semibold text-[var(--hh-link)] underline decoration-[var(--hh-link-underline)] underline-offset-4"
+            >
               All customers
             </Link>
           </p>
@@ -670,6 +676,7 @@ function InvoicesPageInner({
         <FinanceContextBack />
         <div className="hidden md:block">
           <PageHeader
+            variant="workspace"
             title={
               <span className="inline-flex items-center gap-hh-3">
                 Invoices
@@ -695,6 +702,7 @@ function InvoicesPageInner({
           />
         </div>
         <MobileListHeader
+          variant="workspace"
           title="Invoices"
           fab={<MobileFabPlus href="/financial/invoices/new" ariaLabel="New invoice" />}
         />
@@ -816,17 +824,16 @@ function InvoicesPageInner({
                       <span className="text-hh-status text-[var(--hh-text-secondary)]">
                         Outstanding
                       </span>
-                      <NeoAmount className="text-hh-body font-semibold">
-                        {formatCurrency(summary.outstanding)}
-                      </NeoAmount>
+                      <Money value={summary.outstanding} className="text-hh-body font-semibold" />
                     </span>
                     <span className="inline-flex items-baseline gap-1">
                       <span className="text-hh-status text-[var(--hh-text-secondary)]">
                         Overdue
                       </span>
-                      <NeoAmount tone="danger" className="text-hh-body font-semibold">
-                        {formatCurrency(summary.overdue)}
-                      </NeoAmount>
+                      <Money
+                        value={summary.overdue}
+                        className="text-hh-body font-semibold text-[var(--hh-danger)]"
+                      />
                     </span>
                   </div>
                 )}
@@ -853,7 +860,7 @@ function InvoicesPageInner({
                     <>
                       <CompactSummaryMetric
                         label="Non-void total"
-                        value={formatCurrency(summary.totalInvoiced)}
+                        value={formatOverviewMoney(summary.totalInvoiced)}
                       />
                       <CompactSummaryMetric
                         label="Open invoices"
@@ -862,11 +869,11 @@ function InvoicesPageInner({
                       <CompactSummaryMetric label="Paid" value={formatInteger(summary.paidCount)} />
                       <CompactSummaryMetric
                         label="Outstanding"
-                        value={formatCurrency(summary.outstanding)}
+                        value={formatOverviewMoney(summary.outstanding)}
                       />
                       <CompactSummaryMetric
                         label="Overdue"
-                        value={formatCurrency(summary.overdue)}
+                        value={formatOverviewMoney(summary.overdue)}
                       />
                       <CompactSummaryMetric
                         label="Draft/Void"
@@ -880,7 +887,7 @@ function InvoicesPageInner({
           </section>
         ) : null}
 
-        <NeoToolbar className="hidden gap-hh-2 md:flex md:flex-col md:items-stretch">
+        <NeoToolbar className="hh-filters-bar hidden gap-hh-2 md:flex md:flex-col md:items-stretch">
           <div className="flex items-center gap-hh-2">
             <div className="relative min-w-0 flex-1">
               <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--hh-text-tertiary)]" />
@@ -906,7 +913,7 @@ function InvoicesPageInner({
               <SlidersHorizontal className="h-3.5 w-3.5" aria-hidden />
               Filters
               {hasAdvancedFilters ? (
-                <span className="rounded-full bg-[var(--hh-l3-selected)] px-1.5 py-0.5 text-hh-status font-medium tracking-normal text-[var(--hh-action-primary)]">
+                <span className="rounded-full bg-[var(--hh-chip)] px-1.5 py-0.5 text-hh-status font-medium tracking-normal text-[var(--hh-ink)]">
                   {activeDrawerFilterCount}
                 </span>
               ) : null}
@@ -1084,8 +1091,9 @@ function InvoicesPageInner({
                 <Button
                   asChild
                   size="sm"
+                  variant="outline"
                   className={cn(
-                    OS.primaryButton,
+                    OS.secondaryButton,
                     "h-9 rounded-hh-standard shadow-none",
                     financeToolbarButtonTextClass
                   )}
@@ -1246,17 +1254,17 @@ function InvoicesPageInner({
                       </td>
                       <td className={cn(invoiceTableTdClass, "text-right")}>
                         <NeoAmount tone={balanceTone} className={financeAmountClass}>
-                          {formatCurrency(inv.balanceDue)}
+                          {formatOverviewMoney(inv.balanceDue)}
                         </NeoAmount>
                       </td>
                       <td className={cn(invoiceTableTdClass, "text-right")}>
                         <NeoAmount tone="muted" className={financeSecondaryAmountClass}>
-                          {formatCurrency(inv.paidTotal)}
+                          {formatOverviewMoney(inv.paidTotal)}
                         </NeoAmount>
                       </td>
                       <td className={cn(invoiceTableTdClass, "text-right")}>
                         <NeoAmount className={financeSecondaryAmountClass}>
-                          {formatCurrency(inv.total)}
+                          {formatOverviewMoney(inv.total)}
                         </NeoAmount>
                       </td>
                       <td
@@ -1421,11 +1429,11 @@ function InvoicesPageInner({
                     <div className="mt-2.5 flex flex-wrap border-y border-[var(--hh-border)]">
                       <InvoiceMiniMetric
                         label="Balance"
-                        value={formatCurrency(inv.balanceDue)}
+                        value={formatOverviewMoney(inv.balanceDue)}
                         emphasized
                       />
-                      <InvoiceMiniMetric label="Total" value={formatCurrency(inv.total)} />
-                      <InvoiceMiniMetric label="Paid" value={formatCurrency(inv.paidTotal)} />
+                      <InvoiceMiniMetric label="Total" value={formatOverviewMoney(inv.total)} />
+                      <InvoiceMiniMetric label="Paid" value={formatOverviewMoney(inv.paidTotal)} />
                     </div>
 
                     <div className="mt-2.5 flex gap-2">

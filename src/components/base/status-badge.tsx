@@ -47,7 +47,7 @@ export function StatusBadge({
   return (
     <Badge
       variant={statusBadgeVariantClass(variant)}
-      className={cn("h-[26px] shrink-0 gap-hh-1 !rounded-hh-pill px-2.5 text-hh-status", className)}
+      className={cn("shrink-0 gap-hh-1 px-2.5 text-hh-status", className)}
     >
       {showDot ? (
         <span

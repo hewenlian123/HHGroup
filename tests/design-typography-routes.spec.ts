@@ -46,8 +46,13 @@ for (const viewport of viewports) {
           const style = getComputedStyle(element);
           return [style.fontSize, style.lineHeight, style.fontWeight];
         });
+        const workspaceTitle = route === "/financial/invoices" || route === "/financial/expenses";
         expect(title).toEqual(
-          viewport.width < 768 ? ["20px", "26px", "600"] : ["24px", "30px", "600"]
+          workspaceTitle
+            ? ["29px", "36px", "650"]
+            : viewport.width < 768
+              ? ["20px", "26px", "600"]
+              : ["24px", "30px", "600"]
         );
       }
 

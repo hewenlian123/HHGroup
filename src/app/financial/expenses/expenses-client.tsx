@@ -139,7 +139,8 @@ import {
   type ExpenseReceiptApiItem,
   type ExpenseReceiptApiManifest,
 } from "@/lib/expense-receipt-api-client";
-import { formatCurrency, formatDate } from "@/lib/formatters";
+import { formatDate } from "@/lib/formatters";
+import { formatOverviewMoney } from "@/lib/financial/project-overview-display";
 import { OS } from "@/lib/typography";
 import { hawaiiTodayYmd } from "@/lib/hawaii-calendar-date";
 import { ExpenseOperationsWorkspaceNav } from "@/components/financial/expense-operations-workspace-nav";
@@ -305,8 +306,7 @@ const financeOsListShell = "overflow-hidden p-0";
 const financeToolbarButtonClass =
   "h-9 shrink-0 rounded-lg border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-xs font-medium text-[var(--hh-text-primary)] shadow-none transition-colors duration-150 hover:bg-[var(--hh-l3-hover)] focus-visible:ring-[var(--hh-focus-ring)]";
 
-const financePrimaryActionClass =
-  "border-transparent bg-[var(--hh-action-primary)] text-[var(--hh-action-primary-foreground)] shadow-none hover:bg-[var(--hh-action-primary)] focus-visible:ring-[var(--hh-focus-ring)]";
+const financePrimaryActionClass = "focus-visible:ring-[var(--hh-focus-ring)]";
 
 function mergeExpenseReviewPatch(e: Expense, p: ExpenseReviewSavePatch): Expense {
   const nextLines =
@@ -592,7 +592,7 @@ function TransactionInboxEntryActions({
         size={compact ? "sm" : quickButtonSize}
         className={cn(
           financePrimaryActionClass,
-          "shrink-0 shadow-none touch-manipulation",
+          "shrink-0 touch-manipulation",
           compact && "h-9 px-2.5 text-xs font-medium"
         )}
         disabled={!interactive}
@@ -1570,7 +1570,7 @@ export function ExpensesPageClient({
           metadata: {
             merchant: normalizedVendorLabel(row.vendorName),
             expenseDate: formatDate(row.date),
-            amount: formatCurrency(getExpenseTotal(row)),
+            amount: formatOverviewMoney(getExpenseTotal(row)),
             project: projectNames.join(", "),
             category: Array.from(
               new Set(row.lines.map((line) => line.category.trim()).filter(Boolean))
@@ -2593,7 +2593,7 @@ export function ExpensesPageClient({
   const desktopReviewToolbar = (
     <NeoToolbar
       data-inbox-toolbar={inboxMode ? "" : undefined}
-      className="hidden flex-wrap items-center justify-end gap-3 rounded-none border-0 border-b border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-4 py-3 shadow-none md:flex"
+      className="hh-filters-bar hidden flex-wrap items-center justify-end gap-3 md:flex"
     >
       <div
         data-expenses-list-toolbar={!inboxMode ? "desktop" : undefined}
@@ -3300,15 +3300,16 @@ export function ExpensesPageClient({
             {(["approved", "excluded", "failed"] as const)
               .map((outcome) => {
                 const rows = bulkResults.filter((row) => row.outcome === outcome);
-                return `${rows.length} ${outcome} · ${formatCurrency(rows.reduce((sum, row) => (row.amount === null ? sum : sum + row.amount), 0))}${rows.some((row) => row.amount === null) ? " + unknown amounts" : ""}`;
+                return `${rows.length} ${outcome} · ${formatOverviewMoney(rows.reduce((sum, row) => (row.amount === null ? sum : sum + row.amount), 0))}${rows.some((row) => row.amount === null) ? " + unknown amounts" : ""}`;
               })
               .join(" / ")}
           </p>
           <ul>
             {bulkResults.map((row) => (
               <li key={row.id}>
-                {row.label} · {row.amount === null ? "Unknown amount" : formatCurrency(row.amount)}{" "}
-                · {row.outcome}: {row.reason}
+                {row.label} ·{" "}
+                {row.amount === null ? "Unknown amount" : formatOverviewMoney(row.amount)} ·{" "}
+                {row.outcome}: {row.reason}
               </li>
             ))}
           </ul>
@@ -3384,9 +3385,7 @@ export function ExpensesPageClient({
                 className="expenses-page-header flex items-start justify-between gap-3 md:hidden"
               >
                 <div className="min-w-0 flex-1">
-                  <h1 className="text-hh-page-title tracking-normal text-[var(--hh-text-primary)]">
-                    {pageTitle}
-                  </h1>
+                  <h1 className="text-title-page text-[var(--hh-ink)]">{pageTitle}</h1>
                   <p
                     className={cn(
                       "text-hh-status leading-snug text-[var(--hh-text-secondary)]",
@@ -3409,6 +3408,7 @@ export function ExpensesPageClient({
                 className="expenses-page-header hidden md:block"
               >
                 <PageHeader
+                  variant="workspace"
                   title={pageTitle}
                   description={pageDescription}
                   actions={

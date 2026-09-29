@@ -15,6 +15,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { InvoiceStatusBadge } from "@/components/invoice-status-badge";
+import { sectionCardClass } from "@/components/ui/section-card";
 import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/formatters";
 import {
@@ -27,8 +28,7 @@ import type { InvoiceWithDerived } from "@/lib/invoices-db";
 import type { ChangeOrder } from "@/lib/change-orders-db";
 import type { ActivityLog } from "@/lib/activity-logs-db";
 
-const cardClass =
-  "flex min-w-0 flex-col overflow-hidden rounded-card border border-[var(--hh-line)] bg-[var(--hh-surface)] shadow-card";
+const cardClass = cn(sectionCardClass, "flex min-w-0 flex-col");
 const labelClass = "text-hh-label font-[650] uppercase text-[var(--hh-muted)]";
 const moneyClass = "hh-fin tabular-nums";
 

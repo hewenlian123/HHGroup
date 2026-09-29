@@ -12,6 +12,7 @@ export function PageHeader({
   children,
   actions,
   className,
+  variant = "default",
 }: {
   title: ReactNode;
   description?: ReactNode;
@@ -19,16 +20,31 @@ export function PageHeader({
   /** Right-side actions (rendered in header). Alias for children for compatibility. */
   actions?: ReactNode;
   className?: string;
+  /** `workspace` uses the live 29px page title. Default lists stay on the current title token. */
+  variant?: "default" | "workspace";
 }) {
   const rightContent = children ?? actions;
+  const workspace = variant === "workspace";
   return (
     <header data-page-header="true" className={cn("flex flex-col gap-1", className)}>
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between lg:gap-4">
         <div className="min-w-0">
-          <h1 className={cn(TYPO.pageTitle, "text-[var(--hh-text-primary)]")}>{title}</h1>
+          <h1
+            className={cn(
+              workspace ? "text-title-page text-[var(--hh-ink)]" : TYPO.pageTitle,
+              !workspace && "text-[var(--hh-text-primary)]"
+            )}
+          >
+            {title}
+          </h1>
           {description ? (
             <p
-              className={cn("mt-1 max-w-2xl", TYPO.pageSubtitle, "text-[var(--hh-text-secondary)]")}
+              className={cn(
+                "mt-1 max-w-2xl",
+                workspace
+                  ? "text-hh-metadata text-[var(--hh-muted)]"
+                  : cn(TYPO.pageSubtitle, "text-[var(--hh-text-secondary)]")
+              )}
             >
               {description}
             </p>

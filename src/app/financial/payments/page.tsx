@@ -77,7 +77,9 @@ import {
 } from "@/components/mobile/mobile-list-chrome";
 import { RowActionsMenu } from "@/components/base/row-actions-menu";
 import { ConfirmDialog } from "@/components/base";
-import { formatCurrency, formatDate, formatInteger } from "@/lib/formatters";
+import { formatDate, formatInteger } from "@/lib/formatters";
+import { formatOverviewMoney } from "@/lib/financial/project-overview-display";
+import { Money } from "@/components/ui/money";
 import { TYPO } from "@/lib/typography";
 import type { PaymentReceiptPreviewDto } from "@/lib/payment-receipt-preview-dto";
 
@@ -526,8 +528,12 @@ function PaymentsReceivedPageInner() {
 
   if (loading || loadError)
     return (
-      <div className="page-container page-stack py-4">
-        <PageHeader title="Payments Received" description="Billing · Money In" />
+      <div className="hh-list-frame page-stack py-4">
+        <PageHeader
+          variant="workspace"
+          title="Payments Received"
+          description="Billing · Money In"
+        />
         {loading ? (
           <LoadingState text="Loading received payments…" />
         ) : (
@@ -556,19 +562,20 @@ function PaymentsReceivedPageInner() {
     >
       <div
         className={cn(
-          "page-shell-wide mx-auto flex w-full max-w-[430px] flex-1 flex-col gap-3 px-4 py-2 pb-4 sm:max-w-[460px] md:gap-4 md:px-6 md:pb-6 md:pt-3",
+          "hh-list-frame flex w-full flex-1 flex-col gap-3 py-2 pb-4 md:gap-4 md:pb-6 md:pt-3",
           mobileListPagePaddingClass
         )}
       >
         <div className="hidden md:block">
           <PageHeader
-            className="gap-1 border-b border-[var(--hh-line)] pb-2 lg:items-baseline lg:gap-x-4 [&_h1]:text-title-page [&_h1]:text-[var(--hh-ink)] [&_p]:mt-0 [&_p]:text-hh-metadata [&_p]:text-[var(--hh-muted)]"
+            variant="workspace"
+            className="gap-1 border-b border-[var(--hh-line)] pb-2"
             title="Payments Received"
             subtitle="Cash collection and payment history across customers and invoices."
             actions={
               <Button
                 size="sm"
-                className="min-h-11 w-full shrink-0 gap-1.5 shadow-none sm:w-auto"
+                className="min-h-11 w-full shrink-0 gap-1.5 sm:w-auto"
                 onClick={openReceivePayment}
               >
                 <Plus className="h-3.5 w-3.5" aria-hidden />
@@ -579,6 +586,7 @@ function PaymentsReceivedPageInner() {
         </div>
 
         <MobileListHeader
+          variant="workspace"
           title="Payments Received"
           fab={<MobileFabButton ariaLabel="Receive payment" onClick={openReceivePayment} />}
         />
@@ -640,7 +648,12 @@ function PaymentsReceivedPageInner() {
                 </p>
               </div>
               <div className="flex flex-col gap-2 sm:flex-row">
-                <Button asChild size="sm" className="min-h-11 justify-center md:min-h-9">
+                <Button
+                  asChild
+                  size="sm"
+                  variant="outline"
+                  className="min-h-11 justify-center md:min-h-9"
+                >
                   <Link href={`/financial/invoices/${paymentReturnContext.invoiceId}`}>
                     View Invoice
                   </Link>
@@ -676,9 +689,10 @@ function PaymentsReceivedPageInner() {
                 <div className="text-hh-table-header font-medium uppercase tracking-normal text-[var(--hh-muted)]">
                   Total received
                 </div>
-                <div className="mt-0.5 text-num-l tabular-nums text-[var(--hh-ink)]">
-                  {formatCurrency(summary.totalReceived)}
-                </div>
+                <Money
+                  value={summary.totalReceived}
+                  className="mt-0.5 block text-num-l text-[var(--hh-ink)]"
+                />
               </div>
             </div>
             <div className={cn(kpiTile, "flex items-center gap-2 px-3 py-2.5")}>
@@ -702,9 +716,10 @@ function PaymentsReceivedPageInner() {
                 <div className="text-hh-table-header font-medium uppercase tracking-normal text-[var(--hh-muted)]">
                   This month
                 </div>
-                <div className="mt-0.5 text-num-l tabular-nums text-[var(--hh-ink)]">
-                  {formatCurrency(summary.thisMonthTotal)}
-                </div>
+                <Money
+                  value={summary.thisMonthTotal}
+                  className="mt-0.5 block text-num-l text-[var(--hh-ink)]"
+                />
               </div>
             </div>
             <div className={cn(kpiTile, "flex items-center gap-2 px-3 py-2.5")}>
@@ -849,7 +864,8 @@ function PaymentsReceivedPageInner() {
             </p>
             <Button
               size="sm"
-              className="mt-4 h-11 min-h-[44px] lg:h-9 lg:min-h-0 rounded-hh-compact shadow-none"
+              variant="outline"
+              className="mt-4 h-11 min-h-[44px] rounded-hh-compact lg:h-9 lg:min-h-0"
               onClick={openReceivePayment}
             >
               <Plus className="mr-2 h-3.5 w-3.5" aria-hidden />
@@ -950,7 +966,7 @@ function PaymentsReceivedPageInner() {
                         {formatDate(row.payment_date)}
                       </div>
                       <div className={cn(TYPO.amount, "text-sm text-[var(--hh-success)]")}>
-                        {formatCurrency(row.amount)}
+                        {formatOverviewMoney(row.amount)}
                       </div>
                     </div>
 
@@ -1214,7 +1230,7 @@ function PaymentsReceivedPageInner() {
                     Invoice: detailPayment.invoice_no || "—",
                     Customer: detailPayment.customer_name || "—",
                     Project: detailPayment.project_name || "—",
-                    Amount: formatCurrency(detailPayment.amount),
+                    Amount: formatOverviewMoney(detailPayment.amount),
                     Method: detailPayment.payment_method || "—",
                     Account: detailPayment.deposit_account || "—",
                     Date: formatDate(detailPayment.payment_date),

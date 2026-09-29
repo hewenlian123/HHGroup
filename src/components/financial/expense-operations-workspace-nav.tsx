@@ -106,9 +106,7 @@ export function ExpenseOperationsWorkspaceNav({
       >
         {showHeader ? (
           <div className="min-w-0">
-            <h1 className="text-hh-page-title tracking-normal text-[var(--hh-text-primary)]">
-              Expenses
-            </h1>
+            <h1 className="text-title-page text-[var(--hh-ink)]">Expenses</h1>
             <p className="mt-0.5 text-hh-status leading-snug text-[var(--hh-text-secondary)]">
               Review receipts, complete expenses, and follow expense history.
             </p>

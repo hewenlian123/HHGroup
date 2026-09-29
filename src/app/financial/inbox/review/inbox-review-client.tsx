@@ -6,6 +6,8 @@ import { ConfirmDialog } from "@/components/base";
 import { PageHeader } from "@/components/page-header";
 import { useToast } from "@/components/toast/toast-provider";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/system-state";
+import { sectionCardClass } from "@/components/ui/section-card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -16,6 +18,7 @@ import { hawaiiTodayYmd } from "@/lib/hawaii-calendar-date";
 import type { Expense, ExpenseLine } from "@/lib/expenses-db";
 import type { ExpensesInitialData } from "@/lib/queries/expenses";
 import { expenseMatchesInboxPool } from "@/lib/expense-workflow-status";
+import { cn } from "@/lib/utils";
 
 type DraftLine = {
   key: string;
@@ -395,6 +398,7 @@ export function InboxReviewClient({ initialData }: { initialData: ExpensesInitia
   return (
     <div data-testid="inbox-review-queue" className="space-y-4 py-4">
       <PageHeader
+        variant="workspace"
         title="Review invoices"
         description="Check the scan, confirm the coding, then approve. A approves, S skips, Delete removes."
         actions={
@@ -404,12 +408,18 @@ export function InboxReviewClient({ initialData }: { initialData: ExpensesInitia
         }
       />
       {items.length === 0 || !current || !draft ? (
-        <p className="text-[var(--hh-text-secondary)]">No invoices are waiting for review.</p>
+        <EmptyState
+          title="No invoices are waiting for review"
+          description="Approved and skipped drafts leave this queue."
+        />
       ) : (
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
           <section
             data-testid="inbox-review-document"
-            className="min-h-[280px] w-full overflow-hidden rounded-xl border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] lg:sticky lg:top-4 lg:min-h-[70vh] lg:w-1/2"
+            className={cn(
+              sectionCardClass,
+              "min-h-[280px] w-full lg:sticky lg:top-4 lg:min-h-[70vh] lg:w-1/2"
+            )}
           >
             {receipt?.mimeType.includes("pdf") ? (
               <iframe
@@ -431,7 +441,7 @@ export function InboxReviewClient({ initialData }: { initialData: ExpensesInitia
             )}
           </section>
           <form
-            className="w-full space-y-3 lg:w-1/2"
+            className={cn(sectionCardClass, "w-full space-y-3 p-4 lg:w-1/2")}
             onSubmit={(event) => {
               event.preventDefault();
               void approve();

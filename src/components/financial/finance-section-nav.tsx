@@ -42,7 +42,7 @@ export function FinanceSectionNav() {
     : [...items].sort((a, b) => b[1].length - a[1].length).find(([, path]) => matches(path))?.[1];
   const customerId = isBilling ? params.get("customerId") : null;
   return (
-    <div className="page-container min-w-0 py-2 print:hidden" data-finance-section>
+    <div className="hh-list-frame min-w-0 py-2 print:hidden" data-finance-section>
       <div className="flex min-w-0 flex-wrap items-center gap-2 border-b border-[var(--hh-border)] pb-2">
         <span className="text-hh-control font-semibold text-[var(--hh-text-primary)]">
           {isBilling

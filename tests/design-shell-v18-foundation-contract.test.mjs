@@ -48,9 +48,14 @@ test("Figma v2 global search, create action, and mobile nav use semantic light r
   assert.match(topbar, /!text-\[var\(--shell-action-text\)\]/);
   assert.match(topbar, /bg-\[var\(--hh-surface-subtle\)\]/);
   assert.doesNotMatch(topbar, /data-operational-theme-toggle|<Moon|<Sun/);
+  assert.doesNotMatch(bottomNav, /bg-\[var\(--hh-surface-selected\)\]/);
+  assert.doesNotMatch(
+    source("src/components/layout/app-shell-visual.css"),
+    /\[data-app-bottom-nav\] a\[aria-current="page"\]/
+  );
   assert.match(
-    bottomNav,
-    /bg-\[var\(--hh-surface-selected\)\][^"\n]*text-\[var\(--hh-accent-primary\)\]/
+    source("src/styles/tokens.css"),
+    /nav\[aria-label="Bottom navigation"\][\s\S]*a\[aria-current="page"\]::before/
   );
   assert.match(bottomNav, /min-h-\[44px\]/);
 });

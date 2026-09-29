@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { ExpenseOperationsWorkspaceNav } from "@/components/financial/expense-operations-workspace-nav";
 import type { Expense } from "@/lib/expenses-db";
 import { getExpenseTotal } from "@/lib/expense-domain";
-import { formatCurrency, formatDate } from "@/lib/formatters";
+import { formatDate } from "@/lib/formatters";
+import { formatOverviewMoney } from "@/lib/financial/project-overview-display";
 import { hawaiiTodayYmd } from "@/lib/hawaii-calendar-date";
 import { expenseInboxDuplicateIdSet } from "@/lib/expense-inbox-dup";
 import {
@@ -105,7 +106,7 @@ export function ExpensesOverview({
       </header>
       <dl className="expense-overview-kpis" aria-label="Expense overview">
         {[
-          { label: "This month · completed", value: formatCurrency(summary.monthTotal) },
+          { label: "This month · completed", value: formatOverviewMoney(summary.monthTotal) },
           { label: "Completed expenses", value: summary.archivedCount },
           { label: "Receipts to review", value: reviewStats.pending },
           { label: "Missing receipt", value: missing },
@@ -131,7 +132,7 @@ export function ExpensesOverview({
               data-zero-trend={zeroTrend}
               role="img"
               aria-label={months
-                .map((m) => `${m.label} ${m.key.slice(0, 4)}: ${formatCurrency(m.total)}`)
+                .map((m) => `${m.label} ${m.key.slice(0, 4)}: ${formatOverviewMoney(m.total)}`)
                 .join("; ")}
             >
               {months.map((m, i) => (
@@ -145,7 +146,7 @@ export function ExpensesOverview({
                     className="expense-chart-value"
                     data-amount-direction={m.total < 0 ? "positive" : "neutral"}
                   >
-                    {formatCurrency(m.total)}
+                    {formatOverviewMoney(m.total)}
                   </span>
                   <div className="expense-chart-track">
                     <div
@@ -161,8 +162,8 @@ export function ExpensesOverview({
             </div>
             {zeroTrend ? (
               <p className="expense-chart-zero-note">
-                All six monthly totals are {formatCurrency(0)}. Monthly activity appears here as
-                totals change.
+                All six monthly totals are {formatOverviewMoney(0)}. Monthly activity appears here
+                as totals change.
               </p>
             ) : null}
             <p className="expense-chart-note">
@@ -236,7 +237,7 @@ export function ExpensesOverview({
                         amount < 0 ? "positive" : amount > 0 ? "negative" : "neutral"
                       }
                     >
-                      {formatCurrency(amount)}
+                      {formatOverviewMoney(amount)}
                     </span>
                   </Link>
                 );
@@ -292,7 +293,7 @@ export function ExpensesOverview({
             </header>
             <div className="expense-reimbursement-summary">
               <span>Completed reimbursement expenses</span>
-              <strong>{formatCurrency(summary.reimbursementTotal)}</strong>
+              <strong>{formatOverviewMoney(summary.reimbursementTotal)}</strong>
               <p>Recorded expense total, not an outstanding payment balance.</p>
               <Link href="/labor/reimbursements" prefetch={false}>
                 Open reimbursements <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
