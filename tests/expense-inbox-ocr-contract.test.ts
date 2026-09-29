@@ -53,6 +53,22 @@ test("approval accepts unpaid settlement and review queue is wired", async () =>
   assert.match(worker, /processInboxOcrBatch/);
 });
 
+test("ocr line writes stay on inbox drafts and the worker forwards bearer auth", async () => {
+  const job = await source("src/lib/expense-inbox-ocr-job.ts");
+  const worker = await source("src/app/api/financial/expenses/ocr-worker/route.ts");
+  const lineUpdate = job.indexOf('.from("expense_lines")\n          .update');
+  const draftGuard = job.lastIndexOf("isStillInboxDraft", lineUpdate);
+  assert.ok(lineUpdate > 0, "line amount update exists");
+  assert.ok(
+    draftGuard > 0 && draftGuard < lineUpdate,
+    "line amount update follows the draft check"
+  );
+  assert.match(worker, /parseRequestAuthorization/);
+  assert.match(worker, /authorization\.kind === "bearer"/);
+  assert.match(worker, /headers\.authorization = authorization\.authorization/);
+  assert.match(worker, /cookie: request\.headers\.get\("cookie"\)/);
+});
+
 test("canonical cost still treats inbox capture as excluded until approval", async () => {
   const cost = await source("src/lib/expense-canonical-cost.ts");
   assert.match(cost, /inbox_capture === true/);

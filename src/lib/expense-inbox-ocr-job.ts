@@ -229,6 +229,17 @@ function withPreviousValue<T>(query: T, column: string, previous: string | numbe
   return filtered.eq(column, previous);
 }
 
+async function isStillInboxDraft(supabase: SupabaseClient, expenseId: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from("expenses")
+    .select("id")
+    .eq("id", expenseId)
+    .in("status", [...INBOX_OCR_DRAFT_STATUSES])
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return Boolean(data);
+}
+
 async function writeDraftColumn(
   supabase: SupabaseClient,
   expenseId: string,
@@ -420,7 +431,11 @@ export async function processClaimedInboxOcrJob(
       if (error) throw new Error(error.message);
     }
 
-    if (merged.patch.lineAmount != null && lineRows[0]?.id) {
+    if (
+      merged.patch.lineAmount != null &&
+      lineRows[0]?.id &&
+      (await isStillInboxDraft(supabase, expenseId))
+    ) {
       const lineWrite = withPreviousValue(
         supabase
           .from("expense_lines")

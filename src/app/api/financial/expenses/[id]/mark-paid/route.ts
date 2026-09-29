@@ -10,6 +10,14 @@ import {
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+/** Database refusals that mean mark-paid does not apply. Other errors stay visible. */
+const LEGACY_MARK_PAID_NO_OP =
+  /LEGACY_UNVERIFIED|Worker Expense is read-only|Worker Expense mutation requires canonical settlement|Canonical reimbursement Expense (?:identity|line) is immutable|Expense settlement requires canonical payment/;
+
+function isLegacyMarkPaidNoOp(message: string): boolean {
+  return LEGACY_MARK_PAID_NO_OP.test(message);
+}
+
 export async function POST(
   request: Request,
   { params }: { params: { id: string } }
@@ -73,7 +81,7 @@ export async function POST(
     })
     .eq("id", expenseId);
   if (error) {
-    if (current.paymentStatus == null || status === "paid") {
+    if (isLegacyMarkPaidNoOp(error.message)) {
       return NextResponse.json({ ok: true, expense: current, legacy: true });
     }
     return NextResponse.json({ ok: false, message: error.message }, { status: 500 });
