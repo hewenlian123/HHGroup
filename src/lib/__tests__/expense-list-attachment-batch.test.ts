@@ -219,6 +219,21 @@ describe("getExpenses attachment list hydration", () => {
       headerTotal: 10,
       sourceType: "company",
       subcontractDeduction: null,
+      ocrStatus: null,
+      ocrError: null,
+      ocrConfidence: null,
+      dueDate: null,
+      subtotal: null,
+      taxAmount: null,
+      vendorId: null,
+      vendorSuggestion: null,
+      paymentStatus: null,
+      paidOn: null,
+      duplicateExpenseId: null,
+      duplicateReason: null,
+      duplicateDismissedAt: null,
+      inboxCapture: false,
+      fileSha256: null,
     });
     expect(byId.get("expense-002")?.attachments).toEqual([
       {

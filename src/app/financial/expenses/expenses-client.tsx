@@ -8,11 +8,13 @@ import {
   type ReviewIssue,
 } from "@/lib/expense-operations-client";
 import { expenseRequiresReceiptReview } from "@/lib/expense-workflow-status";
+import { expenseMatchesSettlementFilter } from "@/lib/expense-payment-settlement";
 
 import { FinanceContextBack } from "@/components/financial/finance-context-back";
 
 import { useFinanceQueryState } from "@/hooks/use-finance-query-state";
 
+import Link from "next/link";
 import "./expenses-ui-theme.css";
 import { ExpensesOverview } from "./expenses-overview";
 import { ErrorRetry } from "@/components/ui/system-state";
@@ -598,6 +600,11 @@ function TransactionInboxEntryActions({
         <Plus className="mr-1 h-4 w-4 shrink-0" aria-hidden />
         New Expense
       </Button>
+      <Button asChild variant="outline" size="sm" className={cn(OS.secondaryButton, "shrink-0")}>
+        <Link href="/financial/inbox/review" data-testid="open-inbox-review">
+          Review queue
+        </Link>
+      </Button>
       <Button
         type="button"
         variant="outline"
@@ -846,6 +853,7 @@ export function ExpensesPageClient({
   });
   const [sourceTypeFilter, setSourceTypeFilter] = useFinanceQueryState("sourceType", "");
   const [statusFilter, setStatusFilter] = useFinanceQueryState("expense_status", "");
+  const [settlementFilter, setSettlementFilter] = useFinanceQueryState("expense_settlement", "");
   const [activeExpenseId, setActiveExpenseId] = React.useState<string | null>(null);
   const selectedExpenseIdFromUrl = (searchParams.get("ops_record") ?? "").trim();
   const receiptEvidenceRequested = searchParams.get("ops_preview") === "receipt";
@@ -928,6 +936,10 @@ export function ExpensesPageClient({
     () => searchParams.get("new_expense") === "1"
   );
   const [uploadReceiptsOpen, setUploadReceiptsOpen] = React.useState(false);
+  const [markPaidExpense, setMarkPaidExpense] = React.useState<Expense | null>(null);
+  const [markPaidAccountId, setMarkPaidAccountId] = React.useState("");
+  const [markPaidOn, setMarkPaidOn] = React.useState("");
+  const [markPaidBusy, setMarkPaidBusy] = React.useState(false);
 
   /** Open directly from the user gesture; the modal itself suppresses early outside interactions on iOS. */
   const openUploadReceiptsModal = React.useCallback(() => {
@@ -1101,6 +1113,18 @@ export function ExpensesPageClient({
     if (categoryFilter)
       list = list.filter((e) => e.lines.some((l) => l.category === categoryFilter));
     if (statusFilter) list = list.filter((e) => expenseStatusUiLabel(e.status) === statusFilter);
+    if (settlementFilter) {
+      list = list.filter((e) =>
+        expenseMatchesSettlementFilter(
+          {
+            paymentStatus: e.paymentStatus,
+            paymentAccountId: e.paymentAccountId,
+            workflowStatus: e.status,
+          },
+          settlementFilter
+        )
+      );
+    }
     if (sourceTypeFilter)
       list = list.filter((e) => (e.sourceType ?? "company") === sourceTypeFilter);
     if (expenseDateFilter.kind === "range") {
@@ -1128,6 +1152,7 @@ export function ExpensesPageClient({
     expenseDateFilter,
     sourceTypeFilter,
     statusFilter,
+    settlementFilter,
     projectNameById,
     workerNameById,
     inboxMode,
@@ -1346,6 +1371,34 @@ export function ExpensesPageClient({
     window.addEventListener(INBOX_DRAFT_OCR_WRITEBACK_EVENT, onOcrWriteback);
     return () => window.removeEventListener(INBOX_DRAFT_OCR_WRITEBACK_EVENT, onOcrWriteback);
   }, [inboxMode, refresh, toast]);
+
+  const inboxOcrPending = inboxMode
+    ? expenses.some(
+        (expense) => expense.ocrStatus === "pending" || expense.ocrStatus === "processing"
+      )
+    : false;
+  React.useEffect(() => {
+    if (!inboxOcrPending) return;
+    let stopped = false;
+    const drain = async () => {
+      if (stopped) return;
+      try {
+        await fetch("/api/financial/expenses/ocr-worker", {
+          method: "POST",
+          credentials: "same-origin",
+        });
+        if (!stopped) await refresh();
+      } catch {
+        /* The next poll retries a failed OCR batch. */
+      }
+    };
+    void drain();
+    const timer = window.setInterval(() => void drain(), 4000);
+    return () => {
+      stopped = true;
+      window.clearInterval(timer);
+    };
+  }, [inboxOcrPending, refresh]);
 
   const receiptPreviewRef = React.useRef(receiptPreview);
   receiptPreviewRef.current = receiptPreview;
@@ -2582,6 +2635,18 @@ export function ExpensesPageClient({
                 { value: "Needs Review", label: "Needs Review" },
               ]}
             />
+            <div data-testid="expense-settlement-filter">
+              <FilterSelect
+                label="Filter by paid status"
+                value={settlementFilter}
+                onValueChange={setSettlementFilter}
+                options={[
+                  { value: "", label: "Paid and unpaid" },
+                  { value: "unpaid", label: "Unpaid" },
+                  { value: "paid", label: "Paid" },
+                ]}
+              />
+            </div>
             <ExpenseDateRangeFilter
               value={expenseDateFilter}
               onChange={onExpenseDateFilterChange}
@@ -3014,6 +3079,7 @@ export function ExpensesPageClient({
                       prefetchReceiptUrls,
                       openExpensePreview,
                       handleDelete,
+                      onMarkPaid: (expense) => setMarkPaidExpense(expense),
                     }}
                   />
                 </div>
@@ -3340,6 +3406,102 @@ export function ExpensesPageClient({
               onConfirm={confirmDeleteExpense}
               returnFocusRef={deleteReturnFocusRef}
             />
+            {markPaidExpense ? (
+              <div
+                role="dialog"
+                aria-labelledby="mark-paid-title"
+                data-testid="mark-paid-dialog"
+                className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center"
+              >
+                <form
+                  className="w-full max-w-md space-y-3 rounded-xl border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-4"
+                  onSubmit={async (event) => {
+                    event.preventDefault();
+                    setMarkPaidBusy(true);
+                    try {
+                      const response = await fetch(
+                        `/api/financial/expenses/${encodeURIComponent(markPaidExpense.id)}/mark-paid`,
+                        {
+                          method: "POST",
+                          credentials: "same-origin",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            paymentAccountId: markPaidAccountId,
+                            paidOn: markPaidOn || hawaiiTodayYmd(),
+                          }),
+                        }
+                      );
+                      const body = (await response.json()) as { message?: string };
+                      if (!response.ok) throw new Error(body.message || "Could not mark paid.");
+                      setMarkPaidExpense(null);
+                      await refresh();
+                      toast({ title: "Expense marked paid", variant: "success" });
+                    } catch (error) {
+                      toast({
+                        title: "Could not mark paid",
+                        description: error instanceof Error ? error.message : "Try again.",
+                        variant: "error",
+                      });
+                    } finally {
+                      setMarkPaidBusy(false);
+                    }
+                  }}
+                >
+                  <h2
+                    id="mark-paid-title"
+                    className="text-base font-semibold text-[var(--hh-text-primary)]"
+                  >
+                    Mark paid
+                  </h2>
+                  <label
+                    className="block text-sm text-[var(--hh-text-secondary)]"
+                    htmlFor="mark-paid-account"
+                  >
+                    Payment account
+                    <select
+                      id="mark-paid-account"
+                      required
+                      value={markPaidAccountId}
+                      onChange={(event) => setMarkPaidAccountId(event.target.value)}
+                      className="mt-1 h-11 w-full rounded-lg border border-[var(--hh-border)] bg-[var(--hh-l1-workspace)] px-2"
+                    >
+                      <option value="">Choose account</option>
+                      {paymentAccountsForBulk.map((account) => (
+                        <option key={account.id} value={account.id}>
+                          {account.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label
+                    className="block text-sm text-[var(--hh-text-secondary)]"
+                    htmlFor="mark-paid-date"
+                  >
+                    Paid on
+                    <input
+                      id="mark-paid-date"
+                      type="date"
+                      required
+                      value={markPaidOn || hawaiiTodayYmd()}
+                      onChange={(event) => setMarkPaidOn(event.target.value)}
+                      className="mt-1 h-11 w-full rounded-lg border border-[var(--hh-border)] bg-[var(--hh-l1-workspace)] px-2"
+                    />
+                  </label>
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setMarkPaidExpense(null)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button type="submit" disabled={markPaidBusy}>
+                      {markPaidBusy ? "Saving" : "Mark paid"}
+                    </Button>
+                  </div>
+                </form>
+              </div>
+            ) : null}
           </div>
         )}
       </div>

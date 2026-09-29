@@ -157,6 +157,20 @@ describe("expense project requirement workflow", () => {
     ).toBeNull();
   });
 
+  it("allows inbox approval without a payment account", () => {
+    expect(
+      validateApproveInboxUploadDraft(
+        mockExpense({
+          referenceNo: "INBOX-UP-test",
+          sourceType: "receipt_upload",
+          paymentAccountId: null,
+          lines: [{ id: "l1", projectId: "proj-1", category: "Materials", amount: 12, memo: null }],
+        }),
+        "project_cost"
+      )
+    ).toBeNull();
+  });
+
   it("requires worker, not payment account, for worker reimbursement approval", () => {
     expect(
       validateApproveInboxUploadDraft(
@@ -182,7 +196,7 @@ describe("expense project requirement workflow", () => {
         }),
         "overhead"
       )
-    ).toBe("payment");
+    ).toBeNull();
   });
 
   it("blocks project-cost approval without project regardless of payment source or worker", () => {

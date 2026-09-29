@@ -20,6 +20,7 @@ import {
 import { cn } from "@/lib/utils";
 import { createBrowserClient } from "@/lib/supabase";
 import { createInboxDraftFromReceiptFile } from "@/lib/expense-inbox-draft-upload-browser";
+import { mapWithConcurrency } from "@/lib/expense-upload-throttle";
 import { notifyReceiptQueueChanged } from "@/lib/receipt-queue";
 
 type Props = {
@@ -28,7 +29,11 @@ type Props = {
   onSuccess: () => void;
 };
 
-type PendingItem = { id: string; file: File };
+type PendingItem = {
+  id: string;
+  file: File;
+  phase?: "waiting" | "uploading" | "done" | "failed";
+};
 
 type UploadFeedback = {
   tone: "error" | "success" | "neutral";
@@ -120,6 +125,15 @@ function PendingReceiptRow({
         <p className="truncate text-hh-table-cell font-medium text-foreground">{item.file.name}</p>
         <p className="text-hh-status tabular-nums text-muted-foreground">
           {formatBytes(item.file.size)}
+          {item.phase === "uploading"
+            ? " · Uploading"
+            : item.phase === "done"
+              ? " · Added"
+              : item.phase === "failed"
+                ? " · Failed"
+                : item.phase === "waiting"
+                  ? " · Waiting"
+                  : ""}
         </p>
       </div>
       <button
@@ -236,8 +250,10 @@ export function UploadReceiptsQueueModal({ open, onOpenChange, onSuccess }: Prop
       try {
         setReceiptImagePreparing(true);
         try {
-          const outcomes = await Promise.all(
-            list.map(async (file) => {
+          const outcomes = await mapWithConcurrency(
+            list,
+            3,
+            async (file) => {
               try {
                 const r = await createInboxDraftFromReceiptFile(supabase, file);
                 if (!r.ok) return { file, ok: false as const, detail: r.message };
@@ -259,7 +275,19 @@ export function UploadReceiptsQueueModal({ open, onOpenChange, onSuccess }: Prop
                 const msg = e instanceof Error ? e.message : "Could not create draft expense";
                 return { file, ok: false as const, detail: msg };
               }
-            })
+            },
+            (progress) => {
+              const file = list[progress.index];
+              if (!file) return;
+              setPendingItems((prev) =>
+                prev.map((item) =>
+                  item.file === file ||
+                  (item.file.name === file.name && item.file.size === file.size)
+                    ? { ...item, phase: progress.phase }
+                    : item
+                )
+              );
+            }
           );
 
           const failedFiles: File[] = [];
@@ -290,6 +318,13 @@ export function UploadReceiptsQueueModal({ open, onOpenChange, onSuccess }: Prop
           }
         } finally {
           setReceiptImagePreparing(false);
+        }
+
+        if (ok > 0) {
+          void fetch("/api/financial/expenses/ocr-worker", {
+            method: "POST",
+            credentials: "same-origin",
+          });
         }
 
         if (ok > 0 && fail === 0) {

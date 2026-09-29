@@ -13,6 +13,7 @@ import {
 } from "@/lib/expenses-db";
 import type { SubcontractDeductionInput } from "@/lib/subcontract-deductions-db";
 import { hawaiiTodayYmd } from "@/lib/hawaii-calendar-date";
+import { isInboxUploadExpenseReference } from "@/lib/inbox-upload-constants";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -178,6 +179,26 @@ export async function POST(request: Request) {
       const attached = await addExpenseAttachmentWithClient(supabase, expense.id, attachment);
       if (!attached) throw new Error("Receipt metadata saved, but expense reload is unavailable.");
       expense = attached;
+    }
+
+    if (
+      normalizeSourceType(body.sourceType) === "receipt_upload" &&
+      referenceNo &&
+      isInboxUploadExpenseReference(referenceNo)
+    ) {
+      const fingerprint = referenceNo.slice("INBOX-UP-".length).toLowerCase();
+      const stamped = await supabase
+        .from("expenses")
+        .update({
+          file_sha256: fingerprint,
+          inbox_capture: true,
+          ocr_status: "pending",
+          ocr_error: null,
+        })
+        .eq("id", expense.id);
+      if (stamped.error && !/column|schema cache/i.test(stamped.error.message)) {
+        throw new Error(stamped.error.message);
+      }
     }
 
     return NextResponse.json({ ok: true, expense }, { headers: NO_CACHE_HEADERS });

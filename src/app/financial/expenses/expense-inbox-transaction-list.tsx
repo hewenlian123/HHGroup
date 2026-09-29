@@ -26,6 +26,7 @@ import {
   stripInboxUploadNoiseFromText,
 } from "@/lib/inbox-upload-constants";
 import { getExpenseReceiptItems } from "@/lib/expense-receipt-items";
+import { expenseSettlementLabel } from "@/lib/expense-payment-settlement";
 import {
   readDateGroupExpandedMap,
   writeDateGroupExpandedMap,
@@ -684,6 +685,22 @@ function inboxRowActivateIgnored(target: EventTarget | null): boolean {
   );
 }
 
+function inboxCaptureMeta(row: Expense): string | null {
+  const parts: string[] = [];
+  if (row.ocrStatus === "pending") parts.push("OCR pending");
+  else if (row.ocrStatus === "processing") parts.push("OCR reading");
+  else if (row.ocrStatus === "done") parts.push("OCR done");
+  else if (row.ocrStatus === "failed") parts.push("OCR failed");
+  const settlement = expenseSettlementLabel({
+    paymentStatus: row.paymentStatus,
+    paymentAccountId: row.paymentAccountId,
+    workflowStatus: row.status,
+  });
+  if (settlement) parts.push(settlement);
+  if (row.duplicateExpenseId && !row.duplicateDismissedAt) parts.push("Possible duplicate");
+  return parts.length ? parts.join(" · ") : null;
+}
+
 function inboxStatusMeta(status: string | undefined): {
   label: string;
   variant: StatusBadgeVariant;
@@ -782,6 +799,7 @@ export type ExpenseInboxApi = {
     opts?: { mode?: "preview" | "edit"; focusReview?: boolean }
   ) => void;
   handleDelete: (expense: Expense) => void;
+  onMarkPaid?: (expense: Expense) => void;
   /** `INBOX-UP-*` `referenceNo` values to flash after upload deep-link. */
   highlightReferenceNos?: ReadonlySet<string> | null;
 };
@@ -859,7 +877,19 @@ function RowActionsMenu({ row }: { row: Expense }) {
                 onClick: () => a.toggleStatus(row),
               },
             ]
-          : []),
+          : a.onMarkPaid &&
+              expenseSettlementLabel({
+                paymentStatus: row.paymentStatus,
+                paymentAccountId: row.paymentAccountId,
+                workflowStatus: row.status,
+              }) === "Unpaid"
+            ? [
+                {
+                  label: "Mark paid",
+                  onClick: () => a.onMarkPaid?.(row),
+                },
+              ]
+            : []),
         {
           label: (
             <span className="inline-flex items-center gap-2">
@@ -1195,6 +1225,14 @@ function DesktopRows({
                             >
                               {vendorTitle}
                             </p>
+                            {inboxCaptureMeta(row) ? (
+                              <p
+                                data-testid="inbox-ocr-status"
+                                className="mt-0.5 truncate text-hh-status font-medium text-[var(--hh-text-secondary)]"
+                              >
+                                {inboxCaptureMeta(row)}
+                              </p>
+                            ) : null}
                             {triageLayout ? (
                               <p
                                 data-inbox-compact-context
@@ -1635,6 +1673,14 @@ function MobileRows({
                                 >
                                   {vendorTitle}
                                 </p>
+                                {inboxCaptureMeta(row) ? (
+                                  <p
+                                    data-testid="inbox-ocr-status"
+                                    className="mt-0.5 truncate text-hh-status font-medium text-[var(--hh-text-secondary)]"
+                                  >
+                                    {inboxCaptureMeta(row)}
+                                  </p>
+                                ) : null}
                                 {ledgerMode ? (
                                   <p
                                     data-expense-row-description=""

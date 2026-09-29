@@ -263,7 +263,8 @@ export function validateMarkDoneRequiresProjectAndCategory(
 }
 
 /**
- * Inbox upload → Approve: require project, category, and payment account on file-backed drafts (`INBOX-UP-` ref).
+ * Inbox upload → Approve: project and category are required.
+ * Payment account is optional so the owner can approve the expense as unpaid.
  */
 export function validateApproveInboxUploadDraft(
   expense: Expense,
@@ -275,8 +276,6 @@ export function validateApproveInboxUploadDraft(
     if (!expenseHasWorkerForWorkflow(expense)) return "worker";
     return null;
   }
-  const pa = (expense.paymentAccountId ?? "").trim();
-  if (!pa) return "payment";
   return null;
 }
 
