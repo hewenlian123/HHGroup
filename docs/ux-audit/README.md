@@ -23,12 +23,12 @@
 
 现在用户觉得「每页不一样」，是因为四代界面叠在同一个壳里：
 
-| 代 | 在哪里 | 用户看到的 |
-| --- | --- | --- |
-| 生成 token | `src/styles/design-tokens.generated.css` | 标题 22px、面板圆角 10px、顶栏高度 48/52 |
-| 冻结 v2 | `src/styles/hh-design-system-v2.css` | 标题 24/600、卡片圆角 8px、强调色 `#2563eb`、字体 Geist |
+| 代           | 在哪里                                                                     | 用户看到的                                                    |
+| ------------ | -------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| 生成 token   | `src/styles/design-tokens.generated.css`                                   | 标题 22px、面板圆角 10px、顶栏高度 48/52                      |
+| 冻结 v2      | `src/styles/hh-design-system-v2.css`                                       | 标题 24/600、卡片圆角 8px、强调色 `#2563eb`、字体 Geist       |
 | Navy + Brass | `src/styles/tokens.css`（后加载，双写 `data-hh-theme` 选择器压过 v2 颜色） | 页底 `#f6f7f9`、墨色 `#0b1526`、海军蓝侧栏、黄铜主按钮、Inter |
-| 页面私货 | 发票/项目详情、Estimate CSS、费用 3198 行 CSS、打印纸、离线页 | 标题 29px、卡片 12px + `shadow-card`、另一套金色、硬编码 hex |
+| 页面私货     | 发票/项目详情、Estimate CSS、费用 3198 行 CSS、打印纸、离线页              | 标题 29px、卡片 12px + `shadow-card`、另一套金色、硬编码 hex  |
 
 `globals.css` 的引入顺序是 generated → v2 → `tokens.css`。黄铜主按钮已经全局生效（`.hh-btn-primary`）。标题大小、圆角、卡片阴影没有一起生效，所以列表页仍是 24px 标题 + 8px 圆角，发票页是 29px 标题 + 12px 阴影卡片。
 
@@ -40,20 +40,20 @@
 
 已经按稿落在 `main` 上、后续页面应照抄的结构：
 
-| 稿 / 规格 | `main` 上的实现 |
-| --- | --- |
-| 侧栏 240px、海军蓝渐变、3px 黄铜激活条、六边形字标、Cormorant 字标 | `tokens.css` 的 `.neo-sidebar`、`.hh-logo-mark`、`.hh-wordmark`；激活条是 `a[aria-current="page"]::before` |
-| 顶栏 56px、白底 92% + blur | `[data-app-topbar]` 同一段 |
-| 底栏激活项：28×3 黄铜顶条，不用黄铜做图标底 | `nav[aria-label="Bottom navigation"] a[aria-current="page"]::before` |
-| 发票详情：外框 1200、桌面左右 40、双栏 `1fr + 22rem`（352px）、间距 24、海军蓝手机顶栏、底栏上方一条主按钮 | `invoice-detail-layout.tsx`：`max-w-[1200px]`、`xl:px-10`、`xl:grid-cols-[minmax(0,1fr)_22rem]`、`xl:gap-6` |
-| 进度条用海军蓝，不用黄铜 | 发票金额条 `bg-[image:var(--hh-grad-bar-navy)]` |
-| 项目 KPI：`1.12fr 1.12fr 0.96fr`，唯一英雄块是利润 | `ProjectKpiRow` 的 `lg:grid-cols-[minmax(0,1.12fr)_minmax(0,1.12fr)_minmax(240px,0.96fr)]` |
-| 项目桌面双栏，右栏最大 352px，卡片间距 24 | `lg:grid-cols-[minmax(0,1fr)_minmax(260px,352px)]`、`lg:gap-6` |
-| 卡片头内边距 16/20/14 | `OverviewCard`：`px-5 pb-3.5 pt-4` |
-| 概览用紧凑列表，最多几行 + “View all” | 项目发票 / 变更单卡片，不是整表 |
-| 手机项目：海军蓝头、返回、眉题 + 徽章、标题、地址、2×2 快捷块（最小高 112） | `ProjectMobileIntro` + `lg:hidden` 的四块快捷入口 |
-| 金额两位小数、负数用 `−$`（U+2212）、正数加号只在明确要求时出现 | `formatOverviewMoney`。发票详情和项目概览已经用它。`formatCurrency` 仍是多数列表的 `Intl` 输出，负号不是 U+2212 |
-| 每页一个黄铜主按钮；链接是海军蓝；焦点环是海军蓝不是黄铜 | 发票桌面的 Record payment、`.hh-btn-primary`、`--hh-link`、`--hh-ring-focus` |
+| 稿 / 规格                                                                                                  | `main` 上的实现                                                                                                 |
+| ---------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| 侧栏 240px、海军蓝渐变、3px 黄铜激活条、六边形字标、Cormorant 字标                                         | `tokens.css` 的 `.neo-sidebar`、`.hh-logo-mark`、`.hh-wordmark`；激活条是 `a[aria-current="page"]::before`      |
+| 顶栏 56px、白底 92% + blur                                                                                 | `[data-app-topbar]` 同一段                                                                                      |
+| 底栏激活项：28×3 黄铜顶条，不用黄铜做图标底                                                                | `nav[aria-label="Bottom navigation"] a[aria-current="page"]::before`                                            |
+| 发票详情：外框 1200、桌面左右 40、双栏 `1fr + 22rem`（352px）、间距 24、海军蓝手机顶栏、底栏上方一条主按钮 | `invoice-detail-layout.tsx`：`max-w-[1200px]`、`xl:px-10`、`xl:grid-cols-[minmax(0,1fr)_22rem]`、`xl:gap-6`     |
+| 进度条用海军蓝，不用黄铜                                                                                   | 发票金额条 `bg-[image:var(--hh-grad-bar-navy)]`                                                                 |
+| 项目 KPI：`1.12fr 1.12fr 0.96fr`，唯一英雄块是利润                                                         | `ProjectKpiRow` 的 `lg:grid-cols-[minmax(0,1.12fr)_minmax(0,1.12fr)_minmax(240px,0.96fr)]`                      |
+| 项目桌面双栏，右栏最大 352px，卡片间距 24                                                                  | `lg:grid-cols-[minmax(0,1fr)_minmax(260px,352px)]`、`lg:gap-6`                                                  |
+| 卡片头内边距 16/20/14                                                                                      | `OverviewCard`：`px-5 pb-3.5 pt-4`                                                                              |
+| 概览用紧凑列表，最多几行 + “View all”                                                                      | 项目发票 / 变更单卡片，不是整表                                                                                 |
+| 手机项目：海军蓝头、返回、眉题 + 徽章、标题、地址、2×2 快捷块（最小高 112）                                | `ProjectMobileIntro` + `lg:hidden` 的四块快捷入口                                                               |
+| 金额两位小数、负数用 `−$`（U+2212）、正数加号只在明确要求时出现                                            | `formatOverviewMoney`。发票详情和项目概览已经用它。`formatCurrency` 仍是多数列表的 `Intl` 输出，负号不是 U+2212 |
+| 每页一个黄铜主按钮；链接是海军蓝；焦点环是海军蓝不是黄铜                                                   | 发票桌面的 Record payment、`.hh-btn-primary`、`--hh-link`、`--hh-ring-focus`                                    |
 
 规格里写了、但 `main` 没有照做的，不要在统一时补回去：
 
@@ -85,43 +85,43 @@
 
 ### 1.2 壳外页面
 
-| 路由 | 桌面 / 手机 |
-| --- | --- |
-| `/login` | 无侧栏。居中 `max-w-[430px]` 面板，`AUTH_*` 类，v2 标题尺寸。手机同结构，只是边距变小。 |
-| `/forgot-password`、`/reset-password`、`/unlock` | 同上，单列表单。`/reset-password` 无效链接时用 `AUTH_TITLE_CLASS` 的 `h1`。 |
-| `/upload-receipt` | 公开工人上传。无壳。表单 + 加载。`/receipt` 只跳到这里。 |
-| `/offline` | 无壳。`bg-zinc-50`、`text-xl` / `lg:text-2xl`，不走 HH 标题 token。 |
-| 纸张 / 预览 | 无壳，`document-light` 或 `operational-light`。白纸，不进应用语言。见 1.5。 |
+| 路由                                             | 桌面 / 手机                                                                             |
+| ------------------------------------------------ | --------------------------------------------------------------------------------------- |
+| `/login`                                         | 无侧栏。居中 `max-w-[430px]` 面板，`AUTH_*` 类，v2 标题尺寸。手机同结构，只是边距变小。 |
+| `/forgot-password`、`/reset-password`、`/unlock` | 同上，单列表单。`/reset-password` 无效链接时用 `AUTH_TITLE_CLASS` 的 `h1`。             |
+| `/upload-receipt`                                | 公开工人上传。无壳。表单 + 加载。`/receipt` 只跳到这里。                                |
+| `/offline`                                       | 无壳。`bg-zinc-50`、`text-xl` / `lg:text-2xl`，不走 HH 标题 token。                     |
+| 纸张 / 预览                                      | 无壳，`document-light` 或 `operational-light`。白纸，不进应用语言。见 1.5。             |
 
 ### 1.3 只做跳转的路由
 
 这些文件不要单独做视觉迁移，改目标页即可。
 
-| 路由 | 去向 |
-| --- | --- |
-| `/` | `/dashboard` |
-| `/backups` | `/system/backups` |
-| `/contacts` | `/customers/overview` |
-| `/finance/advances` | `/labor/advances` |
-| `/finance/bills` | `/bills` |
-| `/finance/cost-allocation` | `/labor/cost-allocation` |
-| `/finance/expenses` | `/financial/expenses` |
-| `/finance/invoices` | `/financial/invoices` |
-| `/financial/bills`、`/financial/bills/new`、`/financial/bills/[id]` | 账单模块（`/bills` 一族） |
-| `/financial/estimates` | `/estimates` |
-| `/financial/payments-received` | `/financial/payments` |
-| `/financial/receipt-queue` | `/financial/inbox` |
-| `/labor/daily` | `/labor?addDaily=1` |
-| `/labor/subcontractors`、`/labor/subcontractors/[id]` | `/subcontractors` |
-| `/labor/workers/[id]` 及其 statement / print | `/workers` |
-| `/people/vendors` | `/financial/vendors` |
-| `/projects/[id]/edit` | 项目详情 `?edit=1` |
-| `/projects/[id]/reimbursements` | `/financial/client-reimbursements?project_id=` |
-| `/projects/[id]/change-orders/new` | `/projects` |
-| `/projects/[id]/change-orders/[coId]/edit` | 变更单详情 |
-| `/receipt` | `/upload-receipt` |
-| `/settings` | `/settings/company` |
-| `/settings/system-health` | `/system-health` |
+| 路由                                                                | 去向                                           |
+| ------------------------------------------------------------------- | ---------------------------------------------- |
+| `/`                                                                 | `/dashboard`                                   |
+| `/backups`                                                          | `/system/backups`                              |
+| `/contacts`                                                         | `/customers/overview`                          |
+| `/finance/advances`                                                 | `/labor/advances`                              |
+| `/finance/bills`                                                    | `/bills`                                       |
+| `/finance/cost-allocation`                                          | `/labor/cost-allocation`                       |
+| `/finance/expenses`                                                 | `/financial/expenses`                          |
+| `/finance/invoices`                                                 | `/financial/invoices`                          |
+| `/financial/bills`、`/financial/bills/new`、`/financial/bills/[id]` | 账单模块（`/bills` 一族）                      |
+| `/financial/estimates`                                              | `/estimates`                                   |
+| `/financial/payments-received`                                      | `/financial/payments`                          |
+| `/financial/receipt-queue`                                          | `/financial/inbox`                             |
+| `/labor/daily`                                                      | `/labor?addDaily=1`                            |
+| `/labor/subcontractors`、`/labor/subcontractors/[id]`               | `/subcontractors`                              |
+| `/labor/workers/[id]` 及其 statement / print                        | `/workers`                                     |
+| `/people/vendors`                                                   | `/financial/vendors`                           |
+| `/projects/[id]/edit`                                               | 项目详情 `?edit=1`                             |
+| `/projects/[id]/reimbursements`                                     | `/financial/client-reimbursements?project_id=` |
+| `/projects/[id]/change-orders/new`                                  | `/projects`                                    |
+| `/projects/[id]/change-orders/[coId]/edit`                          | 变更单详情                                     |
+| `/receipt`                                                          | `/upload-receipt`                              |
+| `/settings`                                                         | `/settings/company`                            |
+| `/settings/system-health`                                           | `/system-health`                               |
 
 `/login`、`/estimates`、`/reset-password` 里的 `redirect()` 是登录态或错误态守卫，页面本身仍然存在。
 
@@ -131,128 +131,128 @@
 
 #### 首页与总览
 
-| 路由 | 布局 |
-| --- | --- |
-| `/dashboard` | 宽 `page-container` + `DashboardPageHeader`（`TYPO.pageTitle`，文案 Operations Home）+ command HUD + KPI 磁贴。手机额外加大底部留白，躲开底栏。加载用 `DashboardMainSkeleton`。 |
-| `/dashboard/cashflow` | `PageLayout` + `PageHeader` + 分区卡片与金额。 |
-| `/financial`、`/finance` | 同一页。`PageLayout` + KPI + `NeoTable` / `NeoMobileCard`。 |
-| `/financial/dashboard` | `PageLayout` + `PageHeader`，财务看板。 |
-| `/financial/owner` | `PageLayout` + `PageHeader` + 图表（含 pending donut）。旧的业主总览。 |
-| `/owner` | `PageLayout` + `PageHeader` + 分区，自写 `fmtUsd`，不走 `FinancialText`。 |
-| `/financial/accounts/overview` | `PageLayout` + `PageHeader` + 空态。 |
-| `/reports` | 正常态是报表客户端（筛选、表格、状态）。`?asOf=` 时退化成无样式 `<h1>` 加一段大写英文说明。 |
-| `/reports/workforce` | 劳动力报表，按 tab 切概览 / 工资 / 付款 / 预支 / 余额。空态与骨架在客户端里。 |
-| `/settings/project-financial-review` | `PageLayout` + `PageHeader` + 返回 + `Neo*` 表。挂在 Reports 导航下。 |
+| 路由                                 | 布局                                                                                                                                                                            |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/dashboard`                         | 宽 `page-container` + `DashboardPageHeader`（`TYPO.pageTitle`，文案 Operations Home）+ command HUD + KPI 磁贴。手机额外加大底部留白，躲开底栏。加载用 `DashboardMainSkeleton`。 |
+| `/dashboard/cashflow`                | `PageLayout` + `PageHeader` + 分区卡片与金额。                                                                                                                                  |
+| `/financial`、`/finance`             | 同一页。`PageLayout` + KPI + `NeoTable` / `NeoMobileCard`。                                                                                                                     |
+| `/financial/dashboard`               | `PageLayout` + `PageHeader`，财务看板。                                                                                                                                         |
+| `/financial/owner`                   | `PageLayout` + `PageHeader` + 图表（含 pending donut）。旧的业主总览。                                                                                                          |
+| `/owner`                             | `PageLayout` + `PageHeader` + 分区，自写 `fmtUsd`，不走 `FinancialText`。                                                                                                       |
+| `/financial/accounts/overview`       | `PageLayout` + `PageHeader` + 空态。                                                                                                                                            |
+| `/reports`                           | 正常态是报表客户端（筛选、表格、状态）。`?asOf=` 时退化成无样式 `<h1>` 加一段大写英文说明。                                                                                     |
+| `/reports/workforce`                 | 劳动力报表，按 tab 切概览 / 工资 / 付款 / 预支 / 余额。空态与骨架在客户端里。                                                                                                   |
+| `/settings/project-financial-review` | `PageLayout` + `PageHeader` + 返回 + `Neo*` 表。挂在 Reports 导航下。                                                                                                           |
 
 #### 项目
 
-| 路由 | 布局 |
-| --- | --- |
-| `/projects` | 列表。桌面 `PageHeader` + 筛选 + 表；手机 `MobileListHeader` 风格的标题和卡片行。状态用 `NeoStatus`。删除走 `Dialog`。 |
-| `/projects/new` | `PageHeader`（subtitle 写法）+ 表单 + 骨架。 |
-| `/projects/[id]` | **海军蓝详情。** 页内 tab（Overview / Change Orders / Documents / Financials / People / Closeout；手机只露前四个）。概览是 `ProjectKpiRow` 海军蓝英雄卡 + `rounded-card` 分区 + `ProjectMobileIntro`。不是 `PageHeader`。 |
-| `/projects/[id]/profit` | `PageLayout` + `PageHeader` + 返回。利润钻取，仍是 v2 壳，和上面的概览卡片不是同一张皮。 |
-| `/projects/[id]/labor` | `PageLayout` + `PageHeader` + 返回 + 金额表。 |
-| `/projects/[id]/change-orders/[coId]` | `PageLayout` + `PageHeader` + `DataTable` + 表单动作。 |
-| `/projects/[id]/subcontracts` | `PageLayout` + `PageHeader` + `Neo*` 列表 + 新增 `Dialog`。 |
-| `/projects/[id]/subcontracts/[subId]` | 详情：`PageHeader` + 表单字段 + 空态，单列。 |
-| `/projects/[id]/subcontracts/[subId]/bills` | 列表 + 加账单 modal + 行操作。 |
-| `/projects/daily-logs`、`/projects/documents` | 占位。`page-container` + `PageHeader`，描述写 “This page is not yet implemented.” |
-| `/change-orders` | 全局变更单。桌面 `PageHeader` 藏在 `md:block`，工具条 `NeoToolbar`；手机另一套标题和卡片。空态自绘图标。 |
-| `/documents` | 桌面 `PageHeader` + `Divider`（`hidden md:block`）；列表客户端自带筛选、分页、`Dialog`。 |
-| `/procurement/purchase-orders` | `PageLayout` + `PageHeader` + `EmptyState`。薄页面。 |
-| `/estimating/cost-codes` | `PageLayout` + `PageHeader` + `Neo*`。 |
+| 路由                                          | 布局                                                                                                                                                                                                                      |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/projects`                                   | 列表。桌面 `PageHeader` + 筛选 + 表；手机 `MobileListHeader` 风格的标题和卡片行。状态用 `NeoStatus`。删除走 `Dialog`。                                                                                                    |
+| `/projects/new`                               | `PageHeader`（subtitle 写法）+ 表单 + 骨架。                                                                                                                                                                              |
+| `/projects/[id]`                              | **海军蓝详情。** 页内 tab（Overview / Change Orders / Documents / Financials / People / Closeout；手机只露前四个）。概览是 `ProjectKpiRow` 海军蓝英雄卡 + `rounded-card` 分区 + `ProjectMobileIntro`。不是 `PageHeader`。 |
+| `/projects/[id]/profit`                       | `PageLayout` + `PageHeader` + 返回。利润钻取，仍是 v2 壳，和上面的概览卡片不是同一张皮。                                                                                                                                  |
+| `/projects/[id]/labor`                        | `PageLayout` + `PageHeader` + 返回 + 金额表。                                                                                                                                                                             |
+| `/projects/[id]/change-orders/[coId]`         | `PageLayout` + `PageHeader` + `DataTable` + 表单动作。                                                                                                                                                                    |
+| `/projects/[id]/subcontracts`                 | `PageLayout` + `PageHeader` + `Neo*` 列表 + 新增 `Dialog`。                                                                                                                                                               |
+| `/projects/[id]/subcontracts/[subId]`         | 详情：`PageHeader` + 表单字段 + 空态，单列。                                                                                                                                                                              |
+| `/projects/[id]/subcontracts/[subId]/bills`   | 列表 + 加账单 modal + 行操作。                                                                                                                                                                                            |
+| `/projects/daily-logs`、`/projects/documents` | 占位。`page-container` + `PageHeader`，描述写 “This page is not yet implemented.”                                                                                                                                         |
+| `/change-orders`                              | 全局变更单。桌面 `PageHeader` 藏在 `md:block`，工具条 `NeoToolbar`；手机另一套标题和卡片。空态自绘图标。                                                                                                                  |
+| `/documents`                                  | 桌面 `PageHeader` + `Divider`（`hidden md:block`）；列表客户端自带筛选、分页、`Dialog`。                                                                                                                                  |
+| `/procurement/purchase-orders`                | `PageLayout` + `PageHeader` + `EmptyState`。薄页面。                                                                                                                                                                      |
+| `/estimating/cost-codes`                      | `PageLayout` + `PageHeader` + `Neo*`。                                                                                                                                                                                    |
 
 #### 报价 Estimate
 
-| 路由 | 布局 |
-| --- | --- |
-| `/estimates` | 列表。自己的 `estimate-list-operational.css`，不走标准 `PageLayout` 宽度。行上有状态徽章和金额。 |
-| `/estimates/new`、`/estimates/[id]` | 编辑器工作区：连续施工单 + 右侧摘要。模块内 token 把字体改回 Geist、强调色改成 `#8a6925`。无工作区二级导航。加载骨架 + 抽屉。 |
-| `/estimates/[id]/snapshot`、`/snapshot/[version]` | 只读修订。快照页用 `text-hh-*`，不是海军蓝标题。 |
-| `/estimate-templates` | `PageLayout` + `PageHeader` + 列表 + 保存模板 `Dialog`。 |
+| 路由                                              | 布局                                                                                                                          |
+| ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `/estimates`                                      | 列表。自己的 `estimate-list-operational.css`，不走标准 `PageLayout` 宽度。行上有状态徽章和金额。                              |
+| `/estimates/new`、`/estimates/[id]`               | 编辑器工作区：连续施工单 + 右侧摘要。模块内 token 把字体改回 Geist、强调色改成 `#8a6925`。无工作区二级导航。加载骨架 + 抽屉。 |
+| `/estimates/[id]/snapshot`、`/snapshot/[version]` | 只读修订。快照页用 `text-hh-*`，不是海军蓝标题。                                                                              |
+| `/estimate-templates`                             | `PageLayout` + `PageHeader` + 列表 + 保存模板 `Dialog`。                                                                      |
 
 #### 财务：开票与收款（最接近目标，但列表还没跟上详情）
 
-| 路由 | 布局 |
-| --- | --- |
-| `/financial/ar` | `PageHeader` + `Neo*` + 筛选。账龄工作台，不是发票详情那种双栏。 |
-| `/financial/invoices` | 列表样板的功能形态：桌面 `PageHeader` + `NeoTable`；手机 `MobileListHeader` + 卡片。筛选、空态、`Dialog` 都有。视觉仍是 v2 标题。 |
-| `/financial/invoices/[id]` | **目标详情。** `InvoiceDetailLayout`：`xl` 双栏（主栏 + 22rem 侧栏），金额条，海军蓝 Balance due，`rounded-card` + `shadow-card`，标题 `text-title-page`（29px）。手机：粘性海军蓝顶栏 + 底部固定主按钮，底边距躲开 `BottomNav`。 |
-| `/financial/invoices/new`、`/financial/invoices/[id]/edit` | `InvoiceEditorShell`，`max-w-[1120px]`，卡片 + 摘要轨，标签 `font-[650] uppercase`。 |
-| `/financial/payments` | 收款列表仍是 `PageHeader`「Payments Received」；录入/编辑 modal 开始用海军蓝类名。桌面表 + 手机卡片 + 空态。 |
-| `/financial/deposits` | `PageHeader` 用了 `subtitle` 而不是 `description`。表 + modal。 |
+| 路由                                                       | 布局                                                                                                                                                                                                                              |
+| ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/financial/ar`                                            | `PageHeader` + `Neo*` + 筛选。账龄工作台，不是发票详情那种双栏。                                                                                                                                                                  |
+| `/financial/invoices`                                      | 列表样板的功能形态：桌面 `PageHeader` + `NeoTable`；手机 `MobileListHeader` + 卡片。筛选、空态、`Dialog` 都有。视觉仍是 v2 标题。                                                                                                 |
+| `/financial/invoices/[id]`                                 | **目标详情。** `InvoiceDetailLayout`：`xl` 双栏（主栏 + 22rem 侧栏），金额条，海军蓝 Balance due，`rounded-card` + `shadow-card`，标题 `text-title-page`（29px）。手机：粘性海军蓝顶栏 + 底部固定主按钮，底边距躲开 `BottomNav`。 |
+| `/financial/invoices/new`、`/financial/invoices/[id]/edit` | `InvoiceEditorShell`，`max-w-[1120px]`，卡片 + 摘要轨，标签 `font-[650] uppercase`。                                                                                                                                              |
+| `/financial/payments`                                      | 收款列表仍是 `PageHeader`「Payments Received」；录入/编辑 modal 开始用海军蓝类名。桌面表 + 手机卡片 + 空态。                                                                                                                      |
+| `/financial/deposits`                                      | `PageHeader` 用了 `subtitle` 而不是 `description`。表 + modal。                                                                                                                                                                   |
 
 #### 财务：应付、费用、账户
 
-| 路由 | 布局 |
-| --- | --- |
-| `/financial/payables` | `PageLayout` + KPI + 账单表 / 手机卡片 + `BillDetailSheet`。 |
-| `/financial/payables/payments` | 同上壳，付款记录。 |
-| `/bills`、`/bills/new`、`/bills/[id]`、`/bills/[id]/edit` | 标准 `PageHeader` 列表或单列表单。详情不是发票那种双栏。 |
-| `/financial/expenses`、`/financial/inbox` | 同一 `ExpenseWorkspacePage`。顶部 `ExpenseOperationsWorkspaceNav`（Review / Ledger / Intake / Reimbursements / Client reimbursements）+ 按日期分组的 `NeoTable` / `NeoMobileCard` + 批量条。外面包 `expenses-ui`。 |
-| `/financial/expenses/intake` | 上传动作 + 同一套费用导航。标题走 `text-hh-*`。 |
-| `/financial/inbox/review` | **收件箱复核。** `PageHeader` + 左收据预览（`lg:sticky`，半宽）+ 右表单网格。这是 Inbox 模板的功能形态，皮仍是 v2。 |
-| `/financial/inbox/worker` | 工人收据列表，额外吃 `worker-receipts-ui.css`。 |
-| `/financial/expenses/new`、`/financial/expenses/[id]` | 表单 / 详情客户端，返回链接，modal，不是发票双栏。 |
-| `/financial/client-reimbursements` | `expenses-ui` 壳 + 费用导航 + 列表/结算表单。 |
-| `/financial/commissions` | `PageHeader` + 大量 `Dialog`（文件里 modal 标记最密）。 |
-| `/financial/reimbursements` | `PageHeader` + `DataTable` + 空态。和 Labor 报销不是同一页。 |
-| `/financial/bank` | `PageHeader` + `Neo*` + `DataTable` + 表单。对账。 |
-| `/financial/accounts` | `PageHeader` + 表 + 表单 + modal。 |
-| `/financial/vendors` | 联系人目录壳：`PageHeader` + 列表 + 空态。`/vendors` 是 `ContactsDirectory vendorOnly`。 |
-| `/financial/workers` | `PageLayout` + 报销余额表。 |
-| `/(dashboard)/receipt-queue` | 旧收据队列。加载态硬编码 `#f5f7fa` / `#6b7280`。导航已指向 `/financial/inbox`。 |
+| 路由                                                      | 布局                                                                                                                                                                                                               |
+| --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `/financial/payables`                                     | `PageLayout` + KPI + 账单表 / 手机卡片 + `BillDetailSheet`。                                                                                                                                                       |
+| `/financial/payables/payments`                            | 同上壳，付款记录。                                                                                                                                                                                                 |
+| `/bills`、`/bills/new`、`/bills/[id]`、`/bills/[id]/edit` | 标准 `PageHeader` 列表或单列表单。详情不是发票那种双栏。                                                                                                                                                           |
+| `/financial/expenses`、`/financial/inbox`                 | 同一 `ExpenseWorkspacePage`。顶部 `ExpenseOperationsWorkspaceNav`（Review / Ledger / Intake / Reimbursements / Client reimbursements）+ 按日期分组的 `NeoTable` / `NeoMobileCard` + 批量条。外面包 `expenses-ui`。 |
+| `/financial/expenses/intake`                              | 上传动作 + 同一套费用导航。标题走 `text-hh-*`。                                                                                                                                                                    |
+| `/financial/inbox/review`                                 | **收件箱复核。** `PageHeader` + 左收据预览（`lg:sticky`，半宽）+ 右表单网格。这是 Inbox 模板的功能形态，皮仍是 v2。                                                                                                |
+| `/financial/inbox/worker`                                 | 工人收据列表，额外吃 `worker-receipts-ui.css`。                                                                                                                                                                    |
+| `/financial/expenses/new`、`/financial/expenses/[id]`     | 表单 / 详情客户端，返回链接，modal，不是发票双栏。                                                                                                                                                                 |
+| `/financial/client-reimbursements`                        | `expenses-ui` 壳 + 费用导航 + 列表/结算表单。                                                                                                                                                                      |
+| `/financial/commissions`                                  | `PageHeader` + 大量 `Dialog`（文件里 modal 标记最密）。                                                                                                                                                            |
+| `/financial/reimbursements`                               | `PageHeader` + `DataTable` + 空态。和 Labor 报销不是同一页。                                                                                                                                                       |
+| `/financial/bank`                                         | `PageHeader` + `Neo*` + `DataTable` + 表单。对账。                                                                                                                                                                 |
+| `/financial/accounts`                                     | `PageHeader` + 表 + 表单 + modal。                                                                                                                                                                                 |
+| `/financial/vendors`                                      | 联系人目录壳：`PageHeader` + 列表 + 空态。`/vendors` 是 `ContactsDirectory vendorOnly`。                                                                                                                           |
+| `/financial/workers`                                      | `PageLayout` + 报销余额表。                                                                                                                                                                                        |
+| `/(dashboard)/receipt-queue`                              | 旧收据队列。加载态硬编码 `#f5f7fa` / `#6b7280`。导航已指向 `/financial/inbox`。                                                                                                                                    |
 
 #### 人工 Labor
 
-| 路由 | 布局 |
-| --- | --- |
-| `/labor` | `LaborPageClient`。`PageHeader` + 工时工作区 + modal。手机底栏仍在。 |
-| `/labor/entries` | `PageLayout` + `PageHeader` + 筛选表单 + 表/空态。 |
-| `/labor/daily-entry` | `PageHeader` + `Neo*` + 骨架。 |
-| `/labor/review` | 审核列表：`PageHeader` + 表单筛选 + 空态 + modal。 |
-| `/labor/timesheets` | 占位。`PageHeader` + “not yet implemented”。 |
-| `/labor/monthly` | `PageLayout` + 月份选择表单。 |
-| `/labor/overview` | `PageLayout` + 表单筛选 + 空态。 |
-| `/labor/costs` | `PageLayout` + 表单 + 空态。 |
-| `/labor/cost-allocation`、`/finance/labor-cost` | `PageLayout` + `PageHeader` + 金额。 |
-| `/labor/payroll`、`/labor/payroll-summary` | `PageHeader` + 发放 modal。摘要页是另一套筛选。 |
-| `/labor/payments` | `PageHeader` + 表 + 空态。 |
-| `/labor/payments/[id]/receipt` | 纸张收据，见 1.5。 |
-| `/labor/advances` | `PageHeader` + 表 + `worker-advance-form-dialog`。 |
-| `/labor/reimbursements` | `PageHeader` + 表 + 多个 modal。和客户报销不是同一模板。 |
-| `/labor/worker-balances` | `PageHeader` + 余额表 + modal。 |
-| `/labor/worker-invoices` | 客户端岛屿，列表。 |
-| `/labor/invoices`、`/new`、`/[id]` | 工人发票列表 / 新建表单 / 单列详情。不是 `InvoiceDetailLayout`。 |
-| `/labor/workers`、`/labor/workers/new` | 列表与新建表单，`PageHeader`。 |
-| `/labor/workers/[id]/balance` | 单列长页。`h1` 用 `text-hh-financial-total`，底部有粘性操作。和发票粘性条不是同一个组件。 |
-| `/workers`、`/workers/summary` | 工人目录 / 汇总。`PageHeader` + 筛选 + 表 + modal。 |
-| `/workers/[id]` | `PageHeader` + 页内 tab（余额、付款、预支等）。不是项目详情那种海军蓝英雄区。 |
-| `/workers/[id]/edit` | `PageHeader` + 表单。 |
-| `/workers/[id]/statement` | `PageLayout` + `PageHeader` + 空态。 |
-| `/worker/[workerId]/monthly-report` | `PageLayout` + 报表；另有打印样式。 |
+| 路由                                            | 布局                                                                                      |
+| ----------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `/labor`                                        | `LaborPageClient`。`PageHeader` + 工时工作区 + modal。手机底栏仍在。                      |
+| `/labor/entries`                                | `PageLayout` + `PageHeader` + 筛选表单 + 表/空态。                                        |
+| `/labor/daily-entry`                            | `PageHeader` + `Neo*` + 骨架。                                                            |
+| `/labor/review`                                 | 审核列表：`PageHeader` + 表单筛选 + 空态 + modal。                                        |
+| `/labor/timesheets`                             | 占位。`PageHeader` + “not yet implemented”。                                              |
+| `/labor/monthly`                                | `PageLayout` + 月份选择表单。                                                             |
+| `/labor/overview`                               | `PageLayout` + 表单筛选 + 空态。                                                          |
+| `/labor/costs`                                  | `PageLayout` + 表单 + 空态。                                                              |
+| `/labor/cost-allocation`、`/finance/labor-cost` | `PageLayout` + `PageHeader` + 金额。                                                      |
+| `/labor/payroll`、`/labor/payroll-summary`      | `PageHeader` + 发放 modal。摘要页是另一套筛选。                                           |
+| `/labor/payments`                               | `PageHeader` + 表 + 空态。                                                                |
+| `/labor/payments/[id]/receipt`                  | 纸张收据，见 1.5。                                                                        |
+| `/labor/advances`                               | `PageHeader` + 表 + `worker-advance-form-dialog`。                                        |
+| `/labor/reimbursements`                         | `PageHeader` + 表 + 多个 modal。和客户报销不是同一模板。                                  |
+| `/labor/worker-balances`                        | `PageHeader` + 余额表 + modal。                                                           |
+| `/labor/worker-invoices`                        | 客户端岛屿，列表。                                                                        |
+| `/labor/invoices`、`/new`、`/[id]`              | 工人发票列表 / 新建表单 / 单列详情。不是 `InvoiceDetailLayout`。                          |
+| `/labor/workers`、`/labor/workers/new`          | 列表与新建表单，`PageHeader`。                                                            |
+| `/labor/workers/[id]/balance`                   | 单列长页。`h1` 用 `text-hh-financial-total`，底部有粘性操作。和发票粘性条不是同一个组件。 |
+| `/workers`、`/workers/summary`                  | 工人目录 / 汇总。`PageHeader` + 筛选 + 表 + modal。                                       |
+| `/workers/[id]`                                 | `PageHeader` + 页内 tab（余额、付款、预支等）。不是项目详情那种海军蓝英雄区。             |
+| `/workers/[id]/edit`                            | `PageHeader` + 表单。                                                                     |
+| `/workers/[id]/statement`                       | `PageLayout` + `PageHeader` + 空态。                                                      |
+| `/worker/[workerId]/monthly-report`             | `PageLayout` + 报表；另有打印样式。                                                       |
 
 #### 联系人
 
-| 路由 | 布局 |
-| --- | --- |
-| `/customers`、`/customers/overview` | 目录。`PageHeader` + 搜索表单 + 表/卡片 + 空态 + modal。Overview 把客户和分包商分组。 |
-| `/customers/[id]` | `PageHeader` + 返回 + 关联项目。不可用时仍是 `PageHeader`，不是统一空态。 |
-| `/subcontractors`、`/subcontractors/[id]` | 同上，详情带金额和 modal。 |
-| `/vendors`、`/vendors/[id]`、`/financial/vendors` | `ContactsDirectory`。`/vendors/[id]` 若存在详情，走联系人详情而不是发票双栏。 |
+| 路由                                              | 布局                                                                                  |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| `/customers`、`/customers/overview`               | 目录。`PageHeader` + 搜索表单 + 表/卡片 + 空态 + modal。Overview 把客户和分包商分组。 |
+| `/customers/[id]`                                 | `PageHeader` + 返回 + 关联项目。不可用时仍是 `PageHeader`，不是统一空态。             |
+| `/subcontractors`、`/subcontractors/[id]`         | 同上，详情带金额和 modal。                                                            |
+| `/vendors`、`/vendors/[id]`、`/financial/vendors` | `ContactsDirectory`。`/vendors/[id]` 若存在详情，走联系人详情而不是发票双栏。         |
 
 #### 设置与管理
 
-| 路由 | 布局 |
-| --- | --- |
+| 路由                                                                                                                            | 布局                                                                                                                            |
+| ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
 | `/settings/company`、`/account`、`/security`、`/users`、`/permissions`、`/expenses`、`/categories`、`/lists`、`/subcontractors` | `PageLayout` 或 `PageHeader` + `settings-sub-nav` 第二套标签（和侧栏 Settings 分组重复）+ 表或表。Company / Expenses 用 toast。 |
-| `/system-health` | 自写 `h1.text-hh-page-title`，不走 `PageHeader`。长诊断页。 |
-| `/system-metrics` | `PageLayout` + `PageHeader` + 计数。 |
-| `/system-logs` | `PageLayout` + `PageHeader` + `DataTable`。 |
-| `/system/backups` | `PageLayout` + `PageHeader` + 表 + 表单。 |
-| `/system-tests`、`/system-tests/ui` | 内部。`PageHeader` + 徽章样例。 |
-| `/design-system` | 内部展示页，自身还有硬编码色。不是产品导航。 |
+| `/system-health`                                                                                                                | 自写 `h1.text-hh-page-title`，不走 `PageHeader`。长诊断页。                                                                     |
+| `/system-metrics`                                                                                                               | `PageLayout` + `PageHeader` + 计数。                                                                                            |
+| `/system-logs`                                                                                                                  | `PageLayout` + `PageHeader` + `DataTable`。                                                                                     |
+| `/system/backups`                                                                                                               | `PageLayout` + `PageHeader` + 表 + 表单。                                                                                       |
+| `/system-tests`、`/system-tests/ui`                                                                                             | 内部。`PageHeader` + 徽章样例。                                                                                                 |
+| `/design-system`                                                                                                                | 内部展示页，自身还有硬编码色。不是产品导航。                                                                                    |
 
 ### 1.5 纸张与预览（保持白纸，不并进应用壳）
 
@@ -278,13 +278,13 @@
 
 两套字号阶梯同时存在。
 
-| 角色 | 列表 / `PageHeader`（v2 token） | 发票与项目详情（Tailwind 字面量） |
-| --- | --- | --- |
-| 页标题 | `--hh-type-page-title-*` = 24px / 30px / 600 | `text-title-page` = 29px / 36px / 650 |
-| 英雄金额 | `--hh-type-financial-total-*` = 20px / 600 | `text-display-hero` = 40px / 46px / 700 |
-| 卡片标题 | `--hh-type-panel-title-*` = 14px / 500 | `text-title-card` = 15.5px / 22px / 600 |
-| 数字 | `text-hh-financial` 14px | `text-num-xl` 28px、`text-num-l` 20px、`text-num-m` 16px |
-| 字重 | 400 / 500 / 600 | 大量 `font-[650]` |
+| 角色     | 列表 / `PageHeader`（v2 token）              | 发票与项目详情（Tailwind 字面量）                        |
+| -------- | -------------------------------------------- | -------------------------------------------------------- |
+| 页标题   | `--hh-type-page-title-*` = 24px / 30px / 600 | `text-title-page` = 29px / 36px / 650                    |
+| 英雄金额 | `--hh-type-financial-total-*` = 20px / 600   | `text-display-hero` = 40px / 46px / 700                  |
+| 卡片标题 | `--hh-type-panel-title-*` = 14px / 500       | `text-title-card` = 15.5px / 22px / 600                  |
+| 数字     | `text-hh-financial` 14px                     | `text-num-xl` 28px、`text-num-l` 20px、`text-num-m` 16px |
+| 字重     | 400 / 500 / 600                              | 大量 `font-[650]`                                        |
 
 字体家族也不一：运营主题在 `tokens.css` 里改成 Inter；v2 和 Estimate 模块改回 Geist；字标用 Cormorant（`--hh-font-wordmark`）。离线页和部分预览用 `text-xl` / `text-2xl` / `text-sm`，不走任一阶梯。
 
@@ -369,17 +369,17 @@
 
 色值继续只写在 `src/styles/tokens.css`。v2 与 generated 文件降成别名，不再写自己的 hex。
 
-| Token | 值 | 只用在 |
-| --- | --- | --- |
-| `--hh-page` | `#f6f7f9` | 页面底 |
-| `--hh-surface` | `#ffffff` | 卡片、输入、弹层 |
-| `--hh-ink` | `#0b1526` | 主文字 |
-| `--hh-muted` | `#5b6678` | 次文字、表头 |
-| `--hh-line` | `#dce1e8` | 卡片和分隔 |
-| `--hh-navy` / `--hh-navy-deep` | `#13233a` / `#0c1726` | 侧栏、手机详情顶栏、每页最多一块英雄金额 |
-| `--hh-brass` 渐变 | `#c49a4a` → `#a87a2e` | 只给主按钮、侧栏/底栏激活条、字标和头像。不给链接、tab、图表、进度条、徽章、边框、焦点环 |
-| `--hh-link` | `#1f3f66` | 文字链接。删掉 Tailwind `hh.link` 的 `#059669` |
-| success / warning / danger / info | 现有 `--hh-success-*` 等 | 徽章和横幅。警告保持橙 `#d97706`，不靠向黄铜 |
+| Token                             | 值                       | 只用在                                                                                   |
+| --------------------------------- | ------------------------ | ---------------------------------------------------------------------------------------- |
+| `--hh-page`                       | `#f6f7f9`                | 页面底                                                                                   |
+| `--hh-surface`                    | `#ffffff`                | 卡片、输入、弹层                                                                         |
+| `--hh-ink`                        | `#0b1526`                | 主文字                                                                                   |
+| `--hh-muted`                      | `#5b6678`                | 次文字、表头                                                                             |
+| `--hh-line`                       | `#dce1e8`                | 卡片和分隔                                                                               |
+| `--hh-navy` / `--hh-navy-deep`    | `#13233a` / `#0c1726`    | 侧栏、手机详情顶栏、每页最多一块英雄金额                                                 |
+| `--hh-brass` 渐变                 | `#c49a4a` → `#a87a2e`    | 只给主按钮、侧栏/底栏激活条、字标和头像。不给链接、tab、图表、进度条、徽章、边框、焦点环 |
+| `--hh-link`                       | `#1f3f66`                | 文字链接。删掉 Tailwind `hh.link` 的 `#059669`                                           |
+| success / warning / danger / info | 现有 `--hh-success-*` 等 | 徽章和横幅。警告保持橙 `#d97706`，不靠向黄铜                                             |
 
 圆角只留三档，并让旧名字指向它们：
 
@@ -393,15 +393,15 @@
 
 字号并成已经上线的发票/项目阶梯，写回 CSS 变量，删掉 Tailwind 里的 29px / 40px / 15.5px 字面量。规格里的正文 13px 和手机标题 26px 不上：
 
-| 角色 | 规格 | 取代 |
-| --- | --- | --- |
-| 英雄金额 | 40 / 46 / 700 | 每页最多一处，而且只放利润或本页主余额 |
-| 页标题 | 29 / 36 / 650 | 今天的 24px `PageHeader`。手机不另缩到 26 |
-| 卡片标题 | 15.5 / 22 / 600（`text-title-card`） | 14px panel title |
-| 正文 | 14 / 20 / 400（现有 `text-hh-body`） | 保持。不改成规格里的 13px |
-| 金额标签 | 现有 `text-hh-label` + 大写 | 只用于金额和表头 |
-| 元数据 | 现有 `text-hh-metadata` | 卡片副标题 |
-| 金额 | `formatOverviewMoney` 的规则 + `tabular-nums` | 列表迁完后不再直接拼 `formatCurrency` 的 class |
+| 角色     | 规格                                          | 取代                                           |
+| -------- | --------------------------------------------- | ---------------------------------------------- |
+| 英雄金额 | 40 / 46 / 700                                 | 每页最多一处，而且只放利润或本页主余额         |
+| 页标题   | 29 / 36 / 650                                 | 今天的 24px `PageHeader`。手机不另缩到 26      |
+| 卡片标题 | 15.5 / 22 / 600（`text-title-card`）          | 14px panel title                               |
+| 正文     | 14 / 20 / 400（现有 `text-hh-body`）          | 保持。不改成规格里的 13px                      |
+| 金额标签 | 现有 `text-hh-label` + 大写                   | 只用于金额和表头                               |
+| 元数据   | 现有 `text-hh-metadata`                       | 卡片副标题                                     |
+| 金额     | `formatOverviewMoney` 的规则 + `tabular-nums` | 列表迁完后不再直接拼 `formatCurrency` 的 class |
 
 字体：界面用 Inter（`tokens.css` 已指定）。Cormorant 只给字标。Estimate 模块停止把 `--hh-font-family-sans` 改回 Geist。字重 650 收成一个 token `--hh-weight-semibold: 650`，禁止页面里写 `font-[650]`。
 
@@ -409,16 +409,16 @@
 
 这些名字多数已经有半成品。工作是收口，不是新造一套。
 
-| 组件 | 现在散落在 | 合同 |
-| --- | --- | --- |
-| `PageHeader` | `base/page-layout.tsx`、`components/page-header.tsx`、发票 header、`MobileListHeader` | 一个组件。`variant="record"` 复刻发票：返回、标题、状态、桌面动作、手机海军蓝粘性条。默认先保持今天的列表外观，避免第一批就把所有列表标题撑到 29px。 |
-| `SectionCard` | 发票 `cardClass`、项目 `OverviewCard` | `rounded-card` + `--hh-line` + `--hh-surface` + `shadow-card`。标题用卡片标题 token。可选 footer 链接。 |
-| `DataTable` | `NeoTable`、`NeoMobileCard`、`base/data-table.tsx`、`ui/table.tsx` | 一个数据合同。`≥768px` 表，以下卡片。金额列右对齐。空态用 `EmptyState`。 |
-| `Money` | `formatOverviewMoney`、`FinancialText`、`NeoAmount`、各页 `formatCurrency` | 排版走 `hh-fin`、右对齐。格式沿用 `formatOverviewMoney`：两位小数、负数 `−$`、需要强调增加时才加 `+`。不新建 `src/lib/format.ts`。单据号和电话不用 tabular figures。 |
-| `StatusBadge` | `Badge`、`StatusBadge`、`NeoStatus`、`InvoiceStatusBadge`、`.hh-badge` | 对外只留 `StatusBadge`。高 22px（`.hh-badge` 和规格已经写死），6px 圆点，五种语气。删掉 `h-[26px]`。状态映射留在调用处。 |
-| `StickyActionBar` | 发票详情 `fixed` 底条、工人余额粘性区 | 一条黄铜主按钮 + 可选次按钮。底边距 = 底栏高度 + safe area。发票这种单据页在 `≥1280px` 把动作收回页头。 |
-| `EmptyState` | 已有 `system-state.tsx`；项目 `EmptyCopy` 和占位页没用 | 标题、一句说明、一个动作。错误用 `tone="danger"`。禁止再写裸 `<h1>` 或 “not yet implemented” 当唯一 UI。 |
-| `FormField` | 已有 `Field`，零引用 | 所有新改的表单用它。日期只留 `ui/date-picker.tsx`。`expense-date-picker` 和裸 `type="date"` 在迁到的页面上换掉。 |
+| 组件              | 现在散落在                                                                            | 合同                                                                                                                                                                 |
+| ----------------- | ------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PageHeader`      | `base/page-layout.tsx`、`components/page-header.tsx`、发票 header、`MobileListHeader` | 一个组件。`variant="record"` 复刻发票：返回、标题、状态、桌面动作、手机海军蓝粘性条。默认先保持今天的列表外观，避免第一批就把所有列表标题撑到 29px。                 |
+| `SectionCard`     | 发票 `cardClass`、项目 `OverviewCard`                                                 | `rounded-card` + `--hh-line` + `--hh-surface` + `shadow-card`。标题用卡片标题 token。可选 footer 链接。                                                              |
+| `DataTable`       | `NeoTable`、`NeoMobileCard`、`base/data-table.tsx`、`ui/table.tsx`                    | 一个数据合同。`≥768px` 表，以下卡片。金额列右对齐。空态用 `EmptyState`。                                                                                             |
+| `Money`           | `formatOverviewMoney`、`FinancialText`、`NeoAmount`、各页 `formatCurrency`            | 排版走 `hh-fin`、右对齐。格式沿用 `formatOverviewMoney`：两位小数、负数 `−$`、需要强调增加时才加 `+`。不新建 `src/lib/format.ts`。单据号和电话不用 tabular figures。 |
+| `StatusBadge`     | `Badge`、`StatusBadge`、`NeoStatus`、`InvoiceStatusBadge`、`.hh-badge`                | 对外只留 `StatusBadge`。高 22px（`.hh-badge` 和规格已经写死），6px 圆点，五种语气。删掉 `h-[26px]`。状态映射留在调用处。                                             |
+| `StickyActionBar` | 发票详情 `fixed` 底条、工人余额粘性区                                                 | 一条黄铜主按钮 + 可选次按钮。底边距 = 底栏高度 + safe area。发票这种单据页在 `≥1280px` 把动作收回页头。                                                              |
+| `EmptyState`      | 已有 `system-state.tsx`；项目 `EmptyCopy` 和占位页没用                                | 标题、一句说明、一个动作。错误用 `tone="danger"`。禁止再写裸 `<h1>` 或 “not yet implemented” 当唯一 UI。                                                             |
+| `FormField`       | 已有 `Field`，零引用                                                                  | 所有新改的表单用它。日期只留 `ui/date-picker.tsx`。`expense-date-picker` 和裸 `type="date"` 在迁到的页面上换掉。                                                     |
 
 `Button` 对外只留三个变体：`primary`（黄铜）、`secondary`（白底描边）、`ghost`（链接色、无底）。`default` / `outline` / `quiet` 变成别名，新代码不使用。
 
@@ -447,17 +447,17 @@
 
 每批一个 PR。先抽组件、保持现有外观，再逐页换模板。不要先改全局字号 token，那会让所有 `PageHeader` 在同一天从 24px 跳到 29px。
 
-| 批次 | 做什么 | 范围 | 回归面 |
-| --- | --- | --- | --- |
-| A | 抽出 `SectionCard`、`Money`、`StickyActionBar`，只替换发票详情、发票编辑器、项目概览里的重复 class 字符串。外观不变。 | 约 6 个文件：`invoice-detail-layout.tsx`、`invoice-editor-shell.tsx`、`project-detail-redesign.tsx` 及它们的调用处 | 低。只动已经改版的两页 |
-| B | 合并两个 `PageHeader`。加上 `variant="record"`，发票和项目改用它。列表默认仍是今天的 24px。`subtitle` 收成 `description`。 | `page-layout.tsx`、`page-header.tsx`、发票/项目页头 | 低，若默认变体的 DOM 结构不变 |
-| C | `StatusBadge` 去掉 `h-[26px]`，回到 `.hh-badge` 的 22px。`EmptyCopy`、三张占位页、`/offline`、报表 `?asOf=` 裸标题改用 `EmptyState`。 | 徽章三件套 + 约 6 个页面 | 低。状态映射不改，只改皮和空态 |
-| D | List 模板接到财务列表，并去掉 430px 窄柱。顺序：发票列表、收款、账单、应付、项目列表、变更单、文档。数据加载和权限不动。 | 约 7 个列表客户端 | 中。主要是断点处表/卡片切换 |
-| E | Detail 模板接到尚未改版的详情：账单、费用、变更单、客户、分包商、供应商、工人。每页保留自己的字段和动作。 | 约 8 个详情 | 中。双栏会改变扫描顺序，不改变数字 |
-| F | Form 模板 + `FormField` + 单一 `DatePicker`。顺序：账单新建/编辑、项目新建、工人编辑、设置里的公司与账户。 | 约 6 个表单 | 中。焦点和错误 `aria` 要逐页对一下 |
-| G | Inbox。复核页换 `SectionCard` + `FormField`。费用列表走 List 模板。对照删除 `expenses-ui-theme.css` 里已被组件覆盖的规则，文件从 3198 行降下来，而不是整文件一次删掉。 | 费用收件箱、复核、客户报销、工人收据 | 高。CSS 覆盖面大，放在列表和详情之后 |
-| H | Estimate。`estimate-tokens.css` 停止改写全局 `--hh-*` 和字体。应用壳内的列表和工具条用海军蓝 / 黄铜。报价单纸张可以保留更暖的纸色，但只留在打印/预览选择器下。 | `estimate-tokens.css`、列表 CSS、编辑器壳 | 高。客户会看到的报价单，单独验收 |
-| I | 壳的收尾：底栏激活态只留黄铜顶条；仪表盘 HUD 改用 `SectionCard`，不重做成未见过的行动队列稿；`system-health` 改用 `PageHeader`；设置页去掉与侧栏重复的第二套标签；`themeColor` 改成 `#f6f7f9`；更新冻结基线文档，写明视觉权威已经是 `tokens.css`。 | 壳、设置、一篇文档 | 中。导航信息架构要产品点头 |
+| 批次 | 做什么                                                                                                                                                                                                                                             | 范围                                                                                                               | 回归面                               |
+| ---- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------ |
+| A    | 抽出 `SectionCard`、`Money`、`StickyActionBar`，只替换发票详情、发票编辑器、项目概览里的重复 class 字符串。外观不变。                                                                                                                              | 约 6 个文件：`invoice-detail-layout.tsx`、`invoice-editor-shell.tsx`、`project-detail-redesign.tsx` 及它们的调用处 | 低。只动已经改版的两页               |
+| B    | 合并两个 `PageHeader`。加上 `variant="record"`，发票和项目改用它。列表默认仍是今天的 24px。`subtitle` 收成 `description`。                                                                                                                         | `page-layout.tsx`、`page-header.tsx`、发票/项目页头                                                                | 低，若默认变体的 DOM 结构不变        |
+| C    | `StatusBadge` 去掉 `h-[26px]`，回到 `.hh-badge` 的 22px。`EmptyCopy`、三张占位页、`/offline`、报表 `?asOf=` 裸标题改用 `EmptyState`。                                                                                                              | 徽章三件套 + 约 6 个页面                                                                                           | 低。状态映射不改，只改皮和空态       |
+| D    | List 模板接到财务列表，并去掉 430px 窄柱。顺序：发票列表、收款、账单、应付、项目列表、变更单、文档。数据加载和权限不动。                                                                                                                           | 约 7 个列表客户端                                                                                                  | 中。主要是断点处表/卡片切换          |
+| E    | Detail 模板接到尚未改版的详情：账单、费用、变更单、客户、分包商、供应商、工人。每页保留自己的字段和动作。                                                                                                                                          | 约 8 个详情                                                                                                        | 中。双栏会改变扫描顺序，不改变数字   |
+| F    | Form 模板 + `FormField` + 单一 `DatePicker`。顺序：账单新建/编辑、项目新建、工人编辑、设置里的公司与账户。                                                                                                                                         | 约 6 个表单                                                                                                        | 中。焦点和错误 `aria` 要逐页对一下   |
+| G    | Inbox。复核页换 `SectionCard` + `FormField`。费用列表走 List 模板。对照删除 `expenses-ui-theme.css` 里已被组件覆盖的规则，文件从 3198 行降下来，而不是整文件一次删掉。                                                                             | 费用收件箱、复核、客户报销、工人收据                                                                               | 高。CSS 覆盖面大，放在列表和详情之后 |
+| H    | Estimate。`estimate-tokens.css` 停止改写全局 `--hh-*` 和字体。应用壳内的列表和工具条用海军蓝 / 黄铜。报价单纸张可以保留更暖的纸色，但只留在打印/预览选择器下。                                                                                     | `estimate-tokens.css`、列表 CSS、编辑器壳                                                                          | 高。客户会看到的报价单，单独验收     |
+| I    | 壳的收尾：底栏激活态只留黄铜顶条；仪表盘 HUD 改用 `SectionCard`，不重做成未见过的行动队列稿；`system-health` 改用 `PageHeader`；设置页去掉与侧栏重复的第二套标签；`themeColor` 改成 `#f6f7f9`；更新冻结基线文档，写明视觉权威已经是 `tokens.css`。 | 壳、设置、一篇文档                                                                                                 | 中。导航信息架构要产品点头           |
 
 明确不做：
 
