@@ -11,6 +11,9 @@ import { FilterSelect } from "@/components/financial/filter-select";
 import { clientReimbursementStatusLabel } from "@/lib/client-reimbursement";
 import type { ClientReimbursementListRow } from "@/lib/client-reimbursement-db";
 import { hawaiiTodayYmd } from "@/lib/hawaii-calendar-date";
+import { formatOverviewMoney } from "@/lib/financial/project-overview-display";
+import { sectionCardClass } from "@/components/ui/section-card";
+import { cn } from "@/lib/utils";
 
 type PaymentOption = {
   id: string;
@@ -18,9 +21,8 @@ type PaymentOption = {
   projectId: string | null;
 };
 
-function money(amount: number): string {
-  return amount.toLocaleString("en-US", { style: "currency", currency: "USD" });
-}
+const linkClass =
+  "font-semibold text-[var(--hh-link)] underline decoration-[var(--hh-link-underline)] underline-offset-4";
 
 export function ClientReimbursementsClient({
   rows,
@@ -136,6 +138,7 @@ export function ClientReimbursementsClient({
   return (
     <div data-testid="client-reimbursements-view" className="space-y-4 py-4">
       <PageHeader
+        variant="workspace"
         title="Client reimbursements"
         description="Expenses the project client should repay. Outstanding is not removed from job cost."
         actions={
@@ -154,13 +157,13 @@ export function ClientReimbursementsClient({
         <p>
           <span className="text-[var(--hh-text-secondary)]">Reimbursable outstanding </span>
           <span className="font-medium tabular-nums" data-testid="reimbursable-outstanding">
-            {money(lockedProjectId ? outstanding : visibleOutstanding)}
+            {formatOverviewMoney(lockedProjectId ? outstanding : visibleOutstanding)}
           </span>
         </p>
         <p>
           <span className="text-[var(--hh-text-secondary)]">Reimbursed without a payment </span>
           <span className="font-medium tabular-nums" data-testid="reimbursed-without-payment">
-            {money(visibleUnlinked)}
+            {formatOverviewMoney(visibleUnlinked)}
           </span>
         </p>
         <p className="text-[var(--hh-text-secondary)]">
@@ -168,7 +171,7 @@ export function ClientReimbursementsClient({
           reimbursed without a payment is still cost and is not recovered cash.
         </p>
       </div>
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="hh-filters-bar flex flex-wrap items-center gap-2">
         <FilterSelect
           label="Filter by project"
           value={lockedProjectId ?? projectId}
@@ -205,7 +208,7 @@ export function ClientReimbursementsClient({
           while reviewing an invoice.
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-[var(--hh-border)]">
+        <div className={cn(sectionCardClass, "overflow-x-auto")}>
           <table className="w-full min-w-[720px] text-left text-sm">
             <thead className="bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-secondary)]">
               <tr>
@@ -233,7 +236,7 @@ export function ClientReimbursementsClient({
                   </td>
                   <td className="px-3 py-2">{row.expenseDate}</td>
                   <td className="px-3 py-2">
-                    <Link href={`/financial/expenses/${row.expenseId}`} className="underline">
+                    <Link href={`/financial/expenses/${row.expenseId}`} className={linkClass}>
                       {row.vendorName}
                     </Link>
                     <div className="text-[var(--hh-text-secondary)]">{row.invoiceNumber}</div>
@@ -251,13 +254,15 @@ export function ClientReimbursementsClient({
                     {row.paymentId ? (
                       <>
                         {" "}
-                        <Link href={`/financial/payments/${row.paymentId}`} className="underline">
+                        <Link href={`/financial/payments/${row.paymentId}`} className={linkClass}>
                           Payment
                         </Link>
                       </>
                     ) : null}
                   </td>
-                  <td className="px-3 py-2 text-right tabular-nums">{money(row.amount)}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">
+                    {formatOverviewMoney(row.amount)}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -306,7 +311,7 @@ export function ClientReimbursementsClient({
         >
           {busy === "settle"
             ? "Saving…"
-            : `Mark reimbursed ${selected.length ? money(selectedTotal) : ""}`}
+            : `Mark reimbursed ${selected.length ? formatOverviewMoney(selectedTotal) : ""}`}
         </Button>
       </div>
       {paymentsUnavailable ? (

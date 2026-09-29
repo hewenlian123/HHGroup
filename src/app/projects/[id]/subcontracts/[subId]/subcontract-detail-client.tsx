@@ -12,7 +12,8 @@ import { NeoFieldLabel, NeoInput, NeoPanel, NeoTable, StatusBadge } from "@/comp
 import { Button } from "@/components/ui/button";
 import { tableRawTdClass, tableRawThClass } from "@/components/ui/table";
 import type { SubcontractPaymentScheduleRow, SubcontractWithSubcontractor } from "@/lib/data";
-import { formatCurrency, formatDate } from "@/lib/formatters";
+import { formatDate } from "@/lib/formatters";
+import { formatOverviewMoney } from "@/lib/financial/project-overview-display";
 import { cn } from "@/lib/utils";
 import {
   addPaymentScheduleItemAction,
@@ -328,7 +329,7 @@ export function SubcontractPaymentScheduleClient({
                     label="Amount"
                     className={cn(tableRawTdClass, "text-right tabular-nums")}
                   >
-                    {formatCurrency(item.amount)}
+                    {formatOverviewMoney(item.amount)}
                   </ProjectFinancialTableCell>
                   <ProjectFinancialTableCell
                     headerId="schedule-due-column"

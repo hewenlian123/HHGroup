@@ -20,7 +20,9 @@ import {
   getProjectById,
   getSubcontractById,
 } from "@/lib/data";
-import { formatCurrency, formatDate } from "@/lib/formatters";
+import { formatDate } from "@/lib/formatters";
+import { formatOverviewMoney } from "@/lib/financial/project-overview-display";
+import { sectionCardClass } from "@/components/ui/section-card";
 import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
 import { summarizeSubcontractFinancials } from "@/lib/subcontractor-financials";
 import {
@@ -38,10 +40,6 @@ import {
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
-
-function fmtUsd(n: number): string {
-  return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
 
 type Props = { params: Promise<{ id: string; subId: string }> };
 
@@ -103,15 +101,17 @@ export default async function SubcontractDetailPage({ params }: Props) {
 
   return (
     <PageLayout
+      frame="list"
       header={
         <PageHeader
+          variant="workspace"
           title={subcontract.subcontractor_name}
           description="Committed subcontract cost, payment schedule, linked AP bills, and AP outstanding."
           actions={
             <div className="flex flex-wrap items-center gap-3">
               <Link
                 href={`/projects/${projectId}/subcontracts`}
-                className="inline-flex min-h-[44px] items-center text-hh-body text-[var(--hh-text-secondary)] hover:text-[var(--hh-text-primary)]"
+                className="inline-flex min-h-[44px] items-center text-hh-body font-semibold text-[var(--hh-link)] underline decoration-[var(--hh-link-underline)] underline-offset-4"
               >
                 Back to Project Subcontracts
               </Link>
@@ -132,6 +132,7 @@ export default async function SubcontractDetailPage({ params }: Props) {
       ) : null}
       <NeoPanel
         title="Contract Summary"
+        className={sectionCardClass}
         bodyClassName="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-6"
       >
         {[
@@ -155,7 +156,7 @@ export default async function SubcontractDetailPage({ params }: Props) {
               {item.label}
             </p>
             <p className="mt-1 text-hh-section-title">
-              <NeoAmount tone={item.tone}>${fmtUsd(item.value)}</NeoAmount>
+              <NeoAmount tone={item.tone}>{formatOverviewMoney(item.value)}</NeoAmount>
             </p>
           </div>
         ))}
@@ -169,13 +170,7 @@ export default async function SubcontractDetailPage({ params }: Props) {
         </div>
         <div className="flex flex-wrap gap-x-6 gap-y-1">
           <span className="text-[var(--hh-text-secondary)]">Contract amount</span>
-          <span className="tabular-nums">
-            $
-            {subcontract.contract_amount.toLocaleString("en-US", {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            })}
-          </span>
+          <span className="tabular-nums">{formatOverviewMoney(subcontract.contract_amount)}</span>
         </div>
         <div className="flex flex-wrap gap-x-6 gap-y-1">
           <span className="text-[var(--hh-text-secondary)]">Start</span>
@@ -255,7 +250,7 @@ export default async function SubcontractDetailPage({ params }: Props) {
                   >
                     <Link
                       href={`/bills/${bill.id}`}
-                      className="inline-flex min-h-[44px] items-center font-medium hover:underline xl:min-h-0"
+                      className="inline-flex min-h-[44px] items-center font-semibold text-[var(--hh-link)] underline decoration-[var(--hh-link-underline)] underline-offset-4 xl:min-h-0"
                     >
                       {bill.bill_no ?? "Bill"}
                     </Link>
@@ -282,21 +277,21 @@ export default async function SubcontractDetailPage({ params }: Props) {
                     label="Amount"
                     className={cn(tableRawTdClass, "text-right tabular-nums")}
                   >
-                    {formatCurrency(bill.amount)}
+                    {formatOverviewMoney(bill.amount)}
                   </ProjectFinancialTableCell>
                   <ProjectFinancialTableCell
                     headerId="linked-ap-bill-paid"
                     label="Paid"
                     className={cn(tableRawTdClass, "text-right tabular-nums")}
                   >
-                    {formatCurrency(bill.paid_amount)}
+                    {formatOverviewMoney(bill.paid_amount)}
                   </ProjectFinancialTableCell>
                   <ProjectFinancialTableCell
                     headerId="linked-ap-bill-balance"
                     label="Balance"
                     className={cn(tableRawTdClass, "text-right tabular-nums")}
                   >
-                    {formatCurrency(bill.balance_amount)}
+                    {formatOverviewMoney(bill.balance_amount)}
                   </ProjectFinancialTableCell>
                   <ProjectFinancialTableCell
                     headerId="linked-ap-bill-status"

@@ -2,6 +2,7 @@
 
 import { DataTable, type DataTableColumn } from "@/components/base";
 import type { ChangeOrderItem } from "@/lib/data";
+import { formatOverviewMoney } from "@/lib/financial/project-overview-display";
 
 export function ChangeOrderLineItemsTable({ items }: { items: ChangeOrderItem[] }) {
   const lineColumns: DataTableColumn<ChangeOrderItem>[] = [
@@ -13,13 +14,13 @@ export function ChangeOrderLineItemsTable({ items }: { items: ChangeOrderItem[] 
       key: "unitPrice",
       header: "Unit Price",
       numeric: true,
-      cell: (r) => `$${r.unitPrice.toLocaleString()}`,
+      cell: (r) => formatOverviewMoney(r.unitPrice),
     },
     {
       key: "total",
       header: "Total",
       numeric: true,
-      cell: (r) => `$${r.total.toLocaleString()}`,
+      cell: (r) => formatOverviewMoney(r.total),
     },
   ];
 

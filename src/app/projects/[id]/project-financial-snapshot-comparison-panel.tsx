@@ -116,7 +116,7 @@ export function ProjectFinancialSnapshotComparisonPanel({ projectId }: { project
     body = <p className="mt-3 text-hh-body text-[var(--hh-text-secondary)]">Loading comparison…</p>;
   } else if (state.status === "error") {
     body = (
-      <p className="mt-3 rounded-hh-standard border border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] px-3 py-2 text-hh-body font-medium text-[var(--hh-action-primary)]">
+      <p className="mt-3 rounded-hh-standard border border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] px-3 py-2 text-hh-body font-medium text-[var(--hh-warning)]">
         {state.message || "Financial snapshot comparison unavailable."}
       </p>
     );

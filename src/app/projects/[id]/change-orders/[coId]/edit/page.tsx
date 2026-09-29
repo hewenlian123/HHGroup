@@ -75,11 +75,12 @@ export default async function ChangeOrderEditPage({
   const coBreadcrumbLabel = co.title?.trim() || co.number.trim() || null;
 
   return (
-    <div className="page-container py-6">
+    <>
       <SetBreadcrumbEntityTitle label={coBreadcrumbLabel} />
       <PageLayout
+        frame="list"
         header={
-          <PageHeader title={`${co.number} (edit)`}>
+          <PageHeader variant="workspace" title={`${co.number} (edit)`}>
             <Link href={`/projects/${projectId}/change-orders/${coId}`}>
               <Button
                 variant="outline"
@@ -101,6 +102,6 @@ export default async function ChangeOrderEditPage({
           total={total}
         />
       </PageLayout>
-    </div>
+    </>
   );
 }

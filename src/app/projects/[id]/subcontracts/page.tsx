@@ -11,7 +11,9 @@ import {
   getSubcontractors,
   getSubcontractsByProject,
 } from "@/lib/data";
+import { formatOverviewMoney } from "@/lib/financial/project-overview-display";
 import { summarizeSubcontractFinancials } from "@/lib/subcontractor-financials";
+import { sectionCardClass } from "@/components/ui/section-card";
 import { AddSubcontractButton } from "./add-subcontract-button";
 import { SetBreadcrumbEntityTitle } from "@/components/layout/set-breadcrumb-entity-title";
 import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
@@ -24,10 +26,6 @@ import {
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
-
-function fmtUsd(n: number): string {
-  return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -89,14 +87,16 @@ export default async function ProjectSubcontractsPage({ params }: Props) {
 
   return (
     <PageLayout
+      frame="list"
       header={
         <PageHeader
+          variant="workspace"
           title="Project Subcontracts"
           description={`Committed subcontract cost for ${project.name}. Contract amount does not directly hit actual cost.`}
           actions={
             <Link
               href={`/projects/${id}`}
-              className="inline-flex min-h-[44px] items-center text-hh-body text-[var(--hh-text-secondary)] hover:text-[var(--hh-text-primary)]"
+              className="inline-flex min-h-[44px] items-center text-hh-body font-semibold text-[var(--hh-link)] underline decoration-[var(--hh-link-underline)] underline-offset-4"
             >
               Project
             </Link>
@@ -111,7 +111,7 @@ export default async function ProjectSubcontractsPage({ params }: Props) {
       />
       <Divider />
 
-      <div className="airtable-table-wrap airtable-table-wrap--ruled">
+      <div className={sectionCardClass}>
         <div className="airtable-table-scroll">
           <ProjectFinancialTable aria-label="Project subcontracts">
             <ProjectFinancialTableHead>
@@ -198,7 +198,7 @@ export default async function ProjectSubcontractsPage({ params }: Props) {
                     >
                       <Link
                         href={`/projects/${id}/subcontracts/${r.id}`}
-                        className="inline-flex min-h-[44px] min-w-0 items-center break-words hover:text-[var(--hh-text-primary)] hover:underline xl:min-h-0"
+                        className="inline-flex min-h-[44px] min-w-0 items-center break-words font-semibold text-[var(--hh-link)] underline decoration-[var(--hh-link-underline)] underline-offset-4 xl:min-h-0"
                       >
                         {r.subcontractor_name}
                       </Link>
@@ -215,28 +215,30 @@ export default async function ProjectSubcontractsPage({ params }: Props) {
                       label="Contract Amount"
                       className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums"
                     >
-                      <NeoAmount>${fmtUsd(r.financials.contractAmount)}</NeoAmount>
+                      <NeoAmount>{formatOverviewMoney(r.financials.contractAmount)}</NeoAmount>
                     </ProjectFinancialTableCell>
                     <ProjectFinancialTableCell
                       headerId="subcontract-scheduled"
                       label="Scheduled"
                       className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums"
                     >
-                      <NeoAmount>${fmtUsd(r.financials.scheduledAmount)}</NeoAmount>
+                      <NeoAmount>{formatOverviewMoney(r.financials.scheduledAmount)}</NeoAmount>
                     </ProjectFinancialTableCell>
                     <ProjectFinancialTableCell
                       headerId="subcontract-billed"
                       label="Billed To Date"
                       className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums"
                     >
-                      <NeoAmount>${fmtUsd(r.financials.billedToDate)}</NeoAmount>
+                      <NeoAmount>{formatOverviewMoney(r.financials.billedToDate)}</NeoAmount>
                     </ProjectFinancialTableCell>
                     <ProjectFinancialTableCell
                       headerId="subcontract-paid"
                       label="Paid To Date"
                       className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums"
                     >
-                      <NeoAmount tone="income">${fmtUsd(r.financials.paidToDate)}</NeoAmount>
+                      <NeoAmount tone="income">
+                        {formatOverviewMoney(r.financials.paidToDate)}
+                      </NeoAmount>
                     </ProjectFinancialTableCell>
                     <ProjectFinancialTableCell
                       headerId="subcontract-ap-outstanding"
@@ -244,7 +246,7 @@ export default async function ProjectSubcontractsPage({ params }: Props) {
                       className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums"
                     >
                       <NeoAmount tone={r.financials.apOutstanding > 0 ? "expense" : "neutral"}>
-                        ${fmtUsd(r.financials.apOutstanding)}
+                        {formatOverviewMoney(r.financials.apOutstanding)}
                       </NeoAmount>
                     </ProjectFinancialTableCell>
                     <ProjectFinancialTableCell
@@ -253,7 +255,7 @@ export default async function ProjectSubcontractsPage({ params }: Props) {
                       className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums"
                     >
                       <NeoAmount tone={r.financials.remainingContract < 0 ? "expense" : "neutral"}>
-                        ${fmtUsd(r.financials.remainingContract)}
+                        {formatOverviewMoney(r.financials.remainingContract)}
                       </NeoAmount>
                     </ProjectFinancialTableCell>
                     <ProjectFinancialTableCell

@@ -25,6 +25,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { ChangeOrder } from "@/lib/data";
+import { formatOverviewMoney } from "@/lib/financial/project-overview-display";
 import { cn } from "@/lib/utils";
 import { listFlexRowClassName } from "@/lib/list-table-interaction";
 import {
@@ -61,13 +62,7 @@ function statusVariant(s: string): StatusBadgeVariant {
 }
 
 function formatAmount(total: number, amount: number | null): string {
-  const n = amount != null ? amount : total;
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(n);
+  return formatOverviewMoney(amount != null ? amount : total);
 }
 
 export function ChangeOrdersView({
@@ -111,6 +106,7 @@ export function ChangeOrdersView({
 
   const desktopHeader = (
     <PageHeader
+      variant="workspace"
       title="Change Orders"
       description={null}
       actions={
@@ -149,6 +145,7 @@ export function ChangeOrdersView({
 
   return (
     <PageLayout
+      frame="list"
       divider={false}
       className={cn(mobileListPagePaddingClass, "max-md:!gap-3")}
       header={
@@ -156,6 +153,7 @@ export function ChangeOrdersView({
           <div className="hidden w-full md:block">{desktopHeader}</div>
           <div className="md:hidden">
             <MobileListHeader
+              variant="workspace"
               title="Change Orders"
               fab={
                 <MobileFabButton ariaLabel="New change order" onClick={() => setNewOpen(true)} />
@@ -207,7 +205,7 @@ export function ChangeOrdersView({
           </div>
         ) : null}
         {grouped.length > 0 ? (
-          <NeoToolbar className="hidden md:flex">
+          <NeoToolbar className="hh-filters-bar hidden md:flex">
             <NeoInput
               placeholder="Search change orders…"
               value={search}
@@ -254,7 +252,7 @@ export function ChangeOrdersView({
               }
               action={
                 projects.length > 0 ? (
-                  <Button asChild size="sm">
+                  <Button asChild size="sm" variant="outline">
                     <Link href={`/projects/${projects[0].id}/change-orders/new`}>
                       New Change Order
                     </Link>
@@ -284,9 +282,7 @@ export function ChangeOrdersView({
                     )}
                   >
                     <div className="min-w-0 flex-1">
-                      <div className="text-sm font-medium text-[var(--hh-text-primary)]">
-                        {co.number}
-                      </div>
+                      <div className="text-sm font-medium text-[var(--hh-link)]">{co.number}</div>
                       <div className="mt-0.5 truncate text-xs text-[var(--hh-text-secondary)]">
                         {co.title || "Untitled"}
                       </div>
