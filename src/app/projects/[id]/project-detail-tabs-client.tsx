@@ -52,6 +52,7 @@ import {
 } from "@/lib/navigation/project-workspace";
 
 import { ProjectFinancialSnapshotComparisonPanel } from "./project-financial-snapshot-comparison-panel";
+import { UnappliedPaymentsPanel } from "@/components/financial/unapplied-payments-panel";
 import { RecentExpenseLines } from "./recent-expense-lines";
 import { InvoiceStatusBadge } from "@/components/invoice-status-badge";
 import { archiveProjectAction, deleteProjectAction, updateProjectAction } from "../actions";
@@ -379,6 +380,8 @@ export interface ProjectDetailTabsClientProps {
   /** Legacy-only view; never used by a reachable workspace tab. */
   expenseLineRows: import("./recent-expense-lines").RecentExpenseLineRow[];
   projectInvoices: import("@/lib/data").InvoiceWithDerived[];
+  unappliedPayments?: import("@/lib/payments-received-db").UnappliedPaymentListItem[];
+  unappliedPaymentsError?: string | null;
   relatedEstimates: EstimateListItem[];
   laborEntries: import("@/lib/daily-labor-db").LaborEntryWithJoins[];
   documents: import("@/lib/data").DocumentRow[];
@@ -409,6 +412,8 @@ export function ProjectDetailTabsClient({
   recentExpenseLines,
   expenseLineRows,
   projectInvoices,
+  unappliedPayments = [],
+  unappliedPaymentsError = null,
   relatedEstimates,
   laborEntries,
   documents,
@@ -1428,6 +1433,11 @@ export function ProjectDetailTabsClient({
                   {showFinancialSnapshotComparison ? (
                     <ProjectFinancialSnapshotComparisonPanel projectId={projectId} />
                   ) : null}
+
+                  <UnappliedPaymentsPanel
+                    payments={unappliedPayments}
+                    error={unappliedPaymentsError}
+                  />
 
                   <ExecutiveCard title="Invoices">
                     <SectionHeader

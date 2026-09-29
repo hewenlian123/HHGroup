@@ -243,11 +243,6 @@ export async function loadInvoiceDetailWithClient(
       status: payment.status == null ? null : String(payment.status),
       paymentReceivedId:
         payment.payment_received_id == null ? null : String(payment.payment_received_id),
-    })),
-    paymentsReceivedRows.map((payment) => ({
-      id: payment.id,
-      amount: payment.amount,
-      status: payment.status,
     }))
   );
   const paidTotal = centsToMoney(paidCents);

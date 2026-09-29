@@ -313,51 +313,6 @@ function toInvoice(row: InvoiceRow, items: InvoiceItemRow[]): Invoice {
   };
 }
 
-async function appendUnallocatedPaymentsReceived(
-  c: SupabaseClient,
-  invoiceIds: string[],
-  paymentsByInvoiceId: Map<string, InvoicePayment[]>
-): Promise<void> {
-  if (invoiceIds.length === 0) return;
-  const res = await c
-    .from("payments_received")
-    .select("id, invoice_id, amount, payment_date, status")
-    .in("invoice_id", invoiceIds);
-  if (res.error) {
-    if (isMissingTable(res.error) || isMissingColumn(res.error)) return;
-    financialDataUnavailable("payments_received", res.error);
-  }
-  const linked = new Set<string>();
-  for (const list of paymentsByInvoiceId.values()) {
-    for (const payment of list) {
-      const id = String(payment.paymentReceivedId ?? "").trim();
-      if (id) linked.add(id);
-    }
-  }
-  for (const row of (res.data ?? []) as Array<{
-    id?: string;
-    invoice_id?: string;
-    amount?: number | string | null;
-    payment_date?: string | null;
-    status?: string | null;
-  }>) {
-    const id = String(row.id ?? "").trim();
-    const invoiceId = String(row.invoice_id ?? "").trim();
-    if (!id || !invoiceId || linked.has(id)) continue;
-    const arr = paymentsByInvoiceId.get(invoiceId) ?? [];
-    arr.push({
-      id,
-      invoiceId,
-      date: String(row.payment_date ?? "").slice(0, 10),
-      amount: Number(row.amount) || 0,
-      method: "",
-      status: isVoidCashStatus(row.status) ? "Voided" : "Posted",
-      paymentReceivedId: id,
-    });
-    paymentsByInvoiceId.set(invoiceId, arr);
-  }
-}
-
 function toPayment(r: InvoicePaymentRow): InvoicePayment {
   const date = r.paid_at ?? r.payment_date ?? "";
   return {
@@ -448,21 +403,48 @@ export async function getInvoiceById(
   return toInvoice(row as InvoiceRow, itemRows);
 }
 
+const INVOICE_PAYMENT_LEDGER_COLS =
+  "id, invoice_id, amount, payment_date, paid_at, method, reference, memo, status, payment_received_id";
+
 export async function getInvoicePayments(
   explicitClient?: SupabaseClient
 ): Promise<InvoicePayment[]> {
   const c = client(explicitClient);
   const { data: rows, error } = await c
     .from("invoice_payments")
-    .select(
-      "id, invoice_id, amount, payment_date, paid_at, method, reference, memo, status, payment_received_id"
-    )
+    .select(INVOICE_PAYMENT_LEDGER_COLS)
     .order("payment_date", { ascending: false });
   if (error) {
     if (isMissingTable(error)) throw new Error(`invoice_payments: table not found. ${HINT}`);
     throwInvoiceError(error, "Failed to load invoice_payments.");
   }
   return ((rows ?? []) as InvoicePaymentRow[]).map(toPayment);
+}
+
+/** Allocations for the receipts on this page, including voided rows. */
+export async function getInvoicePaymentsForReceiptIds(
+  receiptIds: string[],
+  explicitClient?: SupabaseClient
+): Promise<InvoicePayment[]> {
+  const ids = [...new Set(receiptIds.map((id) => id.trim()).filter(Boolean))];
+  if (ids.length === 0) return [];
+  const c = client(explicitClient);
+  const rows: InvoicePaymentRow[] = [];
+  const chunkSize = 100;
+  for (let index = 0; index < ids.length; index += chunkSize) {
+    const chunk = ids.slice(index, index + chunkSize);
+    const { data, error } = await c
+      .from("invoice_payments")
+      .select(INVOICE_PAYMENT_LEDGER_COLS)
+      .in("payment_received_id", chunk);
+    if (error) {
+      if (isMissingTable(error)) throw new Error(`invoice_payments: table not found. ${HINT}`);
+      throwInvoiceError(error, "Failed to load invoice_payments.");
+    }
+    if (!Array.isArray(data)) financialDataUnavailable("invoice payments", null);
+    rows.push(...(data as InvoicePaymentRow[]));
+  }
+  return rows.map(toPayment);
 }
 
 export async function getPaymentsByInvoiceId(
@@ -657,7 +639,6 @@ export async function getInvoicesWithDerivedPaged(
         paymentsByInvoiceId.set(payment.invoiceId, arr);
       }
     }
-    await appendUnallocatedPaymentsReceived(c, invoiceIds, paymentsByInvoiceId);
   }
 
   // Compute derived per invoice
@@ -699,11 +680,9 @@ export async function getInvoiceByIdWithDerived(
   const inv = await getInvoiceById(id, explicitClient);
   if (!inv) return null;
   const payments = await getPaymentsByInvoiceId(id, explicitClient);
-  const paymentsByInvoiceId = new Map<string, InvoicePayment[]>([[id, payments]]);
-  await appendUnallocatedPaymentsReceived(client(explicitClient), [id], paymentsByInvoiceId);
   const { paidTotal, balanceDue, computedStatus, daysOverdue } = computeInvoiceDerived(
     inv,
-    paymentsByInvoiceId.get(id) ?? payments
+    payments
   );
   return { ...inv, paidTotal, balanceDue, computedStatus, daysOverdue };
 }
@@ -1375,7 +1354,7 @@ type ReceivableInvoiceRow = {
   status?: string | null;
 };
 
-/** Ex-tax collected cash: invoice allocations plus unlinked payments_received on those invoices. */
+/** Ex-tax collected cash from posted invoice allocations. Unapplied receipts are excluded. */
 async function collectedExTaxForInvoices(
   c: SupabaseClient,
   invoices: ReceivableInvoiceRow[],
@@ -1390,18 +1369,6 @@ async function collectedExTaxForInvoices(
   const payRes = await payQuery;
   if (payRes.error) throw payRes.error;
 
-  let receivedQuery = c.from("payments_received").select("id, invoice_id, amount, status");
-  if (restrictPaymentsToInvoices) receivedQuery = receivedQuery.in("invoice_id", ids);
-  const receivedRes = await receivedQuery;
-  if (
-    receivedRes.error &&
-    !isMissingTable(receivedRes.error) &&
-    !isMissingColumn(receivedRes.error)
-  ) {
-    throw receivedRes.error;
-  }
-
-  const linked = new Set<string>();
   let collected = 0;
   for (const row of (payRes.data ?? []) as Array<{
     invoice_id?: string | null;
@@ -1410,23 +1377,8 @@ async function collectedExTaxForInvoices(
     payment_received_id?: string | null;
   }>) {
     if (isVoidCashStatus(row.status)) continue;
-    const linkedId = String(row.payment_received_id ?? "").trim();
-    if (linkedId) linked.add(linkedId);
     const invoice = row.invoice_id ? invoiceById.get(row.invoice_id) : undefined;
     collected += paymentCollectedExTax(row.amount, invoice ?? null);
-  }
-  for (const row of (receivedRes.data ?? []) as Array<{
-    id?: string | null;
-    invoice_id?: string | null;
-    amount?: number | string | null;
-    status?: string | null;
-  }>) {
-    const id = String(row.id ?? "").trim();
-    if (id && linked.has(id)) continue;
-    if (isVoidCashStatus(row.status)) continue;
-    const invoice = invoiceById.get(String(row.invoice_id ?? ""));
-    if (!invoice) continue;
-    collected += paymentCollectedExTax(row.amount, invoice);
   }
   return roundMoney(collected);
 }

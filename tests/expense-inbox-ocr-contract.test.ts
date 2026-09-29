@@ -20,7 +20,7 @@ test("inbox upload stamps Honolulu today and leaves OCR to the server", async ()
 
 test("quick expense keeps the file fingerprint and queues OCR without backfilling old rows", async () => {
   const route = await source("src/app/api/financial/expenses/quick-expense/route.ts");
-  const migration = await source("supabase/migrations/20260929010904_expense_inbox_ocr_unpaid.sql");
+  const migration = await source("supabase/migrations/20260929020000_expense_inbox_ocr_unpaid.sql");
   assert.match(route, /file_sha256/);
   assert.match(route, /inbox_capture:\s*true/);
   assert.match(route, /ocr_status:\s*"pending"/);
