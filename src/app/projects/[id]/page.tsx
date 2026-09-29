@@ -188,40 +188,36 @@ export default async function ProjectDetailPage({
             break;
           }
           case "financial":
-            if (canViewFinancials) {
-              [commissions, bills, estimatesRaw] = await Promise.all([
-                getCommissionsWithPaidByProject(id, projectSupabase),
-                getApBillsByProject(id, projectSupabase),
-                getEstimateList(projectSupabase),
-              ]);
-            }
+            if (!canViewFinancials) break;
+            [commissions, bills, estimatesRaw] = await Promise.all([
+              getCommissionsWithPaidByProject(id, projectSupabase),
+              getApBillsByProject(id, projectSupabase),
+              getEstimateList(projectSupabase),
+            ]);
             break;
           case "change-orders":
-            if (canViewFinancials) {
-              changeOrders = await getChangeOrdersByProject(id, projectSupabase);
-            }
+            if (!canViewFinancials) break;
+            changeOrders = await getChangeOrdersByProject(id, projectSupabase);
             break;
           case "people":
-            if (canViewFinancials) {
-              [laborEntries, subcontracts, bills, commissions] = await Promise.all([
-                getLaborEntriesWithJoins({ project_id: id }, projectSupabase),
-                getSubcontractsByProject(id, projectSupabase),
-                getApBillsByProject(id, projectSupabase),
-                getCommissionsWithPaidByProject(id, projectSupabase),
-              ]);
-            }
+            if (!canViewFinancials) break;
+            [laborEntries, subcontracts, bills, commissions] = await Promise.all([
+              getLaborEntriesWithJoins({ project_id: id }, projectSupabase),
+              getSubcontractsByProject(id, projectSupabase),
+              getApBillsByProject(id, projectSupabase),
+              getCommissionsWithPaidByProject(id, projectSupabase),
+            ]);
             break;
           case "documents":
             documents = await getDocumentsByProject(id, projectSupabase);
             break;
           case "closeout":
-            if (canViewFinancials) {
-              [closeoutPunch, closeoutWarranty, closeoutCompletion] = await Promise.all([
-                getCloseoutPunch(id, projectSupabase),
-                getCloseoutWarranty(id, projectSupabase),
-                getCloseoutCompletion(id, projectSupabase),
-              ]);
-            }
+            if (!canViewFinancials) break;
+            [closeoutPunch, closeoutWarranty, closeoutCompletion] = await Promise.all([
+              getCloseoutPunch(id, projectSupabase),
+              getCloseoutWarranty(id, projectSupabase),
+              getCloseoutCompletion(id, projectSupabase),
+            ]);
             break;
         }
         return { ...snapshot(), warning: null as string | null, fatal: null as unknown };
