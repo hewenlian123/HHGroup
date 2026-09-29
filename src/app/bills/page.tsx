@@ -1,6 +1,7 @@
 import { financePathWithReturn, financeWorkspacePath } from "@/lib/finance-navigation";
 import { FinanceContextBack } from "@/components/financial/finance-context-back";
 import { PageLayout, PageHeader, NeoPanel } from "@/components/base";
+import { sectionCardClass } from "@/components/ui/section-card";
 import { fetchBillsPageData } from "./bills-api";
 import { BillsListClient } from "./bills-list-client";
 import Link from "next/link";
@@ -42,10 +43,12 @@ export default async function BillsPage({ searchParams }: Props) {
 
   return (
     <PageLayout
+      frame="list"
       className={billsPageWrapClass}
       header={
         <div className="hidden md:block">
           <PageHeader
+            variant="workspace"
             title="Bills"
             description="Track vendor, labor, and other payables"
             actions={
@@ -64,7 +67,7 @@ export default async function BillsPage({ searchParams }: Props) {
       <FinanceContextBack />
       <div className={billsContentMaxClass}>
         {!available ? (
-          <NeoPanel bodyClassName="px-4 py-5 md:px-6">
+          <NeoPanel className={sectionCardClass} bodyClassName="px-4 py-5 md:px-6">
             <p className="text-hh-body-strong text-[var(--hh-text-primary)]">
               Bills/AP is unavailable
             </p>

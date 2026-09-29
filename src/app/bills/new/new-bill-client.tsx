@@ -186,7 +186,7 @@ export function NewBillClient({
   };
 
   return (
-    <div className="mx-auto w-full min-w-0 max-w-[1000px]">
+    <div className="w-full min-w-0">
       {dataLoadWarning ? (
         <p
           className="mb-4 rounded-hh-standard border border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] px-3 py-2 text-hh-helper text-[var(--hh-warning)]"

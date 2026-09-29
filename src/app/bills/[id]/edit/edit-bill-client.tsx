@@ -107,7 +107,7 @@ export function EditBillClient({ bill, projects, learnedCategories = [] }: Props
   };
 
   return (
-    <div className="mx-auto w-full min-w-0 max-w-[1000px]">
+    <div className="w-full min-w-0">
       <NeoPanel
         title="Bill details"
         className={billsFormCardClass}

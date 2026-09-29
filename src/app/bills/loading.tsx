@@ -4,7 +4,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 export default function BillsLoading() {
   return (
     <PageLayout
-      header={<PageHeader title="Bills" description="Track vendor, labor, and other payables" />}
+      frame="list"
+      header={
+        <PageHeader
+          variant="workspace"
+          title="Bills"
+          description="Track vendor, labor, and other payables"
+        />
+      }
     >
       <div className="flex flex-col gap-6">
         <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4">

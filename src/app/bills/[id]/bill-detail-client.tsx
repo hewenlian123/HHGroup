@@ -24,7 +24,9 @@ import type { ApBillWithProject, ApBillPaymentRow } from "@/lib/data";
 import { useAttachmentPreview } from "@/contexts/attachment-preview-context";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { resolvePreviewSignedUrl } from "@/lib/storage-signed-url";
-import { formatCurrency, formatDate } from "@/lib/formatters";
+import { formatDate } from "@/lib/formatters";
+import { formatOverviewMoney } from "@/lib/financial/project-overview-display";
+import { sectionCardClass } from "@/components/ui/section-card";
 import { TYPO } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 import { beginPendingSubmission, getPendingSubmission } from "@/lib/financial-idempotency";
@@ -227,13 +229,17 @@ export function BillDetailClient({
   };
 
   return (
-    <div className="mx-auto flex min-w-0 max-w-[1000px] flex-col gap-4 md:gap-5">
+    <div className="flex w-full min-w-0 flex-col gap-4 md:gap-5">
       {error && !addPaymentOpen ? (
         <p role="alert" className="text-[var(--hh-danger)]">
           {error}
         </p>
       ) : null}
-      <NeoPanel title="Bill details" bodyClassName="px-4 py-4 md:px-6 md:py-5">
+      <NeoPanel
+        className={sectionCardClass}
+        title="Bill details"
+        bodyClassName="px-4 py-4 md:px-6 md:py-5"
+      >
         <dl className={billsDetailDlClass}>
           <dt className={billsDetailDtClass}>Bill no.</dt>
           <dd className={billsDetailDdClass}>{bill.bill_no ?? "—"}</dd>
@@ -245,7 +251,7 @@ export function BillDetailClient({
           <dd className={billsDetailDdClass}>
             {bill.project_id ? (
               <Link
-                className="underline"
+                className="font-semibold text-[var(--hh-link)] underline decoration-[var(--hh-link-underline)] underline-offset-4"
                 href={financePathWithReturn(
                   `/projects/${bill.project_id}`,
                   drawerReturnTo ?? `/bills/${bill.id}`
@@ -262,7 +268,7 @@ export function BillDetailClient({
             {bill.project_id && bill.subcontract_id ? (
               <Link
                 href={`/projects/${bill.project_id}/subcontracts/${bill.subcontract_id}`}
-                className="underline-offset-2 hover:underline"
+                className="font-semibold text-[var(--hh-link)] underline decoration-[var(--hh-link-underline)] underline-offset-4"
               >
                 {bill.subcontractor_name ?? bill.subcontract_cost_code ?? "Linked subcontract"}
               </Link>
@@ -300,12 +306,17 @@ export function BillDetailClient({
       <section
         className={cn("grid min-w-0 gap-3", drawerReturnTo ? "grid-cols-3" : "sm:grid-cols-3")}
       >
-        <KpiTile label="Total amount" value={formatCurrency(bill.amount)} />
-        <KpiTile label="Paid amount" value={formatCurrency(bill.paid_amount)} tone="positive" />
-        <KpiTile label="Balance" value={formatCurrency(bill.balance_amount)} />
+        <KpiTile label="Total amount" value={formatOverviewMoney(bill.amount)} />
+        <KpiTile
+          label="Paid amount"
+          value={formatOverviewMoney(bill.paid_amount)}
+          tone="positive"
+        />
+        <KpiTile label="Balance" value={formatOverviewMoney(bill.balance_amount)} />
       </section>
 
       <NeoPanel
+        className={sectionCardClass}
         title="Payment history"
         description={payments.length === 0 ? "No payments recorded yet." : undefined}
         action={
@@ -345,7 +356,7 @@ export function BillDetailClient({
                 <tr key={p.id} className="border-b border-[var(--hh-border)] last:border-b-0">
                   <td className={cn(tableRawTdClass, TYPO.date)}>{formatDate(p.payment_date)}</td>
                   <td className={cn(tableRawTdClass, "text-right", TYPO.amount)}>
-                    <NeoAmount>{formatCurrency(p.amount)}</NeoAmount>
+                    <NeoAmount>{formatOverviewMoney(p.amount)}</NeoAmount>
                   </td>
                   <td className={cn(tableRawTdClass, "text-[var(--hh-text-secondary)]")}>
                     {p.payment_method ?? "—"}
@@ -370,7 +381,11 @@ export function BillDetailClient({
       </NeoPanel>
 
       {bill.notes || drawerReturnTo ? (
-        <NeoPanel title="Notes" bodyClassName="px-4 py-4 md:px-6 md:py-5">
+        <NeoPanel
+          className={sectionCardClass}
+          title="Notes"
+          bodyClassName="px-4 py-4 md:px-6 md:py-5"
+        >
           <p className="text-hh-table-cell text-[var(--hh-text-secondary)]">
             {bill.notes || "No notes"}
           </p>

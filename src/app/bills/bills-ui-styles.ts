@@ -1,13 +1,14 @@
-/** Shared Warm Graphite / Finance OS tokens for Bills module surfaces. */
+import { sectionCardClass } from "@/components/ui/section-card";
+
+/** Bills module chrome on the live list frame. */
 export const billsPageWrapClass =
-  "financial-nums min-w-0 overflow-x-hidden bg-workspace text-[var(--hh-text-secondary)]";
+  "financial-nums min-w-0 overflow-x-hidden text-[var(--hh-text-secondary)]";
 
-export const billsContentMaxClass = "mx-auto w-full min-w-0 max-w-[1200px]";
+export const billsContentMaxClass = "w-full min-w-0";
 
-export const billsDetailMaxClass = "mx-auto w-full min-w-0 max-w-[1000px]";
+export const billsDetailMaxClass = "w-full min-w-0";
 
-export const billsFormCardClass =
-  "rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] shadow-operational";
+export const billsFormCardClass = sectionCardClass;
 
 export const billsFormBodyClass = "space-y-5 p-4 md:space-y-6 md:p-8";
 
@@ -19,8 +20,7 @@ export const billsDateInputClass =
 export const billsAmountInputClass =
   "neo-amount tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none";
 
-export const billsPrimaryButtonClass =
-  "h-11 rounded-hh-standard border-transparent bg-[var(--hh-action-primary)] text-[var(--hh-action-primary-foreground)] hover:opacity-90 hh-focus-ring";
+export const billsPrimaryButtonClass = "hh-btn-primary h-11 rounded-hh-standard hh-focus-ring";
 
 export const billsSecondaryButtonClass =
   "h-11 rounded-hh-standard border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] hover:bg-[var(--hh-l3-hover)] hover:text-[var(--hh-text-primary)]";
