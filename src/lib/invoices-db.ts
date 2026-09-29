@@ -403,21 +403,48 @@ export async function getInvoiceById(
   return toInvoice(row as InvoiceRow, itemRows);
 }
 
+const INVOICE_PAYMENT_LEDGER_COLS =
+  "id, invoice_id, amount, payment_date, paid_at, method, reference, memo, status, payment_received_id";
+
 export async function getInvoicePayments(
   explicitClient?: SupabaseClient
 ): Promise<InvoicePayment[]> {
   const c = client(explicitClient);
   const { data: rows, error } = await c
     .from("invoice_payments")
-    .select(
-      "id, invoice_id, amount, payment_date, paid_at, method, reference, memo, status, payment_received_id"
-    )
+    .select(INVOICE_PAYMENT_LEDGER_COLS)
     .order("payment_date", { ascending: false });
   if (error) {
     if (isMissingTable(error)) throw new Error(`invoice_payments: table not found. ${HINT}`);
     throwInvoiceError(error, "Failed to load invoice_payments.");
   }
   return ((rows ?? []) as InvoicePaymentRow[]).map(toPayment);
+}
+
+/** Allocations for the receipts on this page, including voided rows. */
+export async function getInvoicePaymentsForReceiptIds(
+  receiptIds: string[],
+  explicitClient?: SupabaseClient
+): Promise<InvoicePayment[]> {
+  const ids = [...new Set(receiptIds.map((id) => id.trim()).filter(Boolean))];
+  if (ids.length === 0) return [];
+  const c = client(explicitClient);
+  const rows: InvoicePaymentRow[] = [];
+  const chunkSize = 100;
+  for (let index = 0; index < ids.length; index += chunkSize) {
+    const chunk = ids.slice(index, index + chunkSize);
+    const { data, error } = await c
+      .from("invoice_payments")
+      .select(INVOICE_PAYMENT_LEDGER_COLS)
+      .in("payment_received_id", chunk);
+    if (error) {
+      if (isMissingTable(error)) throw new Error(`invoice_payments: table not found. ${HINT}`);
+      throwInvoiceError(error, "Failed to load invoice_payments.");
+    }
+    if (!Array.isArray(data)) financialDataUnavailable("invoice payments", null);
+    rows.push(...(data as InvoicePaymentRow[]));
+  }
+  return rows.map(toPayment);
 }
 
 export async function getPaymentsByInvoiceId(

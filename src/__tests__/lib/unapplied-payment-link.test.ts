@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { getInvoiceByIdWithDerived } from "@/lib/invoices-db";
+import { getInvoiceByIdWithDerived, getInvoicePaymentsForReceiptIds } from "@/lib/invoices-db";
 import { paymentLinkDecision, unappliedCustomerReceipts } from "@/lib/payment-allocation";
 import { linkUnappliedPaymentToInvoice } from "@/lib/payments-received-db";
 
@@ -139,83 +139,37 @@ describe("unapplied customer receipts", () => {
 });
 
 describe("linkUnappliedPaymentToInvoice", () => {
-  it("posts an invoice allocation and returns the trigger-backed paid and balance", async () => {
-    const invoice = {
-      id: "inv-1",
-      invoice_no: "INV-1",
-      project_id: "project-1",
-      customer_id: "customer-1",
-      client_name: "Ada",
-      status: "Sent",
-      total: 100,
-      paid_total: 40,
-      balance_due: 60,
-    };
-    const payment = {
-      id: "pay-25",
-      invoice_id: "inv-1",
-      project_id: "project-1",
-      customer_id: "customer-1",
-      customer_name: "Ada",
-      payment_date: "2026-09-03",
-      amount: 25,
-      payment_method: "Check",
-      notes: "SEED-25",
-      deposit_account: null,
-      attachment_url: null,
-      status: "completed",
-      created_at: "2026-09-03T00:00:00.000Z",
-    };
-    let inserted: Record<string, unknown> | null = null;
-    const client = {
-      from(table: string) {
-        let operation = "select";
-        let payload: Record<string, unknown> | null = null;
-        const run = () => {
-          if (table === "payments_received" && operation === "select") {
-            return { data: payment, error: null };
-          }
-          if (table === "invoices" && operation === "select") {
-            return { data: { ...invoice }, error: null };
-          }
-          if (table === "invoice_payments" && operation === "select") {
-            return { data: [], error: null };
-          }
-          if (table === "invoice_payments" && operation === "insert") {
-            inserted = payload;
-            invoice.paid_total = 65;
-            invoice.balance_due = 35;
-            invoice.status = "Partially Paid";
-            return { data: { id: "alloc-25" }, error: null };
-          }
-          if (table === "payments_received" && operation === "update") {
-            payment.invoice_id = String(payload?.invoice_id ?? payment.invoice_id);
-            return { data: { id: payment.id }, error: null };
-          }
-          return { data: null, error: { message: `Unexpected ${operation} on ${table}` } };
-        };
-        const builder: Record<string, unknown> = {
-          select: () => builder,
-          eq: () => builder,
-          insert: (row: Record<string, unknown>) => {
-            operation = "insert";
-            payload = row;
-            return builder;
-          },
-          update: (row: Record<string, unknown>) => {
-            operation = "update";
-            payload = row;
-            return builder;
-          },
-          maybeSingle: () => Promise.resolve(run()),
-          then: (
-            resolve: (value: { data: unknown; error: { message?: string } | null }) => unknown,
-            reject?: (reason: unknown) => unknown
-          ) => Promise.resolve(run()).then(resolve, reject),
-        };
-        return builder;
+  function linkClient(
+    rpc: (
+      name: string,
+      args: Record<string, string>
+    ) => Promise<{ data: unknown; error: { message?: string; code?: string } | null }>
+  ) {
+    return {
+      from() {
+        throw new Error("The link must not write tables from the client.");
       },
+      rpc,
     } as unknown as SupabaseClient;
+  }
+
+  it("returns paid and balance only when the atomic link posts an allocation", async () => {
+    const client = linkClient(async (name, args) => {
+      expect(name).toBe("link_unapplied_payment_to_invoice");
+      expect(args).toEqual({ p_payment_id: "pay-25", p_invoice_id: "inv-1" });
+      return {
+        data: {
+          payment_id: "pay-25",
+          invoice_id: "inv-1",
+          project_id: "project-1",
+          invoice_payment_id: "alloc-25",
+          paid_total: 65,
+          balance_due: 35,
+          already_applied: false,
+        },
+        error: null,
+      };
+    });
 
     await expect(linkUnappliedPaymentToInvoice("pay-25", "inv-1", client)).resolves.toEqual({
       paymentId: "pay-25",
@@ -225,14 +179,96 @@ describe("linkUnappliedPaymentToInvoice", () => {
       balanceDue: 35,
       alreadyApplied: false,
     });
-    expect(inserted).toMatchObject({
-      invoice_id: "inv-1",
-      amount: 25,
-      status: "Posted",
-      payment_received_id: "pay-25",
-      method: "Check",
-      memo: "SEED-25",
-    });
-    expect(payment.invoice_id).toBe("inv-1");
+  });
+
+  it("fails when a voided allocation is not reactivated into a posted row", async () => {
+    const client = linkClient(async () => ({
+      data: {
+        payment_id: "pay-25",
+        invoice_id: "inv-1",
+        project_id: "project-1",
+        paid_total: 40,
+        balance_due: 60,
+        already_applied: false,
+      },
+      error: null,
+    }));
+
+    await expect(linkUnappliedPaymentToInvoice("pay-25", "inv-1", client)).rejects.toThrow(
+      "Payment link did not post an allocation."
+    );
+  });
+
+  it("does not treat a duplicate allocation error as a successful link", async () => {
+    const client = linkClient(async () => ({
+      data: null,
+      error: {
+        code: "23505",
+        message: "duplicate key value violates unique constraint",
+      },
+    }));
+
+    await expect(linkUnappliedPaymentToInvoice("pay-25", "inv-1", client)).rejects.toThrow(
+      "duplicate key value violates unique constraint"
+    );
+  });
+});
+
+describe("getInvoicePaymentsForReceiptIds", () => {
+  it("queries only the receipt ids on the page and keeps voided rows", async () => {
+    const queried: string[][] = [];
+    const client = {
+      from(table: string) {
+        expect(table).toBe("invoice_payments");
+        return {
+          select: () => ({
+            in: (_column: string, ids: string[]) => {
+              queried.push(ids);
+              return Promise.resolve({
+                data: ids.map((id) => ({
+                  id: `alloc-${id}`,
+                  invoice_id: "inv",
+                  amount: 1,
+                  paid_at: "2026-09-01",
+                  payment_date: "2026-09-01",
+                  method: "Check",
+                  memo: null,
+                  status: id === "voided-pay" ? "Voided" : "Posted",
+                  payment_received_id: id,
+                })),
+                error: null,
+              });
+            },
+          }),
+        };
+      },
+    } as unknown as SupabaseClient;
+    const ids = [...Array.from({ length: 101 }, (_, index) => `pay-${index}`), "voided-pay"];
+
+    const rows = await getInvoicePaymentsForReceiptIds(ids, client);
+
+    expect(queried).toHaveLength(2);
+    expect(queried[0]).toHaveLength(100);
+    expect(queried[1]).toEqual(["pay-100", "voided-pay"]);
+    expect(rows).toHaveLength(102);
+    expect(
+      rows.some((row) => row.status === "Voided" && row.paymentReceivedId === "voided-pay")
+    ).toBe(true);
+  });
+
+  it("fails closed when the page allocation query errors", async () => {
+    const client = {
+      from() {
+        return {
+          select: () => ({
+            in: () => Promise.resolve({ data: null, error: { message: "permission denied" } }),
+          }),
+        };
+      },
+    } as unknown as SupabaseClient;
+
+    await expect(getInvoicePaymentsForReceiptIds(["pay-1"], client)).rejects.toThrow(
+      /permission denied|unavailable/i
+    );
   });
 });

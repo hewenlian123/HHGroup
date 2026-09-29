@@ -1302,22 +1302,6 @@ async function readPaymentCustomerId(
   return customerId ? String(customerId) : null;
 }
 
-async function readInvoiceForLink(
-  c: ReturnType<typeof client>,
-  invoiceId: string
-): Promise<InvoiceLinkRow> {
-  const res = await c
-    .from("invoices")
-    .select(
-      "id, invoice_no, project_id, customer_id, client_name, status, total, balance_due, paid_total"
-    )
-    .eq("id", invoiceId)
-    .maybeSingle();
-  if (res.error) throw new Error(res.error.message ?? "Failed to load the invoice.");
-  if (!res.data) throw new Error("Invoice not found.");
-  return res.data as InvoiceLinkRow;
-}
-
 async function readAppliedInvoiceId(
   c: ReturnType<typeof client>,
   paymentId: string
@@ -1344,56 +1328,38 @@ async function readAppliedInvoiceId(
   return invoiceId;
 }
 
-async function alignReceiptWithInvoice(
-  c: ReturnType<typeof client>,
-  paymentId: string,
-  invoice: InvoiceLinkRow
-): Promise<void> {
-  const patch: Record<string, string | null> = {
-    invoice_id: invoice.id,
-    project_id: invoice.project_id ?? null,
-    customer_name: invoice.client_name ?? "",
-  };
-  if (invoice.customer_id) patch.customer_id = invoice.customer_id;
-  let res = await c
-    .from("payments_received")
-    .update(patch)
-    .eq("id", paymentId)
-    .select("id")
-    .maybeSingle();
-  if (res.error && isMissingColumn(res.error) && patch.customer_id) {
-    delete patch.customer_id;
-    res = await c
-      .from("payments_received")
-      .update(patch)
-      .eq("id", paymentId)
-      .select("id")
-      .maybeSingle();
+function parseLinkUnappliedPaymentResult(data: unknown): LinkedUnappliedPaymentResult {
+  const result = (Array.isArray(data) ? data[0] : data) as Record<string, unknown> | null;
+  const paymentId = typeof result?.payment_id === "string" ? result.payment_id.trim() : "";
+  const invoiceId = typeof result?.invoice_id === "string" ? result.invoice_id.trim() : "";
+  const allocationId =
+    typeof result?.invoice_payment_id === "string" ? result.invoice_payment_id.trim() : "";
+  const projectId = typeof result?.project_id === "string" ? result.project_id.trim() : "";
+  if (
+    !result ||
+    !paymentId ||
+    !invoiceId ||
+    !allocationId ||
+    !projectId ||
+    typeof result.already_applied !== "boolean"
+  ) {
+    throw new Error("Payment link did not post an allocation.");
   }
-  if (res.error)
-    throw new Error(res.error.message ?? "Failed to attach the payment to the invoice.");
-  if (!res.data) throw new Error("Payment not found.");
-}
-
-function linkedResult(
-  paymentId: string,
-  invoice: InvoiceLinkRow,
-  alreadyApplied: boolean
-): LinkedUnappliedPaymentResult {
   return {
     paymentId,
-    invoiceId: invoice.id,
-    projectId: invoice.project_id ?? null,
-    paidTotal: requiredMoney(invoice.paid_total, "Invoice paid total"),
-    balanceDue: requiredMoney(invoice.balance_due, "Invoice balance"),
-    alreadyApplied,
+    invoiceId,
+    projectId,
+    paidTotal: requiredMoney(result.paid_total, "Invoice paid total"),
+    balanceDue: requiredMoney(result.balance_due, "Invoice balance"),
+    alreadyApplied: result.already_applied,
   };
 }
 
 /**
- * Allocate an existing unapplied receipt onto an open invoice. The invoice
- * paid and balance come back from the allocation trigger, the same path used
- * when a payment is recorded.
+ * Allocate an existing unapplied receipt onto an open invoice. The database
+ * function posts or reactivates the allocation and aligns the receipt and
+ * deposit pointers in one transaction. A result without a posted allocation
+ * is a failure.
  */
 export async function linkUnappliedPaymentToInvoice(
   paymentId: string,
@@ -1406,50 +1372,12 @@ export async function linkUnappliedPaymentToInvoice(
   if (!trimmedPaymentId || !trimmedInvoiceId)
     throw new Error("Choose an invoice for this payment.");
 
-  const [payment, customerId, invoice, appliedInvoiceId] = await Promise.all([
-    fetchPaymentReceivedDbRow(c, trimmedPaymentId),
-    readPaymentCustomerId(c, trimmedPaymentId),
-    readInvoiceForLink(c, trimmedInvoiceId),
-    readAppliedInvoiceId(c, trimmedPaymentId),
-  ]);
-  if (!payment) throw new Error("Payment not found.");
-
-  const decision = paymentLinkDecision({
-    receipt: receiptForLink(payment, customerId),
-    invoice: invoiceForLink(invoice),
-    appliedInvoiceId,
+  const { data, error } = await c.rpc("link_unapplied_payment_to_invoice", {
+    p_payment_id: trimmedPaymentId,
+    p_invoice_id: trimmedInvoiceId,
   });
-  if (!decision.ok) throw new Error(decision.error);
-
-  if (!decision.alreadyApplied) {
-    const paidAt = normalizeDate(payment.payment_date);
-    if (!paidAt) throw new Error("Payment date is required.");
-    const inserted = await c
-      .from("invoice_payments")
-      .insert({
-        invoice_id: invoice.id,
-        paid_at: paidAt,
-        amount: requiredMoney(payment.amount, "Payment amount"),
-        method: payment.payment_method,
-        memo: normalizeMemo(payment.notes) || null,
-        status: "Posted",
-        payment_received_id: payment.id,
-      })
-      .select("id")
-      .maybeSingle();
-    if (inserted.error) {
-      const duplicate =
-        inserted.error.code === "23505" || /duplicate|unique/i.test(inserted.error.message ?? "");
-      if (!duplicate) throw new Error(inserted.error.message ?? "Failed to link the payment.");
-      const raced = await readAppliedInvoiceId(c, payment.id);
-      if (raced && raced !== invoice.id) {
-        throw new Error("This payment is already applied to another invoice.");
-      }
-    }
-  }
-
-  await alignReceiptWithInvoice(c, payment.id, invoice);
-  return linkedResult(payment.id, await readInvoiceForLink(c, invoice.id), decision.alreadyApplied);
+  if (error) throw new Error(error.message ?? "Failed to link the payment.");
+  return parseLinkUnappliedPaymentResult(data);
 }
 
 export async function listOpenInvoicesForUnappliedPayment(

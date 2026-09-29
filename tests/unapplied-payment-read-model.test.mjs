@@ -25,12 +25,27 @@ test("invoice paid reads ignore unapplied payments_received rows", () => {
   assert.doesNotMatch(snapshot, /unallocatedReceivedPayments/);
 });
 
-test("linking an unapplied payment reuses the invoice allocation write", () => {
+test("linking an unapplied payment posts an allocation atomically", () => {
   const payments = source("src/lib/payments-received-db.ts");
   const actions = source("src/app/financial/payments/actions.ts");
-  assert.match(payments, /from\("invoice_payments"\)/);
-  assert.match(payments, /payment_received_id: payment\.id/);
-  assert.match(payments, /status: "Posted"/);
+  const page = source("src/app/financial/payments/page.tsx");
+  const invoices = source("src/lib/invoices-db.ts");
+  const sql = source("supabase/migrations/20260929014755_link_unapplied_payment_to_invoice.sql");
+  assert.match(payments, /rpc\("link_unapplied_payment_to_invoice"/);
+  assert.match(payments, /Payment link did not post an allocation/);
+  assert.doesNotMatch(payments, /23505/);
+  assert.doesNotMatch(payments, /already linked/);
   assert.match(actions, /linkUnappliedPaymentToInvoiceAction/);
   assert.match(actions, /revalidatePaymentPaths\(result\.invoiceId, result\.projectId\)/);
+  assert.match(sql, /coalesce\(old\.status, 'Posted'\) = 'Voided'/);
+  assert.match(sql, /status = 'Posted'/);
+  assert.match(sql, /payment_date = v_payment\.payment_date::date/);
+  assert.match(sql, /update public\.payments_received/);
+  assert.match(sql, /update public\.deposits/);
+  assert.match(sql, /Payment link did not post an allocation/);
+  assert.match(sql, /Payment allocation was not reactivated/);
+  assert.match(page, /getInvoicePaymentsForReceiptIds/);
+  assert.doesNotMatch(page, /getInvoicePayments\(/);
+  assert.match(invoices, /getInvoicePaymentsForReceiptIds/);
+  assert.match(invoices, /\.in\("payment_received_id", chunk\)/);
 });

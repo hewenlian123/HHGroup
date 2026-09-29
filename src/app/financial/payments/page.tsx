@@ -24,7 +24,7 @@ import { getSupabaseClient } from "@/lib/supabase";
 import { getPaymentsReceived } from "@/lib/payments-received-db";
 import {
   getInvoices,
-  getInvoicePayments,
+  getInvoicePaymentsForReceiptIds,
   type Invoice,
   type InvoicePayment,
 } from "@/lib/invoices-db";
@@ -224,11 +224,14 @@ function PaymentsReceivedPageInner() {
     try {
       const client = getSupabaseClient();
       if (!client) throw new Error("A signed-in session is required.");
-      const [list, invoiceRows, ledger] = await Promise.all([
+      const [list, invoiceRows] = await Promise.all([
         getPaymentsReceived({ includeVoided: true }, client),
         getInvoices(client),
-        getInvoicePayments(client),
       ]);
+      const ledger = await getInvoicePaymentsForReceiptIds(
+        list.map((payment) => payment.id),
+        client
+      );
       if (request !== loadRequest.current) return;
       setPayments(list);
       setInvoices(invoiceRows);
