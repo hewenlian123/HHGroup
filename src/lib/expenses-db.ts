@@ -14,7 +14,10 @@ import {
 import { financialDataUnavailable } from "@/lib/financial-availability";
 import { dedupeExpenseAttachmentsByStorageKey } from "@/lib/expense-attachment-dedupe";
 import { expenseHasReceiptSignal } from "@/lib/expense-receipt-items";
-import { expenseCountsTowardCanonicalProjectCost } from "@/lib/expense-canonical-cost";
+import {
+  expenseCountsTowardCanonicalProjectCost,
+  readExpenseIdentity,
+} from "@/lib/expense-canonical-cost";
 import {
   deriveExpenseWorkflowStatus,
   expenseMatchesInboxPool,
@@ -44,6 +47,8 @@ export type ExpenseLine = {
   costCode?: string | null;
   memo?: string | null;
   amount: number;
+  clientReimbursable?: boolean;
+  clientReimbursementStatus?: "not_requested" | "requested" | "reimbursed" | null;
 };
 
 export type Expense = {
@@ -84,6 +89,21 @@ export type Expense = {
   sourceType?: "company" | "reimbursement" | "receipt_upload" | "bank_import";
   /** Optional company-paid material deduction against a subcontractor payable. */
   subcontractDeduction?: SubcontractDeductionRow | null;
+  ocrStatus?: "pending" | "processing" | "done" | "failed" | null;
+  ocrError?: string | null;
+  ocrConfidence?: Record<string, unknown> | null;
+  dueDate?: string | null;
+  subtotal?: number | null;
+  taxAmount?: number | null;
+  vendorId?: string | null;
+  vendorSuggestion?: string | null;
+  paymentStatus?: "unpaid" | "paid" | null;
+  paidOn?: string | null;
+  duplicateExpenseId?: string | null;
+  duplicateReason?: string | null;
+  duplicateDismissedAt?: string | null;
+  inboxCapture?: boolean;
+  fileSha256?: string | null;
 };
 
 /** List sort for `/financial/expenses` (Supabase + stable in-memory pass). */
@@ -131,6 +151,21 @@ type ExpenseRow = {
   source?: string | null;
   source_id?: string | null;
   source_type?: string | null;
+  ocr_status?: string | null;
+  ocr_error?: string | null;
+  ocr_confidence?: Record<string, unknown> | null;
+  due_date?: string | null;
+  subtotal?: number | string | null;
+  tax_amount?: number | string | null;
+  vendor_id?: string | null;
+  vendor_suggestion?: string | null;
+  payment_status?: string | null;
+  paid_on?: string | null;
+  duplicate_expense_id?: string | null;
+  duplicate_reason?: string | null;
+  duplicate_dismissed_at?: string | null;
+  inbox_capture?: boolean | null;
+  file_sha256?: string | null;
 };
 
 type ExpenseLineRow = {
@@ -143,6 +178,8 @@ type ExpenseLineRow = {
   memo?: string | null;
   amount?: number;
   total?: number;
+  client_reimbursable?: boolean | null;
+  client_reimbursement_status?: string | null;
 };
 
 const WORKER_REIMBURSEMENT_SOURCE = "worker_reimbursement";
@@ -503,6 +540,13 @@ function toExpenseLine(r: ExpenseLineRow): ExpenseLine {
     costCode: r.cost_code ?? undefined,
     memo: r.description ?? r.memo ?? undefined,
     amount: Number(r.amount ?? r.total) || 0,
+    clientReimbursable: r.client_reimbursable === true,
+    clientReimbursementStatus:
+      r.client_reimbursement_status === "requested" ||
+      r.client_reimbursement_status === "reimbursed" ||
+      r.client_reimbursement_status === "not_requested"
+        ? r.client_reimbursement_status
+        : null,
   };
 }
 
@@ -641,7 +685,31 @@ async function toExpense(
     headerTotal: nullableMoney(row.total),
     sourceType: deriveSourceType(row),
     subcontractDeduction: subcontractDeduction ?? null,
+    ocrStatus: normalizeOcrStatus(row.ocr_status),
+    ocrError: row.ocr_error ?? null,
+    ocrConfidence:
+      row.ocr_confidence && typeof row.ocr_confidence === "object" ? row.ocr_confidence : null,
+    dueDate: row.due_date ? String(row.due_date).slice(0, 10) : null,
+    subtotal: nullableMoney(row.subtotal),
+    taxAmount: nullableMoney(row.tax_amount),
+    vendorId: row.vendor_id ?? null,
+    vendorSuggestion: row.vendor_suggestion ?? null,
+    paymentStatus:
+      row.payment_status === "unpaid" || row.payment_status === "paid" ? row.payment_status : null,
+    paidOn: row.paid_on ? String(row.paid_on).slice(0, 10) : null,
+    duplicateExpenseId: row.duplicate_expense_id ?? null,
+    duplicateReason: row.duplicate_reason ?? null,
+    duplicateDismissedAt: row.duplicate_dismissed_at ?? null,
+    inboxCapture: row.inbox_capture === true,
+    fileSha256: row.file_sha256 ?? null,
   };
+}
+
+function normalizeOcrStatus(value: string | null | undefined): Expense["ocrStatus"] {
+  if (value === "pending" || value === "processing" || value === "done" || value === "failed") {
+    return value;
+  }
+  return null;
 }
 
 /** Select columns: base + optional receipt_url, status, worker_id. */
@@ -2285,10 +2353,12 @@ export async function getExpenseTotalsByProject(
     financialDataUnavailable("project expense lines", null);
   }
   const eids = [...new Set(lineRows.map((r) => r.expense_id).filter((id): id is string => !!id))];
-  const { data: hdrs, error: hdrErr } = await c
-    .from("expenses")
-    .select("id, status, reference_no")
-    .in("id", eids);
+  const headerRead = await readExpenseIdentity(
+    (columns) => c.from("expenses").select(columns).in("id", eids),
+    "id, status, reference_no, inbox_capture"
+  );
+  const hdrs = headerRead.data;
+  const hdrErr = headerRead.error;
   if (hdrErr) financialDataUnavailable("project expense headers", hdrErr);
   if (!Array.isArray(hdrs)) financialDataUnavailable("project expense headers", null);
   const returnedHeaderIds = new Set(
@@ -2360,17 +2430,20 @@ export async function getExpensesTotalForMonth(
   const start = `${y}-${m}-01`;
   const lastDay = new Date(year, month, 0).getDate();
   const end = `${y}-${m}-${String(lastDay).padStart(2, "0")}`;
-  const { data: expenseRows, error: expenseError } = await c
-    .from("expenses")
-    .select("id, status, reference_no")
-    .gte("expense_date", start)
-    .lte("expense_date", end);
+  const expenseRead = await readExpenseIdentity(
+    (columns) =>
+      c.from("expenses").select(columns).gte("expense_date", start).lte("expense_date", end),
+    "id, status, reference_no, inbox_capture"
+  );
+  const expenseRows = expenseRead.data;
+  const expenseError = expenseRead.error;
   if (expenseError) financialDataUnavailable("monthly expenses", expenseError);
   const ids = (expenseRows ?? [])
     .filter((r: { id?: string; status?: string | null; reference_no?: string | null }) =>
       expenseCountsTowardCanonicalProjectCost(r)
     )
-    .map((r: { id: string }) => r.id);
+    .map((r) => r.id)
+    .filter((id): id is string => typeof id === "string" && id.length > 0);
   if (ids.length === 0) return 0;
   const { data: lineRows, error: lineError } = await c
     .from("expense_lines")

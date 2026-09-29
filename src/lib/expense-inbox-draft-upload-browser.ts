@@ -1,7 +1,7 @@
 import { uploadReceiptToStorage } from "@/lib/expense-receipt-upload-browser";
 import { compressImageFileForReceiptUpload } from "@/lib/image-compress-browser";
+import { hawaiiTodayYmd } from "@/lib/hawaii-calendar-date";
 import { inboxUploadDedupeReference } from "@/lib/inbox-upload-constants";
-import { scheduleInboxDraftExpenseOcr } from "@/lib/expense-inbox-draft-ocr";
 import { createBrowserClient } from "@/lib/supabase";
 
 type BrowserSupabase = NonNullable<ReturnType<typeof createBrowserClient>>;
@@ -66,8 +66,9 @@ async function createInboxDraftExpenseViaServer(payload: {
 }
 
 /**
- * Upload receipt to storage, create a `draft` expense (inbox), dedupe by `reference_no` hash.
- * Does not use `receipt_queue`. OCR runs asynchronously via `scheduleInboxDraftExpenseOcr`.
+ * Upload receipt to storage and create a `draft` expense.
+ * File fingerprint dedupe uses `reference_no` and `file_sha256`.
+ * OCR is queued on the server (`ocr_status`) and does not depend on this tab staying open.
  */
 export async function createInboxDraftFromReceiptFile(
   supabase: BrowserSupabase,
@@ -91,19 +92,34 @@ export async function createInboxDraftFromReceiptFile(
     .eq("reference_no", ref)
     .maybeSingle();
   if (existErr) throw new Error(existErr.message || "Receipt lookup unavailable.");
-  if (existing && typeof (existing as { id?: string }).id === "string") {
+  let matched = existing;
+  if (!matched) {
+    const byFingerprint = await supabase
+      .from("expenses")
+      .select("id")
+      .eq("file_sha256", hash)
+      .maybeSingle();
+    if (
+      byFingerprint.error &&
+      !/file_sha256|schema cache|does not exist/i.test(byFingerprint.error.message)
+    ) {
+      throw new Error(byFingerprint.error.message || "Receipt lookup unavailable.");
+    }
+    if (!byFingerprint.error) matched = byFingerprint.data;
+  }
+  if (matched && typeof (matched as { id?: string }).id === "string") {
     const attached = await supabase
       .from("attachments")
       .select("id")
       .eq("entity_type", "expense")
-      .eq("entity_id", existing.id)
+      .eq("entity_id", matched.id)
       .limit(1);
     if (attached.error || !Array.isArray(attached.data))
       throw new Error(attached.error?.message || "Receipt attachment lookup unavailable.");
     if (attached.data.length > 0)
       return {
         ok: true,
-        expenseId: String(existing.id),
+        expenseId: String(matched.id),
         duplicate: true,
         referenceNo: ref,
       };
@@ -119,7 +135,7 @@ export async function createInboxDraftFromReceiptFile(
     };
   }
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = hawaiiTodayYmd();
   const attachmentUrl = slot.attachmentPath?.trim() || receiptUrl;
   const created = await createInboxDraftExpenseViaServer({
     date: today,
@@ -145,6 +161,5 @@ export async function createInboxDraftFromReceiptFile(
       : [],
   });
 
-  scheduleInboxDraftExpenseOcr(created.id, prepared);
   return { ok: true, expenseId: created.id, duplicate: false, referenceNo: ref };
 }

@@ -53,6 +53,7 @@ describe("receipt expense recovery boundary", () => {
     const expense = { id: "expense-1", vendorName: "Reviewed original", status: "draft" };
     const query = {
       select: () => query,
+      update: () => query,
       eq: () => query,
       maybeSingle: async () => ({ data: existing, error: null }),
     };

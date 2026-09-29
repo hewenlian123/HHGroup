@@ -1,5 +1,10 @@
 import { readCompleteRows } from "@/lib/read-complete-rows";
-import { expenseCountsTowardCanonicalProjectCost } from "@/lib/expense-canonical-cost";
+import {
+  expenseCountsTowardCanonicalProjectCost,
+  isInboxCaptureColumnMissing,
+  readExpenseIdentity,
+  withoutInboxCaptureColumn,
+} from "@/lib/expense-canonical-cost";
 import { laborEntryCountsTowardCanonicalCost } from "@/lib/labor-cost-eligibility";
 import { roundMoney } from "@/lib/money";
 import {
@@ -86,6 +91,9 @@ function isMissingColumn(err: { message?: string } | null): boolean {
  *     the fact that Add Entry has no approval step.
  *   - Expense cost = sum(expense_lines.amount) for this project (expense_lines.project_id),
  *     plus lines with null project_id on expenses whose header project_id matches (legacy rows).
+ *     Client-reimbursable lines stay in this sum after they are requested or reimbursed.
+ *     "Reimbursable outstanding" is a separate receivable memo. It is not subtracted here
+ *     and is not added to revenue, so a customer payment is not counted twice.
  *   - Subcontract cost = sum(subcontract_bills.amount) for this project where status = 'Approved'.
  *   - Change-order cost = sum(project_change_orders.cost_impact) where status = 'Approved'.
  *   - Project AP = ap_bills on this project that are not Draft/Void, not bill_type labor,
@@ -127,14 +135,35 @@ async function buildEligibleExpenseIdSetForCost(
   if (uniq.length === 0) return new Set();
   const out = new Set<string>();
   for (let offset = 0; offset < uniq.length; offset += 100) {
-    const { data } = await readCompleteRows(() =>
-      c
-        .from("expenses")
-        .select("id, status, reference_no", { count: "exact" })
-        .in("id", uniq.slice(offset, offset + 100))
-    );
+    const columns = "id, status, reference_no, inbox_capture";
+    let data: Array<{
+      id?: string;
+      status?: string | null;
+      reference_no?: string | null;
+      inbox_capture?: boolean | null;
+    }>;
+    try {
+      data = (
+        await readCompleteRows(() =>
+          c
+            .from("expenses")
+            .select(columns, { count: "exact" })
+            .in("id", uniq.slice(offset, offset + 100))
+        )
+      ).data;
+    } catch (error) {
+      if (!isInboxCaptureColumnMissing(error)) throw error;
+      data = (
+        await readCompleteRows(() =>
+          c
+            .from("expenses")
+            .select(withoutInboxCaptureColumn(columns), { count: "exact" })
+            .in("id", uniq.slice(offset, offset + 100))
+        )
+      ).data as typeof data;
+    }
     for (const row of data) {
-      if (expenseCountsTowardCanonicalProjectCost(row)) out.add(row.id);
+      if (row.id && expenseCountsTowardCanonicalProjectCost(row)) out.add(row.id);
     }
   }
   return out;
@@ -280,11 +309,13 @@ async function getExpenseCostHeaderOnlyLines(
     ),
   ];
   if (expenseIds.length === 0) return 0;
-  const { data: hdrs, error: hErr } = await c
-    .from("expenses")
-    .select("id, status, reference_no")
-    .in("id", expenseIds)
-    .eq("project_id", projectId);
+  const headerRead = await readExpenseIdentity(
+    (columns) =>
+      c.from("expenses").select(columns).in("id", expenseIds).eq("project_id", projectId),
+    "id, status, reference_no, inbox_capture"
+  );
+  const hdrs = headerRead.data;
+  const hErr = headerRead.error;
   if (hErr) failFinancialRead("expenses (header-only orphan probe)", hErr);
   if (!hdrs?.length) return 0;
   const allowed = new Set(
@@ -383,10 +414,12 @@ async function getExpenseCostViaJoin(
   explicitClient?: SupabaseClient
 ): Promise<number> {
   const c = client(explicitClient);
-  const { data: headers, error: e1 } = await c
-    .from("expenses")
-    .select("id, status, reference_no")
-    .eq("project_id", projectId);
+  const headerRead = await readExpenseIdentity(
+    (columns) => c.from("expenses").select(columns).eq("project_id", projectId),
+    "id, status, reference_no, inbox_capture"
+  );
+  const headers = headerRead.data;
+  const e1 = headerRead.error;
   if (e1) failFinancialRead("expenses (join path)", e1);
   const ids = (headers ?? [])
     .filter((h: { id?: string; status?: string | null; reference_no?: string | null }) =>
@@ -805,13 +838,35 @@ async function getExpenseCostBatchViaJoin(
   if (projectIds.length === 0) return map;
 
   const c = client(explicitClient);
-  const { data: headers, error } = await readCompleteRows(() =>
-    c
-      .from("expenses")
-      .select("id, project_id, status, reference_no", { count: "exact" })
-      .in("project_id", projectIds)
-  );
-  if (error) failFinancialRead("expenses batch (join path)", error);
+  const identityColumns = "id, project_id, status, reference_no, inbox_capture";
+  let headers: Array<{
+    id?: string;
+    project_id?: string | null;
+    status?: string | null;
+    reference_no?: string | null;
+    inbox_capture?: boolean | null;
+  }>;
+  try {
+    headers = (
+      await readCompleteRows(() =>
+        c.from("expenses").select(identityColumns, { count: "exact" }).in("project_id", projectIds)
+      )
+    ).data;
+  } catch (error) {
+    if (!isInboxCaptureColumnMissing(error)) failFinancialRead("expenses batch (join path)", error);
+    try {
+      headers = (
+        await readCompleteRows(() =>
+          c
+            .from("expenses")
+            .select(withoutInboxCaptureColumn(identityColumns), { count: "exact" })
+            .in("project_id", projectIds)
+        )
+      ).data as typeof headers;
+    } catch (legacyError) {
+      failFinancialRead("expenses batch (join path)", legacyError);
+    }
+  }
   const byExpense = new Map<string, string>();
   const expenseIds: string[] = [];
   for (const h of headers ?? []) {

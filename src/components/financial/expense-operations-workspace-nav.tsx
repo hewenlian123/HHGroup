@@ -5,7 +5,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 
 import { cn } from "@/lib/utils";
 
-type ExpenseOperationsSurface = "intake" | "expenses" | "inbox" | "reimbursements";
+type ExpenseOperationsSurface = "intake" | "expenses" | "inbox" | "reimbursements" | "client";
 
 const SURFACES: Array<{
   id: ExpenseOperationsSurface;
@@ -16,6 +16,7 @@ const SURFACES: Array<{
   { id: "expenses", label: "Ledger", pathname: "/financial/expenses" },
   { id: "intake", label: "Intake", pathname: "/financial/expenses/intake" },
   { id: "reimbursements", label: "Reimbursements", pathname: "/labor/reimbursements" },
+  { id: "client", label: "Client reimbursements", pathname: "/financial/client-reimbursements" },
 ];
 
 function surfaceForPathname(pathname: string): ExpenseOperationsSurface | null {
@@ -24,7 +25,10 @@ function surfaceForPathname(pathname: string): ExpenseOperationsSurface | null {
     pathname.startsWith("/financial/inbox/worker")
   )
     return "intake";
-  return SURFACES.find((surface) => pathname.startsWith(surface.pathname))?.id ?? null;
+  const match = SURFACES.filter(
+    (surface) => pathname === surface.pathname || pathname.startsWith(`${surface.pathname}/`)
+  ).sort((a, b) => b.pathname.length - a.pathname.length)[0];
+  return match?.id ?? null;
 }
 
 function isExpenseRecordSurface(surface: ExpenseOperationsSurface | null): boolean {

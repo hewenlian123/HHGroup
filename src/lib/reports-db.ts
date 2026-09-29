@@ -10,7 +10,11 @@ import {
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getCanonicalProjectProfitBatch, type CanonicalProjectProfit } from "@/lib/profit-engine";
 import { getProjectContractReviewSummary } from "@/lib/financial/project-financial-review";
-import { expenseCountsTowardCanonicalProjectCost } from "@/lib/expense-canonical-cost";
+import {
+  expenseCountsTowardCanonicalProjectCost,
+  isInboxCaptureColumnMissing,
+  withoutInboxCaptureColumn,
+} from "@/lib/expense-canonical-cost";
 import { laborEntryCountsTowardCanonicalCost } from "@/lib/labor-cost-eligibility";
 import { invoiceRevenueExTax, roundMoney } from "@/lib/money";
 
@@ -206,6 +210,7 @@ type ExpenseRow = {
   amount: number | string | null;
   status: string | null;
   reference_no: string | null;
+  inbox_capture?: boolean | null;
 };
 
 type LaborEntryRow = {
@@ -767,14 +772,20 @@ export async function getReportsData(
           count: "exact",
         })
     ),
-    readCompleteRows(() =>
-      supabase
-        .from("expenses")
-        .select(
-          "id, project_id, expense_date, created_at, total, amount, status, reference_no, receipt_url, vendor, vendor_name",
-          { count: "exact" }
-        )
-    ),
+    (async () => {
+      const columns =
+        "id, project_id, expense_date, created_at, total, amount, status, reference_no, receipt_url, vendor, vendor_name, inbox_capture";
+      try {
+        return await readCompleteRows(() =>
+          supabase.from("expenses").select(columns, { count: "exact" })
+        );
+      } catch (error) {
+        if (!isInboxCaptureColumnMissing(error)) throw error;
+        return readCompleteRows(() =>
+          supabase.from("expenses").select(withoutInboxCaptureColumn(columns), { count: "exact" })
+        );
+      }
+    })(),
     readCompleteRows(() =>
       supabase
         .from("labor_entries")
