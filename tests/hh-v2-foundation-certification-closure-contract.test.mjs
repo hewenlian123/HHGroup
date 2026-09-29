@@ -30,7 +30,8 @@ test("shared six-pixel and pill radii are token-owned", () => {
 
   assert.match(tokens, /--hh-radius-pill:\s*999px;/);
   assert.match(config, /"hh-pill":\s*"var\(--hh-radius-pill\)"/);
-  assert.match(status, /h-\[26px\].*!rounded-hh-pill.*text-hh-status/s);
+  assert.match(status, /text-hh-status/);
+  assert.doesNotMatch(status, /h-\[26px\]/);
   assert.doesNotMatch(status, /rounded-\[999px\]/);
   assert.match(sharedShell, /rounded-hh-standard/);
   assert.doesNotMatch(sharedShell, /rounded-\[6px\]/);

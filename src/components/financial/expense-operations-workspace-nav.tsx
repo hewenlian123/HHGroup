@@ -106,9 +106,7 @@ export function ExpenseOperationsWorkspaceNav({
       >
         {showHeader ? (
           <div className="min-w-0">
-            <h1 className="text-hh-page-title tracking-normal text-[var(--hh-text-primary)]">
-              Expenses
-            </h1>
+            <h1 className="text-title-page text-[var(--hh-ink)]">Expenses</h1>
             <p className="mt-0.5 text-hh-status leading-snug text-[var(--hh-text-secondary)]">
               Review receipts, complete expenses, and follow expense history.
             </p>
@@ -130,11 +128,11 @@ export function ExpenseOperationsWorkspaceNav({
                 href={hrefFor(surface)}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "inline-flex min-h-11 shrink-0 items-center rounded-md px-3 text-xs font-medium outline-none transition-colors duration-120 md:min-h-9",
+                  "inline-flex min-h-11 shrink-0 items-center border-b-2 border-transparent px-3 text-xs font-medium outline-none transition-colors duration-120 md:min-h-9",
                   "focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)] focus-visible:ring-offset-1",
                   active
-                    ? "bg-[var(--hh-l3-selected)] text-[var(--hh-text-primary)]"
-                    : "text-[var(--hh-text-secondary)] hover:bg-[var(--hh-l3-hover)] hover:text-[var(--hh-text-primary)]"
+                    ? "border-[var(--hh-ink)] bg-transparent text-[var(--hh-ink)]"
+                    : "text-[var(--hh-muted)] hover:text-[var(--hh-ink)]"
                 )}
               >
                 {surface.label}

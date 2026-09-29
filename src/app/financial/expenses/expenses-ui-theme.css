@@ -82,7 +82,7 @@
 .expenses-ui .financial-nums,
 .expenses-ui [data-expense-amount],
 .expenses-ui [data-expense-detail-amount] {
-  font-family: var(--font-geist-sans), "Geist", "Inter", system-ui, sans-serif;
+  font-family: var(--hh-font-family-sans);
   font-variant-numeric: tabular-nums lining-nums;
   font-feature-settings:
     "tnum" 1,
@@ -108,7 +108,7 @@
 }
 
 .expenses-ui .expense-compact-table-scroll::-webkit-scrollbar-thumb {
-  border-radius: 999px;
+  border-radius: var(--hh-radius-full);
   background: var(--hh-scrollbar);
 }
 
@@ -121,7 +121,7 @@
 }
 
 .expenses-ui .expense-row-continuity:has(:focus-visible) {
-  box-shadow: inset 1px 0 0 var(--hh-brand-gold);
+  box-shadow: inset 1px 0 0 var(--hh-ink);
 }
 
 /* Completed-expense ledger only: keep normal rows quiet and anchor attention to exceptions/focus. */
@@ -156,12 +156,12 @@
 .expenses-ui[data-expenses-list-page="expenses"] .exp-row[aria-selected="true"],
 .expenses-ui[data-expenses-list-page="expenses"] .exp-row[data-expense-selected="true"] {
   background-color: var(--hh-l3-selected);
-  box-shadow: inset 1px 0 0 var(--hh-brand-gold);
+  box-shadow: inset 1px 0 0 var(--hh-ink);
 }
 
 .expenses-ui[data-expenses-list-page="expenses"] .exp-row.expense-ledger-row-active {
   background-color: var(--hh-l3-selected);
-  box-shadow: inset 1px 0 0 var(--hh-brand-gold);
+  box-shadow: inset 1px 0 0 var(--hh-ink);
 }
 
 .expenses-ui[data-expenses-list-page="expenses"] .exp-row:focus-within {
@@ -170,7 +170,7 @@
 }
 
 .expenses-ui[data-expenses-list-page="expenses"] .exp-row:has(:focus-visible) {
-  box-shadow: inset 1px 0 0 var(--hh-brand-gold);
+  box-shadow: inset 1px 0 0 var(--hh-ink);
 }
 
 .expenses-ui[data-expenses-list-page="expenses"]
@@ -182,7 +182,7 @@
   .exp-row.expense-ledger-row-active:not([aria-selected="true"]):not(
     [data-expense-selected="true"]
   ) {
-  box-shadow: inset 1px 0 0 var(--hh-brand-gold);
+  box-shadow: inset 1px 0 0 var(--hh-ink);
 }
 
 .expenses-ui[data-expenses-list-page="expenses"] .exp-row:active {
@@ -308,11 +308,11 @@
 
 .expenses-ui[data-expenses-list-page="inbox"] .exp-row[data-expense-active="true"] {
   background-color: var(--hh-l3-selected);
-  box-shadow: inset 1px 0 0 var(--hh-brand-gold) !important;
+  box-shadow: inset 1px 0 0 var(--hh-ink) !important;
 }
 
 .expenses-ui[data-expenses-list-page="inbox"] .exp-row:has(:focus-visible) {
-  box-shadow: inset 1px 0 0 var(--hh-brand-gold) !important;
+  box-shadow: inset 1px 0 0 var(--hh-ink) !important;
 }
 
 .expenses-ui[data-expenses-list-page="inbox"] .exp-row:active {
@@ -442,13 +442,15 @@
 }
 
 .expenses-ui .exp-btn-primary {
-  background-color: var(--hh-action-primary) !important;
-  color: var(--hh-action-primary-foreground) !important;
-  border-color: transparent !important;
+  border-color: var(--hh-brass-edge) !important;
+  background-color: var(--hh-brass) !important;
+  background-image: var(--hh-grad-brass) !important;
+  color: var(--hh-on-brass) !important;
+  box-shadow: var(--hh-shadow-btn-primary);
 }
 
 .expenses-ui .exp-btn-primary:hover {
-  background-color: var(--hh-action-primary-hover) !important;
+  background-image: var(--hh-grad-brass-hover) !important;
   opacity: 1;
 }
 
@@ -512,9 +514,11 @@
 }
 
 .expenses-ui-dialog .exp-btn-primary {
-  background-color: var(--hh-action-primary) !important;
-  color: var(--hh-action-primary-foreground) !important;
-  border-color: transparent !important;
+  border-color: var(--hh-brass-edge) !important;
+  background-color: var(--hh-brass) !important;
+  background-image: var(--hh-grad-brass) !important;
+  color: var(--hh-on-brass) !important;
+  box-shadow: var(--hh-shadow-btn-primary);
 }
 
 .expenses-ui-dialog .exp-btn-secondary {
@@ -793,7 +797,7 @@ body:has([data-hh-theme="neo-dark"] .expense-new-dialog[data-state="open"])
 .expense-new-dialog-scroll::-webkit-scrollbar-thumb,
 .expense-new-component-surface::-webkit-scrollbar-thumb,
 .expense-new-component-surface [data-expense-component-scroll="true"]::-webkit-scrollbar-thumb {
-  border-radius: 999px;
+  border-radius: var(--hh-radius-full);
   background: var(--hh-scrollbar);
 }
 
@@ -1537,8 +1541,8 @@ body:has([data-hh-theme="neo-dark"] .expense-new-dialog[data-state="open"])
 }
 
 .expenses-ui [aria-current="page"] {
-  color: var(--hh-brand-accent-text);
-  border-bottom: 1px solid var(--hh-brand-gold);
+  color: var(--hh-ink);
+  border-bottom: 1px solid var(--hh-ink);
 }
 .expenses-ui :is(button, a, input, select, textarea):focus-visible,
 .expenses-ui-dialog :is(button, a, input, select, textarea, summary):focus-visible,
@@ -1588,9 +1592,10 @@ body:has([data-hh-theme="neo-dark"] .expense-new-dialog[data-state="open"])
   font-size: 12px;
 }
 .expenses-ui [data-expenses-kpi-strip] {
-  background: var(--hh-l1-workspace);
-  border: 1px solid var(--hh-border);
-  border-radius: 8px;
+  background: var(--hh-surface);
+  border: 1px solid var(--hh-line);
+  border-radius: var(--hh-radius-xl);
+  box-shadow: var(--hh-shadow-card);
 }
 .expenses-ui [data-expenses-kpi-strip] dt {
   text-transform: none;
@@ -1601,7 +1606,7 @@ body:has([data-hh-theme="neo-dark"] .expense-new-dialog[data-state="open"])
   min-height: 36px;
   padding: 6px 28px 6px 10px;
   border: 1px solid var(--hh-border-strong);
-  border-radius: 6px;
+  border-radius: var(--hh-radius-sm);
   color: var(--hh-text-primary);
   background: var(--hh-l1-workspace);
   font-size: 12px;
@@ -1667,7 +1672,7 @@ body:has([data-hh-theme="neo-dark"] .expense-new-dialog[data-state="open"])
 .expense-review-start {
   display: none;
   border: 1px solid var(--hh-border);
-  border-radius: 8px;
+  border-radius: var(--hh-radius-xl);
   overflow: hidden;
   background: var(--hh-l1-workspace);
 }
@@ -1757,7 +1762,7 @@ body:has([data-hh-theme="neo-dark"] .expense-new-dialog[data-state="open"])
   grid-template-columns: repeat(4, minmax(0, 1fr));
   margin-bottom: 20px;
   border: 1px solid var(--hh-border);
-  border-radius: 6px;
+  border-radius: var(--hh-radius-sm);
   background: var(--hh-l1-workspace);
 }
 .expense-overview-kpis > div {
@@ -1797,7 +1802,7 @@ body:has([data-hh-theme="neo-dark"] .expense-new-dialog[data-state="open"])
 .expense-overview-panel {
   min-width: 0;
   border: 1px solid var(--hh-border);
-  border-radius: 8px;
+  border-radius: var(--hh-radius-xl);
   background: var(--hh-l2-operational-surface);
   overflow: hidden;
 }
@@ -2071,7 +2076,7 @@ body:has([data-hh-theme="neo-dark"] .expense-new-dialog[data-state="open"])
     max-height: none;
     z-index: auto;
     border: 1px solid var(--hh-border);
-    border-radius: 8px;
+    border-radius: var(--hh-radius-xl);
   }
   .expense-operations-workspace[data-expense-detail-open="true"] > [data-expenses-ledger] {
     visibility: visible;
@@ -2186,7 +2191,7 @@ body:has([data-hh-theme="neo-dark"] .expense-new-dialog[data-state="open"])
   line-height: 16px;
 }
 .expenses-ui .expense-status-badge {
-  border-radius: 4px;
+  border-radius: var(--hh-radius-xs);
   font-size: 11px;
   line-height: 16px;
 }
@@ -2292,7 +2297,7 @@ body:has([data-hh-theme="neo-dark"] .expense-new-dialog[data-state="open"])
   color: var(--hh-success);
 }
 .expense-receipt-frame {
-  border-radius: 4px;
+  border-radius: var(--hh-radius-xs);
   box-shadow: var(--hh-shadow-operational);
 }
 .expense-receipt-review-stage {
@@ -2313,7 +2318,7 @@ body:has([data-hh-theme="neo-dark"] .expense-new-dialog[data-state="open"])
 }
 .expenses-ui[data-expenses-list-page="inbox"] .exp-row[data-expense-selected="true"] {
   background: var(--hh-l3-selected);
-  box-shadow: inset 1px 0 0 var(--hh-brand-gold) !important;
+  box-shadow: inset 1px 0 0 var(--hh-ink) !important;
 }
 .expenses-ui[data-expenses-list-page="inbox"] [data-expense-row-primary] {
   align-items: flex-start;
@@ -2408,23 +2413,23 @@ body:has([data-hh-theme="neo-dark"] .expense-new-dialog[data-state="open"])
   }
 }
 
-/* Button color roles only: neutral primary, white secondary; gold remains an accent. */
-:is(.expenses-ui, .expenses-ui-dialog)
-  :is(.exp-btn-primary, [class~="bg-[var(--hh-action-primary)]"]) {
-  border-color: var(--hh-action-primary) !important;
-  background-color: var(--hh-action-primary) !important;
-  color: var(--hh-action-primary-foreground) !important;
+/* Primary actions use the brass button from tokens.css. */
+:is(.expenses-ui, .expenses-ui-dialog) :is(.exp-btn-primary, .hh-btn-primary) {
+  border-color: var(--hh-brass-edge) !important;
+  background-color: var(--hh-brass) !important;
+  background-image: var(--hh-grad-brass) !important;
+  color: var(--hh-on-brass) !important;
+  box-shadow: var(--hh-shadow-btn-primary) !important;
 }
 :is(.expenses-ui, .expenses-ui-dialog)
-  :is(.exp-btn-primary, [class~="bg-[var(--hh-action-primary)]"]):is(:hover, :active):not(
-    :disabled
-  ),
+  :is(.exp-btn-primary, .hh-btn-primary):is(:hover, :active):not(:disabled),
 .expense-new-dialog
   [data-new-expense-save="true"][data-new-expense-save-readiness="ready"]:is(:hover, :active):not(
     :disabled
   ) {
-  background-color: var(--hh-action-primary-hover) !important;
-  border-color: var(--hh-action-primary-hover) !important;
+  background-color: var(--hh-brass) !important;
+  background-image: var(--hh-grad-brass-hover) !important;
+  border-color: var(--hh-brass-edge) !important;
 }
 :is(.expenses-ui, .expenses-ui-dialog) button[class~="bg-[var(--hh-l1-workspace)]"] {
   background-color: var(--hh-l2-operational-surface);
@@ -2434,22 +2439,13 @@ body:has([data-hh-theme="neo-dark"] .expense-new-dialog[data-state="open"])
   button[class~="bg-[var(--hh-l1-workspace)]"]:is(:hover, :active):not(:disabled) {
   background-color: var(--hh-l3-hover);
 }
-body:has(.expenses-ui) [data-workspace-navigation] a[aria-current="page"] {
-  background-color: var(--hh-surface-primary);
-  color: var(--hh-brand-accent-text);
-  border-bottom-color: var(--hh-brand-gold);
-}
-body:has(.expenses-ui) [data-sidebar-navigation] a[aria-current="page"] svg {
-  color: var(--hh-brand-accent);
-}
-
-.expenses-ui [data-expense-operations-shell],
-.expenses-ui [data-expense-operations-shell] a[aria-current="page"] {
+.expenses-ui [data-expense-operations-shell] {
   background-color: var(--hh-surface-primary);
 }
 .expenses-ui [data-expense-operations-shell] a[aria-current="page"] {
-  color: var(--hh-text-primary);
-  border-bottom-color: var(--hh-brand-gold);
+  background-color: transparent;
+  color: var(--hh-ink);
+  border-bottom-color: var(--hh-ink);
 }
 .expenses-ui .expense-status-inline [data-testid="expense-status-inline-dot"] {
   color: var(--hh-success);
@@ -2492,13 +2488,13 @@ body:has(.expenses-ui) [data-sidebar-navigation] a[aria-current="page"] svg {
   font-size: 11px;
 }
 .expenses-ui[data-expenses-list-page="expenses"] [data-expense-keyboard-row]:focus-visible {
-  outline: 2px solid var(--gold-9);
+  outline: 2px solid var(--hh-link);
   outline-offset: -2px;
 }
 .expenses-ui[data-expenses-list-page="expenses"]
   [data-expense-keyboard-row][data-expense-active="true"] {
-  background-color: var(--gold-1) !important;
-  box-shadow: inset 1px 0 0 var(--hh-brand-gold);
+  background-color: var(--hh-chip) !important;
+  box-shadow: inset 1px 0 0 var(--hh-ink);
 }
 .expenses-ui[data-expenses-list-page="expenses"]
   .expense-ledger-date-group
@@ -2604,7 +2600,7 @@ body:has(.expenses-ui) [data-sidebar-navigation] a[aria-current="page"] svg {
   ) {
   height: 36px;
   min-height: 36px;
-  border-radius: 6px;
+  border-radius: var(--hh-radius-sm);
   font-size: 12px;
   line-height: 18px;
   border: 1px solid var(--hh-border-input);
@@ -2631,7 +2627,7 @@ body:has(.expenses-ui) [data-sidebar-navigation] a[aria-current="page"] svg {
 }
 .expenses-ui[data-expenses-list-page="expenses"] .expense-operations-ledger-panel {
   border: 1px solid var(--hh-border-subtle);
-  border-radius: 6px;
+  border-radius: var(--hh-radius-sm);
   background: var(--hh-surface-primary);
   box-shadow: var(--hh-shadow-operational);
 }
@@ -2668,7 +2664,7 @@ body:has(.expenses-ui) [data-sidebar-navigation] a[aria-current="page"] svg {
     :is(button, [role="combobox"]) {
     height: 32px;
     min-height: 32px;
-    border-radius: 6px;
+    border-radius: var(--hh-radius-sm);
   }
   .expenses-ui[data-expenses-list-page="expenses"] [data-expenses-pagination] button {
     width: 32px;
@@ -2739,13 +2735,13 @@ body:has(.expenses-ui) [data-sidebar-navigation] a[aria-current="page"] svg {
 .expenses-ui[data-expenses-list-page="expenses"]
   [data-expenses-list-toolbar="desktop"]
   :is(input, select, button):focus-visible {
-  outline: 2px solid var(--gold-9);
+  outline: 2px solid var(--hh-link);
   outline-offset: 2px;
 }
 .expenses-ui[data-expenses-list-page="expenses"]
   [data-expenses-list-toolbar="desktop"]
   :is([data-filter-active="true"], button:has([data-expenses-active-filter-count])) {
-  border-color: var(--hh-brand-gold);
+  border-color: var(--hh-link);
   font-weight: 500;
 }
 .expenses-ui[data-expenses-list-page="expenses"]
@@ -2832,7 +2828,7 @@ body:has(.expenses-ui) [data-sidebar-navigation] a[aria-current="page"] svg {
   nav[aria-label="Receipt Inbox sources"]
   a[aria-current="page"] {
   color: var(--hh-text-primary);
-  border-bottom: 2px solid var(--hh-brand-gold);
+  border-bottom: 2px solid var(--hh-ink);
   font-weight: 600;
 }
 .expenses-ui[data-expenses-list-page="inbox"] [data-inbox-decision-brief] {
@@ -2853,7 +2849,7 @@ body:has(.expenses-ui) [data-sidebar-navigation] a[aria-current="page"] svg {
   font-size: 13px;
 }
 .expenses-ui[data-expenses-list-page="inbox"] [data-neo-toolbar] :is(input, button[aria-haspopup]) {
-  border-radius: 6px;
+  border-radius: var(--hh-radius-sm);
   border-color: var(--hh-border-input);
   font-size: 12px;
 }
@@ -2863,8 +2859,8 @@ body:has(.expenses-ui) [data-sidebar-navigation] a[aria-current="page"] svg {
 }
 .expenses-ui[data-expenses-list-page="inbox"]
   [data-expense-keyboard-row][data-expense-active="true"] {
-  background: var(--gold-1) !important;
-  box-shadow: inset 1px 0 0 var(--hh-brand-gold);
+  background: var(--hh-chip) !important;
+  box-shadow: inset 1px 0 0 var(--hh-ink);
 }
 .expenses-ui[data-expenses-list-page="inbox"] [data-expense-merchant] > p:first-child {
   font-size: 13px;
@@ -2913,7 +2909,7 @@ body:has(.expenses-ui) [data-sidebar-navigation] a[aria-current="page"] svg {
   margin-top: 6px;
 }
 .expenses-ui[data-expenses-list-page="inbox"] .expense-receipt-frame {
-  border-radius: 4px;
+  border-radius: var(--hh-radius-xs);
   border: 1px solid var(--hh-border-subtle);
   background: var(--hh-surface-primary);
   box-shadow: var(--hh-shadow-operational);
@@ -2965,7 +2961,7 @@ body:has(.expenses-ui) [data-sidebar-navigation] a[aria-current="page"] svg {
 }
 .expenses-ui[data-expenses-list-page="inbox"]
   :is(button, input, select, textarea, a, [tabindex]):focus-visible {
-  outline: 2px solid var(--gold-9);
+  outline: 2px solid var(--hh-link);
   outline-offset: -2px;
 }
 .expenses-ui[data-expenses-list-page="inbox"] [class~="bg-[var(--hh-warning-soft-fill)]"] {
@@ -2975,7 +2971,7 @@ body:has(.expenses-ui) [data-sidebar-navigation] a[aria-current="page"] svg {
   .expenses-ui[data-expenses-list-page="inbox"] [data-receipt-inbox-workspace] {
     gap: 0;
     border: 1px solid var(--hh-border-subtle);
-    border-radius: 6px;
+    border-radius: var(--hh-radius-sm);
     background: var(--hh-surface-primary);
     box-shadow: var(--hh-shadow-operational);
   }
@@ -2993,7 +2989,7 @@ body:has(.expenses-ui) [data-sidebar-navigation] a[aria-current="page"] svg {
     :is(input:not([type="checkbox"]), button[role="combobox"]) {
     min-height: 38px;
     height: 38px;
-    border-radius: 6px;
+    border-radius: var(--hh-radius-sm);
   }
   .expenses-ui[data-expenses-list-page="inbox"]
     [data-neo-toolbar]
@@ -3099,7 +3095,7 @@ body:has(.expenses-ui) [data-sidebar-navigation] a[aria-current="page"] svg {
 .expenses-ui .expenses-page-shell {
   box-sizing: border-box;
   width: 100%;
-  max-width: none;
+  max-width: 1200px;
   min-width: 0;
   margin-inline: auto;
   padding: 16px var(--expenses-shell-gutter) max(24px, env(safe-area-inset-bottom));
@@ -3139,9 +3135,9 @@ body:has(.expenses-ui) [data-sidebar-navigation] a[aria-current="page"] svg {
 .expenses-page-shell .expense-overview-header {
   align-items: flex-start;
 }
-@media (min-width: 768px) {
+@media (min-width: 1280px) {
   .expenses-ui {
-    --expenses-shell-gutter: 24px;
+    --expenses-shell-gutter: 40px;
   }
 }
 
@@ -3151,9 +3147,9 @@ body:has(.expenses-ui) [data-sidebar-navigation] a[aria-current="page"] svg {
 body:has(.expenses-page-shell) [data-workspace-navigation] {
   padding-inline: 16px;
 }
-@media (min-width: 768px) {
+@media (min-width: 1280px) {
   body:has(.expenses-page-shell) [data-workspace-navigation] {
-    padding-inline: 24px;
+    padding-inline: 40px;
   }
 }
 

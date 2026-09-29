@@ -199,6 +199,10 @@ html[data-hh-theme="operational-light"][data-hh-theme="operational-light"],
   --hh-gold-hover: var(--hh-brass-hover-lo);
   --hh-gold-muted: var(--hh-chip);
   --hh-gold-border: var(--hh-brass-edge);
+  --hh-brand-gold: var(--hh-brass);
+  --hh-brand-gold-strong: var(--hh-brass-lo);
+  --hh-brand-gold-soft: var(--hh-chip);
+  --hh-brand-gold-border: var(--hh-brass-edge);
   --hh-input: var(--hh-line-input);
   --hh-input-background: var(--hh-surface);
   --hh-action-primary: var(--hh-brass);
@@ -711,6 +715,29 @@ html[data-hh-theme="operational-light"][data-hh-theme="operational-light"],
   )
   input[type="radio"] {
   accent-color: var(--hh-link);
+}
+
+/* Finance and workspace lists share the invoice detail frame: 1200px, 16px gutter, 40px from 1280. */
+.hh-list-frame {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 1200px;
+  margin-inline: auto;
+  padding-inline: 16px;
+}
+
+@media (min-width: 1280px) {
+  .hh-list-frame {
+    padding-inline: 40px;
+  }
+}
+
+.hh-filters-bar {
+  border: 1px solid var(--hh-line);
+  border-radius: var(--hh-radius-xl);
+  background-color: var(--hh-surface);
+  box-shadow: var(--hh-shadow-card);
+  padding: 10px 12px;
 }
 
 .hh-skeleton {

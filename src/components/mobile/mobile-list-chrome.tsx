@@ -16,10 +16,13 @@ export function MobileListHeader({
   title,
   fab,
   tone = "canvas",
+  variant = "default",
 }: {
   title: string;
   fab: React.ReactNode;
   tone?: "canvas" | "page";
+  /** `workspace` matches the 29px page title used on finance lists. */
+  variant?: "default" | "workspace";
 }) {
   return (
     <div
@@ -28,8 +31,9 @@ export function MobileListHeader({
     >
       <h1
         className={cn(
-          TYPO.pageTitle,
-          tone === "canvas" ? "text-[var(--hh-text-primary)]" : "text-text-primary"
+          variant === "workspace" ? "text-title-page text-[var(--hh-ink)]" : TYPO.pageTitle,
+          variant !== "workspace" &&
+            (tone === "canvas" ? "text-[var(--hh-text-primary)]" : "text-text-primary")
         )}
       >
         {title}

@@ -3,7 +3,7 @@
   --expenses-shell-gutter: 16px;
   --expenses-shell-gap: 24px;
   width: 100%;
-  max-width: none;
+  max-width: 1200px;
   gap: var(--expenses-shell-gap);
 }
 .finance-review-page-shell > * {
@@ -47,7 +47,7 @@
   .finance-review-page-shell
   nav[aria-label="Receipt Inbox sources"]
   a[aria-current="page"] {
-  border-bottom: 2px solid var(--hh-brand-gold);
+  border-bottom: 2px solid var(--hh-ink);
   color: var(--hh-text-primary);
   font-weight: 600;
 }
@@ -83,9 +83,10 @@
   height: 100%;
   margin: 0;
   padding: 8px;
-  border: 1px solid var(--hh-border);
-  border-radius: 6px;
-  box-shadow: none;
+  border: 1px solid var(--hh-line);
+  border-radius: var(--hh-radius-xl);
+  background: var(--hh-surface);
+  box-shadow: var(--hh-shadow-card);
 }
 .expenses-ui .finance-review-command > :first-child {
   display: flex;
@@ -103,9 +104,6 @@
   margin-block: 0;
 }
 @media (min-width: 768px) {
-  .expenses-ui .finance-review-page-shell {
-    --expenses-shell-gutter: 24px;
-  }
   .finance-review-header {
     min-height: 64px;
     flex-direction: row;
@@ -114,6 +112,11 @@
   .finance-review-header-actions {
     flex-shrink: 0;
     justify-content: flex-end;
+  }
+}
+@media (min-width: 1280px) {
+  .expenses-ui .finance-review-page-shell {
+    --expenses-shell-gutter: 40px;
   }
 }
 @media (min-width: 1024px) {

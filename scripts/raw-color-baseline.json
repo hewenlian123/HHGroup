@@ -267,8 +267,6 @@
     "--estimate-text-primary: #272824;": 1,
     "--estimate-text-secondary: #686a66;": 1,
     "--estimate-warning: #8a6925;": 1,
-    "--hh-danger-soft-fill: #fff0f0;": 1,
-    "--hh-success-soft-fill: #e8f5e9;": 1,
     "0 1px 0 rgba(255, 255, 255, 0.94) inset, 0 8px 24px rgba(25, 28, 24, 0.05);": 1
   },
   "src/app/financial/dashboard/page.tsx": {
