@@ -27,6 +27,12 @@ set inbox_capture=true, ocr_status='pending'
 where id=(select expense_id from inbox_unpaid);
 select is((select expense_id::text from public.claim_expense_ocr_jobs(1)),(select expense_id::text from inbox_unpaid),'pending inbox row is claimed');
 select is((select ocr_status from public.expenses where id=(select expense_id from inbox_unpaid)),'processing','claim marks the row processing');
+select is((select ocr_attempts::integer from public.expenses where id=(select expense_id from inbox_unpaid)),1,'claim counts one attempt');
+select throws_ok($$select public.claim_expense_ocr_jobs(2)$$,'22023','Invalid OCR batch.','a worker request claims one job');
+update public.expenses set ocr_status='pending', ocr_attempts=3 where id=(select expense_id from inbox_unpaid);
+select is((select expense_id::text from public.claim_expense_ocr_jobs(1)) is null,true,'a fourth claim is not started');
+select is((select ocr_status from public.expenses where id=(select expense_id from inbox_unpaid)),'failed','three attempts leave the draft failed');
+update public.expenses set ocr_status='pending', ocr_attempts=0 where id=(select expense_id from inbox_unpaid);
 
 select lives_ok($$select public.transition_expense_operation((select expense_id from inbox_unpaid),coalesce((select revision from public.expense_operations where expense_id=(select expense_id from inbox_unpaid)),0)::integer,'24000000-0000-0000-0000-000000000011','approve','{"cost_allocation":"overhead","settlement":"unpaid"}')$$,'inbox draft approves unpaid without a payment account');
 select is((select status from public.expenses where id=(select expense_id from inbox_unpaid)),'approved','unpaid approval records the expense');
@@ -53,7 +59,8 @@ create temp table inbox_mismatch as
 select (public.create_expense_atomic('24000000-0000-0000-0000-000000000030',
   '{"expenseDate":"2026-09-28","vendorName":"PW Inbox Vendor","sourceType":"company","status":"draft","paymentMethod":"Other","groups":[{"projectId":null,"lines":[{"projectId":null,"category":"Materials","amount":11.11}]}]}'::jsonb)->>'expense_id')::uuid as expense_id;
 update public.expenses set total=12.11,amount=12.11 where id=(select expense_id from inbox_mismatch);
-select throws_ok($$select public.transition_expense_operation((select expense_id from inbox_mismatch),coalesce((select revision from public.expense_operations where expense_id=(select expense_id from inbox_mismatch)),0)::integer,'24000000-0000-0000-0000-000000000031','approve','{"cost_allocation":"overhead","settlement":"unpaid"}')$$,'23514','Valid amount, project and category coding required.','header total must still equal the lines');
+select throws_ok($$select public.transition_expense_operation((select expense_id from inbox_mismatch),coalesce((select revision from public.expense_operations where expense_id=(select expense_id from inbox_mismatch)),0)::integer,'24000000-0000-0000-0000-000000000031','approve','{"cost_allocation":"overhead","settlement":"paid","payment_account_id":"24000000-0000-0000-0000-000000000012"}')$$,'23514','Valid amount, project and category coding required.','header total must still equal the lines');
+select is((select payment_account_id from public.expenses where id=(select expense_id from inbox_mismatch)) is null,true,'a failed approval does not keep the payment account');
 
 select * from finish();
 rollback;

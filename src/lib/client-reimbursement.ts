@@ -12,6 +12,7 @@ export type ClientReimbursementLine = {
   expenseStatus?: string | null;
   referenceNo?: string | null;
   inboxCapture?: boolean | null;
+  paymentId?: string | null;
 };
 
 /**
@@ -38,6 +39,25 @@ export function clientReimbursementOutstandingAmount(line: ClientReimbursementLi
   const status = clientReimbursementStatusOf(line);
   if (status !== "not_requested" && status !== "requested") return 0;
   return roundMoney(line.amount ?? 0);
+}
+
+/** Reimbursed with no customer payment. Still in job cost, and not treated as recovered cash. */
+export function clientReimbursementUnlinkedRecovery(lines: ClientReimbursementLine[]): number {
+  return roundMoney(
+    lines.reduce((sum, line) => {
+      if (clientReimbursementStatusOf(line) !== "reimbursed" || line.paymentId) return sum;
+      if (
+        !expenseCountsTowardCanonicalProjectCost({
+          status: line.expenseStatus,
+          reference_no: line.referenceNo,
+          inbox_capture: line.inboxCapture,
+        })
+      ) {
+        return sum;
+      }
+      return sum + roundMoney(line.amount ?? 0);
+    }, 0)
+  );
 }
 
 export function reimbursableOutstandingInJobCost(lines: ClientReimbursementLine[]): number {

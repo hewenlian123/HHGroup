@@ -22,7 +22,8 @@ alter table public.expenses
   add column if not exists paid_on date,
   add column if not exists duplicate_expense_id uuid,
   add column if not exists duplicate_reason text,
-  add column if not exists duplicate_dismissed_at timestamptz;
+  add column if not exists duplicate_dismissed_at timestamptz,
+  add column if not exists ocr_attempts bigint not null default 0;
 
 -- NOT VALID avoids a full-table scan of existing expenses. New writes are checked.
 -- Existing nulls already satisfy these predicates, and this migration does not rewrite them.
@@ -63,7 +64,8 @@ create index if not exists expenses_payment_status_idx
 
 comment on column public.expenses.ocr_status is 'Inbox OCR queue: pending, processing, done, or failed. Null on rows that are not inbox captures.';
 comment on column public.expenses.inbox_capture is 'True only for inbox uploads created after this migration. Existing rows stay false.';
-comment on column public.expenses.payment_status is 'Settlement after approval: unpaid or paid. Null means legacy and is not backfilled.';
+comment on column public.expenses.payment_status is 'Settlement after approval: unpaid or paid. Null means legacy or unknown and is not backfilled or inferred as unpaid.';
+comment on column public.expenses.ocr_attempts is 'Inbox OCR attempts. After 3 the row is failed. Existing rows stay 0.';
 comment on column public.expenses.file_sha256 is 'Receipt bytes fingerprint. Kept after reference_no becomes the vendor invoice number.';
 
 create or replace function public.transition_expense_operation(
@@ -76,13 +78,14 @@ declare
   v_before jsonb; v_after jsonb; v_request jsonb; v_issue uuid;
   v_settlement text;
   v_paid_on date;
+  v_account uuid;
 begin
   if auth.uid() is null or not private.can_manage_company() then
     raise exception 'Company administrator required.' using errcode='42501';
   end if;
   if p_request_id is null or p_expected_revision is null or p_expected_revision < 0
     or jsonb_typeof(p_payload) is distinct from 'object'
-    or exists(select 1 from jsonb_object_keys(p_payload) k where k not in ('message','issue_id','related_expense_id','cost_allocation','settlement','paid_on')) then
+    or exists(select 1 from jsonb_object_keys(p_payload) k where k not in ('message','issue_id','related_expense_id','cost_allocation','settlement','paid_on','payment_account_id')) then
     raise exception 'Invalid operation request.' using errcode='22023';
   end if;
   select * into e from public.expenses where id=p_expense_id for update;
@@ -122,11 +125,13 @@ begin
       if e.source_type='reimbursement' or e.worker_id is not null then
         raise exception 'Use canonical Worker Receipt approval.' using errcode='23514';
       end if;
-      v_settlement := coalesce(nullif(p_payload->>'settlement', ''), case when e.payment_account_id is null then 'unpaid' else 'paid' end);
+      -- Account is written in this same statement, so a failed approval rolls it back.
+      v_account := coalesce(nullif(p_payload->>'payment_account_id','')::uuid, e.payment_account_id);
+      v_settlement := coalesce(nullif(p_payload->>'settlement', ''), case when v_account is null then 'unpaid' else 'paid' end);
       if v_settlement not in ('unpaid','paid') then
         raise exception 'Settlement must be unpaid or paid.' using errcode='22023';
       end if;
-      if v_settlement='paid' and e.payment_account_id is null then
+      if v_settlement='paid' and v_account is null then
         raise exception 'Choose a payment account to mark this expense paid.' using errcode='23514';
       end if;
       v_paid_on := case
@@ -137,12 +142,14 @@ begin
         update public.expenses
         set status='approved',
             payment_status=v_settlement,
-            paid_on=v_paid_on
+            paid_on=v_paid_on,
+            payment_account_id=v_account
         where id=e.id;
       else
         update public.expenses
         set payment_status=v_settlement,
-            paid_on=v_paid_on
+            paid_on=v_paid_on,
+            payment_account_id=v_account
         where id=e.id;
       end if;
       update public.expense_operations set review_state='approved',approved_at=clock_timestamp(),approved_by=auth.uid() where expense_id=e.id;
@@ -200,14 +207,25 @@ begin
   if auth.uid() is null or not private.can_manage_company() then
     raise exception 'Company administrator required.' using errcode='42501';
   end if;
-  if p_limit is null or p_limit < 1 or p_limit > 2 then
+  if p_limit is distinct from 1 then
     raise exception 'Invalid OCR batch.' using errcode='22023';
   end if;
+  -- Stop drafts that already used their three attempts. Coding columns are not changed.
+  update public.expenses
+  set ocr_status = 'failed',
+      ocr_error = 'OCR stopped after 3 attempts.'
+  where inbox_capture
+    and status in ('draft', 'pending', 'needs_review', 'unreviewed')
+    and ocr_status in ('pending', 'processing')
+    and ocr_attempts >= 3;
+
   return query
   with picked as (
     select e.id
     from public.expenses e
     where e.inbox_capture
+      and e.status in ('draft', 'pending', 'needs_review', 'unreviewed')
+      and e.ocr_attempts < 3
       and (
         e.ocr_status = 'pending'
         or (
@@ -216,14 +234,15 @@ begin
         )
       )
     order by e.created_at
-    limit p_limit
+    limit 1
     for update skip locked
   ),
   claimed as (
     update public.expenses e
     set ocr_status = 'processing',
         ocr_claimed_at = clock_timestamp(),
-        ocr_error = null
+        ocr_error = null,
+        ocr_attempts = e.ocr_attempts + 1
     from picked
     where e.id = picked.id
     returning e.id

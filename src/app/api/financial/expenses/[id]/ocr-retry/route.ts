@@ -1,10 +1,7 @@
 import { NextResponse } from "next/server";
-import { requireSupabaseOwnerOrAdminWithClient } from "@/lib/auth-boundary";
+import { requireSupabaseOwnerOrAdminRequestClient } from "@/lib/auth-boundary";
 import { processInboxOcrBatch, retryInboxOcr } from "@/lib/expense-inbox-ocr-job";
-import {
-  SUPABASE_MISSING_SERVER_ENV_MESSAGE,
-  getServerSupabaseInternalNoStore,
-} from "@/lib/supabase-server";
+import { SUPABASE_MISSING_SERVER_ENV_MESSAGE } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -13,10 +10,7 @@ export async function POST(
   request: Request,
   { params }: { params: { id: string } }
 ): Promise<NextResponse> {
-  const guard = await requireSupabaseOwnerOrAdminWithClient(
-    request,
-    getServerSupabaseInternalNoStore
-  );
+  const guard = await requireSupabaseOwnerOrAdminRequestClient(request, { noStore: true });
   if (!guard.ok) return guard.response;
   if (!guard.client) {
     return NextResponse.json(

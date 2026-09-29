@@ -65,6 +65,9 @@ export function ClientReimbursementsClient({
   const visibleOutstanding = visible
     .filter((row) => row.status === "not_requested" || row.status === "requested")
     .reduce((sum, row) => sum + row.amount, 0);
+  const visibleUnlinked = visible
+    .filter((row) => row.status === "reimbursed" && !row.paymentId)
+    .reduce((sum, row) => sum + row.amount, 0);
   const selectedRows = rows.filter((row) => selected.includes(row.lineId));
   const selectedTotal = selectedRows.reduce((sum, row) => sum + row.amount, 0);
 
@@ -154,9 +157,15 @@ export function ClientReimbursementsClient({
             {money(lockedProjectId ? outstanding : visibleOutstanding)}
           </span>
         </p>
+        <p>
+          <span className="text-[var(--hh-text-secondary)]">Reimbursed without a payment </span>
+          <span className="font-medium tabular-nums" data-testid="reimbursed-without-payment">
+            {money(visibleUnlinked)}
+          </span>
+        </p>
         <p className="text-[var(--hh-text-secondary)]">
-          This amount stays in project cost. A customer payment is the recovery and is not deducted
-          again.
+          Outstanding stays in project cost. A customer payment is the recovery. An amount
+          reimbursed without a payment is still cost and is not recovered cash.
         </p>
       </div>
       <div className="flex flex-wrap items-center gap-2">
@@ -236,6 +245,9 @@ export function ClientReimbursementsClient({
                     {row.requestedOn ? ` ${row.requestedOn}` : ""}
                     {row.requestNo ? ` · ${row.requestNo}` : ""}
                     {row.reimbursedOn ? ` ${row.reimbursedOn}` : ""}
+                    {row.status === "reimbursed" && !row.paymentId
+                      ? " · No customer payment recorded"
+                      : ""}
                     {row.paymentId ? (
                       <>
                         {" "}
@@ -278,7 +290,7 @@ export function ClientReimbursementsClient({
             onChange={(event) => setPaymentId(event.target.value)}
             disabled={paymentsUnavailable}
           >
-            <option value="">No payment link</option>
+            <option value="">No payment link — stays unrecovered</option>
             {payments.map((payment) => (
               <option key={payment.id} value={payment.id}>
                 {payment.label}

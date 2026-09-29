@@ -93,8 +93,9 @@ begin
     end if;
     v_id:=case when tg_op='DELETE' then old.expense_id else new.expense_id end;
     -- Client reimbursement flags are settlement with the client, not a coding change.
-    if tg_op='UPDATE' and row(new.expense_id,new.project_id,new.category,new.cost_code,new.description,new.name,new.amount,new.qty,new.unit_cost,new.total)
-      is not distinct from row(old.expense_id,old.project_id,old.category,old.cost_code,old.description,old.name,old.amount,old.qty,old.unit_cost,old.total)
+    -- Coding columns only. expense_lines has no name column on the live ledger.
+    if tg_op='UPDATE' and row(new.expense_id,new.project_id,new.category,new.cost_code,new.description,new.amount,new.qty,new.unit_cost,new.total)
+      is not distinct from row(old.expense_id,old.project_id,old.category,old.cost_code,old.description,old.amount,old.qty,old.unit_cost,old.total)
     then return new; end if;
     if exists(select 1 from public.expenses where id=v_id and worker_id is not null) then return null; end if;
   end if;
@@ -237,6 +238,11 @@ begin
   if v_requested_on is null then
     raise exception 'Reimbursement request was not found.' using errcode='23514';
   end if;
+  perform 1
+  from public.expense_lines
+  where id = any(p_line_ids)
+  for update;
+
   if exists (
     select 1 from public.expense_lines
     where id = any(p_line_ids)
@@ -287,6 +293,11 @@ begin
   ) then
     raise exception 'That customer payment was not found.' using errcode='23514';
   end if;
+
+  perform 1
+  from public.expense_lines
+  where id = any(p_line_ids)
+  for update;
 
   select coalesce(sum(amount), 0) into v_sum
   from public.expense_lines

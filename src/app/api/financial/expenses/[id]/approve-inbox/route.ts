@@ -60,15 +60,8 @@ export async function POST(
     }
   }
 
-  const paymentAccountId =
+  const requestedAccount =
     typeof body.paymentAccountId === "string" ? body.paymentAccountId.trim() : "";
-  if (paymentAccountId) {
-    const accountUpdate = await supabase
-      .from("expenses")
-      .update({ payment_account_id: paymentAccountId })
-      .eq("id", expenseId);
-    if (accountUpdate.error) return apiError(500, accountUpdate.error.message);
-  }
 
   let current = await getExpenseById(expenseId, supabase);
   if (!current) return apiError(404, "Inbox draft was not found.");
@@ -127,11 +120,12 @@ export async function POST(
     .eq("expense_id", expenseId)
     .maybeSingle();
   if (state.error) return apiError(503, "Review state is unavailable.", state.error.message);
+  const accountId = requestedAccount || String(current.paymentAccountId ?? "").trim();
   const settlement = settlementForApproval({
-    paymentAccountId: current.paymentAccountId,
+    paymentAccountId: accountId,
     settlement: typeof body.settlement === "string" ? body.settlement : null,
   });
-  if (settlement === "paid" && !String(current.paymentAccountId ?? "").trim()) {
+  if (settlement === "paid" && !accountId) {
     return apiError(409, "Choose a payment account to mark this expense paid.");
   }
   const paidOn =
@@ -149,6 +143,9 @@ export async function POST(
           ? "project_cost"
           : "overhead",
       settlement,
+      ...(settlement === "paid" && requestedAccount
+        ? { payment_account_id: requestedAccount }
+        : {}),
       ...(settlement === "paid" ? { paid_on: paidOn } : {}),
     },
   });

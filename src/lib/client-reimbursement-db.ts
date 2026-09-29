@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   clientReimbursementStatusOf,
+  clientReimbursementUnlinkedRecovery,
   reimbursableOutstandingInJobCost,
   type ClientReimbursementStatus,
 } from "@/lib/client-reimbursement";
@@ -35,6 +36,7 @@ export type ClientReimbursementList = {
   outstanding: number;
   requestedTotal: number;
   reimbursedTotal: number;
+  unlinkedRecovery: number;
 };
 
 type LineRecord = {
@@ -71,7 +73,13 @@ export async function loadClientReimbursements(
   if (lines.error) throw financialDataUnavailable("client reimbursement lines", lines.error);
   const lineRows = (lines.data ?? []) as LineRecord[];
   if (lineRows.length === 0) {
-    return { rows: [], outstanding: 0, requestedTotal: 0, reimbursedTotal: 0 };
+    return {
+      rows: [],
+      outstanding: 0,
+      requestedTotal: 0,
+      reimbursedTotal: 0,
+      unlinkedRecovery: 0,
+    };
   }
 
   const expenseIds = [...new Set(lineRows.map((line) => line.expense_id))];
@@ -186,16 +194,17 @@ export async function loadClientReimbursements(
   rows.sort(
     (a, b) => b.expenseDate.localeCompare(a.expenseDate) || a.vendorName.localeCompare(b.vendorName)
   );
-  const outstanding = reimbursableOutstandingInJobCost(
-    rows.map((row) => ({
-      clientReimbursable: true,
-      clientReimbursementStatus: row.status,
-      amount: row.amount,
-      expenseStatus: row.expenseStatus,
-      referenceNo: row.referenceNo,
-      inboxCapture: row.inboxCapture,
-    }))
-  );
+  const costLines = rows.map((row) => ({
+    clientReimbursable: true,
+    clientReimbursementStatus: row.status,
+    amount: row.amount,
+    expenseStatus: row.expenseStatus,
+    referenceNo: row.referenceNo,
+    inboxCapture: row.inboxCapture,
+    paymentId: row.paymentId,
+  }));
+  const outstanding = reimbursableOutstandingInJobCost(costLines);
+  const unlinkedRecovery = clientReimbursementUnlinkedRecovery(costLines);
   const requestedTotal = rows
     .filter((row) => row.status === "requested")
     .reduce((sum, row) => sum + row.amount, 0);
@@ -207,5 +216,6 @@ export async function loadClientReimbursements(
     outstanding,
     requestedTotal: Math.round(requestedTotal * 100) / 100,
     reimbursedTotal: Math.round(reimbursedTotal * 100) / 100,
+    unlinkedRecovery,
   };
 }

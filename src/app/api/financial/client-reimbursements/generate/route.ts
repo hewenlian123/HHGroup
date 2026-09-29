@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { requireSupabaseOwnerOrAdminWithClient } from "@/lib/auth-boundary";
+import { requireSupabaseOwnerOrAdminRequestClient } from "@/lib/auth-boundary";
 import { buildClientReimbursementPdf } from "@/lib/client-reimbursement-pdf";
 import { reimbursementRequestLinesAreCompatible } from "@/lib/client-reimbursement";
 import { loadClientReimbursements } from "@/lib/client-reimbursement-db";
@@ -9,10 +9,7 @@ import { normalizeReceiptLocation } from "@/lib/expense-receipt-reference";
 import { getExpenseById } from "@/lib/expenses-db";
 import { hawaiiTodayYmd } from "@/lib/hawaii-calendar-date";
 import { FinancialDataUnavailableError } from "@/lib/profit-engine";
-import {
-  SUPABASE_MISSING_SERVER_ENV_MESSAGE,
-  getServerSupabaseInternalNoStore,
-} from "@/lib/supabase-server";
+import { SUPABASE_MISSING_SERVER_ENV_MESSAGE } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -26,10 +23,7 @@ async function receiptBytes(client: SupabaseClient, reference: string): Promise<
 }
 
 export async function POST(request: Request): Promise<NextResponse> {
-  const guard = await requireSupabaseOwnerOrAdminWithClient(
-    request,
-    getServerSupabaseInternalNoStore
-  );
+  const guard = await requireSupabaseOwnerOrAdminRequestClient(request, { noStore: true });
   if (!guard.ok) return guard.response;
   if (!guard.client) {
     return NextResponse.json(
@@ -84,6 +78,7 @@ export async function POST(request: Request): Promise<NextResponse> {
   const requestId = String((reserved.data as { request_id?: string }).request_id ?? "");
   const requestNo = String((reserved.data as { request_no?: string }).request_no ?? "");
   const first = selected[0]!;
+  let savedDocument: { id: string; file_path: string } | null = null;
 
   try {
     const receipts: Array<{ fileName: string; bytes: Uint8Array }> = [];
@@ -134,6 +129,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       },
       new Blob([Buffer.from(pdf)], { type: "application/pdf" })
     );
+    savedDocument = { id: document.id, file_path: document.file_path };
     const attached = await guard.client.rpc("attach_client_reimbursement_document", {
       p_request_id: requestId,
       p_line_ids: lineIds,
@@ -151,6 +147,10 @@ export async function POST(request: Request): Promise<NextResponse> {
       },
     });
   } catch (error) {
+    if (savedDocument) {
+      await guard.client.storage.from("attachments").remove([savedDocument.file_path]);
+      await guard.client.from("documents").delete().eq("id", savedDocument.id);
+    }
     await guard.client.from("client_reimbursement_requests").delete().eq("id", requestId);
     const message =
       error instanceof Error ? error.message : "Could not generate the reimbursement PDF.";

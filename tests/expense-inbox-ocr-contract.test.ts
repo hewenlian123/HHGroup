@@ -24,7 +24,14 @@ test("quick expense keeps the file fingerprint and queues OCR without backfillin
   assert.match(route, /file_sha256/);
   assert.match(route, /inbox_capture:\s*true/);
   assert.match(route, /ocr_status:\s*"pending"/);
+  const worker = await source("src/app/api/financial/expenses/ocr-worker/route.ts");
+  const job = await source("src/lib/expense-inbox-ocr-job.ts");
   assert.match(migration, /inbox_capture boolean not null default false/);
+  assert.match(migration, /ocr_attempts bigint not null default 0/);
+  assert.match(migration, /p_limit is distinct from 1/);
+  assert.match(worker, /requireSupabaseOwnerOrAdminRequestClient/);
+  assert.doesNotMatch(worker, /getServerSupabaseInternalNoStore/);
+  assert.match(job, /INBOX_OCR_DRAFT_STATUSES/);
   assert.doesNotMatch(migration, /update\s+public\.expenses\s+set\s+inbox_capture/i);
   assert.doesNotMatch(migration, /update\s+public\.vendors/i);
 });

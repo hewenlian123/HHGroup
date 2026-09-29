@@ -54,7 +54,10 @@ export async function POST(
     return NextResponse.json({ ok: false, message: "Expense was not found." }, { status: 404 });
   }
   const status = String(current.status ?? "").toLowerCase();
-  if (!["approved", "reviewed", "done", "paid"].includes(status)) {
+  if (current.sourceType === "reimbursement" || current.workerId) {
+    return NextResponse.json({ ok: true, expense: current, legacy: true });
+  }
+  if (!["approved", "reviewed", "done", "completed", "paid"].includes(status)) {
     return NextResponse.json(
       { ok: false, message: "Approve the expense before marking it paid." },
       { status: 409 }
@@ -70,6 +73,9 @@ export async function POST(
     })
     .eq("id", expenseId);
   if (error) {
+    if (current.paymentStatus == null || status === "paid") {
+      return NextResponse.json({ ok: true, expense: current, legacy: true });
+    }
     return NextResponse.json({ ok: false, message: error.message }, { status: 500 });
   }
   const expense = await getExpenseById(expenseId, guard.client);

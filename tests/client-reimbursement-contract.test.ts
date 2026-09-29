@@ -27,4 +27,18 @@ test("reimbursement PDF and review toggle are wired", () => {
   assert.match(page, /loadClientReimbursements/);
   assert.match(migration, /client_reimbursable boolean not null default false/);
   assert.match(migration, /Does not update existing expense or expense_lines rows/);
+  assert.doesNotMatch(migration, /new\.name/);
+  assert.match(migration, /for update/);
+  assert.match(
+    source("src/app/api/financial/client-reimbursements/generate/route.ts"),
+    /requireSupabaseOwnerOrAdminRequestClient/
+  );
+  assert.match(
+    source("src/app/api/financial/client-reimbursements/generate/route.ts"),
+    /documents/
+  );
+  assert.doesNotMatch(
+    source("src/app/api/financial/client-reimbursements/generate/route.ts"),
+    /getServerSupabaseInternalNoStore/
+  );
 });

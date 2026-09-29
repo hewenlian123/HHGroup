@@ -10,12 +10,20 @@ import {
 import { addCalendarDaysYmd, hawaiiTodayYmd } from "@/lib/hawaii-calendar-date";
 import { isInboxUploadExpenseReference } from "@/lib/inbox-upload-constants";
 import { normalizeReceiptLocation } from "@/lib/expense-receipt-reference";
-import { syncExpenseHeaderAmountFromLinesWithClient } from "@/lib/expenses-db";
 import { getServerSupabaseAdminNoStore } from "@/lib/supabase-server";
 import type { VendorCandidate } from "@/lib/expense-vendor-match";
 
 const OCR_MODEL = "gpt-4.1-mini";
 const MAX_OCR_BYTES = 20 * 1024 * 1024;
+const OCR_ATTEMPT_LIMIT = 3;
+export const INBOX_OCR_DRAFT_STATUSES = ["draft", "pending", "needs_review", "unreviewed"] as const;
+
+export function isInboxOcrDraftStatus(status: string | null | undefined): boolean {
+  const normalized = String(status ?? "")
+    .trim()
+    .toLowerCase();
+  return (INBOX_OCR_DRAFT_STATUSES as readonly string[]).includes(normalized);
+}
 
 type ExpenseOcrRow = {
   id: string;
@@ -29,6 +37,9 @@ type ExpenseOcrRow = {
   due_date?: string | null;
   subtotal?: number | string | null;
   tax_amount?: number | string | null;
+  total?: number | string | null;
+  amount?: number | string | null;
+  ocr_attempts?: number | null;
   duplicate_expense_id?: string | null;
   duplicate_dismissed_at?: string | null;
   file_sha256?: string | null;
@@ -199,9 +210,42 @@ function toSubject(row: unknown): ExpenseDuplicateSubject {
 async function markOcr(
   supabase: SupabaseClient,
   expenseId: string,
-  patch: Record<string, unknown>
+  patch: Record<string, unknown>,
+  options: { draftOnly?: boolean } = {}
+): Promise<boolean> {
+  let query = supabase.from("expenses").update(patch).eq("id", expenseId);
+  if (options.draftOnly) query = query.in("status", [...INBOX_OCR_DRAFT_STATUSES]);
+  const { data, error } = await query.select("id");
+  if (error) throw new Error(error.message);
+  return (data ?? []).length > 0;
+}
+
+function withPreviousValue<T>(query: T, column: string, previous: string | number | null): T {
+  const filtered = query as {
+    eq: (column: string, value: string | number) => T;
+    is: (column: string, value: null) => T;
+  };
+  if (previous == null || previous === "") return filtered.is(column, null);
+  return filtered.eq(column, previous);
+}
+
+async function writeDraftColumn(
+  supabase: SupabaseClient,
+  expenseId: string,
+  column: string,
+  next: string | number,
+  previous: string | number | null
 ): Promise<void> {
-  const { error } = await supabase.from("expenses").update(patch).eq("id", expenseId);
+  const query = withPreviousValue(
+    supabase
+      .from("expenses")
+      .update({ [column]: next })
+      .eq("id", expenseId)
+      .in("status", [...INBOX_OCR_DRAFT_STATUSES]),
+    column,
+    previous
+  );
+  const { error } = await query;
   if (error) throw new Error(error.message);
 }
 
@@ -212,24 +256,26 @@ export async function processClaimedInboxOcrJob(
   const loaded = await supabase
     .from("expenses")
     .select(
-      "id,created_at,expense_date,vendor_name,vendor,vendor_id,status,reference_no,due_date,subtotal,tax_amount,duplicate_expense_id,duplicate_dismissed_at,file_sha256"
+      "id,created_at,expense_date,vendor_name,vendor,vendor_id,status,reference_no,due_date,subtotal,tax_amount,total,amount,ocr_attempts,duplicate_expense_id,duplicate_dismissed_at,file_sha256"
     )
     .eq("id", expenseId)
     .maybeSingle();
   if (loaded.error || !loaded.data) {
-    await markOcr(supabase, expenseId, {
-      ocr_status: "failed",
-      ocr_error: loaded.error?.message || "Expense was not found.",
-    }).catch(() => undefined);
+    await markOcr(
+      supabase,
+      expenseId,
+      {
+        ocr_status: "pending",
+        ocr_error: loaded.error?.message || "Expense was not found.",
+      },
+      { draftOnly: true }
+    ).catch(() => undefined);
     return "failed";
   }
   const row = loaded.data as ExpenseOcrRow;
-  const status = String(row.status ?? "").toLowerCase();
-  if (status && !["draft", "pending", "needs_review", "unreviewed"].includes(status)) {
-    await markOcr(supabase, expenseId, { ocr_status: "done", ocr_error: null });
-    return "done";
-  }
+  if (!isInboxOcrDraftStatus(row.status)) return "done";
 
+  const attempts = Number(row.ocr_attempts ?? 0);
   try {
     const attachment = await supabase
       .from("attachments")
@@ -271,33 +317,78 @@ export async function processClaimedInboxOcrJob(
     const vendors = await loadVendors(supabase);
     const merged = mergeInvoiceExtraction(snapshot, extraction, vendors);
 
-    const header: Record<string, unknown> = {
-      ocr_status: "done",
-      ocr_error: null,
-      ocr_confidence: {
-        ...merged.confidence,
-        attention: merged.attention,
-        vendorMatch: merged.vendorMatch.kind,
-        applied: merged.applied,
-      },
-    };
     if (merged.patch.vendorName) {
-      header.vendor_name = merged.patch.vendorName;
-      header.vendor = merged.patch.vendorName;
+      await writeDraftColumn(
+        supabase,
+        expenseId,
+        "vendor_name",
+        merged.patch.vendorName,
+        snapshot.vendorName
+      );
+      await writeDraftColumn(
+        supabase,
+        expenseId,
+        "vendor",
+        merged.patch.vendorName,
+        row.vendor ?? snapshot.vendorName
+      );
     }
-    if (merged.patch.vendorId) header.vendor_id = merged.patch.vendorId;
-    if (merged.patch.vendorSuggestion !== undefined)
-      header.vendor_suggestion = merged.patch.vendorSuggestion;
-    if (merged.patch.referenceNo) header.reference_no = merged.patch.referenceNo;
-    if (merged.patch.expenseDate) header.expense_date = merged.patch.expenseDate;
-    if (merged.patch.dueDate) header.due_date = merged.patch.dueDate;
-    if (merged.patch.subtotal != null) header.subtotal = merged.patch.subtotal;
-    if (merged.patch.tax != null) header.tax_amount = merged.patch.tax;
+    if (merged.patch.vendorId) {
+      await writeDraftColumn(supabase, expenseId, "vendor_id", merged.patch.vendorId, null);
+    }
+    if (merged.patch.vendorSuggestion !== undefined) {
+      await writeDraftColumn(
+        supabase,
+        expenseId,
+        "vendor_suggestion",
+        merged.patch.vendorSuggestion ?? "",
+        null
+      );
+    }
+    if (merged.patch.referenceNo) {
+      await writeDraftColumn(
+        supabase,
+        expenseId,
+        "reference_no",
+        merged.patch.referenceNo,
+        snapshot.referenceNo
+      );
+    }
+    if (merged.patch.expenseDate) {
+      await writeDraftColumn(
+        supabase,
+        expenseId,
+        "expense_date",
+        merged.patch.expenseDate,
+        snapshot.expenseDate
+      );
+    }
+    if (merged.patch.dueDate) {
+      await writeDraftColumn(
+        supabase,
+        expenseId,
+        "due_date",
+        merged.patch.dueDate,
+        snapshot.dueDate
+      );
+    }
+    if (merged.patch.subtotal != null) {
+      await writeDraftColumn(
+        supabase,
+        expenseId,
+        "subtotal",
+        merged.patch.subtotal,
+        snapshot.subtotal
+      );
+    }
+    if (merged.patch.tax != null) {
+      await writeDraftColumn(supabase, expenseId, "tax_amount", merged.patch.tax, snapshot.tax);
+    }
 
-    const nextVendor = String(header.vendor_name ?? snapshot.vendorName);
-    const nextVendorId = (header.vendor_id as string | null | undefined) ?? snapshot.vendorId;
-    const nextReference = String(header.reference_no ?? snapshot.referenceNo ?? "");
-    const nextDate = String(header.expense_date ?? snapshot.expenseDate);
+    const nextVendor = merged.patch.vendorName ?? snapshot.vendorName;
+    const nextVendorId = merged.patch.vendorId ?? snapshot.vendorId;
+    const nextReference = merged.patch.referenceNo ?? snapshot.referenceNo ?? "";
+    const nextDate = merged.patch.expenseDate ?? snapshot.expenseDate;
     const nextTotal = merged.patch.lineAmount ?? snapshot.lineAmount ?? 0;
     const duplicate = await findDuplicate(supabase, {
       id: expenseId,
@@ -312,43 +403,90 @@ export async function processClaimedInboxOcrJob(
       row.duplicate_expense_id &&
       duplicate?.expenseId === row.duplicate_expense_id;
     if (!sameDismissed) {
-      header.duplicate_expense_id = duplicate?.expenseId ?? null;
-      header.duplicate_reason = duplicate?.reason ?? null;
-      header.duplicate_dismissed_at = null;
+      const duplicateWrite = withPreviousValue(
+        supabase
+          .from("expenses")
+          .update({
+            duplicate_expense_id: duplicate?.expenseId ?? null,
+            duplicate_reason: duplicate?.reason ?? null,
+            duplicate_dismissed_at: null,
+          })
+          .eq("id", expenseId)
+          .in("status", [...INBOX_OCR_DRAFT_STATUSES]),
+        "duplicate_dismissed_at",
+        row.duplicate_dismissed_at ?? null
+      );
+      const { error } = await duplicateWrite;
+      if (error) throw new Error(error.message);
     }
 
-    await markOcr(supabase, expenseId, header);
     if (merged.patch.lineAmount != null && lineRows[0]?.id) {
-      const { error } = await supabase
-        .from("expense_lines")
-        .update({ amount: merged.patch.lineAmount, total: merged.patch.lineAmount })
-        .eq("id", lineRows[0].id)
-        .eq("expense_id", expenseId);
-      if (error) throw new Error(error.message);
-      await syncExpenseHeaderAmountFromLinesWithClient(supabase, expenseId, {
-        lineId: lineRows[0].id,
-        amount: merged.patch.lineAmount,
-      });
+      const lineWrite = withPreviousValue(
+        supabase
+          .from("expense_lines")
+          .update({ amount: merged.patch.lineAmount, total: merged.patch.lineAmount })
+          .eq("id", lineRows[0].id)
+          .eq("expense_id", expenseId),
+        "amount",
+        snapshot.lineAmount
+      );
+      const updated = await lineWrite.select("id");
+      if (updated.error) throw new Error(updated.error.message);
+      if ((updated.data ?? []).length > 0) {
+        const headerTotal = money(row.total ?? row.amount);
+        const headerWrite = withPreviousValue(
+          supabase
+            .from("expenses")
+            .update({ amount: merged.patch.lineAmount, total: merged.patch.lineAmount })
+            .eq("id", expenseId)
+            .in("status", [...INBOX_OCR_DRAFT_STATUSES]),
+          "total",
+          headerTotal
+        );
+        const headerResult = await headerWrite;
+        if (headerResult.error) throw new Error(headerResult.error.message);
+      }
     }
+
+    await markOcr(
+      supabase,
+      expenseId,
+      {
+        ocr_status: "done",
+        ocr_error: null,
+        ocr_confidence: {
+          ...merged.confidence,
+          attention: merged.attention,
+          vendorMatch: merged.vendorMatch.kind,
+          applied: merged.applied,
+        },
+      },
+      { draftOnly: true }
+    );
     return "done";
   } catch (error) {
     const message = error instanceof Error ? error.message : "OCR failed.";
-    await markOcr(supabase, expenseId, {
-      ocr_status: "failed",
-      ocr_error: message.slice(0, 400),
-    }).catch(() => undefined);
+    await markOcr(
+      supabase,
+      expenseId,
+      {
+        ocr_status: attempts >= OCR_ATTEMPT_LIMIT ? "failed" : "pending",
+        ocr_error: message.slice(0, 400),
+      },
+      { draftOnly: true }
+    ).catch(() => undefined);
     return "failed";
   }
 }
 
 export async function processInboxOcrBatch(
   supabase: SupabaseClient,
-  limit = 2
+  _limit = 1
 ): Promise<{ processed: number; failed: number; remaining: number }> {
   if (!process.env.OPENAI_API_KEY?.trim()) {
     return { processed: 0, failed: 0, remaining: 0 };
   }
-  const claimed = await supabase.rpc("claim_expense_ocr_jobs", { p_limit: limit });
+  const claimed = await supabase.rpc("claim_expense_ocr_jobs", { p_limit: 1 });
   if (claimed.error) {
     if (/claim_expense_ocr_jobs|does not exist|schema cache/i.test(claimed.error.message)) {
       return { processed: 0, failed: 0, remaining: 0 };
@@ -373,6 +511,7 @@ export async function processInboxOcrBatch(
     .from("expenses")
     .select("id", { count: "exact", head: true })
     .eq("inbox_capture", true)
+    .in("status", [...INBOX_OCR_DRAFT_STATUSES])
     .in("ocr_status", ["pending", "processing"]);
   return {
     processed: ids.length,
@@ -382,10 +521,18 @@ export async function processInboxOcrBatch(
 }
 
 export async function retryInboxOcr(supabase: SupabaseClient, expenseId: string): Promise<void> {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("expenses")
-    .update({ ocr_status: "pending", ocr_error: null, ocr_claimed_at: null })
+    .update({
+      ocr_status: "pending",
+      ocr_error: null,
+      ocr_claimed_at: null,
+      ocr_attempts: 0,
+    })
     .eq("id", expenseId)
-    .in("ocr_status", ["failed", "done", "pending"]);
+    .in("status", [...INBOX_OCR_DRAFT_STATUSES])
+    .in("ocr_status", ["failed", "done", "pending"])
+    .select("id");
   if (error) throw new Error(error.message);
+  if (!data?.length) throw new Error("Only an inbox draft can be read again.");
 }

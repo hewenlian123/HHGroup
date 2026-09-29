@@ -212,7 +212,23 @@ describe("unpaid expense approval", () => {
         paymentAccountId: "acct-1",
         workflowStatus: "approved",
       })
+    ).toBeNull();
+    expect(
+      expenseSettlementLabel({
+        paymentStatus: null,
+        workflowStatus: "paid",
+      })
     ).toBe("Paid");
+    expect(
+      expenseSettlementLabel({
+        paymentStatus: null,
+        workflowStatus: "approved",
+        sourceType: "reimbursement",
+      })
+    ).toBeNull();
+    expect(
+      expenseMatchesSettlementFilter({ paymentStatus: null, workflowStatus: "approved" }, "unpaid")
+    ).toBe(false);
     expect(
       expenseMatchesSettlementFilter(
         { paymentStatus: "unpaid", workflowStatus: "approved" },

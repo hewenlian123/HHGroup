@@ -1,10 +1,7 @@
 import { NextResponse } from "next/server";
-import { requireSupabaseOwnerOrAdminWithClient } from "@/lib/auth-boundary";
+import { requireSupabaseOwnerOrAdminRequestClient } from "@/lib/auth-boundary";
 import { processInboxOcrBatch } from "@/lib/expense-inbox-ocr-job";
-import {
-  SUPABASE_MISSING_SERVER_ENV_MESSAGE,
-  getServerSupabaseInternalNoStore,
-} from "@/lib/supabase-server";
+import { SUPABASE_MISSING_SERVER_ENV_MESSAGE } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -13,10 +10,7 @@ export const maxDuration = 60;
 const NO_CACHE = { "Cache-Control": "private, no-store" };
 
 export async function POST(request: Request): Promise<NextResponse> {
-  const guard = await requireSupabaseOwnerOrAdminWithClient(
-    request,
-    getServerSupabaseInternalNoStore
-  );
+  const guard = await requireSupabaseOwnerOrAdminRequestClient(request, { noStore: true });
   if (!guard.ok) return guard.response;
   if (!guard.client) {
     return NextResponse.json(
@@ -27,7 +21,7 @@ export async function POST(request: Request): Promise<NextResponse> {
 
   const depth = Number(request.headers.get("x-ocr-chain-depth") ?? "0");
   try {
-    const result = await processInboxOcrBatch(guard.client, 2);
+    const result = await processInboxOcrBatch(guard.client, 1);
     if (result.remaining > 0 && result.processed > 0 && depth < 30) {
       const url = new URL("/api/financial/expenses/ocr-worker", request.url);
       void fetch(url, {

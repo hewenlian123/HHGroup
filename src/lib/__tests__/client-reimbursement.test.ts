@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { expenseCountsTowardCanonicalProjectCost } from "@/lib/expense-canonical-cost";
 import {
   clientReimbursementOutstandingAmount,
+  clientReimbursementUnlinkedRecovery,
   jobCostWithClientReimbursement,
   reimbursementRequestLinesAreCompatible,
 } from "@/lib/client-reimbursement";
@@ -51,6 +52,13 @@ describe("client reimbursement job cost", () => {
     expect(afterPayment.expenseCost).toBe(before.expenseCost);
     expect(afterPayment.reimbursableOutstanding).toBe(40);
     expect(clientReimbursementOutstandingAmount(lines[2]!)).toBe(0);
+    expect(clientReimbursementUnlinkedRecovery(lines)).toBe(80);
+    expect(
+      clientReimbursementUnlinkedRecovery([
+        { ...lines[2]!, paymentId: "pay-1" },
+        { ...lines[1]!, clientReimbursementStatus: "reimbursed" },
+      ])
+    ).toBe(25.5);
   });
 
   it("does not drop an approved reimbursable expense from canonical cost", () => {

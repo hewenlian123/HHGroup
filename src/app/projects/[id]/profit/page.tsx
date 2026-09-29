@@ -87,11 +87,14 @@ export default async function ProjectProfitPage({ params }: Props) {
   if (!project) notFound();
 
   let reimbursableOutstanding: number | null = null;
+  let reimbursedWithoutPayment: number | null = null;
   try {
-    reimbursableOutstanding = (await loadClientReimbursements(projectSupabase, { projectId: id }))
-      .outstanding;
+    const reimbursement = await loadClientReimbursements(projectSupabase, { projectId: id });
+    reimbursableOutstanding = reimbursement.outstanding;
+    reimbursedWithoutPayment = reimbursement.unlinkedRecovery;
   } catch {
     reimbursableOutstanding = null;
+    reimbursedWithoutPayment = null;
   }
 
   // Canonical formula: revenue = projects.budget + approved change orders; actual cost = labor + expense + approved subcontract bills + accrued commission.
@@ -250,6 +253,17 @@ export default async function ProjectProfitPage({ params }: Props) {
           className="text-hh-section-title font-medium tabular-nums text-[var(--hh-text-primary)]"
         >
           {reimbursableOutstanding == null ? "Unavailable" : `$${fmtUsd(reimbursableOutstanding)}`}
+        </Link>
+        <span className="text-hh-body text-[var(--hh-text-secondary)]">
+          Reimbursed without a payment
+        </span>
+        <Link
+          href={`/financial/client-reimbursements?project_id=${id}`}
+          className="text-hh-section-title font-medium tabular-nums text-[var(--hh-text-primary)]"
+        >
+          {reimbursedWithoutPayment == null
+            ? "Unavailable"
+            : `$${fmtUsd(reimbursedWithoutPayment)}`}
         </Link>
         <span className="text-hh-body text-[var(--hh-text-secondary)]">Margin</span>
         <span

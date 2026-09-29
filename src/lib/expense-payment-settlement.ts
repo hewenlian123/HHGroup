@@ -4,17 +4,8 @@ export type ExpenseSettlementInput = {
   paymentStatus?: string | null;
   paymentAccountId?: string | null;
   workflowStatus?: string | null;
+  sourceType?: string | null;
 };
-
-const APPROVED_WORKFLOW = new Set([
-  "approved",
-  "reviewed",
-  "done",
-  "completed",
-  "paid",
-  "reimbursed",
-  "reimbursable",
-]);
 
 export function normalizeExpenseSettlement(
   value: string | null | undefined
@@ -27,9 +18,9 @@ export function normalizeExpenseSettlement(
 }
 
 /**
- * Stored payment_status wins. Legacy rows with no column value stay visible:
- * an account means paid, an approved expense without one means unpaid.
- * This does not write those rows.
+ * Stored payment_status wins. A null value is legacy or unknown: it is not
+ * labeled unpaid and it is not offered as mark-paid. Workflow status "paid"
+ * still displays as paid. This does not write those rows.
  */
 export function expenseSettlementOf(input: ExpenseSettlementInput): ExpenseSettlement | null {
   const stored = normalizeExpenseSettlement(input.paymentStatus);
@@ -37,8 +28,8 @@ export function expenseSettlementOf(input: ExpenseSettlementInput): ExpenseSettl
   const workflow = String(input.workflowStatus ?? "")
     .trim()
     .toLowerCase();
-  if (!APPROVED_WORKFLOW.has(workflow)) return null;
-  return String(input.paymentAccountId ?? "").trim() ? "paid" : "unpaid";
+  if (workflow === "paid") return "paid";
+  return null;
 }
 
 export function expenseSettlementLabel(input: ExpenseSettlementInput): "Paid" | "Unpaid" | null {

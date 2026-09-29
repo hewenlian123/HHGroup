@@ -43,11 +43,30 @@ select public.reserve_client_reimbursement_request(
 ) as payload;
 
 select ok((select payload->>'request_no' from client_reimb_request) like 'CR-20260929-%','request number uses the request date');
+select ok(position('new.name' in pg_get_functiondef('private.invalidate_expense_review_on_edit()'::regprocedure))=0,'review invalidation does not read a name column');
+create temp table client_reimb_request_two as
+select public.reserve_client_reimbursement_request(
+  array(select id from public.expense_lines where expense_id=(select expense_id from client_reimb)),
+  date '2026-09-29'
+) as payload;
 select lives_ok($$select public.attach_client_reimbursement_document(
   (select (payload->>'request_id')::uuid from client_reimb_request),
   array(select id from public.expense_lines where expense_id=(select expense_id from client_reimb)),
   '25000000-0000-0000-0000-000000000020')$$,'pdf attach marks the line requested');
 select is((select client_reimbursement_status from public.expense_lines where expense_id=(select expense_id from client_reimb)),'requested','status is requested');
+insert into public.documents(id,file_name,file_path,file_type,project_id,organization_id)
+values(
+  '25000000-0000-0000-0000-000000000021',
+  'CR-2.pdf',
+  'organizations/' || private.company_organization_id()::text || '/projects/25000000-0000-0000-0000-000000000002/documents/25000000-0000-0000-0000-000000000021/CR-2.pdf',
+  'Invoice',
+  '25000000-0000-0000-0000-000000000002',
+  private.company_organization_id()
+);
+select throws_ok($$select public.attach_client_reimbursement_document(
+  (select (payload->>'request_id')::uuid from client_reimb_request_two),
+  array(select id from public.expense_lines where expense_id=(select expense_id from client_reimb)),
+  '25000000-0000-0000-0000-000000000021')$$,'23514','The selected expenses changed before the request was saved.','a second request cannot claim the same line');
 select is((select review_state from public.expense_operations where expense_id=(select expense_id from client_reimb)),'approved','request does not unapprove');
 select is((select amount from public.expense_lines where expense_id=(select expense_id from client_reimb)),126.40::numeric,'request does not change job-cost amount');
 
@@ -57,6 +76,7 @@ select lives_ok($$select public.settle_client_reimbursement(
   126.40,
   null)$$,'line can be marked reimbursed');
 select is((select client_reimbursement_status from public.expense_lines where expense_id=(select expense_id from client_reimb)),'reimbursed','status is reimbursed');
+select is((select client_reimbursement_payment_id is null from public.expense_lines where expense_id=(select expense_id from client_reimb)),true,'reimbursement without a payment stays unlinked');
 select is((select amount from public.expense_lines where expense_id=(select expense_id from client_reimb)),126.40::numeric,'reimbursement does not remove the expense from cost');
 select is((select review_state from public.expense_operations where expense_id=(select expense_id from client_reimb)),'approved','reimbursement does not unapprove');
 select throws_ok($$select public.settle_client_reimbursement(
