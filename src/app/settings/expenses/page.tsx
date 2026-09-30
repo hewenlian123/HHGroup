@@ -19,6 +19,7 @@ import {
 } from "@/components/base";
 import { SectionHeader } from "@/components/section-header";
 import { Button } from "@/components/ui/button";
+import { sectionCardClass } from "@/components/ui/section-card";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { Dialog } from "@/components/ui/dialog";
 import { tableRawThClass } from "@/components/ui/table";
@@ -28,10 +29,7 @@ import type { ExpenseOptionRow, ExpenseOptionType } from "@/lib/expense-options-
 import { loadExpenseOptionsAdmin } from "@/lib/expense-options-db";
 import type { PaymentAccountType } from "@/lib/payment-accounts-db";
 import { cn } from "@/lib/utils";
-import {
-  MobileListHeader,
-  mobileListPagePaddingClass,
-} from "@/components/mobile/mobile-list-chrome";
+import { MobileListHeader } from "@/components/mobile/mobile-list-chrome";
 
 const TABS: { id: ExpenseOptionType; label: string }[] = [
   { id: "payment_method", label: "Payment methods" },
@@ -287,11 +285,12 @@ export default function SettingsExpensesPage() {
 
   return (
     <PageLayout
-      className={cn("py-6", mobileListPagePaddingClass)}
+      frame="embedded"
       divider={false}
       header={
         <div className="hidden md:block">
           <PageHeader
+            variant="workspace"
             title="Expenses"
             description="Dropdown options for expenses, inbox approval, and quick expense."
           />
@@ -299,6 +298,7 @@ export default function SettingsExpensesPage() {
       }
     >
       <MobileListHeader
+        variant="workspace"
         title="Expenses"
         fab={<span className="inline-block h-10 w-10 shrink-0" />}
       />
@@ -322,10 +322,7 @@ export default function SettingsExpensesPage() {
         </div>
       ) : null}
 
-      <div
-        className="flex flex-wrap gap-2 rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-2 shadow-operational"
-        data-testid="settings-expenses-tabs"
-      >
+      <div className="hh-filters-bar flex flex-wrap gap-2" data-testid="settings-expenses-tabs">
         {TABS.map((t) => (
           <Button
             key={t.id}
@@ -346,7 +343,7 @@ export default function SettingsExpensesPage() {
       </div>
 
       <div data-testid="settings-expenses-section">
-        <NeoPanel bodyClassName="space-y-4 p-4">
+        <NeoPanel className={sectionCardClass} bodyClassName="space-y-4 p-4">
           <SectionHeader
             title="Options"
             subtitle="Archive hides an option from new entries; existing data keeps the value."

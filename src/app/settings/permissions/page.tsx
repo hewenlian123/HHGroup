@@ -14,6 +14,7 @@ import {
   neoFormNoticeClassName,
 } from "@/components/base";
 import { Button } from "@/components/ui/button";
+import { sectionCardClass } from "@/components/ui/section-card";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import {
   DEFAULT_ROLE_PERMISSIONS,
@@ -132,10 +133,11 @@ export default function SettingsPermissionsPage() {
 
   return (
     <PageLayout
-      className="py-6"
+      frame="embedded"
       divider={false}
       header={
         <PageHeader
+          variant="workspace"
           title="Permissions"
           description="Owner-only permission matrix for admin and assistant roles."
           actions={
@@ -166,7 +168,7 @@ export default function SettingsPermissionsPage() {
 
       {loading ? <LoadingState text="Loading permissions..." /> : null}
 
-      <NeoPanel bodyClassName="p-5">
+      <NeoPanel className={sectionCardClass} bodyClassName="p-5">
         <div className="space-y-4">
           {PERMISSION_GROUPS.map((group) => (
             <div

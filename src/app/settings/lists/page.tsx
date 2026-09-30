@@ -15,6 +15,7 @@ import {
   PageLayout,
 } from "@/components/base";
 import { Button } from "@/components/ui/button";
+import { sectionCardClass } from "@/components/ui/section-card";
 import { Dialog } from "@/components/ui/dialog";
 import { tableRawThClass } from "@/components/ui/table";
 import {
@@ -276,10 +277,11 @@ export default function SettingsListsPage() {
 
   return (
     <PageLayout
-      className="max-w-[960px] py-6"
+      frame="embedded"
       divider={false}
       header={
         <PageHeader
+          variant="workspace"
           title="Settings — Lists"
           description="Manage your custom categories, vendors, and payment methods."
         />
@@ -308,6 +310,7 @@ export default function SettingsListsPage() {
       </NeoToolbar>
 
       <NeoPanel
+        className={sectionCardClass}
         title={sectionTitle}
         description="Disable values instead of deleting when existing records still reference them."
         bodyClassName="space-y-4 p-4"

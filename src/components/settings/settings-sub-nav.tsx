@@ -51,14 +51,14 @@ export function SettingsSubNav() {
     parts[0] === "settings" && second ? `Settings › ${settingsChildLabel(second)}` : null;
 
   return (
-    <div className="page-container pt-4 md:pt-5">
+    <div>
       {mobileBreadcrumb ? (
-        <p className="mb-3 text-hh-table-cell text-[var(--hh-text-secondary)] sm:hidden">
+        <p className="mb-3 text-hh-table-cell text-[var(--hh-muted)] sm:hidden">
           {mobileBreadcrumb}
         </p>
       ) : null}
       <nav
-        className="flex flex-wrap gap-2 rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-2 shadow-operational"
+        className="hh-filters-bar flex flex-wrap gap-2"
         aria-label="Settings sections"
         data-testid="settings-subnav"
       >
@@ -73,8 +73,8 @@ export function SettingsSubNav() {
               className={cn(
                 "min-h-11 rounded-hh-compact lg:min-h-8 lg:h-8",
                 active
-                  ? "bg-[var(--hh-l3-selected)] text-[var(--hh-text-primary)] hover:bg-[var(--hh-l3-selected)]"
-                  : "text-[var(--hh-text-secondary)] hover:text-[var(--hh-text-primary)]"
+                  ? "bg-[var(--hh-l3-selected)] text-[var(--hh-ink)] hover:bg-[var(--hh-l3-selected)]"
+                  : "text-[var(--hh-muted)] hover:text-[var(--hh-ink)]"
               )}
             >
               <Link href={item.href} aria-current={active ? "page" : undefined}>

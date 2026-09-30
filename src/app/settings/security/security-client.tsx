@@ -21,6 +21,8 @@ import {
   neoFormNoticeClassName,
 } from "@/components/base";
 import { Button } from "@/components/ui/button";
+import { sectionCardClass } from "@/components/ui/section-card";
+import { cn } from "@/lib/utils";
 import { createBrowserClient } from "@/lib/supabase";
 
 type AccountResponse = {
@@ -267,7 +269,7 @@ export function SecurityClient() {
         title="Account"
         eyebrow="Identity"
         description="Supabase Auth is the canonical account identity."
-        className="xl:col-span-2"
+        className={cn(sectionCardClass, "xl:col-span-2")}
         action={<NeoStatus label={account?.status || "Active"} variant="success" />}
         bodyClassName="grid gap-px bg-[var(--hh-border)] sm:grid-cols-2"
       >
@@ -286,6 +288,7 @@ export function SecurityClient() {
       </NeoPanel>
 
       <NeoPanel
+        className={sectionCardClass}
         eyebrow="Credential"
         title="Change password"
         description="Current password verification is required. Other sessions are revoked on success."
@@ -357,6 +360,7 @@ export function SecurityClient() {
       </NeoPanel>
 
       <NeoPanel
+        className={sectionCardClass}
         eyebrow="Trusted device"
         title="Quick Unlock PIN"
         description="Optional 6-digit convenience lock layered over this valid Supabase session."
@@ -454,7 +458,7 @@ export function SecurityClient() {
         eyebrow="Session"
         title="Current session"
         description="Review reliable session facts and revoke other refresh sessions."
-        className="xl:col-span-2"
+        className={cn(sectionCardClass, "xl:col-span-2")}
         bodyClassName="p-4 sm:p-5"
       >
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">

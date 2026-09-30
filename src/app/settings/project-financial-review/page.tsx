@@ -13,18 +13,15 @@ import {
   neoFormNoticeClassName,
 } from "@/components/base";
 import { Button } from "@/components/ui/button";
+import { sectionCardClass } from "@/components/ui/section-card";
+import { formatOverviewMoney } from "@/lib/financial/project-overview-display";
 import { tableRawThClass } from "@/components/ui/table";
 import { getProjectFinancialReview } from "@/lib/financial/project-financial-review-db";
 import { cn } from "@/lib/utils";
 
 function money(value: number | null): string {
   if (value == null) return "Not visible";
-  return value.toLocaleString("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: value % 1 === 0 ? 0 : 2,
-  });
+  return formatOverviewMoney(value);
 }
 
 function statusLabel(status: string | null): string {
@@ -59,10 +56,11 @@ export default async function ProjectFinancialReviewPage() {
 
   return (
     <PageLayout
-      className="py-6"
+      frame="embedded"
       divider={false}
       header={
         <PageHeader
+          variant="workspace"
           title="Project Financial Review"
           description="Internal contract-value cleanup list for projects where confirmed profit should stay guarded."
           actions={
@@ -83,11 +81,17 @@ export default async function ProjectFinancialReviewPage() {
           ["Suspicious huge", payload?.summary.suspiciousHuge ?? 0],
           ["Mismatches", payload?.summary.mismatch ?? 0],
         ].map(([label, value]) => (
-          <KpiTile key={label} label={label} value={value} className="min-h-[92px]" />
+          <KpiTile
+            key={label}
+            label={label}
+            value={value}
+            className={cn(sectionCardClass, "min-h-[92px]")}
+          />
         ))}
       </section>
 
       <NeoPanel
+        className={sectionCardClass}
         title="Projects needing review"
         description="Read-only list. Use each project detail link to review context before editing values."
         action={

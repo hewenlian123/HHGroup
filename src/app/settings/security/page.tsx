@@ -4,10 +4,11 @@ import { SecurityClientBoundary } from "./security-client-boundary";
 export default function SettingsSecurityPage() {
   return (
     <PageLayout
-      className="py-6"
+      frame="embedded"
       divider={false}
       header={
         <PageHeader
+          variant="workspace"
           title="Security"
           description="Manage account credentials, session-bound Quick Unlock, and active sessions."
         />
