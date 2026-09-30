@@ -3,6 +3,7 @@
 import * as React from "react";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { authorizedAppRole } from "@/lib/auth-role";
+import { isLoginGateEnabled } from "@/lib/login-gate";
 import {
   getActiveOrganizationMemberships,
   hasCompanyAdministratorMembership,
@@ -106,8 +107,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setInitialized(true);
       setUser(null);
       setProfile(null);
-      setRole(null);
-      setPermissions(EMPTY_PERMS);
+      if (!isLoginGateEnabled()) {
+        setRole("owner");
+        setPermissions(DEFAULT_ROLE_PERMISSIONS.owner);
+      } else {
+        setRole(null);
+        setPermissions(EMPTY_PERMS);
+      }
       return;
     }
     const {
@@ -116,8 +122,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(sessionUser);
     if (!sessionUser) {
       setProfile(null);
-      setRole(null);
-      setPermissions(EMPTY_PERMS);
+      // Login gate off: treat the UI as an owner shell so navigation stays usable
+      // without a session. Privileged APIs and RLS still require real Auth.
+      if (!isLoginGateEnabled()) {
+        setRole("owner");
+        setPermissions(DEFAULT_ROLE_PERMISSIONS.owner);
+      } else {
+        setRole(null);
+        setPermissions(EMPTY_PERMS);
+      }
       setInitialized(true);
       return;
     }
@@ -174,7 +187,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   React.useEffect(() => {
     if (!supabase) {
-      setInitialized(true);
+      void loadAuthState();
       return;
     }
     const { data: sub } = supabase.auth.onAuthStateChange(() => {
@@ -188,7 +201,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const value = React.useMemo<AuthContextValue>(
     () => ({
       initialized,
-      authenticated: !!user,
+      authenticated: Boolean(user) || !isLoginGateEnabled(),
       user,
       profile,
       role,

@@ -64,7 +64,7 @@ describe("middleware Auth rollout behavior", () => {
     process.env = { ...ORIGINAL_ENV };
   });
 
-  it("denies a global owner without live company membership on financial routes", async () => {
+  it("does not middleware-block a foreign owner on non-strict routes while login is off", async () => {
     process.env.NEXT_PUBLIC_SUPABASE_URL = "http://127.0.0.1:54321";
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "local-anon-key";
     getUserMock.mockResolvedValue({
@@ -72,33 +72,36 @@ describe("middleware Auth rollout behavior", () => {
     });
     companyAccess.mockResolvedValue(false);
     const response = await middleware(request("/api/invoices"));
-    expect(response.status).toBe(403);
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-middleware-next")).toBe("1");
   });
 
-  it("redirects an anonymous protected page in strict mode", async () => {
+  it("allows an anonymous protected page while the product login gate is off", async () => {
     process.env.HH_REQUIRE_LOGIN = "true";
 
     const response = await middleware(request("/dashboard?view=active"));
 
-    expect(response.status).toBe(307);
-    expect(response.headers.get("location")).toBe(
-      "https://preview.hh.test/login?redirect=%2Fdashboard%3Fview%3Dactive"
-    );
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-middleware-next")).toBe("1");
     expect(response.headers.get("Server-Timing")).toMatch(
       /hh_auth;dur=\d+\.\d, hh_middleware;dur=\d+\.\d/
     );
   });
 
-  it("returns 401 for an anonymous protected API in strict mode", async () => {
+  it("allows an anonymous non-strict API while the product login gate is off", async () => {
     process.env.HH_REQUIRE_LOGIN = "1";
 
     const response = await middleware(request("/api/expenses"));
 
-    expect(response.status).toBe(401);
-    await expect(response.json()).resolves.toMatchObject({
-      ok: false,
-      message: "Authentication required.",
-    });
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-middleware-next")).toBe("1");
+  });
+
+  it("redirects the retired login page to the dashboard", async () => {
+    const response = await middleware(request("/login?redirect=%2Fprojects"));
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe("https://preview.hh.test/dashboard");
   });
 
   it.each([
@@ -143,18 +146,19 @@ describe("middleware Auth rollout behavior", () => {
     ["/upload-receipt", "GET"],
     ["/api/upload-receipt/upload", "POST"],
     ["/api/upload-receipt/submit", "POST"],
-  ])("denies anonymous receipt intake in strict mode: %s", async (path, method) => {
+  ])("allows non-strict receipt intake while the product login gate is off: %s", async (path, method) => {
     process.env.HH_REQUIRE_LOGIN = "true";
 
     const response = await middleware(request(path, { method }));
 
-    expect(response.status).toBe(path.startsWith("/api/") ? 401 : 307);
-    expect(response.headers.get("x-middleware-next")).toBeNull();
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-middleware-next")).toBe("1");
   });
 
-  it("requires authentication for project and worker receipt options", async () => {
+  it("allows project and worker receipt options while the product login gate is off", async () => {
     const response = await middleware(request("/api/upload-receipt/options"));
-    expect(response.status).toBe(401);
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-middleware-next")).toBe("1");
   });
 
   it.each([
@@ -162,11 +166,11 @@ describe("middleware Auth rollout behavior", () => {
     ["/api/upload-receipt/upload", "POST", 200, false],
     ["/api/upload-receipt/submit", "POST", 200, false],
     ["/api/upload-receipt/sync", "POST", 403, false],
-    ["/api/expenses", "GET", 403, false],
+    ["/api/expenses", "GET", 200, false],
     ["/documents", "POST", 200, true],
     ["/projects/project", "POST", 200, true],
-    ["/documents", "POST", 403, false],
-    ["/financial/invoices", "POST", 403, true],
+    ["/documents", "POST", 200, false],
+    ["/financial/invoices", "POST", 200, true],
   ])(
     "limits assistant membership admission for %s %s",
     async (path, method, status, serverAction) => {
@@ -207,7 +211,7 @@ describe("middleware Auth rollout behavior", () => {
     ["explicit zero", "0"],
     ["unset", undefined],
     ["invalid", "invalid-test-value"],
-  ])("keeps existing pages strict in Production (%s)", async (_, value) => {
+  ])("keeps existing pages open in Production while login is off (%s)", async (_, value) => {
     if (value === undefined) {
       delete process.env.HH_REQUIRE_LOGIN;
     } else {
@@ -216,8 +220,8 @@ describe("middleware Auth rollout behavior", () => {
 
     const response = await middleware(request("/dashboard"));
 
-    expect(response.status).toBe(307);
-    expect(response.headers.get("location")).toContain("/login?redirect=");
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-middleware-next")).toBe("1");
   });
 
   it("redirects legacy worker receipts before the Labor App Router boundary and preserves only supported filters", async () => {
@@ -238,14 +242,14 @@ describe("middleware Auth rollout behavior", () => {
     );
   });
 
-  it("keeps legacy worker receipts protected in strict mode", async () => {
+  it("still rewrites legacy worker receipts while the login gate is off", async () => {
     process.env.HH_REQUIRE_LOGIN = "true";
 
     const response = await middleware(request("/labor/receipts?project_id=project-a"));
 
     expect(response.status).toBe(307);
     expect(response.headers.get("location")).toBe(
-      "https://preview.hh.test/login?redirect=%2Flabor%2Freceipts%3Fproject_id%3Dproject-a"
+      "https://preview.hh.test/financial/inbox/worker?project_id=project-a"
     );
   });
 
@@ -332,13 +336,14 @@ describe("middleware Auth rollout behavior", () => {
     });
   });
 
-  it("does not use a cookie session after malformed Bearer credentials are presented", async () => {
+  it("does not use a cookie session after malformed Bearer credentials on a sensitive API", async () => {
     process.env.HH_REQUIRE_LOGIN = "true";
     process.env.NEXT_PUBLIC_SUPABASE_URL = "https://supabase.test";
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "publishable-test-key";
 
     const response = await middleware(
-      request("/api/expenses", {
+      request("/api/settings/security/pin", {
+        method: "POST",
         headers: {
           Authorization: "Basic conflicting-cookie-token",
           Cookie: "sb-session=owner-cookie",
@@ -420,13 +425,14 @@ describe("middleware Auth rollout behavior", () => {
     }
   );
 
-  it("does not let client headers or query parameters impersonate an owner", async () => {
+  it("does not let client headers or query parameters authorize a sensitive API", async () => {
     process.env.HH_REQUIRE_LOGIN = "true";
     process.env.HH_ALLOW_LOCAL_NO_LOGIN = "1";
     process.env.HH_INTERNAL_ADMIN_SECRET = "server-secret";
 
     const response = await middleware(
-      request("/api/expenses?HH_REQUIRE_LOGIN=false&role=owner", {
+      request("/api/settings/security/pin?HH_REQUIRE_LOGIN=false&role=owner", {
+        method: "POST",
         headers: {
           "x-hh-require-login": "false",
           "x-hh-test-auth-bypass": "1",

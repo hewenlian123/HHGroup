@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { validateSameOriginMutation } from "@/lib/auth-request-security";
+import { isLoginGateEnabled } from "@/lib/login-gate";
 import { clearPinSession } from "@/lib/pin-auth";
 import { clearDeviceUnlockCookie, clearTrustedDeviceCookie } from "@/lib/device-unlock";
 import { createRouteSupabaseClient } from "@/lib/supabase-server";
@@ -28,8 +29,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
 
   const requestUrl = new URL(request.url);
-  const target = new URL("/login", requestUrl.origin);
-  target.searchParams.set("message", "signed_out");
+  const target = new URL(isLoginGateEnabled() ? "/login" : "/dashboard", requestUrl.origin);
+  if (isLoginGateEnabled()) {
+    target.searchParams.set("message", "signed_out");
+  }
 
   const response = NextResponse.redirect(target, {
     status: 303,

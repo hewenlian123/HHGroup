@@ -1,3 +1,5 @@
+import { isLoginGateEnabled } from "@/lib/login-gate";
+
 export type AuthRolloutOptions = {
   runtime?: string;
   requireLogin?: string;
@@ -34,9 +36,25 @@ export function resolveAuthRolloutConfig(options: AuthRolloutOptions = {}): Auth
   const rawRequireLogin = options.requireLogin ?? process.env.HH_REQUIRE_LOGIN;
   const requireLogin = rawRequireLogin?.trim().toLowerCase();
 
-  // Deployed environments are permanently fail-closed. HH_REQUIRE_LOGIN remains a
-  // local rollout control only; an unset, invalid, or stale false value can never
-  // reopen Production or Preview without authentication.
+  // Product login gate is currently off. Keep HH_REQUIRE_LOGIN readable for
+  // configurationState, but never force strict mode while the gate is disabled.
+  if (!isLoginGateEnabled()) {
+    return {
+      mode: "compatibility",
+      runtime,
+      configurationState:
+        requireLogin === "1" || requireLogin === "true"
+          ? "enabled"
+          : requireLogin === "0" || requireLogin === "false"
+            ? "disabled"
+            : rawRequireLogin === undefined || requireLogin === ""
+              ? "unset"
+              : "invalid",
+    };
+  }
+
+  // When the login gate is re-enabled, deployed environments stay fail-closed.
+  // HH_REQUIRE_LOGIN remains a local rollout control only in that mode.
   if (runtime === "production" || runtime === "preview") {
     return {
       mode: "strict",
@@ -89,6 +107,9 @@ export function isCompatibilityAccessEnabled(options: AuthRolloutOptions = {}): 
   // Once real local auto-login is selected, the legacy no-session compatibility
   // path is disabled even if an old HH_ALLOW_LOCAL_NO_LOGIN value remains locally.
   if (allowAutoLogin === "1" || allowAutoLogin === "true") return false;
+
+  // Login gate off: allow no-session UI access without an extra local flag.
+  if (!isLoginGateEnabled()) return true;
 
   return allowLocal === "1" || allowLocal === "true";
 }
