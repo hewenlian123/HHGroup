@@ -5,6 +5,7 @@ import { NextRequest } from "next/server";
 
 const {
   adminCreateUserMock,
+  adminFromMock,
   adminListUsersMock,
   adminUpdateUserMock,
   createClientMock,
@@ -16,6 +17,7 @@ const {
   signOutMock,
 } = vi.hoisted(() => ({
   adminCreateUserMock: vi.fn(),
+  adminFromMock: vi.fn(),
   adminListUsersMock: vi.fn(),
   adminUpdateUserMock: vi.fn(),
   createClientMock: vi.fn(),
@@ -26,6 +28,20 @@ const {
   signInWithPasswordMock: vi.fn(),
   signOutMock: vi.fn(),
 }));
+
+function membershipQuery() {
+  const query = {
+    select: vi.fn(() => query),
+    not: vi.fn(() => query),
+    limit: vi.fn(() => query),
+    maybeSingle: vi.fn(async () => ({
+      data: { id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1" },
+      error: null,
+    })),
+    upsert: vi.fn(async () => ({ error: null })),
+  };
+  return query;
+}
 
 vi.mock("node:child_process", () => ({ execFile: execFileMock }));
 
@@ -67,6 +83,7 @@ describe("GET /api/auth/local-auto-login", () => {
       data: { user: { id: OWNER_ID } },
       error: null,
     });
+    adminFromMock.mockReset().mockImplementation(() => membershipQuery());
     adminListUsersMock.mockReset().mockResolvedValue({ data: { users: [] }, error: null });
     adminUpdateUserMock.mockReset();
     fallbackListUsersMock.mockReset().mockResolvedValue({ data: { users: [] }, error: null });
@@ -78,6 +95,7 @@ describe("GET /api/auth/local-auto-login", () => {
           updateUserById: adminUpdateUserMock,
         },
       },
+      from: adminFromMock,
     });
     execFileMock.mockReset().mockImplementation((...args: unknown[]) => {
       const callback = args.at(-1) as (error: Error | null, stdout: string) => void;
@@ -96,6 +114,7 @@ describe("GET /api/auth/local-auto-login", () => {
           updateUserById: adminUpdateUserMock,
         },
       },
+      from: adminFromMock,
     });
     createRouteSupabaseClientMock.mockReset().mockReturnValue({
       auth: { signInWithPassword: signInWithPasswordMock, signOut: signOutMock },
