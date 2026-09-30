@@ -84,27 +84,7 @@
     "className=\"h-8 rounded-lg border border-zinc-200/60 dark:border-border bg-background px-3 text-sm text-foreground\"": 1
   },
   "src/app/estimates/[id]/payments/[paymentId]/preview/page.tsx": {
-    "<div className=\"mt-3 max-w-2xl text-sm leading-6 text-zinc-700\">": 1,
-    "<footer className=\"border-t border-zinc-200 pt-6 text-xs text-zinc-400 whitespace-pre-wrap\">": 1,
-    "<h1 className=\"text-2xl font-semibold tracking-tight text-zinc-950\">": 1,
-    "<h2 className=\"mb-3 text-xs font-semibold uppercase tracking-wider text-zinc-500\">": 2,
-    "<p className=\"font-semibold text-zinc-900\">{meta.client.name || \"\u2014\"}</p>": 1,
-    "<p className=\"font-semibold text-zinc-900\">{meta.project.name || \"\u2014\"}</p>": 1,
-    "<p className=\"mt-1 text-zinc-700\">Estimate {estimate.number}</p>": 1,
-    "<p className=\"mt-1 whitespace-pre-wrap text-zinc-700\">": 1,
-    "<p className=\"mt-2 text-3xl font-semibold tabular-nums text-zinc-950\">": 1,
-    "<p className=\"mt-3 text-sm tabular-nums text-zinc-600\">Due: {formattedDueDate}</p>": 1,
-    "<p className=\"text-xs font-semibold uppercase tracking-wider text-zinc-500\">": 2,
-    "<p className=\"text-xs text-zinc-500 tabular-nums\">Due: {formattedDueDate}</p>": 1,
-    "<section className=\"mb-10 text-sm text-zinc-700 print:break-inside-avoid\">": 1,
-    "<section className=\"mb-8 rounded-lg border border-zinc-200 p-6 print:break-inside-avoid\">": 1,
-    "<span className=\"font-semibold text-zinc-900\">": 1,
-    "<span className=\"font-semibold text-zinc-900\">{estimate.number}</span> for{\" \"}": 1,
-    "body { background: #fff !important; }": 1,
-    "className=\"min-h-screen bg-white text-zinc-900 print:min-h-0\"": 1
-  },
-  "src/app/estimates/[id]/payments/[paymentId]/preview/payment-preview-actions.tsx": {
-    "<div className=\"sticky top-0 z-10 border-b border-zinc-200 bg-white px-4 py-3 print:hidden\">": 1
+    "body { background: #fff !important; }": 1
   },
   "src/app/estimates/[id]/preview/error.tsx": {
     "<AlertTriangle className=\"mx-auto h-6 w-6 text-amber-700\" aria-hidden />": 1,
@@ -169,8 +149,7 @@
     "<div className=\"h-8 w-2/5 rounded bg-stone-100\" />": 1
   },
   "src/app/estimates/[id]/print/page.tsx": {
-    "body { background: #fff !important; }": 1,
-    "className={`estimate-print-workspace min-h-screen bg-white text-zinc-900 print:min-h-0${pdfCapture ? \" estimate-print-pdf-capture\" : \"\"}`}": 1
+    "body { background: #fff !important; }": 1
   },
   "src/app/estimates/[id]/snapshot/page.tsx": {
     "<span className=\"inline-block rounded-sm border border-zinc-300 px-2 py-0.5 text-xs font-medium text-zinc-800 dark:border-zinc-600 dark:text-foreground\">": 1,
@@ -218,7 +197,7 @@
   },
   "src/app/estimates/_components/estimate-preview-summary-panel.tsx": {
     "<div className=\"mt-4 flex justify-between gap-6 border-t border-zinc-200/80 pt-4 text-[18px] font-semibold tracking-[-0.025em] text-zinc-950\">": 1,
-    "<span className=\"tabular-nums text-zinc-900\">\u2212${fmt(discount)}</span>": 1,
+    "<span className=\"tabular-nums text-zinc-900\">−${fmt(discount)}</span>": 1,
     "<span className=\"tabular-nums text-zinc-900\">${fmt(subtotal)}</span>": 1,
     "<span className=\"tabular-nums text-zinc-900\">${fmt(tax)}</span>": 1,
     "<span className=\"text-zinc-600\">{display.taxLabel}</span>": 1,
@@ -363,32 +342,21 @@
   },
   "src/app/globals.css": {
     "/* ---- HH Group color tokens (HSL components for hsl()) ---- */": 1,
-    "0 0 0 2px var(--hh-surface-workspace, #ffffff),": 1,
-    "0 0 0 4px var(--hh-focus-ring, #2563eb) !important;": 1,
     "0 18px 48px rgb(0 0 0 / 24%),": 1,
     "0 1px 3px rgb(0 0 0 / 28%);": 1,
-    "background: #181818 !important;": 1,
     "background: #fff !important;": 9,
     "background: #ffffff;": 1,
-    "background: rgb(24 24 24 / 98%);": 1,
     "background: rgb(255 255 255 / 98%);": 1,
-    "background: var(--hh-accent-hover, #1d4ed8) !important;": 1,
-    "background: var(--hh-accent-primary, #2563eb) !important;": 1,
     "background: var(--hh-border-default, #dadde1);": 1,
     "background: var(--hh-border-emphasis, #8b929b);": 1,
     "background: var(--hh-border-subtle, #ecedef) !important;": 1,
-    "background: var(--hh-information-soft-fill, #dbeafe);": 1,
     "background: var(--hh-surface-canvas, #f7f7f8);": 3,
     "background: var(--hh-surface-hover, #f4f4f5) !important;": 2,
     "background: var(--hh-surface-subtle, #f5f5f6);": 2,
     "background: var(--hh-surface-workspace, #ffffff) !important;": 2,
     "background: var(--hh-surface-workspace, #ffffff);": 2,
-    "border-bottom: 1px solid rgb(255 255 255 / 9%);": 1,
     "border-color: #059669;": 1,
-    "border-color: var(--hh-accent-hover, #1d4ed8) !important;": 1,
-    "border-color: var(--hh-accent-primary, #2563eb) !important;": 1,
     "border-color: var(--hh-border-default, #dadde1) !important;": 2,
-    "border-color: var(--hh-information-border, #bfdbfe);": 1,
     "border-left: 1px solid var(--hh-border-subtle, #ecedef);": 1,
     "border-top: 1px solid rgb(39 39 42 / 14%);": 2,
     "border: 1px solid rgb(9 9 9 / 8%);": 1,
@@ -396,7 +364,6 @@
     "border: 1px solid var(--hh-border-default, #dadde1);": 1,
     "border: 1px solid var(--hh-border-subtle, #ecedef);": 5,
     "box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.18);": 1,
-    "box-shadow: 0 2px 12px rgb(0 0 0 / 20%);": 1,
     "box-shadow: var(--hh-shadow-floating, 0 4px 12px rgb(24 26 30 / 8%));": 2,
     "box-shadow: var(--hh-shadow-operational, 0 1px 2px rgb(24 26 30 / 4%));": 1,
     "box-shadow: var(--hh-shadow-overlay, 0 16px 40px rgb(24 26 30 / 14%)) !important;": 1,
@@ -404,12 +371,6 @@
     "color: #10b981;": 1,
     "color: #18181b;": 1,
     "color: #71717a;": 2,
-    "color: #b8b8b4;": 2,
-    "color: #f4f4f2;": 2,
-    "color: #ffffff !important;": 2,
-    "color: var(--hh-accent-hover, #1d4ed8);": 1,
-    "color: var(--hh-accent-primary, #2563eb);": 1,
-    "color: var(--hh-information, #1d4ed8);": 1,
     "color: var(--hh-text-muted, #6b7280) !important;": 2,
     "color: var(--hh-text-primary, #181a1e) !important;": 6,
     "color: var(--hh-text-primary, #181a1e);": 3,
@@ -645,27 +606,6 @@
   },
   "src/components/labor/worker-payment-receipt-body.tsx": {
     "className=\"receipt-doc-header border-zinc-200 !mb-3 !pb-3\"": 1
-  },
-  "src/components/layout/app-shell-visual.css": {
-    "--hh-action-primary-foreground: #fff;": 1,
-    "--shell-accent-hover: #74571d;": 1,
-    "--shell-accent: #8a6925;": 1,
-    "--shell-action-hover: #e1c383;": 1,
-    "--shell-action-text: #3d321d;": 1,
-    "--shell-action: #e6ce96;": 1,
-    "--shell-background: #f8f9f8;": 1,
-    "--shell-border: #e1e4e3;": 1,
-    "--shell-hover: #f0f2f1;": 1,
-    "--shell-muted: #626b66;": 1,
-    "--shell-selected-text: #74571d;": 1,
-    "--shell-selected: #faf5e9;": 1,
-    "--shell-subtle: #f5f6f5;": 1,
-    "--shell-surface: #fff;": 1,
-    "--shell-text: #242826;": 1,
-    "box-shadow: 0 4px 12px rgb(25 28 24 / 8%);": 1
-  },
-  "src/components/layout/app-shell.tsx": {
-    "className={printReceiptBg ? \"min-h-screen bg-[#f5f5f5]\" : \"min-h-screen bg-workspace\"}": 1
   },
   "src/components/profit-drilldown-card.tsx": {
     "\"border-b border-zinc-100/50 dark:border-border/30\",": 1,

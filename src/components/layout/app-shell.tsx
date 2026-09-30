@@ -115,7 +115,9 @@ export function AppShell({ children }: AppShellProps) {
       <HhRouteThemeRoot
         context={routeContext}
         theme={routeTheme}
-        className={printReceiptBg ? "min-h-screen bg-[#f5f5f5]" : "min-h-screen bg-workspace"}
+        className={
+          printReceiptBg ? "min-h-screen bg-[var(--hh-l0-canvas)]" : "min-h-screen bg-workspace"
+        }
       >
         <AppShellProviders>
           <AppShellChrome pathname={pathname} bare integratedEstimateWorkspace={false} />

@@ -62,7 +62,7 @@ export default async function EstimatePaymentPreviewPage({
 
   return (
     <div
-      className="min-h-screen bg-white text-zinc-900 print:min-h-0"
+      className="min-h-screen bg-[var(--hh-l0-canvas)] text-[var(--hh-ink)] print:min-h-0 print:bg-white"
       data-hh-context="document-route"
       data-hh-theme="document-light"
       role="document"
@@ -89,71 +89,71 @@ export default async function EstimatePaymentPreviewPage({
           documentNoLabel="Related Estimate"
           extraRight={
             formattedDueDate ? (
-              <p className="text-xs text-zinc-500 tabular-nums">Due: {formattedDueDate}</p>
+              <p className="text-xs text-[var(--hh-muted)] tabular-nums">Due: {formattedDueDate}</p>
             ) : null
           }
         />
 
         <section className="mb-8 grid grid-cols-2 gap-6 text-sm print:break-inside-avoid">
           <div>
-            <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-zinc-500">
+            <h2 className="mb-3 text-xs font-semibold uppercase tracking-normal text-[var(--hh-muted)]">
               Bill to
             </h2>
-            <p className="font-semibold text-zinc-900">{meta.client.name || "—"}</p>
-            <p className="mt-1 whitespace-pre-wrap text-zinc-700">
+            <p className="font-semibold text-[var(--hh-ink)]">{meta.client.name || "—"}</p>
+            <p className="mt-1 whitespace-pre-wrap text-[var(--hh-text)]">
               {meta.client.address || meta.project.siteAddress || "—"}
             </p>
           </div>
           <div>
-            <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-zinc-500">
+            <h2 className="mb-3 text-xs font-semibold uppercase tracking-normal text-[var(--hh-muted)]">
               Project
             </h2>
-            <p className="font-semibold text-zinc-900">{meta.project.name || "—"}</p>
-            <p className="mt-1 text-zinc-700">Estimate {estimate.number}</p>
+            <p className="font-semibold text-[var(--hh-ink)]">{meta.project.name || "—"}</p>
+            <p className="mt-1 text-[var(--hh-text)]">Estimate {estimate.number}</p>
           </div>
         </section>
 
-        <section className="mb-8 rounded-lg border border-zinc-200 p-6 print:break-inside-avoid">
-          <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
+        <section className="mb-8 rounded-card border border-[var(--hh-line)] bg-[var(--hh-surface)] p-6 print:break-inside-avoid print:bg-white">
+          <p className="text-xs font-semibold uppercase tracking-normal text-[var(--hh-muted)]">
             Payment milestone
           </p>
           <div className="mt-4 flex items-start justify-between gap-8">
             <div>
-              <h1 className="text-2xl font-semibold tracking-tight text-zinc-950">
-                {payment.title}
-              </h1>
+              <h1 className="text-2xl font-semibold text-[var(--hh-ink)]">{payment.title}</h1>
               {payment.description ? (
-                <div className="mt-3 max-w-2xl text-sm leading-6 text-zinc-700">
+                <div className="mt-3 max-w-2xl text-sm leading-6 text-[var(--hh-text)]">
                   <ProposalScopePreview text={payment.description} variant="print" />
                 </div>
               ) : null}
               {formattedDueDate ? (
-                <p className="mt-3 text-sm tabular-nums text-zinc-600">Due: {formattedDueDate}</p>
+                <p className="mt-3 text-sm tabular-nums text-[var(--hh-muted)]">
+                  Due: {formattedDueDate}
+                </p>
               ) : null}
             </div>
             <div className="text-right">
-              <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
+              <p className="text-xs font-semibold uppercase tracking-normal text-[var(--hh-muted)]">
                 Amount due
               </p>
-              <p className="mt-2 text-3xl font-semibold tabular-nums text-zinc-950">
+              <p className="mt-2 text-3xl font-semibold tabular-nums text-[var(--hh-ink)]">
                 ${fmt(amountDue)}
               </p>
             </div>
           </div>
         </section>
 
-        <section className="mb-10 text-sm text-zinc-700 print:break-inside-avoid">
+        <section className="mb-10 text-sm text-[var(--hh-text)] print:break-inside-avoid">
           <p>
             This payment milestone is tied to estimate{" "}
-            <span className="font-semibold text-zinc-900">{estimate.number}</span> for{" "}
-            <span className="font-semibold text-zinc-900">
+            <span className="font-semibold text-[var(--hh-ink)]">{estimate.number}</span> for{" "}
+            <span className="font-semibold text-[var(--hh-ink)]">
               {meta.project.name || "this project"}
             </span>
             .
           </p>
         </section>
 
-        <footer className="border-t border-zinc-200 pt-6 text-xs text-zinc-400 whitespace-pre-wrap">
+        <footer className="whitespace-pre-wrap border-t border-[var(--hh-line)] pt-6 text-xs text-[var(--hh-muted)]">
           {company.invoiceFooter || `Payment Milestone — ${company.companyName}`}
         </footer>
       </article>

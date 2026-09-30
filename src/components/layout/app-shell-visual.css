@@ -3,20 +3,20 @@
 .app-shell-overlay.app-shell-overlay.app-shell-overlay {
   --shell-font:
     var(--font-geist-sans), "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --shell-background: #f8f9f8;
-  --shell-surface: #fff;
-  --shell-subtle: #f5f6f5;
-  --shell-hover: #f0f2f1;
-  --shell-border: #e1e4e3;
-  --shell-text: #242826;
-  --shell-muted: #626b66;
-  --shell-selected: #faf5e9;
-  --shell-selected-text: #74571d;
-  --shell-accent: #8a6925;
-  --shell-accent-hover: #74571d;
-  --shell-action: #e6ce96;
-  --shell-action-hover: #e1c383;
-  --shell-action-text: #3d321d;
+  --shell-background: var(--hh-l0-canvas);
+  --shell-surface: var(--hh-surface);
+  --shell-subtle: var(--hh-surface-sunken);
+  --shell-hover: var(--hh-hover);
+  --shell-border: var(--hh-line);
+  --shell-text: var(--hh-ink);
+  --shell-muted: var(--hh-muted);
+  --shell-selected: var(--hh-chip);
+  --shell-selected-text: var(--hh-navy);
+  --shell-accent: var(--hh-brass);
+  --shell-accent-hover: var(--hh-brass-lo);
+  --shell-action: var(--hh-brass);
+  --shell-action-hover: var(--hh-brass-lo);
+  --shell-action-text: var(--hh-on-brass);
   --shell-sidebar-expanded: 208px;
   --shell-sidebar-collapsed: 64px;
 }
@@ -45,7 +45,7 @@
   --hh-border: var(--shell-border);
   --hh-border-floating: var(--shell-border);
   --hh-border-strong: var(--shell-border);
-  --hh-border-emphasis: var(--shell-accent);
+  --hh-border-emphasis: var(--hh-navy-mid);
   --hh-input: var(--shell-border);
   --hh-l1-workspace: var(--shell-surface);
   --hh-l2-operational-surface: var(--shell-subtle);
@@ -57,13 +57,13 @@
   --hh-text-secondary: var(--shell-muted);
   --hh-text-muted: var(--shell-muted);
   --hh-text-tertiary: var(--shell-muted);
-  --hh-accent-primary: var(--shell-accent);
-  --hh-accent-hover: var(--shell-accent-hover);
+  --hh-accent-primary: var(--hh-brass);
+  --hh-accent-hover: var(--hh-brass-lo);
   --hh-accent-soft: var(--shell-selected);
-  --hh-focus-ring: var(--shell-accent);
-  --hh-action-primary: var(--shell-accent);
-  --hh-action-primary-hover: var(--shell-accent-hover);
-  --hh-action-primary-foreground: #fff;
+  --hh-focus-ring: var(--hh-link);
+  --hh-action-primary: var(--hh-brass);
+  --hh-action-primary-hover: var(--hh-brass-lo);
+  --hh-action-primary-foreground: var(--hh-on-brass);
   --hh-l3-pressed: var(--shell-selected);
   font-family: var(--shell-font);
   color: var(--shell-text);
@@ -218,10 +218,10 @@
   display: none;
 }
 .hh-app-shell [aria-label="Open quick actions"] {
-  background: var(--shell-action);
-  color: var(--shell-action-text);
-  border-color: var(--shell-border);
-  box-shadow: 0 4px 12px rgb(25 28 24 / 8%);
+  background: var(--hh-grad-brass);
+  color: var(--hh-on-brass);
+  border-color: transparent;
+  box-shadow: var(--hh-shadow-card);
 }
 
 @media (min-width: 640px) and (max-width: 1199px) {
