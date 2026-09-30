@@ -22,7 +22,7 @@ export function DashboardQuickActions({ className }: { className?: string }) {
             asChild
             variant={action.primary ? "default" : "outline"}
             className={cn(
-              "dashboard-action-button min-h-11 min-w-0 px-3 shadow-none md:min-h-9",
+              "min-h-11 min-w-0 px-3 md:min-h-9",
               action.mobileHidden && "hidden sm:inline-flex"
             )}
           >

@@ -12,15 +12,15 @@ export function DashboardPageHeader({ actions }: { actions?: ReactNode }) {
       className="flex min-w-0 flex-col gap-4 md:flex-row md:items-end md:justify-between"
     >
       <div className="min-w-0">
-        <h1 className={cn(TYPO.pageTitle, "text-[var(--hh-text-primary)]")}>Operations Home</h1>
-        <p className={cn(TYPO.pageSubtitle, "mt-2 max-w-[44rem] text-pretty")}>
+        <h1 className="text-title-page text-[var(--hh-ink)]">Operations Home</h1>
+        <p
+          className={cn(TYPO.pageSubtitle, "mt-2 max-w-[44rem] text-pretty text-[var(--hh-muted)]")}
+        >
           Priorities, guarded project profit, and recent finance activity.
         </p>
       </div>
       <div className="flex min-w-0 flex-col gap-3 md:items-end">
-        <time className={cn(TYPO.date, "text-[var(--hh-text-secondary)]")}>
-          {formatDate(new Date())}
-        </time>
+        <time className={cn(TYPO.date, "text-[var(--hh-muted)]")}>{formatDate(new Date())}</time>
         {actions}
       </div>
     </header>

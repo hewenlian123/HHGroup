@@ -4,18 +4,19 @@ import { DashboardMainSkeleton } from "./dashboard-skeletons";
 
 export const dynamic = "force-dynamic";
 
+const dashboardFrameClass =
+  "hh-list-frame page-stack flex min-w-0 max-w-full flex-col overflow-x-hidden bg-[var(--hh-l0-canvas)] py-3 md:py-6";
+
 export default function DashboardPage({
   searchParams,
 }: {
   searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   return (
-    <div className="min-h-full min-w-0 max-w-full overflow-x-hidden bg-workspace">
-      <div className="page-container page-shell-wide page-stack min-w-0 max-w-full max-md:!gap-3 max-md:!py-3 max-md:pb-[calc(7.5rem+env(safe-area-inset-bottom,0px))] max-md:pl-[max(0.875rem,env(safe-area-inset-left))] max-md:pr-[max(0.875rem,env(safe-area-inset-right))] max-md:pt-[max(0.5rem,env(safe-area-inset-top,0px))]">
-        <Suspense fallback={<DashboardMainSkeleton />}>
-          <DashboardMainSection searchParamsPromise={searchParams} />
-        </Suspense>
-      </div>
+    <div className={dashboardFrameClass}>
+      <Suspense fallback={<DashboardMainSkeleton />}>
+        <DashboardMainSection searchParamsPromise={searchParams} />
+      </Suspense>
     </div>
   );
 }
