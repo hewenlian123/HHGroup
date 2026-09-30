@@ -492,6 +492,9 @@ export function EstimatePaymentSchedule(props: {
             {paymentTemplates.length > 0 ? (
               <label className="min-w-[12rem] flex-1 text-hh-label text-[var(--hh-muted)]">
                 Payment template
+                <span className="mt-0.5 block text-hh-metadata font-normal text-[var(--hh-muted)]">
+                  Replace overwrites this schedule. Merge adds the template milestones.
+                </span>
                 <select
                   aria-label="Payment template"
                   value={selectedTemplateId}
@@ -522,7 +525,7 @@ export function EstimatePaymentSchedule(props: {
                   disabled={paymentMutationBusy}
                   data-testid="payment-template-replace"
                 >
-                  Replace
+                  Replace schedule
                 </Button>
                 <Button
                   type="button"
@@ -533,7 +536,7 @@ export function EstimatePaymentSchedule(props: {
                   disabled={paymentMutationBusy}
                   data-testid="payment-template-merge"
                 >
-                  Merge
+                  Merge into schedule
                 </Button>
               </>
             ) : null}
@@ -693,8 +696,8 @@ export function EstimatePaymentSchedule(props: {
             <DialogHeader>
               <DialogTitle>Save payment template</DialogTitle>
               <DialogDescription>
-                Percentage templates are reusable helpers. Applying one always stores fixed-dollar,
-                tax-inclusive milestone amounts from the current Estimate total.
+                Name this schedule, then choose whether later estimates reuse percentages or fixed
+                amounts. Applying a template still stores fixed-dollar milestones.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-3 py-2">

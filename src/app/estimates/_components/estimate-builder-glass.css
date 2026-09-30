@@ -2255,7 +2255,7 @@ body.estimate-builder-active [data-radix-dialog-overlay] {
 
 .estimate-builder-new .eb-line-pricing-total {
   display: flex;
-  height: 2rem;
+  height: var(--hh-control-height-standard);
   align-items: center;
 }
 

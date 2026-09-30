@@ -1002,8 +1002,8 @@
   }
 
   .estimate-builder-new .eb-line-item-grid--pricing input.eb-input {
-    height: 2rem !important;
-    min-height: 2rem !important;
+    height: var(--hh-control-height-standard) !important;
+    min-height: var(--hh-control-height-standard) !important;
     border-radius: var(--hh-radius-compact);
     padding-inline: 0.5rem !important;
     font-size: var(--hh-type-table-cell-font-size);
@@ -3937,7 +3937,7 @@
   .estimate-builder-new .eb-description-summary-button,
   .estimate-builder-new .eb-line-item-grid--pricing input.eb-input,
   .estimate-builder-new .eb-line-item-grid--pricing .eb-line-total-amount {
-    min-height: 32px;
+    min-height: var(--hh-control-height-standard);
   }
 }
 
@@ -4030,8 +4030,8 @@
     .eb-line-item-grid--pricing
     .eb-line-qty-unit-group
     :where(input.eb-line-qty-input, input.eb-line-measure-input) {
-    height: 34px;
-    min-height: 34px;
+    height: var(--hh-control-height-standard);
+    min-height: var(--hh-control-height-standard);
     border: 0 !important;
     border-radius: 0 !important;
     background: transparent !important;

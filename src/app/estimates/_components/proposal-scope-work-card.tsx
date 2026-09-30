@@ -182,7 +182,7 @@ export function ProposalScopeWorkCard({
       aria-label={titleInputAriaLabel}
       aria-invalid={titleInvalid}
       className={ebInput(
-        "h-8 text-hh-body font-medium leading-[1.4] tracking-normal text-foreground placeholder:text-muted-foreground"
+        "text-hh-body font-medium leading-[1.4] tracking-normal text-foreground placeholder:text-muted-foreground"
       )}
     />
   );

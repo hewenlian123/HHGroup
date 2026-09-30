@@ -4,6 +4,15 @@ import * as React from "react";
 import { ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -45,6 +54,9 @@ export function EstimateTaxPresetMenu({
   onApplyRate,
 }: EstimateTaxPresetMenuProps): React.ReactElement {
   const [customPresets, setCustomPresets] = React.useState<EstimateTaxPreset[]>([]);
+  const [presetDialogOpen, setPresetDialogOpen] = React.useState(false);
+  const [presetName, setPresetName] = React.useState("");
+  const [presetRate, setPresetRate] = React.useState<number | null>(null);
 
   React.useEffect(() => {
     setCustomPresets(loadCustomEstimateTaxPresets());
@@ -64,72 +76,122 @@ export function EstimateTaxPresetMenu({
       ratePctFromTaxAndSubtotal(estimateSubtotal, tax) ??
       (tax > 0 && estimateSubtotal <= 0 ? tax : null);
     if (rate === null) return;
-    const label = window.prompt("Preset name", `${rate}% tax`);
-    if (!label?.trim()) return;
+    setPresetRate(rate);
+    setPresetName(`${rate}% tax`);
+    window.setTimeout(() => setPresetDialogOpen(true), 0);
+  };
+
+  const commitPreset = (): void => {
+    const label = presetName.trim();
+    if (presetRate === null || !label) return;
     const preset: EstimateTaxPreset = {
       id: `custom-${Date.now()}`,
-      label: label.trim(),
-      ratePct: rate,
+      label,
+      ratePct: presetRate,
     };
     setCustomPresets(appendCustomEstimateTaxPreset(preset));
+    setPresetDialogOpen(false);
   };
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className={EB.sheetHelperTrigger}
-          aria-label="Tax presets"
-        >
-          Presets
-          <ChevronDown className="ml-0.5 h-3 w-3 opacity-70" aria-hidden />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className={cn(EB.lineItemMoreMenu, EB.commandMenu)}>
-        <p className="max-w-64 px-2 py-2 text-hh-metadata text-[var(--hh-muted)]">
-          Applies a fixed tax amount from the current subtotal. Reapply after scope changes.
-        </p>
-        {BUILTIN_ESTIMATE_TAX_PRESETS.map((preset) => (
-          <DropdownMenuItem
-            key={preset.id}
-            className={EB.lineItemMoreMenuItem}
-            onSelect={() => applyRate(preset.ratePct)}
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className={EB.sheetHelperTrigger}
+            aria-label="Tax presets"
           >
-            {preset.label}
-            {preset.ratePct > 0 ? (
+            Presets
+            <ChevronDown className="ml-0.5 h-3 w-3 opacity-70" aria-hidden />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className={cn(EB.lineItemMoreMenu, EB.commandMenu)}>
+          <p className="max-w-64 px-2 py-2 text-hh-metadata text-[var(--hh-muted)]">
+            Applies a fixed tax amount from the current subtotal. Reapply after scope changes.
+          </p>
+          {BUILTIN_ESTIMATE_TAX_PRESETS.map((preset) => (
+            <DropdownMenuItem
+              key={preset.id}
+              className={EB.lineItemMoreMenuItem}
+              onSelect={() => applyRate(preset.ratePct)}
+            >
+              {preset.label}
+              {preset.ratePct > 0 ? (
+                <span className="hh-fin ml-auto text-[var(--hh-text-tertiary)]">
+                  {preset.ratePct}%
+                </span>
+              ) : null}
+            </DropdownMenuItem>
+          ))}
+          {customPresets.map((preset) => (
+            <DropdownMenuItem
+              key={preset.id}
+              className={EB.lineItemMoreMenuItem}
+              onSelect={() => applyRate(preset.ratePct)}
+            >
+              {preset.label}
               <span className="hh-fin ml-auto text-[var(--hh-text-tertiary)]">
                 {preset.ratePct}%
               </span>
-            ) : null}
-          </DropdownMenuItem>
-        ))}
-        {customPresets.map((preset) => (
+            </DropdownMenuItem>
+          ))}
+          <DropdownMenuSeparator className="bg-[var(--hh-line)]" />
           <DropdownMenuItem
-            key={preset.id}
             className={EB.lineItemMoreMenuItem}
-            onSelect={() => applyRate(preset.ratePct)}
+            onSelect={() => {
+              onTaxTouched();
+            }}
           >
-            {preset.label}
-            <span className="hh-fin ml-auto text-[var(--hh-text-tertiary)]">{preset.ratePct}%</span>
+            Custom rate
           </DropdownMenuItem>
-        ))}
-        <DropdownMenuSeparator className="bg-[var(--hh-line)]" />
-        <DropdownMenuItem
-          className={EB.lineItemMoreMenuItem}
-          onSelect={() => {
-            onTaxTouched();
-          }}
-        >
-          Custom rate
-        </DropdownMenuItem>
-        <DropdownMenuItem className={EB.lineItemMoreMenuItem} onSelect={handleSaveCurrent}>
-          Save current as preset
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+          <DropdownMenuItem className={EB.lineItemMoreMenuItem} onSelect={handleSaveCurrent}>
+            Save current as preset
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <Dialog open={presetDialogOpen} onOpenChange={setPresetDialogOpen}>
+        <DialogContent className="max-w-sm gap-4 rounded-card p-5 shadow-task">
+          <DialogHeader className="space-y-1 pb-1">
+            <DialogTitle>Save tax preset</DialogTitle>
+            <DialogDescription>
+              Saves this rate in Presets on this browser. Applying it still uses the current tax
+              calculation.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-1.5 pb-1">
+            <Label htmlFor="estimate-tax-preset-name">Preset name</Label>
+            <Input
+              id="estimate-tax-preset-name"
+              value={presetName}
+              onChange={(event) => setPresetName(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  commitPreset();
+                }
+              }}
+              autoComplete="off"
+            />
+          </div>
+          <DialogFooter className="gap-2 border-t-0 pt-0 sm:justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setPresetDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button type="button" size="sm" disabled={!presetName.trim()} onClick={commitPreset}>
+              Save preset
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
@@ -192,16 +254,10 @@ export function EstimateDiscountOptionsPopover({
           type="button"
           variant="ghost"
           size="sm"
-          className={cn("h-8 w-full justify-start text-hh-metadata", EB.lineItemMoreMenuItem)}
-          onClick={applyNoDiscount}
-        >
-          No discount
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className={cn("h-8 w-full justify-start text-hh-metadata", EB.lineItemMoreMenuItem)}
+          className={cn(
+            "h-hh-control-standard w-full justify-start text-hh-metadata",
+            EB.lineItemMoreMenuItem
+          )}
           onClick={applyNoDiscount}
         >
           Clear discount
@@ -227,7 +283,7 @@ export function EstimateDiscountOptionsPopover({
             <Button
               type="button"
               size="sm"
-              className="h-8 shrink-0 px-2.5 text-xs"
+              className="h-hh-control-standard shrink-0 px-2.5"
               onClick={applyPercent}
             >
               Apply
@@ -253,7 +309,7 @@ export function EstimateDiscountOptionsPopover({
             <Button
               type="button"
               size="sm"
-              className="h-8 shrink-0 px-2.5 text-xs"
+              className="h-hh-control-standard shrink-0 px-2.5"
               onClick={applyFixed}
             >
               Apply
