@@ -106,7 +106,9 @@ export function ConvertToProjectDrawer({
           <Input
             value={estimateNumber}
             readOnly
-            className={ebInput("h-11 cursor-not-allowed bg-muted text-muted-foreground")}
+            className={ebInput(
+              "h-11 cursor-not-allowed bg-[var(--hh-chip)] text-[var(--hh-muted)]"
+            )}
             aria-readonly
           />
           <input type="hidden" name="estimateRef" value={estimateNumber} />
@@ -144,7 +146,7 @@ export function ConvertToProjectDrawer({
         </div>
 
         {error && (
-          <p className="text-sm text-destructive" role="alert">
+          <p className="text-hh-body text-[var(--hh-danger)]" role="alert">
             {error}
           </p>
         )}
@@ -153,23 +155,13 @@ export function ConvertToProjectDrawer({
           <Button
             type="button"
             variant="ghost"
-            className={cn(
-              "min-h-11 flex-1 border border-border bg-background text-foreground hover:bg-muted hover:text-foreground",
-              EB.btnGhost
-            )}
+            className={cn("min-h-11 flex-1", EB.btnGhost)}
             onClick={() => onOpenChange(false)}
             disabled={pending}
           >
             Cancel
           </Button>
-          <Button
-            type="submit"
-            className={cn(
-              "min-h-11 flex-1 border border-foreground bg-foreground text-background hover:bg-foreground/90",
-              EB.btnPrimary
-            )}
-            disabled={pending}
-          >
+          <Button type="submit" className={cn("min-h-11 flex-1", EB.btnPrimary)} disabled={pending}>
             {pending ? "Creating…" : "Create project"}
           </Button>
         </div>

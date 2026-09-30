@@ -2238,7 +2238,7 @@ function AddCategoryBlock({
               className={ebInput("h-8 pr-9")}
               autoComplete="off"
             />
-            <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-zinc-500">
+            <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[var(--hh-muted)]">
               <ChevronDown className="h-4 w-4" />
             </span>
             {open && menuPos && typeof document !== "undefined"
@@ -2258,7 +2258,7 @@ function AddCategoryBlock({
                     className={EB.commandMenu}
                   >
                     {visibleOptions.length === 0 && !canInstantCreate ? (
-                      <li className="px-3 py-2 text-sm text-zinc-500">
+                      <li className="px-3 py-2 text-hh-body text-[var(--hh-muted)]">
                         {noMatch
                           ? "No matching section"
                           : allCodesWithLabels.length === 0
@@ -2284,7 +2284,7 @@ function AddCategoryBlock({
                           >
                             <span>{cc.name}</span>
                             {existingCategorySet.has(cc.code) ? (
-                              <span className="ml-auto text-hh-status text-zinc-500">
+                              <span className="ml-auto text-hh-status text-[var(--hh-muted)]">
                                 Already added
                               </span>
                             ) : null}
@@ -2310,14 +2310,14 @@ function AddCategoryBlock({
                             onMouseDown={(event) => event.preventDefault()}
                             onClick={() => handleInstantCreateCategory()}
                           >
-                            <Plus className="h-4 w-4 shrink-0 text-zinc-400" aria-hidden />
+                            <Plus className="h-4 w-4 shrink-0 text-[var(--hh-muted)]" aria-hidden />
                             <span>Create &quot;{search.trim()}&quot;</span>
                           </li>
                         ) : null}
                       </>
                     )}
                     {hasMore && (
-                      <li className="border-t border-white/[0.06] px-3 py-1.5 text-xs text-zinc-500">
+                      <li className="border-t border-[var(--hh-line)] px-3 py-1.5 text-hh-metadata text-[var(--hh-muted)]">
                         Scroll for more ({filtered.length} total)
                       </li>
                     )}
