@@ -23,7 +23,9 @@ import {
 } from "@/lib/data";
 import { ArrowLeft, Download, Eye, Plus, Trash2 } from "lucide-react";
 import { useBreadcrumbEntityLabel } from "@/contexts/breadcrumb-override-context";
-import { formatCurrency } from "@/lib/formatters";
+import { formatOverviewMoney } from "@/lib/financial/project-overview-display";
+import { sectionCardClass } from "@/components/ui/section-card";
+import { cn } from "@/lib/utils";
 import { ConfirmDialog } from "@/components/base";
 
 function makeAttachment(file: File): Attachment {
@@ -91,8 +93,8 @@ export default function LaborInvoiceDetailPage() {
 
   if (!id || !invoice) {
     return (
-      <div className="mx-auto max-w-[900px] flex flex-col gap-6 p-6">
-        <p className="text-muted-foreground">Labor invoice not found.</p>
+      <div className="hh-list-frame page-stack flex flex-col py-6">
+        <p className="text-[var(--hh-muted)]">Labor invoice not found.</p>
         <Button
           variant="outline"
           className="rounded-hh-standard w-fit"
@@ -202,11 +204,11 @@ export default function LaborInvoiceDetailPage() {
   };
 
   return (
-    <div className="mx-auto max-w-[1100px] flex flex-col gap-6 p-6">
+    <div className="hh-list-frame page-stack flex flex-col gap-4 bg-[var(--hh-l0-canvas)] py-3 md:py-6">
       <div className="flex items-center gap-4">
         <Link
           href="/labor/invoices"
-          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+          className="flex items-center gap-1.5 text-sm text-[var(--hh-link)] underline-offset-2 hover:underline"
         >
           <ArrowLeft className="h-4 w-4" />
           Back
@@ -214,12 +216,12 @@ export default function LaborInvoiceDetailPage() {
       </div>
 
       {message ? (
-        <p className="border-b border-gray-100 pb-3 text-sm text-muted-foreground dark:border-border">
+        <p className="border-b border-[var(--hh-line)] pb-3 text-sm text-[var(--hh-muted)]">
           {message}
         </p>
       ) : null}
 
-      <section className="border-b border-gray-100 pb-6 dark:border-border">
+      <section className={cn(sectionCardClass, "p-4 md:p-5")}>
         <div className="mb-4 flex items-center justify-between gap-3">
           <div>
             <p className="text-hh-status font-medium uppercase tracking-normal text-muted-foreground">
@@ -331,7 +333,7 @@ export default function LaborInvoiceDetailPage() {
             value={invoice.memo ?? ""}
             onChange={(e) => handleHeaderSave({ memo: e.target.value })}
             disabled={isReadOnly}
-            className="min-h-[88px] rounded-hh-compact border border-gray-100 bg-background px-3 py-2 text-sm dark:border-border"
+            className="min-h-[88px] rounded-card border border-[var(--hh-line)] bg-[var(--hh-surface)] px-3 py-2 text-sm"
           />
         </div>
         <p className="mt-3 text-xs text-[var(--hh-warning)] text-[var(--hh-warning)]">
@@ -339,7 +341,7 @@ export default function LaborInvoiceDetailPage() {
         </p>
       </section>
 
-      <section className="border-b border-gray-100 pb-6 dark:border-border">
+      <section className={cn(sectionCardClass, "p-4 md:p-5")}>
         <h2 className="mb-3 text-sm font-semibold text-foreground">Attachments</h2>
         <input
           ref={fileInputRef}
@@ -364,7 +366,7 @@ export default function LaborInvoiceDetailPage() {
           {invoice.attachments.map((att) => (
             <li
               key={att.id}
-              className="flex items-center gap-2 border border-gray-100 p-3 dark:border-border"
+              className="flex items-center gap-2 rounded-card border border-[var(--hh-line)] p-3"
             >
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium text-foreground">{att.fileName}</p>
@@ -413,7 +415,7 @@ export default function LaborInvoiceDetailPage() {
         </ul>
       </section>
 
-      <section className="border-b border-gray-100 pb-6 dark:border-border">
+      <section className={cn(sectionCardClass, "p-4 md:p-5")}>
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-foreground">Split Allocation</h2>
           <Button
@@ -466,7 +468,7 @@ export default function LaborInvoiceDetailPage() {
           ))}
         </div>
         <p className="mt-3 text-sm text-muted-foreground">
-          Split Total: {formatCurrency(splitTotal)}
+          Split Total: {formatOverviewMoney(splitTotal)}
         </p>
         <p className="mt-4 text-sm text-muted-foreground">
           Remaining:{" "}
@@ -477,7 +479,7 @@ export default function LaborInvoiceDetailPage() {
                 : "font-medium text-[var(--hh-warning)] text-[var(--hh-warning)]"
             }
           >
-            {formatCurrency(remaining)}
+            {formatOverviewMoney(remaining)}
           </span>
         </p>
       </section>

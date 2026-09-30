@@ -19,6 +19,8 @@ import { StatusBadge } from "@/components/status-badge";
 import { formatDate } from "@/lib/formatters";
 import { formatOverviewMoney } from "@/lib/financial/project-overview-display";
 import { ConfirmDialog } from "@/components/base";
+import { sectionCardClass } from "@/components/ui/section-card";
+import { cn } from "@/lib/utils";
 
 export default function LaborInvoicesPage() {
   const [rows, setRows] = React.useState<LaborInvoice[]>([]);
@@ -175,34 +177,34 @@ export default function LaborInvoicesPage() {
         />
       </FilterBar>
       {message ? (
-        <p className="border-b border-gray-100 pb-3 text-sm text-muted-foreground dark:border-border">
+        <p className="border-b border-[var(--hh-line)] pb-3 text-sm text-[var(--hh-muted)]">
           {message}
         </p>
       ) : null}
-      <div className="overflow-hidden rounded-hh-compact border border-gray-100 dark:border-border">
+      <div className={cn(sectionCardClass, "overflow-x-auto")}>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-100 bg-white dark:border-border/60 dark:bg-muted/30">
-                <th className="text-left py-3 px-4 text-xs uppercase tracking-normalr text-muted-foreground font-medium">
+              <tr className="border-b border-[var(--hh-line)] bg-[var(--hh-l0-canvas)]">
+                <th className="px-4 py-3 text-left text-hh-table-header font-medium uppercase tracking-normal text-[var(--hh-muted)]">
                   Invoice #
                 </th>
-                <th className="text-left py-3 px-4 text-xs uppercase tracking-normalr text-muted-foreground font-medium">
+                <th className="px-4 py-3 text-left text-hh-table-header font-medium uppercase tracking-normal text-[var(--hh-muted)]">
                   Worker
                 </th>
-                <th className="text-left py-3 px-4 text-xs uppercase tracking-normalr text-muted-foreground font-medium">
+                <th className="px-4 py-3 text-left text-hh-table-header font-medium uppercase tracking-normal text-[var(--hh-muted)]">
                   Date
                 </th>
-                <th className="text-right py-3 px-4 text-xs uppercase tracking-normalr text-muted-foreground font-medium">
+                <th className="px-4 py-3 text-right text-hh-table-header font-medium uppercase tracking-normal text-[var(--hh-muted)]">
                   Amount
                 </th>
-                <th className="text-right py-3 px-4 text-xs uppercase tracking-normalr text-muted-foreground font-medium">
+                <th className="px-4 py-3 text-right text-hh-table-header font-medium uppercase tracking-normal text-[var(--hh-muted)]">
                   Split Projects
                 </th>
-                <th className="text-left py-3 px-4 text-xs uppercase tracking-normalr text-muted-foreground font-medium">
+                <th className="px-4 py-3 text-left text-hh-table-header font-medium uppercase tracking-normal text-[var(--hh-muted)]">
                   Status
                 </th>
-                <th className="text-right py-3 px-4 text-xs uppercase tracking-normalr text-muted-foreground font-medium">
+                <th className="px-4 py-3 text-right text-hh-table-header font-medium uppercase tracking-normal text-[var(--hh-muted)]">
                   Actions
                 </th>
               </tr>
@@ -211,11 +213,11 @@ export default function LaborInvoicesPage() {
               {filtered.map((row) => (
                 <tr
                   key={row.id}
-                  className="group border-b border-gray-100/80 transition-colors bg-[var(--hh-l3-hover)] dark:border-border/40 dark:hover:bg-muted/20"
+                  className="group border-b border-[var(--hh-line)] bg-[var(--hh-surface)] transition-colors last:border-b-0 hover:bg-[var(--hh-l3-hover)]"
                 >
-                  <td className="py-3 px-4 font-medium text-foreground">{row.invoiceNo}</td>
+                  <td className="px-4 py-3 font-medium text-[var(--hh-ink)]">{row.invoiceNo}</td>
                   <td className="py-3 px-4">{workersMap.get(row.workerId) ?? "Unknown worker"}</td>
-                  <td className="py-3 px-4 hh-fin tracking-normal text-zinc-500">
+                  <td className="hh-fin px-4 py-3 tracking-normal text-[var(--hh-muted)]">
                     {formatDate(row.invoiceDate)}
                   </td>
                   <td className="py-3 px-4 text-right tabular-nums">
@@ -256,7 +258,7 @@ export default function LaborInvoicesPage() {
               ))}
               {filtered.length === 0 ? (
                 <tr>
-                  <td className="py-8 px-4 text-center text-muted-foreground" colSpan={7}>
+                  <td className="px-4 py-8 text-center text-[var(--hh-muted)]" colSpan={7}>
                     No labor invoices yet.
                   </td>
                 </tr>

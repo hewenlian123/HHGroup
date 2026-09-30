@@ -462,12 +462,6 @@
     "<section className=\"border-b border-gray-100 pb-6 dark:border-border\">": 3,
     "className=\"min-h-[88px] rounded-hh-compact border border-gray-100 bg-background px-3 py-2 text-sm dark:border-border\"": 1
   },
-  "src/app/labor/invoices/[id]/page.tsx": {
-    "<p className=\"border-b border-gray-100 pb-3 text-sm text-muted-foreground dark:border-border\">": 1,
-    "<section className=\"border-b border-gray-100 pb-6 dark:border-border\">": 3,
-    "className=\"flex items-center gap-2 border border-gray-100 p-3 dark:border-border\"": 1,
-    "className=\"min-h-[88px] rounded-hh-compact border border-gray-100 bg-background px-3 py-2 text-sm dark:border-border\"": 1
-  },
   "src/app/labor/invoices/invoices-list-client.tsx": {
     "\"border-b border-gray-100/80 dark:border-border/30\"": 1,
     "<div className=\"rounded-hh-standard border border-gray-100 dark:border-border bg-background px-3 py-2 text-sm text-muted-foreground\">": 1,
@@ -478,26 +472,10 @@
     "<section className=\"border-b border-gray-100 py-12 text-center text-muted-foreground dark:border-border\">": 1,
     "className=\"min-h-[88px] rounded-hh-compact border border-gray-100 bg-background px-3 py-2 text-sm dark:border-border\"": 1
   },
-  "src/app/labor/invoices/new/page.tsx": {
-    "<section className=\"border-b border-gray-100 pb-6 dark:border-border\">": 1,
-    "className=\"min-h-[88px] rounded-hh-compact border border-gray-100 bg-background px-3 py-2 text-sm dark:border-border\"": 1
-  },
-  "src/app/labor/invoices/page.tsx": {
-    "<div className=\"overflow-hidden rounded-hh-compact border border-gray-100 dark:border-border\">": 1,
-    "<p className=\"border-b border-gray-100 pb-3 text-sm text-muted-foreground dark:border-border\">": 1,
-    "<td className=\"py-3 px-4 hh-fin tracking-normal text-zinc-500\">": 1,
-    "<tr className=\"border-b border-gray-100 bg-white dark:border-border/60 dark:bg-muted/30\">": 1,
-    "className=\"group border-b border-gray-100/80 transition-colors bg-[var(--hh-l3-hover)] dark:border-border/40 dark:hover:bg-muted/20\"": 1
-  },
   "src/app/labor/labor-page-client.tsx": {
     "<p className=\"mt-0.5 text-base font-medium tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground\">": 2,
     "<p className=\"text-sm font-medium text-zinc-900 dark:text-foreground\">": 1,
     "<span className=\"mx-auto mb-3 inline-flex h-10 w-10 items-center justify-center rounded-full border border-zinc-200/70 bg-zinc-50/80 text-zinc-600 dark:border-border/60 dark:bg-muted/25 dark:text-zinc-300\">": 1
-  },
-  "src/app/labor/payments/[id]/receipt/receipt-screen-client.tsx": {
-    "<div className=\"no-print mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-zinc-200 pb-2\">": 1,
-    "className=\"receipt-print-shell min-h-screen bg-white text-zinc-900\"": 1,
-    "className=\"text-sm text-zinc-600 underline-offset-4 hover:text-zinc-950 hover:underline\"": 1
   },
   "src/app/labor/payments/payments-client.tsx": {
     "<div className=\"border-b border-gray-100 dark:border-border pb-3\">": 1,
@@ -628,27 +606,6 @@
   "src/app/workers/[id]/page.tsx": {
     "? \"border-[color:rgb(184_147_90_/_0.34)]\"": 1,
     "\"hover:bg-[var(--hh-l3-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:rgb(184_147_90_/_0.52)]\",": 1
-  },
-  "src/app/workers/[id]/statement/print/page.tsx": {
-    ": \"border-rose-200 bg-rose-50/80 print:bg-white\"": 1,
-    "? \"border-emerald-200 bg-emerald-50/80 print:bg-white\"": 1,
-    "<div className=\"overflow-hidden rounded-xl border border-zinc-200\">": 2,
-    "<div className=\"rounded-xl border border-zinc-200 bg-zinc-50/80 p-3 print:bg-white\">": 4,
-    "<footer className=\"mt-10 pt-6 border-t border-zinc-200 text-xs text-zinc-500\">": 1,
-    "<h2 className=\"mb-2 text-xs font-semibold uppercase tracking-[0.06em] text-zinc-500\">": 2,
-    "<p className=\"font-semibold text-zinc-950\">": 1,
-    "<p className=\"text-[10px] font-semibold uppercase tracking-[0.06em] text-zinc-500\">": 5,
-    "<p className=\"text-zinc-600 tabular-nums mt-1\">": 1,
-    "<section className=\"mb-6 rounded-xl border border-zinc-200 bg-zinc-50/80 p-4 text-sm text-zinc-800 print:bg-white\">": 1,
-    "<td className=\"px-3 py-2 text-zinc-600\">{p.notes ?? \"\u2014\"}</td>": 1,
-    "<td className=\"px-3 py-2 text-zinc-600\">{row.shift}</td>": 1,
-    "<td colSpan={4} className=\"px-3 py-6 text-center text-sm text-zinc-500\">": 2,
-    "<thead className=\"bg-zinc-50 print:bg-white\">": 2,
-    "<tr className=\"border-b border-zinc-200\">": 2,
-    "<tr key={p.id} className=\"border-b border-zinc-100 last:border-b-0\">": 1,
-    "balanceIsSettled ? \"text-emerald-700\" : \"text-rose-700\"": 1,
-    "className=\"border-b border-zinc-100 last:border-b-0\"": 1,
-    "className=\"payroll-statement-print-root mx-auto min-h-screen bg-white px-6 py-8 text-zinc-950 print:min-h-0 print:p-0\"": 1
   },
   "src/components/attachment-preview-modal.tsx": {
     "className={cn(toolbarIconBtn, \"hover:bg-red-500/20 hover:text-red-200\")}": 1

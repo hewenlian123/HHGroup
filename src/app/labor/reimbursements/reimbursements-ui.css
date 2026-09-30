@@ -5,13 +5,13 @@
 }
 
 .reimbursements-ui [data-reimbursements-kpis] {
-  background: var(--hh-l2-operational-surface);
-  box-shadow: var(--hh-shadow-operational);
+  background: var(--hh-surface);
+  box-shadow: var(--hh-shadow-card);
 }
 
 .reimbursements-ui [data-reimbursements-kpis] > div {
   border: 0;
-  border-right: 1px solid var(--hh-border);
+  border-right: 1px solid var(--hh-line);
 }
 
 .reimbursements-ui [data-reimbursements-kpis] > div:last-child {
@@ -97,7 +97,7 @@
   }
 
   .reimbursements-ui [data-reimbursements-kpis] > div:nth-child(-n + 2) {
-    border-bottom: 1px solid var(--hh-border);
+    border-bottom: 1px solid var(--hh-line);
   }
 
   .reimbursements-ui [data-reimbursement-form] {
