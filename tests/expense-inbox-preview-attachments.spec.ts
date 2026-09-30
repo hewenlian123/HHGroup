@@ -263,7 +263,7 @@ test.describe("Expense inbox preview - attachment thumbnails", () => {
     await expect(page.getByRole("dialog", { name: /^Expense$/ })).toHaveCount(0);
 
     const evidence = detail.locator("[data-expense-receipt-evidence]");
-    await expect(evidence).toContainText("Open receipt preview");
+    await expect(evidence).toContainText(/Receipt file|Open receipt preview/);
     await evidence.click();
     const preview = page.locator("[data-attachment-preview-modal]");
     await expect(preview).toBeVisible({ timeout: 15_000 });

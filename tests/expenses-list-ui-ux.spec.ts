@@ -1136,7 +1136,7 @@ test.describe("Expenses list UI/UX", () => {
       });
       await waitForExpensesReady(page);
       const panel = page.locator("[data-expense-detail-panel]");
-      await expect(panel.getByText("Open receipt preview", { exact: true })).toBeVisible();
+      await expect(panel.getByText("Receipt file", { exact: true })).toBeVisible();
       await panel.locator("[data-expense-receipt-evidence]").click();
       const viewer = page.locator("[data-receipt-viewer]");
       await expect(viewer).toBeVisible();

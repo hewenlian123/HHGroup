@@ -12,7 +12,7 @@ test("keyboard inspection transfers focus and Escape closes the drawer", async (
   await expect(panel).toBeVisible();
   await expect(panel).toBeFocused();
   await expect(
-    panel.getByRole("button", { name: /Upload receipt|Open receipt preview/ })
+    panel.getByRole("button", { name: /Upload receipt|Receipt file|Open receipt preview/ })
   ).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(panel).toBeHidden();

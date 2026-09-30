@@ -1044,25 +1044,41 @@ body:has([data-hh-theme="neo-dark"] .expense-new-dialog[data-state="open"])
 }
 
 @media (min-width: 1024px) {
+  /* Ledger detail must own remaining viewport height so Save/Cancel stay on-screen
+     while the panel body scrolls. Match the real DOM (busy wrapper → page shell → stack). */
   .expenses-ui[data-expense-workspace-detail-open="true"] {
+    display: flex;
     height: 100%;
     max-height: 100%;
     min-height: 0;
+    flex-direction: column;
     overflow-y: hidden;
   }
 
-  .expenses-ui[data-expense-workspace-detail-open="true"] > .expenses-ui-content {
-    display: flex;
-    height: 100%;
-    min-height: 0;
-    flex-direction: column;
-  }
-
-  .expenses-ui[data-expense-workspace-detail-open="true"] > .expenses-ui-content > div {
+  .expenses-ui[data-expense-workspace-detail-open="true"] > [aria-busy] {
     display: flex;
     min-height: 0;
     flex: 1;
     flex-direction: column;
+    overflow: hidden;
+  }
+
+  .expenses-ui[data-expense-workspace-detail-open="true"] .expenses-ui-content.expenses-page-shell {
+    display: flex;
+    height: 100%;
+    max-height: 100%;
+    min-height: 0;
+    flex: 1;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .expenses-ui[data-expense-workspace-detail-open="true"] .expenses-page-stack {
+    display: flex;
+    min-height: 0;
+    flex: 1;
+    flex-direction: column;
+    overflow: hidden;
   }
 
   .expense-operations-workspace[data-expense-detail-open="true"] {
