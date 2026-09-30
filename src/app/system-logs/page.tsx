@@ -76,8 +76,11 @@ export default function SystemLogsPage() {
 
   return (
     <PageLayout
+      frame="list"
+      divider={false}
       header={
         <PageHeader
+          variant="workspace"
           title="System Logs"
           description="Recent system events and errors from server console."
           actions={

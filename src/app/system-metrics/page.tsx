@@ -61,8 +61,14 @@ export default function SystemMetricsPage() {
 
   return (
     <PageLayout
+      frame="list"
+      divider={false}
       header={
-        <PageHeader title="System Metrics" description="Database row counts for core tables." />
+        <PageHeader
+          variant="workspace"
+          title="System Metrics"
+          description="Database row counts for core tables."
+        />
       }
     >
       {error ? (

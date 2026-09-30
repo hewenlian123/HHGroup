@@ -126,10 +126,11 @@ export default function DesignSystemShowcasePage() {
   const [open, setOpen] = React.useState(false);
 
   return (
-    <div className="page-container page-stack">
+    <div className="hh-list-frame page-stack flex flex-col bg-[var(--hh-l0-canvas)] py-3 md:py-6">
       <PageHeader
+        variant="workspace"
         title="Design system"
-        description="HH foundation: white and graphite surfaces, Geist typography, operational blue actions, and semantic status colors."
+        description="Live navy and brass workspace chrome, with the shared type, card, and status specimens below."
       />
 
       <Card>
