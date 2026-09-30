@@ -43,7 +43,7 @@ export function EstimateDocumentStyleField({
       disabled={disabled}
     >
       <legend className={cn(EB.sheetLabel, "mb-2")}>Estimate style</legend>
-      <p className="eb-estimate-style-helper mb-3 text-xs leading-snug text-[var(--hh-text-tertiary)]">
+      <p className="eb-estimate-style-helper mb-3 leading-snug">
         Controls customer preview, print, and PDF output only.
       </p>
       <div className="eb-estimate-style-options grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -55,7 +55,7 @@ export function EstimateDocumentStyleField({
               key={option.value}
               htmlFor={id}
               className={cn(
-                "eb-estimate-style-option flex cursor-pointer gap-3 rounded-md border px-3 py-2.5 transition-colors",
+                "eb-estimate-style-option flex cursor-pointer gap-3 rounded-hh-compact border px-3 py-2.5 transition-colors",
                 checked ? "is-selected" : undefined
               )}
             >
@@ -67,14 +67,14 @@ export function EstimateDocumentStyleField({
                 checked={checked}
                 disabled={disabled}
                 aria-label={option.label}
-                className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--hh-text-primary)]"
+                className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--hh-navy)]"
                 onChange={() => onChange?.(option.value)}
               />
               <span className="min-w-0">
-                <span className="block text-sm font-medium text-[var(--hh-text-primary)]">
+                <span className="block text-hh-body font-medium text-[var(--hh-ink)]">
                   {option.label}
                 </span>
-                <span className="mt-0.5 block text-xs leading-snug text-[var(--hh-text-tertiary)]">
+                <span className="mt-0.5 block text-hh-metadata leading-snug text-[var(--hh-muted)]">
                   {option.hint}
                 </span>
               </span>

@@ -32,7 +32,7 @@ import { cn } from "@/lib/utils";
 import { Pencil } from "lucide-react";
 
 const metaLabel =
-  "eb-estimate-context-label mb-0.5 block text-hh-metadata font-medium leading-tight text-muted-foreground";
+  "eb-estimate-context-label mb-0.5 block text-hh-metadata font-medium leading-tight text-[var(--hh-muted)]";
 const metaPanel = cn(EB.draftPanel, "eb-estimate-context-panel px-3 py-2.5 sm:px-4 sm:py-3");
 
 type DetailsSnapshot = {
@@ -227,7 +227,7 @@ export function EstimateNewCustomerSection({
                   >
                     <span className={EB.draftBadgePill}>Draft</span>
                   </span>
-                  <span className="text-hh-table-cell tabular-nums leading-snug text-muted-foreground hh-fin">
+                  <span className="text-hh-table-cell tabular-nums leading-snug text-[var(--hh-muted)] hh-fin">
                     {estimateDate}
                   </span>
                 </div>
@@ -272,7 +272,7 @@ export function EstimateNewCustomerSection({
                 <dd
                   className={cn(
                     "text-hh-body leading-[1.4]",
-                    address.trim() ? "text-muted-foreground" : EB.readDash
+                    address.trim() ? "text-[var(--hh-muted)]" : EB.readDash
                   )}
                 >
                   {address.trim() || "—"}
@@ -280,7 +280,7 @@ export function EstimateNewCustomerSection({
               </div>
               <div className="eb-estimate-context-secondary min-w-0 lg:hidden">
                 <dt className={metaLabel}>Estimate date</dt>
-                <dd className="text-hh-body tabular-nums leading-snug text-muted-foreground hh-fin">
+                <dd className="text-hh-body tabular-nums leading-snug text-[var(--hh-muted)] hh-fin">
                   {estimateDate}
                 </dd>
               </div>
@@ -332,7 +332,7 @@ export function EstimateNewCustomerSection({
                     value={selectedCustomer?.id ?? null}
                     onChange={onCustomerPickerChange}
                     triggerClassName={cn(
-                      ebSheetInput("h-hh-control-standard justify-between text-sm"),
+                      ebSheetInput("h-hh-control-standard justify-between"),
                       "w-full"
                     )}
                   />
@@ -348,7 +348,7 @@ export function EstimateNewCustomerSection({
                       value={clientName}
                       onChange={(e) => onClientNameChange(e.target.value)}
                       placeholder="Client or company name"
-                      className={ebSheetInput("text-sm")}
+                      className={ebSheetInput()}
                       aria-invalid={submitAttempted && !clientName.trim()}
                       required
                     />
@@ -367,11 +367,11 @@ export function EstimateNewCustomerSection({
                       value={projectName}
                       onChange={(e) => onProjectNameChange(e.target.value)}
                       placeholder="Project name"
-                      className={ebSheetInput("text-sm")}
+                      className={ebSheetInput()}
                       aria-invalid={submitAttempted && !projectName.trim()}
                       required
                     />
-                    <p className="eb-estimate-details-helper text-xs leading-snug">
+                    <p className="eb-estimate-details-helper leading-snug">
                       Milestone invoices require this to match one existing HH project or be
                       converted to a project after approval.
                     </p>
@@ -401,7 +401,7 @@ export function EstimateNewCustomerSection({
                     value={address}
                     onChange={(e) => onAddressChange(e.target.value)}
                     placeholder="Site or client address"
-                    className={ebSheetInput("text-sm")}
+                    className={ebSheetInput()}
                   />
                 </div>
 
@@ -430,7 +430,7 @@ export function EstimateNewCustomerSection({
                       value={phone}
                       onChange={(e) => onPhoneChange(e.target.value)}
                       placeholder="Optional"
-                      className={ebSheetInput("text-sm")}
+                      className={ebSheetInput()}
                     />
                   </div>
                   <div className={cn(EB.sheetField, "min-w-0")}>
@@ -443,7 +443,7 @@ export function EstimateNewCustomerSection({
                       value={email}
                       onChange={(e) => onEmailChange(e.target.value)}
                       placeholder="Optional"
-                      className={ebSheetInput("text-sm")}
+                      className={ebSheetInput()}
                     />
                   </div>
                   <div className={cn(EB.sheetField, "min-w-0")}>
@@ -455,7 +455,7 @@ export function EstimateNewCustomerSection({
                       type="date"
                       value={validUntil}
                       onChange={(e) => onValidUntilChange(e.target.value)}
-                      className={ebSheetInput(cn(EB.dateField, "text-sm"))}
+                      className={ebSheetInput(EB.dateField)}
                     />
                     <EstimateValidUntilQuickChips
                       estimateDate={estimateDate}
@@ -471,7 +471,7 @@ export function EstimateNewCustomerSection({
                       value={salesPerson}
                       onChange={(e) => onSalesPersonChange(e.target.value)}
                       placeholder="Optional"
-                      className={ebSheetInput("text-sm")}
+                      className={ebSheetInput()}
                     />
                   </div>
                   <div className={cn(EB.sheetField, "min-w-0")}>
@@ -497,7 +497,7 @@ export function EstimateNewCustomerSection({
                         const n = Number(e.target.value);
                         onTaxRateChange(Number.isFinite(n) ? Math.max(0, n) : 0);
                       }}
-                      className={ebSheetInput(cn("text-sm text-foreground", EB.inputNumeric))}
+                      className={ebSheetInput(EB.inputNumeric)}
                     />
                   </div>
                   <div className={cn(EB.sheetField, "min-w-0")}>
@@ -521,7 +521,7 @@ export function EstimateNewCustomerSection({
                         const n = Number(e.target.value);
                         onDiscountChange(Number.isFinite(n) ? Math.max(0, n) : 0);
                       }}
-                      className={ebSheetInput(cn("text-sm text-foreground", EB.inputNumeric))}
+                      className={ebSheetInput(EB.inputNumeric)}
                     />
                   </div>
                 </div>

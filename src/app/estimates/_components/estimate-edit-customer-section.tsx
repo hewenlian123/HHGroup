@@ -37,9 +37,9 @@ import { formatEstimateCurrency } from "./estimate-currency";
 import { roundMoney } from "@/lib/money";
 
 const metaLabel =
-  "eb-estimate-context-label mb-0.5 block text-hh-metadata font-medium leading-tight text-muted-foreground";
+  "eb-estimate-context-label mb-0.5 block text-hh-metadata font-medium leading-tight text-[var(--hh-muted)]";
 const metaPanel = cn(EB.draftPanel, "eb-estimate-context-panel px-3 py-3 sm:px-4");
-const metaInput = ebSheetInput("text-sm");
+const metaInput = ebSheetInput();
 
 function initialTaxRateText(
   tax: number,
@@ -97,13 +97,13 @@ function ReadOnlyMetaRows({
         </div>
         <div className="eb-estimate-context-secondary col-span-2 min-w-0 lg:col-span-1">
           <dt className={metaLabel}>Address</dt>
-          <dd className="text-hh-body leading-[1.4] text-muted-foreground">
+          <dd className="text-hh-body leading-[1.4] text-[var(--hh-muted)]">
             {address.trim() || "—"}
           </dd>
         </div>
         <div className="eb-estimate-context-secondary min-w-0">
           <dt className={metaLabel}>Estimate date</dt>
-          <dd className="text-hh-body tabular-nums leading-snug text-muted-foreground hh-fin">
+          <dd className="text-hh-body tabular-nums leading-snug text-[var(--hh-muted)] hh-fin">
             {estimateDate}
           </dd>
         </div>
@@ -129,7 +129,7 @@ function ReadOnlyMetaRows({
           className="eb-estimate-mobile-supporting-context"
           data-testid="estimate-mobile-supporting-context"
         >
-          <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 text-hh-table-cell font-medium text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
+          <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 text-hh-table-cell font-medium text-[var(--hh-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
             <span>More details</span>
             <span className="ml-auto truncate text-hh-metadata font-normal tabular-nums">
               {estimateDate} · {documentStyle === "itemized" ? "Itemized" : "Proposal"}
@@ -142,13 +142,13 @@ function ReadOnlyMetaRows({
           <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5 pb-1 pt-2">
             <div className="eb-estimate-context-secondary col-span-2 min-w-0">
               <dt className={metaLabel}>Address</dt>
-              <dd className="text-hh-body leading-[1.4] text-muted-foreground">
+              <dd className="text-hh-body leading-[1.4] text-[var(--hh-muted)]">
                 {address.trim() || "—"}
               </dd>
             </div>
             <div className="eb-estimate-context-secondary min-w-0">
               <dt className={metaLabel}>Estimate date</dt>
-              <dd className="text-hh-body tabular-nums leading-snug text-muted-foreground hh-fin">
+              <dd className="text-hh-body tabular-nums leading-snug text-[var(--hh-muted)] hh-fin">
                 {estimateDate}
               </dd>
             </div>
@@ -516,7 +516,7 @@ export function EstimateEditCustomerSection({
                             </option>
                           ))}
                         </select>
-                        <p className="eb-estimate-details-helper text-xs leading-snug">
+                        <p className="eb-estimate-details-helper leading-snug">
                           Copies the canonical project name and site address. This Estimate does not
                           persist a project ID relationship.
                         </p>
@@ -571,7 +571,7 @@ export function EstimateEditCustomerSection({
                           size="sm"
                           value={estimateDate}
                           onChange={setEstimateDate}
-                          className={ebSheetInput(cn(EB.dateField, "text-sm"))}
+                          className={ebSheetInput(EB.dateField)}
                         />
                       </div>
                     </div>
@@ -603,7 +603,7 @@ export function EstimateEditCustomerSection({
                           size="sm"
                           value={validUntil}
                           onChange={setValidUntil}
-                          className={ebSheetInput(cn(EB.dateField, "text-sm"))}
+                          className={ebSheetInput(EB.dateField)}
                           allowClear
                         />
                         <EstimateValidUntilQuickChips
@@ -647,7 +647,7 @@ export function EstimateEditCustomerSection({
                           inputMode="decimal"
                           value={taxRateText}
                           onChange={(e) => setTaxRateText(e.target.value)}
-                          className={ebSheetInput(cn("text-sm text-foreground", EB.inputNumeric))}
+                          className={ebSheetInput(EB.inputNumeric)}
                         />
                       </div>
                       <div className={cn(EB.sheetField, "min-w-0")}>
@@ -668,15 +668,15 @@ export function EstimateEditCustomerSection({
                           inputMode="decimal"
                           value={discountText}
                           onChange={(e) => setDiscountText(e.target.value)}
-                          className={ebSheetInput(cn("text-sm text-foreground", EB.inputNumeric))}
+                          className={ebSheetInput(EB.inputNumeric)}
                         />
                       </div>
                     </div>
                     <div
-                      className="rounded-md border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-3"
+                      className="rounded-card border border-[var(--hh-line)] bg-[var(--hh-surface)] p-3"
                       data-testid="estimate-pricing-live-summary"
                     >
-                      <dl className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+                      <dl className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-hh-metadata">
                         <dt className="text-[var(--hh-text-tertiary)]">Subtotal</dt>
                         <dd className="hh-fin text-right text-[var(--hh-text-secondary)]">
                           {formatEstimateCurrency(estimateSubtotal)}
@@ -697,7 +697,7 @@ export function EstimateEditCustomerSection({
                         </dd>
                       </dl>
                       {discountExceedsPreDiscountTotal ? (
-                        <p className="mt-2 text-xs text-destructive" role="alert">
+                        <p className="mt-2 text-hh-metadata text-[var(--hh-danger)]" role="alert">
                           Discount exceeds subtotal plus tax. Review the customer total before
                           saving.
                         </p>
