@@ -1604,6 +1604,7 @@
   border-color: var(--hh-border-floating) !important;
   background: var(--hh-l5-task-surface) !important;
   box-shadow: var(--hh-shadow-task) !important;
+  color: var(--hh-ink);
 }
 
 .estimate-builder.eb-sheet-glass.eb-estimate-details-sheet .eb-sheet-header {
@@ -1745,6 +1746,70 @@
   box-shadow: 0 0 0 2px var(--hh-focus-ring) !important;
 }
 
+/* Customer, project, and terms fill-in uses the shared navy field, not the compact sheet gray. */
+.estimate-builder.eb-sheet-glass.eb-estimate-details-sheet .eb-sheet-label,
+.estimate-builder.eb-sheet-glass.eb-estimate-details-sheet .eb-estimate-details-group-title {
+  color: var(--hh-ink);
+}
+
+.estimate-builder.eb-sheet-glass.eb-estimate-details-sheet .eb-sheet-label {
+  font-size: var(--hh-type-label-font-size);
+  font-weight: var(--hh-type-label-font-weight);
+  line-height: var(--hh-type-label-line-height);
+  color: var(--hh-muted);
+}
+
+.estimate-builder.eb-sheet-glass.eb-estimate-details-sheet .eb-sheet-section-label,
+.estimate-builder.eb-sheet-glass.eb-estimate-details-sheet .eb-estimate-details-group-copy,
+.estimate-builder.eb-sheet-glass.eb-estimate-details-sheet .eb-estimate-details-helper,
+.estimate-builder.eb-sheet-glass.eb-estimate-details-sheet .eb-estimate-style-helper {
+  color: var(--hh-muted);
+}
+
+.estimate-builder.eb-sheet-glass.eb-estimate-details-sheet .eb-sheet-input,
+.estimate-builder.eb-sheet-glass.eb-estimate-details-sheet input.eb-sheet-input,
+.estimate-builder.eb-sheet-glass.eb-estimate-details-sheet textarea.eb-sheet-input,
+.estimate-builder.eb-sheet-glass.eb-estimate-details-sheet select.eb-sheet-input {
+  border-color: var(--hh-input) !important;
+  background: var(--hh-input-background) !important;
+  color: var(--hh-ink) !important;
+  font-size: var(--hh-type-text-entry-size-mobile);
+  font-weight: var(--hh-type-body-font-weight);
+  line-height: var(--hh-type-text-entry-line-height-mobile);
+}
+
+@media (min-width: 768px) {
+  .estimate-builder.eb-sheet-glass.eb-estimate-details-sheet .eb-sheet-input,
+  .estimate-builder.eb-sheet-glass.eb-estimate-details-sheet input.eb-sheet-input,
+  .estimate-builder.eb-sheet-glass.eb-estimate-details-sheet textarea.eb-sheet-input,
+  .estimate-builder.eb-sheet-glass.eb-estimate-details-sheet select.eb-sheet-input {
+    font-size: var(--hh-type-text-entry-size-desktop);
+    line-height: var(--hh-type-text-entry-line-height-desktop);
+  }
+}
+
+.estimate-builder.eb-sheet-glass.eb-estimate-details-sheet .eb-sheet-input::placeholder {
+  color: var(--hh-muted) !important;
+}
+
+.estimate-builder.eb-sheet-glass.eb-estimate-details-sheet .eb-sheet-input:hover {
+  border-color: var(--hh-navy-mid) !important;
+  background: var(--hh-input-background) !important;
+}
+
+.estimate-builder.eb-sheet-glass.eb-estimate-details-sheet .eb-sheet-input:focus-visible,
+.estimate-builder.eb-sheet-glass.eb-estimate-details-sheet .eb-sheet-input[aria-expanded="true"] {
+  border-color: var(--hh-link) !important;
+  background: var(--hh-input-background) !important;
+  box-shadow: 0 0 0 2px var(--hh-focus-ring) !important;
+}
+
+.estimate-builder.eb-sheet-glass.eb-estimate-details-sheet .eb-sheet-input:disabled {
+  border-color: var(--hh-line) !important;
+  background: var(--hh-chip) !important;
+  color: var(--hh-muted) !important;
+}
+
 .estimate-builder.eb-sheet-glass .eb-estimate-style-field {
   gap: 0;
 }
@@ -1771,6 +1836,11 @@
   border-color: var(--hh-border);
   background: var(--hh-l3-hover);
   box-shadow: none;
+}
+
+.estimate-builder.eb-sheet-glass.eb-estimate-details-sheet .eb-estimate-style-option.is-selected {
+  border-color: var(--hh-navy-mid);
+  background: var(--hh-hover);
 }
 
 .estimate-builder.eb-sheet-glass .eb-estimate-style-option:focus-within {
