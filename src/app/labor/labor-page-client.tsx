@@ -1805,9 +1805,9 @@ export default function LaborPageClient() {
           open={!!selectedDayForDetail}
           onOpenChange={(open) => !open && setSelectedDayForDetail(null)}
         >
-          <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col border-border/60 rounded-hh-compact">
+          <DialogContent className="flex max-h-[85vh] max-w-2xl flex-col rounded-card">
             <DialogHeader>
-              <DialogTitle className="text-base font-semibold">
+              <DialogTitle className="text-hh-section-title font-semibold text-[var(--hh-ink)]">
                 {selectedDayForDetail ? formatShortDate(selectedDayForDetail) : ""}
               </DialogTitle>
             </DialogHeader>

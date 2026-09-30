@@ -803,13 +803,13 @@ test.describe("bank and labor server API boundary", () => {
       await expect(dialog.getByText("3 workers")).toBeVisible();
       await expect(dialog.getByRole("row").filter({ hasText: tag })).toHaveCount(3);
       await expect(dialog.getByRole("row").filter({ hasText: workerBName })).toContainText(
-        "$290/day"
+        "$290.00/day"
       );
       await expect(dialog.getByRole("row").filter({ hasText: workerCName })).toContainText(
-        "$250/day"
+        "$250.00/day"
       );
       await expect(dialog.getByRole("row").filter({ hasText: workerAName })).toContainText(
-        "$200/day"
+        "$200.00/day"
       );
       await expect
         .poll(async () =>
@@ -989,13 +989,13 @@ test.describe("bank and labor server API boundary", () => {
           expect.stringContaining(workerAName),
         ]);
       await expect(dialog.getByRole("row").filter({ hasText: workerBName })).toContainText(
-        "$290/day"
+        "$290.00/day"
       );
       await expect(dialog.getByRole("row").filter({ hasText: workerCName })).toContainText(
-        "$250/day"
+        "$250.00/day"
       );
       await expect(dialog.getByRole("row").filter({ hasText: workerAName })).toContainText(
-        "$200/day"
+        "$200.00/day"
       );
 
       await searchInput.fill("no matching worker");

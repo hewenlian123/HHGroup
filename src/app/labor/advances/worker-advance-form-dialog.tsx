@@ -113,9 +113,9 @@ export function WorkerAdvanceFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-md border-border/60 rounded-hh-compact p-5">
+      <DialogContent className="max-w-md gap-4 rounded-card p-5">
         <DialogHeader>
-          <DialogTitle className="text-base font-semibold">
+          <DialogTitle className="text-hh-section-title font-semibold text-[var(--hh-ink)]">
             {mode === "create" ? "Create Advance" : "Edit Advance"}
           </DialogTitle>
         </DialogHeader>
@@ -190,7 +190,7 @@ export function WorkerAdvanceFormDialog({
 
           {error ? <p className="text-xs text-[var(--hh-danger)]">{error}</p> : null}
 
-          <DialogFooter className="mt-2 gap-2 border-t border-border/60 pt-3">
+          <DialogFooter className="mt-2 gap-2 border-t border-[var(--hh-line)] pt-3">
             <Button
               type="button"
               variant="outline"
