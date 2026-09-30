@@ -10,6 +10,7 @@ import {
   getEstimateRevisionContext,
   listPaymentTemplates,
 } from "@/lib/data";
+import { isLoginGateEnabled } from "@/lib/login-gate";
 import { createServerSupabaseClient, getServerSupabaseAdminNoStore } from "@/lib/supabase-server";
 import { getEstimateActivityWithClient } from "@/lib/estimate-activity";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -121,7 +122,13 @@ export default async function EstimateDetailPage({
   const authStartedAt = performance.now();
   const readClient = await createServerSupabaseClient();
   const authDuration = performance.now() - authStartedAt;
-  if (!readClient) redirect(`/login?next=${encodeURIComponent(`/estimates/${id}`)}`);
+  if (!readClient) {
+    redirect(
+      isLoginGateEnabled()
+        ? `/login?next=${encodeURIComponent(`/estimates/${id}`)}`
+        : "/dashboard"
+    );
+  }
   const adminClient = getServerSupabaseAdminNoStore();
   const serverDataStartedAt = performance.now();
   const pageData = await Promise.all([

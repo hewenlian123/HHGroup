@@ -20,6 +20,7 @@ import {
   TRUSTED_DEVICE_COOKIE,
 } from "@/lib/device-unlock-token";
 import { workerReceiptInboxPath } from "@/lib/expense-operations-routing";
+import { isLoginGateEnabled } from "@/lib/login-gate";
 import { isCompatibilityAccessEnabled } from "@/lib/owner-access-mode";
 import { isLocalAutoLoginEnabled, LOCAL_AUTO_LOGIN_PATH } from "@/lib/local-auto-login";
 import { parseRequestAuthorization } from "@/lib/request-authorization";
@@ -506,6 +507,12 @@ export async function middleware(request: NextRequest) {
           : "/dashboard";
       return finish(
         copyResponseCookies(response, NextResponse.redirect(new URL(destination, request.url)))
+      );
+    }
+    // Login UI is retired while the product login gate is off.
+    if (!isLoginGateEnabled()) {
+      return finish(
+        copyResponseCookies(response, NextResponse.redirect(new URL("/dashboard", request.url)))
       );
     }
     response.headers.set("Cache-Control", "no-store, max-age=0");

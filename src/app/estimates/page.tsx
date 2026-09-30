@@ -1,6 +1,7 @@
 import { unstable_noStore } from "next/cache";
 import { redirect } from "next/navigation";
 import { getEstimateList } from "@/lib/data";
+import { isLoginGateEnabled } from "@/lib/login-gate";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
 import { deleteEstimateAction } from "./actions";
@@ -16,7 +17,9 @@ export default async function EstimatesListPage({
   unstable_noStore();
   const { saved, error } = await searchParams;
   const readClient = await createServerSupabaseClient();
-  if (!readClient) redirect("/login?next=%2Festimates");
+  if (!readClient) {
+    redirect(isLoginGateEnabled() ? "/login?next=%2Festimates" : "/dashboard");
+  }
   let list: Awaited<ReturnType<typeof getEstimateList>> = [];
   let loadWarning: string | null = null;
   try {

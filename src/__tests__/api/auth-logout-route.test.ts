@@ -92,7 +92,7 @@ describe("/logout", () => {
     const response = await logoutModule.POST(logoutRequest("POST"));
 
     expect(response.status).toBe(303);
-    expect(response.headers.get("location")).toBe("http://localhost:3104/login?message=signed_out");
+    expect(response.headers.get("location")).toBe("http://localhost:3104/dashboard");
     expect(signOutMock).toHaveBeenCalledWith({ scope: "local" });
     expect(clearPinSessionMock).toHaveBeenCalledOnce();
     expect(clearDeviceUnlockCookieMock).toHaveBeenCalledOnce();

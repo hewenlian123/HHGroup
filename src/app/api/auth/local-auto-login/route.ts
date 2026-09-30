@@ -113,6 +113,27 @@ async function createLocalCliAdmin(): Promise<SupabaseClient | null> {
   });
 }
 
+async function provisionLocalOwnerMembership(
+  admin: SupabaseClient,
+  userId: string
+): Promise<boolean> {
+  const { data: organization, error: organizationError } = await admin
+    .from("organizations")
+    .select("id")
+    .not("legacy_company_profile_id", "is", null)
+    .limit(1)
+    .maybeSingle();
+  if (organizationError || !organization?.id) return false;
+
+  const membership = await admin.from("organization_memberships").upsert({
+    organization_id: organization.id,
+    user_id: userId,
+    role: "owner",
+    status: "active",
+  });
+  return !membership.error;
+}
+
 async function ensureLocalOwner(): Promise<{
   email: string;
   password: string;
@@ -145,6 +166,7 @@ async function ensureLocalOwner(): Promise<{
       user_metadata: { ...existing.user_metadata, display_name: LOCAL_OWNER_LABEL },
     });
     if (error) return null;
+    if (!(await provisionLocalOwnerMembership(admin, existing.id))) return null;
     return { email, password };
   }
 
@@ -156,6 +178,7 @@ async function ensureLocalOwner(): Promise<{
     user_metadata: { display_name: LOCAL_OWNER_LABEL },
   });
   if (error || !data.user) return null;
+  if (!(await provisionLocalOwnerMembership(admin, data.user.id))) return null;
   return { email, password };
 }
 

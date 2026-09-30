@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { AUTH_META_CLASS, AUTH_PAGE_CLASS } from "@/components/auth/auth-ui";
 import { LoginPanel } from "@/components/auth/login-panel";
 import { authorizedAppRole } from "@/lib/auth-role";
+import { isLoginGateEnabled } from "@/lib/login-gate";
 import {
   getActiveOrganizationMemberships,
   hasCompanyAdministratorMembership,
@@ -31,6 +32,9 @@ function first(value: string | string[] | undefined): string | undefined {
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
   const redirectTo = normalizeAuthRedirect(searchParams?.redirect);
+  if (!isLoginGateEnabled()) {
+    redirect(redirectTo);
+  }
   const supabase = await createServerSupabaseClient();
   const {
     data: { user },

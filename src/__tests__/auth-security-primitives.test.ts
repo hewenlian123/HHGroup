@@ -93,17 +93,17 @@ describe("authenticated owner-access security primitives", () => {
     process.env = { ...ORIGINAL_ENV };
   });
 
-  it("never lets the local no-login flag override production strict mode", () => {
+  it("keeps no-login access open in Production while the product login gate is off", () => {
     expect(
       isCompatibilityAccessEnabled({
         runtime: "production",
         requireLogin: "true",
         allowLocal: "1",
       })
-    ).toBe(false);
+    ).toBe(true);
   });
 
-  it("requires an explicit development-only owner no-login flag", () => {
+  it("allows development no-login without an extra local flag while the login gate is off", () => {
     expect(
       isCompatibilityAccessEnabled({
         runtime: "development",
@@ -117,7 +117,7 @@ describe("authenticated owner-access security primitives", () => {
         requireLogin: "false",
         allowLocal: undefined,
       })
-    ).toBe(false);
+    ).toBe(true);
   });
 
   it("authorizes roles only from server-owned app metadata", () => {
