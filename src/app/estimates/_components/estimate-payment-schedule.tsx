@@ -478,7 +478,7 @@ export function EstimatePaymentSchedule(props: {
       </div>
       <div>
         {isOverallocated ? (
-          <p role="alert" className="text-xs text-destructive">
+          <p role="alert" className="text-hh-metadata text-[var(--hh-danger)]">
             Schedule exceeds the Estimate total by {fmt(Math.abs(remaining))}. Reduce a milestone
             before adding more.
           </p>
@@ -486,18 +486,18 @@ export function EstimatePaymentSchedule(props: {
 
         {!isLocked && (paymentTemplates.length > 0 || paymentSchedule.length > 0) ? (
           <div
-            className="mb-3 flex flex-wrap items-end gap-2 rounded-md border border-border bg-muted/25 px-3 py-2.5"
+            className="mb-3 flex flex-wrap items-end gap-2 rounded-card border border-[var(--hh-line)] bg-[var(--hh-surface)] px-3 py-2.5 shadow-card"
             data-testid="payment-template-controls"
           >
             {paymentTemplates.length > 0 ? (
-              <label className="min-w-[12rem] flex-1 text-xs font-medium text-muted-foreground">
+              <label className="min-w-[12rem] flex-1 text-hh-label text-[var(--hh-muted)]">
                 Payment template
                 <select
                   aria-label="Payment template"
                   value={selectedTemplateId}
                   onChange={(event) => setSelectedTemplateId(event.target.value)}
                   disabled={paymentMutationBusy}
-                  className="mt-1 h-9 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground"
+                  className="mt-1 h-hh-control-standard w-full rounded-hh-compact border border-[var(--hh-input)] bg-[var(--hh-surface)] px-2 text-hh-body text-[var(--hh-ink)]"
                 >
                   {paymentTemplates.map((template) => (
                     <option key={template.id} value={template.id}>
@@ -507,7 +507,7 @@ export function EstimatePaymentSchedule(props: {
                 </select>
               </label>
             ) : (
-              <p className="min-w-[12rem] flex-1 text-xs text-muted-foreground">
+              <p className="min-w-[12rem] flex-1 text-hh-metadata text-[var(--hh-muted)]">
                 Save this schedule as a reusable fixed-dollar or percentage template.
               </p>
             )}
@@ -686,7 +686,10 @@ export function EstimatePaymentSchedule(props: {
         ) : null}
 
         <Dialog open={saveTemplateOpen} onOpenChange={setSaveTemplateOpen}>
-          <DialogContent data-testid="payment-template-save-dialog">
+          <DialogContent
+            data-testid="payment-template-save-dialog"
+            className="max-w-sm gap-4 rounded-card p-5"
+          >
             <DialogHeader>
               <DialogTitle>Save payment template</DialogTitle>
               <DialogDescription>
@@ -695,7 +698,7 @@ export function EstimatePaymentSchedule(props: {
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-3 py-2">
-              <label className="block text-xs font-medium text-muted-foreground">
+              <label className="block text-hh-label text-[var(--hh-muted)]">
                 Template name
                 <Input
                   value={templateNameDraft}
@@ -705,7 +708,7 @@ export function EstimatePaymentSchedule(props: {
                   data-testid="payment-template-name"
                 />
               </label>
-              <label className="block text-xs font-medium text-muted-foreground">
+              <label className="block text-hh-label text-[var(--hh-muted)]">
                 Reuse amounts as
                 <NativeSelect
                   value={templateAmountType}

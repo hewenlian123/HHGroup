@@ -178,13 +178,6 @@
   "src/app/estimates/_components/estimate-description-html.ts": {
     "const emptyInline = String.raw`(?:\\s|&nbsp;|&#160;|<br>)*`;": 1
   },
-  "src/app/estimates/_components/estimate-editor.tsx": {
-    "<li className=\"border-t border-white/[0.06] px-3 py-1.5 text-xs text-zinc-500\">": 1,
-    "<li className=\"px-3 py-2 text-sm text-zinc-500\">": 1,
-    "<Plus className=\"h-4 w-4 shrink-0 text-zinc-400\" aria-hidden />": 1,
-    "<span className=\"ml-auto text-hh-status text-zinc-500\">": 1,
-    "<span className=\"pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-zinc-500\">": 1
-  },
   "src/app/estimates/_components/estimate-line-items-local.tsx": {
     "\"h-7 min-h-7 w-full min-w-[8rem] max-w-full border-0 bg-transparent px-0 text-hh-section-title font-semibold tracking-normal text-zinc-50 shadow-none focus-visible:ring-0\"": 1
   },

@@ -119,23 +119,20 @@ function AddSectionModal({
         if (!o) setAddSaving(false);
       }}
     >
-      <DialogContent className="gap-0 sm:max-w-md rounded-sm border-border/60 p-4 shadow-task">
-        <DialogHeader className="space-y-1 pb-3">
-          <DialogTitle className="text-base">Add section</DialogTitle>
-          <DialogDescription className="text-xs text-muted-foreground">
+      <DialogContent className="max-w-sm gap-4 rounded-card p-5 shadow-task">
+        <DialogHeader className="space-y-1 pb-1">
+          <DialogTitle>Add section</DialogTitle>
+          <DialogDescription>
             Creates a scope section and first line on this estimate.
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-1.5 pb-4">
-          <Label htmlFor={`section-add-name-${estimateId}`} className="text-xs">
-            Section name
-          </Label>
+        <div className="space-y-1.5 pb-1">
+          <Label htmlFor={`section-add-name-${estimateId}`}>Section name</Label>
           <Input
             ref={addDisplayNameRef}
             id={`section-add-name-${estimateId}`}
             value={addNameDraft}
             onChange={(e) => setAddNameDraft(e.target.value)}
-            className="h-8 rounded-sm text-sm"
             disabled={addSaving}
             placeholder="e.g. Demolition"
             onKeyDown={(e) => {
@@ -147,12 +144,11 @@ function AddSectionModal({
             autoComplete="off"
           />
         </div>
-        <DialogFooter className="border-t-0 pt-0 sm:justify-end gap-2">
+        <DialogFooter className="gap-2 border-t-0 pt-0 sm:justify-end">
           <Button
             type="button"
             variant="outline"
             size="sm"
-            className="rounded-sm h-8"
             disabled={addSaving}
             onClick={() => onOpenChange(false)}
           >
@@ -161,7 +157,6 @@ function AddSectionModal({
           <Button
             type="button"
             size="sm"
-            className="rounded-sm h-8"
             disabled={addSaving}
             onClick={() => void commitAddSection()}
           >
@@ -356,20 +351,17 @@ export function EstimateSectionTitleMenu({
       />
 
       <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
-        <DialogContent className="gap-0 sm:max-w-md rounded-sm border-border/60 p-4 shadow-task">
-          <DialogHeader className="space-y-1 pb-3">
-            <DialogTitle className="text-base">Rename section</DialogTitle>
+        <DialogContent className="max-w-sm gap-4 rounded-card p-5 shadow-task">
+          <DialogHeader className="space-y-1 pb-1">
+            <DialogTitle>Rename section</DialogTitle>
             <DialogDescription className="sr-only">Rename this estimate section.</DialogDescription>
           </DialogHeader>
-          <div className="space-y-1.5 pb-4">
-            <Label htmlFor={`section-rename-${currentCostCode}`} className="text-xs">
-              Name
-            </Label>
+          <div className="space-y-1.5 pb-1">
+            <Label htmlFor={`section-rename-${currentCostCode}`}>Name</Label>
             <Input
               id={`section-rename-${currentCostCode}`}
               value={renameDraft}
               onChange={(e) => setRenameDraft(e.target.value)}
-              className="h-8 rounded-sm text-sm"
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
                   e.preventDefault();
@@ -379,20 +371,13 @@ export function EstimateSectionTitleMenu({
               disabled={renameSaving}
             />
           </div>
-          <DialogFooter className="border-t-0 pt-0 sm:justify-end gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="rounded-sm h-8"
-              onClick={() => setRenameOpen(false)}
-            >
+          <DialogFooter className="gap-2 border-t-0 pt-0 sm:justify-end">
+            <Button type="button" variant="outline" size="sm" onClick={() => setRenameOpen(false)}>
               Cancel
             </Button>
             <Button
               type="button"
               size="sm"
-              className="rounded-sm h-8"
               disabled={renameSaving}
               onClick={() => void commitRename()}
             >

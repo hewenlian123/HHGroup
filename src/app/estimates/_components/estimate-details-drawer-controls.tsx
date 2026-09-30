@@ -89,7 +89,7 @@ export function EstimateTaxPresetMenu({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className={cn(EB.lineItemMoreMenu, EB.commandMenu)}>
-        <p className="max-w-64 px-2 py-2 text-xs text-[var(--hh-text-tertiary)]">
+        <p className="max-w-64 px-2 py-2 text-hh-metadata text-[var(--hh-muted)]">
           Applies a fixed tax amount from the current subtotal. Reapply after scope changes.
         </p>
         {BUILTIN_ESTIMATE_TAX_PRESETS.map((preset) => (
@@ -116,7 +116,7 @@ export function EstimateTaxPresetMenu({
             <span className="hh-fin ml-auto text-[var(--hh-text-tertiary)]">{preset.ratePct}%</span>
           </DropdownMenuItem>
         ))}
-        <DropdownMenuSeparator className="bg-white/[0.08]" />
+        <DropdownMenuSeparator className="bg-[var(--hh-line)]" />
         <DropdownMenuItem
           className={EB.lineItemMoreMenuItem}
           onSelect={() => {
@@ -206,9 +206,9 @@ export function EstimateDiscountOptionsPopover({
         >
           Clear discount
         </Button>
-        <div className="border-t border-white/[0.08] pt-2 space-y-1.5">
-          <p className="text-hh-status uppercase text-[var(--hh-text-tertiary)]">Percentage %</p>
-          <p className="text-xs text-[var(--hh-text-tertiary)]">
+        <div className="space-y-1.5 border-t border-[var(--hh-line)] pt-2">
+          <p className="text-hh-status uppercase text-[var(--hh-muted)]">Percentage %</p>
+          <p className="text-hh-metadata text-[var(--hh-muted)]">
             Calculated from subtotal plus tax, then saved as a fixed discount. Reapply after pricing
             changes.
           </p>
@@ -221,7 +221,7 @@ export function EstimateDiscountOptionsPopover({
               value={percentDraft}
               onChange={(e) => setPercentDraft(e.target.value)}
               placeholder="10"
-              className={cn(EB.sheetInput, "h-8 min-h-8 flex-1 text-xs", EB.inputNumeric)}
+              className={cn(EB.sheetInput, "flex-1", EB.inputNumeric)}
               aria-label="Discount percentage"
             />
             <Button
@@ -237,8 +237,8 @@ export function EstimateDiscountOptionsPopover({
             <p className={EB.sheetHelperHint}>Add line items to apply a percentage discount.</p>
           ) : null}
         </div>
-        <div className="border-t border-white/[0.08] pt-2 space-y-1.5">
-          <p className="text-hh-status uppercase text-[var(--hh-text-tertiary)]">Fixed amount $</p>
+        <div className="space-y-1.5 border-t border-[var(--hh-line)] pt-2">
+          <p className="text-hh-status uppercase text-[var(--hh-muted)]">Fixed amount $</p>
           <div className="flex gap-1.5">
             <Input
               type="number"
@@ -247,7 +247,7 @@ export function EstimateDiscountOptionsPopover({
               value={fixedDraft}
               onChange={(e) => setFixedDraft(e.target.value)}
               placeholder={discount > 0 ? String(discount) : "0"}
-              className={cn(EB.sheetInput, "h-8 min-h-8 flex-1 text-xs", EB.inputNumeric)}
+              className={cn(EB.sheetInput, "flex-1", EB.inputNumeric)}
               aria-label="Fixed discount amount"
             />
             <Button
