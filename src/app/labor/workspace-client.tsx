@@ -6,11 +6,14 @@ import { PageLayout, PageHeader } from "@/components/base";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/native-select";
+import { sectionCardClass } from "@/components/ui/section-card";
 import { EmptyState } from "@/components/ui/system-state";
 import { LaborReadState } from "@/components/labor/labor-read-state";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
+import { formatOverviewMoney } from "@/lib/financial/project-overview-display";
+import { formatDate } from "@/lib/formatters";
+import { cn } from "@/lib/utils";
 import { workerRateLocalYmd } from "@/lib/worker-rate-date";
-import { formatCurrency, formatDate } from "@/lib/formatters";
 import type { WorkerBalanceRow } from "@/lib/worker-balances-list";
 import type { WorkerPayment } from "@/lib/worker-payments-db";
 import type { WorkerReimbursement } from "@/lib/worker-reimbursements-db";
@@ -18,8 +21,7 @@ import type { LaborEntryWithJoins } from "@/lib/daily-labor-db";
 
 type Option = { id: string; name: string };
 type TimeRead = { entries: LaborEntryWithJoins[]; workers: Option[]; projects: Option[] };
-const panel =
-  "min-w-0 rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-4 text-[var(--hh-text-primary)]";
+const panel = cn(sectionCardClass, "min-w-0 p-4");
 async function read<T>(path: string): Promise<T> {
   const response = await fetch(path, { cache: "no-store" });
   if (!response.ok) throw new Error("Labor records unavailable.");
@@ -30,7 +32,7 @@ function WorkspaceLink({ href, children }: { href: string; children: React.React
     <Link
       href={href}
       prefetch={false}
-      className="hh-focus-ring inline-flex min-h-11 items-center text-sm font-medium text-[var(--hh-text-primary)] underline underline-offset-4"
+      className="hh-focus-ring inline-flex min-h-11 items-center text-sm font-medium text-[var(--hh-link)] underline underline-offset-4"
     >
       {children}
     </Link>
@@ -95,8 +97,10 @@ export function LaborOverview() {
     .slice(0, 5);
   return (
     <PageLayout
+      frame="list"
       header={
         <PageHeader
+          variant="workspace"
           title="Labor Overview"
           description="Workers, recent time, outstanding balances, and work needing attention."
           actions={
@@ -140,7 +144,7 @@ export function LaborOverview() {
               },
               {
                 label: "Outstanding balances",
-                value: formatCurrency(outstanding.reduce((sum, row) => sum + row.balance, 0)),
+                value: formatOverviewMoney(outstanding.reduce((sum, row) => sum + row.balance, 0)),
                 href: "/labor/worker-balances",
               },
               {
@@ -150,7 +154,7 @@ export function LaborOverview() {
               },
             ].map((item) => (
               <div className={panel} key={item.label}>
-                <p className="text-sm text-[var(--hh-text-secondary)]">{item.label}</p>
+                <p className="text-sm text-[var(--hh-muted)]">{item.label}</p>
                 <p className="mt-1 text-xl font-semibold tabular-nums">{item.value}</p>
                 <WorkspaceLink href={item.href}>Review</WorkspaceLink>
               </div>
@@ -162,7 +166,7 @@ export function LaborOverview() {
               {outstanding.length === 0 && pending.length === 0 ? (
                 <p className="py-3 text-sm">No outstanding balances or pending reimbursements.</p>
               ) : (
-                <ul className="divide-y divide-[var(--hh-border)]">
+                <ul className="divide-y divide-[var(--hh-line)]">
                   {outstanding.slice(0, 5).map((row) => (
                     <li
                       key={row.workerId}
@@ -173,7 +177,7 @@ export function LaborOverview() {
                       >
                         {row.workerName}
                       </WorkspaceLink>
-                      <span className="tabular-nums">{formatCurrency(row.balance)}</span>
+                      <span className="tabular-nums">{formatOverviewMoney(row.balance)}</span>
                     </li>
                   ))}
                   {pending.length > 0 && (
@@ -185,22 +189,22 @@ export function LaborOverview() {
                   )}
                 </ul>
               )}
-              <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[var(--hh-border)] pt-2">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[var(--hh-line)] pt-2">
                 <WorkspaceLink href="/labor/advances">Open advances</WorkspaceLink>
                 <span className="tabular-nums">
-                  {formatCurrency(data.balances.reduce((sum, row) => sum + row.advances, 0))}
+                  {formatOverviewMoney(data.balances.reduce((sum, row) => sum + row.advances, 0))}
                 </span>
               </div>
             </section>
             <section className={panel}>
               <h2 className="text-base font-semibold">Recent time</h2>
-              <p className="text-sm text-[var(--hh-text-secondary)]">
+              <p className="text-sm text-[var(--hh-muted)]">
                 {formatDate(from)} – {formatDate(today)}
               </p>
               {recent.length === 0 ? (
                 <p className="py-3 text-sm">No time entries this month.</p>
               ) : (
-                <ul className="divide-y divide-[var(--hh-border)]">
+                <ul className="divide-y divide-[var(--hh-line)]">
                   {recent.map((row) => (
                     <li key={row.id} className="flex flex-wrap items-center justify-between gap-2">
                       <WorkspaceLink
@@ -222,7 +226,7 @@ export function LaborOverview() {
               {data.payments.length === 0 ? (
                 <p className="py-3 text-sm">No labor payments recorded.</p>
               ) : (
-                <ul className="divide-y divide-[var(--hh-border)]">
+                <ul className="divide-y divide-[var(--hh-line)]">
                   {data.payments.map((row) => (
                     <li key={row.id} className="flex flex-wrap items-center justify-between gap-2">
                       <WorkspaceLink
@@ -232,7 +236,7 @@ export function LaborOverview() {
                           row.workerId}
                       </WorkspaceLink>
                       <span className="text-sm tabular-nums">
-                        {formatDate(row.paymentDate)} · {formatCurrency(row.amount)}
+                        {formatDate(row.paymentDate)} · {formatOverviewMoney(row.amount)}
                       </span>
                     </li>
                   ))}
@@ -242,7 +246,7 @@ export function LaborOverview() {
             </section>
             <section className={panel}>
               <h2 className="text-base font-semibold">Payroll summary</h2>
-              <p className="mt-2 text-sm text-[var(--hh-text-secondary)]">
+              <p className="mt-2 text-sm text-[var(--hh-muted)]">
                 Review earned labor, reimbursements, paid amounts, and balances for the selected
                 payroll period.
               </p>
@@ -310,8 +314,10 @@ export function LaborCosts() {
   }, [from, to, worker, project, attempt]);
   return (
     <PageLayout
+      frame="list"
       header={
         <PageHeader
+          variant="workspace"
           title="Labor Costs"
           description="Stored labor entry costs by worker, project, and period."
         />
@@ -379,13 +385,13 @@ export function LaborCosts() {
             <div className={panel}>
               <p>Recorded cost · all entry statuses</p>
               <p className="mt-1 text-xl font-semibold tabular-nums">
-                {formatCurrency(data.entries.reduce((sum, row) => sum + row.cost_amount!, 0))}
+                {formatOverviewMoney(data.entries.reduce((sum, row) => sum + row.cost_amount!, 0))}
               </p>
             </div>
             <div className={panel}>
               <p>Approved / Locked entry cost</p>
               <p className="mt-1 text-xl font-semibold tabular-nums">
-                {formatCurrency(
+                {formatOverviewMoney(
                   data.entries
                     .filter((row) => row.status === "Approved" || row.status === "Locked")
                     .reduce((sum, row) => sum + row.cost_amount!, 0)
@@ -399,7 +405,7 @@ export function LaborCosts() {
               description="Choose another worker, project, or date range."
             />
           ) : (
-            <ul className={`${panel} divide-y divide-[var(--hh-border)]`}>
+            <ul className={cn(panel, "divide-y divide-[var(--hh-line)]")}>
               {data.entries.map((row) => (
                 <li key={row.id} className="flex flex-wrap items-center justify-between gap-3 py-2">
                   <div className="min-w-0">
@@ -408,13 +414,13 @@ export function LaborCosts() {
                     >
                       {row.worker_name ?? row.worker_id}
                     </WorkspaceLink>
-                    <p className="break-words text-sm text-[var(--hh-text-secondary)]">
+                    <p className="break-words text-sm text-[var(--hh-muted)]">
                       {row.project_name ?? "Unattributed"} · {formatDate(row.work_date)} ·{" "}
                       {row.status}
                     </p>
                   </div>
                   <span className="font-semibold tabular-nums">
-                    {formatCurrency(row.cost_amount!)}
+                    {formatOverviewMoney(row.cost_amount!)}
                   </span>
                 </li>
               ))}

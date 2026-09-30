@@ -1,12 +1,14 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { PageLayout, PageHeader, Divider, SectionHeader } from "@/components/base";
+import { PageLayout, PageHeader, SectionHeader } from "@/components/base";
+import { sectionCardClass } from "@/components/ui/section-card";
 import { requireSupabaseOwnerOrAdminServerAction } from "@/lib/auth-boundary";
 import { getLaborEntriesWithJoins, getLaborPaymentsByDateRange } from "@/lib/daily-labor-db";
+import { formatOverviewMoney } from "@/lib/financial/project-overview-display";
 import { getWorkers } from "@/lib/labor-db";
 import { getServerSupabaseInternal } from "@/lib/supabase-server";
+import { cn } from "@/lib/utils";
 import { MonthlyLaborMonthSelect } from "./monthly-month-select";
-import { formatCurrency } from "@/lib/formatters";
 
 function getDefaultMonth(): string {
   const d = new Date();
@@ -101,14 +103,22 @@ export default async function MonthlyLaborPage({ searchParams }: Props) {
     }))
     .sort((a, b) => a.project_name.localeCompare(b.project_name));
 
+  const monthTableHead =
+    "px-3 py-2 text-hh-table-header font-medium uppercase tracking-normal text-[var(--hh-muted)]";
+
   return (
     <PageLayout
+      frame="list"
       header={
         <PageHeader
+          variant="workspace"
           title="Monthly Labor"
           description="Earnings, payments, and outstanding by month."
           actions={
-            <Link href="/labor" className="text-sm text-muted-foreground hover:text-foreground">
+            <Link
+              href="/labor"
+              className="text-sm text-[var(--hh-link)] underline-offset-2 hover:underline"
+            >
               Labor
             </Link>
           }
@@ -116,70 +126,63 @@ export default async function MonthlyLaborPage({ searchParams }: Props) {
       }
     >
       <SectionHeader label="Month" action={<MonthlyLaborMonthSelect value={month} />} />
-      <Divider />
 
-      {/* Summary */}
-      <div className="space-y-0 border-b border-border/60">
-        <div className="flex items-baseline justify-between py-3 border-b border-border/40">
-          <span className="text-sm text-muted-foreground">Total Earned</span>
-          <span className="text-xl font-medium tabular-nums">{formatCurrency(totalEarned)}</span>
+      <div className={cn(sectionCardClass, "px-4")}>
+        <div className="flex items-baseline justify-between border-b border-[var(--hh-line)] py-3">
+          <span className="text-sm text-[var(--hh-muted)]">Total Earned</span>
+          <span className="text-hh-financial-total font-medium tabular-nums">
+            {formatOverviewMoney(totalEarned)}
+          </span>
         </div>
-        <div className="flex items-baseline justify-between py-3 border-b border-border/40">
-          <span className="text-sm text-muted-foreground">Total Paid</span>
-          <span className="text-xl font-medium tabular-nums">{formatCurrency(totalPaid)}</span>
+        <div className="flex items-baseline justify-between border-b border-[var(--hh-line)] py-3">
+          <span className="text-sm text-[var(--hh-muted)]">Total Paid</span>
+          <span className="text-hh-financial-total font-medium tabular-nums">
+            {formatOverviewMoney(totalPaid)}
+          </span>
         </div>
-        <div className="flex items-baseline justify-between py-3 border-b border-border/40">
-          <span className="text-sm text-muted-foreground">Outstanding</span>
+        <div className="flex items-baseline justify-between py-3">
+          <span className="text-sm text-[var(--hh-muted)]">Outstanding</span>
           <span
-            className={`text-xl font-medium tabular-nums ${
-              outstanding > 0
-                ? "text-[var(--hh-danger)] text-[var(--hh-danger)]"
-                : "text-foreground"
-            }`}
+            className={cn(
+              "text-hh-financial-total font-medium tabular-nums",
+              outstanding > 0 ? "text-[var(--hh-danger)]" : "text-[var(--hh-ink)]"
+            )}
           >
-            {formatCurrency(outstanding)}
+            {formatOverviewMoney(outstanding)}
           </span>
         </div>
       </div>
-      <Divider />
 
-      {/* By Worker */}
       <SectionHeader label="By Worker" />
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm border-collapse">
+      <div className={cn(sectionCardClass, "overflow-x-auto")}>
+        <table className="w-full border-collapse text-sm">
           <thead>
-            <tr className="border-b border-border/60">
-              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-normalr">
-                Worker
-              </th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-normalr tabular-nums">
-                Earned
-              </th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-normalr tabular-nums">
-                Paid
-              </th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-normalr tabular-nums">
-                Balance
-              </th>
+            <tr className="border-b border-[var(--hh-line)]">
+              <th className={cn(monthTableHead, "text-left")}>Worker</th>
+              <th className={cn(monthTableHead, "text-right tabular-nums")}>Earned</th>
+              <th className={cn(monthTableHead, "text-right tabular-nums")}>Paid</th>
+              <th className={cn(monthTableHead, "text-right tabular-nums")}>Balance</th>
             </tr>
           </thead>
           <tbody>
             {byWorkerRows.length === 0 ? (
-              <tr className="border-b border-border/40">
-                <td colSpan={4} className="py-6 px-3 text-center text-muted-foreground text-xs">
+              <tr>
+                <td colSpan={4} className="px-3 py-6 text-center text-xs text-[var(--hh-muted)]">
                   No data for this month.
                 </td>
               </tr>
             ) : (
               byWorkerRows.map((r) => (
-                <tr key={r.worker_id} className="border-b border-border/40">
-                  <td className="py-1.5 px-3">{r.worker_name}</td>
-                  <td className="py-1.5 px-3 text-right tabular-nums">
-                    {formatCurrency(r.earned)}
+                <tr key={r.worker_id} className="border-b border-[var(--hh-line)] last:border-b-0">
+                  <td className="px-3 py-1.5">{r.worker_name}</td>
+                  <td className="px-3 py-1.5 text-right tabular-nums">
+                    {formatOverviewMoney(r.earned)}
                   </td>
-                  <td className="py-1.5 px-3 text-right tabular-nums">{formatCurrency(r.paid)}</td>
-                  <td className="py-1.5 px-3 text-right tabular-nums">
-                    {formatCurrency(r.balance)}
+                  <td className="px-3 py-1.5 text-right tabular-nums">
+                    {formatOverviewMoney(r.paid)}
+                  </td>
+                  <td className="px-3 py-1.5 text-right tabular-nums">
+                    {formatOverviewMoney(r.balance)}
                   </td>
                 </tr>
               ))
@@ -187,34 +190,30 @@ export default async function MonthlyLaborPage({ searchParams }: Props) {
           </tbody>
         </table>
       </div>
-      <Divider />
 
-      {/* By Project */}
       <SectionHeader label="By Project" />
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm border-collapse">
+      <div className={cn(sectionCardClass, "overflow-x-auto")}>
+        <table className="w-full border-collapse text-sm">
           <thead>
-            <tr className="border-b border-border/60">
-              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-normalr">
-                Project
-              </th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-normalr tabular-nums">
-                Total Labor Cost
-              </th>
+            <tr className="border-b border-[var(--hh-line)]">
+              <th className={cn(monthTableHead, "text-left")}>Project</th>
+              <th className={cn(monthTableHead, "text-right tabular-nums")}>Total Labor Cost</th>
             </tr>
           </thead>
           <tbody>
             {byProjectRows.length === 0 ? (
-              <tr className="border-b border-border/40">
-                <td colSpan={2} className="py-6 px-3 text-center text-muted-foreground text-xs">
+              <tr>
+                <td colSpan={2} className="px-3 py-6 text-center text-xs text-[var(--hh-muted)]">
                   No labor for this month.
                 </td>
               </tr>
             ) : (
               byProjectRows.map((r) => (
-                <tr key={r.project_id} className="border-b border-border/40">
-                  <td className="py-1.5 px-3">{r.project_name}</td>
-                  <td className="py-1.5 px-3 text-right tabular-nums">{formatCurrency(r.total)}</td>
+                <tr key={r.project_id} className="border-b border-[var(--hh-line)] last:border-b-0">
+                  <td className="px-3 py-1.5">{r.project_name}</td>
+                  <td className="px-3 py-1.5 text-right tabular-nums">
+                    {formatOverviewMoney(r.total)}
+                  </td>
                 </tr>
               ))
             )}

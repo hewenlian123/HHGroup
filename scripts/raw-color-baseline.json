@@ -445,12 +445,6 @@
     "className=\"max-w-[220px] px-3 py-2.5 align-middle text-sm leading-snug text-zinc-600 dark:text-zinc-400\"": 1,
     "const workerAvatarRing = \"ring-1 ring-inset ring-zinc-950/[0.055] dark:ring-white/[0.08]\";": 1
   },
-  "src/app/labor/cost-allocation/page.tsx": {
-    "<div className=\"flex justify-between items-baseline border-b border-gray-100 pb-1.5 dark:border-border/40\">": 3,
-    "<tr className=\"border-b border-slate-900/[0.06] bg-slate-50/80 dark:border-border/60 dark:bg-muted/20\">": 1,
-    "<tr className=\"border-t border-gray-100 font-medium dark:border-border/60\">": 1,
-    "<tr key={r.code} className=\"border-b border-gray-100/80 dark:border-border/40\">": 1
-  },
   "src/app/labor/entries/page.tsx": {
     "\"border-b border-gray-100/80 dark:border-border/40\",": 1,
     "<div className=\"border-t border-gray-100 dark:border-border/60 md:hidden\">": 1,
