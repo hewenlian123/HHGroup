@@ -407,11 +407,9 @@ test.describe("Expenses list UI/UX", () => {
       "Selected row uses only the restrained neutral anchor"
     ).toMatch(/inset/);
     expect(activeRowStyle.boxShadow).not.toMatch(/rgb\(0, 0, 0\)|0px 0px 0px 1px/);
-    await expect(panel.locator("[data-expense-detail-amount]")).toBeVisible();
-
-    await panel.getByRole("button", { name: "Edit Expense", exact: true }).click();
     await expect(panel).toHaveAttribute("data-expense-detail-mode", "edit");
     const vendor = panel.getByTestId("edit-expense-vendor-input");
+    await expect(vendor).toBeVisible();
     await expect(vendor).toBeFocused();
     await expect(root.locator("[data-expenses-ledger]")).toBeVisible();
 
@@ -474,7 +472,7 @@ test.describe("Expenses list UI/UX", () => {
 
     await openFirstExpenseWorkspaceRecord(page);
     const panel = page.locator("[data-expense-detail-panel]");
-    await panel.getByRole("button", { name: "Edit Expense", exact: true }).click();
+    await expect(panel).toHaveAttribute("data-expense-detail-mode", "edit");
     const vendor = panel.getByTestId("edit-expense-vendor-input");
     const editedVendor = `${await vendor.inputValue()} close-confirmation`;
     await vendor.fill(editedVendor);
@@ -507,7 +505,7 @@ test.describe("Expenses list UI/UX", () => {
 
     const { id: firstId } = await openFirstExpenseWorkspaceRecord(page);
     const panel = page.locator("[data-expense-detail-panel]");
-    await panel.getByRole("button", { name: "Edit Expense", exact: true }).click();
+    await expect(panel).toHaveAttribute("data-expense-detail-mode", "edit");
     const vendor = panel.getByTestId("edit-expense-vendor-input");
     const editedVendor = `${await vendor.inputValue()} failure-preserved`;
     await vendor.fill(editedVendor);
@@ -538,7 +536,7 @@ test.describe("Expenses list UI/UX", () => {
     await expect(page).not.toHaveURL(
       new RegExp(`ops_record=${encodeURIComponent(firstId)}(?:&|$)`)
     );
-    await expect(panel).toHaveAttribute("data-expense-detail-mode", "preview");
+    await expect(panel).toHaveAttribute("data-expense-detail-mode", "edit");
     await expect(page.locator('[data-expense-active="true"]:visible')).toHaveCount(1);
   });
 
@@ -550,10 +548,9 @@ test.describe("Expenses list UI/UX", () => {
     const { id } = await openFirstExpenseWorkspaceRecord(page);
     const root = page.locator('[data-expenses-list-page="expenses"]');
     const panel = root.locator("[data-expense-detail-panel]");
+    await expect(panel).toHaveAttribute("data-expense-detail-mode", "edit");
     const amount = panel.locator("[data-expense-detail-amount]");
-    const merchant = panel.locator("[data-expense-detail-merchant]");
-    const project = panel.locator("[data-expense-detail-project]");
-    const facts = panel.locator("[data-expense-detail-facts]");
+    const vendor = panel.getByTestId("edit-expense-vendor-input");
     const evidence = panel.locator("[data-expense-receipt-evidence]");
     const clickableSelector = [
       "button:visible",
@@ -586,27 +583,26 @@ test.describe("Expenses list UI/UX", () => {
       expect(invalid).toEqual([]);
     };
 
-    for (const target of [amount, merchant, project, facts, evidence]) {
+    for (const target of [amount, vendor, evidence]) {
       await expect(target).toBeVisible();
     }
     const hierarchyY = await Promise.all(
-      [amount, merchant, project, facts, evidence].map(async (target) =>
+      [amount, vendor, evidence].map(async (target) =>
         target.evaluate((element) => element.getBoundingClientRect().top)
       )
     );
     expect(hierarchyY).toEqual([...hierarchyY].sort((a, b) => a - b));
-    await expect(facts.getByText("Status", { exact: true })).toHaveCount(0);
     await expectStableClickableContract();
 
-    const edit = panel.getByRole("button", { name: "Edit Expense", exact: true });
-    await expect(edit).toHaveCSS("background-color", "rgb(255, 255, 255)");
-    const beforePress = await edit.boundingBox();
-    await edit.hover();
+    const save = panel.getByRole("button", { name: "Save", exact: true });
+    await expect(save).toBeVisible();
+    const beforePress = await save.boundingBox();
+    await save.hover();
     await page.mouse.down();
     await expect
-      .poll(() => edit.evaluate((element) => getComputedStyle(element).opacity))
+      .poll(() => save.evaluate((element) => getComputedStyle(element).opacity))
       .toBe("0.9");
-    const pressedStyle = await edit.evaluate((element) => {
+    const pressedStyle = await save.evaluate((element) => {
       const style = getComputedStyle(element);
       const box = element.getBoundingClientRect();
       return {
@@ -631,14 +627,8 @@ test.describe("Expenses list UI/UX", () => {
       height: beforePress?.height,
     });
 
-    await edit.click();
     await expect(panel).toHaveAttribute("data-expense-detail-mode", "edit");
-    await expect(panel.locator("[data-expense-inline-identity]")).toBeVisible();
     await expectStableClickableContract();
-    const inlineAmountY = await panel
-      .locator("[data-expense-inline-amount]")
-      .evaluate((element) => element.getBoundingClientRect().top);
-    expect(Math.abs(inlineAmountY - hierarchyY[0])).toBeLessThanOrEqual(1);
     const saveAndNext = panel.locator("[data-expense-save-and-next]");
     await expect(saveAndNext).toHaveAccessibleName("Save & Next");
     const widthBeforeSave = (await saveAndNext.boundingBox())?.width;
@@ -812,7 +802,6 @@ test.describe("Expenses list UI/UX", () => {
       await page.screenshot({ path: "/tmp/expense-operations-dark-mobile.png", fullPage: true });
     }
 
-    await panel.getByRole("button", { name: "Edit Expense", exact: true }).click();
     await expect(panel).toHaveAttribute("data-expense-detail-mode", "edit");
     await expect(panel.getByTestId("edit-expense-vendor-input")).toBeFocused();
     const moreDetails = panel.locator("details.expense-more-details");
@@ -1147,7 +1136,7 @@ test.describe("Expenses list UI/UX", () => {
       });
       await waitForExpensesReady(page);
       const panel = page.locator("[data-expense-detail-panel]");
-      await expect(panel.getByText("Open receipt preview", { exact: true })).toBeVisible();
+      await expect(panel.getByText("Receipt file", { exact: true })).toBeVisible();
       await panel.locator("[data-expense-receipt-evidence]").click();
       const viewer = page.locator("[data-receipt-viewer]");
       await expect(viewer).toBeVisible();
@@ -1331,13 +1320,9 @@ test.describe("Expenses list UI/UX", () => {
       )
     );
     expect(compactWeights[0]).toBeGreaterThan(compactWeights[1]);
-    const facts = panel.locator("[data-expense-detail-facts]");
+    await expect(panel).toHaveAttribute("data-expense-detail-mode", "edit");
     const moreDetails = panel.locator("details.expense-more-details").first();
-    await expect(facts).toHaveCSS("border-top-width", "0px");
-    await expect(facts).toHaveCSS("border-bottom-width", "0px");
     await expect(moreDetails).toHaveCSS("border-top-width", "0px");
-
-    await panel.getByRole("button", { name: "Edit Expense", exact: true }).click();
     const sectionTitle = panel.locator("[data-expense-detail-section-title]").first();
     await expect(sectionTitle).toBeVisible();
     await expect(sectionTitle).toHaveCSS("border-bottom-width", "0px");

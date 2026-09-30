@@ -24,7 +24,6 @@ async function openEditableDetail(page: Page, route: string, surface: string) {
   if (surface === "inbox") {
     await expect(panel).toHaveAttribute("data-expense-detail-mode", "review");
   } else {
-    await panel.getByRole("button", { name: "Edit Expense", exact: true }).click();
     await expect(panel).toHaveAttribute("data-expense-detail-mode", "edit");
   }
 

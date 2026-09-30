@@ -101,7 +101,6 @@ async function openExpenseInlineEditor(page: Page, url: string, expenseId: strin
   await waitForExpensesQuerySuccess(page, 90_000);
   const panel = page.locator("[data-expense-detail-panel]");
   await expect(panel).toBeVisible({ timeout: 60_000 });
-  await panel.getByRole("button", { name: "Edit Expense", exact: true }).click();
   await expect(panel).toHaveAttribute("data-expense-detail-mode", "edit");
   return panel;
 }

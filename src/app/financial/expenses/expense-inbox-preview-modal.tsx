@@ -665,10 +665,11 @@ export function ExpenseInboxPreviewModal({
     if (!open || !expenseId) return;
     const prevId = prevExpenseIdRef.current;
     if (prevId !== null && prevId !== expenseId) {
-      setMode("preview");
+      // Keep the caller-selected enter mode when moving between records in the panel.
+      setMode(enterMode);
     }
     prevExpenseIdRef.current = expenseId;
-  }, [open, expenseId]);
+  }, [open, expenseId, enterMode]);
 
   React.useEffect(() => {
     if (!open || mode !== "edit") return;
@@ -1031,7 +1032,8 @@ export function ExpenseInboxPreviewModal({
         });
         return;
       }
-      const items = receiptItemsRef.current;
+      const items =
+        receiptItemsRef.current.length > 0 ? receiptItemsRef.current : receiptItems;
       if (items.length === 0) {
         toast({
           title: "Nothing to preview",
@@ -1125,8 +1127,16 @@ export function ExpenseInboxPreviewModal({
         });
         return;
       }
-      const items = receiptItemsRef.current;
-      if (items.length === 0) return;
+      const items =
+        receiptItemsRef.current.length > 0 ? receiptItemsRef.current : receiptItems;
+      if (items.length === 0) {
+        toast({
+          title: "Preview unavailable",
+          description: "No receipt attached.",
+          variant: "error",
+        });
+        return;
+      }
       const shellFiles = buildReceiptPreviewShellFiles(items);
       const initialIndex = Math.max(
         0,
@@ -1325,10 +1335,11 @@ export function ExpenseInboxPreviewModal({
         setReviewErrors({});
         setReviewFeedback({ kind: "saved", message: "Saved" });
         setReviewBaselineSignature(currentReviewSignature);
-        if (!inlineReviewWorkspace) setMode("preview");
+        // Panel keeps inline edit after save; dialog falls back to preview.
+        if (!inlineReviewWorkspace && presentation !== "panel") setMode("preview");
         if (advanceAfterSave) {
           onSaveAndNext?.();
-        } else if (!inlineReviewWorkspace) {
+        } else if (!inlineReviewWorkspace && presentation !== "panel") {
           window.requestAnimationFrame(() => editActionRef.current?.focus());
         }
       } else {
@@ -1492,6 +1503,11 @@ export function ExpenseInboxPreviewModal({
         deductionNote: deduction?.note ?? "",
       })
     );
+    if (presentation === "panel" && !inlineReviewWorkspace) {
+      // Ledger inline edit has no separate preview mode — Cancel closes the panel.
+      onOpenChange(false);
+      return;
+    }
     setMode("preview");
     if (!inlineReviewWorkspace) {
       window.requestAnimationFrame(() => editActionRef.current?.focus());
@@ -1830,7 +1846,7 @@ export function ExpenseInboxPreviewModal({
       <button
         type="button"
         data-expense-receipt-evidence
-        className="expense-evidence-action mt-3 flex min-h-20 w-full items-center justify-between gap-3 rounded-hh-compact border border-[var(--hh-border)] bg-[var(--hh-l1-workspace)] px-4 py-3 text-left transition-colors duration-120 hover:bg-[var(--hh-l3-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)]"
+        className="expense-evidence-action mt-3 flex min-h-11 w-full items-center justify-between gap-3 rounded-hh-compact border border-[var(--hh-border)] bg-[var(--hh-l1-workspace)] px-4 py-2.5 text-left transition-colors duration-120 hover:bg-[var(--hh-l3-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)]"
         onClick={() => {
           const firstReceipt = receiptItems[0];
           if (firstReceipt) void openReceiptItemPreview(firstReceipt);
@@ -1839,12 +1855,14 @@ export function ExpenseInboxPreviewModal({
       >
         <span className="min-w-0">
           <span className="block text-hh-table-cell font-medium text-[var(--hh-text-primary)]">
-            {receiptItems.length > 0 ? "Open receipt preview" : "Upload receipt"}
+            {receiptItems.length > 0 ? "Receipt file" : "Upload receipt"}
           </span>
-          <span className="mt-1 block text-hh-status leading-4 text-[var(--hh-text-secondary)]">
+          <span className="mt-0.5 block text-hh-status leading-4 text-[var(--hh-text-secondary)]">
             {receiptItems.length > 0
-              ? "View the secured source document in context."
-              : "Attach a file in Edit Expense."}
+              ? "Optional preview while you edit fields above."
+              : renderEditSurface
+                ? "Attach a receipt file here."
+                : "Attach a file in Edit Expense."}
           </span>
         </span>
         <span className="shrink-0 text-xs font-medium text-[var(--hh-text-secondary)]">
@@ -2346,7 +2364,8 @@ export function ExpenseInboxPreviewModal({
             data-expense-inline-review={inlineReviewWorkspace || undefined}
             className="space-y-5"
           >
-            {evidenceFirst ? receiptEvidenceSurface : null}
+            {/* Inbox review keeps receipt first; ledger inline edit puts fields first. */}
+            {inlineReviewWorkspace ? receiptEvidenceSurface : null}
             {presentation === "panel" && !inlineReviewWorkspace ? (
               <section data-expense-inline-identity aria-label="Editing expense identity">
                 <p
@@ -2655,6 +2674,8 @@ export function ExpenseInboxPreviewModal({
                 ) : null}
               </div>
             </ModalSection>
+
+            {!inlineReviewWorkspace ? receiptEvidenceSurface : null}
 
             <ProgressiveDisclosure enabled={presentation === "panel" && !inlineReviewWorkspace}>
               <ModalSection title="Details">

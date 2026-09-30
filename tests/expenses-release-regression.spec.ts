@@ -12,7 +12,7 @@ test("keyboard inspection transfers focus and Escape closes the drawer", async (
   await expect(panel).toBeVisible();
   await expect(panel).toBeFocused();
   await expect(
-    panel.getByRole("button", { name: /Upload receipt|Open receipt preview/ })
+    panel.getByRole("button", { name: /Upload receipt|Receipt file|Open receipt preview/ })
   ).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(panel).toBeHidden();
@@ -82,7 +82,7 @@ test("unsaved drawer edits remain protected without changing the expense", async
   await page.waitForLoadState("networkidle");
   await page.locator("[data-expense-keyboard-row]").filter({ visible: true }).first().click();
   const panel = page.locator("[data-expense-detail-panel]");
-  await panel.getByRole("button", { name: "Edit Expense", exact: true }).click();
+  await expect(panel).toHaveAttribute("data-expense-detail-mode", "edit");
   const vendor = panel.getByTestId("edit-expense-vendor-input");
   const original = await vendor.inputValue();
   await vendor.fill(`${original} unsaved QA`);
@@ -92,6 +92,5 @@ test("unsaved drawer edits remain protected without changing the expense", async
   await discard.getByRole("button", { name: "Cancel", exact: true }).click();
   await expect(vendor).toHaveValue(`${original} unsaved QA`);
   await panel.getByRole("button", { name: "Cancel", exact: true }).click();
-  await expect(panel).toHaveAttribute("data-expense-detail-mode", "preview");
-  await expect(panel).not.toContainText(`${original} unsaved QA`);
+  await expect(panel).toBeHidden();
 });

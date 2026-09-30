@@ -218,7 +218,7 @@ test.describe("Unified Expense form parity", () => {
       await waitForExpensesQuerySuccess(page);
       const panel = page.locator("[data-expense-detail-panel]");
       await expect(panel).toBeVisible({ timeout: 60_000 });
-      await panel.getByRole("button", { name: "Edit Expense" }).click();
+      await expect(panel).toHaveAttribute("data-expense-detail-mode", "edit");
       await panel.locator("summary").filter({ hasText: "More Details" }).click();
       await expect(panel.getByPlaceholder("Add item")).toBeVisible();
       await expect(panel.getByRole("button", { name: "Remove Lumber" })).toBeVisible();
@@ -250,7 +250,7 @@ test.describe("Unified Expense form parity", () => {
       await waitForExpensesQuerySuccess(page);
       const reopenedPanel = page.locator("[data-expense-detail-panel]");
       await expect(reopenedPanel).toBeVisible({ timeout: 60_000 });
-      await reopenedPanel.getByRole("button", { name: "Edit Expense" }).click();
+      await expect(reopenedPanel).toHaveAttribute("data-expense-detail-mode", "edit");
       await reopenedPanel.locator("summary").filter({ hasText: "More Details" }).click();
       await expect(reopenedPanel.getByTestId("edit-expense-vendor-input")).toHaveValue(
         editedVendor
@@ -287,7 +287,7 @@ test.describe("Unified Expense form parity", () => {
         await waitForExpensesQuerySuccess(page);
         const responsivePanel = page.locator("[data-expense-detail-panel]");
         await expect(responsivePanel).toBeVisible({ timeout: 60_000 });
-        await responsivePanel.getByRole("button", { name: "Edit Expense" }).click();
+        await expect(responsivePanel).toHaveAttribute("data-expense-detail-mode", "edit");
         await responsivePanel.locator("summary").filter({ hasText: "More Details" }).click();
         await expect(responsivePanel.getByPlaceholder("Add item")).toBeVisible();
 
