@@ -1259,8 +1259,8 @@
 .estimate-preview-tool-button:focus-visible {
   outline: none !important;
   box-shadow:
-    0 0 0 2px var(--hh-surface-workspace, #ffffff),
-    0 0 0 4px var(--hh-focus-ring, #2563eb) !important;
+    0 0 0 2px var(--hh-surface),
+    0 0 0 4px var(--hh-link) !important;
 }
 
 @media (forced-colors: active) {
@@ -1272,15 +1272,17 @@
 }
 
 .estimate-preview-tool-button--primary {
-  border-color: var(--hh-accent-primary, #2563eb) !important;
-  background: var(--hh-accent-primary, #2563eb) !important;
-  color: #ffffff !important;
+  border-color: transparent !important;
+  background-color: var(--hh-brass) !important;
+  background-image: var(--hh-grad-brass) !important;
+  color: var(--hh-on-brass) !important;
 }
 
 .estimate-preview-tool-button--primary:hover:not(:disabled) {
-  border-color: var(--hh-accent-hover, #1d4ed8) !important;
-  background: var(--hh-accent-hover, #1d4ed8) !important;
-  color: #ffffff !important;
+  border-color: transparent !important;
+  background-color: var(--hh-brass-lo) !important;
+  background-image: var(--hh-grad-brass) !important;
+  color: var(--hh-on-brass) !important;
 }
 
 .estimate-preview-toolbar-context {
@@ -1351,9 +1353,9 @@
 }
 
 .estimate-preview-revision-badge[data-revision-state="current"] {
-  border-color: var(--hh-information-border, #bfdbfe);
-  background: var(--hh-information-soft-fill, #dbeafe);
-  color: var(--hh-information, #1d4ed8);
+  border-color: var(--hh-line);
+  background: var(--hh-chip);
+  color: var(--hh-navy);
 }
 
 .estimate-preview-revision-navigation {
@@ -1364,13 +1366,13 @@
 }
 
 .estimate-preview-revision-navigation a {
-  color: var(--hh-accent-primary, #2563eb);
+  color: var(--hh-link);
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 
 .estimate-preview-revision-navigation a:hover {
-  color: var(--hh-accent-hover, #1d4ed8);
+  color: var(--hh-navy);
 }
 
 .estimate-preview-primary-actions,
@@ -1429,21 +1431,21 @@
 .estimate-print-action-bar {
   position: sticky;
   top: 0;
-  border-bottom: 1px solid rgb(255 255 255 / 9%);
-  background: rgb(24 24 24 / 98%);
-  color: #f4f4f2;
-  box-shadow: 0 2px 12px rgb(0 0 0 / 20%);
+  border-bottom: 1px solid var(--hh-line);
+  background: var(--hh-surface);
+  color: var(--hh-ink);
+  box-shadow: var(--hh-shadow-card);
 }
 
 .estimate-print-context-title {
-  color: #f4f4f2;
+  color: var(--hh-ink);
   font-size: 0.8125rem;
   font-weight: 650;
 }
 
 .estimate-print-context-identity {
   overflow: hidden;
-  color: #b8b8b4;
+  color: var(--hh-muted);
   font-size: 0.75rem;
   font-weight: 600;
   text-overflow: ellipsis;
@@ -1451,7 +1453,7 @@
 }
 
 .estimate-print-workspace:not(.estimate-print-pdf-capture) {
-  background: #181818 !important;
+  background: var(--hh-l0-canvas) !important;
   padding-bottom: 3rem;
 }
 
@@ -1550,7 +1552,7 @@
   position: absolute;
   top: -1.75rem;
   left: 0;
-  color: #b8b8b4;
+  color: var(--hh-muted);
   font-size: 0.6875rem;
   font-weight: 600;
   letter-spacing: 0.1em;

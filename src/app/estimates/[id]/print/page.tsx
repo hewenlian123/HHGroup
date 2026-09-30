@@ -69,7 +69,7 @@ export default async function EstimatePrintPage({
 
   return (
     <div
-      className={`estimate-print-workspace min-h-screen bg-white text-zinc-900 print:min-h-0${pdfCapture ? " estimate-print-pdf-capture" : ""}`}
+      className={`estimate-print-workspace min-h-screen bg-[var(--hh-surface)] text-[var(--hh-ink)] print:min-h-0 print:bg-white${pdfCapture ? " estimate-print-pdf-capture" : ""}`}
       data-read-only="true"
       data-estimate-pdf-capture={pdfCapture ? "true" : undefined}
       data-hh-context="document-route"
