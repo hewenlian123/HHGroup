@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { Input } from "@/components/ui/input";
 import type { LaborEntryWithJoins } from "@/lib/daily-labor-db";
-import { formatCurrency } from "@/lib/formatters";
+import { formatOverviewMoney } from "@/lib/financial/project-overview-display";
 import {
   parseLaborOvertimeAmountFromNotes,
   parseLaborOvertimeHoursFromNotes,
@@ -103,11 +103,11 @@ export function EditEntryModal(props: {
   const overtimeFixedPay = Math.max(0, Number(overtimeAmount) || 0);
   const totalPay = basePay + overtimeFixedPay;
   const rateSummary = Number.isFinite(dailyRate)
-    ? formatCurrency(dailyRate)
-    : formatCurrency(entry?.cost_amount ?? null);
-  const basePaySummary = formatCurrency(basePay);
-  const overtimePaySummary = formatCurrency(overtimeFixedPay);
-  const totalPaySummary = formatCurrency(totalPay);
+    ? formatOverviewMoney(dailyRate)
+    : formatOverviewMoney(entry?.cost_amount ?? null);
+  const basePaySummary = formatOverviewMoney(basePay);
+  const overtimePaySummary = formatOverviewMoney(overtimeFixedPay);
+  const totalPaySummary = formatOverviewMoney(totalPay);
 
   const handleSave = async () => {
     if (!entry) return;
@@ -168,9 +168,11 @@ export function EditEntryModal(props: {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[calc(100dvh-24px)] flex-col overflow-hidden border-border/60 p-0 sm:max-w-[520px] sm:p-0 max-sm:h-[100dvh] max-sm:w-[100vw] max-sm:max-w-none max-sm:rounded-none">
-        <DialogHeader className="border-b border-border/60 px-6 pb-4 pt-6 max-sm:px-4 max-sm:pb-3 max-sm:pt-4">
-          <DialogTitle className="text-base font-semibold">Edit Entry</DialogTitle>
+      <DialogContent className="flex max-h-[calc(100dvh-24px)] flex-col overflow-hidden rounded-card p-0 sm:max-w-[520px] sm:p-0 max-sm:h-[100dvh] max-sm:w-[100vw] max-sm:max-w-none max-sm:rounded-none">
+        <DialogHeader className="border-b border-[var(--hh-line)] px-6 pb-4 pt-6 max-sm:px-4 max-sm:pb-3 max-sm:pt-4">
+          <DialogTitle className="text-hh-section-title font-semibold text-[var(--hh-ink)]">
+            Edit Entry
+          </DialogTitle>
         </DialogHeader>
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4 max-sm:px-4 max-sm:py-3">
           <div className="space-y-2">
@@ -218,7 +220,7 @@ export function EditEntryModal(props: {
               <option value="afternoon">Afternoon</option>
             </select>
           </div>
-          <div className="rounded-hh-standard border border-border/60 bg-muted/20 px-3 py-3">
+          <div className="rounded-card border border-[var(--hh-line)] bg-[var(--hh-surface)] px-3 py-3 shadow-card">
             <div className="grid grid-cols-3 gap-3">
               <div>
                 <p className="text-hh-status font-medium uppercase tracking-normal text-muted-foreground">
@@ -249,7 +251,7 @@ export function EditEntryModal(props: {
               Daily rate: {rateSummary}. Overtime is added on top of the base session pay.
             </p>
           </div>
-          <div className="grid grid-cols-1 gap-3 rounded-hh-standard border border-border/60 bg-muted/10 p-3 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 rounded-card border border-[var(--hh-line)] bg-[var(--hh-surface)] p-3 shadow-card sm:grid-cols-2">
             <div className="space-y-2">
               <label className="text-xs font-medium text-muted-foreground">Overtime Hours</label>
               <Input
@@ -285,7 +287,7 @@ export function EditEntryModal(props: {
               placeholder="Optional"
             />
           </div>
-          <div className="rounded-hh-standard border border-border/60">
+          <div className="rounded-card border border-[var(--hh-line)]">
             <button
               type="button"
               data-testid="labor-edit-advanced-toggle"
@@ -302,7 +304,7 @@ export function EditEntryModal(props: {
               />
             </button>
             {advancedOpen ? (
-              <div className="grid grid-cols-1 gap-3 border-t border-border/60 p-3 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-3 border-t border-[var(--hh-line)] p-3 sm:grid-cols-2">
                 <div className="space-y-2">
                   <label className="text-xs font-medium text-muted-foreground">
                     Override Base Pay
@@ -330,7 +332,7 @@ export function EditEntryModal(props: {
           </div>
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
         </div>
-        <DialogFooter className="shrink-0 border-t border-border/60 px-6 pb-6 pt-4 max-sm:px-4 max-sm:pb-[max(1rem,env(safe-area-inset-bottom,1rem))]">
+        <DialogFooter className="shrink-0 border-t border-[var(--hh-line)] px-6 pb-6 pt-4 max-sm:px-4 max-sm:pb-[max(1rem,env(safe-area-inset-bottom,1rem))]">
           <Button
             variant="outline"
             size="sm"
@@ -340,12 +342,7 @@ export function EditEntryModal(props: {
           >
             Cancel
           </Button>
-          <Button
-            size="sm"
-            className="rounded-hh-compact bg-[var(--hh-action-primary)] text-[var(--hh-action-primary-foreground)] hover:bg-[var(--hh-action-primary)]"
-            onClick={handleSave}
-            disabled={busy}
-          >
+          <Button size="sm" className="rounded-hh-compact" onClick={handleSave} disabled={busy}>
             <SubmitSpinner loading={busy} className="mr-2" />
             {busy ? "Saving…" : "Save Changes"}
           </Button>

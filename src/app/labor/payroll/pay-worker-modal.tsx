@@ -319,9 +319,11 @@ export function PayWorkerModal({
         onOpenChange(next);
       }}
     >
-      <DialogContent className="max-w-sm border-border/60 p-5 rounded-hh-compact gap-4">
+      <DialogContent className="max-w-sm gap-4 rounded-card p-5">
         <DialogHeader>
-          <DialogTitle className="text-base font-semibold">Pay Worker</DialogTitle>
+          <DialogTitle className="text-hh-section-title font-semibold text-[var(--hh-ink)]">
+            Pay Worker
+          </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">

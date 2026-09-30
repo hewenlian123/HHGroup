@@ -13,6 +13,7 @@ import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
 import { VirtualScrollList } from "@/components/ui/virtual-scroll-list";
+import { formatOverviewMoney } from "@/lib/financial/project-overview-display";
 import { cn } from "@/lib/utils";
 import { workerRateLocalYmd } from "@/lib/worker-rate-date";
 import { overtimePayAmount } from "@/lib/worker-daily-rate";
@@ -200,7 +201,7 @@ function workerDailyRate(worker: LaborWorker): number | null {
 function formatDailyRate(worker: LaborWorker): string {
   const rate = workerDailyRate(worker);
   if (rate == null) return "—/day";
-  return `$${rate.toLocaleString(undefined, { maximumFractionDigits: 2 })}/day`;
+  return `${formatOverviewMoney(rate)}/day`;
 }
 
 function compareWorkersByDailyRate(a: LaborWorker, b: LaborWorker): number {
@@ -393,7 +394,7 @@ function AddDailyEntryDateField({
             ),
             selected: cn(
               rdp.selected,
-              "bg-[var(--hh-l3-selected)] ring-0 [&_button]:border [&_button]:border-[var(--hh-border-strong)] [&_button]:bg-[var(--hh-action-primary)] [&_button]:text-[var(--hh-action-primary-foreground)]"
+              "bg-[var(--hh-l3-selected)] ring-0 [&_button]:bg-[var(--hh-navy)] [&_button]:text-[var(--hh-surface)]"
             ),
             outside: cn(
               rdp.outside,
@@ -613,7 +614,7 @@ const AddDailyEntryWorkerRow = React.memo(function AddDailyEntryWorkerRow({
             setOtDraft(v === 0 ? "" : String(v));
           }}
           disabled={fullyBlocked}
-          className="h-8 min-h-8 w-full min-w-0 rounded-hh-compact border-[var(--hh-border)] bg-[var(--hh-l3-hover)] px-1 text-center text-sm tabular-nums text-[var(--hh-text-primary)] border-[var(--hh-border)] bg-[var(--hh-l3-hover)] focus-visible:border-[var(--hh-action-primary)] focus-visible:ring-[var(--hh-focus-ring)] max-md:min-h-[44px] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+          className="h-8 min-h-8 w-full min-w-0 rounded-hh-compact border-[var(--hh-border)] bg-[var(--hh-l3-hover)] px-1 text-center text-sm tabular-nums text-[var(--hh-text-primary)] border-[var(--hh-border)] bg-[var(--hh-l3-hover)] focus-visible:border-[var(--hh-link)] focus-visible:ring-[var(--hh-focus-ring)] max-md:min-h-[44px] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
         />
       </div>
       <div>
@@ -639,7 +640,7 @@ const AddDailyEntryWorkerRow = React.memo(function AddDailyEntryWorkerRow({
             setOtAmountDraft(v === 0 ? "" : String(v));
           }}
           disabled={fullyBlocked}
-          className="h-8 min-h-8 w-full min-w-0 rounded-hh-compact border-[var(--hh-border)] bg-[var(--hh-l3-hover)] px-1 text-center text-sm tabular-nums text-[var(--hh-text-primary)] border-[var(--hh-border)] bg-[var(--hh-l3-hover)] focus-visible:border-[var(--hh-action-primary)] focus-visible:ring-[var(--hh-focus-ring)] max-md:min-h-[44px] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+          className="h-8 min-h-8 w-full min-w-0 rounded-hh-compact border-[var(--hh-border)] bg-[var(--hh-l3-hover)] px-1 text-center text-sm tabular-nums text-[var(--hh-text-primary)] border-[var(--hh-border)] bg-[var(--hh-l3-hover)] focus-visible:border-[var(--hh-link)] focus-visible:ring-[var(--hh-focus-ring)] max-md:min-h-[44px] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
         />
       </div>
       <div className="pr-1 text-right text-xs font-semibold tabular-nums text-[var(--hh-text-secondary)]">
@@ -895,14 +896,14 @@ export function AddDailyEntryModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className={cn(
-          "w-[min(740px,calc(100vw-24px))] max-w-[740px] max-h-[calc(100vh-48px)] overflow-hidden rounded-hh-task border border-[var(--hh-border-floating)] bg-[var(--hh-l5-task-surface)] p-0 text-[var(--hh-text-primary)] shadow-task",
+          "w-[min(740px,calc(100vw-24px))] max-w-[740px] max-h-[calc(100vh-48px)] overflow-hidden rounded-card border border-[var(--hh-line)] bg-[var(--hh-surface)] p-0 text-[var(--hh-text)] shadow-card",
           "flex flex-col gap-0",
-          "max-md:!bottom-auto max-md:!left-1/2 max-md:!right-auto max-md:!top-1/2 max-md:!w-[calc(100vw-24px)] max-md:!max-w-[calc(100vw-24px)] max-md:!-translate-x-1/2 max-md:!-translate-y-1/2 max-md:!rounded-hh-task max-md:!border-b max-md:!max-h-[calc(100dvh-24px)]",
+          "max-md:!bottom-auto max-md:!left-1/2 max-md:!right-auto max-md:!top-1/2 max-md:!w-[calc(100vw-24px)] max-md:!max-w-[calc(100vw-24px)] max-md:!-translate-x-1/2 max-md:!-translate-y-1/2 max-md:!rounded-card max-md:!border-b max-md:!max-h-[calc(100dvh-24px)]",
           "[&>button.absolute]:right-4 [&>button.absolute]:top-4 [&>button.absolute]:h-9 [&>button.absolute]:w-9 [&>button.absolute]:rounded-hh-standard [&>button.absolute]:border [&>button.absolute]:border-[var(--hh-border)] [&>button.absolute]:bg-[var(--hh-l2-operational-surface)] [&>button.absolute]:text-[var(--hh-text-secondary)] [&>button.absolute]:opacity-100 [&>button.absolute]:hover:bg-[var(--hh-l3-hover)] [&>button.absolute]:hover:text-[var(--hh-text-primary)]"
         )}
       >
-        <DialogHeader className="sticky top-0 z-20 shrink-0 space-y-0 border-b border-[var(--hh-border)] bg-[var(--hh-l5-task-surface)] px-5 py-4 pr-16">
-          <DialogTitle className="text-hh-section-title font-semibold tracking-normal text-[var(--hh-text-primary)]">
+        <DialogHeader className="sticky top-0 z-20 shrink-0 space-y-0 border-b border-[var(--hh-line)] bg-[var(--hh-surface)] px-5 py-4 pr-16">
+          <DialogTitle className="text-hh-section-title font-semibold tracking-normal text-[var(--hh-ink)]">
             Add Daily Entry
           </DialogTitle>
         </DialogHeader>
@@ -1074,7 +1075,7 @@ export function AddDailyEntryModal({
               </div>
             </div>
           </div>
-          <DialogFooter className="m-0 shrink-0 border-t border-[var(--hh-border)] bg-[var(--hh-l5-task-surface)] px-5 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:flex-row sm:items-center sm:justify-end">
+          <DialogFooter className="m-0 shrink-0 border-t border-[var(--hh-line)] bg-[var(--hh-surface)] px-5 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:flex-row sm:items-center sm:justify-end">
             {error ? (
               <p className="min-w-0 text-left text-sm font-medium text-[var(--hh-danger)] sm:mr-auto">
                 {error}
@@ -1093,7 +1094,7 @@ export function AddDailyEntryModal({
               type="submit"
               size="sm"
               disabled={busy}
-              className="h-9 rounded-hh-standard border-transparent bg-[var(--hh-action-primary)] px-4 text-[var(--hh-action-primary-foreground)] shadow-none hover:opacity-90 max-lg:min-h-[44px]"
+              className="h-9 rounded-hh-standard px-4 max-lg:min-h-[44px]"
             >
               <SubmitSpinner loading={busy} className="mr-2" />
               {busy ? "Saving…" : "Save"}

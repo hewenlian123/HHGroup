@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { recordPaymentAction } from "./actions";
@@ -64,9 +65,11 @@ export function RecordPaymentModal({ open, onOpenChange, workerId, onSuccess }: 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm border-border/60 p-5 rounded-hh-compact gap-4">
+      <DialogContent className="max-w-sm gap-4 rounded-card p-5">
         <DialogHeader>
-          <DialogTitle className="text-base font-semibold">Record Payment</DialogTitle>
+          <DialogTitle className="text-hh-section-title font-semibold text-[var(--hh-ink)]">
+            Record Payment
+          </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
@@ -118,22 +121,14 @@ export function RecordPaymentModal({ open, onOpenChange, workerId, onSuccess }: 
           {error ? (
             <p className="text-sm text-[var(--hh-danger)] text-[var(--hh-danger)]">{error}</p>
           ) : null}
-          <div className="flex justify-end gap-2 pt-2 border-t border-border/40">
-            <button
-              type="button"
-              onClick={() => onOpenChange(false)}
-              className="h-9 rounded-hh-compact border border-input bg-transparent px-3 text-sm hover:bg-accent hover:text-accent-foreground"
-            >
+          <div className="flex justify-end gap-2 border-t border-[var(--hh-line)] pt-2">
+            <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>
               Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={busy}
-              className="inline-flex h-9 items-center rounded-hh-compact border border-input bg-foreground px-3 text-sm text-background hover:bg-foreground/90 disabled:opacity-50"
-            >
+            </Button>
+            <Button type="submit" size="sm" disabled={busy}>
               <SubmitSpinner loading={busy} className="mr-2" />
               {busy ? "Saving…" : "Record Payment"}
-            </button>
+            </Button>
           </div>
         </form>
       </DialogContent>

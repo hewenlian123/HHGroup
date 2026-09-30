@@ -14,7 +14,7 @@ import { WorkerPaymentReceiptPreviewModal } from "@/components/labor/worker-paym
 import { FinanceDatePicker } from "@/components/ui/date-picker";
 import { getLaborPaymentStatus, type LaborPayrollSettlementMode } from "@/lib/labor-balance-shared";
 import { useBreadcrumbEntityLabel } from "@/contexts/breadcrumb-override-context";
-import { formatCurrency } from "@/lib/formatters";
+import { formatOverviewMoney } from "@/lib/financial/project-overview-display";
 import { cn } from "@/lib/utils";
 import { statusChipClass } from "@/lib/typography";
 import {
@@ -107,19 +107,18 @@ type Summary = {
 type BalanceTone = "owed" | "overpaid" | "settled";
 
 const neoSecondaryButton =
-  "min-h-[44px] w-full rounded-full border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-4 text-hh-table-cell font-semibold text-[var(--hh-text-primary)] shadow-operational transition-colors duration-150 hover:border-[var(--hh-border-strong)] hover:bg-[var(--hh-l3-hover)] hover:text-[var(--hh-action-primary)] focus-visible:ring-[var(--hh-focus-ring)] sm:min-h-9 sm:w-auto";
+  "min-h-[44px] w-full rounded-hh-standard border-[var(--hh-border)] bg-[var(--hh-surface)] px-4 text-hh-table-cell font-semibold text-[var(--hh-text)] shadow-none transition-colors duration-150 hover:border-[var(--hh-line)] hover:bg-[var(--hh-l3-hover)] hover:text-[var(--hh-ink)] focus-visible:ring-[var(--hh-focus-ring)] sm:min-h-9 sm:w-auto";
 
-const neoPrimaryButton =
-  "min-h-[44px] w-full rounded-full border border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] px-4 text-hh-table-cell font-semibold text-[var(--hh-action-primary)] shadow-operational transition-colors duration-150 border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] focus-visible:ring-[var(--hh-focus-ring)] disabled:border-[var(--hh-border)] disabled:bg-[var(--hh-l3-hover)] disabled:text-[var(--hh-text-tertiary)] sm:min-h-9 sm:w-auto";
+const neoPrimaryButton = "min-h-[44px] w-full rounded-hh-standard px-4 sm:min-h-9 sm:w-auto";
 
 const neoDialogContent =
-  "w-[min(520px,calc(100vw-24px))] max-h-[calc(100dvh-24px)] overflow-y-auto rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-5 text-[var(--hh-text-primary)] shadow-operational  [&>button]:right-4 [&>button]:top-4 [&>button]:h-9 [&>button]:w-9 [&>button]:rounded-hh-standard [&>button]:border [&>button]:border-[var(--hh-border)] [&>button]:bg-[var(--hh-l3-hover)] [&>button]:text-[var(--hh-text-secondary)] [&>button]:opacity-100 [&>button]:bg-[var(--hh-l3-hover)] [&>button]:hover:text-[var(--hh-text-primary)]";
+  "max-h-[calc(100dvh-24px)] w-[min(520px,calc(100vw-24px))] overflow-y-auto rounded-card p-5 text-[var(--hh-text)] [&>button]:right-4 [&>button]:top-4 [&>button]:h-9 [&>button]:w-9 [&>button]:rounded-hh-standard [&>button]:border [&>button]:border-[var(--hh-line)] [&>button]:bg-[var(--hh-surface)] [&>button]:text-[var(--hh-muted)] [&>button]:opacity-100 [&>button]:hover:text-[var(--hh-ink)]";
 
 const neoFieldClass =
-  "min-h-[44px] rounded-hh-task border !border-[var(--hh-border)] !bg-[var(--hh-l1-workspace)] px-3 text-sm text-[var(--hh-text-primary)] shadow-operational placeholder:text-[var(--hh-text-tertiary)] focus-visible:border-[var(--hh-action-primary)] focus-visible:ring-[var(--hh-focus-ring)] ";
+  "min-h-[44px] rounded-hh-standard border !border-[var(--hh-line)] !bg-[var(--hh-surface)] px-3 text-sm text-[var(--hh-text)] shadow-none placeholder:text-[var(--hh-muted)] focus-visible:border-[var(--hh-link)] focus-visible:ring-[var(--hh-focus-ring)] ";
 
 const neoCheckboxClass =
-  "h-5 w-5 shrink-0 rounded border-[var(--hh-border)] bg-[var(--hh-l1-workspace)] accent-[var(--hh-action-primary)]";
+  "h-5 w-5 shrink-0 rounded border-[var(--hh-line)] bg-[var(--hh-surface)] accent-[var(--hh-link)]";
 
 const ledgerHeaderCell =
   "py-2.5 pr-3 text-left text-hh-status font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]";
@@ -173,7 +172,7 @@ function KpiTile({
 
   const valueClass =
     emphasis === "owed"
-      ? "text-[var(--hh-action-primary)]"
+      ? "text-[var(--hh-warning)]"
       : emphasis === "overpaid"
         ? "text-[var(--hh-danger)]"
         : emphasis === "settled"
@@ -183,7 +182,7 @@ function KpiTile({
   return (
     <div
       className={cn(
-        "min-h-[76px] rounded-hh-task border px-3 py-3 shadow-operational",
+        "min-h-[76px] rounded-card border px-3 py-3 shadow-card",
         "flex flex-col justify-between",
         emphasisClass
       )}
@@ -218,7 +217,7 @@ function RecommendationPanel({ balance }: { balance: number }) {
   return (
     <div
       className={cn(
-        "rounded-hh-task border px-4 py-3 shadow-operational",
+        "rounded-card border px-4 py-3 shadow-card",
         "flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between",
         shellClass
       )}
@@ -228,7 +227,7 @@ function RecommendationPanel({ balance }: { balance: number }) {
           className={cn(
             "h-4 w-4",
             tone === "owed"
-              ? "text-[var(--hh-action-primary)]"
+              ? "text-[var(--hh-warning)]"
               : tone === "overpaid"
                 ? "text-[var(--hh-danger)]"
                 : "text-[var(--hh-success)]"
@@ -246,13 +245,13 @@ function RecommendationPanel({ balance }: { balance: number }) {
           className={cn(
             "text-hh-section-title font-semibold tabular-nums tracking-normal",
             tone === "owed"
-              ? "text-[var(--hh-action-primary)]"
+              ? "text-[var(--hh-warning)]"
               : tone === "overpaid"
                 ? "text-[var(--hh-danger)]"
                 : "text-[var(--hh-success)]"
           )}
         >
-          {formatCurrency(balance)}
+          {formatOverviewMoney(balance)}
         </span>
       </div>
     </div>
@@ -269,7 +268,7 @@ function LedgerSection({
   children: React.ReactNode;
 }) {
   return (
-    <section className="overflow-hidden rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-operational">
+    <section className="overflow-hidden rounded-card border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-operational">
       <header className="flex flex-col gap-1.5 border-b border-[var(--hh-border)] px-4 py-3.5">
         <h2 className="text-hh-metadata font-semibold uppercase tracking-normal text-[var(--hh-text-primary)]">
           {title}
@@ -285,7 +284,7 @@ function LedgerSection({
 
 function EmptyLedgerState({ title, subtitle }: { title: string; subtitle: string }) {
   return (
-    <div className="m-4 rounded-hh-task border border-dashed border-[var(--hh-border-strong)] bg-[var(--hh-l3-hover)] px-4 py-10 text-center">
+    <div className="m-4 rounded-card border border-dashed border-[var(--hh-border-strong)] bg-[var(--hh-l3-hover)] px-4 py-10 text-center">
       <p className="text-sm font-medium text-[var(--hh-text-primary)]">{title}</p>
       <p className="mt-1 text-xs leading-relaxed text-[var(--hh-text-secondary)]">{subtitle}</p>
     </div>
@@ -920,8 +919,8 @@ export default function WorkerBalanceDetailPage() {
 
   if (!workerId) {
     return (
-      <div className=" page-shell-standard mx-auto px-4 py-6">
-        <p className="rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-4 py-3 text-sm text-[var(--hh-text-secondary)]">
+      <div className="hh-list-frame py-6">
+        <p className="rounded-card border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-4 py-3 text-sm text-[var(--hh-text-secondary)]">
           Worker not found.
         </p>
       </div>
@@ -931,14 +930,14 @@ export default function WorkerBalanceDetailPage() {
   if (readUnavailable) return <LaborReadState title="Worker balance" retry={() => void load()} />;
 
   return (
-    <div className=" page-shell-wide mx-auto flex w-full min-w-0 flex-col gap-4 overflow-x-hidden px-4 py-4 pb-[max(1.5rem,env(safe-area-inset-bottom,0px))] md:px-6 md:py-6">
-      <header className="border-b border-[var(--hh-border)] pb-4">
+    <div className="hh-list-frame flex w-full min-w-0 flex-col gap-4 overflow-x-hidden py-3 pb-[calc(1.5rem+env(safe-area-inset-bottom))] md:py-6">
+      <header className="border-b border-[var(--hh-line)] pb-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-baseline lg:justify-between lg:gap-4">
           <div className="min-w-0">
-            <h1 className="text-hh-financial-total leading-tight font-semibold tracking-normal text-[var(--hh-text-primary)] md:text-hh-financial-total">
+            <h1 className="text-title-page text-[var(--hh-ink)]">
               {worker?.name ?? "Worker Balance"}
             </h1>
-            <p className="mt-1 max-w-2xl text-hh-section-title leading-relaxed text-[var(--hh-text-secondary)]">
+            <p className="mt-1 max-w-2xl text-hh-metadata text-[var(--hh-muted)]">
               Labor entries, reimbursements, payments, and balance.
             </p>
           </div>
@@ -967,7 +966,7 @@ export default function WorkerBalanceDetailPage() {
       </header>
 
       {message ? (
-        <p className="rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-4 py-3 text-sm text-[var(--hh-text-secondary)] shadow-operational">
+        <p className="rounded-card border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-4 py-3 text-sm text-[var(--hh-text-secondary)] shadow-operational">
           {message}
         </p>
       ) : null}
@@ -976,7 +975,7 @@ export default function WorkerBalanceDetailPage() {
         <div
           data-testid="worker-payment-next-actions"
           className={cn(
-            "flex flex-col gap-3 rounded-hh-task border border-[var(--hh-success-border)] bg-[var(--hh-success-soft-fill)] px-4 py-3 shadow-operational",
+            "flex flex-col gap-3 rounded-card border border-[var(--hh-success-border)] bg-[var(--hh-success-soft-fill)] px-4 py-3 shadow-operational",
             "sm:flex-row sm:items-center sm:justify-between"
           )}
         >
@@ -1017,7 +1016,7 @@ export default function WorkerBalanceDetailPage() {
       ) : null}
 
       {loading ? (
-        <p className="rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-4 py-6 text-sm text-[var(--hh-text-secondary)] shadow-operational">
+        <p className="rounded-card border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-4 py-6 text-sm text-[var(--hh-text-secondary)] shadow-operational">
           Loading…
         </p>
       ) : (
@@ -1029,13 +1028,16 @@ export default function WorkerBalanceDetailPage() {
                 data-testid="worker-balance-summary"
                 className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5"
               >
-                <KpiTile label="Labor owed" value={formatCurrency(summary.laborOwed)} />
-                <KpiTile label="Reimbursements" value={formatCurrency(summary.reimbursements)} />
-                <KpiTile label="Payments" value={formatCurrency(summary.payments)} />
-                <KpiTile label="Advances" value={formatCurrency(summary.advances)} />
+                <KpiTile label="Labor owed" value={formatOverviewMoney(summary.laborOwed)} />
+                <KpiTile
+                  label="Reimbursements"
+                  value={formatOverviewMoney(summary.reimbursements)}
+                />
+                <KpiTile label="Payments" value={formatOverviewMoney(summary.payments)} />
+                <KpiTile label="Advances" value={formatOverviewMoney(summary.advances)} />
                 <KpiTile
                   label="Balance"
-                  value={formatCurrency(summary.balance)}
+                  value={formatOverviewMoney(summary.balance)}
                   emphasis={balanceTone(summary.balance)}
                 />
               </div>
@@ -1067,7 +1069,7 @@ export default function WorkerBalanceDetailPage() {
                         <div className="flex flex-col gap-3 bg-[var(--hh-l1-workspace)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                           <button
                             type="button"
-                            className="flex min-h-[44px] min-w-0 flex-1 items-center gap-3 rounded-hh-standard text-left transition-colors duration-150 hover:text-[var(--hh-action-primary)]"
+                            className="flex min-h-[44px] min-w-0 flex-1 items-center gap-3 rounded-hh-standard text-left transition-colors duration-150 hover:text-[var(--hh-link)]"
                             onClick={() => toggleMonthExpanded(group.key)}
                             aria-expanded={expanded}
                           >
@@ -1086,7 +1088,7 @@ export default function WorkerBalanceDetailPage() {
                               </span>
                               <span className="mt-0.5 block text-xs text-[var(--hh-text-secondary)]">
                                 {group.entryCount} {group.entryCount === 1 ? "entry" : "entries"} ·{" "}
-                                {formatDays(group.days)} · {formatCurrency(group.amount)}
+                                {formatDays(group.days)} · {formatOverviewMoney(group.amount)}
                               </span>
                             </span>
                           </button>
@@ -1098,7 +1100,7 @@ export default function WorkerBalanceDetailPage() {
                                 if (node) node.indeterminate = partiallySelected;
                               }}
                               onChange={() => toggleMonthSelection(group)}
-                              className="h-5 w-5 rounded border-[var(--hh-border)] bg-transparent accent-[var(--hh-action-primary)]"
+                              className="h-5 w-5 rounded border-[var(--hh-border)] bg-transparent accent-[var(--hh-link)]"
                               aria-label={`${allSelected ? "Unselect" : "Select"} ${
                                 group.label
                               } labor entries`}
@@ -1114,13 +1116,13 @@ export default function WorkerBalanceDetailPage() {
                                 {group.entries.map((r) => (
                                   <label
                                     key={r.id}
-                                    className="flex min-h-[64px] items-start gap-3 rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l3-hover)] px-3 py-3 shadow-operational"
+                                    className="flex min-h-[64px] items-start gap-3 rounded-card border border-[var(--hh-border)] bg-[var(--hh-l3-hover)] px-3 py-3 shadow-operational"
                                   >
                                     <input
                                       type="checkbox"
                                       checked={selectedLaborIds.has(r.id)}
                                       onChange={() => toggleLabor(r.id)}
-                                      className="mt-1 h-5 w-5 shrink-0 rounded border-[var(--hh-border)] bg-transparent accent-[var(--hh-action-primary)]"
+                                      className="mt-1 h-5 w-5 shrink-0 rounded border-[var(--hh-border)] bg-transparent accent-[var(--hh-link)]"
                                       aria-label={`Select ${formatLedgerDate(
                                         r.date,
                                         "compact"
@@ -1138,7 +1140,7 @@ export default function WorkerBalanceDetailPage() {
                                       </span>
                                     </span>
                                     <span className="shrink-0 text-sm font-semibold tabular-nums tracking-normal text-[var(--hh-text-primary)]">
-                                      {formatCurrency(r.amount)}
+                                      {formatOverviewMoney(r.amount)}
                                     </span>
                                   </label>
                                 ))}
@@ -1166,7 +1168,7 @@ export default function WorkerBalanceDetailPage() {
                                             type="checkbox"
                                             checked={selectedLaborIds.has(r.id)}
                                             onChange={() => toggleLabor(r.id)}
-                                            className="h-5 w-5 rounded border-[var(--hh-border)] bg-transparent accent-[var(--hh-action-primary)]"
+                                            className="h-5 w-5 rounded border-[var(--hh-border)] bg-transparent accent-[var(--hh-link)]"
                                             aria-label={`Select ${formatLedgerDate(
                                               r.date
                                             )} labor entry`}
@@ -1185,7 +1187,7 @@ export default function WorkerBalanceDetailPage() {
                                           {formatDays(entryDays(r))}
                                         </td>
                                         <td className={cn(ledgerAmountCell, "pr-4")}>
-                                          {formatCurrency(r.amount)}
+                                          {formatOverviewMoney(r.amount)}
                                         </td>
                                       </tr>
                                     ))}
@@ -1202,7 +1204,7 @@ export default function WorkerBalanceDetailPage() {
               )}
             </LedgerSection>
 
-            <div className="sticky bottom-3 z-20 rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l5-task-surface)] px-4 py-3 shadow-operational  supports-[backdrop-filter]:bg-[var(--hh-l5-task-surface)]">
+            <div className="sticky bottom-3 z-20 rounded-card border border-[var(--hh-border)] bg-[var(--hh-l5-task-surface)] px-4 py-3 shadow-operational  supports-[backdrop-filter]:bg-[var(--hh-l5-task-surface)]">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-3">
                   <div className="min-w-0">
@@ -1212,7 +1214,9 @@ export default function WorkerBalanceDetailPage() {
                     <p className="mt-0.5 text-sm font-medium text-[var(--hh-text-primary)]">
                       {selectedLaborEntries.length}{" "}
                       {selectedLaborEntries.length === 1 ? "entry" : "entries"} ·{" "}
-                      <span className="tabular-nums">{formatCurrency(selectedLaborTotal)}</span>
+                      <span className="tabular-nums">
+                        {formatOverviewMoney(selectedLaborTotal)}
+                      </span>
                     </p>
                   </div>
                   <div className="min-w-0">
@@ -1223,7 +1227,7 @@ export default function WorkerBalanceDetailPage() {
                       {selectedReimbursements.length}{" "}
                       {selectedReimbursements.length === 1 ? "item" : "items"} ·{" "}
                       <span className="tabular-nums">
-                        {formatCurrency(selectedReimbursementTotal)}
+                        {formatOverviewMoney(selectedReimbursementTotal)}
                       </span>
                     </p>
                   </div>
@@ -1231,8 +1235,8 @@ export default function WorkerBalanceDetailPage() {
                     <p className="text-xs font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                       Estimated cash
                     </p>
-                    <p className="mt-0.5 text-sm font-semibold tabular-nums text-[var(--hh-action-primary)]">
-                      {formatCurrency(netPaymentAmount)}
+                    <p className="mt-0.5 text-sm font-semibold tabular-nums text-[var(--hh-warning)]">
+                      {formatOverviewMoney(netPaymentAmount)}
                     </p>
                   </div>
                 </div>
@@ -1286,7 +1290,7 @@ export default function WorkerBalanceDetailPage() {
                         <div className="flex flex-col gap-3 bg-[var(--hh-l1-workspace)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                           <button
                             type="button"
-                            className="flex min-h-[44px] min-w-0 flex-1 items-center gap-3 rounded-hh-standard text-left transition-colors duration-150 hover:text-[var(--hh-action-primary)]"
+                            className="flex min-h-[44px] min-w-0 flex-1 items-center gap-3 rounded-hh-standard text-left transition-colors duration-150 hover:text-[var(--hh-link)]"
                             onClick={() => toggleReimbMonthExpanded(group.key)}
                             aria-expanded={expanded}
                           >
@@ -1306,7 +1310,7 @@ export default function WorkerBalanceDetailPage() {
                               <span className="mt-0.5 block text-xs text-[var(--hh-text-secondary)]">
                                 {group.entryCount}{" "}
                                 {group.entryCount === 1 ? "reimbursement" : "reimbursements"} ·{" "}
-                                {formatCurrency(group.amount)}
+                                {formatOverviewMoney(group.amount)}
                               </span>
                             </span>
                           </button>
@@ -1334,7 +1338,7 @@ export default function WorkerBalanceDetailPage() {
                                 {group.entries.map((r) => (
                                   <label
                                     key={r.id}
-                                    className="flex min-h-[64px] items-start gap-3 rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l3-hover)] px-3 py-3 shadow-operational"
+                                    className="flex min-h-[64px] items-start gap-3 rounded-card border border-[var(--hh-border)] bg-[var(--hh-l3-hover)] px-3 py-3 shadow-operational"
                                   >
                                     <input
                                       type="checkbox"
@@ -1365,7 +1369,7 @@ export default function WorkerBalanceDetailPage() {
                                       </span>
                                     </span>
                                     <span className="shrink-0 text-sm font-semibold tabular-nums tracking-normal text-[var(--hh-text-primary)]">
-                                      {formatCurrency(r.amount)}
+                                      {formatOverviewMoney(r.amount)}
                                     </span>
                                   </label>
                                 ))}
@@ -1419,7 +1423,7 @@ export default function WorkerBalanceDetailPage() {
                                           </span>
                                         </td>
                                         <td className={cn(ledgerAmountCell, "pr-4")}>
-                                          {formatCurrency(r.amount)}
+                                          {formatOverviewMoney(r.amount)}
                                         </td>
                                       </tr>
                                     ))}
@@ -1445,7 +1449,7 @@ export default function WorkerBalanceDetailPage() {
                     {payments.map((r) => (
                       <div
                         key={r.id}
-                        className="rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l1-workspace)] px-3 py-3 shadow-operational"
+                        className="rounded-card border border-[var(--hh-border)] bg-[var(--hh-l1-workspace)] px-3 py-3 shadow-operational"
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
@@ -1461,7 +1465,7 @@ export default function WorkerBalanceDetailPage() {
                           </div>
                           <div className="shrink-0 text-right">
                             <p className="text-sm font-semibold tabular-nums tracking-normal text-[var(--hh-text-primary)]">
-                              {formatCurrency(r.amount)}
+                              {formatOverviewMoney(r.amount)}
                             </p>
                           </div>
                         </div>
@@ -1491,7 +1495,7 @@ export default function WorkerBalanceDetailPage() {
                             <td className={cn(ledgerCell, "pl-4")}>
                               <span className={LEDGER_DATE_CLASS}>{formatLedgerDate(r.date)}</span>
                             </td>
-                            <td className={ledgerAmountCell}>{formatCurrency(r.amount)}</td>
+                            <td className={ledgerAmountCell}>{formatOverviewMoney(r.amount)}</td>
                             <td className={ledgerCell}>{r.paymentMethod ?? <Dash />}</td>
                             <td className="py-2.5 pr-4 align-middle text-hh-table-cell leading-snug text-[var(--hh-text-secondary)]">
                               <span
@@ -1527,7 +1531,7 @@ export default function WorkerBalanceDetailPage() {
               payment.
             </p>
 
-            <div className="rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l3-hover)] px-3 py-3">
+            <div className="rounded-card border border-[var(--hh-border)] bg-[var(--hh-l3-hover)] px-3 py-3">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-xs font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]">
@@ -1541,18 +1545,18 @@ export default function WorkerBalanceDetailPage() {
                       : "No month selected"}
                   </p>
                   {isPartialMonthPayment ? (
-                    <p className="mt-1 text-xs font-medium text-[var(--hh-action-primary)]">
+                    <p className="mt-1 text-xs font-medium text-[var(--hh-warning)]">
                       Partial month payment
                     </p>
                   ) : null}
                 </div>
                 <p className="shrink-0 text-sm font-semibold tabular-nums tracking-normal text-[var(--hh-text-primary)]">
-                  {formatCurrency(selectedLaborTotal)}
+                  {formatOverviewMoney(selectedLaborTotal)}
                 </p>
               </div>
             </div>
 
-            <div className="rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l3-hover)] px-3 py-3">
+            <div className="rounded-card border border-[var(--hh-border)] bg-[var(--hh-l3-hover)] px-3 py-3">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-xs font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]">
@@ -1566,13 +1570,13 @@ export default function WorkerBalanceDetailPage() {
                       : "No reimbursement selected"}
                   </p>
                   {isPartialReimbursementMonthPayment ? (
-                    <p className="mt-1 text-xs font-medium text-[var(--hh-action-primary)]">
+                    <p className="mt-1 text-xs font-medium text-[var(--hh-warning)]">
                       Partial reimbursement month
                     </p>
                   ) : null}
                 </div>
                 <p className="shrink-0 text-sm font-semibold tabular-nums tracking-normal text-[var(--hh-text-primary)]">
-                  {formatCurrency(selectedReimbursementTotal)}
+                  {formatOverviewMoney(selectedReimbursementTotal)}
                 </p>
               </div>
             </div>
@@ -1582,7 +1586,7 @@ export default function WorkerBalanceDetailPage() {
                 <p className="text-xs font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)] mb-2">
                   Reimbursements
                 </p>
-                <div className="max-h-40 overflow-y-auto rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l3-hover)] shadow-operational">
+                <div className="max-h-40 overflow-y-auto rounded-card border border-[var(--hh-border)] bg-[var(--hh-l3-hover)] shadow-operational">
                   {unpaidReimb.map((r) => (
                     <label
                       key={r.id}
@@ -1598,7 +1602,7 @@ export default function WorkerBalanceDetailPage() {
                         {formatLedgerDate(r.date, "compact")} · {r.vendor ?? "—"}
                       </span>
                       <span className="text-sm tabular-nums font-semibold tracking-normal text-[var(--hh-text-primary)]">
-                        {formatCurrency(r.amount)}
+                        {formatOverviewMoney(r.amount)}
                       </span>
                     </label>
                   ))}
@@ -1611,7 +1615,7 @@ export default function WorkerBalanceDetailPage() {
                 <p className="mb-2 text-xs font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                   Open advances
                 </p>
-                <div className="rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l3-hover)] shadow-operational">
+                <div className="rounded-card border border-[var(--hh-border)] bg-[var(--hh-l3-hover)] shadow-operational">
                   {advancePlan.rows.length > 0 ? (
                     <ul className="divide-y divide-[var(--hh-border)]">
                       {advancePlan.rows.map((advance) => (
@@ -1623,7 +1627,7 @@ export default function WorkerBalanceDetailPage() {
                             {formatLedgerDate(advance.date, "compact")} · deduction
                           </span>
                           <span className="shrink-0 font-semibold tabular-nums tracking-normal text-[var(--hh-danger)]">
-                            -{formatCurrency(advance.amount)}
+                            −{formatOverviewMoney(advance.amount)}
                           </span>
                         </li>
                       ))}
@@ -1635,7 +1639,7 @@ export default function WorkerBalanceDetailPage() {
                   )}
                   {unappliedAdvanceAmount > 0.005 ? (
                     <p className="border-t border-[var(--hh-border)] px-3 py-2 text-xs text-[var(--hh-text-tertiary)]">
-                      {formatCurrency(unappliedAdvanceAmount)} remains open after this payment.
+                      {formatOverviewMoney(unappliedAdvanceAmount)} remains open after this payment.
                     </p>
                   ) : null}
                 </div>
@@ -1646,21 +1650,23 @@ export default function WorkerBalanceDetailPage() {
               <dl className="space-y-1.5 text-sm">
                 <div className="flex justify-between gap-3 text-[var(--hh-text-secondary)]">
                   <dt>Selected labor</dt>
-                  <dd className="tabular-nums">{formatCurrency(selectedLaborTotal)}</dd>
+                  <dd className="tabular-nums">{formatOverviewMoney(selectedLaborTotal)}</dd>
                 </div>
                 <div className="flex justify-between gap-3 text-[var(--hh-text-secondary)]">
                   <dt>Included reimbursements</dt>
-                  <dd className="tabular-nums">{formatCurrency(includedReimbursementTotal)}</dd>
+                  <dd className="tabular-nums">
+                    {formatOverviewMoney(includedReimbursementTotal)}
+                  </dd>
                 </div>
                 {advanceDeductionAmount > 0 ? (
                   <div className="flex justify-between gap-3 text-[var(--hh-text-secondary)]">
                     <dt>Advance deduction</dt>
-                    <dd className="tabular-nums">-{formatCurrency(advanceDeductionAmount)}</dd>
+                    <dd className="tabular-nums">−{formatOverviewMoney(advanceDeductionAmount)}</dd>
                   </div>
                 ) : null}
                 <div className="flex justify-between gap-3 pt-1 text-sm font-semibold">
                   <dt>Total Payment Amount</dt>
-                  <dd className="tabular-nums">{formatCurrency(netPaymentAmount)}</dd>
+                  <dd className="tabular-nums">{formatOverviewMoney(netPaymentAmount)}</dd>
                 </div>
               </dl>
             </div>
@@ -1682,17 +1688,17 @@ export default function WorkerBalanceDetailPage() {
                     )}
                   >
                     {splitDelta === 0
-                      ? `Remaining ${formatCurrency(0)}`
+                      ? `Remaining ${formatOverviewMoney(0)}`
                       : splitDelta > 0
-                        ? `Remaining ${formatCurrency(splitDelta)}`
-                        : `Over by ${formatCurrency(Math.abs(splitDelta))}`}
+                        ? `Remaining ${formatOverviewMoney(splitDelta)}`
+                        : `Over by ${formatOverviewMoney(Math.abs(splitDelta))}`}
                   </span>
                 ) : null}
               </div>
 
-              <div className="mt-2 rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l3-hover)] p-2 shadow-operational">
+              <div className="mt-2 rounded-card border border-[var(--hh-border)] bg-[var(--hh-l3-hover)] p-2 shadow-operational">
                 {splitRows.length === 0 ? (
-                  <div className="rounded-hh-task border border-dashed border-[var(--hh-border)] bg-[var(--hh-l1-workspace)] px-3 py-3">
+                  <div className="rounded-card border border-dashed border-[var(--hh-border)] bg-[var(--hh-l1-workspace)] px-3 py-3">
                     <p className="text-sm text-[var(--hh-text-tertiary)]">
                       No payment methods yet.
                     </p>
@@ -1701,7 +1707,7 @@ export default function WorkerBalanceDetailPage() {
                   <ul className="divide-y divide-[var(--hh-border)]">
                     {splitRows.map((r, idx) => {
                       const amt = Number(r.amount);
-                      const amtText = Number.isFinite(amt) ? formatCurrency(amt) : "—";
+                      const amtText = Number.isFinite(amt) ? formatOverviewMoney(amt) : "—";
                       return (
                         <li key={r.id} className="flex items-center gap-3 py-2">
                           <div className="min-w-0 flex-1">
