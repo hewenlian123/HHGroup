@@ -157,14 +157,16 @@ export default function SystemBackupsPage() {
 
   return (
     <PageLayout
+      frame="list"
+      divider={false}
       header={
         <PageHeader
+          variant="workspace"
           title="System Backups"
           description="Create and manage JSON exports of all critical database tables."
           actions={
             <Button
               size="sm"
-              variant="outline"
               className="min-h-[44px] w-full sm:min-h-0 sm:w-auto"
               onClick={() => setConfirmingCreate(true)}
               disabled={creating}
@@ -243,7 +245,7 @@ export default function SystemBackupsPage() {
           {!createResult.ok && createResult.data != null && createResult.filename ? (
             <button
               type="button"
-              className="mt-1 w-fit text-xs underline underline-offset-2"
+              className="mt-1 w-fit text-xs text-[var(--hh-link)] underline-offset-4 hover:text-[var(--hh-navy)] hover:underline"
               onClick={() =>
                 downloadJson(createResult.data, createResult.filename ?? "backup.json")
               }
@@ -287,7 +289,10 @@ export default function SystemBackupsPage() {
             expense_lines, invoices, payments_received
           </span>
           . Each backup is a single JSON file. Failures are logged to{" "}
-          <a href="/system-logs" className="underline underline-offset-2">
+          <a
+            href="/system-logs"
+            className="text-[var(--hh-link)] underline-offset-4 hover:text-[var(--hh-navy)] hover:underline"
+          >
             System Logs
           </a>
           .

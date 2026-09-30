@@ -427,7 +427,7 @@ function HealthStatusLabel({ status }: { status: HealthCheckStatus }) {
 
 function QaSummaryCard({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-4 py-3 shadow-operational">
+    <div className="rounded-card border border-[var(--hh-line)] bg-[var(--hh-surface)] px-4 py-3 shadow-card">
       <p className="text-hh-label uppercase text-[var(--hh-text-tertiary)]">{label}</p>
       <p className="mt-1 text-hh-financial-total font-semibold text-[var(--hh-text-primary)] hh-fin">
         {value}
@@ -743,7 +743,7 @@ function DataQualityPanel({
                                 {issue.link ? (
                                   <Link
                                     href={issue.link}
-                                    className="no-underline underline-offset-4 hover:underline"
+                                    className="text-[var(--hh-link)] no-underline underline-offset-4 hover:text-[var(--hh-navy)] hover:underline"
                                   >
                                     {issue.entityName ?? issue.issueCode}
                                   </Link>
@@ -813,7 +813,7 @@ function SystemQaSectionTable({ section }: { section: SystemQaSection }) {
   const passCount = section.checks.filter((check) => check.status === "pass").length;
 
   return (
-    <div className="rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-3 sm:p-4">
+    <div className="rounded-card border border-[var(--hh-line)] bg-[var(--hh-surface)] shadow-card p-3 sm:p-4">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h3 className="text-sm font-medium text-[var(--hh-text-primary)]">{section.name}</h3>
@@ -1329,10 +1329,10 @@ function StatusOrb({ status }: { status: HealthCheckStatus }) {
 
   return (
     <div
-      className={`relative grid h-28 w-28 shrink-0 place-items-center rounded-full border bg-[var(--hh-l2-operational-surface)] ${ring} shadow-operational sm:h-32 sm:w-32`}
+      className={`relative grid h-28 w-28 shrink-0 place-items-center rounded-full border bg-[var(--hh-surface)] ${ring} shadow-card sm:h-32 sm:w-32`}
       aria-hidden="true"
     >
-      <div className="grid h-full w-full place-items-center rounded-full bg-[var(--hh-l2-operational-surface)]">
+      <div className="grid h-full w-full place-items-center rounded-full bg-[var(--hh-surface)]">
         <div className="text-center">
           <p className="text-hh-financial-total font-semibold text-[var(--hh-text-primary)] hh-fin">
             {score}
@@ -1372,7 +1372,7 @@ function HealthHero({
 
   return (
     <section
-      className={`guardian-hero relative overflow-hidden rounded-hh-task border ${tone.border}`}
+      className={`guardian-hero relative overflow-hidden rounded-card border ${tone.border}`}
     >
       <div className="relative z-10 grid gap-5 p-4 pb-10 sm:p-5 sm:pb-10 lg:grid-cols-[1fr_auto] lg:items-center lg:p-6 lg:pb-11">
         <div className="min-w-0">
@@ -1386,10 +1386,8 @@ function HealthHero({
               label={healthStatusLabel(overallStatus, { executive: true })}
             />
           </div>
-          <h1 className="text-hh-page-title font-semibold text-[var(--hh-text-primary)]">
-            System Guardian
-          </h1>
-          <p className="mt-2 max-w-2xl text-hh-body text-[var(--hh-text-secondary)]">
+          <h1 className="text-title-page text-[var(--hh-ink)]">System Guardian</h1>
+          <p className="mt-2 max-w-2xl text-hh-metadata text-[var(--hh-muted)]">
             Production health, data reachability, route availability, and safety guards.
           </p>
 
@@ -1470,7 +1468,7 @@ function HealthSummaryCard({
   const tone = statusToneClasses(status);
   return (
     <div
-      className={`guardian-summary-card group rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-4 transition duration-200 hover:border-[var(--hh-border-strong)] hover:bg-[var(--hh-l3-hover)] ${tone.glow}`}
+      className={`guardian-summary-card group rounded-card border border-[var(--hh-line)] bg-[var(--hh-surface)] p-4 shadow-card transition duration-200 hover:border-[var(--hh-navy-mid)] hover:bg-[var(--hh-hover)] ${tone.glow}`}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="grid h-9 w-9 shrink-0 place-items-center rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l3-selected)] text-[var(--hh-text-secondary)]">
@@ -1537,7 +1535,7 @@ function ActiveIssuesPanel({
             return (
               <div
                 key={issue.id}
-                className={`relative overflow-hidden rounded-hh-standard border ${tone.border} bg-[var(--hh-l2-operational-surface)] p-3 transition duration-150 hover:bg-[var(--hh-l3-hover)] ${tone.glow}`}
+                className={`relative overflow-hidden rounded-card border ${tone.border} bg-[var(--hh-surface)] p-3 shadow-card transition duration-150 hover:bg-[var(--hh-hover)] ${tone.glow}`}
               >
                 <span
                   className={`absolute inset-y-3 left-0 w-px ${
@@ -1550,7 +1548,7 @@ function ActiveIssuesPanel({
                       {issue.href ? (
                         <Link
                           href={issue.href}
-                          className="no-underline underline-offset-4 hover:underline"
+                          className="text-[var(--hh-link)] no-underline underline-offset-4 hover:text-[var(--hh-navy)] hover:underline"
                         >
                           {issue.title}
                         </Link>
@@ -1660,7 +1658,7 @@ function HealthDetailCard({ row }: { row: HealthDetailRowData }) {
 
   return (
     <div
-      className={`rounded-hh-standard border bg-[var(--hh-l2-operational-surface)] p-3 transition duration-150 ${tone.row}`}
+      className={`rounded-card border border-[var(--hh-line)] bg-[var(--hh-surface)] p-3 shadow-card transition duration-150 ${tone.row}`}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
@@ -1819,7 +1817,7 @@ function MetadataGrid({ rows }: { rows: Array<{ label: string; value: React.Reac
       {rows.map((row) => (
         <div
           key={row.label}
-          className="rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-3"
+          className="rounded-card border border-[var(--hh-line)] bg-[var(--hh-surface)] shadow-card p-3"
         >
           <p className="text-hh-label uppercase text-[var(--hh-text-tertiary)]">{row.label}</p>
           <div className="mt-1 min-w-0 text-hh-body text-[var(--hh-text-primary)]">{row.value}</div>
@@ -2485,26 +2483,26 @@ export default function SystemHealthPage() {
   ];
 
   return (
-    <div className="system-health-command-center min-h-screen bg-workspace px-3 pb-[calc(env(safe-area-inset-bottom)+2rem)] pt-4 text-[var(--hh-text-secondary)] sm:px-4 lg:px-6">
+    <div className="system-health-command-center hh-list-frame page-stack flex min-w-0 flex-col bg-[var(--hh-l0-canvas)] py-3 text-[var(--hh-ink)] md:py-6">
       <style jsx global>{`
         .system-health-command-center {
-          background: var(--hh-l1-workspace);
+          background: var(--hh-l0-canvas);
         }
         .system-health-command-center .guardian-hero {
-          background: var(--hh-l2-operational-surface);
-          box-shadow: var(--hh-shadow-operational);
+          background: var(--hh-surface);
+          box-shadow: var(--hh-shadow-card);
         }
         .system-health-command-center .guardian-panel {
-          border: 1px solid var(--hh-border);
-          border-radius: var(--hh-radius-standard);
-          background: var(--hh-l2-operational-surface);
-          box-shadow: var(--hh-shadow-operational);
+          border: 1px solid var(--hh-line);
+          border-radius: var(--hh-radius-xl);
+          background: var(--hh-surface);
+          box-shadow: var(--hh-shadow-card);
         }
         .system-health-command-center .guardian-hero-metric {
           min-width: 0;
-          border-radius: var(--hh-radius-standard);
-          border: 1px solid var(--hh-border);
-          background: var(--hh-l2-operational-surface);
+          border-radius: var(--hh-radius-xl);
+          border: 1px solid var(--hh-line);
+          background: var(--hh-surface);
           padding: var(--hh-space-2) var(--hh-space-3);
         }
         .system-health-command-center .guardian-hero-metric span {
@@ -2523,9 +2521,9 @@ export default function SystemHealthPage() {
         .system-health-command-center .airtable-table-wrap {
           max-width: 100%;
           overflow: hidden;
-          border-color: var(--hh-border) !important;
-          border-radius: var(--hh-radius-standard);
-          background: var(--hh-l2-operational-surface) !important;
+          border-color: var(--hh-line) !important;
+          border-radius: var(--hh-radius-xl);
+          background: var(--hh-surface) !important;
         }
         .system-health-command-center .airtable-table-scroll {
           max-width: 100%;
@@ -2534,9 +2532,9 @@ export default function SystemHealthPage() {
         .system-health-command-center .guardian-table-shell {
           max-width: 100%;
           overflow: hidden;
-          border: 1px solid var(--hh-border);
-          border-radius: var(--hh-radius-standard);
-          background: var(--hh-l2-operational-surface);
+          border: 1px solid var(--hh-line);
+          border-radius: var(--hh-radius-xl);
+          background: var(--hh-surface);
         }
         .system-health-command-center .guardian-detail-table,
         .system-health-command-center .airtable-table-wrap table {
@@ -2545,17 +2543,17 @@ export default function SystemHealthPage() {
         }
         .system-health-command-center .guardian-detail-table thead tr,
         .system-health-command-center .airtable-table-wrap thead tr {
-          background: var(--hh-l2-operational-surface) !important;
+          background: var(--hh-surface) !important;
         }
         .system-health-command-center .guardian-detail-table th,
         .system-health-command-center .airtable-table-wrap th {
-          border-bottom: 1px solid var(--hh-border) !important;
+          border-bottom: 1px solid var(--hh-line) !important;
           background: transparent !important;
           color: var(--hh-text-tertiary) !important;
         }
         .system-health-command-center .guardian-detail-table td,
         .system-health-command-center .airtable-table-wrap td {
-          border-color: var(--hh-border) !important;
+          border-color: var(--hh-line) !important;
           background: transparent !important;
           box-shadow: none !important;
         }
@@ -2564,7 +2562,7 @@ export default function SystemHealthPage() {
         }
       `}</style>
 
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-4">
+      <div className="flex w-full min-w-0 flex-col gap-4">
         <HealthHero
           overallStatus={overallStatus}
           checkedAt={displayCheckedAt}
@@ -2849,7 +2847,7 @@ export default function SystemHealthPage() {
               </>
             ) : (
               <div className="px-4 pb-4">
-                <div className="rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-3 text-sm text-[var(--hh-text-secondary)]">
+                <div className="rounded-card border border-[var(--hh-line)] bg-[var(--hh-surface)] shadow-card p-3 text-sm text-[var(--hh-text-secondary)]">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="rounded-hh-compact border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-2 py-1 text-xs text-[var(--hh-text-secondary)]">
                       Read-only scan
@@ -2947,7 +2945,7 @@ export default function SystemHealthPage() {
               </>
             ) : (
               <div className="px-4 pb-4">
-                <div className="rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-3 text-sm text-[var(--hh-text-secondary)]">
+                <div className="rounded-card border border-[var(--hh-line)] bg-[var(--hh-surface)] shadow-card p-3 text-sm text-[var(--hh-text-secondary)]">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="rounded-hh-compact border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-2 py-1 text-xs text-[var(--hh-text-secondary)]">
                       Read-only scan
