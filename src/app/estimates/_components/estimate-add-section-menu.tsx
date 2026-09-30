@@ -164,7 +164,7 @@ export function EstimateAddSectionMenu({
                   }
                 }}
                 className={cn(
-                  "h-8 min-w-0 flex-1 rounded-md border border-[var(--hh-border-strong)] bg-white px-2.5 text-hh-table-cell text-[var(--hh-text-primary)] outline-none transition-[border-color,box-shadow] duration-150 focus-visible:border-[var(--hh-border-strong)] focus:ring-2 focus-visible:ring-[var(--hh-focus-ring)]",
+                  "h-hh-control-standard min-w-0 flex-1 rounded-hh-compact border border-[var(--hh-border-strong)] bg-white px-2.5 text-hh-body text-[var(--hh-text-primary)] outline-none transition-[border-color,box-shadow] duration-150 focus-visible:border-[var(--hh-border-strong)] focus:ring-2 focus-visible:ring-[var(--hh-focus-ring)]",
                   "placeholder:text-[var(--hh-text-tertiary)]"
                 )}
                 placeholder="Proposal section title"
@@ -176,7 +176,7 @@ export function EstimateAddSectionMenu({
               <button
                 type="button"
                 className={cn(
-                  "h-8 shrink-0 rounded-md px-2.5 text-hh-metadata font-semibold transition",
+                  "h-hh-control-standard shrink-0 rounded-hh-compact px-2.5 text-hh-metadata font-semibold transition",
                   canSubmitCustom
                     ? "bg-[var(--hh-action-primary)] text-[var(--hh-action-primary-foreground)] hover:opacity-90"
                     : "cursor-not-allowed bg-[var(--hh-l3-hover)] text-[var(--hh-text-tertiary)]"

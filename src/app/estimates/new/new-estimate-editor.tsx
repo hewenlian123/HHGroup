@@ -135,7 +135,7 @@ function EstimateTemplateSelector({
         value={selectedTemplateId}
         onChange={(event) => onTemplateChange(event.target.value)}
         className={ebInput(
-          "min-h-11 w-[7.5rem] min-w-0 shrink-0 px-2 text-sm sm:w-[11rem] sm:px-3 md:h-8 md:min-h-8 md:w-[220px]"
+          "min-h-11 w-[7.5rem] min-w-0 shrink-0 px-2 text-sm sm:w-[11rem] sm:px-3 md:w-[220px]"
         )}
         aria-label="Estimate template"
         data-testid="estimate-template-select"

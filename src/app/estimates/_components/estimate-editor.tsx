@@ -1590,7 +1590,7 @@ function LineItemRow({
           {isLocked ? (
             <span
               className={cn(
-                "flex h-8 min-h-8 items-center justify-end px-2 text-hh-table-cell text-foreground",
+                "flex h-hh-control-standard min-h-[var(--hh-control-height-standard)] items-center justify-end px-2 text-hh-table-cell text-foreground",
                 EB.inputNumeric,
                 EB.lineQtyInput
               )}
@@ -1610,7 +1610,7 @@ function LineItemRow({
               }}
               onBlur={submitOnBlur}
               onWheel={(event) => event.currentTarget.blur()}
-              className={ebInput(`h-8 min-h-8 w-full px-2 ${EB.inputNumeric} ${EB.lineQtyInput}`)}
+              className={ebInput(`w-full px-2 ${EB.inputNumeric} ${EB.lineQtyInput}`)}
               aria-label="Line item quantity"
             />
           )}
@@ -1620,7 +1620,7 @@ function LineItemRow({
           {isLocked ? (
             <span
               className={cn(
-                "flex h-8 min-h-8 items-center px-2 text-hh-table-cell text-foreground",
+                "flex h-hh-control-standard min-h-[var(--hh-control-height-standard)] items-center px-2 text-hh-table-cell text-foreground",
                 EB.inputMuted,
                 EB.lineMeasureInput
               )}
@@ -1638,7 +1638,7 @@ function LineItemRow({
                   setUnit(e.target.value);
                 }}
                 onBlur={submitOnBlur}
-                className={ebInput(`h-8 min-h-8 w-full px-2 ${EB.lineMeasureInput}`)}
+                className={ebInput(`w-full px-2 ${EB.lineMeasureInput}`)}
                 aria-label="Line item unit"
                 placeholder="EA"
               />
@@ -1656,7 +1656,7 @@ function LineItemRow({
         {isLocked ? (
           <span
             className={cn(
-              "flex h-8 min-h-8 items-center justify-end px-2 text-hh-table-cell text-foreground",
+              "flex h-hh-control-standard min-h-[var(--hh-control-height-standard)] items-center justify-end px-2 text-hh-table-cell text-foreground",
               EB.inputNumeric,
               EB.lineUnitInput
             )}
@@ -1685,7 +1685,7 @@ function LineItemRow({
                 onCommitFromPrice?.();
               });
             }}
-            className={ebInput(`h-8 min-h-8 w-full px-2 ${EB.inputNumeric} ${EB.lineUnitInput}`)}
+            className={ebInput(`w-full px-2 ${EB.inputNumeric} ${EB.lineUnitInput}`)}
             aria-label="Line item unit price"
           />
         )}
@@ -2235,7 +2235,7 @@ function AddCategoryBlock({
               onClick={() => setOpen(true)}
               onKeyDown={handleKeyDown}
               placeholder="Add or search section…"
-              className={ebInput("h-8 pr-9")}
+              className={ebInput("pr-9")}
               autoComplete="off"
             />
             <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[var(--hh-muted)]">

@@ -935,7 +935,7 @@ export function EstimateLineItemsLocal({
                                                   }
                                                   onWheel={(event) => event.currentTarget.blur()}
                                                   className={ebInput(
-                                                    `h-8 min-h-8 w-full px-2 ${EB.inputNumeric} ${EB.lineQtyInput}`
+                                                    `w-full px-2 ${EB.inputNumeric} ${EB.lineQtyInput}`
                                                   )}
                                                   aria-label={`Line item ${globalIdx} quantity`}
                                                   disabled={disabled}
@@ -959,7 +959,7 @@ export function EstimateLineItemsLocal({
                                                     updateItem(row.id, { unit: e.target.value })
                                                   }
                                                   className={ebInput(
-                                                    `h-8 min-h-8 w-full px-2 ${EB.lineMeasureInput}`
+                                                    `w-full px-2 ${EB.lineMeasureInput}`
                                                   )}
                                                   aria-label={`Line item ${globalIdx} unit`}
                                                   placeholder="EA"
@@ -998,7 +998,7 @@ export function EstimateLineItemsLocal({
                                                 }}
                                                 onWheel={(event) => event.currentTarget.blur()}
                                                 className={ebInput(
-                                                  `h-8 min-h-8 w-full px-2 ${EB.inputNumeric} ${EB.lineUnitInput}`
+                                                  `w-full px-2 ${EB.inputNumeric} ${EB.lineUnitInput}`
                                                 )}
                                                 aria-label={`Line item ${globalIdx} unit price`}
                                                 disabled={disabled}

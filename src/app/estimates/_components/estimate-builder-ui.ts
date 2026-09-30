@@ -77,7 +77,7 @@ export const EB = {
   linePricingTotal: "eb-line-pricing-total",
   iconAction: "eb-icon-action",
   portalPrimaryButton:
-    "!border-foreground !bg-foreground !text-background shadow-sm hover:!bg-foreground/90 focus-visible:!ring-ring",
+    "!border-[var(--hh-brass-edge)] !bg-[var(--hh-brass)] !text-[var(--hh-on-brass)] shadow-none hover:!border-[var(--hh-brass-lo)] hover:!bg-[var(--hh-brass-lo)] focus-visible:!ring-[var(--hh-focus-ring)]",
   portalGhostButton:
     "!border-border !bg-background !text-foreground shadow-none hover:!bg-muted focus-visible:!ring-ring",
 
@@ -102,7 +102,7 @@ export const EB = {
   readValueMuted: "eb-read-value-muted text-hh-metadata hh-fin truncate text-muted-foreground",
   readDash: "eb-read-dash text-hh-body text-muted-foreground",
   input:
-    "eb-input hh-type-text-entry min-h-11 w-full rounded-hh-compact px-3 py-1 text-foreground transition-[border-color,background,box-shadow] duration-150 placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-0 disabled:cursor-not-allowed disabled:text-muted-foreground disabled:opacity-100 md:h-8 md:min-h-8 md:px-2.5",
+    "eb-input hh-type-text-entry min-h-11 w-full rounded-hh-compact px-3 py-1 text-foreground transition-[border-color,background,box-shadow] duration-150 placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-0 disabled:cursor-not-allowed disabled:text-muted-foreground disabled:opacity-100 md:h-hh-control-standard md:min-h-[var(--hh-control-height-standard)] md:px-2.5",
   inputMuted: "font-normal text-foreground",
   inputNumeric: "hh-fin text-right",
   lineTableHead: "border-b border-border pb-2 text-hh-table-header uppercase text-muted-foreground",

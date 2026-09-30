@@ -6,6 +6,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -303,7 +304,7 @@ export function EstimateSectionTitleMenu({
             )}
             onMouseDown={(e) => e.preventDefault()}
             onClick={(e) => e.stopPropagation()}
-            aria-label={`Section: ${headerLabel}. Open menu to change or rename.`}
+            aria-label={`Section: ${headerLabel}. Move, add, or rename.`}
           >
             <span className="truncate min-w-0">{headerLabel}</span>
           </button>
@@ -312,6 +313,7 @@ export function EstimateSectionTitleMenu({
           align="start"
           className="min-w-[16rem] max-h-72 overflow-y-auto rounded-md border-border/15 z-[120]"
         >
+          <DropdownMenuLabel>Move this section</DropdownMenuLabel>
           {sectionOptions.map((o) => (
             <DropdownMenuItem
               key={o.code}
@@ -354,7 +356,7 @@ export function EstimateSectionTitleMenu({
         <DialogContent className="max-w-sm gap-4 rounded-card p-5 shadow-task">
           <DialogHeader className="space-y-1 pb-1">
             <DialogTitle>Rename section</DialogTitle>
-            <DialogDescription className="sr-only">Rename this estimate section.</DialogDescription>
+            <DialogDescription>Updates the section name on this estimate.</DialogDescription>
           </DialogHeader>
           <div className="space-y-1.5 pb-1">
             <Label htmlFor={`section-rename-${currentCostCode}`}>Name</Label>
