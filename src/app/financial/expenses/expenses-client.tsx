@@ -970,7 +970,7 @@ export function ExpensesPageClient({
   const [previewExpense, setPreviewExpense] = React.useState<Expense | null>(null);
   const navigationGuardRef = React.useRef<((navigate: () => void) => void) | null>(null);
   const [previewOpen, setPreviewOpen] = React.useState(false);
-  const [previewEnterMode, setPreviewEnterMode] = React.useState<"preview" | "edit">("preview");
+  const [previewEnterMode, setPreviewEnterMode] = React.useState<"preview" | "edit">("edit");
   const [focusReviewOnOpen, setFocusReviewOnOpen] = React.useState(false);
   const [deletingExpenseId, setDeletingExpenseId] = React.useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = React.useState<Expense | null>(null);
@@ -1801,7 +1801,8 @@ export function ExpensesPageClient({
     (row: Expense, opts?: { mode?: "preview" | "edit"; focusReview?: boolean }) => {
       const navigate = () => {
         setPreviewExpense(row);
-        setPreviewEnterMode(opts?.mode ?? "preview");
+        // Ledger opens directly in inline edit; callers may still request preview.
+        setPreviewEnterMode(opts?.mode ?? "edit");
         setFocusReviewOnOpen(Boolean(opts?.focusReview));
         setPreviewOpen(true);
         setActiveExpenseId(row.id);
@@ -1852,6 +1853,7 @@ export function ExpensesPageClient({
     if (!selected) return;
     setActiveExpenseId(selected.id);
     setPreviewExpense((current) => (current?.id === selected.id ? current : selected));
+    setPreviewEnterMode((current) => (current === "edit" ? current : "edit"));
     setPreviewOpen(true);
   }, [expensesForListing, selectedExpenseIdFromUrl]);
 
@@ -2420,7 +2422,7 @@ export function ExpensesPageClient({
   const selectWorkspaceExpense = React.useCallback(
     (expense: Expense, history: "push" | "replace" = "push") => {
       setPreviewExpense(expense);
-      setPreviewEnterMode("preview");
+      setPreviewEnterMode("edit");
       setFocusReviewOnOpen(false);
       setPreviewOpen(true);
       setActiveExpenseId(expense.id);

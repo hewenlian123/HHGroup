@@ -403,7 +403,6 @@ test.describe("Inbox draft upload receipt", () => {
       await expect(archivePanel).toBeVisible({
         timeout: 15_000,
       });
-      await archivePanel.getByRole("button", { name: "Edit Expense", exact: true }).click();
       await expect(archivePanel).toHaveAttribute("data-expense-detail-mode", "edit");
     } finally {
       if (uploadedInboxRef) await cleanupInboxOcrDraft(admin, uploadedInboxRef);
@@ -623,7 +622,6 @@ test.describe("Inbox draft upload receipt", () => {
       await expect(archivePanel).toBeVisible({
         timeout: 15_000,
       });
-      await archivePanel.getByRole("button", { name: "Edit Expense", exact: true }).click();
       await expect(archivePanel).toHaveAttribute("data-expense-detail-mode", "edit");
     } finally {
       if (uploadedInboxRef) await cleanupInboxOcrDraft(admin, uploadedInboxRef);
@@ -790,7 +788,6 @@ test.describe("Inbox draft upload receipt", () => {
       await expect(archivePanel).toBeVisible({
         timeout: 15_000,
       });
-      await archivePanel.getByRole("button", { name: "Edit Expense", exact: true }).click();
       await expect(archivePanel).toHaveAttribute("data-expense-detail-mode", "edit");
       await page.goto(E2E_FINANCIAL_EXPENSES_ARCHIVE_URL, {
         waitUntil: "domcontentloaded",

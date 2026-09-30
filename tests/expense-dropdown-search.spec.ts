@@ -224,36 +224,31 @@ test.describe("Expense searchable dropdowns", () => {
       const row = expenseListRowById(page, reviewedId);
       await expect(row).toBeVisible({ timeout: 60_000 });
       await row.click();
-      const expenseDialog = page.getByRole("dialog");
-      await expect(expenseDialog.getByRole("heading", { name: /^Expense$/ })).toBeVisible({
-        timeout: 15_000,
-      });
-      await expenseDialog.getByRole("button", { name: /^Edit$/ }).click();
-      await expect(expenseDialog.getByRole("heading", { name: /Edit expense/i })).toBeVisible({
-        timeout: 15_000,
-      });
+      const expensePanel = page.locator("[data-expense-detail-panel]");
+      await expect(expensePanel).toBeVisible({ timeout: 15_000 });
+      await expect(expensePanel).toHaveAttribute("data-expense-detail-mode", "edit");
 
       await chooseSearchResult(
         page,
-        expenseDialog.locator("#edit-expense-payment-source-select"),
+        expensePanel.locator("#edit-expense-payment-source-select"),
         "worker",
         "Worker reimbursement"
       );
       await chooseSearchResult(
         page,
-        expenseDialog.locator("#edit-expense-worker-select"),
+        expensePanel.locator("#edit-expense-worker-select"),
         "seed",
         E2E_PRESERVED_WORKER_LABEL
       );
       await chooseSearchResult(
         page,
-        expenseDialog.locator("#edit-expense-payment-method-select"),
+        expensePanel.locator("#edit-expense-payment-method-select"),
         "amex",
         "Amex"
       );
       await chooseSearchResult(
         page,
-        expenseDialog.locator("#edit-expense-payment-select"),
+        expensePanel.locator("#edit-expense-payment-select"),
         "amex",
         "Amex"
       );
@@ -264,35 +259,30 @@ test.describe("Expense searchable dropdowns", () => {
       const inboxRow = expenseListRowById(page, inboxId);
       await expect(inboxRow).toBeVisible({ timeout: 60_000 });
       await inboxRow.click();
-      const inboxDialog = page.getByRole("dialog");
-      await expect(inboxDialog.getByRole("heading", { name: /^Expense$/ })).toBeVisible({
-        timeout: 15_000,
-      });
-      await inboxDialog.getByRole("button", { name: /^Edit$/ }).click();
-      await expect(inboxDialog.getByRole("heading", { name: /Edit expense/i })).toBeVisible({
-        timeout: 15_000,
-      });
+      const inboxPanel = page.locator("[data-expense-detail-panel]");
+      await expect(inboxPanel).toBeVisible({ timeout: 15_000 });
+      await expect(inboxPanel).toHaveAttribute("data-expense-detail-mode", "review");
       await chooseSearchResult(
         page,
-        inboxDialog.locator("#edit-expense-cost-allocation-select"),
+        inboxPanel.locator("#edit-expense-cost-allocation-select"),
         "over",
         "Overhead"
       );
       await chooseSearchResult(
         page,
-        inboxDialog.locator("#edit-expense-payment-source-select"),
+        inboxPanel.locator("#edit-expense-payment-source-select"),
         "worker",
         "Worker reimbursement"
       );
       await chooseSearchResult(
         page,
-        inboxDialog.locator("#edit-expense-worker-select"),
+        inboxPanel.locator("#edit-expense-worker-select"),
         "seed",
         E2E_PRESERVED_WORKER_LABEL
       );
       await chooseSearchResult(
         page,
-        inboxDialog.locator("#edit-expense-category-select"),
+        inboxPanel.locator("#edit-expense-category-select"),
         "veh",
         "Vehicle"
       );

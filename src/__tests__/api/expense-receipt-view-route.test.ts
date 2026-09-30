@@ -112,4 +112,30 @@ describe("authenticated expense receipt view route", () => {
     expect(response.status).toBe(400);
     expect(loadExpenseReceiptManifestMock).not.toHaveBeenCalled();
   });
+
+  it("accepts fixed E2E seed expense ids that are not RFC variant-strict", async () => {
+    const seedId = "44444444-4444-4444-4444-444444444441";
+    loadExpenseReceiptManifestMock.mockResolvedValue({
+      expenseId: seedId,
+      expiresAt: "2026-07-28T10:05:00.000Z",
+      items: [
+        {
+          id: `expense_receipt_url.${seedId}`,
+          fileName: "seed-receipt.png",
+          mimeType: "image/png",
+          referenceVersion: "b".repeat(64),
+          signedUrl:
+            "http://127.0.0.1:54321/storage/v1/object/sign/expense-attachments/seed.png?token=temporary",
+        },
+      ],
+    });
+
+    const response = await GET(
+      new NextRequest(`http://localhost:3104/api/financial/expenses/${seedId}/receipts`),
+      { params: { id: seedId } }
+    );
+
+    expect(response.status).toBe(200);
+    expect(loadExpenseReceiptManifestMock).toHaveBeenCalledWith(seedId, { session: "fixture" });
+  });
 });
