@@ -158,16 +158,16 @@ export default async function WorkerStatementPrintPage({
 
   return (
     <div
-      className="payroll-statement-print-root mx-auto min-h-screen bg-white px-6 py-8 text-zinc-950 print:min-h-0 print:p-0"
+      className="payroll-statement-print-root mx-auto min-h-screen bg-[var(--hh-surface)] px-6 py-8 text-[var(--hh-ink)] print:min-h-0 print:bg-white print:p-0"
       data-hh-context="document-route"
       data-hh-theme="document-light"
       style={{ maxWidth: "8.5in" }}
     >
       <div className="mb-4 flex flex-wrap items-center gap-2 print:hidden">
-        <Button asChild variant="outline" size="sm" className="min-h-11 rounded-lg">
+        <Button asChild variant="outline" size="sm" className="min-h-11 rounded-hh-standard">
           <Link href={returnHref}>Back to Worker</Link>
         </Button>
-        <Button asChild variant="outline" size="sm" className="min-h-11 rounded-lg">
+        <Button asChild variant="outline" size="sm" className="min-h-11 rounded-hh-standard">
           <Link href="/workers">All workers</Link>
         </Button>
       </div>
@@ -179,57 +179,57 @@ export default async function WorkerStatementPrintPage({
         documentDate={end}
         documentNoLabel="Statement No"
       />
-      <section className="mb-6 rounded-xl border border-zinc-200 bg-zinc-50/80 p-4 text-sm text-zinc-800 print:bg-white">
-        <p className="font-semibold text-zinc-950">
+      <section className="mb-6 rounded-card border border-[var(--hh-line)] bg-[var(--hh-l0-canvas)] p-4 text-sm text-[var(--hh-text)] print:bg-white">
+        <p className="font-semibold text-[var(--hh-ink)]">
           {worker.name}
           {worker.trade?.trim() ? ` · ${worker.trade.trim()}` : ""}
           {worker.phone?.trim() ? ` · ${worker.phone.trim()}` : ""}
         </p>
-        <p className="text-zinc-600 tabular-nums mt-1">
+        <p className="mt-1 tabular-nums text-[var(--hh-muted)]">
           Period: {start} to {end}
         </p>
       </section>
 
       <section className="mb-6 grid grid-cols-2 gap-2 text-sm sm:grid-cols-5 [break-inside:avoid]">
-        <div className="rounded-xl border border-zinc-200 bg-zinc-50/80 p-3 print:bg-white">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-zinc-500">
+        <div className="rounded-card border border-[var(--hh-line)] bg-[var(--hh-l0-canvas)] p-3 print:bg-white">
+          <p className="text-hh-status font-semibold uppercase tracking-normal text-[var(--hh-muted)]">
             Earned
           </p>
           <p className="text-lg font-semibold tabular-nums">${formatCurrency(earningsTotal)}</p>
         </div>
-        <div className="rounded-xl border border-zinc-200 bg-zinc-50/80 p-3 print:bg-white">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-zinc-500">
+        <div className="rounded-card border border-[var(--hh-line)] bg-[var(--hh-l0-canvas)] p-3 print:bg-white">
+          <p className="text-hh-status font-semibold uppercase tracking-normal text-[var(--hh-muted)]">
             Reimbursements
           </p>
           <p className="text-lg font-semibold tabular-nums">
             ${formatCurrency(reimbursementTotal)}
           </p>
         </div>
-        <div className="rounded-xl border border-zinc-200 bg-zinc-50/80 p-3 print:bg-white">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-zinc-500">
+        <div className="rounded-card border border-[var(--hh-line)] bg-[var(--hh-l0-canvas)] p-3 print:bg-white">
+          <p className="text-hh-status font-semibold uppercase tracking-normal text-[var(--hh-muted)]">
             Advance Deductions
           </p>
           <p className="text-lg font-semibold tabular-nums">${formatCurrency(advanceTotal)}</p>
         </div>
-        <div className="rounded-xl border border-zinc-200 bg-zinc-50/80 p-3 print:bg-white">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-zinc-500">
+        <div className="rounded-card border border-[var(--hh-line)] bg-[var(--hh-l0-canvas)] p-3 print:bg-white">
+          <p className="text-hh-status font-semibold uppercase tracking-normal text-[var(--hh-muted)]">
             Cash Paid
           </p>
           <p className="text-lg font-semibold tabular-nums">${formatCurrency(paymentTotal)}</p>
         </div>
         <div
-          className={`rounded-xl border p-3 ${
+          className={`rounded-card border p-3 print:bg-white ${
             balanceIsSettled
-              ? "border-emerald-200 bg-emerald-50/80 print:bg-white"
-              : "border-rose-200 bg-rose-50/80 print:bg-white"
+              ? "border-[var(--hh-success-border)] bg-[var(--hh-success-soft-fill)]"
+              : "border-[var(--hh-danger-border)] bg-[var(--hh-danger-soft-fill)]"
           }`}
         >
-          <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-zinc-500">
+          <p className="text-hh-status font-semibold uppercase tracking-normal text-[var(--hh-muted)]">
             Balance
           </p>
           <p
             className={`text-lg font-semibold tabular-nums ${
-              balanceIsSettled ? "text-emerald-700" : "text-rose-700"
+              balanceIsSettled ? "text-[var(--hh-success)]" : "text-[var(--hh-danger)]"
             }`}
           >
             ${formatCurrency(balance)}
@@ -238,13 +238,13 @@ export default async function WorkerStatementPrintPage({
       </section>
 
       <section className="mb-6">
-        <h2 className="mb-2 text-xs font-semibold uppercase tracking-[0.06em] text-zinc-500">
+        <h2 className="mb-2 text-hh-status font-semibold uppercase tracking-normal text-[var(--hh-muted)]">
           Earnings detail
         </h2>
-        <div className="overflow-hidden rounded-xl border border-zinc-200">
+        <div className="overflow-hidden rounded-card border border-[var(--hh-line)]">
           <table className="w-full border-collapse text-sm">
-            <thead className="bg-zinc-50 print:bg-white">
-              <tr className="border-b border-zinc-200">
+            <thead className="bg-[var(--hh-l0-canvas)] print:bg-white">
+              <tr className="border-b border-[var(--hh-line)]">
                 <th className="px-3 py-2 text-left font-semibold">Date</th>
                 <th className="px-3 py-2 text-left font-semibold">Project</th>
                 <th className="px-3 py-2 text-left font-semibold">Shift</th>
@@ -254,7 +254,7 @@ export default async function WorkerStatementPrintPage({
             <tbody>
               {earningsRows.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-3 py-6 text-center text-sm text-zinc-500">
+                  <td colSpan={4} className="px-3 py-6 text-center text-sm text-[var(--hh-muted)]">
                     No earnings for this period.
                   </td>
                 </tr>
@@ -262,11 +262,11 @@ export default async function WorkerStatementPrintPage({
                 earningsRows.map((row, idx) => (
                   <tr
                     key={`${row.date}-${row.projectId}-${row.shift}-${idx}`}
-                    className="border-b border-zinc-100 last:border-b-0"
+                    className="border-b border-[var(--hh-line)] last:border-b-0"
                   >
                     <td className="px-3 py-2 tabular-nums">{row.date}</td>
                     <td className="px-3 py-2">{row.projectName}</td>
-                    <td className="px-3 py-2 text-zinc-600">{row.shift}</td>
+                    <td className="px-3 py-2 text-[var(--hh-muted)]">{row.shift}</td>
                     <td className="px-3 py-2 text-right font-semibold tabular-nums">
                       ${formatCurrency(row.amount)}
                     </td>
@@ -279,13 +279,13 @@ export default async function WorkerStatementPrintPage({
       </section>
 
       <section>
-        <h2 className="mb-2 text-xs font-semibold uppercase tracking-[0.06em] text-zinc-500">
+        <h2 className="mb-2 text-hh-status font-semibold uppercase tracking-normal text-[var(--hh-muted)]">
           Payments
         </h2>
-        <div className="overflow-hidden rounded-xl border border-zinc-200">
+        <div className="overflow-hidden rounded-card border border-[var(--hh-line)]">
           <table className="w-full border-collapse text-sm">
-            <thead className="bg-zinc-50 print:bg-white">
-              <tr className="border-b border-zinc-200">
+            <thead className="bg-[var(--hh-l0-canvas)] print:bg-white">
+              <tr className="border-b border-[var(--hh-line)]">
                 <th className="px-3 py-2 text-left font-semibold">Payment Date</th>
                 <th className="px-3 py-2 text-left font-semibold">Method</th>
                 <th className="px-3 py-2 text-right font-semibold">Amount</th>
@@ -295,19 +295,19 @@ export default async function WorkerStatementPrintPage({
             <tbody>
               {payments.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-3 py-6 text-center text-sm text-zinc-500">
+                  <td colSpan={4} className="px-3 py-6 text-center text-sm text-[var(--hh-muted)]">
                     No cash payments for this period.
                   </td>
                 </tr>
               ) : (
                 payments.map((p) => (
-                  <tr key={p.id} className="border-b border-zinc-100 last:border-b-0">
+                  <tr key={p.id} className="border-b border-[var(--hh-line)] last:border-b-0">
                     <td className="px-3 py-2 tabular-nums">{p.paymentDate}</td>
                     <td className="px-3 py-2">{p.paymentMethod ?? "—"}</td>
                     <td className="px-3 py-2 text-right font-semibold tabular-nums">
                       ${formatCurrency(p.amount)}
                     </td>
-                    <td className="px-3 py-2 text-zinc-600">{p.notes ?? "—"}</td>
+                    <td className="px-3 py-2 text-[var(--hh-muted)]">{p.notes ?? "—"}</td>
                   </tr>
                 ))
               )}
@@ -316,7 +316,7 @@ export default async function WorkerStatementPrintPage({
         </div>
       </section>
 
-      <footer className="mt-10 pt-6 border-t border-zinc-200 text-xs text-zinc-500">
+      <footer className="mt-10 border-t border-[var(--hh-line)] pt-6 text-xs text-[var(--hh-muted)]">
         <p>This statement is for internal payroll tracking.</p>
       </footer>
     </div>

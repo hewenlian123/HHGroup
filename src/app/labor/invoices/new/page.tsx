@@ -3,6 +3,8 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
+import { sectionCardClass } from "@/components/ui/section-card";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/native-select";
@@ -42,9 +44,13 @@ export default function NewLaborInvoicePage() {
   };
 
   return (
-    <div className="mx-auto max-w-[680px] flex flex-col gap-6 p-6">
-      <PageHeader title="New Labor Invoice" description="Create a worker invoice/receipt record." />
-      <section className="border-b border-gray-100 pb-6 dark:border-border">
+    <div className="hh-list-frame page-stack flex flex-col gap-4 bg-[var(--hh-l0-canvas)] py-3 md:py-6">
+      <PageHeader
+        variant="workspace"
+        title="New Labor Invoice"
+        description="Create a worker invoice/receipt record."
+      />
+      <section className={cn(sectionCardClass, "p-4 md:p-5")}>
         <div className="grid gap-4">
           <div className="grid gap-1.5">
             <label className="text-hh-status font-medium uppercase tracking-normal text-muted-foreground">
@@ -90,7 +96,7 @@ export default function NewLaborInvoicePage() {
             <textarea
               value={memo}
               onChange={(e) => setMemo(e.target.value)}
-              className="min-h-[88px] rounded-hh-compact border border-gray-100 bg-background px-3 py-2 text-sm dark:border-border"
+              className="min-h-[88px] rounded-card border border-[var(--hh-line)] bg-[var(--hh-surface)] px-3 py-2 text-sm"
             />
           </div>
         </div>

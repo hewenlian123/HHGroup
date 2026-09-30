@@ -56,7 +56,8 @@ import {
   mobileListPagePaddingClass,
 } from "@/components/mobile/mobile-list-chrome";
 import { NeoAmount, NeoMobileCard, NeoStatus, NeoTable, NeoToolbar } from "@/components/base";
-import { formatCurrency, formatDate } from "@/lib/formatters";
+import { formatOverviewMoney } from "@/lib/financial/project-overview-display";
+import { formatDate } from "@/lib/formatters";
 import {
   safeWorkerReturnPath,
   workerDetailPathWithReturnTo,
@@ -94,8 +95,11 @@ const rbSegmentedNav =
 const rbSegmentedNavLink =
   "inline-flex h-7 items-center rounded-md px-3 text-hh-metadata font-medium text-[color:var(--hh-text-secondary)] transition-colors duration-120 hover:bg-[var(--hh-l3-hover)] hover:text-[color:var(--hh-text-primary)]";
 
-const rbHeaderActionButton =
-  "h-9 rounded-md border-transparent bg-[var(--hh-action-primary)] px-3 text-hh-table-cell font-semibold text-[var(--hh-action-primary-foreground)] shadow-none transition-colors duration-120 hover:bg-[var(--hh-action-primary-hover)] hover:text-[var(--hh-action-primary-foreground)]";
+const rbPageShell = cn(
+  "hh-list-frame expenses-ui reimbursements-ui page-stack flex w-full min-w-0 flex-col bg-[var(--hh-l0-canvas)] py-3 text-[var(--hh-text)] md:py-6",
+  mobileListPagePaddingClass,
+  "max-md:!gap-3"
+);
 
 const rbStatusChip =
   "inline-flex h-6 items-center gap-1.5 rounded-full border bg-[var(--hh-l2-operational-surface)] px-2.5 text-hh-status font-semibold leading-none tracking-normal";
@@ -207,15 +211,7 @@ export default function WorkerReimbursementsPage() {
 
 function WorkerReimbursementsPageFallback() {
   return (
-    <div
-      data-reimbursements-workspace
-      aria-busy="true"
-      className={cn(
-        "expenses-ui reimbursements-ui page-shell-wide mx-auto flex min-h-[calc(100dvh-1rem)] w-full !max-w-none flex-col gap-1 bg-[var(--hh-l0-canvas)] px-4 py-1 pb-2.5 text-[color:var(--hh-text-secondary)] md:gap-2 md:px-6 md:pb-3 md:pt-0.5",
-        mobileListPagePaddingClass,
-        "max-md:!gap-1"
-      )}
-    >
+    <div data-reimbursements-workspace aria-busy="true" className={rbPageShell}>
       <div className="flex min-h-[260px] items-center justify-center text-sm text-[color:var(--hh-text-tertiary)]">
         Loading reimbursements…
       </div>
@@ -761,14 +757,7 @@ function WorkerReimbursementsPageContent() {
   if (searchParams.get("view") === "balances") return <ReimbursementBalances />;
 
   return (
-    <div
-      data-reimbursements-workspace
-      className={cn(
-        "expenses-ui reimbursements-ui page-shell-wide mx-auto flex min-h-[calc(100dvh-1rem)] w-full !max-w-none flex-col gap-1 bg-[var(--hh-l0-canvas)] px-4 py-1 pb-2.5 text-[color:var(--hh-text-secondary)] md:gap-2 md:px-6 md:pb-3 md:pt-0.5",
-        mobileListPagePaddingClass,
-        "max-md:!gap-1"
-      )}
-    >
+    <div data-reimbursements-workspace className={rbPageShell}>
       <div className="flex flex-col gap-2 border-b border-[color:var(--hh-border)] pb-2 pt-1">
         <div className="flex flex-wrap items-center gap-2">
           <Button
@@ -787,7 +776,8 @@ function WorkerReimbursementsPageContent() {
       <ExpenseOperationsWorkspaceNav showHeader={false} />
       <div className="hidden md:block">
         <PageHeader
-          className="gap-2 border-b border-[color:var(--hh-border)] pb-4 lg:items-end lg:gap-x-5 [&_h1]:!text-hh-page-title [&_h1]:!tracking-normal [&_p]:!mt-1 [&_p]:!max-w-xl [&_p]:!text-hh-body"
+          variant="workspace"
+          className="gap-2 border-b border-[var(--hh-line)] pb-4"
           title="Worker Reimbursements"
           subtitle="Review pending reimbursements, receipts, and payouts before marking paid."
           actions={
@@ -802,8 +792,7 @@ function WorkerReimbursementsPageContent() {
               </nav>
               <Button
                 size="sm"
-                variant="outline"
-                className={cn("w-full max-md:min-h-11 sm:w-auto", rbHeaderActionButton)}
+                className="w-full rounded-hh-standard max-md:min-h-11 sm:w-auto"
                 onClick={() => openNewReimbursementForm()}
                 aria-label="Review Worker Receipts"
               >
@@ -815,6 +804,7 @@ function WorkerReimbursementsPageContent() {
         />
       </div>
       <MobileListHeader
+        variant="workspace"
         title="Reimbursements"
         fab={
           <MobileFabButton
@@ -866,7 +856,7 @@ function WorkerReimbursementsPageContent() {
 
       <div
         data-reimbursements-kpis
-        className="grid grid-cols-2 overflow-hidden rounded-lg border border-[color:var(--hh-border)] bg-[var(--hh-l2-operational-surface)] md:grid-cols-4"
+        className="grid grid-cols-2 overflow-hidden rounded-card border border-[var(--hh-line)] bg-[var(--hh-surface)] shadow-card md:grid-cols-4"
       >
         <div className={cn(rbShell, rbKpiCardClass)}>
           <span className={rbKpiIcon}>
@@ -889,7 +879,7 @@ function WorkerReimbursementsPageContent() {
             <p className={cn(rbKpiValueClass, "truncate")}>
               {hasLegacyObligations
                 ? "Unavailable"
-                : formatCurrency(reimbursementStats.pendingTotal)}
+                : formatOverviewMoney(reimbursementStats.pendingTotal)}
             </p>
             <p className={rbKpiMetaClass}>Before payout</p>
           </div>
@@ -913,7 +903,9 @@ function WorkerReimbursementsPageContent() {
           <div className="min-w-0">
             <p className={rbKpiLabelClass}>Paid out</p>
             <p className={cn(rbKpiValueClass, "truncate")}>
-              {hasLegacyObligations ? "Unavailable" : formatCurrency(reimbursementStats.paidTotal)}
+              {hasLegacyObligations
+                ? "Unavailable"
+                : formatOverviewMoney(reimbursementStats.paidTotal)}
             </p>
             <p className={rbKpiMetaClass}>Recorded paid amount</p>
           </div>
@@ -1208,7 +1200,7 @@ function WorkerReimbursementsPageContent() {
                   <div className="flex shrink-0 flex-col items-end gap-1.5">
                     <div className="flex flex-wrap items-center justify-end gap-x-2 gap-y-1">
                       <NeoAmount className="text-base tracking-normal">
-                        {formatCurrency(r.amount)}
+                        {formatOverviewMoney(r.amount)}
                       </NeoAmount>
                       <ReimbursementStatusChip status={r.status} workflowClass={r.workflowClass} />
                       {r.receiptUrl ? (
@@ -1368,7 +1360,7 @@ function WorkerReimbursementsPageContent() {
                     {r.workflowClass === "canonical" && r.status === "pending" ? (
                       <div className="flex min-h-10 min-w-10 items-center justify-center">
                         <ReimbursementCheckbox
-                          ariaLabel={`Select ${workerName(r)} ${formatCurrency(r.amount)}`}
+                          ariaLabel={`Select ${workerName(r)} ${formatOverviewMoney(r.amount)}`}
                           checked={selectedIds.has(r.id)}
                           onChange={() => toggleSelection(r.id, r.status)}
                         />
@@ -1428,7 +1420,7 @@ function WorkerReimbursementsPageContent() {
                     )}
                   >
                     <NeoAmount className="text-hh-body-strong">
-                      {formatCurrency(r.amount)}
+                      {formatOverviewMoney(r.amount)}
                     </NeoAmount>
                   </td>
                   <td className="whitespace-nowrap px-3 py-2.5 align-middle">
@@ -1532,7 +1524,7 @@ function WorkerReimbursementsPageContent() {
         open={!!batchPaymentModal}
         onOpenChange={(open) => !open && setBatchPaymentModal(null)}
       >
-        <DialogContent className="expenses-ui reimbursement-task-dialog max-w-md gap-3">
+        <DialogContent className="expenses-ui reimbursement-task-dialog max-w-md gap-3 rounded-card">
           <DialogHeader>
             <DialogTitle>Create Worker Payment</DialogTitle>
           </DialogHeader>
@@ -1550,7 +1542,7 @@ function WorkerReimbursementsPageContent() {
                       <span className="truncate">
                         {projectName(r)} · {r.vendor ?? "—"}
                       </span>
-                      <span className="shrink-0 tabular-nums">{formatCurrency(r.amount)}</span>
+                      <span className="shrink-0 tabular-nums">{formatOverviewMoney(r.amount)}</span>
                     </li>
                   ))}
                 </ul>
@@ -1558,7 +1550,7 @@ function WorkerReimbursementsPageContent() {
               <div>
                 <label className={rbFormLabelClass}>Total</label>
                 <p className="text-sm font-semibold tabular-nums">
-                  {formatCurrency(batchPaymentModal.totalAmount)}
+                  {formatOverviewMoney(batchPaymentModal.totalAmount)}
                 </p>
               </div>
               <div>
@@ -1618,7 +1610,7 @@ function WorkerReimbursementsPageContent() {
 
       {/* Record Payment modal */}
       <Dialog open={!!payModal} onOpenChange={(open) => !open && setPayModal(null)}>
-        <DialogContent className="expenses-ui reimbursement-task-dialog max-w-sm gap-3">
+        <DialogContent className="expenses-ui reimbursement-task-dialog max-w-sm gap-3 rounded-card">
           <DialogHeader>
             <DialogTitle>Record Payment</DialogTitle>
             <p className="text-xs text-muted-foreground font-normal mt-1">

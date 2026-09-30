@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireSupabaseOwnerOrAdminServerAction } from "@/lib/auth-boundary";
 import { PageLayout, PageHeader } from "@/components/base";
+import { sectionCardClass } from "@/components/ui/section-card";
 import { Button } from "@/components/ui/button";
 import { ServerDataLoadFallback } from "@/components/server-data-load-fallback";
 import { SetBreadcrumbEntityTitle } from "@/components/layout/set-breadcrumb-entity-title";
@@ -75,17 +76,18 @@ function SummaryCard({
   return (
     <div
       className={cn(
-        "min-h-[86px] rounded-2xl border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-4 py-3 text-[var(--hh-text-primary)] shadow-operational",
+        "min-h-[86px] px-4 py-3",
+        sectionCardClass,
         tone === "success" && "border-[var(--hh-success-border)] bg-[var(--hh-success-soft-fill)]",
         tone === "danger" && "border-[var(--hh-danger-border)] bg-[var(--hh-danger-soft-fill)]"
       )}
     >
-      <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--hh-text-tertiary)]">
+      <p className="text-hh-status font-semibold uppercase tracking-normal text-[var(--hh-muted)]">
         {label}
       </p>
       <p
         className={cn(
-          "mt-2 text-[20px] font-semibold leading-none tabular-nums text-[var(--hh-text-primary)]",
+          "mt-2 text-hh-financial font-semibold leading-none tabular-nums text-[var(--hh-ink)]",
           tone === "success" && "text-[var(--hh-success)]",
           tone === "danger" && "text-[var(--hh-danger)]"
         )}
@@ -93,7 +95,7 @@ function SummaryCard({
         {value}
       </p>
       {meta ? (
-        <p className="mt-2 truncate text-[11px] text-[var(--hh-text-secondary)]">{meta}</p>
+        <p className="mt-2 truncate text-hh-metadata text-[var(--hh-muted)]">{meta}</p>
       ) : null}
     </div>
   );
@@ -101,7 +103,7 @@ function SummaryCard({
 
 function EmptyState({ children }: { children: React.ReactNode }) {
   return (
-    <div className="rounded-xl border border-dashed border-[var(--hh-border-strong)] bg-[var(--hh-l2-operational-surface)] px-4 py-8 text-center text-sm text-[var(--hh-text-secondary)]">
+    <div className="rounded-card border border-dashed border-[var(--hh-line)] bg-[var(--hh-surface)] px-4 py-8 text-center text-sm text-[var(--hh-muted)]">
       {children}
     </div>
   );
@@ -193,10 +195,12 @@ export default async function WorkerStatementPage({ params, searchParams }: Prop
 
   return (
     <PageLayout
+      frame="list"
       divider={false}
-      className="financial-nums min-w-0 overflow-x-hidden px-4 py-4 text-[var(--hh-text-secondary)] sm:px-5 md:px-6 md:py-6"
+      className="financial-nums min-w-0 overflow-x-hidden"
       header={
         <PageHeader
+          variant="workspace"
           title="Worker Statement"
           description={
             <span>
@@ -209,7 +213,7 @@ export default async function WorkerStatementPage({ params, searchParams }: Prop
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-11 min-h-[44px] rounded-hh-compact border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-4 text-[13px] font-semibold text-[var(--hh-text-primary)] shadow-none hover:bg-[var(--hh-l2-operational-surface)] lg:h-10 lg:min-h-10"
+                  className="h-11 min-h-[44px] rounded-hh-standard px-4 text-hh-body font-semibold lg:h-10 lg:min-h-10"
                 >
                   Back to Worker
                 </Button>
@@ -218,7 +222,7 @@ export default async function WorkerStatementPage({ params, searchParams }: Prop
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-11 min-h-[44px] rounded-hh-compact border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-4 text-[13px] font-semibold text-[var(--hh-text-primary)] shadow-none hover:bg-[var(--hh-l2-operational-surface)] lg:h-10 lg:min-h-10"
+                  className="h-11 min-h-[44px] rounded-hh-standard px-4 text-hh-body font-semibold lg:h-10 lg:min-h-10"
                 >
                   All workers
                 </Button>
@@ -230,28 +234,28 @@ export default async function WorkerStatementPage({ params, searchParams }: Prop
     >
       <SetBreadcrumbEntityTitle label={worker.name} />
 
-      <section className="rounded-2xl border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-4 py-4 text-[var(--hh-text-primary)] shadow-operational md:px-5">
+      <section className={cn(sectionCardClass, "px-4 py-4 md:px-5")}>
         <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
           <div className="min-w-0">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--hh-text-tertiary)]">
+            <p className="text-hh-status font-semibold uppercase tracking-normal text-[var(--hh-muted)]">
               Statement
             </p>
-            <h2 className="mt-1 truncate text-[22px] font-semibold leading-tight text-[var(--hh-text-primary)]">
+            <h2 className="mt-1 truncate text-hh-section-title font-semibold leading-tight text-[var(--hh-ink)]">
               {worker.name}
             </h2>
-            <p className="mt-1 text-[13px] leading-snug text-[var(--hh-text-secondary)]">
+            <p className="mt-1 text-hh-body leading-snug text-[var(--hh-muted)]">
               Snapshot-based labor, reimbursements, advance deductions, and cash payments.
             </p>
           </div>
           <div
             className={cn(
-              "rounded-xl border px-3 py-2 text-right",
+              "rounded-card border px-3 py-2 text-right",
               balanceTone === "success"
                 ? "border-[var(--hh-success-border)] bg-[var(--hh-success-soft-fill)]"
                 : "border-[var(--hh-danger-border)] bg-[var(--hh-danger-soft-fill)]"
             )}
           >
-            <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--hh-text-tertiary)]">
+            <p className="text-hh-status font-semibold uppercase tracking-normal text-[var(--hh-muted)]">
               Balance
             </p>
             <p
@@ -283,12 +287,12 @@ export default async function WorkerStatementPage({ params, searchParams }: Prop
         />
       </section>
 
-      <section className="overflow-hidden rounded-2xl border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-operational">
+      <section className={sectionCardClass}>
         <header className="border-b border-[var(--hh-border)] px-4 py-3 md:px-5">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--hh-text-tertiary)]">
+          <p className="text-hh-table-header font-semibold uppercase tracking-normal text-[var(--hh-muted)]">
             Earnings
           </p>
-          <p className="mt-1 text-[13px] text-[var(--hh-text-secondary)]">
+          <p className="mt-1 text-hh-body text-[var(--hh-muted)]">
             Labor rows show saved snapshot amounts as recorded.
           </p>
         </header>
@@ -296,16 +300,16 @@ export default async function WorkerStatementPage({ params, searchParams }: Prop
           <table className="w-full border-collapse text-sm">
             <thead>
               <tr className="border-b border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)]">
-                <th className="px-4 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--hh-text-tertiary)]">
+                <th className="px-4 py-2 text-left text-hh-table-header font-semibold uppercase tracking-normal text-[var(--hh-muted)]">
                   Date
                 </th>
-                <th className="px-4 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--hh-text-tertiary)]">
+                <th className="px-4 py-2 text-left text-hh-table-header font-semibold uppercase tracking-normal text-[var(--hh-muted)]">
                   Project
                 </th>
-                <th className="px-4 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--hh-text-tertiary)]">
+                <th className="px-4 py-2 text-left text-hh-table-header font-semibold uppercase tracking-normal text-[var(--hh-muted)]">
                   Cost Code
                 </th>
-                <th className="px-4 py-2 text-right text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--hh-text-tertiary)] tabular-nums">
+                <th className="px-4 py-2 text-right text-hh-table-header font-semibold uppercase tracking-normal text-[var(--hh-muted)] tabular-nums">
                   Amount
                 </th>
               </tr>
@@ -323,16 +327,16 @@ export default async function WorkerStatementPage({ params, searchParams }: Prop
                     key={entry.id}
                     className="border-b border-[var(--hh-border)] transition-colors duration-150 last:border-b-0 hover:bg-[var(--hh-l3-hover)]"
                   >
-                    <td className="whitespace-nowrap px-4 py-2.5 font-mono text-[13px] tabular-nums text-[var(--hh-text-secondary)]">
+                    <td className="whitespace-nowrap px-4 py-2.5 text-hh-metadata tabular-nums text-[var(--hh-text-secondary)]">
                       {formatDateLabel(entry.work_date)}
                     </td>
-                    <td className="px-4 py-2.5 text-[13px] font-medium text-[var(--hh-text-primary)]">
+                    <td className="px-4 py-2.5 text-hh-body font-medium text-[var(--hh-ink)]">
                       {entry.project_name ?? "No project"}
                     </td>
-                    <td className="px-4 py-2.5 text-[13px] text-[var(--hh-text-secondary)]">
+                    <td className="px-4 py-2.5 text-hh-body text-[var(--hh-muted)]">
                       {entry.cost_code ?? "—"}
                     </td>
-                    <td className="whitespace-nowrap px-4 py-2.5 text-right text-[13px] font-semibold tabular-nums text-[var(--hh-text-primary)]">
+                    <td className="whitespace-nowrap px-4 py-2.5 text-right text-hh-body font-semibold tabular-nums text-[var(--hh-ink)]">
                       {formatMoney(entryAmount(entry))}
                     </td>
                   </tr>
@@ -348,19 +352,19 @@ export default async function WorkerStatementPage({ params, searchParams }: Prop
             entries.map((entry) => (
               <article
                 key={entry.id}
-                className="rounded-xl border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-3"
+                className="rounded-card border border-[var(--hh-line)] bg-[var(--hh-surface)] p-3"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="truncate text-[14px] font-semibold text-[var(--hh-text-primary)]">
+                    <p className="truncate text-hh-body font-semibold text-[var(--hh-ink)]">
                       {entry.project_name ?? "No project"}
                     </p>
-                    <p className="mt-1 text-[12px] text-[var(--hh-text-secondary)]">
+                    <p className="mt-1 text-hh-metadata text-[var(--hh-muted)]">
                       {formatDateLabel(entry.work_date)}
                       {entry.cost_code ? ` · ${entry.cost_code}` : ""}
                     </p>
                   </div>
-                  <p className="shrink-0 text-[15px] font-semibold tabular-nums text-[var(--hh-text-primary)]">
+                  <p className="shrink-0 text-hh-financial font-semibold tabular-nums text-[var(--hh-ink)]">
                     {formatMoney(entryAmount(entry))}
                   </p>
                 </div>
@@ -370,12 +374,12 @@ export default async function WorkerStatementPage({ params, searchParams }: Prop
         </div>
       </section>
 
-      <section className="overflow-hidden rounded-2xl border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-operational">
+      <section className={sectionCardClass}>
         <header className="border-b border-[var(--hh-border)] px-4 py-3 md:px-5">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--hh-text-tertiary)]">
+          <p className="text-hh-table-header font-semibold uppercase tracking-normal text-[var(--hh-muted)]">
             Payments
           </p>
-          <p className="mt-1 text-[13px] text-[var(--hh-text-secondary)]">
+          <p className="mt-1 text-hh-body text-[var(--hh-muted)]">
             Cash payments only; advance deductions are summarized above.
           </p>
         </header>
@@ -383,16 +387,16 @@ export default async function WorkerStatementPage({ params, searchParams }: Prop
           <table className="w-full border-collapse text-sm">
             <thead>
               <tr className="border-b border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)]">
-                <th className="px-4 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--hh-text-tertiary)]">
+                <th className="px-4 py-2 text-left text-hh-table-header font-semibold uppercase tracking-normal text-[var(--hh-muted)]">
                   Date
                 </th>
-                <th className="px-4 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--hh-text-tertiary)]">
+                <th className="px-4 py-2 text-left text-hh-table-header font-semibold uppercase tracking-normal text-[var(--hh-muted)]">
                   Method
                 </th>
-                <th className="px-4 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--hh-text-tertiary)]">
+                <th className="px-4 py-2 text-left text-hh-table-header font-semibold uppercase tracking-normal text-[var(--hh-muted)]">
                   Note
                 </th>
-                <th className="px-4 py-2 text-right text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--hh-text-tertiary)] tabular-nums">
+                <th className="px-4 py-2 text-right text-hh-table-header font-semibold uppercase tracking-normal text-[var(--hh-muted)] tabular-nums">
                   Amount
                 </th>
               </tr>
@@ -410,16 +414,16 @@ export default async function WorkerStatementPage({ params, searchParams }: Prop
                     key={payment.id}
                     className="border-b border-[var(--hh-border)] transition-colors duration-150 last:border-b-0 hover:bg-[var(--hh-l3-hover)]"
                   >
-                    <td className="whitespace-nowrap px-4 py-2.5 font-mono text-[13px] tabular-nums text-[var(--hh-text-secondary)]">
+                    <td className="whitespace-nowrap px-4 py-2.5 text-hh-metadata tabular-nums text-[var(--hh-text-secondary)]">
                       {formatDateLabel(payment.paymentDate)}
                     </td>
-                    <td className="px-4 py-2.5 text-[13px] font-medium text-[var(--hh-text-primary)]">
+                    <td className="px-4 py-2.5 text-hh-body font-medium text-[var(--hh-ink)]">
                       {payment.method ?? "—"}
                     </td>
-                    <td className="px-4 py-2.5 text-[13px] text-[var(--hh-text-secondary)]">
+                    <td className="px-4 py-2.5 text-hh-body text-[var(--hh-muted)]">
                       {payment.note ?? "—"}
                     </td>
-                    <td className="whitespace-nowrap px-4 py-2.5 text-right text-[13px] font-semibold tabular-nums text-[var(--hh-text-primary)]">
+                    <td className="whitespace-nowrap px-4 py-2.5 text-right text-hh-body font-semibold tabular-nums text-[var(--hh-ink)]">
                       {formatMoney(payment.amount)}
                     </td>
                   </tr>
@@ -435,23 +439,23 @@ export default async function WorkerStatementPage({ params, searchParams }: Prop
             paymentRows.map((payment) => (
               <article
                 key={payment.id}
-                className="rounded-xl border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-3"
+                className="rounded-card border border-[var(--hh-line)] bg-[var(--hh-surface)] p-3"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="truncate text-[14px] font-semibold text-[var(--hh-text-primary)]">
+                    <p className="truncate text-hh-body font-semibold text-[var(--hh-ink)]">
                       {payment.method ?? "Payment"}
                     </p>
-                    <p className="mt-1 text-[12px] text-[var(--hh-text-secondary)]">
+                    <p className="mt-1 text-hh-metadata text-[var(--hh-muted)]">
                       {formatDateLabel(payment.paymentDate)}
                     </p>
                     {payment.note ? (
-                      <p className="mt-1 line-clamp-2 text-[12px] text-[var(--hh-text-tertiary)]">
+                      <p className="mt-1 line-clamp-2 text-hh-metadata text-[var(--hh-muted)]">
                         {payment.note}
                       </p>
                     ) : null}
                   </div>
-                  <p className="shrink-0 text-[15px] font-semibold tabular-nums text-[var(--hh-text-primary)]">
+                  <p className="shrink-0 text-hh-financial font-semibold tabular-nums text-[var(--hh-ink)]">
                     {formatMoney(payment.amount)}
                   </p>
                 </div>
