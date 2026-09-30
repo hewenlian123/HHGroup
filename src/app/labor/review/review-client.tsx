@@ -14,7 +14,8 @@ import {
   MobileListHeader,
   mobileListPagePaddingClass,
 } from "@/components/mobile/mobile-list-chrome";
-import { formatCurrency, formatDate } from "@/lib/formatters";
+import { formatDate } from "@/lib/formatters";
+import { formatOverviewMoney } from "@/lib/financial/project-overview-display";
 import { cn } from "@/lib/utils";
 
 type LaborEntryRow = {
@@ -193,18 +194,20 @@ export default function LaborReviewClient() {
       <div
         data-testid="labor-review-workspace"
         className={cn(
-          "page-shell-wide mx-auto flex w-full max-w-[430px] flex-col gap-2 px-4 py-2 pb-4 sm:max-w-[460px] md:gap-3 md:px-6 md:pb-6 md:pt-3",
+          "hh-list-frame flex w-full flex-col gap-3 py-3 md:gap-4 md:py-6",
           mobileListPagePaddingClass
         )}
       >
         <div className="hidden md:block">
           <PageHeader
-            className="gap-1 border-b border-[var(--hh-border)] pb-3 [&_p]:mt-1"
+            variant="workspace"
+            className="gap-1 border-b border-[var(--hh-line)] pb-3"
             title="Labor Review"
             subtitle="Review labor drafts and confirm entries for project actual labor."
           />
         </div>
         <MobileListHeader
+          variant="workspace"
           title="Labor Review"
           fab={<MobileFabPlus href="/labor" ariaLabel="Labor home" />}
         />
@@ -305,7 +308,7 @@ export default function LaborReviewClient() {
                       </p>
                     </div>
                     <p className="shrink-0 text-right text-hh-financial-total font-semibold tabular-nums text-[var(--hh-text-primary)]">
-                      {formatCurrency(computeTotal(row))}
+                      {formatOverviewMoney(computeTotal(row))}
                     </p>
                   </div>
                   <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
@@ -338,7 +341,7 @@ export default function LaborReviewClient() {
                         Total
                       </dt>
                       <dd className="pt-0.5 text-sm font-semibold tabular-nums text-[var(--hh-text-primary)]">
-                        {formatCurrency(computeTotal(row))}
+                        {formatOverviewMoney(computeTotal(row))}
                       </dd>
                     </div>
                   </dl>
@@ -434,7 +437,7 @@ export default function LaborReviewClient() {
                           {row.costCode ?? "—"}
                         </td>
                         <td className="px-4 py-3 text-right font-semibold tabular-nums tracking-normal text-[var(--hh-text-primary)]">
-                          {formatCurrency(computeTotal(row))}
+                          {formatOverviewMoney(computeTotal(row))}
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex justify-end gap-2">
@@ -522,7 +525,7 @@ export default function LaborReviewClient() {
                   <p className="text-sm">
                     Total:{" "}
                     <span className="font-semibold tabular-nums tracking-normal text-[var(--hh-text-primary)]">
-                      {formatCurrency(computeTotal(selected))}
+                      {formatOverviewMoney(computeTotal(selected))}
                     </span>
                   </p>
                 </div>

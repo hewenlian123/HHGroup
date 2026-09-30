@@ -8,6 +8,9 @@ import { laborEntryCountsTowardCanonicalCost } from "@/lib/labor-cost-eligibilit
 import { ServerDataLoadFallback } from "@/components/server-data-load-fallback";
 import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
 import { SetBreadcrumbEntityTitle } from "@/components/layout/set-breadcrumb-entity-title";
+import { formatOverviewMoney } from "@/lib/financial/project-overview-display";
+import { sectionCardClass } from "@/components/ui/section-card";
+import { cn } from "@/lib/utils";
 import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import {
@@ -16,10 +19,6 @@ import {
   ProjectFinancialTableHead,
   ProjectFinancialTableHeader,
 } from "../_components/project-financial-responsive-table";
-
-function fmtUsd(n: number): string {
-  return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -111,14 +110,16 @@ export default async function ProjectLaborPage({ params }: Props) {
 
   return (
     <PageLayout
+      frame="list"
       header={
         <PageHeader
+          variant="workspace"
           title="Project Labor"
           description={`Labor cost by worker and cost code for ${project.name}.`}
           actions={
             <Link
               href={`/projects/${id}`}
-              className="inline-flex min-h-[44px] items-center text-hh-body text-[var(--hh-text-secondary)] hover:text-[var(--hh-text-primary)]"
+              className="inline-flex min-h-[44px] items-center text-hh-body font-semibold text-[var(--hh-link)] underline decoration-[var(--hh-link-underline)] underline-offset-4"
             >
               Project
             </Link>
@@ -139,15 +140,15 @@ export default async function ProjectLaborPage({ params }: Props) {
       <div className="flex items-baseline justify-between py-3 border-b border-border/60">
         <h2 className="text-hh-section-title font-semibold">{project.name}</h2>
         <span className="text-hh-section-title font-medium tabular-nums">
-          Total Labor Cost: ${fmtUsd(totalLaborCost)}
+          Total Labor Cost: {formatOverviewMoney(totalLaborCost)}
         </span>
       </div>
       <Divider />
 
       {/* Section 1: By Worker */}
       <SectionHeader label="By Worker" />
-      <div className="airtable-table-wrap airtable-table-wrap--ruled">
-        <div className="airtable-table-scroll">
+      <div className={cn(sectionCardClass, "overflow-x-auto")}>
+        <div>
           <ProjectFinancialTable aria-label="Labor by worker">
             <ProjectFinancialTableHead>
               <tr>
@@ -203,7 +204,7 @@ export default async function ProjectLaborPage({ params }: Props) {
                       label="Total Earned"
                       className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums"
                     >
-                      ${fmtUsd(r.total)}
+                      {formatOverviewMoney(r.total)}
                     </ProjectFinancialTableCell>
                   </tr>
                 ))
@@ -216,8 +217,8 @@ export default async function ProjectLaborPage({ params }: Props) {
 
       {/* Section 2: By Cost Code */}
       <SectionHeader label="By Cost Code" />
-      <div className="airtable-table-wrap airtable-table-wrap--ruled">
-        <div className="airtable-table-scroll">
+      <div className={cn(sectionCardClass, "overflow-x-auto")}>
+        <div>
           <ProjectFinancialTable aria-label="Labor by cost code">
             <ProjectFinancialTableHead>
               <tr>
@@ -260,7 +261,7 @@ export default async function ProjectLaborPage({ params }: Props) {
                       label="Total"
                       className="h-11 min-h-[44px] px-3 py-0 text-right align-middle hh-fin text-hh-table-cell tabular-nums"
                     >
-                      ${fmtUsd(r.total)}
+                      {formatOverviewMoney(r.total)}
                     </ProjectFinancialTableCell>
                   </tr>
                 ))

@@ -38,7 +38,8 @@ import {
 import { NeoAmount, NeoMobileCard, NeoStatus, NeoTable, NeoToolbar } from "@/components/base";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
-import { formatCurrency } from "@/lib/formatters";
+import { formatOverviewMoney } from "@/lib/financial/project-overview-display";
+import { sectionCardClass } from "@/components/ui/section-card";
 import { workerDetailPathWithReturnTo, workforceReportsReturnPath } from "@/lib/worker-return-path";
 
 type WorkerBalanceRow = {
@@ -53,8 +54,7 @@ type WorkerBalanceRow = {
 };
 
 /** KPI strip only — lighter edge + shadow than main surfaces */
-const wbKpiTile =
-  "rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-operational md:rounded-hh-task";
+const wbKpiTile = sectionCardClass;
 
 const wbKpiIcon =
   "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[var(--hh-border)] bg-[var(--hh-l3-hover)] text-[var(--hh-text-secondary)] md:h-8 md:w-8";
@@ -228,14 +228,15 @@ export default function WorkerBalancesPage() {
     >
       <div
         className={cn(
-          " page-shell-wide mx-auto flex w-full max-w-[430px] flex-1 flex-col gap-2 px-4 py-2 pb-4 sm:max-w-[460px] md:gap-2 md:px-6 md:pb-6 md:pt-3",
+          "hh-list-frame flex w-full flex-1 flex-col gap-3 py-3 md:gap-4 md:py-6",
           mobileListPagePaddingClass,
           "max-md:!gap-2"
         )}
       >
         <div className="hidden md:block">
           <PageHeader
-            className="gap-1 border-b border-[var(--hh-border)] pb-3 lg:items-baseline lg:gap-x-4 [&_h1]:!text-hh-financial-total [&_h1]:!font-semibold [&_h1]:!leading-none [&_h1]:!tracking-normal [&_h1]:!text-[var(--hh-text-primary)] [&_p]:!mt-1 [&_p]:!max-w-xl [&_p]:!text-hh-body [&_p]:!leading-snug [&_p]:!text-[var(--hh-text-secondary)]"
+            variant="workspace"
+            className="gap-1 border-b border-[var(--hh-line)] pb-3 lg:items-baseline lg:gap-x-4"
             title="Worker Balances"
             subtitle="Labor owed, reimbursements, payments, and balance per worker."
             actions={
@@ -254,6 +255,7 @@ export default function WorkerBalancesPage() {
         </div>
 
         <MobileListHeader
+          variant="workspace"
           title="Balances"
           fab={
             <Button
@@ -304,7 +306,7 @@ export default function WorkerBalancesPage() {
                   Total balance
                 </p>
                 <p className="mt-0.5 truncate text-base font-semibold tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
-                  {formatCurrency(summary.totalBalance)}
+                  {formatOverviewMoney(summary.totalBalance)}
                 </p>
               </div>
             </div>
@@ -322,7 +324,7 @@ export default function WorkerBalancesPage() {
                   Labor owed
                 </p>
                 <p className="mt-0.5 truncate text-base font-semibold tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
-                  {formatCurrency(summary.laborOwed)}
+                  {formatOverviewMoney(summary.laborOwed)}
                 </p>
               </div>
             </div>
@@ -340,7 +342,7 @@ export default function WorkerBalancesPage() {
                   Reimbursements
                 </p>
                 <p className="mt-0.5 truncate text-base font-semibold tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
-                  {formatCurrency(summary.reimbursements)}
+                  {formatOverviewMoney(summary.reimbursements)}
                 </p>
               </div>
             </div>
@@ -362,7 +364,7 @@ export default function WorkerBalancesPage() {
                   Advances
                 </p>
                 <p className="mt-0.5 truncate text-base font-semibold tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
-                  {formatCurrency(summary.advances)}
+                  {formatOverviewMoney(summary.advances)}
                 </p>
               </div>
             </div>
@@ -516,7 +518,7 @@ export default function WorkerBalancesPage() {
                         tone={r.balance > 0 ? "danger" : "income"}
                         className="text-xl tracking-normal"
                       >
-                        {formatCurrency(r.balance)}
+                        {formatOverviewMoney(r.balance)}
                       </NeoAmount>
                       <BalanceStatusChip balance={r.balance} />
                     </div>
@@ -527,7 +529,7 @@ export default function WorkerBalancesPage() {
                         Labor
                       </dt>
                       <dd className="truncate">
-                        <NeoAmount>{formatCurrency(r.laborOwed)}</NeoAmount>
+                        <NeoAmount>{formatOverviewMoney(r.laborOwed)}</NeoAmount>
                       </dd>
                     </div>
                     <div className="min-w-0">
@@ -535,7 +537,7 @@ export default function WorkerBalancesPage() {
                         Reimbursements
                       </dt>
                       <dd className="truncate">
-                        <NeoAmount>{formatCurrency(r.reimbursements)}</NeoAmount>
+                        <NeoAmount>{formatOverviewMoney(r.reimbursements)}</NeoAmount>
                       </dd>
                     </div>
                     <div className="min-w-0">
@@ -543,7 +545,7 @@ export default function WorkerBalancesPage() {
                         Payments
                       </dt>
                       <dd className="truncate">
-                        <NeoAmount tone="income">{formatCurrency(r.payments)}</NeoAmount>
+                        <NeoAmount tone="income">{formatOverviewMoney(r.payments)}</NeoAmount>
                       </dd>
                     </div>
                     <div className="min-w-0">
@@ -551,7 +553,7 @@ export default function WorkerBalancesPage() {
                         Advances
                       </dt>
                       <dd className="truncate">
-                        <NeoAmount>{formatCurrency(r.advances)}</NeoAmount>
+                        <NeoAmount>{formatOverviewMoney(r.advances)}</NeoAmount>
                       </dd>
                     </div>
                   </dl>
@@ -696,16 +698,16 @@ export default function WorkerBalancesPage() {
                     </div>
                   </td>
                   <td className="px-3 py-2.5 text-right align-middle">
-                    <NeoAmount>{formatCurrency(r.laborOwed)}</NeoAmount>
+                    <NeoAmount>{formatOverviewMoney(r.laborOwed)}</NeoAmount>
                   </td>
                   <td className="px-3 py-2.5 text-right align-middle">
-                    <NeoAmount>{formatCurrency(r.reimbursements)}</NeoAmount>
+                    <NeoAmount>{formatOverviewMoney(r.reimbursements)}</NeoAmount>
                   </td>
                   <td className="px-3 py-2.5 text-right align-middle">
-                    <NeoAmount tone="income">{formatCurrency(r.payments)}</NeoAmount>
+                    <NeoAmount tone="income">{formatOverviewMoney(r.payments)}</NeoAmount>
                   </td>
                   <td className="px-3 py-2.5 text-right align-middle">
-                    <NeoAmount>{formatCurrency(r.advances)}</NeoAmount>
+                    <NeoAmount>{formatOverviewMoney(r.advances)}</NeoAmount>
                   </td>
                   <td className="px-3 py-2.5 text-right align-middle">
                     <div className="flex flex-wrap items-center justify-end gap-2">
@@ -713,7 +715,7 @@ export default function WorkerBalancesPage() {
                         tone={r.balance > 0 ? "danger" : "income"}
                         className="text-base tracking-normal"
                       >
-                        {formatCurrency(r.balance)}
+                        {formatOverviewMoney(r.balance)}
                       </NeoAmount>
                       <BalanceStatusChip balance={r.balance} />
                     </div>

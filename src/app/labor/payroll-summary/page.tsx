@@ -24,7 +24,8 @@ import {
   type PayrollSummaryRow,
   type DailyWorkEntry,
 } from "@/lib/data";
-import { formatCurrency, formatDate } from "@/lib/formatters";
+import { formatDate } from "@/lib/formatters";
+import { formatOverviewMoney } from "@/lib/financial/project-overview-display";
 
 function getDefaultRange(): { from: string; to: string } {
   const d = new Date();
@@ -106,20 +107,21 @@ export default function PayrollSummaryPage() {
   return (
     <div
       className={cn(
-        " page-container page-stack py-6 text-[var(--hh-text-secondary)]",
+        "hh-list-frame page-stack py-3 text-[var(--hh-text-secondary)] md:py-6",
         mobileListPagePaddingClass,
         "max-md:!gap-3"
       )}
     >
       <div className="hidden md:block">
         <PageHeader
-          className="gap-1 border-b border-[var(--hh-border)] pb-3 lg:items-baseline lg:gap-x-4 [&_h1]:!text-hh-financial-total [&_h1]:!font-semibold [&_h1]:!leading-none [&_h1]:!tracking-normal [&_h1]:!text-[var(--hh-text-primary)] [&_p]:!mt-1 [&_p]:!max-w-xl [&_p]:!text-hh-body [&_p]:!leading-snug [&_p]:!text-[var(--hh-text-secondary)]"
+          variant="workspace"
+          className="gap-1 border-b border-[var(--hh-line)] pb-3 lg:items-baseline lg:gap-x-4"
           title="Payroll Summary"
           subtitle="Summarize labor entries by worker for a date range."
           actions={
             <Link
               href="/labor"
-              className="text-sm text-muted-foreground hover:text-foreground max-md:min-h-11 max-md:inline-flex max-md:items-center"
+              className="inline-flex min-h-11 items-center text-sm font-semibold text-[var(--hh-link)] underline decoration-[var(--hh-link-underline)] underline-offset-4"
             >
               Labor
             </Link>
@@ -127,6 +129,7 @@ export default function PayrollSummaryPage() {
         />
       </div>
       <MobileListHeader
+        variant="workspace"
         title="Payroll Summary"
         fab={<MobileFabPlus href="/labor" ariaLabel="Labor home" />}
       />
@@ -235,13 +238,13 @@ export default function PayrollSummaryPage() {
                     <div>
                       <dt className="text-muted-foreground">OT</dt>
                       <dd>
-                        <NeoAmount>{formatCurrency(r.otTotal)}</NeoAmount>
+                        <NeoAmount>{formatOverviewMoney(r.otTotal)}</NeoAmount>
                       </dd>
                     </div>
                     <div>
                       <dt className="text-muted-foreground">Pay</dt>
                       <dd>
-                        <NeoAmount>{formatCurrency(r.totalPay)}</NeoAmount>
+                        <NeoAmount>{formatOverviewMoney(r.totalPay)}</NeoAmount>
                       </dd>
                     </div>
                   </dl>
@@ -255,11 +258,11 @@ export default function PayrollSummaryPage() {
               </div>
               <div className="flex justify-between py-2">
                 <span>Total OT</span>
-                <NeoAmount>{formatCurrency(mobileTotalOt)}</NeoAmount>
+                <NeoAmount>{formatOverviewMoney(mobileTotalOt)}</NeoAmount>
               </div>
               <div className="flex justify-between border-t border-border/60 pt-2">
                 <span>Total pay</span>
-                <NeoAmount>{formatCurrency(mobileTotalPay)}</NeoAmount>
+                <NeoAmount>{formatOverviewMoney(mobileTotalPay)}</NeoAmount>
               </div>
             </div>
           </>
@@ -311,10 +314,10 @@ export default function PayrollSummaryPage() {
                 </td>
                 <td className="py-2 px-4 text-right tabular-nums">{r.daysWorked}</td>
                 <td className="py-2 px-4 text-right">
-                  <NeoAmount>{formatCurrency(r.otTotal)}</NeoAmount>
+                  <NeoAmount>{formatOverviewMoney(r.otTotal)}</NeoAmount>
                 </td>
                 <td className="py-2 px-4 text-right tabular-nums font-medium">
-                  <NeoAmount>{formatCurrency(r.totalPay)}</NeoAmount>
+                  <NeoAmount>{formatOverviewMoney(r.totalPay)}</NeoAmount>
                 </td>
               </tr>
             ))
@@ -325,10 +328,10 @@ export default function PayrollSummaryPage() {
             <td className="py-2 px-4">Total</td>
             <td className="py-2 px-4 text-right tabular-nums">{totalDays}</td>
             <td className="py-2 px-4 text-right">
-              <NeoAmount>{formatCurrency(totalOt)}</NeoAmount>
+              <NeoAmount>{formatOverviewMoney(totalOt)}</NeoAmount>
             </td>
             <td className="py-2 px-4 text-right">
-              <NeoAmount>{formatCurrency(totalPay)}</NeoAmount>
+              <NeoAmount>{formatOverviewMoney(totalPay)}</NeoAmount>
             </td>
           </tr>
         </tfoot>
@@ -388,10 +391,10 @@ export default function PayrollSummaryPage() {
                       </td>
                       <td className="py-2 px-4 capitalize">{e.dayType.replace("_", " ")}</td>
                       <td className="py-2 px-4 text-right tabular-nums">
-                        {formatCurrency(e.otAmount)}
+                        {formatOverviewMoney(e.otAmount)}
                       </td>
                       <td className="py-2 px-4 text-right tabular-nums font-medium">
-                        {formatCurrency(totalPayForEntry(e))}
+                        {formatOverviewMoney(totalPayForEntry(e))}
                       </td>
                     </tr>
                   ))
