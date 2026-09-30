@@ -38,7 +38,8 @@ import {
   Search,
   Users,
 } from "lucide-react";
-import { formatCurrency } from "@/lib/formatters";
+import { formatOverviewMoney } from "@/lib/financial/project-overview-display";
+import { sectionCardClass } from "@/components/ui/section-card";
 import { workerDetailPathWithReturnTo, workforceReportsReturnPath } from "@/lib/worker-return-path";
 
 type Row = PayrollSummaryComputeRow;
@@ -59,11 +60,9 @@ type PayrollSummaryResponse =
       message?: string;
     };
 
-const psShell =
-  "rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-operational md:rounded-hh-task";
+const psShell = sectionCardClass;
 
-const psKpiTile =
-  "rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-operational md:rounded-hh-task";
+const psKpiTile = sectionCardClass;
 
 const psKpiIcon =
   "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[var(--hh-border)] bg-[var(--hh-l3-hover)] text-[var(--hh-text-secondary)] md:h-8 md:w-8";
@@ -289,7 +288,7 @@ export default function PayrollSummaryPage() {
   const refreshing = loading && rows.length > 0;
 
   const selectFieldClass =
-    "h-11 min-h-[44px] w-full min-w-0 rounded-hh-compact border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 text-sm text-[var(--hh-text-primary)] shadow-none transition-colors hover:bg-[var(--hh-l3-hover)] focus-visible:border-[var(--hh-action-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)] lg:h-10 lg:min-h-10";
+    "h-11 min-h-[44px] w-full min-w-0 rounded-hh-compact border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 text-sm text-[var(--hh-text-primary)] shadow-none transition-colors hover:bg-[var(--hh-l3-hover)] focus-visible:border-[var(--hh-link)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)] lg:h-10 lg:min-h-10";
 
   const dateInputClass = cn(
     selectFieldClass,
@@ -309,14 +308,15 @@ export default function PayrollSummaryPage() {
     >
       <div
         className={cn(
-          " page-shell-wide mx-auto flex w-full max-w-[430px] flex-1 flex-col gap-2 px-4 py-2 pb-4 sm:max-w-[460px] md:gap-2 md:px-6 md:pb-6 md:pt-3",
+          "hh-list-frame flex w-full flex-1 flex-col gap-3 py-3 md:gap-4 md:py-6",
           mobileListPagePaddingClass,
           "max-md:!gap-2"
         )}
       >
         <div className="hidden md:block">
           <PageHeader
-            className="gap-1 border-b border-[var(--hh-border)] pb-2 lg:items-baseline lg:gap-x-4 [&_p]:mt-0"
+            variant="workspace"
+            className="gap-1 border-b border-[var(--hh-line)] pb-2 lg:items-baseline lg:gap-x-4"
             title="Payroll Summary"
             subtitle="Labor cost, reimbursements, payments, and worker balance overview."
             actions={
@@ -329,6 +329,7 @@ export default function PayrollSummaryPage() {
         </div>
 
         <MobileListHeader
+          variant="workspace"
           title="Payroll Summary"
           fab={<MobileFabPlus href="/labor" ariaLabel="Labor home" />}
         />
@@ -364,7 +365,7 @@ export default function PayrollSummaryPage() {
                   Total Earned
                 </p>
                 <p className="mt-0.5 truncate text-base font-medium tabular-nums leading-none text-[var(--hh-text-primary)] md:text-xl">
-                  {formatCurrency(summary.earned)}
+                  {formatOverviewMoney(summary.earned)}
                 </p>
                 <p className="mt-0.5 text-hh-status leading-none text-muted-foreground">
                   This period
@@ -385,7 +386,7 @@ export default function PayrollSummaryPage() {
                   Reimbursements
                 </p>
                 <p className="mt-0.5 truncate text-base font-medium tabular-nums leading-none text-[var(--hh-text-primary)] md:text-xl">
-                  {formatCurrency(summary.reimbursements)}
+                  {formatOverviewMoney(summary.reimbursements)}
                 </p>
                 <p className="mt-0.5 text-hh-status leading-none text-muted-foreground">
                   This period
@@ -410,7 +411,7 @@ export default function PayrollSummaryPage() {
                   Should Pay
                 </p>
                 <p className="mt-0.5 truncate text-base font-medium tabular-nums leading-none text-[var(--hh-text-primary)] md:text-xl">
-                  {formatCurrency(summary.shouldPay)}
+                  {formatOverviewMoney(summary.shouldPay)}
                 </p>
                 <p className="mt-0.5 text-hh-status leading-none text-muted-foreground">
                   This period
@@ -435,7 +436,7 @@ export default function PayrollSummaryPage() {
                   Paid
                 </p>
                 <p className="mt-0.5 truncate text-base font-medium tabular-nums leading-none text-[var(--hh-text-primary)] md:text-xl">
-                  {formatCurrency(summary.paid)}
+                  {formatOverviewMoney(summary.paid)}
                 </p>
                 <p className="mt-0.5 text-hh-status leading-none text-muted-foreground">
                   This period
@@ -463,7 +464,7 @@ export default function PayrollSummaryPage() {
                       : "text-[var(--hh-text-primary)]"
                   )}
                 >
-                  {formatCurrency(summary.outstanding)}
+                  {formatOverviewMoney(summary.outstanding)}
                 </p>
                 <p className="mt-0.5 text-hh-status leading-none text-muted-foreground">
                   This period
@@ -534,7 +535,7 @@ export default function PayrollSummaryPage() {
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Search worker…"
-                  className="h-11 min-h-[44px] border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] pl-8 text-sm text-[var(--hh-text-primary)] shadow-none hover:bg-[var(--hh-l3-hover)] focus-visible:border-[var(--hh-action-primary)] focus-visible:ring-[var(--hh-focus-ring)] lg:h-10 lg:min-h-10"
+                  className="h-11 min-h-[44px] border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] pl-8 text-sm text-[var(--hh-text-primary)] shadow-none hover:bg-[var(--hh-l3-hover)] focus-visible:border-[var(--hh-link)] focus-visible:ring-[var(--hh-focus-ring)] lg:h-10 lg:min-h-10"
                 />
               </div>
             </div>
@@ -637,7 +638,7 @@ export default function PayrollSummaryPage() {
                       Earned
                     </dt>
                     <dd className="min-w-0 break-words text-hh-metadata text-[var(--hh-text-secondary)]">
-                      {formatCurrency(r.earned)}
+                      {formatOverviewMoney(r.earned)}
                     </dd>
                   </div>
                   <div className="min-w-0">
@@ -645,7 +646,7 @@ export default function PayrollSummaryPage() {
                       Reimb.
                     </dt>
                     <dd className="min-w-0 break-words text-hh-metadata text-[var(--hh-text-secondary)]">
-                      {formatCurrency(r.reimbursements)}
+                      {formatOverviewMoney(r.reimbursements)}
                     </dd>
                   </div>
                   <div className="min-w-0">
@@ -653,7 +654,7 @@ export default function PayrollSummaryPage() {
                       Should pay
                     </dt>
                     <dd className="min-w-0 break-words text-hh-metadata text-[var(--hh-text-secondary)]">
-                      {formatCurrency(r.shouldPay)}
+                      {formatOverviewMoney(r.shouldPay)}
                     </dd>
                   </div>
                   <div className="min-w-0">
@@ -661,7 +662,7 @@ export default function PayrollSummaryPage() {
                       Paid
                     </dt>
                     <dd className="min-w-0 break-words text-hh-metadata text-[var(--hh-text-secondary)]">
-                      {formatCurrency(r.paid)}
+                      {formatOverviewMoney(r.paid)}
                     </dd>
                   </div>
                   <div className="col-span-2 min-w-0">
@@ -670,7 +671,7 @@ export default function PayrollSummaryPage() {
                     </dt>
                     <dd className="min-w-0 font-medium leading-snug text-[var(--hh-text-primary)]">
                       <span className="block text-hh-section-title tabular-nums tracking-normal">
-                        {formatCurrency(r.balance)}
+                        {formatOverviewMoney(r.balance)}
                       </span>
                       <span className="mt-0.5 block text-hh-status font-normal text-muted-foreground">
                         {balanceStatusLabel(r.balance)}
@@ -871,7 +872,7 @@ export default function PayrollSummaryPage() {
                           listTableAmountCellClassName
                         )}
                       >
-                        {formatCurrency(r.earned)}
+                        {formatOverviewMoney(r.earned)}
                       </td>
                       <td
                         className={cn(
@@ -879,7 +880,7 @@ export default function PayrollSummaryPage() {
                           listTableAmountCellClassName
                         )}
                       >
-                        {formatCurrency(r.reimbursements)}
+                        {formatOverviewMoney(r.reimbursements)}
                       </td>
                       <td
                         className={cn(
@@ -887,7 +888,7 @@ export default function PayrollSummaryPage() {
                           listTableAmountCellClassName
                         )}
                       >
-                        {formatCurrency(r.shouldPay)}
+                        {formatOverviewMoney(r.shouldPay)}
                       </td>
                       <td
                         className={cn(
@@ -895,7 +896,7 @@ export default function PayrollSummaryPage() {
                           listTableAmountCellClassName
                         )}
                       >
-                        {formatCurrency(r.paid)}
+                        {formatOverviewMoney(r.paid)}
                       </td>
                       <td
                         className={cn(
@@ -904,7 +905,7 @@ export default function PayrollSummaryPage() {
                         )}
                       >
                         <div className="text-base font-semibold tabular-nums tracking-normal text-[var(--hh-text-primary)]">
-                          {formatCurrency(r.balance)}
+                          {formatOverviewMoney(r.balance)}
                         </div>
                         <div className="mt-0.5 flex justify-end">
                           <BalanceChip balance={r.balance} />

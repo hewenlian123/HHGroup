@@ -42,7 +42,8 @@ import {
   WalletCards,
 } from "lucide-react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { formatCurrency, formatDate, formatInteger, formatNumber } from "@/lib/formatters";
+import { formatDate, formatInteger, formatNumber } from "@/lib/formatters";
+import { formatOverviewMoney } from "@/lib/financial/project-overview-display";
 import { encodeWorkerReturnPath, safeWorkerReturnPath } from "@/lib/worker-return-path";
 
 function monthAdd(ym: string, deltaMonths: number): string {
@@ -107,7 +108,7 @@ function parseDayTypeAndOt(notes: string | null): {
             : dayMatch[1]
       : defaultDay,
     otHours: otMatch ? otMatch[1] : defaultOt,
-    otAmount: otAmountMatch ? formatCurrency(Number(otAmountMatch[1]) || 0) : defaultOt,
+    otAmount: otAmountMatch ? formatOverviewMoney(Number(otAmountMatch[1]) || 0) : defaultOt,
   };
 }
 
@@ -624,13 +625,14 @@ export default function LaborPageClient() {
         ref={workspaceFocusRef}
         tabIndex={-1}
         className={cn(
-          "page-container page-shell-wide flex w-full flex-1 flex-col gap-hh-3",
+          "hh-list-frame flex w-full flex-1 flex-col gap-hh-3",
           mobileListPagePaddingClass,
           "max-md:!gap-3"
         )}
       >
         <div className="hidden md:block">
           <PageHeader
+            variant="workspace"
             title="Daily Labor"
             subtitle="Track and manage daily labor entries by worker and project."
             actions={
@@ -648,6 +650,7 @@ export default function LaborPageClient() {
         </div>
 
         <MobileListHeader
+          variant="workspace"
           title="Daily Labor"
           fab={<MobileFabPlus href="/labor?addDaily=1" ariaLabel="Add entry" />}
         />
@@ -896,7 +899,7 @@ export default function LaborPageClient() {
                   Total labor cost
                 </p>
                 <NeoAmount className="mt-0.5 block truncate text-base leading-none md:text-xl">
-                  {formatCurrency(summary.totalLaborCost)}
+                  {formatOverviewMoney(summary.totalLaborCost)}
                 </NeoAmount>
                 <p className="mt-0.5 text-hh-status leading-none text-muted-foreground">
                   This month
@@ -962,7 +965,7 @@ export default function LaborPageClient() {
                     className="flex items-center justify-between gap-3 px-2.5 py-2.5 hover:bg-[var(--hh-l3-hover)]"
                   >
                     <span className="text-sm font-medium text-foreground truncate">{name}</span>
-                    <NeoAmount className="shrink-0 text-sm">{formatCurrency(total)}</NeoAmount>
+                    <NeoAmount className="shrink-0 text-sm">{formatOverviewMoney(total)}</NeoAmount>
                   </div>
                 ))}
               </div>
@@ -1033,7 +1036,7 @@ export default function LaborPageClient() {
                               tone={isHighCost ? "expense" : "income"}
                               className="ml-auto shrink-0 text-sm"
                             >
-                              {formatCurrency(totalPay)}
+                              {formatOverviewMoney(totalPay)}
                             </NeoAmount>
                           </div>
                           <span
@@ -1117,7 +1120,7 @@ export default function LaborPageClient() {
                                             <td className="py-2 px-3 text-right">
                                               <NeoAmount>
                                                 {row.totalPay > 0
-                                                  ? formatCurrency(row.totalPay)
+                                                  ? formatOverviewMoney(row.totalPay)
                                                   : "—"}
                                               </NeoAmount>
                                             </td>
@@ -1161,7 +1164,7 @@ export default function LaborPageClient() {
                                                     <td className="py-2 px-3 text-right">
                                                       <NeoAmount>
                                                         {childPay > 0
-                                                          ? formatCurrency(childPay)
+                                                          ? formatOverviewMoney(childPay)
                                                           : "—"}
                                                       </NeoAmount>
                                                     </td>
@@ -1230,7 +1233,7 @@ export default function LaborPageClient() {
                                         </td>
                                         <td className="py-2 px-3 text-right">
                                           <NeoAmount>
-                                            {pay > 0 ? formatCurrency(pay) : "—"}
+                                            {pay > 0 ? formatOverviewMoney(pay) : "—"}
                                           </NeoAmount>
                                         </td>
                                         <td className="py-2 px-3 text-right">
@@ -1301,7 +1304,9 @@ export default function LaborPageClient() {
                                             </div>
                                           </div>
                                           <div className="shrink-0 text-right text-sm font-semibold tabular-nums text-foreground">
-                                            {row.totalPay > 0 ? formatCurrency(row.totalPay) : "—"}
+                                            {row.totalPay > 0
+                                              ? formatOverviewMoney(row.totalPay)
+                                              : "—"}
                                           </div>
                                         </button>
                                         {isGroupExpanded ? (
@@ -1336,7 +1341,7 @@ export default function LaborPageClient() {
                                                     <div className="shrink-0 text-right">
                                                       <div className="text-sm font-semibold tabular-nums text-foreground">
                                                         {childPay > 0
-                                                          ? formatCurrency(childPay)
+                                                          ? formatOverviewMoney(childPay)
                                                           : "—"}
                                                       </div>
                                                       <div className="mt-1 flex items-center justify-end gap-2">
@@ -1568,7 +1573,7 @@ export default function LaborPageClient() {
                                         hasEntries
                                           ? `${formatShortDate(dateStr)}, ${formatLaborDaysLabel(
                                               totalLaborDays
-                                            )}, ${formatCurrency(totalPay)}, ${workerLabel}`
+                                            )}, ${formatOverviewMoney(totalPay)}, ${workerLabel}`
                                           : `${formatShortDate(dateStr)}, no labor entries`
                                       }
                                       className={cn(
@@ -1626,7 +1631,7 @@ export default function LaborPageClient() {
                                                   isHighCost && "text-[var(--hh-action-primary)]"
                                                 )}
                                               >
-                                                {formatCurrency(totalPay)}
+                                                {formatOverviewMoney(totalPay)}
                                               </NeoAmount>
                                             </div>
                                           </div>
@@ -1761,7 +1766,7 @@ export default function LaborPageClient() {
                                     isHighCost && "text-[var(--hh-action-primary)]"
                                   )}
                                 >
-                                  {formatCurrency(totalPay)}
+                                  {formatOverviewMoney(totalPay)}
                                 </NeoAmount>
                               </div>
                             </button>
@@ -1879,7 +1884,7 @@ export default function LaborPageClient() {
                                   {otAmount}
                                 </td>
                                 <td className="py-2 px-3 text-right">
-                                  <NeoAmount>{pay > 0 ? formatCurrency(pay) : "—"}</NeoAmount>
+                                  <NeoAmount>{pay > 0 ? formatOverviewMoney(pay) : "—"}</NeoAmount>
                                 </td>
                                 <td className="py-2 px-3 text-right">
                                   <div className="flex items-center justify-end gap-2">

@@ -45,10 +45,11 @@ import { ConfirmDialog, NeoAmount, NeoMobileCard, NeoTable, NeoToolbar } from "@
 import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
 import type { WorkerPayment } from "@/lib/worker-payments-db";
 import { dispatchClientDataSync } from "@/lib/sync-router-client";
-import { formatCurrency, formatDate } from "@/lib/formatters";
+import { formatDate } from "@/lib/formatters";
+import { formatOverviewMoney } from "@/lib/financial/project-overview-display";
+import { sectionCardClass } from "@/components/ui/section-card";
 
-const wpKpiTile =
-  "rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-operational md:rounded-hh-task";
+const wpKpiTile = sectionCardClass;
 
 const wpKpiIcon =
   "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[var(--hh-border)] bg-[var(--hh-l3-hover)] text-[var(--hh-text-secondary)] md:h-8 md:w-8";
@@ -416,14 +417,15 @@ function WorkerPaymentsInner() {
 
       <div
         className={cn(
-          " page-shell-wide mx-auto flex w-full max-w-[430px] flex-1 flex-col gap-2 px-4 py-2 pb-4 sm:max-w-[460px] md:gap-2 md:px-6 md:pb-6 md:pt-3",
+          "hh-list-frame flex w-full flex-1 flex-col gap-3 py-3 md:gap-4 md:py-6",
           mobileListPagePaddingClass,
           "max-md:!gap-2"
         )}
       >
         <div className="hidden md:block">
           <PageHeader
-            className="gap-1 border-b border-[var(--hh-border)] pb-3 lg:items-baseline lg:gap-x-4 [&_h1]:!text-hh-financial-total [&_h1]:!font-semibold [&_h1]:!leading-none [&_h1]:!tracking-normal [&_h1]:!text-[var(--hh-text-primary)] [&_p]:!mt-1 [&_p]:!max-w-xl [&_p]:!text-hh-body [&_p]:!leading-snug [&_p]:!text-[var(--hh-text-secondary)]"
+            variant="workspace"
+            className="gap-1 border-b border-[var(--hh-line)] pb-3 lg:items-baseline lg:gap-x-4"
             title="Worker Payments"
             subtitle="Payment history for worker payouts."
             actions={
@@ -443,6 +445,7 @@ function WorkerPaymentsInner() {
         </div>
 
         <MobileListHeader
+          variant="workspace"
           title="Worker Payments"
           fab={<MobileFabPlus href="/labor/payroll" ariaLabel="Open payroll summary" />}
         />
@@ -458,7 +461,7 @@ function WorkerPaymentsInner() {
                   Total paid
                 </p>
                 <p className="mt-0.5 truncate text-base font-semibold tabular-nums leading-none text-[var(--hh-text-primary)] md:text-xl">
-                  {formatCurrency(summary.totalPaid)}
+                  {formatOverviewMoney(summary.totalPaid)}
                 </p>
                 <p className="mt-0.5 text-hh-status leading-none text-muted-foreground">All time</p>
               </div>
@@ -492,7 +495,7 @@ function WorkerPaymentsInner() {
                   This month
                 </p>
                 <p className="mt-0.5 truncate text-base font-semibold tabular-nums leading-none text-[var(--hh-text-primary)] md:text-xl">
-                  {formatCurrency(summary.thisMonthTotal)}
+                  {formatOverviewMoney(summary.thisMonthTotal)}
                 </p>
                 <p className="mt-0.5 truncate text-hh-status leading-none text-muted-foreground">
                   {thisMonthLabel()}
@@ -522,7 +525,7 @@ function WorkerPaymentsInner() {
                   Avg payment
                 </p>
                 <p className="mt-0.5 truncate text-base font-semibold tabular-nums leading-none text-[var(--hh-text-primary)] md:text-xl">
-                  {formatCurrency(summary.avgPayment)}
+                  {formatOverviewMoney(summary.avgPayment)}
                 </p>
                 <p className="mt-0.5 text-hh-status leading-none text-muted-foreground">
                   Per payment
@@ -719,7 +722,7 @@ function WorkerPaymentsInner() {
                         tone="income"
                         className="max-w-full min-w-0 text-right text-xl tracking-normal"
                       >
-                        {formatCurrency(r.amount)}
+                        {formatOverviewMoney(r.amount)}
                       </NeoAmount>
                     </div>
                     <dl className="grid grid-cols-1 gap-x-3 gap-y-2 text-xs sm:grid-cols-2">
@@ -903,7 +906,7 @@ function WorkerPaymentsInner() {
                     </td>
                     <td className="whitespace-nowrap px-3 py-2.5 text-right align-middle">
                       <NeoAmount tone="income" className="text-base tracking-normal">
-                        {formatCurrency(r.amount)}
+                        {formatOverviewMoney(r.amount)}
                       </NeoAmount>
                     </td>
                     <td className="max-w-[160px] px-3 py-2.5 align-middle text-sm">

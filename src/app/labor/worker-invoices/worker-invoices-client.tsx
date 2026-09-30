@@ -41,13 +41,13 @@ import {
 import { RowActionsMenu } from "@/components/base/row-actions-menu";
 import { ConfirmDialog } from "@/components/base";
 import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
-import { formatCurrency, formatDate } from "@/lib/formatters";
+import { formatDate } from "@/lib/formatters";
+import { formatOverviewMoney } from "@/lib/financial/project-overview-display";
+import { sectionCardClass } from "@/components/ui/section-card";
 
-const invShell =
-  "rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-operational md:rounded-hh-task";
+const invShell = sectionCardClass;
 
-const invKpiTile =
-  "rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-operational md:rounded-hh-task";
+const invKpiTile = sectionCardClass;
 
 const invKpiIcon =
   "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[var(--hh-border)] bg-[var(--hh-l3-hover)] text-[var(--hh-text-secondary)] md:h-8 md:w-8";
@@ -356,7 +356,7 @@ export function WorkerInvoicesClient({
   const fetchBusy = loading;
 
   const selectFieldClass =
-    "h-10 w-full min-w-0 rounded-hh-compact border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 text-sm text-[var(--hh-text-primary)] shadow-none transition-colors hover:bg-[var(--hh-l3-hover)] focus-visible:border-[var(--hh-action-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)]";
+    "h-10 w-full min-w-0 rounded-hh-compact border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 text-sm text-[var(--hh-text-primary)] shadow-none transition-colors hover:bg-[var(--hh-l3-hover)] focus-visible:border-[var(--hh-link)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)]";
 
   const searchInput = (
     <div className="relative w-full min-w-0">
@@ -365,7 +365,7 @@ export function WorkerInvoicesClient({
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder={copy.searchPlaceholder}
-        className="h-11 min-h-[44px] border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] pl-8 text-sm text-[var(--hh-text-primary)] shadow-none hover:bg-[var(--hh-l3-hover)] focus-visible:border-[var(--hh-action-primary)] focus-visible:ring-[var(--hh-focus-ring)] md:h-10 md:min-h-10"
+        className="h-11 min-h-[44px] border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] pl-8 text-sm text-[var(--hh-text-primary)] shadow-none hover:bg-[var(--hh-l3-hover)] focus-visible:border-[var(--hh-link)] focus-visible:ring-[var(--hh-focus-ring)] md:h-10 md:min-h-10"
         aria-label={copy.searchAriaLabel}
       />
     </div>
@@ -394,14 +394,15 @@ export function WorkerInvoicesClient({
       />
       <div
         className={cn(
-          " page-shell-wide mx-auto flex w-full max-w-[430px] flex-1 flex-col gap-2 px-4 py-2 pb-4 sm:max-w-[460px] md:gap-2 md:px-6 md:pb-6 md:pt-3",
+          "hh-list-frame flex w-full flex-1 flex-col gap-3 py-3 md:gap-4 md:py-6",
           mobileListPagePaddingClass,
           "max-md:!gap-2"
         )}
       >
         <div className="hidden md:block">
           <PageHeader
-            className="gap-1 border-b border-zinc-200/70 pb-2 dark:border-border/60 lg:items-baseline lg:gap-x-4 [&_p]:mt-0"
+            variant="workspace"
+            className="gap-1 border-b border-[var(--hh-line)] pb-2 lg:items-baseline lg:gap-x-4"
             title={copy.title}
             subtitle={copy.subtitle}
             actions={
@@ -425,6 +426,7 @@ export function WorkerInvoicesClient({
         </div>
 
         <MobileListHeader
+          variant="workspace"
           title={copy.title}
           fab={<MobileFabButton ariaLabel={copy.newFabAriaLabel} onClick={openNewInvoice} />}
         />
@@ -460,7 +462,7 @@ export function WorkerInvoicesClient({
                   {copy.totalLabel}
                 </p>
                 <p className="mt-0.5 truncate text-base font-medium tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
-                  {formatCurrency(summary.totalInvoiced)}
+                  {formatOverviewMoney(summary.totalInvoiced)}
                 </p>
                 <p className="mt-0.5 text-hh-status leading-none text-muted-foreground">All time</p>
               </div>
@@ -517,7 +519,7 @@ export function WorkerInvoicesClient({
                   Outstanding
                 </p>
                 <p className="mt-0.5 truncate text-base font-medium tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
-                  {formatCurrency(summary.outstanding)}
+                  {formatOverviewMoney(summary.outstanding)}
                 </p>
                 <p className="mt-0.5 text-hh-status leading-none text-muted-foreground">
                   Open balance
@@ -542,7 +544,7 @@ export function WorkerInvoicesClient({
                   This month
                 </p>
                 <p className="mt-0.5 truncate text-base font-medium tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
-                  {formatCurrency(summary.thisMonth)}
+                  {formatOverviewMoney(summary.thisMonth)}
                 </p>
                 <p className="mt-0.5 truncate text-hh-status leading-none text-muted-foreground">
                   {thisMonthLabel()}
@@ -874,7 +876,7 @@ export function WorkerInvoicesClient({
                         Amount
                       </span>
                       <span className="max-w-full min-w-0 text-right text-xl font-semibold tabular-nums tracking-normal text-zinc-800 dark:text-zinc-100">
-                        {formatCurrency(r.amount)}
+                        {formatOverviewMoney(r.amount)}
                       </span>
                     </div>
                     <dl className="grid grid-cols-1 gap-x-3 gap-y-2 text-xs sm:grid-cols-2">
@@ -1059,7 +1061,7 @@ export function WorkerInvoicesClient({
                           {invNo}
                         </td>
                         <td className="whitespace-nowrap px-3 py-2.5 text-right align-middle text-base font-semibold tabular-nums tracking-normal text-zinc-800 dark:text-zinc-100">
-                          {formatCurrency(r.amount)}
+                          {formatOverviewMoney(r.amount)}
                         </td>
                         <td className="px-3 py-2.5 align-middle">
                           <InvoiceStatusChip status={r.status} />

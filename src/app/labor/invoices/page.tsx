@@ -16,7 +16,8 @@ import {
 } from "@/lib/data";
 import { FilterBar } from "@/components/filter-bar";
 import { StatusBadge } from "@/components/status-badge";
-import { formatCurrency, formatDate } from "@/lib/formatters";
+import { formatDate } from "@/lib/formatters";
+import { formatOverviewMoney } from "@/lib/financial/project-overview-display";
 import { ConfirmDialog } from "@/components/base";
 
 export default function LaborInvoicesPage() {
@@ -130,8 +131,9 @@ export default function LaborInvoicesPage() {
   }, [rows, search, status, fromDate, toDate, workersMap]);
 
   return (
-    <div className="page-container page-stack py-6">
+    <div className="hh-list-frame page-stack py-3 md:py-6">
       <PageHeader
+        variant="workspace"
         title="Labor Invoices"
         subtitle="Worker invoices/receipts with attachment and project split review."
         actions={
@@ -217,7 +219,7 @@ export default function LaborInvoicesPage() {
                     {formatDate(row.invoiceDate)}
                   </td>
                   <td className="py-3 px-4 text-right tabular-nums">
-                    {formatCurrency(row.amount)}
+                    {formatOverviewMoney(row.amount)}
                   </td>
                   <td className="py-3 px-4 text-right tabular-nums">{row.projectSplits.length}</td>
                   <td className="py-3 px-4">

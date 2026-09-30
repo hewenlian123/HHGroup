@@ -43,7 +43,9 @@ import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
 import { WorkerAdvanceFormDialog } from "./worker-advance-form-dialog";
 import { WorkerAdvanceActionsMenu } from "./worker-advance-actions-menu";
-import { formatCurrency, formatDate } from "@/lib/formatters";
+import { formatDate } from "@/lib/formatters";
+import { formatOverviewMoney } from "@/lib/financial/project-overview-display";
+import { sectionCardClass } from "@/components/ui/section-card";
 import { formatLedgerDate, LEDGER_DATE_CLASS } from "@/lib/ledger-date";
 import {
   safeWorkerReturnPath,
@@ -73,8 +75,7 @@ type Props = {
   projects: ProjectOption[];
 };
 
-const advKpiTile =
-  "rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-operational md:rounded-hh-task";
+const advKpiTile = sectionCardClass;
 
 const advKpiIcon =
   "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[var(--hh-border)] bg-[var(--hh-l3-hover)] text-[var(--hh-text-secondary)] md:h-8 md:w-8";
@@ -516,7 +517,7 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
   const fetchBusy = loading;
 
   const selectFieldClass =
-    "h-10 w-full min-w-0 rounded-hh-compact border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 text-sm text-[var(--hh-text-primary)] shadow-none transition-colors hover:bg-[var(--hh-l3-hover)] focus-visible:border-[var(--hh-action-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)]";
+    "h-10 w-full min-w-0 rounded-hh-compact border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 text-sm text-[var(--hh-text-primary)] shadow-none transition-colors hover:bg-[var(--hh-l3-hover)] focus-visible:border-[var(--hh-link)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)]";
 
   const dateInputClass = cn(
     selectFieldClass,
@@ -531,7 +532,7 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
         placeholder="Search notes…"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        className="h-11 min-h-[44px] border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] pl-8 text-sm text-[var(--hh-text-primary)] shadow-none hover:bg-[var(--hh-l3-hover)] focus-visible:border-[var(--hh-action-primary)] focus-visible:ring-[var(--hh-focus-ring)] md:h-10 md:min-h-10"
+        className="h-11 min-h-[44px] border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] pl-8 text-sm text-[var(--hh-text-primary)] shadow-none hover:bg-[var(--hh-l3-hover)] focus-visible:border-[var(--hh-link)] focus-visible:ring-[var(--hh-focus-ring)] md:h-10 md:min-h-10"
         aria-label="Search advances"
       />
     </div>
@@ -611,7 +612,7 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
     >
       <div
         className={cn(
-          " page-shell-wide mx-auto flex w-full max-w-[430px] flex-1 flex-col gap-2 px-4 py-2 pb-4 sm:max-w-[460px] md:gap-2 md:px-6 md:pb-6 md:pt-3",
+          "hh-list-frame flex w-full flex-1 flex-col gap-3 py-3 md:gap-4 md:py-6",
           mobileListPagePaddingClass,
           "max-md:!gap-2"
         )}
@@ -633,7 +634,8 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
         </div>
         <div className="hidden md:block">
           <PageHeader
-            className="gap-1 border-b border-[var(--hh-border)] pb-3 lg:items-baseline lg:gap-x-4 [&_h1]:!text-hh-financial-total [&_h1]:!font-semibold [&_h1]:!leading-none [&_h1]:!tracking-normal [&_h1]:!text-[var(--hh-text-primary)] [&_p]:!mt-1 [&_p]:!max-w-xl [&_p]:!text-hh-body [&_p]:!leading-snug [&_p]:!text-[var(--hh-text-secondary)]"
+            variant="workspace"
+            className="gap-1 border-b border-[var(--hh-line)] pb-3 lg:items-baseline lg:gap-x-4"
             title="Worker Advances"
             subtitle="Track salary advances and deductions for workers."
             actions={
@@ -657,6 +659,7 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
         </div>
 
         <MobileListHeader
+          variant="workspace"
           title="Advances"
           fab={<MobileFabButton ariaLabel="Create advance" onClick={openCreate} />}
         />
@@ -677,7 +680,7 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
                   Total advanced
                 </p>
                 <p className="mt-0.5 truncate text-base font-medium tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
-                  {formatCurrency(summary.totalAdvanced)}
+                  {formatOverviewMoney(summary.totalAdvanced)}
                 </p>
                 <p className="mt-0.5 text-hh-status leading-none text-muted-foreground">All time</p>
               </div>
@@ -740,7 +743,7 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
                   Avg advance
                 </p>
                 <p className="mt-0.5 truncate text-base font-medium tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
-                  {formatCurrency(summary.avgAdvance)}
+                  {formatOverviewMoney(summary.avgAdvance)}
                 </p>
                 <p className="mt-0.5 text-hh-status leading-none text-muted-foreground">
                   Per advance
@@ -765,7 +768,7 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
                   This month
                 </p>
                 <p className="mt-0.5 truncate text-base font-medium tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
-                  {formatCurrency(summary.thisMonth)}
+                  {formatOverviewMoney(summary.thisMonth)}
                 </p>
                 <p className="mt-0.5 truncate text-hh-status leading-none text-muted-foreground">
                   {thisMonthLabel()}
@@ -990,7 +993,7 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
                       Amount
                     </span>
                     <NeoAmount className="max-w-full min-w-0 text-right text-xl">
-                      {formatCurrency(row.amount)}
+                      {formatOverviewMoney(row.amount)}
                     </NeoAmount>
                   </div>
                   <dl className="grid grid-cols-1 gap-x-3 gap-y-2 text-xs sm:grid-cols-2">
@@ -1132,7 +1135,7 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
                     {row.projectName ?? "—"}
                   </td>
                   <td className="whitespace-nowrap px-3 py-2.5 text-right align-middle">
-                    <NeoAmount className="text-base">{formatCurrency(row.amount)}</NeoAmount>
+                    <NeoAmount className="text-base">{formatOverviewMoney(row.amount)}</NeoAmount>
                   </td>
                   <td
                     className={cn(

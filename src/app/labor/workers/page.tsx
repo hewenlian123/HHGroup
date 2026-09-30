@@ -16,7 +16,7 @@ import {
   MobileListHeader,
   mobileListPagePaddingClass,
 } from "@/components/mobile/mobile-list-chrome";
-import { formatCurrency } from "@/lib/formatters";
+import { formatOverviewMoney } from "@/lib/financial/project-overview-display";
 import {
   Briefcase,
   DollarSign,
@@ -97,7 +97,7 @@ function workerInitials(name: string): string {
 }
 
 function formatDailyRate(value: number | null | undefined): string {
-  return `${formatCurrency(Number(value) || 0)} / day`;
+  return `${formatOverviewMoney(Number(value) || 0)} / day`;
 }
 
 function WorkerStatusPill({ status }: { status: WorkerRow["status"] }) {
@@ -348,14 +348,15 @@ export default function LaborWorkersPage() {
     <div className="min-w-0 overflow-x-hidden bg-[var(--hh-l0-canvas)] pb-[max(1rem,env(safe-area-inset-bottom,0px))] pt-[max(0.35rem,env(safe-area-inset-top,0px))] text-[color:var(--hh-text-secondary)]">
       <div
         className={cn(
-          "page-container page-shell-wide flex min-w-0 flex-col gap-2 pb-4 pt-2 md:gap-3 md:pb-6 md:pt-3",
+          "hh-list-frame flex min-w-0 flex-col gap-3 py-3 md:gap-4 md:py-6",
           mobileListPagePaddingClass,
           "max-md:!gap-2"
         )}
       >
         <div className="hidden md:block">
           <PageHeader
-            className="gap-2 border-b border-[color:var(--hh-border)] pb-4 lg:items-end lg:gap-x-5 [&_h1]:!text-hh-page-title [&_h1]:!font-semibold [&_h1]:!leading-none [&_h1]:!tracking-normal [&_h1]:!text-[color:var(--hh-text-primary)] [&_p]:!mt-1.5 [&_p]:!max-w-xl [&_p]:!text-hh-body [&_p]:!leading-snug [&_p]:!text-[color:var(--hh-text-secondary)]"
+            variant="workspace"
+            className="gap-2 border-b border-[var(--hh-line)] pb-4 lg:items-end lg:gap-x-5"
             title="Workers"
             subtitle="Manage workers: trades, daily rate, default OT rate, and status."
             actions={
@@ -375,6 +376,7 @@ export default function LaborWorkersPage() {
         </div>
 
         <MobileListHeader
+          variant="workspace"
           title="Workers"
           fab={
             <MobileFabButton
@@ -402,7 +404,7 @@ export default function LaborWorkersPage() {
             </span>
             <div className="min-w-0">
               <p className={workerKpiLabelClass}>Avg Daily Rate</p>
-              <p className={workerKpiValueClass}>{formatCurrency(workerStats.avgDailyRate)}</p>
+              <p className={workerKpiValueClass}>{formatOverviewMoney(workerStats.avgDailyRate)}</p>
               <p className={workerKpiMetaClass}>Current list</p>
             </div>
           </div>
