@@ -22,6 +22,7 @@ import {
   neoFormNoticeClassName,
 } from "@/components/base";
 import { Button } from "@/components/ui/button";
+import { sectionCardClass } from "@/components/ui/section-card";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { tableRawThClass } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
@@ -210,10 +211,11 @@ export default function CategoriesPage() {
 
   return (
     <PageLayout
-      className="py-6"
+      frame="embedded"
       divider={false}
       header={
         <PageHeader
+          variant="workspace"
           title="Categories"
           description="Manage cost and revenue categories used across the app."
           actions={
@@ -259,7 +261,7 @@ export default function CategoriesPage() {
       {message ? <div className={neoFormNoticeClassName}>{message}</div> : null}
 
       {editorOpen ? (
-        <NeoPanel bodyClassName="p-4">
+        <NeoPanel className={sectionCardClass} bodyClassName="p-4">
           <NeoFormGrid>
             <div className="space-y-1.5">
               <NeoFieldLabel>Name</NeoFieldLabel>

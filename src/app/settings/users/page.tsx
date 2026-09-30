@@ -17,6 +17,8 @@ import {
   neoFormNoticeClassName,
 } from "@/components/base";
 import { Button } from "@/components/ui/button";
+import { sectionCardClass } from "@/components/ui/section-card";
+import { cn } from "@/lib/utils";
 import type { AppRole } from "@/lib/permissions";
 import { tableRawThClass } from "@/components/ui/table";
 
@@ -91,10 +93,11 @@ export default function SettingsUsersPage() {
 
   return (
     <PageLayout
-      className="py-6"
+      frame="embedded"
       divider={false}
       header={
         <PageHeader
+          variant="workspace"
           title="Users"
           description="Owner-only user role assignment and invitation notes."
           actions={
@@ -107,7 +110,7 @@ export default function SettingsUsersPage() {
     >
       {message ? <div className={neoFormNoticeClassName}>{message}</div> : null}
 
-      <NeoPanel bodyClassName="p-4">
+      <NeoPanel className={sectionCardClass} bodyClassName="p-4">
         <div className="space-y-1.5">
           <NeoFieldLabel htmlFor="settings-users-invite-note">Invite note (optional)</NeoFieldLabel>
           <NeoInput
@@ -129,7 +132,7 @@ export default function SettingsUsersPage() {
         <>
           <div className="space-y-2 md:hidden">
             {rows.map((row) => (
-              <NeoMobileCard key={row.id} className="space-y-3 p-3">
+              <NeoMobileCard key={row.id} className={cn(sectionCardClass, "space-y-3 p-3")}>
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium text-[var(--hh-text-primary)]">
                     {row.email || row.id}
@@ -159,7 +162,10 @@ export default function SettingsUsersPage() {
             ))}
           </div>
 
-          <NeoTable className="hidden md:block" tableClassName="min-w-[680px]">
+          <NeoTable
+            className={cn(sectionCardClass, "hidden md:block")}
+            tableClassName="min-w-[680px]"
+          >
             <thead>
               <tr>
                 <th className={tableRawThClass}>Email</th>

@@ -24,12 +24,17 @@ export default async function SubcontractorsPage() {
 
   return (
     <PageLayout
+      frame="embedded"
       header={
         <PageHeader
+          variant="workspace"
           title="Subcontractors"
           description="Manage subcontractors."
           actions={
-            <Link href="/settings" className="text-sm text-muted-foreground hover:text-foreground">
+            <Link
+              href="/settings"
+              className="text-sm text-[var(--hh-link)] underline-offset-2 hover:underline"
+            >
               Settings
             </Link>
           }

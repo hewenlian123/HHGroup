@@ -16,6 +16,7 @@ import {
   neoFormNoticeClassName,
 } from "@/components/base";
 import { Button } from "@/components/ui/button";
+import { sectionCardClass } from "@/components/ui/section-card";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { useToast } from "@/components/toast/toast-provider";
 import { createBrowserClient } from "@/lib/supabase";
@@ -37,7 +38,6 @@ import {
   MobileFilterSheet,
   MobileListHeader,
   MobileSearchFiltersRow,
-  mobileListPagePaddingClass,
 } from "@/components/mobile/mobile-list-chrome";
 
 type FormState = {
@@ -528,17 +528,17 @@ export default function SettingsCompanyPage() {
   const activeSettingsFilterCount = q ? 1 : 0;
 
   return (
-    <div
-      className={cn("page-container page-stack py-6", mobileListPagePaddingClass, "max-md:!gap-3")}
-    >
+    <div className="page-stack max-md:!gap-3">
       <div className="hidden md:block">
         <PageHeader
+          variant="workspace"
           title="Company"
           description="Manage branding and profile details used across the app and generated documents."
         />
       </div>
 
       <MobileListHeader
+        variant="workspace"
         title="Company"
         fab={<span className="inline-block h-10 w-10 shrink-0" aria-hidden />}
       />
@@ -647,7 +647,7 @@ export default function SettingsCompanyPage() {
       ) : null}
 
       <NeoPanel
-        className={cn("border-dashed", q && !brandHit && "max-md:hidden")}
+        className={cn(sectionCardClass, q && !brandHit && "max-md:hidden")}
         bodyClassName="p-4"
       >
         <SectionHeader
@@ -718,7 +718,7 @@ export default function SettingsCompanyPage() {
         className={cn(q && !profileHit && "max-md:hidden")}
         data-testid="company-profile-section"
       >
-        <NeoPanel bodyClassName="p-4">
+        <NeoPanel className={sectionCardClass} bodyClassName="p-4">
           <SectionHeader
             title="Company Profile"
             subtitle="This profile is shared globally across HH Unified."

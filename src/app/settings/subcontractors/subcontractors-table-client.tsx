@@ -17,6 +17,7 @@ import {
   NeoTable,
   neoFormNoticeClassName,
 } from "@/components/base";
+import { sectionCardClass } from "@/components/ui/section-card";
 import { tableRawThClass } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
@@ -146,7 +147,7 @@ export function SubcontractorsTableClient({
           {dataLoadWarning}
         </p>
       ) : null}
-      <NeoPanel bodyClassName="p-0">
+      <NeoPanel className={sectionCardClass} bodyClassName="p-0">
         {localRows.length === 0 ? (
           <EmptyState
             title={dataLoadWarning ? "Could not load subcontractors" : "No subcontractors yet"}

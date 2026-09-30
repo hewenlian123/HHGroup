@@ -115,15 +115,17 @@ export function PageLayout({
   className?: string;
   /** When false, skip the horizontal rule under the header (e.g. custom hero + tabs). */
   divider?: boolean;
-  /** `list` matches invoice detail width. Default keeps the existing page column. */
-  frame?: "page" | "list";
+  /** `list` matches invoice detail width. `embedded` sits inside a section frame. Default keeps the existing page column. */
+  frame?: "page" | "list" | "embedded";
 }) {
   return (
     <div
       className={cn(
         frame === "list"
           ? "hh-list-frame page-stack flex flex-col bg-[var(--hh-l0-canvas)] py-3 pb-[calc(1.5rem+env(safe-area-inset-bottom))] md:py-6"
-          : "page-container page-stack flex flex-col bg-[var(--hh-l0-canvas)] pb-[calc(1.5rem+env(safe-area-inset-bottom))]",
+          : frame === "embedded"
+            ? "page-stack flex min-w-0 flex-col"
+            : "page-container page-stack flex flex-col bg-[var(--hh-l0-canvas)] pb-[calc(1.5rem+env(safe-area-inset-bottom))]",
         className
       )}
     >
