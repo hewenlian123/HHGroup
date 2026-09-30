@@ -34,9 +34,14 @@ export default async function NewBillPage() {
 
   return (
     <PageLayout
+      frame="list"
       className={billsPageWrapClass}
       header={
-        <PageHeader title="New bill" description="Create a vendor, labor, or other payable bill." />
+        <PageHeader
+          variant="workspace"
+          title="New bill"
+          description="Create a vendor, labor, or other payable bill."
+        />
       }
     >
       <NewBillClient

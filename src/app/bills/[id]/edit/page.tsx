@@ -33,9 +33,14 @@ export default async function EditBillPage({ params }: Props) {
 
   return (
     <PageLayout
+      frame="list"
       className={billsPageWrapClass}
       header={
-        <PageHeader title={`Edit ${bill.bill_no ?? "bill"}`} description={bill.vendor_name} />
+        <PageHeader
+          variant="workspace"
+          title={`Edit ${bill.bill_no ?? "bill"}`}
+          description={bill.vendor_name}
+        />
       }
     >
       <SetBreadcrumbEntityTitle label={bill.bill_no?.trim() || bill.vendor_name?.trim() || null} />

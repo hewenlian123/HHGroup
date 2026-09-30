@@ -62,7 +62,9 @@ import {
   MobileSearchFiltersRow,
   mobileListPagePaddingClass,
 } from "@/components/mobile/mobile-list-chrome";
-import { formatCurrency, formatDate } from "@/lib/formatters";
+import { formatDate } from "@/lib/formatters";
+import { formatOverviewMoney } from "@/lib/financial/project-overview-display";
+import { sectionCardClass } from "@/components/ui/section-card";
 import { TYPO } from "@/lib/typography";
 import {
   billsFilterFieldClass,
@@ -399,6 +401,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
     >
       {pathname !== "/financial/payables" ? (
         <MobileListHeader
+          variant="workspace"
           title="Bills"
           fab={
             <MobileFabPlus
@@ -454,7 +457,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
               setShowVoidInput(e.target.checked);
               setFilters({ show_void_bills: e.target.checked });
             }}
-            className="h-4 w-4 rounded-hh-compact border-[var(--hh-border)] accent-[var(--hh-action-primary)]"
+            className="h-4 w-4 rounded-hh-compact border-[var(--hh-border)] accent-[var(--hh-link)]"
           />
           Show void bills
         </label>
@@ -529,17 +532,20 @@ export function BillsListClient({ bills, summary, projects }: Props) {
       ) : null}
 
       <section className="hidden min-w-0 grid-cols-2 gap-3 md:grid lg:grid-cols-4">
-        <KpiTile label="Outstanding" value={formatCurrency(localSummary.totalOutstanding)} />
-        <KpiTile label="Overdue" value={formatCurrency(localSummary.overdueAmount)} />
-        <KpiTile label="Due this week" value={formatCurrency(localSummary.dueThisWeekAmount)} />
+        <KpiTile label="Outstanding" value={formatOverviewMoney(localSummary.totalOutstanding)} />
+        <KpiTile label="Overdue" value={formatOverviewMoney(localSummary.overdueAmount)} />
+        <KpiTile
+          label="Due this week"
+          value={formatOverviewMoney(localSummary.dueThisWeekAmount)}
+        />
         <KpiTile
           label="Paid this month"
-          value={formatCurrency(localSummary.paidThisMonthAmount)}
+          value={formatOverviewMoney(localSummary.paidThisMonthAmount)}
           tone="positive"
         />
       </section>
 
-      <NeoPanel className="hidden md:block" bodyClassName="p-3">
+      <NeoPanel className={cn(sectionCardClass, "hidden md:block")} bodyClassName="p-3">
         <FilterToolbar className="border-0 bg-transparent p-0 shadow-none">
           <div className="flex w-full min-w-0 flex-col gap-4">
             <div className="min-w-0 space-y-1.5">
@@ -636,7 +642,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
                   setShowVoidInput(e.target.checked);
                   setFilters({ show_void_bills: e.target.checked });
                 }}
-                className="h-4 w-4 rounded-hh-compact border-[var(--hh-border)] accent-[var(--hh-action-primary)]"
+                className="h-4 w-4 rounded-hh-compact border-[var(--hh-border)] accent-[var(--hh-link)]"
               />
               Show void bills
             </label>
@@ -657,7 +663,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
             }
           />
           <NeoPanel
-            className="hidden md:flex"
+            className={cn(sectionCardClass, "hidden md:flex")}
             bodyClassName="flex min-h-[240px] flex-col items-center justify-center px-6 py-10 text-center"
           >
             <p className="text-hh-panel-title text-[var(--hh-text-primary)]">No bills yet</p>
@@ -701,9 +707,9 @@ export function BillsListClient({ bills, summary, projects }: Props) {
                       </p>
                     </div>
                     <div className="flex shrink-0 flex-col items-end gap-1">
-                      <NeoAmount className="text-sm">{formatCurrency(bill.amount)}</NeoAmount>
+                      <NeoAmount className="text-sm">{formatOverviewMoney(bill.amount)}</NeoAmount>
                       <span className="text-hh-status text-[var(--hh-text-tertiary)]">
-                        Bal {formatCurrency(bill.balance_amount)}
+                        Bal {formatOverviewMoney(bill.balance_amount)}
                       </span>
                       <StatusBadge label={s.label} variant={s.variant} />
                     </div>
@@ -721,7 +727,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
               );
             })}
           </div>
-          <NeoPanel className="hidden min-w-0 md:block" bodyClassName="p-0">
+          <NeoPanel className={cn(sectionCardClass, "hidden min-w-0 md:block")} bodyClassName="p-0">
             <NeoTable
               className="rounded-none border-0 shadow-none"
               tableClassName="min-w-[720px] lg:min-w-0"
@@ -784,7 +790,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
                         <Link
                           href={`/projects/${bill.project_id}/subcontracts/${bill.subcontract_id}`}
                           onClick={(event) => event.stopPropagation()}
-                          className="mt-0.5 block truncate text-hh-status text-[var(--hh-information)] underline-offset-2 hover:underline"
+                          className="mt-0.5 block truncate text-hh-status font-semibold text-[var(--hh-link)] underline decoration-[var(--hh-link-underline)] underline-offset-4"
                         >
                           {bill.subcontractor_name
                             ? `Subcontract: ${bill.subcontractor_name}`
@@ -800,7 +806,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
                         listTableAmountCellClassName
                       )}
                     >
-                      <NeoAmount>{formatCurrency(bill.amount)}</NeoAmount>
+                      <NeoAmount>{formatOverviewMoney(bill.amount)}</NeoAmount>
                     </td>
                     <td
                       className={cn(
@@ -810,7 +816,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
                         listTableAmountCellClassName
                       )}
                     >
-                      <NeoAmount>{formatCurrency(bill.balance_amount)}</NeoAmount>
+                      <NeoAmount>{formatOverviewMoney(bill.balance_amount)}</NeoAmount>
                     </td>
                     <td className={cn(tableRawTdClass, TYPO.date)}>{formatDate(bill.due_date)}</td>
                     <td className={tableRawTdClass}>

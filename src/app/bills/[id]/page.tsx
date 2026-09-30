@@ -24,13 +24,18 @@ export default async function BillDetailPage({ params, searchParams }: Props) {
 
   return (
     <PageLayout
+      frame="list"
       className={billsPageWrapClass}
       header={
         <PageHeader
+          variant="workspace"
           title={bill.bill_no ?? "Bill"}
           description={`${bill.vendor_name} · ${bill.bill_type}${bill.project_name ? ` · ${bill.project_name}` : ""}`}
           actions={
-            <Link href={returnHref} className="text-sm text-muted-foreground hover:text-foreground">
+            <Link
+              href={returnHref}
+              className="inline-flex min-h-11 items-center text-sm font-semibold text-[var(--hh-link)] underline decoration-[var(--hh-link-underline)] underline-offset-4"
+            >
               {financeReturnLabel(returnHref)}
             </Link>
           }
