@@ -11,8 +11,10 @@ import { listTableAmountCellClassName } from "@/lib/list-table-interaction";
 import { getProjects, getProjectCostCodeSummary, getProjectForecastSummary } from "@/lib/data";
 import { costCodeMaster } from "@/lib/mock-data";
 import type { ProjectCostCodeSummaryItem } from "@/lib/data";
-import { formatCurrency, formatPercent } from "@/lib/formatters";
-import { amountClass, OS, TYPO } from "@/lib/typography";
+import { sectionCardClass } from "@/components/ui/section-card";
+import { formatOverviewMoney } from "@/lib/financial/project-overview-display";
+import { formatPercent } from "@/lib/formatters";
+import { amountClass, TYPO } from "@/lib/typography";
 
 type CostRow = {
   code: string;
@@ -116,12 +118,17 @@ export default function LaborCostAllocationPage() {
 
   return (
     <PageLayout
+      frame="list"
       header={
         <PageHeader
+          variant="workspace"
           title="Labor Cost Allocation"
           description="Cost codes report — shows budget vs actual by cost code. Actual costs are aggregated from Labor, Expenses, and Subcontract Bills."
           actions={
-            <Link href="/labor" className="text-sm text-muted-foreground hover:text-foreground">
+            <Link
+              href="/labor"
+              className="text-sm text-[var(--hh-link)] underline-offset-2 hover:underline"
+            >
               Labor
             </Link>
           }
@@ -151,34 +158,39 @@ export default function LaborCostAllocationPage() {
           </div>
         </FilterBar>
         {error ? (
-          <div className="rounded-hh-standard border border-border/60 bg-background px-4 py-3 text-sm text-destructive">
+          <div className="rounded-card border border-[var(--hh-line)] bg-[var(--hh-surface)] px-4 py-3 text-sm text-[var(--hh-danger)]">
             {error}
           </div>
         ) : null}
         <SectionHeader label="Summary" />
-        <div className={cn("grid grid-cols-3 gap-x-8 gap-y-2 p-4 max-md:grid-cols-1", OS.card)}>
-          <div className="flex justify-between items-baseline border-b border-gray-100 pb-1.5 dark:border-border/40">
-            <span className="text-sm text-muted-foreground">Revenue</span>
+        <div
+          className={cn(
+            sectionCardClass,
+            "grid grid-cols-3 gap-x-8 gap-y-2 p-4 max-md:grid-cols-1"
+          )}
+        >
+          <div className="flex items-baseline justify-between border-b border-[var(--hh-line)] pb-1.5">
+            <span className="text-sm text-[var(--hh-muted)]">Revenue</span>
             <span className={cn("text-right", amountClass("income"))}>
-              {formatCurrency(revenue)}
+              {formatOverviewMoney(revenue)}
             </span>
           </div>
-          <div className="flex justify-between items-baseline border-b border-gray-100 pb-1.5 dark:border-border/40">
-            <span className="text-sm text-muted-foreground">Profit</span>
+          <div className="flex items-baseline justify-between border-b border-[var(--hh-line)] pb-1.5">
+            <span className="text-sm text-[var(--hh-muted)]">Profit</span>
             <span className={cn("text-right", amountClass(profitPositive ? "income" : "expense"))}>
-              {formatCurrency(profit)}
+              {formatOverviewMoney(profit)}
             </span>
           </div>
-          <div className="flex justify-between items-baseline border-b border-gray-100 pb-1.5 dark:border-border/40">
-            <span className="text-sm text-muted-foreground">Margin %</span>
-            <span className="tabular-nums text-right font-medium">{formatPercent(marginPct)}</span>
+          <div className="flex items-baseline justify-between border-b border-[var(--hh-line)] pb-1.5">
+            <span className="text-sm text-[var(--hh-muted)]">Margin %</span>
+            <span className="text-right font-medium tabular-nums">{formatPercent(marginPct)}</span>
           </div>
         </div>
         <SectionHeader label="Cost by code" />
-        <div className={cn("overflow-x-auto", OS.tableShell)}>
+        <div className={cn(sectionCardClass, "overflow-x-auto")}>
           <table className="w-full text-sm border-collapse">
             <thead>
-              <tr className="border-b border-slate-900/[0.06] bg-slate-50/80 dark:border-border/60 dark:bg-muted/20">
+              <tr className="border-b border-[var(--hh-line)] bg-[var(--hh-l0-canvas)]">
                 <th className={cn("px-3 py-2 text-left", TYPO.tableHeader)}>Cost Code</th>
                 <th className={cn("px-3 py-2 text-right", TYPO.tableHeader)}>Budget</th>
                 <th className={cn("px-3 py-2 text-right", TYPO.tableHeader)}>Actual</th>
@@ -188,10 +200,10 @@ export default function LaborCostAllocationPage() {
             </thead>
             <tbody>
               {rows.map((r) => (
-                <tr key={r.code} className="border-b border-gray-100/80 dark:border-border/40">
-                  <td className="py-1.5 px-3">
+                <tr key={r.code} className="border-b border-[var(--hh-line)]">
+                  <td className="px-3 py-1.5">
                     <span className="font-medium tabular-nums">{r.code}</span>
-                    <span className="text-muted-foreground ml-2">{r.name}</span>
+                    <span className="ml-2 text-[var(--hh-muted)]">{r.name}</span>
                   </td>
                   <td
                     className={cn(
@@ -199,7 +211,7 @@ export default function LaborCostAllocationPage() {
                       listTableAmountCellClassName
                     )}
                   >
-                    {formatCurrency(r.budget)}
+                    {formatOverviewMoney(r.budget)}
                   </td>
                   <td
                     className={cn(
@@ -207,17 +219,17 @@ export default function LaborCostAllocationPage() {
                       listTableAmountCellClassName
                     )}
                   >
-                    {formatCurrency(r.actual)}
+                    {formatOverviewMoney(r.actual)}
                   </td>
                   <td
                     className={cn(
                       "py-1.5 px-3 text-right tabular-nums font-medium",
                       listTableAmountCellClassName,
-                      r.actual > r.budget && "text-[var(--hh-danger)] text-[var(--hh-danger)]",
-                      r.actual <= r.budget && "text-[var(--hh-success)] text-[var(--hh-success)]"
+                      r.actual > r.budget && "text-[var(--hh-danger)]",
+                      r.actual <= r.budget && "text-[var(--hh-success)]"
                     )}
                   >
-                    {formatCurrency(r.variance)}
+                    {formatOverviewMoney(r.variance)}
                   </td>
                   <td
                     className={cn(
@@ -231,22 +243,22 @@ export default function LaborCostAllocationPage() {
               ))}
             </tbody>
             <tfoot>
-              <tr className="border-t border-gray-100 font-medium dark:border-border/60">
-                <td className="py-2 px-3">Total</td>
-                <td className="py-2 px-3 text-right tabular-nums">
-                  {formatCurrency(totals.budget)}
+              <tr className="border-t border-[var(--hh-line)] font-medium">
+                <td className="px-3 py-2">Total</td>
+                <td className="px-3 py-2 text-right tabular-nums">
+                  {formatOverviewMoney(totals.budget)}
                 </td>
-                <td className="py-2 px-3 text-right tabular-nums">
-                  {formatCurrency(totals.actual)}
+                <td className="px-3 py-2 text-right tabular-nums">
+                  {formatOverviewMoney(totals.actual)}
                 </td>
                 <td
                   className={cn(
-                    "py-2 px-3 text-right tabular-nums",
-                    overBudget && "text-[var(--hh-danger)] text-[var(--hh-danger)]",
-                    !overBudget && "text-[var(--hh-success)] text-[var(--hh-success)]"
+                    "px-3 py-2 text-right tabular-nums",
+                    overBudget && "text-[var(--hh-danger)]",
+                    !overBudget && "text-[var(--hh-success)]"
                   )}
                 >
-                  {formatCurrency(totalVariance)}
+                  {formatOverviewMoney(totalVariance)}
                 </td>
                 <td className="py-2 px-3 text-right tabular-nums">
                   {totals.budget !== 0 ? formatPercent((totals.actual / totals.budget) * 100) : "—"}
