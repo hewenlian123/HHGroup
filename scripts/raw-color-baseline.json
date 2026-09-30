@@ -573,7 +573,6 @@
     "<tr className=\"border-b border-zinc-100/55 dark:border-border/35\">": 1,
     "<tr className=\"border-b border-zinc-100/90 bg-zinc-50/90 dark:border-border/60 dark:bg-muted/20\">": 1,
     "<tr key={i} className=\"border-b border-zinc-100/55 dark:border-border/35\">": 1,
-    "className=\"gap-1 border-b border-zinc-200/70 pb-2 dark:border-border/60 lg:items-baseline lg:gap-x-4 [&_p]:mt-0\"": 1,
     "className=\"h-3.5 w-3.5 text-zinc-600 dark:text-muted-foreground\"": 1,
     "const workerAvatarRing = \"ring-1 ring-inset ring-zinc-950/[0.055] dark:ring-white/[0.08]\";": 1
   },
